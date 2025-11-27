@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Home, FileSpreadsheet, Upload, Download, Settings, Menu, X, BarChart3, FolderOpen, CreditCard, Building2, Wallet, ChevronDown, ChevronRight } from "lucide-react"
+import { Home, FileSpreadsheet, Upload, Download, Settings, Menu, X, BarChart3, FolderOpen, CreditCard, Building2, Wallet, ChevronDown, ChevronRight, TrendingUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 
@@ -46,13 +46,13 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   const bankinterItems = [
     { 
       label: "Bankinter EUR", 
-      href: "#bankinter-eur", 
+      href: "/#bankinter-eur", 
       id: "bankinter-eur",
       source: "bankinter-eur"
     },
     { 
       label: "Bankinter USD", 
-      href: "#bankinter-usd", 
+      href: "/#bankinter-usd", 
       id: "bankinter-usd",
       source: "bankinter-usd"
     },
@@ -61,7 +61,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   const sabadellItem = { 
     icon: Building2, 
     label: "Sabadell", 
-    href: "#sabadell", 
+    href: "/#sabadell", 
     id: "sabadell",
     description: "Bank account",
     source: "sabadell"
@@ -70,31 +70,31 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   const braintreeItems = [
     { 
       label: "Braintree EUR", 
-      href: "#braintree-eur", 
+      href: "/#braintree-eur", 
       id: "braintree-eur",
       source: "braintree-eur"
     },
     { 
       label: "Braintree USD", 
-      href: "#braintree-usd", 
+      href: "/#braintree-usd", 
       id: "braintree-usd",
       source: "braintree-usd"
     },
     { 
       label: "Braintree Transactions", 
-      href: "#braintree-transactions", 
+      href: "/#braintree-transactions", 
       id: "braintree-transactions",
       source: "braintree-transactions"
     },
     { 
       label: "Braintree Amex", 
-      href: "#braintree-amex", 
+      href: "/#braintree-amex", 
       id: "braintree-amex",
       source: "braintree-amex"
     },
     { 
       label: "Braintree Amex Transactions", 
-      href: "#braintree-amex-transactions", 
+      href: "/#braintree-amex-transactions", 
       id: "braintree-amex-transactions",
       source: "braintree-amex-transactions"
     },
@@ -104,7 +104,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     { 
       icon: Wallet, 
       label: "Stripe", 
-      href: "#stripe", 
+      href: "/#stripe", 
       id: "stripe",
       description: "Payment processing",
       source: "stripe"
@@ -112,7 +112,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     { 
       icon: CreditCard, 
       label: "GoCardless", 
-      href: "#gocardless", 
+      href: "/#gocardless", 
       id: "gocardless",
       description: "Direct debits",
       source: "gocardless"
@@ -120,7 +120,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     { 
       icon: Wallet, 
       label: "PayPal", 
-      href: "#paypal", 
+      href: "/#paypal", 
       id: "paypal",
       description: "PayPal transactions",
       source: "paypal"
@@ -128,10 +128,10 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   ]
 
   const actionItems = [
-    { icon: Upload, label: "Upload Files", href: "#upload", id: "upload" },
-    { icon: BarChart3, label: "Reconciliation", href: "#reconciliation", id: "reconciliation" },
-    { icon: Download, label: "Export Data", href: "#export", id: "export" },
-    { icon: Settings, label: "Settings", href: "#settings", id: "settings" },
+    { icon: Upload, label: "Upload Files", href: "/#upload", id: "upload" },
+    { icon: BarChart3, label: "Reconciliation", href: "/#reconciliation", id: "reconciliation" },
+    { icon: Download, label: "Export Data", href: "/#export", id: "export" },
+    { icon: Settings, label: "Settings", href: "/#settings", id: "settings" },
   ]
 
   return (
@@ -201,6 +201,32 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
               >
                 <Home className="h-5 w-5" />
                 <span>Dashboard</span>
+              </a>
+            </div>
+
+            {/* Reports Section */}
+            <div className="mb-4">
+              <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-3">
+                Reports
+              </p>
+              <a
+                href="/pnl"
+                onClick={() => setIsOpen(false)}
+                className={`
+                  flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
+                  ${currentPage === 'pnl'
+                    ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
+                    : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800'
+                  }
+                `}
+              >
+                <TrendingUp className="h-5 w-5" />
+                <div className="flex-1">
+                  <div className="text-sm">DSD Departamental P&L</div>
+                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                    Profit & Loss Report
+                  </div>
+                </div>
               </a>
             </div>
 
