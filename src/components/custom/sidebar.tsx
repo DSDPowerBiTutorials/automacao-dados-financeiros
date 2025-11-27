@@ -46,15 +46,21 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   const bankinterItems = [
     { 
       label: "Bankinter EUR", 
-      href: "/#bankinter-eur", 
+      href: "/reports/bankinter-eur", 
       id: "bankinter-eur",
       source: "bankinter-eur"
     },
     { 
       label: "Bankinter USD", 
-      href: "/#bankinter-usd", 
+      href: "/reports/bankinter-usd", 
       id: "bankinter-usd",
       source: "bankinter-usd"
+    },
+    { 
+      label: "Bankinter", 
+      href: "/reports/bankinter", 
+      id: "bankinter",
+      source: "bankinter"
     },
   ]
 
