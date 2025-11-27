@@ -12,6 +12,8 @@ import Link from "next/link"
 
 interface BankinterEURRow {
   id: string
+
+  // Campos “originais” do arquivo Bankinter
   fecha_contable: string
   fecha_valor: string
   clave: string
@@ -24,9 +26,18 @@ interface BankinterEURRow {
   haber: number
   importe: number
   saldo: number
+
+  // Campos “padrão” do app (que o resto do sistema espera)
+  date: string          // FECHA VALOR
+  reference: string     // REFERENCIA
+  category: string      // CATEGORÍA
+  description: string   // DESCRIPCIÓN
+  amount: number        // IMPORTE
+
   conciliado: boolean
   [key: string]: any
 }
+
 
 export default function BankinterEURPage() {
   const [rows, setRows] = useState<BankinterEURRow[]>([])
