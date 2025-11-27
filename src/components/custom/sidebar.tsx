@@ -70,7 +70,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   const braintreeItems = [
     { 
       label: "Braintree EUR", 
-      href: "/#braintree-eur", 
+      href: "/reports/braintree-eur", 
       id: "braintree-eur",
       source: "braintree-eur"
     },
