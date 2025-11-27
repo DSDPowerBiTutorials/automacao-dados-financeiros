@@ -1,7 +1,9 @@
 "use client"
 
-import { useState } from "react"
-import { Upload, FileSpreadsheet, Download, Edit2, Save, X, Calendar, CheckCircle, AlertCircle, Building2, CreditCard, Wallet, ArrowRightLeft, Settings, Plus, Trash2, TrendingUp, DollarSign } from "lucide-react"
+import { useState, useEffect } from "react"
+import { Upload, FileSpreadsheet, Download, Edit2, Save, X, Calendar, CheckCircle, AlertCircle, Building2, CreditCard, Wallet, ArrowRightLeft, Settings, Plus, Trash2, TrendingUp, DollarSign, Loader2, Database, Search, ArrowUpDown } from "lucide-react"
+import { loadAllCSVFiles, saveCSVFile, updateCSVRow, deleteCSVRow, deleteAllReports } from "@/lib/database"
+import { downloadFinalCSV, downloadIndividualCSV } from "@/lib/download-helpers"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -44,63 +46,74 @@ interface CustomColumn {
   options?: string[] // Para tipo select
 }
 
+type SortField = 'id' | 'date' | null
+type SortDirection = 'asc' | 'desc'
+
+type DateFilterType = 'current-week' | 'previous-week' | 'current-month' | 'last-month' | 'current-year' | 'last-year' | 'custom' | 'all'
+
 export default function Home() {
-  const [csvFiles, setCsvFiles] = useState<CSVFile[]>([
-    {
-      name: "Bankinter_EUR_Statement.csv",
-      lastUpdated: "20/01/2024",
-      totalAmount: 45230.50,
-      source: 'bankinter-eur',
-      rows: [
-        { id: "BANK-001", date: "15/01/2024", description: "Wire Transfer - Client Payment", amount: 5600.00, category: "Revenue", classification: "Client Payment", source: "Bankinter EUR", paymentMethod: "Stripe", orderNumbers: ["ORD-2024-001", "ORD-2024-002"] },
-        { id: "BANK-002", date: "16/01/2024", description: "Bank Fee - Monthly Maintenance", amount: -25.00, category: "Expense", classification: "Bank Fees", source: "Bankinter EUR", paymentMethod: "", orderNumbers: [] },
-        { id: "BANK-003", date: "17/01/2024", description: "Direct Debit - Office Rent", amount: -2500.00, category: "Expense", classification: "Rent", source: "Bankinter EUR", paymentMethod: "", orderNumbers: [] },
-        { id: "BANK-004", date: "18/01/2024", description: "Transfer In - Investment", amount: 15000.00, category: "Revenue", classification: "Investment", source: "Bankinter EUR", paymentMethod: "Braintree", orderNumbers: ["ORD-2024-003"] },
-        { id: "BANK-005", date: "19/01/2024", description: "Card Payment - Supplies", amount: -345.50, category: "Expense", classification: "Supplies", source: "Bankinter EUR", paymentMethod: "", orderNumbers: [] },
-      ]
-    },
-    {
-      name: "Braintree_EUR_Transactions.csv",
-      lastUpdated: "19/01/2024",
-      totalAmount: 12450.00,
-      source: 'braintree-eur',
-      rows: [
-        { id: "BT-EUR-001", date: "15/01/2024", description: "Payment Gateway - Order #1234", amount: 1250.00, category: "Revenue", classification: "Online Payment", source: "Braintree EUR", depositAccount: "Braintree", orderNumbers: ["ORD-2024-1234"] },
-        { id: "BT-EUR-002", date: "16/01/2024", description: "Payment Gateway - Order #1235", amount: 890.00, category: "Revenue", classification: "Online Payment", source: "Braintree EUR", depositAccount: "Braintree", orderNumbers: ["ORD-2024-1235", "ORD-2024-1236"] },
-        { id: "BT-EUR-003", date: "17/01/2024", description: "Transaction Fee", amount: -35.20, category: "Expense", classification: "Payment Fees", source: "Braintree EUR", depositAccount: "Braintree", orderNumbers: [] },
-        { id: "BT-EUR-004", date: "18/01/2024", description: "Payment Gateway - Order #1236", amount: 2340.00, category: "Revenue", classification: "Online Payment", source: "Braintree EUR", depositAccount: "Braintree", orderNumbers: ["ORD-2024-1237"] },
-        { id: "BT-EUR-005", date: "19/01/2024", description: "Refund - Order #1230", amount: -450.00, category: "Expense", classification: "Refund", source: "Braintree EUR", depositAccount: "Braintree", orderNumbers: ["ORD-2024-1230"] },
-      ]
-    },
-    {
-      name: "GoCardless_Payments.csv",
-      lastUpdated: "18/01/2024",
-      totalAmount: 8900.75,
-      source: 'gocardless',
-      rows: [
-        { id: "GC-001", date: "15/01/2024", description: "Direct Debit - Subscription #456", amount: 299.00, category: "Revenue", classification: "Subscription", source: "GoCardless", depositAccount: "GoCardless", orderNumbers: ["ORD-2024-456"] },
-        { id: "GC-002", date: "16/01/2024", description: "Direct Debit - Subscription #457", amount: 299.00, category: "Revenue", classification: "Subscription", source: "GoCardless", depositAccount: "GoCardless", orderNumbers: ["ORD-2024-457", "ORD-2024-458"] },
-        { id: "GC-003", date: "17/01/2024", description: "Processing Fee", amount: -8.75, category: "Expense", classification: "Payment Fees", source: "GoCardless", depositAccount: "GoCardless", orderNumbers: [] },
-        { id: "GC-004", date: "18/01/2024", description: "Direct Debit - Subscription #458", amount: 499.00, category: "Revenue", classification: "Subscription", source: "GoCardless", depositAccount: "GoCardless", orderNumbers: ["ORD-2024-459"] },
-      ]
-    },
-    {
-      name: "Stripe_Payments.csv",
-      lastUpdated: "20/01/2024",
-      totalAmount: 15670.30,
-      source: 'stripe',
-      rows: [
-        { id: "ST-001", date: "15/01/2024", description: "Charge - Invoice #789", amount: 3400.50, category: "Revenue", classification: "Invoice Payment", source: "Stripe", depositAccount: "Stripe", orderNumbers: ["ORD-2024-789"] },
-        { id: "ST-002", date: "16/01/2024", description: "Charge - Invoice #790", amount: 2100.00, category: "Revenue", classification: "Invoice Payment", source: "Stripe", depositAccount: "Stripe", orderNumbers: ["ORD-2024-790", "ORD-2024-791"] },
-        { id: "ST-003", date: "17/01/2024", description: "Stripe Fee", amount: -98.20, category: "Expense", classification: "Payment Fees", source: "Stripe", depositAccount: "Stripe", orderNumbers: [] },
-        { id: "ST-004", date: "18/01/2024", description: "Charge - Invoice #791", amount: 4500.00, category: "Revenue", classification: "Invoice Payment", source: "Stripe", depositAccount: "Stripe", orderNumbers: ["ORD-2024-792"] },
-        { id: "ST-005", date: "19/01/2024", description: "Payout to Bank", amount: -5000.00, category: "Transfer", classification: "Bank Transfer", source: "Stripe", depositAccount: "Stripe", orderNumbers: [] },
-        { id: "ST-006", date: "20/01/2024", description: "Charge - Invoice #792", amount: 1890.00, category: "Revenue", classification: "Invoice Payment", source: "Stripe", depositAccount: "Stripe", orderNumbers: ["ORD-2024-793", "ORD-2024-794", "ORD-2024-795"] },
-      ]
+  const [csvFiles, setCsvFiles] = useState<CSVFile[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [isSaving, setIsSaving] = useState(false)
+  const [lastSaved, setLastSaved] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
+
+  // Filtros e ordenação
+  const [searchOrderNumber, setSearchOrderNumber] = useState("")
+  const [sortField, setSortField] = useState<SortField>(null)
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
+  const [dateFilter, setDateFilter] = useState<DateFilterType>('all')
+  const [customStartDate, setCustomStartDate] = useState("")
+  const [customEndDate, setCustomEndDate] = useState("")
+
+  // Carregar dados do Supabase ao iniciar
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  const loadData = async () => {
+    setIsLoading(true)
+    try {
+      const data = await loadAllCSVFiles()
+      if (data && data.length > 0) {
+        setCsvFiles(data)
+      }
+    } catch (error) {
+      console.error('Error loading data:', error)
+    } finally {
+      setIsLoading(false)
     }
-  ])
+  }
+
+  // Função para salvar TODOS os dados manualmente
+  const saveAllData = async () => {
+    setIsSaving(true)
+    setSaveSuccess(false)
+    
+    try {
+      // Salvar todos os arquivos CSV
+      for (const file of csvFiles) {
+        await saveCSVFile(file)
+      }
+      
+      // Atualizar timestamp de último salvamento
+      const now = new Date()
+      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      setLastSaved(formattedTime)
+      setSaveSuccess(true)
+      
+      // Esconder mensagem de sucesso após 3 segundos
+      setTimeout(() => setSaveSuccess(false), 3000)
+    } catch (error) {
+      console.error('Error saving all data:', error)
+      alert('Error saving data. Please check your Supabase configuration.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
 
   const [editingRow, setEditingRow] = useState<string | null>(null)
+  const [editedCategory, setEditedCategory] = useState<string>("")
   const [editedClassification, setEditedClassification] = useState<string>("")
   const [editedDepositAccount, setEditedDepositAccount] = useState<string>("")
   const [editedPaymentMethod, setEditedPaymentMethod] = useState<string>("")
@@ -123,6 +136,12 @@ export default function Home() {
     "Salary",
     "Utilities",
     "Marketing",
+    "Other"
+  ])
+
+  const [categoryOptions] = useState<string[]>([
+    "Revenue",
+    "Expense",
     "Other"
   ])
 
@@ -199,16 +218,133 @@ export default function Home() {
     return cleanDate
   }
 
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, source: CSVFile['source']) => {
+  // Função para limpar valores monetários (remove símbolos de moeda, espaços e vírgulas)
+  const parseMonetaryValue = (value: string): number => {
+    if (!value) return 0
+    // Remove símbolos de moeda (€, $, etc), espaços e vírgulas de milhares
+    const cleaned = value.toString().replace(/[€$£¥\s,]/g, '').trim()
+    // Substitui vírgula decimal por ponto se necessário
+    const normalized = cleaned.replace(/,(\d{2})$/, '.$1')
+    return parseFloat(normalized) || 0
+  }
+
+  // Função para converter data DD/MM/YYYY para Date object
+  const parseDate = (dateStr: string): Date => {
+    const [day, month, year] = dateStr.split('/').map(Number)
+    return new Date(year, month - 1, day)
+  }
+
+  // Função para filtrar por data
+  const filterByDate = (rows: CSVRow[]): CSVRow[] => {
+    if (dateFilter === 'all') return rows
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+
+    let startDate: Date
+    let endDate: Date = new Date(today)
+    endDate.setHours(23, 59, 59, 999)
+
+    switch (dateFilter) {
+      case 'current-week':
+        startDate = new Date(today)
+        startDate.setDate(today.getDate() - today.getDay())
+        break
+      case 'previous-week':
+        startDate = new Date(today)
+        startDate.setDate(today.getDate() - today.getDay() - 7)
+        endDate = new Date(today)
+        endDate.setDate(today.getDate() - today.getDay() - 1)
+        endDate.setHours(23, 59, 59, 999)
+        break
+      case 'current-month':
+        startDate = new Date(today.getFullYear(), today.getMonth(), 1)
+        break
+      case 'last-month':
+        startDate = new Date(today.getFullYear(), today.getMonth() - 1, 1)
+        endDate = new Date(today.getFullYear(), today.getMonth(), 0)
+        endDate.setHours(23, 59, 59, 999)
+        break
+      case 'current-year':
+        startDate = new Date(today.getFullYear(), 0, 1)
+        break
+      case 'last-year':
+        startDate = new Date(today.getFullYear() - 1, 0, 1)
+        endDate = new Date(today.getFullYear() - 1, 11, 31)
+        endDate.setHours(23, 59, 59, 999)
+        break
+      case 'custom':
+        if (!customStartDate || !customEndDate) return rows
+        startDate = new Date(customStartDate)
+        endDate = new Date(customEndDate)
+        endDate.setHours(23, 59, 59, 999)
+        break
+      default:
+        return rows
+    }
+
+    return rows.filter(row => {
+      const rowDate = parseDate(row.date)
+      return rowDate >= startDate && rowDate <= endDate
+    })
+  }
+
+  // Função para filtrar e ordenar linhas
+  const filterAndSortRows = (rows: CSVRow[]): CSVRow[] => {
+    let filtered = [...rows]
+
+    // Filtrar por order number
+    if (searchOrderNumber.trim()) {
+      filtered = filtered.filter(row => 
+        row.orderNumbers?.some(order => 
+          order.toLowerCase().includes(searchOrderNumber.toLowerCase())
+        )
+      )
+    }
+
+    // Filtrar por data
+    filtered = filterByDate(filtered)
+
+    // Ordenar
+    if (sortField) {
+      filtered.sort((a, b) => {
+        let comparison = 0
+        
+        if (sortField === 'id') {
+          comparison = a.id.localeCompare(b.id)
+        } else if (sortField === 'date') {
+          const dateA = parseDate(a.date)
+          const dateB = parseDate(b.date)
+          comparison = dateA.getTime() - dateB.getTime()
+        }
+
+        return sortDirection === 'asc' ? comparison : -comparison
+      })
+    }
+
+    return filtered
+  }
+
+  // Função para alternar ordenação
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')
+    } else {
+      setSortField(field)
+      setSortDirection('asc')
+    }
+  }
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, source: CSVFile['source']) => {
     const files = event.target.files
     if (files && files.length > 0) {
       const file = files[0]
       const reader = new FileReader()
       
-      reader.onload = (e) => {
+      reader.onload = async (e) => {
         const text = e.target?.result as string
         const lines = text.split('\n')
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^\"|\"$/g, ''))
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
         
         const newRows: CSVRow[] = []
         
@@ -219,7 +355,7 @@ export default function Home() {
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue
           
-          const values = lines[i].split(',').map(v => v.trim().replace(/^\"|\"$/g, ''))
+          const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
           const row: any = {}
           
           headers.forEach((header, index) => {
@@ -227,7 +363,44 @@ export default function Home() {
           })
           
           // Processar baseado na fonte
-          if (source === 'stripe') {
+          if (source === 'braintree-amex') {
+            // Formato Braintree Amex - usar Settlement date como date e Amount Paid To Bank como payout
+            const settlementDate = row['Settlement date'] ? convertDateFormat(row['Settlement date']) : convertDateFormat(new Date().toLocaleDateString('pt-BR'))
+            
+            // Pegar Amount Paid To Bank como payout
+            const amountPaidToBank = parseMonetaryValue(row['Amount Paid To Bank'] || '0')
+            
+            // Processar múltiplas ordens (separadas por vírgula ou ponto-e-vírgula)
+            const orderNumbersStr = row['Order ID'] || row['order_id'] || ''
+            const orderNumbers = orderNumbersStr ? orderNumbersStr.split(/[,;]/).map((o: string) => o.trim()).filter((o: string) => o) : []
+            
+            newRows.push({
+              id: `BT-AMEX-${String(idCounter).padStart(3, '0')}`,
+              date: settlementDate,
+              description: `Braintree Amex Settlement - ${row['Settlement number'] || settlementDate}`,
+              amount: amountPaidToBank,
+              category: amountPaidToBank > 0 ? 'Revenue' : 'Expense',
+              classification: 'Online Payment',
+              source: 'Braintree Amex',
+              depositAccount: 'Braintree',
+              orderNumbers: orderNumbers,
+              // Manter todas as colunas originais do CSV
+              settlement_date: settlementDate,
+              settlement_number: row['Settlement number'] || '',
+              total_charges: parseMonetaryValue(row['Total charges'] || '0'),
+              credits: parseMonetaryValue(row['Credits'] || '0'),
+              submission_amount: parseMonetaryValue(row['Submission amount'] || '0'),
+              discount_amount: parseMonetaryValue(row['Discount amount'] || '0'),
+              fees_and_incentives: parseMonetaryValue(row['Fees and incentives'] || '0'),
+              chargebacks: parseMonetaryValue(row['Chargebacks'] || '0'),
+              adjustments: parseMonetaryValue(row['Adjustments'] || '0'),
+              held_funds: parseMonetaryValue(row['Held Funds'] || '0'),
+              settlement_amount: parseMonetaryValue(row['Settlement amount'] || '0'),
+              settlement_currency_code: row['Settlement Currency Code'] || '',
+              amount_paid_to_bank: amountPaidToBank
+            })
+            idCounter++
+          } else if (source === 'stripe') {
             // Formato Stripe - usar automatic_payout_effective_at como date e net como amount
             const payoutDateRaw = row['automatic_payout_effective_at'] || ''
             const payoutDate = payoutDateRaw ? convertDateFormat(payoutDateRaw) : convertDateFormat(new Date().toLocaleDateString('pt-BR'))
@@ -422,9 +595,26 @@ export default function Home() {
           updatedFiles[existingFileIndex].totalAmount += totalAmount
           updatedFiles[existingFileIndex].lastUpdated = formattedDate
           setCsvFiles(updatedFiles)
+          
+          // ✅ SALVAR AUTOMATICAMENTE NO SUPABASE
+          await saveCSVFile(updatedFiles[existingFileIndex])
+          
+          // Atualizar timestamp
+          const now = new Date()
+          const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+          setLastSaved(formattedTime)
         } else {
           // Adicionar novo arquivo
-          setCsvFiles([...csvFiles, newFile])
+          const updatedFiles = [...csvFiles, newFile]
+          setCsvFiles(updatedFiles)
+          
+          // ✅ SALVAR AUTOMATICAMENTE NO SUPABASE
+          await saveCSVFile(newFile)
+          
+          // Atualizar timestamp
+          const now = new Date()
+          const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+          setLastSaved(formattedTime)
         }
       }
       
@@ -432,8 +622,9 @@ export default function Home() {
     }
   }
 
-  const startEditing = (rowId: string, currentClassification: string, currentDepositAccount?: string, currentPaymentMethod?: string, currentOrderNumbers?: string[]) => {
+  const startEditing = (rowId: string, currentCategory: string, currentClassification: string, currentDepositAccount?: string, currentPaymentMethod?: string, currentOrderNumbers?: string[]) => {
     setEditingRow(rowId)
+    setEditedCategory(currentCategory)
     setEditedClassification(currentClassification)
     setEditedDepositAccount(currentDepositAccount || "")
     setEditedPaymentMethod(currentPaymentMethod || "")
@@ -452,10 +643,11 @@ export default function Home() {
     setEditedOrderNumbers(editedOrderNumbers.filter((_, i) => i !== index))
   }
 
-  const saveEdit = (fileIndex: number, rowId: string) => {
+  const saveEdit = async (fileIndex: number, rowId: string) => {
     const updatedFiles = [...csvFiles]
     const rowIndex = updatedFiles[fileIndex].rows.findIndex(r => r.id === rowId)
     if (rowIndex !== -1) {
+      updatedFiles[fileIndex].rows[rowIndex].category = editedCategory
       updatedFiles[fileIndex].rows[rowIndex].classification = editedClassification
       updatedFiles[fileIndex].rows[rowIndex].orderNumbers = editedOrderNumbers
       if (updatedFiles[fileIndex].source !== 'bankinter-eur' && updatedFiles[fileIndex].source !== 'bankinter-usd' && updatedFiles[fileIndex].source !== 'sabadell') {
@@ -464,8 +656,17 @@ export default function Home() {
         updatedFiles[fileIndex].rows[rowIndex].paymentMethod = editedPaymentMethod
       }
       setCsvFiles(updatedFiles)
+      
+      // ✅ SALVAR AUTOMATICAMENTE NO SUPABASE
+      await updateCSVRow(updatedFiles[fileIndex].rows[rowIndex])
+      
+      // Atualizar timestamp
+      const now = new Date()
+      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      setLastSaved(formattedTime)
     }
     setEditingRow(null)
+    setEditedCategory("")
     setEditedClassification("")
     setEditedDepositAccount("")
     setEditedPaymentMethod("")
@@ -475,6 +676,7 @@ export default function Home() {
 
   const cancelEdit = () => {
     setEditingRow(null)
+    setEditedCategory("")
     setEditedClassification("")
     setEditedDepositAccount("")
     setEditedPaymentMethod("")
@@ -482,148 +684,101 @@ export default function Home() {
     setNewOrderInput("")
   }
 
-  const downloadFinalCSV = () => {
-    let csvContent = "ID,Date,Description,Amount,Category,Classification,Source,DepositAccount,PaymentMethod,OrderNumbers,Reconciled,MatchedWith\n"
-    
-    csvFiles.forEach(file => {
-      file.rows.forEach(row => {
-        const orderNumbersStr = (row.orderNumbers || []).join(';')
-        csvContent += `${row.id},${row.date},"${row.description}",${row.amount},${row.category},${row.classification},${row.source},${row.depositAccount || ''},${row.paymentMethod || ''},${orderNumbersStr},${row.reconciled || false},${row.matchedWith || ''}\n`
-      })
-    })
+  // Função para deletar linha individual
+  const handleDeleteRow = async (fileIndex: number, rowId: string) => {
+    if (!confirm('Are you sure you want to delete this row?')) return
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-    link.setAttribute("download", `reconciled_data_${new Date().toISOString().split('T')[0]}.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+    const updatedFiles = [...csvFiles]
+    const rowIndex = updatedFiles[fileIndex].rows.findIndex(r => r.id === rowId)
+    
+    if (rowIndex !== -1) {
+      const deletedRow = updatedFiles[fileIndex].rows[rowIndex]
+      updatedFiles[fileIndex].rows.splice(rowIndex, 1)
+      updatedFiles[fileIndex].totalAmount -= deletedRow.amount
+      setCsvFiles(updatedFiles)
+      
+      // ✅ DELETAR DO SUPABASE
+      await deleteCSVRow(rowId)
+      
+      // Atualizar timestamp
+      const now = new Date()
+      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      setLastSaved(formattedTime)
+    }
   }
 
-  const downloadIndividualCSV = (file: CSVFile) => {
-    const isBankStatement = file.source === 'bankinter-eur' || file.source === 'bankinter-usd' || file.source === 'sabadell'
-    
-    // Para Stripe, incluir todas as colunas específicas
-    if (file.source === 'stripe') {
-      let csvContent = "ID,Date,Description,Amount,Category,Classification,Source,DepositAccount,OrderNumbers,automatic_payout_effective_at,net\n"
-      
-      file.rows.forEach(row => {
-        const orderNumbersStr = (row.orderNumbers || []).join(';')
-        csvContent += `${row.id},${row.date},"${row.description}",${row.amount},${row.category},${row.classification},${row.source},${row.depositAccount || ''},${orderNumbersStr},${row.automatic_payout_effective_at},${row.net}\n`
-      })
+  // Função para deletar todas as linhas de um arquivo
+  const handleDeleteAllRows = async (fileIndex: number) => {
+    if (!confirm('Are you sure you want to delete ALL rows from this file? This action cannot be undone!')) return
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement("a")
-      const url = URL.createObjectURL(blob)
-      link.setAttribute("href", url)
-      link.setAttribute("download", `${file.name.replace('.csv', '')}_reconciled.csv`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      return
+    const updatedFiles = [...csvFiles]
+    const file = updatedFiles[fileIndex]
+    
+    // Deletar todas as linhas do Supabase
+    for (const row of file.rows) {
+      await deleteCSVRow(row.id)
     }
     
-    // Para GoCardless, incluir todas as colunas específicas
-    if (file.source === 'gocardless') {
-      let csvContent = "ID,Date,Description,Amount,Category,Classification,Source,DepositAccount,OrderNumbers,payouts.arrival_date,net_amount\n"
-      
-      file.rows.forEach(row => {
-        const orderNumbersStr = (row.orderNumbers || []).join(';')
-        csvContent += `${row.id},${row.date},"${row.description}",${row.amount},${row.category},${row.classification},${row.source},${row.depositAccount || ''},${orderNumbersStr},${row['payouts.arrival_date']},${row.net_amount}\n`
-      })
+    // Remover arquivo da lista
+    updatedFiles.splice(fileIndex, 1)
+    setCsvFiles(updatedFiles)
+    
+    // Atualizar timestamp
+    const now = new Date()
+    const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    setLastSaved(formattedTime)
+  }
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement("a")
-      const url = URL.createObjectURL(blob)
-      link.setAttribute("href", url)
-      link.setAttribute("download", `${file.name.replace('.csv', '')}_reconciled.csv`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      return
-    }
-    
-    // Para Braintree EUR, incluir todas as colunas específicas
-    if (file.source === 'braintree-eur') {
-      let csvContent = "ID,Date,Description,Payout,Category,Classification,Source,DepositAccount,OrderNumbers,disbursement_date,settlement_currency_sales_EUR,discount_EUR,multicurrency_fees_EUR,per_transaction_fees_EUR,cross_border_fees_EUR,other_fees_EUR,chargebacks_lost_won_EUR,settlement_currency_refunds_EUR,#_of_refunds,chargeback_won_amt_EUR,#_of_chargebacks_won,chargeback_issued_amt_EUR,#_of_chargebacks_issued,chargeback_fees_EUR\n"
-      
-      file.rows.forEach(row => {
-        const orderNumbersStr = (row.orderNumbers || []).join(';')
-        csvContent += `${row.id},${row.date},"${row.description}",${row.payout || row.amount},${row.category},${row.classification},${row.source},${row.depositAccount || ''},${orderNumbersStr},${row.disbursement_date},${row.settlement_currency_sales_EUR},${row.discount_EUR},${row.multicurrency_fees_EUR},${row.per_transaction_fees_EUR},${row.cross_border_fees_EUR},${row.other_fees_EUR},${row.chargebacks_lost_won_EUR},${row.settlement_currency_refunds_EUR},${row['#_of_refunds']},${row.chargeback_won_amt_EUR},${row['#_of_chargebacks_won']},${row.chargeback_issued_amt_EUR},${row['#_of_chargebacks_issued']},${row.chargeback_fees_EUR}\n`
-      })
+  // NOVA FUNÇÃO: Deletar TODOS os dados de TODOS os reports
+  const handleDeleteAllReports = async () => {
+    if (!confirm('⚠️ WARNING: This will DELETE ALL DATA from ALL reports! This action CANNOT be undone! Are you absolutely sure?')) return
+    if (!confirm('⚠️ FINAL CONFIRMATION: All your financial data will be permanently deleted. Type YES to confirm.')) return
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement("a")
-      const url = URL.createObjectURL(blob)
-      link.setAttribute("href", url)
-      link.setAttribute("download", `${file.name.replace('.csv', '')}_reconciled.csv`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      return
-    }
-    
-    // Para Braintree USD, incluir todas as colunas específicas (suporta ambos os formatos)
-    if (file.source === 'braintree-usd') {
-      let csvContent = "ID,Date,Description,Payout,Category,Classification,Source,DepositAccount,OrderNumbers,disbursement_date,settlement_currency_sales,discount,multicurrency_fees,per_transaction_fees,cross_border_fees,other_fees,chargebacks_lost_won,settlement_currency_refunds,#_of_refunds,chargeback_won_amt,#_of_chargebacks_won,chargeback_issued_amt,#_of_chargebacks_issued,chargeback_fees\n"
-      
-      file.rows.forEach(row => {
-        const orderNumbersStr = (row.orderNumbers || []).join(';')
-        const settlementSales = row.settlement_currency_sales_EUR || row.settlement_currency_sales_USD || 0
-        const discount = row.discount_EUR || row.discount_USD || 0
-        const multicurrencyFees = row.multicurrency_fees_EUR || row.multicurrency_fees_USD || 0
-        const perTransactionFees = row.per_transaction_fees_EUR || row.per_transaction_fees_USD || 0
-        const crossBorderFees = row.cross_border_fees_EUR || row.cross_border_fees_USD || 0
-        
-        csvContent += `${row.id},${row.date},"${row.description}",${row.payout || row.amount},${row.category},${row.classification},${row.source},${row.depositAccount || ''},${orderNumbersStr},${row.disbursement_date},${settlementSales},${discount},${multicurrencyFees},${perTransactionFees},${crossBorderFees},${row.other_fees_EUR || 0},${row.chargebacks_lost_won_EUR || 0},${row.settlement_currency_refunds_EUR || 0},${row['#_of_refunds'] || 0},${row.chargeback_won_amt_EUR || 0},${row['#_of_chargebacks_won'] || 0},${row.chargeback_issued_amt_EUR || 0},${row['#_of_chargebacks_issued'] || 0},${row.chargeback_fees_EUR || 0}\n`
-      })
-
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement("a")
-      const url = URL.createObjectURL(blob)
-      link.setAttribute("href", url)
-      link.setAttribute("download", `${file.name.replace('.csv', '')}_reconciled.csv`)
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      URL.revokeObjectURL(url)
-      return
-    }
-    
-    let csvContent = isBankStatement
-      ? "ID,Date,Description,Amount,Category,Classification,Source,PaymentMethod,OrderNumbers\n"
-      : "ID,Date,Description,Amount,Category,Classification,Source,DepositAccount,OrderNumbers\n"
-    
-    file.rows.forEach(row => {
-      const orderNumbersStr = (row.orderNumbers || []).join(';')
-      if (isBankStatement) {
-        csvContent += `${row.id},${row.date},"${row.description}",${row.amount},${row.category},${row.classification},${row.source},${row.paymentMethod || ''},${orderNumbersStr}\n`
+    setIsLoading(true)
+    try {
+      const result = await deleteAllReports()
+      if (result.success) {
+        setCsvFiles([])
+        alert('✅ All reports have been successfully deleted. You can now start fresh.')
+        // Recarregar dados (que estarão vazios)
+        await loadData()
       } else {
-        csvContent += `${row.id},${row.date},"${row.description}",${row.amount},${row.category},${row.classification},${row.source},${row.depositAccount || ''},${orderNumbersStr}\n`
+        alert('❌ Error deleting reports. Please check your Supabase configuration.')
       }
-    })
+    } catch (error) {
+      console.error('Error deleting all reports:', error)
+      alert('❌ Error deleting reports. Please try again.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const link = document.createElement("a")
-    const url = URL.createObjectURL(blob)
-    link.setAttribute("href", url)
-    link.setAttribute("download", `${file.name.replace('.csv', '')}_reconciled.csv`)
-    link.style.visibility = 'hidden'
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
+  const handleDownloadFinalCSV = () => {
+    if (csvFiles.length === 0) {
+      alert('No data to export. Please upload CSV files first.')
+      return
+    }
+
+    try {
+      downloadFinalCSV(csvFiles)
+    } catch (error) {
+      console.error('Error downloading final CSV:', error)
+      alert('Error downloading CSV file. Please try again.')
+    }
+  }
+
+  const handleDownloadIndividualCSV = (file: CSVFile) => {
+    if (!file || file.rows.length === 0) {
+      alert('No data to download for this file.')
+      return
+    }
+
+    try {
+      downloadIndividualCSV(file)
+    } catch (error) {
+      console.error('Error downloading individual CSV:', error)
+      alert('Error downloading CSV file. Please try again.')
+    }
   }
 
   // Settings functions
@@ -881,6 +1036,8 @@ export default function Home() {
               <div className="space-y-4">
                 {files.map((file, fileIndex) => {
                   const actualFileIndex = csvFiles.findIndex(f => f.name === file.name)
+                  const filteredRows = filterAndSortRows(file.rows)
+                  
                   return (
                     <div key={fileIndex} className="border-2 border-[#e5e7eb] dark:border-[#2c3e5f] rounded-xl overflow-hidden shadow-lg">
                       <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 px-6 py-4 flex items-center justify-between border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f]">
@@ -890,7 +1047,7 @@ export default function Home() {
                             <p className="font-bold text-[#1a2b4a] dark:text-white text-lg">{file.name}</p>
                             <div className="flex items-center gap-4 mt-1">
                               <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                                {file.rows.length} records
+                                {filteredRows.length} records {filteredRows.length !== file.rows.length && `(filtered from ${file.rows.length})`}
                               </span>
                               <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
                                 Last updated: {file.lastUpdated}
@@ -901,23 +1058,108 @@ export default function Home() {
                             </div>
                           </div>
                         </div>
-                        <Button 
-                          onClick={() => downloadIndividualCSV(file)}
-                          className="gap-2 bg-[#1a2b4a] hover:bg-[#2c3e5f] text-white"
-                        >
-                          <Download className="h-4 w-4" />
-                          Download
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={() => handleDownloadIndividualCSV(file)}
+                            className="gap-2 bg-[#1a2b4a] hover:bg-[#2c3e5f] text-white"
+                          >
+                            <Download className="h-4 w-4" />
+                            Download
+                          </Button>
+                          <Button 
+                            onClick={() => handleDeleteAllRows(actualFileIndex)}
+                            variant="destructive"
+                            className="gap-2"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                            Delete All
+                          </Button>
+                        </div>
                       </div>
+
+                      {/* Filtros e Busca */}
+                      <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f]">
+                        <div className="flex flex-wrap gap-4 items-end">
+                          <div className="flex-1 min-w-[200px]">
+                            <Label className="text-sm font-medium mb-2 block">Search by Order Number</Label>
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                              <Input
+                                placeholder="Search order number..."
+                                value={searchOrderNumber}
+                                onChange={(e) => setSearchOrderNumber(e.target.value)}
+                                className="pl-10"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1 min-w-[200px]">
+                            <Label className="text-sm font-medium mb-2 block">Date Filter</Label>
+                            <Select value={dateFilter} onValueChange={(value: DateFilterType) => setDateFilter(value)}>
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">All Dates</SelectItem>
+                                <SelectItem value="current-week">Current Week</SelectItem>
+                                <SelectItem value="previous-week">Previous Week</SelectItem>
+                                <SelectItem value="current-month">Current Month</SelectItem>
+                                <SelectItem value="last-month">Last Month</SelectItem>
+                                <SelectItem value="current-year">Current Year</SelectItem>
+                                <SelectItem value="last-year">Last Year</SelectItem>
+                                <SelectItem value="custom">Custom Period</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {dateFilter === 'custom' && (
+                            <>
+                              <div className="flex-1 min-w-[150px]">
+                                <Label className="text-sm font-medium mb-2 block">Start Date</Label>
+                                <Input
+                                  type="date"
+                                  value={customStartDate}
+                                  onChange={(e) => setCustomStartDate(e.target.value)}
+                                />
+                              </div>
+                              <div className="flex-1 min-w-[150px]">
+                                <Label className="text-sm font-medium mb-2 block">End Date</Label>
+                                <Input
+                                  type="date"
+                                  value={customEndDate}
+                                  onChange={(e) => setCustomEndDate(e.target.value)}
+                                />
+                              </div>
+                            </>
+                          )}
+                        </div>
+                      </div>
+
                       <div className="overflow-x-auto">
                         <table className="w-full">
                           <thead>
                             <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-700">
-                              <th className="text-left py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">ID</th>
-                              <th className="text-left py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Date</th>
+                              <th className="text-left py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                                <button 
+                                  onClick={() => toggleSort('id')}
+                                  className="flex items-center gap-2 hover:text-[#4fc3f7] transition-colors"
+                                >
+                                  ID
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </button>
+                              </th>
+                              <th className="text-left py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                                <button 
+                                  onClick={() => toggleSort('date')}
+                                  className="flex items-center gap-2 hover:text-[#4fc3f7] transition-colors"
+                                >
+                                  Date
+                                  <ArrowUpDown className="h-4 w-4" />
+                                </button>
+                              </th>
                               <th className="text-left py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Description</th>
                               <th className="text-right py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                                {source === 'braintree-eur' || source === 'braintree-usd' ? 'Payout' : 'Amount'}
+                                {source === 'braintree-eur' || source === 'braintree-usd' || source === 'braintree-amex' ? 'Payout' : 'Amount'}
                               </th>
                               <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Category</th>
                               <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Classification</th>
@@ -936,7 +1178,7 @@ export default function Home() {
                             </tr>
                           </thead>
                           <tbody>
-                            {file.rows.map((row) => (
+                            {filteredRows.map((row) => (
                               <tr key={row.id} className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
                                 <td className="py-4 px-6 text-sm font-bold text-[#1a2b4a] dark:text-white">
                                   {row.id}
@@ -953,15 +1195,30 @@ export default function Home() {
                                   {row.amount > 0 ? '+' : ''}€{row.amount.toFixed(2)}
                                 </td>
                                 <td className="py-4 px-6 text-center">
-                                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                                    row.category === 'Revenue' 
-                                      ? 'bg-[#4fc3f7]/20 text-[#1a2b4a] dark:text-[#4fc3f7]'
-                                      : row.category === 'Expense'
-                                      ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                      : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                  }`}>
-                                    {row.category}
-                                  </span>
+                                  {editingRow === row.id ? (
+                                    <Select value={editedCategory} onValueChange={setEditedCategory}>
+                                      <SelectTrigger className="w-[120px] mx-auto border-[#1a2b4a]">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {categoryOptions.map((option) => (
+                                          <SelectItem key={option} value={option}>
+                                            {option}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  ) : (
+                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
+                                      row.category === 'Revenue' 
+                                        ? 'bg-[#4fc3f7]/20 text-[#1a2b4a] dark:text-[#4fc3f7]'
+                                        : row.category === 'Expense'
+                                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                    }`}>
+                                      {row.category}
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="py-4 px-6 text-center">
                                   {editingRow === row.id ? (
@@ -1140,14 +1397,24 @@ export default function Home() {
                                       </Button>
                                     </div>
                                   ) : (
-                                    <Button 
-                                      size="sm" 
-                                      variant="ghost"
-                                      onClick={() => startEditing(row.id, row.classification, row.depositAccount, row.paymentMethod, row.orderNumbers)}
-                                      className="h-9 w-9 p-0 hover:bg-[#1a2b4a]/10"
-                                    >
-                                      <Edit2 className="h-4 w-4 text-[#1a2b4a] dark:text-[#4fc3f7]" />
-                                    </Button>
+                                    <div className="flex items-center justify-center gap-2">
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost"
+                                        onClick={() => startEditing(row.id, row.category, row.classification, row.depositAccount, row.paymentMethod, row.orderNumbers)}
+                                        className="h-9 w-9 p-0 hover:bg-[#1a2b4a]/10"
+                                      >
+                                        <Edit2 className="h-4 w-4 text-[#1a2b4a] dark:text-[#4fc3f7]" />
+                                      </Button>
+                                      <Button 
+                                        size="sm" 
+                                        variant="ghost"
+                                        onClick={() => handleDeleteRow(actualFileIndex, row.id)}
+                                        className="h-9 w-9 p-0 hover:bg-red-50 dark:hover:bg-red-900/20"
+                                      >
+                                        <Trash2 className="h-4 w-4 text-red-600" />
+                                      </Button>
+                                    </div>
                                   )}
                                 </td>
                               </tr>
@@ -1162,6 +1429,17 @@ export default function Home() {
             )}
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a] dark:text-[#4fc3f7] mx-auto mb-4" />
+          <p className="text-[#1a2b4a] dark:text-white font-semibold">Loading data...</p>
+        </div>
       </div>
     )
   }
@@ -1395,16 +1673,62 @@ export default function Home() {
                     </Tabs>
                   </DialogContent>
                 </Dialog>
+
+                {/* BOTÃO DE SALVAR MANUAL */}
+                <Button 
+                  onClick={saveAllData}
+                  disabled={isSaving || csvFiles.length === 0}
+                  className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg disabled:opacity-50"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="hidden sm:inline">Saving...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Database className="h-4 w-4" />
+                      <span className="hidden sm:inline">Save All Changes</span>
+                    </>
+                  )}
+                </Button>
                 
                 <Button 
-                  onClick={downloadFinalCSV}
+                  onClick={handleDownloadFinalCSV}
                   className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] hover:from-[#2c3e5f] hover:to-[#1a2b4a] gap-2 shadow-lg"
                 >
                   <Download className="h-4 w-4" />
                   <span className="hidden sm:inline">Export All</span>
                 </Button>
+                
+                <Button 
+                  onClick={handleDeleteAllReports}
+                  variant="destructive"
+                  className="gap-2 shadow-lg"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Delete All Reports</span>
+                </Button>
               </div>
             </div>
+
+            {/* FEEDBACK DE SALVAMENTO */}
+            {saveSuccess && (
+              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
+                  ✅ All changes saved successfully to database! Last saved: {lastSaved}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {/* INDICADOR DE ÚLTIMO SALVAMENTO */}
+            {lastSaved && !saveSuccess && (
+              <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+                <Database className="h-4 w-4" />
+                <span>Last saved: {lastSaved}</span>
+              </div>
+            )}
           </div>
         </header>
 
@@ -1528,7 +1852,7 @@ export default function Home() {
                   </p>
                 </div>
                 <Button 
-                  onClick={downloadFinalCSV}
+                  onClick={handleDownloadFinalCSV}
                   size="lg"
                   className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] hover:from-[#2c3e5f] hover:to-[#1a2b4a] gap-2 w-full sm:w-auto shadow-xl"
                 >
