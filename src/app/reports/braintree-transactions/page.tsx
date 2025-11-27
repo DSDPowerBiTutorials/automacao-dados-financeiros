@@ -42,6 +42,7 @@ export default function BraintreeTransactionsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [editedData, setEditedData] = useState<Partial<BraintreeTransactionRow>>({})
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     loadData()
@@ -56,6 +57,8 @@ export default function BraintreeTransactionsPage() {
       const transactionsFile = data.find(f => f.source === 'braintree-transactions')
       if (transactionsFile) {
         setRows(transactionsFile.rows as BraintreeTransactionRow[])
+      } else {
+        setRows([])
       }
       
       // Carregar Braintree EUR para conciliação
@@ -70,6 +73,7 @@ export default function BraintreeTransactionsPage() {
       }
     } catch (error) {
       console.error('Error loading data:', error)
+      setRows([])
     } finally {
       setIsLoading(false)
     }
@@ -101,7 +105,7 @@ export default function BraintreeTransactionsPage() {
       }
       
       // Buscar todas as transações do mesmo dia
-      const sameDay Transactions = groupedTransactions.get(tx.disbursement_date) || []
+      const sameDayTransactions = groupedTransactions.get(tx.disbursement_date) || []
       
       // Somar valores das transações do mesmo dia
       const totalAmount = sameDayTransactions.reduce((sum, t) => sum + (parseFloat(t.amount_authorized?.toString() || '0') || 0), 0)
@@ -133,7 +137,7 @@ export default function BraintreeTransactionsPage() {
       reader.onload = async (e) => {
         const text = e.target?.result as string
         const lines = text.split('\n')
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^\"|\"$/g, ''))
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
         
         const newRows: BraintreeTransactionRow[] = []
         let idCounter = rows.length + 1
@@ -141,7 +145,7 @@ export default function BraintreeTransactionsPage() {
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue
           
-          const values = lines[i].split(',').map(v => v.trim().replace(/^\"|\"$/g, ''))
+          const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
           const row: any = {}
           
           headers.forEach((header, index) => {
@@ -229,18 +233,43 @@ export default function BraintreeTransactionsPage() {
   const handleDeleteRow = async (rowId: string) => {
     if (!confirm('Are you sure you want to delete this row?')) return
     
-    const updatedRows = rows.filter(r => r.id !== rowId)
-    setRows(updatedRows)
-    await deleteCSVRow(rowId)
+    setIsDeleting(true)
+    try {
+      const result = await deleteCSVRow(rowId)
+      if (result.success) {
+        // Recarregar dados do banco após deletar
+        await loadData()
+      } else {
+        alert('Error deleting row. Please try again.')
+      }
+    } catch (error) {
+      console.error('Error deleting row:', error)
+      alert('Error deleting row. Please try again.')
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   const handleDeleteAll = async () => {
     if (!confirm('⚠️ WARNING: This will DELETE ALL rows from Braintree Transactions! Are you sure?')) return
+    if (!confirm('⚠️ FINAL WARNING: This action CANNOT be undone! Continue?')) return
     
-    for (const row of rows) {
-      await deleteCSVRow(row.id)
+    setIsDeleting(true)
+    try {
+      // Deletar todas as linhas uma por uma
+      for (const row of rows) {
+        await deleteCSVRow(row.id)
+      }
+      
+      // Recarregar dados do banco após deletar tudo
+      await loadData()
+      alert('✅ All rows deleted successfully!')
+    } catch (error) {
+      console.error('Error deleting all rows:', error)
+      alert('Error deleting rows. Please try again.')
+    } finally {
+      setIsDeleting(false)
     }
-    setRows([])
   }
 
   const downloadCSV = () => {
@@ -333,8 +362,17 @@ export default function BraintreeTransactionsPage() {
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
-                <Button onClick={handleDeleteAll} variant="destructive" className="gap-2">
-                  <Trash2 className="h-4 w-4" />
+                <Button 
+                  onClick={handleDeleteAll} 
+                  variant="destructive" 
+                  className="gap-2"
+                  disabled={isDeleting || rows.length === 0}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
                   Delete All
                 </Button>
               </div>
@@ -427,11 +465,27 @@ export default function BraintreeTransactionsPage() {
                         </td>
                         <td className="py-3 px-3 text-center">
                           <div className="flex items-center justify-center gap-1">
-                            <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-7 w-7 p-0">
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => startEditing(row)} 
+                              className="h-7 w-7 p-0"
+                              disabled={isDeleting}
+                            >
                               <Edit2 className="h-3 w-3" />
                             </Button>
-                            <Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-7 w-7 p-0 text-red-600">
-                              <Trash2 className="h-3 w-3" />
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              onClick={() => handleDeleteRow(row.id)} 
+                              className="h-7 w-7 p-0 text-red-600"
+                              disabled={isDeleting}
+                            >
+                              {isDeleting ? (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-3 w-3" />
+                              )}
                             </Button>
                           </div>
                         </td>
