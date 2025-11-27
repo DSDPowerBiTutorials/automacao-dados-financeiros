@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Upload, Download, Edit2, Save, X, Trash2, ArrowLeft, Loader2, CheckCircle, XCircle, Settings, Database } from "lucide-react"
-import { supabase } from "@/lib/supabase"
+import { loadAllCSVFiles, saveCSVFile, updateCSVRow, deleteCSVRow } from "@/lib/database"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,7 +10,7 @@ import { Sidebar } from "@/components/custom/sidebar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 
-interface BankinterEURRow {
+interface StripeRow {
   id: string
   date: string
   description: string
@@ -19,11 +19,11 @@ interface BankinterEURRow {
   [key: string]: any
 }
 
-export default function BankinterEURPage() {
-  const [rows, setRows] = useState<BankinterEURRow[]>([])
+export default function StripePage() {
+  const [rows, setRows] = useState<StripeRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingRow, setEditingRow] = useState<string | null>(null)
-  const [editedData, setEditedData] = useState<Partial<BankinterEURRow>>({})
+  const [editedData, setEditedData] = useState<Partial<StripeRow>>({})
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<string | null>(null)
@@ -36,33 +36,10 @@ export default function BankinterEURPage() {
   const loadData = async () => {
     setIsLoading(true)
     try {
-      if (!supabase) {
-        console.warn('Supabase not configured')
-        setRows([])
-        setIsLoading(false)
-        return
-      }
-
-      // Buscar TODAS as linhas do source 'bankinter-eur' diretamente
-      const { data: rowsData, error } = await supabase
-        .from('csv_rows')
-        .select('*')
-        .eq('source', 'bankinter-eur')
-        .order('date', { ascending: false })
-
-      if (error) {
-        console.error('Error loading data:', error)
-        setRows([])
-      } else if (rowsData) {
-        // Mapear os dados do Supabase para o formato esperado
-        const mappedRows: BankinterEURRow[] = rowsData.map(row => ({
-          id: row.id,
-          date: row.date,
-          description: row.description || '',
-          amount: parseFloat(row.amount) || 0,
-          conciliado: row.custom_data?.conciliado || false
-        }))
-        setRows(mappedRows)
+      const data = await loadAllCSVFiles()
+      const stripeFile = data.find(f => f.source === 'stripe')
+      if (stripeFile) {
+        setRows(stripeFile.rows as StripeRow[])
       } else {
         setRows([])
       }
@@ -83,136 +60,56 @@ export default function BankinterEURPage() {
       reader.onload = async (e) => {
         const text = e.target?.result as string
         const lines = text.split('\n')
-        
-        console.log('=== BANKINTER EUR CSV PROCESSING ===')
-        console.log('Total lines:', lines.length)
-        
-        if (lines.length < 2) {
-          alert('❌ File is empty or invalid')
-          return
-        }
-        
         const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
-        console.log('Headers found:', headers)
         
-        const fechaValorIndex = headers.findIndex(h => 
-          h.toUpperCase().replace(/[ÃÁ]/g, 'A').includes('FECHA') && 
-          h.toUpperCase().includes('VALOR')
-        )
-        const descripcionIndex = headers.findIndex(h => 
-          h.toUpperCase().replace(/[ÃÓÑ"]/g, 'O').includes('DESCRIPCI')
-        )
-        const haberIndex = headers.findIndex(h => 
-          h.toUpperCase() === 'HABER'
-        )
-        
-        console.log('Column mapping:')
-        console.log('- FECHA VALOR index:', fechaValorIndex, '→', headers[fechaValorIndex])
-        console.log('- DESCRIPCIÓN index:', descripcionIndex, '→', headers[descripcionIndex])
-        console.log('- HABER index:', haberIndex, '→', headers[haberIndex])
-        
-        if (fechaValorIndex === -1 || descripcionIndex === -1 || haberIndex === -1) {
-          alert('❌ Required columns not found! Make sure the file has: FECHA VALOR, DESCRIPCIÓN, HABER')
-          console.error('Available columns:', headers)
-          return
-        }
-        
-        const newRows: BankinterEURRow[] = []
+        const newRows: StripeRow[] = []
         let idCounter = rows.length + 1
-        let processedCount = 0
         
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue
           
-          const values: string[] = []
-          let currentValue = ''
-          let insideQuotes = false
+          const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
+          const row: any = {}
           
-          for (let j = 0; j < lines[i].length; j++) {
-            const char = lines[i][j]
-            
-            if (char === '"') {
-              insideQuotes = !insideQuotes
-            } else if (char === ',' && !insideQuotes) {
-              values.push(currentValue.trim())
-              currentValue = ''
-            } else {
-              currentValue += char
-            }
-          }
-          values.push(currentValue.trim())
-          
-          const fechaValor = (values[fechaValorIndex] || '').trim()
-          const descripcion = (values[descripcionIndex] || '').trim()
-          const haberValue = (values[haberIndex] || '0').trim()
-          
-          let amountNumber = 0
-          if (haberValue) {
-            const cleanValue = haberValue
-              .replace(/\s/g, '')
-              .replace(',', '.')
-            
-            amountNumber = parseFloat(cleanValue) || 0
-          }
-          
-          if (amountNumber === 0 && !descripcion) continue
-          
-          newRows.push({
-            id: `BANKINTER-EUR-${String(idCounter).padStart(4, '0')}`,
-            date: fechaValor,
-            description: descripcion,
-            amount: amountNumber,
-            conciliado: false
+          headers.forEach((header, index) => {
+            row[header] = values[index] || ''
           })
           
-          processedCount++
+          const payoutDate = row['automatic_payout_effective_at'] || new Date().toLocaleDateString('pt-BR')
+          const netAmount = parseFloat(row['net']) || 0
+          
+          newRows.push({
+            id: `ST-${String(idCounter).padStart(4, '0')}`,
+            date: payoutDate,
+            description: row['description'] || `Stripe Transaction - ${payoutDate}`,
+            amount: netAmount,
+            conciliado: false,
+            ...row
+          })
+          
           idCounter++
-        }
-        
-        console.log('Processing complete:', processedCount, 'rows processed')
-        
-        if (newRows.length === 0) {
-          alert('❌ No valid data found in file')
-          return
         }
         
         const updatedRows = [...rows, ...newRows]
         setRows(updatedRows)
         
-        // Salvar no Supabase via API
         const totalAmount = updatedRows.reduce((sum, row) => sum + row.amount, 0)
         const today = new Date()
         const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`
         
-        try {
-          const response = await fetch('/api/csv/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              file: {
-                name: file.name,
-                lastUpdated: formattedDate,
-                rows: updatedRows,
-                totalAmount: totalAmount,
-                source: 'bankinter-eur'
-              }
-            })
-          })
-
-          const result = await response.json()
-
-          if (result.success) {
-            const now = new Date()
-            const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-            setLastSaved(formattedTime)
-            alert(`✅ File uploaded successfully! ${processedCount} rows processed and saved to database.`)
-          } else {
-            alert('⚠️ File uploaded but there was an error saving to database. Please try "Save All Changes".')
-          }
-        } catch (error) {
-          console.error('Error saving to database:', error)
-          alert('⚠️ File uploaded but there was an error saving to database. Please try "Save All Changes".')
-        }
+        await saveCSVFile({
+          name: file.name,
+          lastUpdated: formattedDate,
+          rows: updatedRows,
+          totalAmount: totalAmount,
+          source: 'stripe'
+        })
+        
+        const now = new Date()
+        const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+        setLastSaved(formattedTime)
+        
+        alert(`✅ File uploaded successfully! ${newRows.length} rows processed and saved to database.`)
       }
       
       reader.readAsText(file)
@@ -228,31 +125,20 @@ export default function BankinterEURPage() {
       const today = new Date()
       const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`
       
-      const response = await fetch('/api/csv/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file: {
-            name: 'bankinter-eur.csv',
-            lastUpdated: formattedDate,
-            rows: rows,
-            totalAmount: totalAmount,
-            source: 'bankinter-eur'
-          }
-        })
+      await saveCSVFile({
+        name: 'stripe.csv',
+        lastUpdated: formattedDate,
+        rows: rows,
+        totalAmount: totalAmount,
+        source: 'stripe'
       })
-
-      const result = await response.json()
-
-      if (result.success) {
-        const now = new Date()
-        const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-        setLastSaved(formattedTime)
-        setSaveSuccess(true)
-        setTimeout(() => setSaveSuccess(false), 3000)
-      } else {
-        alert('Error saving data. Please check your Supabase configuration.')
-      }
+      
+      const now = new Date()
+      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      setLastSaved(formattedTime)
+      setSaveSuccess(true)
+      
+      setTimeout(() => setSaveSuccess(false), 3000)
     } catch (error) {
       console.error('Error saving data:', error)
       alert('Error saving data. Please check your Supabase configuration.')
@@ -261,7 +147,7 @@ export default function BankinterEURPage() {
     }
   }
 
-  const startEditing = (row: BankinterEURRow) => {
+  const startEditing = (row: StripeRow) => {
     setEditingRow(row.id)
     setEditedData({ ...row })
   }
@@ -276,23 +162,11 @@ export default function BankinterEURPage() {
     
     const rowToUpdate = updatedRows.find(r => r.id === editingRow)
     if (rowToUpdate) {
-      try {
-        const response = await fetch('/api/csv/update', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ row: rowToUpdate })
-        })
-
-        const result = await response.json()
-
-        if (result.success) {
-          const now = new Date()
-          const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-          setLastSaved(formattedTime)
-        }
-      } catch (error) {
-        console.error('Error updating row:', error)
-      }
+      await updateCSVRow(rowToUpdate as any)
+      
+      const now = new Date()
+      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      setLastSaved(formattedTime)
     }
     
     setEditingRow(null)
@@ -309,12 +183,7 @@ export default function BankinterEURPage() {
     
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/csv/delete?rowId=${rowId}`, {
-        method: 'DELETE'
-      })
-
-      const result = await response.json()
-
+      const result = await deleteCSVRow(rowId)
       if (result.success) {
         await loadData()
         
@@ -333,15 +202,13 @@ export default function BankinterEURPage() {
   }
 
   const handleDeleteAll = async () => {
-    if (!confirm('⚠️ WARNING: This will DELETE ALL rows from Bankinter EUR! Are you sure?')) return
+    if (!confirm('⚠️ WARNING: This will DELETE ALL rows from Stripe! Are you sure?')) return
     if (!confirm('⚠️ FINAL WARNING: This action CANNOT be undone! Continue?')) return
     
     setIsDeleting(true)
     try {
       for (const row of rows) {
-        await fetch(`/api/csv/delete?rowId=${row.id}`, {
-          method: 'DELETE'
-        })
+        await deleteCSVRow(row.id)
       }
       
       await loadData()
@@ -378,7 +245,7 @@ export default function BankinterEURPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `bankinter-eur-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `stripe-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -399,7 +266,7 @@ export default function BankinterEURPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
-      <Sidebar currentPage="bankinter-eur" paymentSourceDates={{}} />
+      <Sidebar currentPage="stripe" paymentSourceDates={{}} />
 
       <div className="md:pl-64">
         <header className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-white dark:bg-[#1a2b4a] shadow-lg sticky top-0 z-30">
@@ -414,7 +281,7 @@ export default function BankinterEURPage() {
                 </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">
-                    Bankinter EUR - Bank Statement
+                    Stripe - Payment Processing
                   </h1>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                     {rows.length} records
@@ -448,9 +315,9 @@ export default function BankinterEURPage() {
                   accept=".csv"
                   onChange={handleFileUpload}
                   className="hidden"
-                  id="file-upload-bankinter"
+                  id="file-upload-stripe"
                 />
-                <label htmlFor="file-upload-bankinter">
+                <label htmlFor="file-upload-stripe">
                   <Button variant="outline" className="gap-2" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
@@ -499,9 +366,9 @@ export default function BankinterEURPage() {
         <div className="container mx-auto px-6 py-8">
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
-              <CardTitle>Bank Statement Details</CardTitle>
+              <CardTitle>Payment Processing Details</CardTitle>
               <CardDescription className="text-white/80">
-                Upload CSV files - Columns: FECHA VALOR → Date | DESCRIPCIÓN → Description | HABER → Amount
+                Upload CSV files from Stripe payment platform
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">

@@ -10,7 +10,7 @@ import { Sidebar } from "@/components/custom/sidebar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 
-interface BankinterEURRow {
+interface BankinterUSDRow {
   id: string
   date: string
   description: string
@@ -19,11 +19,11 @@ interface BankinterEURRow {
   [key: string]: any
 }
 
-export default function BankinterEURPage() {
-  const [rows, setRows] = useState<BankinterEURRow[]>([])
+export default function BankinterUSDPage() {
+  const [rows, setRows] = useState<BankinterUSDRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingRow, setEditingRow] = useState<string | null>(null)
-  const [editedData, setEditedData] = useState<Partial<BankinterEURRow>>({})
+  const [editedData, setEditedData] = useState<Partial<BankinterUSDRow>>({})
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<string | null>(null)
@@ -43,11 +43,11 @@ export default function BankinterEURPage() {
         return
       }
 
-      // Buscar TODAS as linhas do source 'bankinter-eur' diretamente
+      // Buscar TODAS as linhas do source 'bankinter-usd' diretamente
       const { data: rowsData, error } = await supabase
         .from('csv_rows')
         .select('*')
-        .eq('source', 'bankinter-eur')
+        .eq('source', 'bankinter-usd')
         .order('date', { ascending: false })
 
       if (error) {
@@ -55,7 +55,7 @@ export default function BankinterEURPage() {
         setRows([])
       } else if (rowsData) {
         // Mapear os dados do Supabase para o formato esperado
-        const mappedRows: BankinterEURRow[] = rowsData.map(row => ({
+        const mappedRows: BankinterUSDRow[] = rowsData.map(row => ({
           id: row.id,
           date: row.date,
           description: row.description || '',
@@ -84,7 +84,7 @@ export default function BankinterEURPage() {
         const text = e.target?.result as string
         const lines = text.split('\n')
         
-        console.log('=== BANKINTER EUR CSV PROCESSING ===')
+        console.log('=== BANKINTER USD CSV PROCESSING ===')
         console.log('Total lines:', lines.length)
         
         if (lines.length < 2) {
@@ -117,7 +117,7 @@ export default function BankinterEURPage() {
           return
         }
         
-        const newRows: BankinterEURRow[] = []
+        const newRows: BankinterUSDRow[] = []
         let idCounter = rows.length + 1
         let processedCount = 0
         
@@ -158,7 +158,7 @@ export default function BankinterEURPage() {
           if (amountNumber === 0 && !descripcion) continue
           
           newRows.push({
-            id: `BANKINTER-EUR-${String(idCounter).padStart(4, '0')}`,
+            id: `BANKINTER-USD-${String(idCounter).padStart(4, '0')}`,
             date: fechaValor,
             description: descripcion,
             amount: amountNumber,
@@ -194,7 +194,7 @@ export default function BankinterEURPage() {
                 lastUpdated: formattedDate,
                 rows: updatedRows,
                 totalAmount: totalAmount,
-                source: 'bankinter-eur'
+                source: 'bankinter-usd'
               }
             })
           })
@@ -233,11 +233,11 @@ export default function BankinterEURPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           file: {
-            name: 'bankinter-eur.csv',
+            name: 'bankinter-usd.csv',
             lastUpdated: formattedDate,
             rows: rows,
             totalAmount: totalAmount,
-            source: 'bankinter-eur'
+            source: 'bankinter-usd'
           }
         })
       })
@@ -261,7 +261,7 @@ export default function BankinterEURPage() {
     }
   }
 
-  const startEditing = (row: BankinterEURRow) => {
+  const startEditing = (row: BankinterUSDRow) => {
     setEditingRow(row.id)
     setEditedData({ ...row })
   }
@@ -333,7 +333,7 @@ export default function BankinterEURPage() {
   }
 
   const handleDeleteAll = async () => {
-    if (!confirm('⚠️ WARNING: This will DELETE ALL rows from Bankinter EUR! Are you sure?')) return
+    if (!confirm('⚠️ WARNING: This will DELETE ALL rows from Bankinter USD! Are you sure?')) return
     if (!confirm('⚠️ FINAL WARNING: This action CANNOT be undone! Continue?')) return
     
     setIsDeleting(true)
@@ -378,7 +378,7 @@ export default function BankinterEURPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `bankinter-eur-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `bankinter-usd-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -399,7 +399,7 @@ export default function BankinterEURPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
-      <Sidebar currentPage="bankinter-eur" paymentSourceDates={{}} />
+      <Sidebar currentPage="bankinter-usd" paymentSourceDates={{}} />
 
       <div className="md:pl-64">
         <header className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-white dark:bg-[#1a2b4a] shadow-lg sticky top-0 z-30">
@@ -414,7 +414,7 @@ export default function BankinterEURPage() {
                 </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">
-                    Bankinter EUR - Bank Statement
+                    Bankinter USD - Bank Statement
                   </h1>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                     {rows.length} records
@@ -560,7 +560,7 @@ export default function BankinterEURPage() {
                                 className="w-32"
                               />
                             ) : (
-                              `€${row.amount.toFixed(2)}`
+                              `$${row.amount.toFixed(2)}`
                             )}
                           </td>
                           <td className="py-3 px-4 text-center">

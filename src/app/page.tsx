@@ -650,7 +650,7 @@ export default function Home() {
       updatedFiles[fileIndex].rows[rowIndex].category = editedCategory
       updatedFiles[fileIndex].rows[rowIndex].classification = editedClassification
       updatedFiles[fileIndex].rows[rowIndex].orderNumbers = editedOrderNumbers
-      if (updatedFiles[fileIndex].source !== 'bankinter-eur' && updatedFiles[fileIndex].source !== 'bankinter-usd' && updatedFiles[fileIndex].source !== 'sabadell') {
+      if (updatedFiles[fileIndex].source !== 'bankinter-eur' && updatedFiles[fileIndex].source !== 'bankinter-usd' && updatedFiles[fileIndex].source !== 'bankinter' && updatedFiles[fileIndex].source !== 'sabadell') {
         updatedFiles[fileIndex].rows[rowIndex].depositAccount = editedDepositAccount
       } else {
         updatedFiles[fileIndex].rows[rowIndex].paymentMethod = editedPaymentMethod
@@ -918,7 +918,7 @@ export default function Home() {
   const getPaymentSourceDates = () => {
     const dates: { [key: string]: string } = {}
     
-    const sources: CSVFile['source'][] = ['bankinter-eur', 'bankinter-usd', 'sabadell', 'braintree-eur', 'braintree-usd', 'braintree-transactions', 'braintree-amex', 'braintree-amex-transactions', 'stripe', 'gocardless', 'paypal']
+    const sources: CSVFile['source'][] = ['bankinter-eur', 'bankinter-usd', 'bankinter', 'sabadell', 'braintree-eur', 'braintree-usd', 'braintree-transactions', 'braintree-amex', 'braintree-amex-transactions', 'stripe', 'gocardless', 'paypal']
     
     sources.forEach(source => {
       const files = getFilesBySource(source)
@@ -936,7 +936,7 @@ export default function Home() {
     description: string
   ) => {
     const files = getFilesBySource(source)
-    const isBankStatement = source === 'bankinter-eur' || source === 'bankinter-usd' || source === 'sabadell'
+    const isBankStatement = source === 'bankinter-eur' || source === 'bankinter-usd' || source === 'bankinter' || source === 'sabadell'
     
     return (
       <div id={source} className="scroll-mt-20">
@@ -1741,7 +1741,7 @@ export default function Home() {
                   Total Sources
                 </CardTitle>
                 <div className="text-4xl font-bold text-white">
-                  11
+                  12
                 </div>
                 <p className="text-xs text-white/70 mt-2">Payment sources</p>
               </div>

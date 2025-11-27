@@ -56,12 +56,6 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
       id: "bankinter-usd",
       source: "bankinter-usd"
     },
-    { 
-      label: "Bankinter", 
-      href: "/reports/bankinter", 
-      id: "bankinter",
-      source: "bankinter"
-    },
   ]
 
   const sabadellItem = { 
