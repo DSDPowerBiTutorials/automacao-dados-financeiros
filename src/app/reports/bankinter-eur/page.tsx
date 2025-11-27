@@ -75,17 +75,37 @@ export default function BankinterEURPage() {
           })
           
           // Mapear colunas do CSV para o formato simplificado
-          newRows.push({
-            id: `BKEUR-${String(idCounter).padStart(4, '0')}`,
-            date: row['FECHA VALOR'] || '',
-            reference: row['REFERENCIA'] || '',
-            category: row['CATEGORÍA'] || row['CATEGORIA'] || '',
-            description: row['DESCRIPCIÓN'] || row['DESCRIPCION'] || '',
-            amount: parseFloat(row['IMPORTE']?.replace(',', '.') || '0'),
-            conciliado: false,
-            // Manter dados originais completos para referência
-            _original: row
-          })
+// Mapear colunas do CSV para o formato esperado
+newRows.push({
+  id: `BKEUR-${String(idCounter).padStart(4, '0')}`,
+
+  // ===== Campos originais =====
+  fecha_contable: row['FECHA CONTABLE'] || '',
+  fecha_valor: row['FECHA VALOR'] || '',
+  clave: row['CLAVE'] || '',
+  referencia: row['REFERENCIA'] || '',
+  categoria: row['CATEGORÍA'] || '',
+  descripcion: row['DESCRIPCIÓN'] || '',
+  ref_12: row['REF. 12'] || '',
+  ref_16: row['REF. 16'] || '',
+  debe: parseFloat(row['DEBE']?.replace(',', '.') || '0'),
+  haber: parseFloat(row['HABER']?.replace(',', '.') || '0'),
+  importe: parseFloat(row['IMPORTE']?.replace(',', '.') || '0'),
+  saldo: parseFloat(row['SALDO']?.replace(',', '.') || '0'),
+
+  // ===== Campos padrão que o resto do app usa =====
+  date: row['FECHA VALOR'] || '',                      // Date
+  reference: row['REFERENCIA'] || '',                  // Reference
+  category: row['CATEGORÍA'] || '',                    // Category
+  description: row['DESCRIPCIÓN'] || '',               // Description
+  amount: parseFloat(row['IMPORTE']?.replace(',', '.') || '0'), // Amount
+
+  conciliado: false,
+
+  // Manter dados originais
+  ...row
+})
+
           idCounter++
         }
         
