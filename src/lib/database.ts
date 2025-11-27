@@ -53,57 +53,34 @@ export interface CSVFile {
   source: 'bankinter-eur' | 'bankinter-usd' | 'sabadell' | 'braintree-eur' | 'braintree-usd' | 'braintree-transactions' | 'braintree-amex' | 'braintree-amex-transactions' | 'stripe' | 'gocardless' | 'paypal'
 }
 
-// Salvar arquivo CSV no banco
+// Salvar arquivo CSV no banco via API route
 export async function saveCSVFile(file: CSVFile) {
-  if (!supabase) {
-    console.warn('⚠️ Supabase não configurado. Os dados não serão salvos.')
-    return { success: false, error: 'Supabase não configurado' }
-  }
-
   try {
-    // Salvar informações do arquivo
-    const { error: fileError } = await supabase
-      .from('csv_files')
-      .upsert({
-        id: `${file.source}_${file.name}`,
-        name: file.name,
-        last_updated: file.lastUpdated,
-        total_amount: file.totalAmount,
-        source: file.source,
-        updated_at: new Date().toISOString()
-      })
+    // Validar dados antes de enviar
+    if (!file.name || !file.source || !file.rows || file.rows.length === 0) {
+      throw new Error('Dados inválidos: arquivo deve ter nome, source e pelo menos uma linha')
+    }
 
-    if (fileError) throw fileError
+    const response = await fetch('/api/csv/save', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ file }),
+    })
 
-    // Salvar todas as linhas
-    const rowsToInsert = file.rows.map(row => ({
-      id: row.id,
-      file_name: file.name,
-      source: file.source,
-      date: row.date,
-      description: row.description,
-      amount: row.amount,
-      category: row.category,
-      classification: row.classification,
-      deposit_account: row.depositAccount,
-      payment_method: row.paymentMethod,
-      order_numbers: row.orderNumbers || [],
-      reconciled: row.reconciled || false,
-      matched_with: row.matchedWith,
-      custom_data: row,
-      updated_at: new Date().toISOString()
-    }))
+    const result = await response.json()
 
-    const { error: rowsError } = await supabase
-      .from('csv_rows')
-      .upsert(rowsToInsert)
-
-    if (rowsError) throw rowsError
+    if (!result.success) {
+      console.error('Error saving CSV file:', result.error)
+      throw new Error(result.error)
+    }
 
     return { success: true }
   } catch (error) {
-    console.error('Error saving CSV file:', error)
-    return { success: false, error }
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    console.error('Error saving CSV file:', errorMessage)
+    return { success: false, error: errorMessage }
   }
 }
 
@@ -169,30 +146,22 @@ export async function loadAllCSVFiles(): Promise<CSVFile[]> {
   }
 }
 
-// Atualizar uma linha específica
+// Atualizar uma linha específica via API route
 export async function updateCSVRow(row: CSVRow) {
-  if (!supabase) {
-    console.warn('⚠️ Supabase não configurado. Os dados não serão atualizados.')
-    return { success: false, error: 'Supabase não configurado' }
-  }
-
   try {
-    const { error } = await supabase
-      .from('csv_rows')
-      .update({
-        category: row.category,
-        classification: row.classification,
-        deposit_account: row.depositAccount,
-        payment_method: row.paymentMethod,
-        order_numbers: row.orderNumbers || [],
-        reconciled: row.reconciled || false,
-        matched_with: row.matchedWith,
-        custom_data: row,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', row.id)
+    const response = await fetch('/api/csv/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ row }),
+    })
 
-    if (error) throw error
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
 
     return { success: true }
   } catch (error) {
@@ -201,20 +170,18 @@ export async function updateCSVRow(row: CSVRow) {
   }
 }
 
-// Deletar uma linha específica
+// Deletar uma linha específica via API route
 export async function deleteCSVRow(rowId: string) {
-  if (!supabase) {
-    console.warn('⚠️ Supabase não configurado. Os dados não serão deletados.')
-    return { success: false, error: 'Supabase não configurado' }
-  }
-
   try {
-    const { error } = await supabase
-      .from('csv_rows')
-      .delete()
-      .eq('id', rowId)
+    const response = await fetch(`/api/csv/delete?rowId=${rowId}`, {
+      method: 'DELETE',
+    })
 
-    if (error) throw error
+    const result = await response.json()
+
+    if (!result.success) {
+      throw new Error(result.error)
+    }
 
     return { success: true }
   } catch (error) {
@@ -223,31 +190,18 @@ export async function deleteCSVRow(rowId: string) {
   }
 }
 
-// Deletar arquivo e suas linhas
+// Deletar arquivo e suas linhas via API route
 export async function deleteCSVFile(fileName: string, source: string) {
-  if (!supabase) {
-    console.warn('⚠️ Supabase não configurado. Os dados não serão deletados.')
-    return { success: false, error: 'Supabase não configurado' }
-  }
-
   try {
-    // Deletar linhas
-    const { error: rowsError } = await supabase
-      .from('csv_rows')
-      .delete()
-      .eq('file_name', fileName)
-      .eq('source', source)
+    const response = await fetch(`/api/csv/delete?fileName=${encodeURIComponent(fileName)}&source=${source}`, {
+      method: 'DELETE',
+    })
 
-    if (rowsError) throw rowsError
+    const result = await response.json()
 
-    // Deletar arquivo
-    const { error: fileError } = await supabase
-      .from('csv_files')
-      .delete()
-      .eq('name', fileName)
-      .eq('source', source)
-
-    if (fileError) throw fileError
+    if (!result.success) {
+      throw new Error(result.error)
+    }
 
     return { success: true }
   } catch (error) {
@@ -256,29 +210,18 @@ export async function deleteCSVFile(fileName: string, source: string) {
   }
 }
 
-// NOVA FUNÇÃO: Deletar TODOS os dados de TODOS os reports
+// Deletar TODOS os dados de TODOS os reports via API route
 export async function deleteAllReports() {
-  if (!supabase) {
-    console.warn('⚠️ Supabase não configurado. Os dados não serão deletados.')
-    return { success: false, error: 'Supabase não configurado' }
-  }
-
   try {
-    // Deletar TODAS as linhas
-    const { error: rowsError } = await supabase
-      .from('csv_rows')
-      .delete()
-      .neq('id', '') // Deleta tudo
+    const response = await fetch('/api/csv/delete?deleteAll=true', {
+      method: 'DELETE',
+    })
 
-    if (rowsError) throw rowsError
+    const result = await response.json()
 
-    // Deletar TODOS os arquivos
-    const { error: filesError } = await supabase
-      .from('csv_files')
-      .delete()
-      .neq('id', '') // Deleta tudo
-
-    if (filesError) throw filesError
+    if (!result.success) {
+      throw new Error(result.error)
+    }
 
     return { success: true }
   } catch (error) {

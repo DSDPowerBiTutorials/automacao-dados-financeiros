@@ -6,17 +6,14 @@ import { loadAllCSVFiles, saveCSVFile, updateCSVRow, deleteCSVRow } from "@/lib/
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Sidebar } from "@/components/custom/sidebar"
 import Link from "next/link"
 
 interface BankinterEURRow {
   id: string
   date: string // FECHA VALOR
-  reference: string // REFERENCIA
-  category: string // CATEGORÍA
   description: string // DESCRIPCIÓN
-  amount: number // IMPORTE
+  amount: number // HABER (convertido de texto para número)
   conciliado: boolean
   [key: string]: any
 }
@@ -59,34 +56,104 @@ export default function BankinterEURPage() {
       reader.onload = async (e) => {
         const text = e.target?.result as string
         const lines = text.split('\n')
-        const headers = lines[0].split('\t').map(h => h.trim().replace(/^"|"$/g, ''))
+        
+        console.log('=== BANKINTER EUR CSV PROCESSING ===')
+        console.log('Total lines:', lines.length)
+        
+        if (lines.length < 2) {
+          alert('❌ File is empty or invalid')
+          return
+        }
+        
+        // Primeira linha são os headers
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
+        console.log('Headers found:', headers)
+        
+        // Encontrar índices das colunas (case-insensitive e tolerante a acentos)
+        const fechaValorIndex = headers.findIndex(h => 
+          h.toUpperCase().replace(/[ÃÁ]/g, 'A').includes('FECHA') && 
+          h.toUpperCase().includes('VALOR')
+        )
+        const descripcionIndex = headers.findIndex(h => 
+          h.toUpperCase().replace(/[ÃÓÑ"]/g, 'O').includes('DESCRIPCI')
+        )
+        const haberIndex = headers.findIndex(h => 
+          h.toUpperCase() === 'HABER'
+        )
+        
+        console.log('Column mapping:')
+        console.log('- FECHA VALOR index:', fechaValorIndex, '→', headers[fechaValorIndex])
+        console.log('- DESCRIPCIÓN index:', descripcionIndex, '→', headers[descripcionIndex])
+        console.log('- HABER index:', haberIndex, '→', headers[haberIndex])
+        
+        if (fechaValorIndex === -1 || descripcionIndex === -1 || haberIndex === -1) {
+          alert('❌ Required columns not found! Make sure the file has: FECHA VALOR, DESCRIPCIÓN, HABER')
+          console.error('Available columns:', headers)
+          return
+        }
         
         const newRows: BankinterEURRow[] = []
         let idCounter = rows.length + 1
+        let processedCount = 0
         
+        // Processar cada linha (começando da linha 1, pulando header)
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue
           
-          const values = lines[i].split('\t').map(v => v.trim().replace(/^"|"$/g, ''))
-          const row: any = {}
+          // Parse CSV line (handle quoted values)
+          const values: string[] = []
+          let currentValue = ''
+          let insideQuotes = false
           
-          headers.forEach((header, index) => {
-            row[header] = values[index] || ''
-          })
+          for (let j = 0; j < lines[i].length; j++) {
+            const char = lines[i][j]
+            
+            if (char === '"') {
+              insideQuotes = !insideQuotes
+            } else if (char === ',' && !insideQuotes) {
+              values.push(currentValue.trim())
+              currentValue = ''
+            } else {
+              currentValue += char
+            }
+          }
+          values.push(currentValue.trim()) // Add last value
           
-          // Mapear colunas do CSV para o formato simplificado
+          // Extrair valores usando os índices encontrados
+          const fechaValor = (values[fechaValorIndex] || '').trim()
+          const descripcion = (values[descripcionIndex] || '').trim()
+          const haberValue = (values[haberIndex] || '0').trim()
+          
+          // Converter HABER para número (formato europeu: vírgula como decimal)
+          let amountNumber = 0
+          if (haberValue) {
+            const cleanValue = haberValue
+              .replace(/\s/g, '') // Remove espaços
+              .replace(',', '.') // Substitui vírgula por ponto
+            
+            amountNumber = parseFloat(cleanValue) || 0
+          }
+          
+          // Pular linhas sem valor e sem descrição
+          if (amountNumber === 0 && !descripcion) continue
+          
           newRows.push({
-            id: `BKEUR-${String(idCounter).padStart(4, '0')}`,
-            date: row['FECHA VALOR'] || '',
-            reference: row['REFERENCIA'] || '',
-            category: row['CATEGORÍA'] || row['CATEGORIA'] || '',
-            description: row['DESCRIPCIÓN'] || row['DESCRIPCION'] || '',
-            amount: parseFloat(row['IMPORTE']?.replace(',', '.') || '0'),
-            conciliado: false,
-            // Manter dados originais completos para referência
-            _original: row
+            id: `BANKINTER-EUR-${String(idCounter).padStart(4, '0')}`,
+            date: fechaValor,
+            description: descripcion,
+            amount: amountNumber,
+            conciliado: false
           })
+          
+          processedCount++
           idCounter++
+        }
+        
+        console.log('Processing complete:', processedCount, 'rows processed')
+        
+        if (newRows.length === 0) {
+          alert('❌ No valid data found in file')
+          return
         }
         
         const updatedRows = [...rows, ...newRows]
@@ -105,7 +172,7 @@ export default function BankinterEURPage() {
           source: 'bankinter-eur'
         })
         
-        alert('✅ CSV uploaded successfully!')
+        alert(`✅ File uploaded successfully! ${processedCount} rows processed.`)
       }
       
       reader.readAsText(file)
@@ -146,15 +213,13 @@ export default function BankinterEURPage() {
     try {
       const result = await deleteCSVRow(rowId)
       if (result.success) {
-        // Atualizar estado local removendo a linha deletada
-        setRows(prevRows => prevRows.filter(r => r.id !== rowId))
-        alert('✅ Row deleted successfully!')
+        await loadData()
       } else {
-        alert('❌ Error deleting row. Please try again.')
+        alert('Error deleting row. Please try again.')
       }
     } catch (error) {
       console.error('Error deleting row:', error)
-      alert('❌ Error deleting row. Please try again.')
+      alert('Error deleting row. Please try again.')
     } finally {
       setIsDeleting(false)
     }
@@ -166,43 +231,48 @@ export default function BankinterEURPage() {
     
     setIsDeleting(true)
     try {
-      // Deletar todas as linhas uma por uma
-      const deletePromises = rows.map(row => deleteCSVRow(row.id))
-      await Promise.all(deletePromises)
+      for (const row of rows) {
+        await deleteCSVRow(row.id)
+      }
       
-      // Limpar estado local
-      setRows([])
+      await loadData()
       alert('✅ All rows deleted successfully!')
     } catch (error) {
       console.error('Error deleting all rows:', error)
-      alert('❌ Error deleting rows. Please try again.')
+      alert('Error deleting rows. Please try again.')
     } finally {
       setIsDeleting(false)
     }
   }
 
   const downloadCSV = () => {
-    const headers = ['ID', 'Date', 'Reference', 'Category', 'Description', 'Amount', 'Conciliado']
-    
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => [
-        row.id,
-        row.date,
-        row.reference,
-        row.category,
-        `"${row.description}"`,
-        row.amount,
-        row.conciliado ? 'Yes' : 'No'
-      ].join(','))
-    ].join('\n')
-    
-    const blob = new Blob([csvContent], { type: 'text/csv' })
-    const url = window.URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `bankinter-eur-${new Date().toISOString().split('T')[0]}.csv`
-    a.click()
+    try {
+      const headers = ['ID', 'Date', 'Description', 'Amount', 'Conciliado']
+      
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => [
+          row.id,
+          row.date,
+          `"${row.description.replace(/"/g, '""')}"`,
+          row.amount.toFixed(2),
+          row.conciliado ? 'Yes' : 'No'
+        ].join(','))
+      ].join('\n')
+      
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `bankinter-eur-${new Date().toISOString().split('T')[0]}.csv`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      console.error('Error saving CSV file:', error)
+      alert('Error downloading CSV file')
+    }
   }
 
   if (isLoading) {
@@ -240,7 +310,7 @@ export default function BankinterEURPage() {
               <div className="flex gap-2">
                 <input
                   type="file"
-                  accept=".csv,.txt"
+                  accept=".csv"
                   onChange={handleFileUpload}
                   className="hidden"
                   id="file-upload-bankinter"
@@ -280,7 +350,7 @@ export default function BankinterEURPage() {
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Bank Statement Details</CardTitle>
               <CardDescription className="text-white/80">
-                Simplified view with essential columns
+                Upload CSV files - Columns: FECHA VALOR → Date | DESCRIPCIÓN → Description | HABER → Amount
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -290,8 +360,6 @@ export default function BankinterEURPage() {
                     <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
                       <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">ID</th>
                       <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Date</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Reference</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Category</th>
                       <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Description</th>
                       <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Amount</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Conciliado</th>
@@ -301,7 +369,7 @@ export default function BankinterEURPage() {
                   <tbody>
                     {rows.length === 0 ? (
                       <tr>
-                        <td colSpan={8} className="py-8 text-center text-gray-500">
+                        <td colSpan={6} className="py-8 text-center text-gray-500">
                           No data available. Upload a CSV file to get started.
                         </td>
                       </tr>
@@ -320,28 +388,6 @@ export default function BankinterEURPage() {
                               row.date
                             )}
                           </td>
-                          <td className="py-3 px-4 text-sm">
-                            {editingRow === row.id ? (
-                              <Input
-                                value={editedData.reference || ''}
-                                onChange={(e) => setEditedData({ ...editedData, reference: e.target.value })}
-                                className="w-32"
-                              />
-                            ) : (
-                              row.reference
-                            )}
-                          </td>
-                          <td className="py-3 px-4 text-sm">
-                            {editingRow === row.id ? (
-                              <Input
-                                value={editedData.category || ''}
-                                onChange={(e) => setEditedData({ ...editedData, category: e.target.value })}
-                                className="w-32"
-                              />
-                            ) : (
-                              row.category
-                            )}
-                          </td>
                           <td className="py-3 px-4 text-sm max-w-xs truncate">
                             {editingRow === row.id ? (
                               <Input
@@ -353,7 +399,7 @@ export default function BankinterEURPage() {
                               row.description
                             )}
                           </td>
-                          <td className="py-3 px-4 text-sm text-right font-bold">
+                          <td className="py-3 px-4 text-sm text-right font-bold text-[#4fc3f7]">
                             {editingRow === row.id ? (
                               <Input
                                 type="number"
