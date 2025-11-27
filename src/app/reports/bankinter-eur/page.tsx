@@ -43,7 +43,6 @@ export default function BankinterEURPage() {
         return
       }
 
-      // Buscar TODAS as linhas do source 'bankinter-eur' diretamente
       const { data: rowsData, error } = await supabase
         .from('csv_rows')
         .select('*')
@@ -54,7 +53,6 @@ export default function BankinterEURPage() {
         console.error('Error loading data:', error)
         setRows([])
       } else if (rowsData) {
-        // Mapear os dados do Supabase para o formato esperado
         const mappedRows: BankinterEURRow[] = rowsData.map(row => ({
           id: row.id,
           date: row.date,
@@ -118,7 +116,6 @@ export default function BankinterEURPage() {
         }
         
         const newRows: BankinterEURRow[] = []
-        let idCounter = rows.length + 1
         let processedCount = 0
         
         for (let i = 1; i < lines.length; i++) {
@@ -157,8 +154,10 @@ export default function BankinterEURPage() {
           
           if (amountNumber === 0 && !descripcion) continue
           
+          const uniqueId = `BANKINTER-EUR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          
           newRows.push({
-            id: `BANKINTER-EUR-${String(idCounter).padStart(4, '0')}`,
+            id: uniqueId,
             date: fechaValor,
             description: descripcion,
             amount: amountNumber,
@@ -166,7 +165,6 @@ export default function BankinterEURPage() {
           })
           
           processedCount++
-          idCounter++
         }
         
         console.log('Processing complete:', processedCount, 'rows processed')
@@ -176,42 +174,57 @@ export default function BankinterEURPage() {
           return
         }
         
-        const updatedRows = [...rows, ...newRows]
-        setRows(updatedRows)
-        
-        // Salvar no Supabase via API
-        const totalAmount = updatedRows.reduce((sum, row) => sum + row.amount, 0)
-        const today = new Date()
-        const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`
-        
         try {
-          const response = await fetch('/api/csv/save', {
+          setIsSaving(true)
+
+          const rowsToInsert = newRows.map(row => ({
+            id: row.id,
+            file_name: 'bankinter-eur.csv',
+            source: 'bankinter-eur',
+            date: row.date,
+            description: row.description,
+            amount: row.amount.toString(),
+            category: 'Other',
+            classification: 'Other',
+            reconciled: false,
+            custom_data: {
+              id: row.id,
+              date: row.date,
+              description: row.description,
+              amount: row.amount,
+              conciliado: row.conciliado
+            }
+          }))
+
+          const response = await fetch('/api/csv-rows', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              file: {
-                name: file.name,
-                lastUpdated: formattedDate,
-                rows: updatedRows,
-                totalAmount: totalAmount,
-                source: 'bankinter-eur'
-              }
-            })
+            body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
           })
 
           const result = await response.json()
 
-          if (result.success) {
-            const now = new Date()
-            const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-            setLastSaved(formattedTime)
-            alert(`✅ File uploaded successfully! ${processedCount} rows processed and saved to database.`)
-          } else {
-            alert('⚠️ File uploaded but there was an error saving to database. Please try "Save All Changes".')
+          if (!response.ok || !result.success) {
+            console.error('Error saving to database:', result.error)
+            alert(`❌ Error saving to database: ${result.error || 'Unknown error'}`)
+            return
           }
+
+          const updatedRows = [...rows, ...newRows]
+          setRows(updatedRows)
+
+          const now = new Date()
+          const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+          setLastSaved(formattedTime)
+          setSaveSuccess(true)
+          setTimeout(() => setSaveSuccess(false), 3000)
+
+          alert(`✅ File uploaded successfully! ${processedCount} rows saved to database.`)
         } catch (error) {
           console.error('Error saving to database:', error)
-          alert('⚠️ File uploaded but there was an error saving to database. Please try "Save All Changes".')
+          alert('⚠️ Error saving to database. Please check your Supabase configuration.')
+        } finally {
+          setIsSaving(false)
         }
       }
       
@@ -224,35 +237,44 @@ export default function BankinterEURPage() {
     setSaveSuccess(false)
     
     try {
-      const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0)
-      const today = new Date()
-      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`
-      
-      const response = await fetch('/api/csv/save', {
-        method: 'POST',
+      const rowsToInsert = rows.map(row => ({
+        id: row.id,
+        file_name: 'bankinter-eur.csv',
+        source: 'bankinter-eur',
+        date: row.date,
+        description: row.description,
+        amount: row.amount.toString(),
+        category: 'Other',
+        classification: 'Other',
+        reconciled: false,
+        custom_data: {
+          id: row.id,
+          date: row.date,
+          description: row.description,
+          amount: row.amount,
+          conciliado: row.conciliado
+        }
+      }))
+
+      const response = await fetch('/api/csv-rows', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file: {
-            name: 'bankinter-eur.csv',
-            lastUpdated: formattedDate,
-            rows: rows,
-            totalAmount: totalAmount,
-            source: 'bankinter-eur'
-          }
-        })
+        body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
       })
 
       const result = await response.json()
 
-      if (result.success) {
-        const now = new Date()
-        const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-        setLastSaved(formattedTime)
-        setSaveSuccess(true)
-        setTimeout(() => setSaveSuccess(false), 3000)
-      } else {
-        alert('Error saving data. Please check your Supabase configuration.')
+      if (!response.ok || !result.success) {
+        console.error('Error updating database:', result.error)
+        alert(`❌ Error updating database: ${result.error || 'Unknown error'}`)
+        return
       }
+
+      const now = new Date()
+      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+      setLastSaved(formattedTime)
+      setSaveSuccess(true)
+      setTimeout(() => setSaveSuccess(false), 3000)
     } catch (error) {
       console.error('Error saving data:', error)
       alert('Error saving data. Please check your Supabase configuration.')
@@ -277,15 +299,37 @@ export default function BankinterEURPage() {
     const rowToUpdate = updatedRows.find(r => r.id === editingRow)
     if (rowToUpdate) {
       try {
-        const response = await fetch('/api/csv/update', {
-          method: 'POST',
+        const rowData = {
+          id: rowToUpdate.id,
+          file_name: 'bankinter-eur.csv',
+          source: 'bankinter-eur',
+          date: rowToUpdate.date,
+          description: rowToUpdate.description,
+          amount: rowToUpdate.amount.toString(),
+          category: 'Other',
+          classification: 'Other',
+          reconciled: false,
+          custom_data: {
+            id: rowToUpdate.id,
+            date: rowToUpdate.date,
+            description: rowToUpdate.description,
+            amount: rowToUpdate.amount,
+            conciliado: rowToUpdate.conciliado
+          }
+        }
+
+        const response = await fetch('/api/csv-rows', {
+          method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ row: rowToUpdate })
+          body: JSON.stringify({ rows: [rowData], source: 'bankinter-eur' })
         })
 
         const result = await response.json()
 
-        if (result.success) {
+        if (!response.ok || !result.success) {
+          console.error('Error updating row:', result.error)
+          alert(`❌ Error updating row: ${result.error || 'Unknown error'}`)
+        } else {
           const now = new Date()
           const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
           setLastSaved(formattedTime)
@@ -309,20 +353,21 @@ export default function BankinterEURPage() {
     
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/csv/delete?rowId=${rowId}`, {
+      const response = await fetch(`/api/csv-rows?id=${rowId}`, {
         method: 'DELETE'
       })
 
       const result = await response.json()
 
-      if (result.success) {
+      if (!response.ok || !result.success) {
+        console.error('Error deleting row:', result.error)
+        alert(`❌ Error deleting row: ${result.error || 'Unknown error'}`)
+      } else {
         await loadData()
         
         const now = new Date()
         const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
         setLastSaved(formattedTime)
-      } else {
-        alert('Error deleting row. Please try again.')
       }
     } catch (error) {
       console.error('Error deleting row:', error)
@@ -338,19 +383,24 @@ export default function BankinterEURPage() {
     
     setIsDeleting(true)
     try {
-      for (const row of rows) {
-        await fetch(`/api/csv/delete?rowId=${row.id}`, {
-          method: 'DELETE'
-        })
+      const response = await fetch(`/api/csv-rows?source=bankinter-eur`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        console.error('Error deleting all rows:', result.error)
+        alert(`❌ Error deleting rows: ${result.error || 'Unknown error'}`)
+      } else {
+        await loadData()
+        
+        const now = new Date()
+        const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+        setLastSaved(formattedTime)
+        
+        alert('✅ All rows deleted successfully!')
       }
-      
-      await loadData()
-      
-      const now = new Date()
-      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-      setLastSaved(formattedTime)
-      
-      alert('✅ All rows deleted successfully!')
     } catch (error) {
       console.error('Error deleting all rows:', error)
       alert('Error deleting rows. Please try again.')
