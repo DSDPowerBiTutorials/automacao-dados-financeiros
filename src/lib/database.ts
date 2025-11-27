@@ -76,61 +76,23 @@ export async function saveCSVFile(file: CSVFile) {
     if (fileError) throw fileError
 
     // Salvar todas as linhas
-const rowsToInsert = file.rows.map(row => {
-  const anyRow: any = row
-
-  // Tenta pegar primeiro os campos "padrão".
-  // Se não tiver, cai para os campos específicos do Bankinter.
-  const normalizedDate =
-    row.date ||
-    anyRow.fecha_valor ||
-    anyRow.fecha_contable ||
-    null
-
-  const normalizedDescription =
-    row.description ||
-    anyRow.descripcion ||
-    anyRow.description ||
-    'Transaction'
-
-  let normalizedAmount: number = 0
-  if (typeof row.amount === 'number' && !Number.isNaN(row.amount)) {
-    normalizedAmount = row.amount
-  } else if (typeof anyRow.importe === 'number') {
-    normalizedAmount = anyRow.importe
-  } else if (anyRow.importe != null) {
-    normalizedAmount = parseFloat(String(anyRow.importe).replace(',', '.')) || 0
-  }
-
-  const normalizedCategory =
-    row.category ||
-    anyRow.categoria ||
-    row.category ||
-    'Other'
-
-  return {
-    id: row.id,
-    file_name: file.name,
-    source: file.source,
-    date: normalizedDate,
-    description: normalizedDescription,
-    amount: normalizedAmount,
-    category: normalizedCategory,
-    classification: row.classification ?? 'Other',
-    deposit_account: row.depositAccount ?? null,
-    payment_method: row.paymentMethod ?? null,
-    order_numbers: row.orderNumbers || [],
-    reconciled: row.reconciled ?? false,
-    matched_with: row.matchedWith ?? null,
-    custom_data: row,
-    updated_at: new Date().toISOString(),
-  }
-})
-
-const { error: rowsError } = await supabase
-  .from('csv_rows')
-  .upsert(rowsToInsert)
-
+    const rowsToInsert = file.rows.map(row => ({
+      id: row.id,
+      file_name: file.name,
+      source: file.source,
+      date: row.date,
+      description: row.description,
+      amount: row.amount,
+      category: row.category,
+      classification: row.classification,
+      deposit_account: row.depositAccount,
+      payment_method: row.paymentMethod,
+      order_numbers: row.orderNumbers || [],
+      reconciled: row.reconciled || false,
+      matched_with: row.matchedWith,
+      custom_data: row,
+      updated_at: new Date().toISOString()
+    }))
 
     const { error: rowsError } = await supabase
       .from('csv_rows')
