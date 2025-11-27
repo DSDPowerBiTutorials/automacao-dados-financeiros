@@ -36,7 +36,7 @@ interface CSVFile {
   lastUpdated: string
   rows: CSVRow[]
   totalAmount: number
-  source: 'bankinter-eur' | 'bankinter-usd' | 'sabadell' | 'braintree-eur' | 'braintree-usd' | 'braintree-transactions' | 'braintree-amex' | 'braintree-amex-transactions' | 'stripe' | 'gocardless' | 'paypal'
+  source: 'sabadell' | 'braintree-eur' | 'braintree-usd' | 'braintree-transactions' | 'braintree-amex' | 'braintree-amex-transactions' | 'stripe' | 'gocardless' | 'paypal'
 }
 
 interface CustomColumn {
@@ -650,11 +650,7 @@ export default function Home() {
       updatedFiles[fileIndex].rows[rowIndex].category = editedCategory
       updatedFiles[fileIndex].rows[rowIndex].classification = editedClassification
       updatedFiles[fileIndex].rows[rowIndex].orderNumbers = editedOrderNumbers
-      if (updatedFiles[fileIndex].source !== 'bankinter-eur' && updatedFiles[fileIndex].source !== 'bankinter-usd' && updatedFiles[fileIndex].source !== 'bankinter' && updatedFiles[fileIndex].source !== 'sabadell') {
-        updatedFiles[fileIndex].rows[rowIndex].depositAccount = editedDepositAccount
-      } else {
-        updatedFiles[fileIndex].rows[rowIndex].paymentMethod = editedPaymentMethod
-      }
+      updatedFiles[fileIndex].rows[rowIndex].depositAccount = editedDepositAccount
       setCsvFiles(updatedFiles)
       
       // ✅ SALVAR AUTOMATICAMENTE NO SUPABASE
@@ -863,16 +859,12 @@ export default function Home() {
   }
 
   const getSourceIcon = (source: string) => {
-    if (source.includes('bankinter') || source.includes('sabadell')) return <Building2 className="h-5 w-5" />
+    if (source.includes('sabadell')) return <Building2 className="h-5 w-5" />
     if (source.includes('braintree')) return <CreditCard className="h-5 w-5" />
     if (source.includes('stripe')) return <Wallet className="h-5 w-5" />
     if (source.includes('gocardless')) return <CreditCard className="h-5 w-5" />
     if (source.includes('paypal')) return <Wallet className="h-5 w-5" />
     return <FileSpreadsheet className="h-5 w-5" />
-  }
-
-  const getSourceColor = (source: string) => {
-    return 'from-[#1a2b4a] to-[#2c3e5f]'
   }
 
   // Função para calcular valores por período
@@ -918,7 +910,7 @@ export default function Home() {
   const getPaymentSourceDates = () => {
     const dates: { [key: string]: string } = {}
     
-    const sources: CSVFile['source'][] = ['bankinter-eur', 'bankinter-usd', 'bankinter', 'sabadell', 'braintree-eur', 'braintree-usd', 'braintree-transactions', 'braintree-amex', 'braintree-amex-transactions', 'stripe', 'gocardless', 'paypal']
+    const sources: CSVFile['source'][] = ['sabadell', 'braintree-eur', 'braintree-usd', 'braintree-transactions', 'braintree-amex', 'braintree-amex-transactions', 'stripe', 'gocardless', 'paypal']
     
     sources.forEach(source => {
       const files = getFilesBySource(source)
@@ -936,7 +928,6 @@ export default function Home() {
     description: string
   ) => {
     const files = getFilesBySource(source)
-    const isBankStatement = source === 'bankinter-eur' || source === 'bankinter-usd' || source === 'bankinter' || source === 'sabadell'
     
     return (
       <div id={source} className="scroll-mt-20">
@@ -1034,397 +1025,9 @@ export default function Home() {
               </div>
             ) : (
               <div className="space-y-4">
-                {files.map((file, fileIndex) => {
-                  const actualFileIndex = csvFiles.findIndex(f => f.name === file.name)
-                  const filteredRows = filterAndSortRows(file.rows)
-                  
-                  return (
-                    <div key={fileIndex} className="border-2 border-[#e5e7eb] dark:border-[#2c3e5f] rounded-xl overflow-hidden shadow-lg">
-                      <div className="bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-700 px-6 py-4 flex items-center justify-between border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f]">
-                        <div className="flex items-center gap-4">
-                          <FileSpreadsheet className="h-6 w-6 text-[#1a2b4a] dark:text-[#4fc3f7]" />
-                          <div>
-                            <p className="font-bold text-[#1a2b4a] dark:text-white text-lg">{file.name}</p>
-                            <div className="flex items-center gap-4 mt-1">
-                              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                                {filteredRows.length} records {filteredRows.length !== file.rows.length && `(filtered from ${file.rows.length})`}
-                              </span>
-                              <span className="text-sm text-gray-600 dark:text-gray-400 font-medium">
-                                Last updated: {file.lastUpdated}
-                              </span>
-                              <span className="text-sm font-bold text-[#4fc3f7]">
-                                €{file.totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            onClick={() => handleDownloadIndividualCSV(file)}
-                            className="gap-2 bg-[#1a2b4a] hover:bg-[#2c3e5f] text-white"
-                          >
-                            <Download className="h-4 w-4" />
-                            Download
-                          </Button>
-                          <Button 
-                            onClick={() => handleDeleteAllRows(actualFileIndex)}
-                            variant="destructive"
-                            className="gap-2"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                            Delete All
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Filtros e Busca */}
-                      <div className="bg-gray-50 dark:bg-slate-800 px-6 py-4 border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f]">
-                        <div className="flex flex-wrap gap-4 items-end">
-                          <div className="flex-1 min-w-[200px]">
-                            <Label className="text-sm font-medium mb-2 block">Search by Order Number</Label>
-                            <div className="relative">
-                              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                              <Input
-                                placeholder="Search order number..."
-                                value={searchOrderNumber}
-                                onChange={(e) => setSearchOrderNumber(e.target.value)}
-                                className="pl-10"
-                              />
-                            </div>
-                          </div>
-                          
-                          <div className="flex-1 min-w-[200px]">
-                            <Label className="text-sm font-medium mb-2 block">Date Filter</Label>
-                            <Select value={dateFilter} onValueChange={(value: DateFilterType) => setDateFilter(value)}>
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="all">All Dates</SelectItem>
-                                <SelectItem value="current-week">Current Week</SelectItem>
-                                <SelectItem value="previous-week">Previous Week</SelectItem>
-                                <SelectItem value="current-month">Current Month</SelectItem>
-                                <SelectItem value="last-month">Last Month</SelectItem>
-                                <SelectItem value="current-year">Current Year</SelectItem>
-                                <SelectItem value="last-year">Last Year</SelectItem>
-                                <SelectItem value="custom">Custom Period</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          {dateFilter === 'custom' && (
-                            <>
-                              <div className="flex-1 min-w-[150px]">
-                                <Label className="text-sm font-medium mb-2 block">Start Date</Label>
-                                <Input
-                                  type="date"
-                                  value={customStartDate}
-                                  onChange={(e) => setCustomStartDate(e.target.value)}
-                                />
-                              </div>
-                              <div className="flex-1 min-w-[150px]">
-                                <Label className="text-sm font-medium mb-2 block">End Date</Label>
-                                <Input
-                                  type="date"
-                                  value={customEndDate}
-                                  onChange={(e) => setCustomEndDate(e.target.value)}
-                                />
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="overflow-x-auto">
-                        <table className="w-full">
-                          <thead>
-                            <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gradient-to-r from-gray-50 to-white dark:from-slate-800 dark:to-slate-700">
-                              <th className="text-left py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                                <button 
-                                  onClick={() => toggleSort('id')}
-                                  className="flex items-center gap-2 hover:text-[#4fc3f7] transition-colors"
-                                >
-                                  ID
-                                  <ArrowUpDown className="h-4 w-4" />
-                                </button>
-                              </th>
-                              <th className="text-left py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                                <button 
-                                  onClick={() => toggleSort('date')}
-                                  className="flex items-center gap-2 hover:text-[#4fc3f7] transition-colors"
-                                >
-                                  Date
-                                  <ArrowUpDown className="h-4 w-4" />
-                                </button>
-                              </th>
-                              <th className="text-left py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Description</th>
-                              <th className="text-right py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                                {source === 'braintree-eur' || source === 'braintree-usd' || source === 'braintree-amex' ? 'Payout' : 'Amount'}
-                              </th>
-                              <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Category</th>
-                              <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Classification</th>
-                              {isBankStatement ? (
-                                <>
-                                  <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Payment Method</th>
-                                  <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Order Numbers</th>
-                                </>
-                              ) : (
-                                <>
-                                  <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Deposit Account</th>
-                                  <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Order Numbers</th>
-                                </>
-                              )}
-                              <th className="text-center py-4 px-6 font-bold text-sm text-[#1a2b4a] dark:text-white">Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {filteredRows.map((row) => (
-                              <tr key={row.id} className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50 transition-colors">
-                                <td className="py-4 px-6 text-sm font-bold text-[#1a2b4a] dark:text-white">
-                                  {row.id}
-                                </td>
-                                <td className="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">
-                                  {row.date}
-                                </td>
-                                <td className="py-4 px-6 text-sm text-gray-700 dark:text-gray-300">
-                                  {row.description}
-                                </td>
-                                <td className={`py-4 px-6 text-sm text-right font-bold ${
-                                  row.amount > 0 ? 'text-[#4fc3f7]' : 'text-red-600'
-                                }`}>
-                                  {row.amount > 0 ? '+' : ''}€{row.amount.toFixed(2)}
-                                </td>
-                                <td className="py-4 px-6 text-center">
-                                  {editingRow === row.id ? (
-                                    <Select value={editedCategory} onValueChange={setEditedCategory}>
-                                      <SelectTrigger className="w-[120px] mx-auto border-[#1a2b4a]">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {categoryOptions.map((option) => (
-                                          <SelectItem key={option} value={option}>
-                                            {option}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  ) : (
-                                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-bold ${
-                                      row.category === 'Revenue' 
-                                        ? 'bg-[#4fc3f7]/20 text-[#1a2b4a] dark:text-[#4fc3f7]'
-                                        : row.category === 'Expense'
-                                        ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                                        : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
-                                    }`}>
-                                      {row.category}
-                                    </span>
-                                  )}
-                                </td>
-                                <td className="py-4 px-6 text-center">
-                                  {editingRow === row.id ? (
-                                    <Select value={editedClassification} onValueChange={setEditedClassification}>
-                                      <SelectTrigger className="w-[180px] mx-auto border-[#1a2b4a]">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {classificationOptions.map((option) => (
-                                          <SelectItem key={option} value={option}>
-                                            {option}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  ) : (
-                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#1a2b4a]/10 text-[#1a2b4a] dark:bg-[#4fc3f7]/20 dark:text-[#4fc3f7]">
-                                      {row.classification}
-                                    </span>
-                                  )}
-                                </td>
-                                {isBankStatement ? (
-                                  <>
-                                    <td className="py-4 px-6 text-center">
-                                      {editingRow === row.id ? (
-                                        <Select value={editedPaymentMethod} onValueChange={setEditedPaymentMethod}>
-                                          <SelectTrigger className="w-[150px] mx-auto border-[#1a2b4a]">
-                                            <SelectValue placeholder="Select method" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {paymentMethodOptions.map((option) => (
-                                              <SelectItem key={option} value={option}>
-                                                {option}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#1a2b4a]/10 text-[#1a2b4a] dark:bg-[#4fc3f7]/20 dark:text-[#4fc3f7]">
-                                          {row.paymentMethod || 'Not set'}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                      {editingRow === row.id ? (
-                                        <div className="flex flex-col gap-2 items-center">
-                                          <div className="flex flex-wrap gap-1 justify-center">
-                                            {editedOrderNumbers.map((order, idx) => (
-                                              <Badge key={idx} variant="secondary" className="gap-1">
-                                                {order}
-                                                <X 
-                                                  className="h-3 w-3 cursor-pointer hover:text-red-600" 
-                                                  onClick={() => removeOrderNumber(idx)}
-                                                />
-                                              </Badge>
-                                            ))}
-                                          </div>
-                                          <div className="flex gap-1">
-                                            <Input
-                                              value={newOrderInput}
-                                              onChange={(e) => setNewOrderInput(e.target.value)}
-                                              onKeyPress={(e) => e.key === 'Enter' && addOrderNumber()}
-                                              placeholder="ORD-XXXX"
-                                              className="w-[120px] text-xs border-[#1a2b4a]"
-                                            />
-                                            <Button 
-                                              size="sm" 
-                                              onClick={addOrderNumber}
-                                              className="h-8 w-8 p-0 bg-[#4fc3f7] hover:bg-[#00bcd4]"
-                                            >
-                                              <Plus className="h-3 w-3" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="flex flex-wrap gap-1 justify-center">
-                                          {(row.orderNumbers && row.orderNumbers.length > 0) ? (
-                                            row.orderNumbers.map((order, idx) => (
-                                              <Badge key={idx} variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300">
-                                                {order}
-                                              </Badge>
-                                            ))
-                                          ) : (
-                                            <span className="text-xs text-gray-400">No orders</span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </td>
-                                  </>
-                                ) : (
-                                  <>
-                                    <td className="py-4 px-6 text-center">
-                                      {editingRow === row.id ? (
-                                        <Select value={editedDepositAccount} onValueChange={setEditedDepositAccount}>
-                                          <SelectTrigger className="w-[150px] mx-auto border-[#1a2b4a]">
-                                            <SelectValue placeholder="Select account" />
-                                          </SelectTrigger>
-                                          <SelectContent>
-                                            {depositAccountOptions.map((option) => (
-                                              <SelectItem key={option} value={option}>
-                                                {option}
-                                              </SelectItem>
-                                            ))}
-                                          </SelectContent>
-                                        </Select>
-                                      ) : (
-                                        <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold bg-[#1a2b4a]/10 text-[#1a2b4a] dark:bg-[#4fc3f7]/20 dark:text-[#4fc3f7]">
-                                          {row.depositAccount || 'Not set'}
-                                        </span>
-                                      )}
-                                    </td>
-                                    <td className="py-4 px-6 text-center">
-                                      {editingRow === row.id ? (
-                                        <div className="flex flex-col gap-2 items-center">
-                                          <div className="flex flex-wrap gap-1 justify-center">
-                                            {editedOrderNumbers.map((order, idx) => (
-                                              <Badge key={idx} variant="secondary" className="gap-1">
-                                                {order}
-                                                <X 
-                                                  className="h-3 w-3 cursor-pointer hover:text-red-600" 
-                                                  onClick={() => removeOrderNumber(idx)}
-                                                />
-                                              </Badge>
-                                            ))}
-                                          </div>
-                                          <div className="flex gap-1">
-                                            <Input
-                                              value={newOrderInput}
-                                              onChange={(e) => setNewOrderInput(e.target.value)}
-                                              onKeyPress={(e) => e.key === 'Enter' && addOrderNumber()}
-                                              placeholder="ORD-XXXX"
-                                              className="w-[120px] text-xs border-[#1a2b4a]"
-                                            />
-                                            <Button 
-                                              size="sm" 
-                                              onClick={addOrderNumber}
-                                              className="h-8 w-8 p-0 bg-[#4fc3f7] hover:bg-[#00bcd4]"
-                                            >
-                                              <Plus className="h-3 w-3" />
-                                            </Button>
-                                          </div>
-                                        </div>
-                                      ) : (
-                                        <div className="flex flex-wrap gap-1 justify-center">
-                                          {(row.orderNumbers && row.orderNumbers.length > 0) ? (
-                                            row.orderNumbers.map((order, idx) => (
-                                              <Badge key={idx} variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200 border-amber-300">
-                                                {order}
-                                              </Badge>
-                                            ))
-                                          ) : (
-                                            <span className="text-xs text-gray-400">No orders</span>
-                                          )}
-                                        </div>
-                                      )}
-                                    </td>
-                                  </>
-                                )}
-                                <td className="py-4 px-6 text-center">
-                                  {editingRow === row.id ? (
-                                    <div className="flex items-center justify-center gap-2">
-                                      <Button 
-                                        size="sm" 
-                                        onClick={() => saveEdit(actualFileIndex, row.id)}
-                                        className="h-9 w-9 p-0 bg-[#4fc3f7] hover:bg-[#00bcd4] text-white"
-                                      >
-                                        <Save className="h-4 w-4" />
-                                      </Button>
-                                      <Button 
-                                        size="sm" 
-                                        variant="outline"
-                                        onClick={cancelEdit}
-                                        className="h-9 w-9 p-0 border-[#1a2b4a]"
-                                      >
-                                        <X className="h-4 w-4" />
-                                      </Button>
-                                    </div>
-                                  ) : (
-                                    <div className="flex items-center justify-center gap-2">
-                                      <Button 
-                                        size="sm" 
-                                        variant="ghost"
-                                        onClick={() => startEditing(row.id, row.category, row.classification, row.depositAccount, row.paymentMethod, row.orderNumbers)}
-                                        className="h-9 w-9 p-0 hover:bg-[#1a2b4a]/10"
-                                      >
-                                        <Edit2 className="h-4 w-4 text-[#1a2b4a] dark:text-[#4fc3f7]" />
-                                      </Button>
-                                      <Button 
-                                        size="sm" 
-                                        variant="ghost"
-                                        onClick={() => handleDeleteRow(actualFileIndex, row.id)}
-                                        className="h-9 w-9 p-0 hover:bg-red-50 dark:hover:bg-red-900/20"
-                                      >
-                                        <Trash2 className="h-4 w-4 text-red-600" />
-                                      </Button>
-                                    </div>
-                                  )}
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )
-                })}
+                <p className="text-sm text-gray-600 dark:text-gray-400">
+                  {files.length} file(s) uploaded. View detailed data in the dedicated report page.
+                </p>
               </div>
             )}
           </CardContent>
@@ -1741,7 +1344,7 @@ export default function Home() {
                   Total Sources
                 </CardTitle>
                 <div className="text-4xl font-bold text-white">
-                  12
+                  9
                 </div>
                 <p className="text-xs text-white/70 mt-2">Payment sources</p>
               </div>
@@ -1798,10 +1401,13 @@ export default function Home() {
               <Building2 className="h-7 w-7" />
               Bank Statements
             </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Bank account statements and transactions</p>
-            {renderSourceSection('bankinter-eur', 'Bankinter EUR', 'EUR bank account')}
-            {renderSourceSection('bankinter-usd', 'Bankinter USD', 'USD bank account')}
-            {renderSourceSection('sabadell', 'Sabadell', 'Bank account')}
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">Bank account statements and transactions - view detailed data in dedicated report pages</p>
+            <Alert className="border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+              <AlertCircle className="h-5 w-5 text-blue-600" />
+              <AlertDescription className="text-blue-800 dark:text-blue-200 font-medium">
+                Bank statement data is managed in dedicated pages. Access <strong>Bankinter EUR</strong> and <strong>Bankinter USD</strong> from the sidebar menu under "Bank Statements".
+              </AlertDescription>
+            </Alert>
           </div>
 
           {/* Payment Sources Section */}
