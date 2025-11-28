@@ -357,9 +357,6 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     })}
   </div>
 )}
-
-
-
               </div>
 
               {/* Other Payment Sources */}
