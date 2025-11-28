@@ -337,36 +337,27 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                 </button>
                 
                 {/* Braintree Children */}
-                {braintreeExpanded && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    {braintreeItems.map((item) => {
-                      const isActive = currentPage === item.id
-                      const dateString = item.source ? paymentSourceDates[item.source] : undefined
-                      
-                      return (
-                        <a
-                          key={item.id}
-                          href={item.href}
-                          onClick={() => setIsOpen(false)}
-                          className={`
-                            flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-xs
-                            ${isActive 
-                              ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
-                              : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
-                            }
-                          `}
-                        >
-                          <span>{item.label}</span>
-                          {dateString && (
-                            <span className={`text-xs font-bold ${getDateColor(dateString)}`}>
-                              {dateString}
-                            </span>
-                          )}
-                        </a>
-                      )
-                    })}
-                  </div>
-                )}
+{braintreeExpanded && (
+  <div className="ml-6 mt-1 space-y-1">
+    {braintreeItems.map((item) => {
+      const isActive = currentPage === item.id
+      const dateString = item.source ? paymentSourceDates[item.source] : undefined
+      
+      return (
+        <a
+          key={item.id}
+          href={item.href}               // ✅ vai usar /reports/braintree-eur
+          onClick={() => setIsOpen(false)}
+          className={...}
+        >
+          <span>{item.label}</span>
+          {dateString && (...)}
+        </a>
+      )
+    })}
+  </div>
+)}
+
               </div>
 
               {/* Other Payment Sources */}
