@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from "react"
 import { Upload, Download, Edit2, Save, X, Trash2, ArrowLeft, Loader2, CheckCircle, XCircle } from "lucide-react"
-import { loadAllCSVFiles, saveCSVFile, updateCSVRow, deleteCSVRow } from "@/lib/database"
+import {
+  loadAllCSVFiles,
+  saveCSVFile,
+  updateCSVRow,
+  deleteCSVRow,
+  type CSVRow,            // 👈 acrescenta isso
+} from "@/lib/database"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -10,25 +16,22 @@ import { Badge } from "@/components/ui/badge"
 import { Sidebar } from "@/components/custom/sidebar"
 import Link from "next/link"
 
-interface BraintreeEURRow {
-  id: string
-  date: string
-  description: string
-  amount: number
+// Tudo que um CSVRow tem + campos específicos do Braintree EUR
+type BraintreeEURRow = CSVRow & {
   payout: number
   disbursement_date: string
   bank_conciliation: boolean
   bank_name: string
-  [key: string]: any
 }
 
-interface BankinterEURRow {
-  id: string
-  fecha_contable: string
-  fecha_valor: string
-  importe: number
-  [key: string]: any
+// CSVRow + campos específicos que você usa do Bankinter EUR
+type BankinterEURRow = CSVRow & {
+  fecha_contable?: string
+  fecha_valor?: string
+  importe?: number
 }
+
+
 
 export default function BraintreeEURPage() {
   const [rows, setRows] = useState<BraintreeEURRow[]>([])
