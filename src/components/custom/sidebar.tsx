@@ -70,7 +70,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   const braintreeItems = [
     { 
       label: "Braintree EUR", 
-      href: "/#braintree-eur", 
+      href: "/reports/braintree-eur", 
       id: "braintree-eur",
       source: "braintree-eur"
     },
@@ -346,7 +346,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
       return (
         <a
           key={item.id}
-          href={item.href}               // ✅ vai usar /reports/braintree-eur
+          href={item.href}
           onClick={() => setIsOpen(false)}
           className={...}
         >
@@ -357,6 +357,8 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     })}
   </div>
 )}
+
+
 
               </div>
 
