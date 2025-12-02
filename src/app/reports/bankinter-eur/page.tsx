@@ -205,9 +205,9 @@ export default function BraintreeEURPage() {
 
   
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
-    const file = files[0];
+    const uploadFiles = event.target.uploadFiles;
+    if (!uploadFiles || uploadFiles.length === 0) return;
+    const file = uploadFiles[0];
 
     // Detectar tipo XLSX
     if (file.name.endsWith('.xlsx')) {
@@ -263,9 +263,9 @@ export default function BraintreeEURPage() {
 
     // Lógica CSV original (mantida)
 
-    const files = event.target.files
-    if (files && files.length > 0) {
-      const file = files[0]
+    const uploadFiles = event.target.uploadFiles
+    if (uploadFiles && uploadFiles.length > 0) {
+      const file = uploadFiles[0]
       const reader = new FileReader()
       
       reader.onload = async (e) => {
@@ -759,7 +759,7 @@ export default function BraintreeEURPage() {
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
               <CardDescription className="text-white/80">
-                Upload CSV files - Columns: disbursement_date → Date | settlement_currency_sales → Amount (Payout calculated automatically)
+                Upload CSV uploadFiles - Columns: disbursement_date → Date | settlement_currency_sales → Amount (Payout calculated automatically)
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
