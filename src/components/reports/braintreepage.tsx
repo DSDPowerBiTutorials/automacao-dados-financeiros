@@ -99,7 +99,7 @@ export default function BraintreePage({ source, title }: Props) {
         const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
 
         const dateIdx = headers.findIndex(h => ['fecha contable', 'fecha valor', 'date'].includes(h))
-        const descIdx = headers.findIndex(h => ['descripción', 'description'].includes(h))
+        const descIdx = headers.findIndex(h => ['descripción', 'descripcion', 'description'].includes(h))
         const amountIdx = headers.findIndex(h => ['haber', 'importe', 'amount'].includes(h))
 
         if (dateIdx === -1 || descIdx === -1 || amountIdx === -1) {
