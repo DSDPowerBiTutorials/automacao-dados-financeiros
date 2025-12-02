@@ -96,11 +96,18 @@ export default function BraintreePage({ source, title }: Props) {
       reader.onload = async (e) => {
         const text = e.target?.result as string
         const lines = text.split('\n').filter(Boolean)
-        const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
+const headers = lines[0].split(',').map(h => h.trim().toLowerCase())
 
-        const dateIdx = headers.findIndex(h => h.includes('fecha') || h.includes('valor') || h.includes('date'))
-        const descIdx = headers.findIndex(h => h.includes('descrip'))
-        const amountIdx = headers.findIndex(h => h.includes('haber') || h.includes('amount'))
+const dateIdx = headers.findIndex(h => 
+  ['fecha contable', 'fecha valor', 'date'].some(key => h.includes(key))
+)
+const descIdx = headers.findIndex(h =>
+  ['descripción', 'descripcion', 'description'].some(key => h.includes(key))
+)
+const amountIdx = headers.findIndex(h =>
+  ['haber', 'amount', 'importe'].some(key => h.includes(key))
+)
+
 
         if (dateIdx === -1 || descIdx === -1 || amountIdx === -1) {
           alert('❌ Arquivo inválido. Certifique-se de incluir colunas: FECHA/Date, DESCRIPCIÓN/Description, HABER/Amount')
