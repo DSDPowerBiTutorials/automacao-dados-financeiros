@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Upload, Download, Edit2, Save, X, ArrowLeft, Loader2, CheckCircle, XCircle, Settings, Database, Zap, User, Split, Filter } from "lucide-react"
+import { Upload, Download, Edit2, Save, X, Trash2, ArrowLeft, Loader2, CheckCircle, XCircle, Settings, Database, XIcon, Zap, User } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -12,57 +12,44 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters"
 
-interface BankinterEURRow {
+interface BraintreeEURRow {
   id: string
   date: string
   description: string
   amount: number
   conciliado: boolean
-  paymentSource: string | null
+  destinationAccount: string | null
   reconciliationType?: 'automatic' | 'manual' | null
-  isSplit?: boolean
-  splitFrom?: string
-  splitIndex?: number
   [key: string]: any
 }
 
-interface PaymentSourceRow {
+interface BankStatementRow {
   date: string
   amount: number
   source: string
 }
 
-// Mapeamento de cores por fonte de pagamento
-const paymentSourceColors: { [key: string]: { bg: string; text: string; border: string } } = {
-  'Braintree EUR': { bg: 'bg-[#002991]/10', text: 'text-[#002991]', border: 'border-[#002991]/20' },
-  'Braintree USD': { bg: 'bg-[#002991]/10', text: 'text-[#002991]', border: 'border-[#002991]/20' },
-  'Braintree Amex': { bg: 'bg-[#002991]/10', text: 'text-[#002991]', border: 'border-[#002991]/20' },
-  'Stripe': { bg: 'bg-[#B1ADFF]/20', text: 'text-black', border: 'border-[#B1ADFF]/40' },
-  'GoCardless': { bg: 'bg-[#F1F252]/20', text: 'text-black', border: 'border-[#F1F252]/40' },
+// Mapeamento de cores por destination account
+const destinationAccountColors: { [key: string]: { bg: string; text: string; border: string } } = {
+  'Bankinter EUR': { bg: 'bg-[#FF7300]/10', text: 'text-[#FF7300]', border: 'border-[#FF7300]/20' },
+  'Bankinter USD': { bg: 'bg-[#FF7300]/10', text: 'text-[#FF7300]', border: 'border-[#FF7300]/20' },
+  'Bankinter GBP': { bg: 'bg-[#FF7300]/10', text: 'text-[#FF7300]', border: 'border-[#FF7300]/20' },
 }
 
-export default function BankinterEURPage() {
-  const [rows, setRows] = useState<BankinterEURRow[]>([])
-  const [filteredRows, setFilteredRows] = useState<BankinterEURRow[]>([])
+export default function BraintreeEURPage() {
+  const [rows, setRows] = useState<BraintreeEURRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingRow, setEditingRow] = useState<string | null>(null)
-  const [editedData, setEditedData] = useState<Partial<BankinterEURRow>>({})
+  const [editedData, setEditedData] = useState<Partial<BraintreeEURRow>>({})
+  const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
-  const [showSplitDialog, setShowSplitDialog] = useState(false)
-  const [splitRowId, setSplitRowId] = useState<string | null>(null)
-  const [splitValues, setSplitValues] = useState<number[]>([0, 0])
-  const [dateFrom, setDateFrom] = useState<string>('')
-  const [dateTo, setDateTo] = useState<string>('')
+  const [splitScreenUrl, setSplitScreenUrl] = useState<string | null>(null)
 
   useEffect(() => {
     loadData()
   }, [])
-
-  useEffect(() => {
-    applyFilters()
-  }, [rows, dateFrom, dateTo])
 
   // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (date1: string, date2: string, dayRange: number = 3): boolean => {
@@ -73,63 +60,63 @@ export default function BankinterEURPage() {
     return diffDays <= dayRange
   }
 
-  const reconcilePaymentSources = async (bankRows: BankinterEURRow[]): Promise<BankinterEURRow[]> => {
+  const reconcileBankStatements = async (braintreeRows: BraintreeEURRow[]): Promise<BraintreeEURRow[]> => {
     try {
-      if (!supabase) return bankRows
+      if (!supabase) return braintreeRows
 
-      // Buscar dados dos payment sources (Braintree EUR, USD e Amex)
-      const { data: paymentSourcesData, error } = await supabase
+      // Buscar dados dos bank statements (Bankinter EUR, USD, etc.)
+      const { data: bankStatementsData, error } = await supabase
         .from('csv_rows')
         .select('*')
-        .in('source', ['braintree-eur', 'braintree-usd', 'braintree-amex'])
+        .like('source', 'bankinter-%')
 
-      if (error || !paymentSourcesData) {
-        console.error('Error loading payment sources:', error)
-        return bankRows
+      if (error || !bankStatementsData) {
+        console.error('Error loading bank statements:', error)
+        return braintreeRows
       }
 
-      // Criar lista de payment sources
-      const paymentSources: PaymentSourceRow[] = paymentSourcesData.map(row => ({
+      // Mapear bank statements
+      const bankStatements: BankStatementRow[] = bankStatementsData.map(row => ({
         date: row.date,
         amount: parseFloat(row.amount) || 0,
-        source: row.source === 'braintree-eur' ? 'Braintree EUR' :
-                row.source === 'braintree-usd' ? 'Braintree USD' :
-                'Braintree Amex'
+        source: row.source === 'bankinter-eur' ? 'Bankinter EUR' : 
+                row.source === 'bankinter-usd' ? 'Bankinter USD' : 
+                'Bankinter'
       }))
 
-      // Reconciliar cada linha do Bankinter EUR
-      const reconciledRows = bankRows.map(bankRow => {
-        // Filtrar payment sources dentro do intervalo de ±3 dias
-        const matchingSources = paymentSources.filter(ps =>
-          isWithinDateRange(bankRow.date, ps.date, 3)
+      // Reconciliar cada linha do Braintree EUR
+      const reconciledRows = braintreeRows.map(braintreeRow => {
+        // Filtrar bank statements dentro do intervalo de ±3 dias
+        const matchingStatements = bankStatements.filter(bs => 
+          isWithinDateRange(braintreeRow.date, bs.date, 3)
         )
-
-        // Tentar match exato com um único payout
-        const exactMatch = matchingSources.find(ps =>
-          Math.abs(ps.amount - bankRow.amount) < 0.01
+        
+        // Tentar match exato com um único ingresso
+        const exactMatch = matchingStatements.find(bs => 
+          Math.abs(bs.amount - braintreeRow.amount) < 0.01
         )
-
+        
         if (exactMatch) {
           return {
-            ...bankRow,
-            paymentSource: exactMatch.source,
+            ...braintreeRow,
+            destinationAccount: exactMatch.source,
             conciliado: true,
             reconciliationType: 'automatic' as const
           }
         }
 
-        // Tentar match com soma de múltiplos payouts da mesma fonte
-        const sourceGroups = new Map<string, number>()
-        matchingSources.forEach(ps => {
-          const currentSum = sourceGroups.get(ps.source) || 0
-          sourceGroups.set(ps.source, currentSum + ps.amount)
+        // Tentar match com soma de múltiplos ingressos da mesma conta
+        const accountGroups = new Map<string, number>()
+        matchingStatements.forEach(bs => {
+          const currentSum = accountGroups.get(bs.source) || 0
+          accountGroups.set(bs.source, currentSum + bs.amount)
         })
 
-        for (const [source, totalAmount] of sourceGroups.entries()) {
-          if (Math.abs(totalAmount - bankRow.amount) < 0.01) {
+        for (const [account, totalAmount] of accountGroups.entries()) {
+          if (Math.abs(totalAmount - braintreeRow.amount) < 0.01) {
             return {
-              ...bankRow,
-              paymentSource: source,
+              ...braintreeRow,
+              destinationAccount: account,
               conciliado: true,
               reconciliationType: 'automatic' as const
             }
@@ -138,8 +125,8 @@ export default function BankinterEURPage() {
 
         // Sem match encontrado
         return {
-          ...bankRow,
-          paymentSource: null,
+          ...braintreeRow,
+          destinationAccount: null,
           conciliado: false,
           reconciliationType: null
         }
@@ -147,8 +134,8 @@ export default function BankinterEURPage() {
 
       return reconciledRows
     } catch (error) {
-      console.error('Error reconciling payment sources:', error)
-      return bankRows
+      console.error('Error reconciling bank statements:', error)
+      return braintreeRows
     }
   }
 
@@ -165,28 +152,25 @@ export default function BankinterEURPage() {
       const { data: rowsData, error } = await supabase
         .from('csv_rows')
         .select('*')
-        .eq('source', 'bankinter-eur')
-        .order('date', { ascending: false })
+        .eq('source', 'braintree-eur')
+        .order('date', { ascending: true })
 
       if (error) {
         console.error('Error loading data:', error)
         setRows([])
       } else if (rowsData) {
-        const mappedRows: BankinterEURRow[] = rowsData.map(row => ({
+        const mappedRows: BraintreeEURRow[] = rowsData.map(row => ({
           id: row.id,
           date: row.date,
           description: row.description || '',
           amount: parseFloat(row.amount) || 0,
           conciliado: row.custom_data?.conciliado || false,
-          paymentSource: row.custom_data?.paymentSource || null,
-          reconciliationType: row.custom_data?.reconciliationType || null,
-          isSplit: row.custom_data?.isSplit || false,
-          splitFrom: row.custom_data?.splitFrom || null,
-          splitIndex: row.custom_data?.splitIndex || null
+          destinationAccount: row.custom_data?.destinationAccount || null,
+          reconciliationType: row.custom_data?.reconciliationType || null
         }))
 
-        // Reconciliar automaticamente
-        const reconciledRows = await reconcilePaymentSources(mappedRows)
+        // Reconciliar com bank statements
+        const reconciledRows = await reconcileBankStatements(mappedRows)
         setRows(reconciledRows)
       } else {
         setRows([])
@@ -199,75 +183,149 @@ export default function BankinterEURPage() {
     }
   }
 
-  const applyFilters = () => {
-    let filtered = rows
-
-    if (dateFrom) {
-      filtered = filtered.filter(row => row.date >= dateFrom)
+  const handleDestinationAccountClick = (destinationAccount: string | null) => {
+    if (!destinationAccount) return
+    
+    // Mapear o nome da conta para a URL correspondente
+    const accountUrlMap: { [key: string]: string } = {
+      'Bankinter EUR': '/reports/bankinter-eur',
+      'Bankinter USD': '/reports/bankinter-usd',
+      'Bankinter GBP': '/reports/bankinter-gbp',
     }
-
-    if (dateTo) {
-      filtered = filtered.filter(row => row.date <= dateTo)
+    
+    const url = accountUrlMap[destinationAccount]
+    if (url) {
+      setSplitScreenUrl(url)
     }
-
-    setFilteredRows(filtered)
   }
 
+  const closeSplitScreen = () => {
+    setSplitScreenUrl(null)
+  }
+
+  
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
+
+    // Detectar tipo XLSX
+    if (file.name.endsWith('.xlsx')) {
+      try {
+        const data = await file.arrayBuffer();
+        const XLSX = await import('xlsx');
+        const workbook = XLSX.read(data, { type: 'array' });
+        const sheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[sheetName];
+
+        // Cabeçalho em A6:L6 e dados em A7:L(última)
+        const range = XLSX.utils.decode_range(sheet['!ref']);
+        const startRow = 6; // cabeçalho
+        const endRow = range.e.r + 1;
+        const headers = XLSX.utils.sheet_to_json(sheet, { header: 1, range: `A6:L6` })[0];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: headers, range: `A7:L${endRow}` });
+
+        // Converter para CSV
+        const csv = XLSX.utils.sheet_to_csv(XLSX.utils.json_to_sheet(rows));
+
+        // Upload para Supabase Storage
+        const fileName = `bankinter_eur_${Date.now()}.csv`;
+        const { error: uploadError } = await supabase.storage
+          .from('csv_files')
+          .upload(fileName, new Blob([csv], { type: 'text/csv' }), { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        // Inserir linhas em csv_rows
+        const parsedRows = rows.map((r: any) => ({
+          id: crypto.randomUUID(),
+          file_name: fileName,
+          source: 'bankinter-eur',
+          date: r['FECHA VALOR'] ? r['FECHA VALOR'].toString() : '',
+          description: r['DESCRIPCIÓN'] || '',
+          amount: parseFloat((r['HABER'] || '0').toString().replace(',', '.')) || 0,
+          category: r['CATEGORÍA'] || '',
+          classification: 'Other',
+          reconciled: false,
+          custom_data: r
+        }));
+
+        const { error: insertError } = await supabase.from('csv_rows').insert(parsedRows);
+        if (insertError) throw insertError;
+
+        alert(`✅ Arquivo XLSX processado com sucesso! ${parsedRows.length} linhas enviadas.`);
+      } catch (err) {
+        console.error('Erro ao processar XLSX:', err);
+        alert('❌ Erro ao processar arquivo XLSX. Verifique o formato e tente novamente.');
+      }
+      return;
+    }
+
+    // Lógica CSV original (mantida)
+
     const files = event.target.files
     if (files && files.length > 0) {
       const file = files[0]
       const reader = new FileReader()
-
+      
       reader.onload = async (e) => {
         const text = e.target?.result as string
-        const lines = text.split('\\n')
-
-        console.log('=== BANKINTER EUR CSV PROCESSING ===')
+        const lines = text.split('\n')
+        
+        console.log('=== BRAINTREE EUR CSV PROCESSING ===')
         console.log('Total lines:', lines.length)
-
+        
         if (lines.length < 2) {
           alert('❌ File is empty or invalid')
           return
         }
-
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^\\"|\\"$/g, ''))
+        
+        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
         console.log('Headers found:', headers)
-
-        const fechaValorIndex = headers.findIndex(h =>
-          h.toUpperCase().replace(/[ÃÁ]/g, 'A').includes('FECHA') &&
-          h.toUpperCase().includes('VALOR')
+        
+        const disbursementDateIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('disbursement') && h.toLowerCase().includes('date')
         )
-        const descripcionIndex = headers.findIndex(h =>
-          h.toUpperCase().replace(/[ÃÓÑ\\"]/g, 'O').includes('DESCRIPCI')
+        const settlementSalesIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('settlement') && h.toLowerCase().includes('sales')
         )
-        const haberIndex = headers.findIndex(h => h.toUpperCase() === 'HABER')
-
+        const discountIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('discount')
+        )
+        const multicurrencyIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('multicurrency')
+        )
+        const perTransactionIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('per') && h.toLowerCase().includes('transaction')
+        )
+        const crossBorderIndex = headers.findIndex(h => 
+          h.toLowerCase().includes('cross') && h.toLowerCase().includes('border')
+        )
+        
         console.log('Column mapping:')
-        console.log('- FECHA VALOR index:', fechaValorIndex, '→', headers[fechaValorIndex])
-        console.log('- DESCRIPCIÓN index:', descripcionIndex, '→', headers[descripcionIndex])
-        console.log('- HABER index:', haberIndex, '→', headers[haberIndex])
-
-        if (fechaValorIndex === -1 || descripcionIndex === -1 || haberIndex === -1) {
-          alert('❌ Required columns not found! Make sure the file has: FECHA VALOR, DESCRIPCIÓN, HABER')
+        console.log('- Disbursement Date index:', disbursementDateIndex, '→', headers[disbursementDateIndex])
+        console.log('- Settlement Sales index:', settlementSalesIndex, '→', headers[settlementSalesIndex])
+        
+        if (disbursementDateIndex === -1 || settlementSalesIndex === -1) {
+          alert('❌ Required columns not found! Make sure the file has: disbursement_date, settlement_currency_sales')
           console.error('Available columns:', headers)
           return
         }
-
-        const newRows: BankinterEURRow[] = []
+        
+        const newRows: BraintreeEURRow[] = []
         let processedCount = 0
-
+        
         for (let i = 1; i < lines.length; i++) {
           if (!lines[i].trim()) continue
-
+          
           const values: string[] = []
           let currentValue = ''
           let insideQuotes = false
-
+          
           for (let j = 0; j < lines[i].length; j++) {
             const char = lines[i][j]
-
-            if (char === '\\"') {
+            
+            if (char === '"') {
               insideQuotes = !insideQuotes
             } else if (char === ',' && !insideQuotes) {
               values.push(currentValue.trim())
@@ -277,54 +335,50 @@ export default function BankinterEURPage() {
             }
           }
           values.push(currentValue.trim())
-
-          const fechaValor = (values[fechaValorIndex] || '').trim()
-          const descripcion = (values[descripcionIndex] || '').trim()
-          const haberValue = (values[haberIndex] || '0').trim()
-
-          let amountNumber = 0
-          if (haberValue) {
-            const cleanValue = haberValue
-              .replace(/\\s/g, '')
-              .replace(',', '.')
-
-            amountNumber = parseFloat(cleanValue) || 0
-          }
-
-          if (amountNumber === 0 && !descripcion) continue
-
-          const uniqueId = `BANKINTER-EUR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-
+          
+          const disbursementDate = (values[disbursementDateIndex] || '').trim()
+          const settlementSales = parseFloat((values[settlementSalesIndex] || '0').replace(/[^\d.-]/g, '')) || 0
+          const discount = discountIndex !== -1 ? parseFloat((values[discountIndex] || '0').replace(/[^\d.-]/g, '')) || 0 : 0
+          const multicurrency = multicurrencyIndex !== -1 ? parseFloat((values[multicurrencyIndex] || '0').replace(/[^\d.-]/g, '')) || 0 : 0
+          const perTransaction = perTransactionIndex !== -1 ? parseFloat((values[perTransactionIndex] || '0').replace(/[^\d.-]/g, '')) || 0 : 0
+          const crossBorder = crossBorderIndex !== -1 ? parseFloat((values[crossBorderIndex] || '0').replace(/[^\d.-]/g, '')) || 0 : 0
+          
+          const payout = settlementSales + discount + multicurrency + perTransaction + crossBorder
+          
+          if (payout === 0 && !disbursementDate) continue
+          
+          const uniqueId = `BRAINTREE-EUR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          
           newRows.push({
             id: uniqueId,
-            date: fechaValor,
-            description: descripcion,
-            amount: amountNumber,
+            date: disbursementDate,
+            description: `Braintree EUR Disbursement - ${disbursementDate}`,
+            amount: payout,
             conciliado: false,
-            paymentSource: null,
+            destinationAccount: null,
             reconciliationType: null
           })
-
+          
           processedCount++
         }
-
+        
         console.log('Processing complete:', processedCount, 'rows processed')
-
+        
         if (newRows.length === 0) {
           alert('❌ No valid data found in file')
           return
         }
-
+        
         try {
           setIsSaving(true)
 
-          // Reconciliar automaticamente antes de salvar
-          const reconciledRows = await reconcilePaymentSources(newRows)
+          // Reconciliar com bank statements antes de salvar
+          const reconciledRows = await reconcileBankStatements(newRows)
 
           const rowsToInsert = reconciledRows.map(row => ({
             id: row.id,
-            file_name: 'bankinter-eur.csv',
-            source: 'bankinter-eur',
+            file_name: 'braintree-eur.csv',
+            source: 'braintree-eur',
             date: row.date,
             description: row.description,
             amount: row.amount.toString(),
@@ -337,7 +391,7 @@ export default function BankinterEURPage() {
               description: row.description,
               amount: row.amount,
               conciliado: row.conciliado,
-              paymentSource: row.paymentSource,
+              destinationAccount: row.destinationAccount,
               reconciliationType: row.reconciliationType
             }
           }))
@@ -345,7 +399,7 @@ export default function BankinterEURPage() {
           const response = await fetch('/api/csv-rows', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
+            body: JSON.stringify({ rows: rowsToInsert, source: 'braintree-eur' })
           })
 
           const result = await response.json()
@@ -373,7 +427,7 @@ export default function BankinterEURPage() {
           setIsSaving(false)
         }
       }
-
+      
       reader.readAsText(file)
     }
   }
@@ -381,12 +435,12 @@ export default function BankinterEURPage() {
   const saveAllChanges = async () => {
     setIsSaving(true)
     setSaveSuccess(false)
-
+    
     try {
       const rowsToInsert = rows.map(row => ({
         id: row.id,
-        file_name: 'bankinter-eur.csv',
-        source: 'bankinter-eur',
+        file_name: 'braintree-eur.csv',
+        source: 'braintree-eur',
         date: row.date,
         description: row.description,
         amount: row.amount.toString(),
@@ -399,18 +453,15 @@ export default function BankinterEURPage() {
           description: row.description,
           amount: row.amount,
           conciliado: row.conciliado,
-          paymentSource: row.paymentSource,
-          reconciliationType: row.reconciliationType,
-          isSplit: row.isSplit,
-          splitFrom: row.splitFrom,
-          splitIndex: row.splitIndex
+          destinationAccount: row.destinationAccount,
+          reconciliationType: row.reconciliationType
         }
       }))
 
       const response = await fetch('/api/csv-rows', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
+        body: JSON.stringify({ rows: rowsToInsert, source: 'braintree-eur' })
       })
 
       const result = await response.json()
@@ -434,28 +485,27 @@ export default function BankinterEURPage() {
     }
   }
 
-  const startEditing = (row: BankinterEURRow) => {
+  const startEditing = (row: BraintreeEURRow) => {
     setEditingRow(row.id)
     setEditedData({ ...row })
   }
 
   const saveEdit = async () => {
     if (!editingRow) return
-
-    // Atualizar conciliado se paymentSource foi definido
-    const shouldBeConciliado = editedData.paymentSource !== null && editedData.paymentSource !== undefined && editedData.paymentSource !== '' && editedData.paymentSource !== 'N/A'
-
-    const updatedRows = rows.map(row =>
-      row.id === editingRow ? {
-        ...row,
-        ...editedData,
-        paymentSource: editedData.paymentSource === 'N/A' ? null : editedData.paymentSource,
+    
+    // Atualizar conciliado se destinationAccount foi definido
+    const shouldBeConciliado = editedData.destinationAccount !== null && editedData.destinationAccount !== undefined && editedData.destinationAccount !== ''
+    
+    const updatedRows = rows.map(row => 
+      row.id === editingRow ? { 
+        ...row, 
+        ...editedData, 
         conciliado: shouldBeConciliado,
-        reconciliationType: 'manual' as const
+        reconciliationType: 'manual' as const 
       } : row
     )
     setRows(updatedRows)
-
+    
     const rowToUpdate = updatedRows.find(r => r.id === editingRow)
     if (rowToUpdate && supabase) {
       try {
@@ -472,11 +522,8 @@ export default function BankinterEURPage() {
               description: rowToUpdate.description,
               amount: rowToUpdate.amount,
               conciliado: rowToUpdate.conciliado,
-              paymentSource: rowToUpdate.paymentSource,
-              reconciliationType: rowToUpdate.reconciliationType,
-              isSplit: rowToUpdate.isSplit,
-              splitFrom: rowToUpdate.splitFrom,
-              splitIndex: rowToUpdate.splitIndex
+              destinationAccount: rowToUpdate.destinationAccount,
+              reconciliationType: rowToUpdate.reconciliationType
             }
           })
           .eq('id', rowToUpdate.id)
@@ -493,7 +540,7 @@ export default function BankinterEURPage() {
         console.error('Error updating row:', error)
       }
     }
-
+    
     setEditingRow(null)
     setEditedData({})
   }
@@ -503,149 +550,88 @@ export default function BankinterEURPage() {
     setEditedData({})
   }
 
-  const openSplitDialog = (rowId: string) => {
-    const row = rows.find(r => r.id === rowId)
-    if (row) {
-      setSplitRowId(rowId)
-      setSplitValues([row.amount / 2, row.amount / 2])
-      setShowSplitDialog(true)
-    }
-  }
-
-  const addSplitLine = () => {
-    if (splitValues.length < 8) {
-      setSplitValues([...splitValues, 0])
-    }
-  }
-
-  const removeSplitLine = (index: number) => {
-    if (splitValues.length > 2) {
-      const newValues = splitValues.filter((_, i) => i !== index)
-      setSplitValues(newValues)
-    }
-  }
-
-  const updateSplitValue = (index: number, value: number) => {
-    const newValues = [...splitValues]
-    newValues[index] = value
-    setSplitValues(newValues)
-  }
-
-  const applySplit = async () => {
-    if (!splitRowId) return
-
-    const originalRow = rows.find(r => r.id === splitRowId)
-    if (!originalRow) return
-
-    const total = splitValues.reduce((sum, val) => sum + val, 0)
-    if (Math.abs(total - originalRow.amount) < 0.01) {
-      alert(`❌ O total do split (${formatCurrency(total)}) deve ser igual ao valor original (${formatCurrency(originalRow.amount)})`)
-      return
-    }
-
+  const handleDeleteRow = async (rowId: string) => {
+    if (!confirm('Are you sure you want to delete this row?')) return
+    
+    setIsDeleting(true)
     try {
-      setIsSaving(true)
-
-      // Criar novas linhas para o split
-      const splitRows: BankinterEURRow[] = splitValues.map((value, index) => ({
-        id: `${splitRowId}-SPLIT-${index + 1}`,
-        date: originalRow.date,
-        description: `${originalRow.description} (Split ${index + 1}/${splitValues.length})`,
-        amount: value,
-        conciliado: false,
-        paymentSource: null,
-        reconciliationType: null,
-        isSplit: true,
-        splitFrom: splitRowId,
-        splitIndex: index + 1
-      }))
-
-      // Remover linha original e adicionar splits
-      const updatedRows = rows.filter(r => r.id !== splitRowId).concat(splitRows)
-      setRows(updatedRows)
-
-      // Salvar no banco
-      const rowsToInsert = splitRows.map(row => ({
-        id: row.id,
-        file_name: 'bankinter-eur.csv',
-        source: 'bankinter-eur',
-        date: row.date,
-        description: row.description,
-        amount: row.amount.toString(),
-        category: 'Other',
-        classification: 'Other',
-        reconciled: false,
-        custom_data: {
-          id: row.id,
-          date: row.date,
-          description: row.description,
-          amount: row.amount,
-          conciliado: row.conciliado,
-          paymentSource: row.paymentSource,
-          reconciliationType: row.reconciliationType,
-          isSplit: row.isSplit,
-          splitFrom: row.splitFrom,
-          splitIndex: row.splitIndex
-        }
-      }))
-
-      // Deletar linha original
-      await supabase?.from('csv_rows').delete().eq('id', splitRowId)
-
-      // Inserir splits
-      const response = await fetch('/api/csv-rows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
+      const response = await fetch(`/api/csv-rows?id=${rowId}`, {
+        method: 'DELETE'
       })
 
       const result = await response.json()
 
       if (!response.ok || !result.success) {
-        console.error('Error saving split:', result.error)
-        alert(`❌ Error saving split: ${result.error || 'Unknown error'}`)
-        return
+        console.error('Error deleting row:', result.error)
+        alert(`❌ Error deleting row: ${result.error || 'Unknown error'}`)
+      } else {
+        await loadData()
+        
+        const now = new Date()
+        const formattedTime = formatTimestamp(now)
+        setLastSaved(formattedTime)
       }
-
-      const now = new Date()
-      const formattedTime = formatTimestamp(now)
-      setLastSaved(formattedTime)
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
-
-      setShowSplitDialog(false)
-      setSplitRowId(null)
-      setSplitValues([0, 0])
     } catch (error) {
-      console.error('Error applying split:', error)
-      alert('Error applying split. Please try again.')
+      console.error('Error deleting row:', error)
+      alert('Error deleting row. Please try again.')
     } finally {
-      setIsSaving(false)
+      setIsDeleting(false)
+    }
+  }
+
+  const handleDeleteAll = async () => {
+    if (!confirm('⚠️ WARNING: This will DELETE ALL rows from Braintree EUR! Are you sure?')) return
+    if (!confirm('⚠️ FINAL WARNING: This action CANNOT be undone! Continue?')) return
+    
+    setIsDeleting(true)
+    try {
+      const response = await fetch(`/api/csv-rows?source=braintree-eur`, {
+        method: 'DELETE'
+      })
+
+      const result = await response.json()
+
+      if (!response.ok || !result.success) {
+        console.error('Error deleting all rows:', result.error)
+        alert(`❌ Error deleting rows: ${result.error || 'Unknown error'}`)
+      } else {
+        await loadData()
+        
+        const now = new Date()
+        const formattedTime = formatTimestamp(now)
+        setLastSaved(formattedTime)
+        
+        alert('✅ All rows deleted successfully!')
+      }
+    } catch (error) {
+      console.error('Error deleting all rows:', error)
+      alert('Error deleting rows. Please try again.')
+    } finally {
+      setIsDeleting(false)
     }
   }
 
   const downloadCSV = () => {
     try {
-      const headers = ['ID', 'Date', 'Description', 'Amount', 'Payment Source', 'Payout Reconciliation', 'Split Info']
-
+      const headers = ['ID', 'Date', 'Description', 'Amount', 'Destination Account', 'Payout Reconciliation']
+      
       const csvContent = [
         headers.join(','),
-        ...filteredRows.map(row => [
+        ...rows.map(row => [
           row.id.substring(0, 8) + '...',
           formatDate(row.date),
           `"${row.description.replace(/"/g, '""')}"`,
           row.amount.toFixed(2),
-          row.paymentSource || 'N/A',
-          row.conciliado ? 'Yes' : 'No',
-          row.isSplit ? `Split ${row.splitIndex}` : ''
+          row.destinationAccount || '',
+          row.conciliado ? 'Yes' : 'No'
         ].join(','))
-      ].join('\\n')
-
+      ].join('\n')
+      
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `bankinter-eur-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `braintree-eur-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -656,41 +642,25 @@ export default function BankinterEURPage() {
     }
   }
 
-  const getPaymentSourceStyle = (source: string | null) => {
-    if (!source) return { bg: 'bg-gray-100', text: 'text-gray-400', border: 'border-gray-200' }
-    return paymentSourceColors[source] || { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-200' }
+  const getDestinationAccountStyle = (account: string | null) => {
+    if (!account) return { bg: 'bg-gray-100', text: 'text-gray-400', border: 'border-gray-200' }
+    return destinationAccountColors[account] || { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-200' }
   }
-
-  // Calcular estatísticas
-  const calculateStats = () => {
-    const totalIncomes = filteredRows.filter(row => row.amount > 0).reduce((sum, row) => sum + row.amount, 0)
-    const incomesBySource = filteredRows
-      .filter(row => row.amount > 0 && row.paymentSource)
-      .reduce((acc, row) => {
-        acc[row.paymentSource!] = (acc[row.paymentSource!] || 0) + row.amount
-        return acc
-      }, {} as Record<string, number>)
-    const unreconciledCount = filteredRows.filter(row => !row.conciliado).length
-
-    return { totalIncomes, incomesBySource, unreconciledCount }
-  }
-
-  const { totalIncomes, incomesBySource, unreconciledCount } = calculateStats()
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-[#FF7300]" />
+      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
+        <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white">
-      <Sidebar currentPage="bankinter-eur" paymentSourceDates={{}} />
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+      <Sidebar currentPage="braintree-eur" paymentSourceDates={{}} />
 
-      <div className="md:pl-64">
-        <header className="border-b-2 border-gray-200 bg-white shadow-lg sticky top-0 z-30">
+      <div className={`md:pl-64 transition-all duration-300 ${splitScreenUrl ? 'md:pr-[50%]' : ''}`}>
+        <header className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-white dark:bg-[#1a2b4a] shadow-lg sticky top-0 z-30">
           <div className="container mx-auto px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -701,20 +671,20 @@ export default function BankinterEURPage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-black">
-                    Bankinter EUR - Bank Statement
+                  <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">
+                    Braintree EUR - Payment Source
                   </h1>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {filteredRows.length} records
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
+                    {rows.length} records
                   </p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" className="gap-2 border-black text-black hover:bg-gray-100">
+                <Button variant="outline" className="gap-2">
                   <Settings className="h-4 w-4" />
                   Settings
                 </Button>
-                <Button
+                <Button 
                   onClick={saveAllChanges}
                   disabled={isSaving || rows.length === 0}
                   className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
@@ -736,72 +706,47 @@ export default function BankinterEURPage() {
                   accept=".csv"
                   onChange={handleFileUpload}
                   className="hidden"
-                  id="file-upload-bankinter"
+                  id="file-upload-braintree"
                 />
-                <label htmlFor="file-upload-bankinter">
-                  <Button variant="outline" className="gap-2 border-black text-black hover:bg-gray-100" asChild>
+                <label htmlFor="file-upload-braintree">
+                  <Button variant="outline" className="gap-2" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload CSV
                     </span>
                   </Button>
                 </label>
-                <Button onClick={downloadCSV} className="gap-2 bg-black hover:bg-gray-800 text-white">
+                <Button onClick={downloadCSV} className="gap-2 bg-[#1a2b4a]">
                   <Download className="h-4 w-4" />
                   Download
+                </Button>
+                <Button 
+                  onClick={handleDeleteAll} 
+                  variant="destructive" 
+                  className="gap-2"
+                  disabled={isDeleting || rows.length === 0}
+                >
+                  {isDeleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                  Delete All
                 </Button>
               </div>
             </div>
 
-            {/* Filtros de data */}
-            <div className="mt-4 flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">Date Filters:</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">From:</label>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">To:</label>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setDateFrom('')
-                  setDateTo('')
-                }}
-                className="gap-2"
-              >
-                <X className="h-4 w-4" />
-                Clear Filters
-              </Button>
-            </div>
-
             {saveSuccess && (
-              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50">
+              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <AlertDescription className="text-emerald-800 font-medium">
+                <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
                   ✅ All changes saved successfully to database! Last saved: {lastSaved}
                 </AlertDescription>
               </Alert>
             )}
 
             {lastSaved && !saveSuccess && (
-              <div className="mt-3 text-sm text-gray-600 flex items-center gap-2">
+              <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
                 <Database className="h-4 w-4" />
                 <span>Last saved: {lastSaved}</span>
               </div>
@@ -810,90 +755,41 @@ export default function BankinterEURPage() {
         </header>
 
         <div className="container mx-auto px-6 py-8">
-          {/* Estatísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Incomes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalIncomes)}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Unreconciled Entries</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  {unreconciledCount}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Incomes by Source</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  {Object.entries(incomesBySource).map(([source, amount]) => (
-                    <div key={source} className="flex justify-between text-sm">
-                      <span>{source}:</span>
-                      <span className="font-medium">{formatCurrency(amount)}</span>
-                    </div>
-                  ))}
-                  {Object.keys(incomesBySource).length === 0 && (
-                    <div className="text-sm text-gray-500">No reconciled incomes</div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <Card className="shadow-xl border-2 border-gray-200">
-            <CardHeader className="bg-[#FF7300] text-white">
-              <CardTitle className="text-white">Bank Statement Details</CardTitle>
-              <CardDescription className="text-white/90">
-                Upload CSV files - Columns: FECHA VALOR → Date | DESCRIPCIÓN → Description | HABER → Amount
+          <Card className="shadow-xl">
+            <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
+              <CardTitle>Payment Source Details</CardTitle>
+              <CardDescription className="text-white/80">
+                Upload CSV files - Columns: disbursement_date → Date | settlement_currency_sales → Amount (Payout calculated automatically)
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b-2 border-gray-200 bg-gray-50">
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black w-24">ID</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Date</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Description</th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Amount</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">Payment Source</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">Payout Reconciliation</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">Actions</th>
+                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
+                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white w-24">ID</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Date</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Description</th>
+                      <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Amount</th>
+                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Destination Account</th>
+                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Payout Reconciliation</th>
+                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredRows.length === 0 ? (
+                    {rows.length === 0 ? (
                       <tr>
                         <td colSpan={7} className="py-8 text-center text-gray-500">
                           No data available. Upload a CSV file to get started.
                         </td>
                       </tr>
                     ) : (
-                      filteredRows.map((row) => {
-                        const sourceStyle = getPaymentSourceStyle(row.paymentSource)
+                      rows.map((row) => {
+                        const accountStyle = getDestinationAccountStyle(row.destinationAccount)
                         return (
-                          <tr key={row.id} className={`border-b border-gray-200 hover:bg-gray-50 ${row.isSplit ? 'bg-blue-50' : ''}`}>
-                            <td className="py-3 px-4 text-sm font-bold text-black">
-                              <div className="flex items-center gap-2">
-                                {row.isSplit && <Split className="h-4 w-4 text-blue-600" />}
-                                {row.id.substring(0, 8)}...
-                              </div>
-                            </td>
-                            <td className="py-3 px-4 text-sm text-black">
+                          <tr key={row.id} className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50">
+                            <td className="py-3 px-4 text-sm font-bold">{row.id.substring(0, 8)}...</td>
+                            <td className="py-3 px-4 text-sm">
                               {editingRow === row.id ? (
                                 <Input
                                   value={editedData.date || ''}
@@ -904,7 +800,7 @@ export default function BankinterEURPage() {
                                 formatDate(row.date)
                               )}
                             </td>
-                            <td className="py-3 px-4 text-sm max-w-xs truncate text-black">
+                            <td className="py-3 px-4 text-sm max-w-xs truncate">
                               {editingRow === row.id ? (
                                 <Input
                                   value={editedData.description || ''}
@@ -915,7 +811,7 @@ export default function BankinterEURPage() {
                                 row.description
                               )}
                             </td>
-                            <td className="py-3 px-4 text-sm text-right font-bold text-[#FF7300]">
+                            <td className="py-3 px-4 text-sm text-right font-bold text-[#4fc3f7]">
                               {editingRow === row.id ? (
                                 <Input
                                   type="number"
@@ -931,25 +827,25 @@ export default function BankinterEURPage() {
                             <td className="py-3 px-4 text-center text-sm">
                               {editingRow === row.id ? (
                                 <Select
-                                  value={editedData.paymentSource || ''}
-                                  onValueChange={(value) => setEditedData({ ...editedData, paymentSource: value })}
+                                  value={editedData.destinationAccount || ''}
+                                  onValueChange={(value) => setEditedData({ ...editedData, destinationAccount: value })}
                                 >
                                   <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select source" />
+                                    <SelectValue placeholder="Select account" />
                                   </SelectTrigger>
                                   <SelectContent>
-                                    <SelectItem value="N/A">N/A</SelectItem>
-                                    <SelectItem value="Braintree EUR">Braintree EUR</SelectItem>
-                                    <SelectItem value="Braintree USD">Braintree USD</SelectItem>
-                                    <SelectItem value="Braintree Amex">Braintree Amex</SelectItem>
-                                    <SelectItem value="Stripe">Stripe</SelectItem>
-                                    <SelectItem value="GoCardless">GoCardless</SelectItem>
+                                    <SelectItem value="Bankinter EUR">Bankinter EUR</SelectItem>
+                                    <SelectItem value="Bankinter USD">Bankinter USD</SelectItem>
+                                    <SelectItem value="Bankinter GBP">Bankinter GBP</SelectItem>
                                   </SelectContent>
                                 </Select>
-                              ) : row.paymentSource ? (
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sourceStyle.bg} ${sourceStyle.text} border ${sourceStyle.border}`}>
-                                  {row.paymentSource}
-                                </span>
+                              ) : row.destinationAccount ? (
+                                <button
+                                  onClick={() => handleDestinationAccountClick(row.destinationAccount)}
+                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${accountStyle.bg} ${accountStyle.text} border ${accountStyle.border} hover:opacity-80 transition-opacity cursor-pointer`}
+                                >
+                                  {row.destinationAccount}
+                                </button>
                               ) : (
                                 <span className="text-gray-400 text-xs">N/A</span>
                               )}
@@ -960,14 +856,14 @@ export default function BankinterEURPage() {
                                   {row.reconciliationType === 'automatic' ? (
                                     <div className="relative group">
                                       <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                         Automatic reconciliation
                                       </div>
                                     </div>
                                   ) : (
                                     <div className="relative group">
                                       <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                         Manual reconciliation
                                       </div>
                                     </div>
@@ -980,34 +876,37 @@ export default function BankinterEURPage() {
                             <td className="py-3 px-4 text-center">
                               {editingRow === row.id ? (
                                 <div className="flex items-center justify-center gap-2">
-                                  <Button size="sm" onClick={saveEdit} className="h-8 w-8 p-0 bg-black hover:bg-gray-800">
+                                  <Button size="sm" onClick={saveEdit} className="h-8 w-8 p-0">
                                     <Save className="h-4 w-4" />
                                   </Button>
-                                  <Button size="sm" variant="outline" onClick={cancelEdit} className="h-8 w-8 p-0 border-black text-black">
+                                  <Button size="sm" variant="outline" onClick={cancelEdit} className="h-8 w-8 p-0">
                                     <X className="h-4 w-4" />
                                   </Button>
                                 </div>
                               ) : (
                                 <div className="flex items-center justify-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => startEditing(row)}
-                                    className="h-8 w-8 p-0 text-black hover:bg-gray-100"
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => startEditing(row)} 
+                                    className="h-8 w-8 p-0"
+                                    disabled={isDeleting}
                                   >
                                     <Edit2 className="h-4 w-4" />
                                   </Button>
-                                  {!row.isSplit && (
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => openSplitDialog(row.id)}
-                                      className="h-8 w-8 p-0 text-blue-600 hover:bg-blue-50"
-                                      title="Split value"
-                                    >
-                                      <Split className="h-4 w-4" />
-                                    </Button>
-                                  )}
+                                  <Button 
+                                    size="sm" 
+                                    variant="ghost" 
+                                    onClick={() => handleDeleteRow(row.id)} 
+                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                    disabled={isDeleting}
+                                  >
+                                    {isDeleting ? (
+                                      <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Trash2 className="h-4 w-4" />
+                                    )}
+                                  </Button>
                                 </div>
                               )}
                             </td>
@@ -1023,70 +922,27 @@ export default function BankinterEURPage() {
         </div>
       </div>
 
-      {/* Split Dialog */}
-      {showSplitDialog && splitRowId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
-            <h3 className="text-lg font-bold mb-4">Split Value</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Original amount: {formatCurrency(rows.find(r => r.id === splitRowId)?.amount || 0)}
-            </p>
-            <div className="space-y-2 mb-4">
-              {splitValues.map((value, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <span className="text-sm font-medium w-16">Line {index + 1}:</span>
-                  <Input
-                    type="number"
-                    step="0.01"
-                    value={value}
-                    onChange={(e) => updateSplitValue(index, parseFloat(e.target.value) || 0)}
-                    className="flex-1"
-                  />
-                  {splitValues.length > 2 && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => removeSplitLine(index)}
-                      className="h-8 w-8 p-0 text-red-600"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-              ))}
+      {/* Split Screen Panel */}
+      {splitScreenUrl && (
+        <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-slate-900 shadow-2xl z-40 border-l-4 border-blue-500">
+          <div className="h-full flex flex-col">
+            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
+              <h2 className="text-lg font-bold">Bank Statement Details</h2>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={closeSplitScreen}
+                className="text-white hover:bg-blue-800"
+              >
+                <XIcon className="h-5 w-5" />
+              </Button>
             </div>
-            <div className="mb-4">
-              <p className="text-sm font-medium">
-                Total: {formatCurrency(splitValues.reduce((sum, val) => sum + val, 0))}
-              </p>
-            </div>
-            {splitValues.length < 8 && (
-              <Button
-                variant="outline"
-                onClick={addSplitLine}
-                className="w-full mb-4"
-              >
-                Add Line ({splitValues.length}/8)
-              </Button>
-            )}
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowSplitDialog(false)
-                  setSplitRowId(null)
-                  setSplitValues([0, 0])
-                }}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={applySplit}
-                className="flex-1 bg-black hover:bg-gray-800 text-white"
-              >
-                Apply Split
-              </Button>
+            <div className="flex-1 overflow-hidden">
+              <iframe
+                src={splitScreenUrl}
+                className="w-full h-full border-0"
+                title="Bank Statement"
+              />
             </div>
           </div>
         </div>
