@@ -12,11 +12,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters"
 
-interface BankinterEURRow {
+interface SabadellRow {
   id: string
   date: string
   description: string
   amount: number
+  balance: number
   conciliado: boolean
   paymentSource: string | null
   reconciliationType?: 'automatic' | 'manual' | null
@@ -41,12 +42,12 @@ const paymentSourceColors: { [key: string]: { bg: string; text: string; border: 
   'GoCardless': { bg: 'bg-[#F1F252]/20', text: 'text-black', border: 'border-[#F1F252]/40' },
 }
 
-export default function BankinterEURPage() {
-  const [rows, setRows] = useState<BankinterEURRow[]>([])
-  const [filteredRows, setFilteredRows] = useState<BankinterEURRow[]>([])
+export default function SabadellPage() {
+  const [rows, setRows] = useState<SabadellRow[]>([])
+  const [filteredRows, setFilteredRows] = useState<SabadellRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingRow, setEditingRow] = useState<string | null>(null)
-  const [editedData, setEditedData] = useState<Partial<BankinterEURRow>>({})
+  const [editedData, setEditedData] = useState<Partial<SabadellRow>>({})
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<string | null>(null)
   const [saveSuccess, setSaveSuccess] = useState(false)
@@ -73,7 +74,7 @@ export default function BankinterEURPage() {
     return diffDays <= dayRange
   }
 
-  const reconcilePaymentSources = async (bankRows: BankinterEURRow[]): Promise<BankinterEURRow[]> => {
+  const reconcilePaymentSources = async (bankRows: SabadellRow[]): Promise<SabadellRow[]> => {
     try {
       if (!supabase) return bankRows
 
@@ -97,7 +98,7 @@ export default function BankinterEURPage() {
                 'Braintree Amex'
       }))
 
-      // Reconciliar cada linha do Bankinter EUR
+      // Reconciliar cada linha do Sabadell
       const reconciledRows = bankRows.map(bankRow => {
         // Filtrar payment sources dentro do intervalo de ±3 dias
         const matchingSources = paymentSources.filter(ps =>
@@ -165,18 +166,19 @@ export default function BankinterEURPage() {
       const { data: rowsData, error } = await supabase
         .from('csv_rows')
         .select('*')
-        .eq('source', 'bankinter-eur')
+        .eq('source', 'sabadell')
         .order('date', { ascending: false })
 
       if (error) {
         console.error('Error loading data:', error)
         setRows([])
       } else if (rowsData) {
-        const mappedRows: BankinterEURRow[] = rowsData.map(row => ({
+        const mappedRows: SabadellRow[] = rowsData.map(row => ({
           id: row.id,
           date: row.date,
           description: row.description || '',
           amount: parseFloat(row.amount) || 0,
+          balance: parseFloat(row.custom_data?.balance) || 0,
           conciliado: row.custom_data?.conciliado || false,
           paymentSource: row.custom_data?.paymentSource || null,
           reconciliationType: row.custom_data?.reconciliationType || null,
@@ -223,7 +225,7 @@ export default function BankinterEURPage() {
         const text = e.target?.result as string
         const lines = text.split('\\n')
 
-        console.log('=== BANKINTER EUR CSV PROCESSING ===')
+        console.log('=== SABADELL CSV PROCESSING ===')
         console.log('Total lines:', lines.length)
 
         if (lines.length < 2) {
@@ -234,27 +236,32 @@ export default function BankinterEURPage() {
         const headers = lines[0].split(',').map(h => h.trim().replace(/^\\"|\\"$/g, ''))
         console.log('Headers found:', headers)
 
-        const fechaValorIndex = headers.findIndex(h =>
-          h.toUpperCase().replace(/[ÃÁ]/g, 'A').includes('FECHA') &&
-          h.toUpperCase().includes('VALOR')
+        const fechaIndex = headers.findIndex(h =>
+          h.toUpperCase().includes('FECHA')
         )
         const descripcionIndex = headers.findIndex(h =>
           h.toUpperCase().replace(/[ÃÓÑ\\"]/g, 'O').includes('DESCRIPCI')
         )
-        const haberIndex = headers.findIndex(h => h.toUpperCase() === 'HABER')
+        const importeIndex = headers.findIndex(h =>
+          h.toUpperCase().includes('IMPORTE')
+        )
+        const saldoIndex = headers.findIndex(h =>
+          h.toUpperCase().includes('SALDO')
+        )
 
         console.log('Column mapping:')
-        console.log('- FECHA VALOR index:', fechaValorIndex, '→', headers[fechaValorIndex])
+        console.log('- FECHA index:', fechaIndex, '→', headers[fechaIndex])
         console.log('- DESCRIPCIÓN index:', descripcionIndex, '→', headers[descripcionIndex])
-        console.log('- HABER index:', haberIndex, '→', headers[haberIndex])
+        console.log('- IMPORTE index:', importeIndex, '→', headers[importeIndex])
+        console.log('- SALDO index:', saldoIndex, '→', headers[saldoIndex])
 
-        if (fechaValorIndex === -1 || descripcionIndex === -1 || haberIndex === -1) {
-          alert('❌ Required columns not found! Make sure the file has: FECHA VALOR, DESCRIPCIÓN, HABER')
+        if (fechaIndex === -1 || descripcionIndex === -1 || importeIndex === -1) {
+          alert('❌ Required columns not found! Make sure the file has: FECHA, DESCRIPCIÓN, IMPORTE')
           console.error('Available columns:', headers)
           return
         }
 
-        const newRows: BankinterEURRow[] = []
+        const newRows: SabadellRow[] = []
         let processedCount = 0
 
         for (let i = 1; i < lines.length; i++) {
@@ -278,28 +285,39 @@ export default function BankinterEURPage() {
           }
           values.push(currentValue.trim())
 
-          const fechaValor = (values[fechaValorIndex] || '').trim()
+          const fecha = (values[fechaIndex] || '').trim()
           const descripcion = (values[descripcionIndex] || '').trim()
-          const haberValue = (values[haberIndex] || '0').trim()
+          const importeValue = (values[importeIndex] || '0').trim()
+          const saldoValue = (values[saldoIndex] || '0').trim()
 
           let amountNumber = 0
-          if (haberValue) {
-            const cleanValue = haberValue
+          if (importeValue) {
+            const cleanValue = importeValue
               .replace(/\\s/g, '')
               .replace(',', '.')
 
             amountNumber = parseFloat(cleanValue) || 0
           }
 
+          let balanceNumber = 0
+          if (saldoValue) {
+            const cleanValue = saldoValue
+              .replace(/\\s/g, '')
+              .replace(',', '.')
+
+            balanceNumber = parseFloat(cleanValue) || 0
+          }
+
           if (amountNumber === 0 && !descripcion) continue
 
-          const uniqueId = `BANKINTER-EUR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          const uniqueId = `SABADELL-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
 
           newRows.push({
             id: uniqueId,
-            date: fechaValor,
+            date: fecha,
             description: descripcion,
             amount: amountNumber,
+            balance: balanceNumber,
             conciliado: false,
             paymentSource: null,
             reconciliationType: null
@@ -323,8 +341,8 @@ export default function BankinterEURPage() {
 
           const rowsToInsert = reconciledRows.map(row => ({
             id: row.id,
-            file_name: 'bankinter-eur.csv',
-            source: 'bankinter-eur',
+            file_name: 'sabadell.csv',
+            source: 'sabadell',
             date: row.date,
             description: row.description,
             amount: row.amount.toString(),
@@ -336,6 +354,7 @@ export default function BankinterEURPage() {
               date: row.date,
               description: row.description,
               amount: row.amount,
+              balance: row.balance,
               conciliado: row.conciliado,
               paymentSource: row.paymentSource,
               reconciliationType: row.reconciliationType
@@ -345,7 +364,7 @@ export default function BankinterEURPage() {
           const response = await fetch('/api/csv-rows', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
+            body: JSON.stringify({ rows: rowsToInsert, source: 'sabadell' })
           })
 
           const result = await response.json()
@@ -385,8 +404,8 @@ export default function BankinterEURPage() {
     try {
       const rowsToInsert = rows.map(row => ({
         id: row.id,
-        file_name: 'bankinter-eur.csv',
-        source: 'bankinter-eur',
+        file_name: 'sabadell.csv',
+        source: 'sabadell',
         date: row.date,
         description: row.description,
         amount: row.amount.toString(),
@@ -398,6 +417,7 @@ export default function BankinterEURPage() {
           date: row.date,
           description: row.description,
           amount: row.amount,
+          balance: row.balance,
           conciliado: row.conciliado,
           paymentSource: row.paymentSource,
           reconciliationType: row.reconciliationType,
@@ -410,7 +430,7 @@ export default function BankinterEURPage() {
       const response = await fetch('/api/csv-rows', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
+        body: JSON.stringify({ rows: rowsToInsert, source: 'sabadell' })
       })
 
       const result = await response.json()
@@ -434,7 +454,7 @@ export default function BankinterEURPage() {
     }
   }
 
-  const startEditing = (row: BankinterEURRow) => {
+  const startEditing = (row: SabadellRow) => {
     setEditingRow(row.id)
     setEditedData({ ...row })
   }
@@ -471,6 +491,7 @@ export default function BankinterEURPage() {
               date: rowToUpdate.date,
               description: rowToUpdate.description,
               amount: rowToUpdate.amount,
+              balance: rowToUpdate.balance,
               conciliado: rowToUpdate.conciliado,
               paymentSource: rowToUpdate.paymentSource,
               reconciliationType: rowToUpdate.reconciliationType,
@@ -547,11 +568,12 @@ export default function BankinterEURPage() {
       setIsSaving(true)
 
       // Criar novas linhas para o split
-      const splitRows: BankinterEURRow[] = splitValues.map((value, index) => ({
+      const splitRows: SabadellRow[] = splitValues.map((value, index) => ({
         id: `${splitRowId}-SPLIT-${index + 1}`,
         date: originalRow.date,
         description: `${originalRow.description} (Split ${index + 1}/${splitValues.length})`,
         amount: value,
+        balance: originalRow.balance,
         conciliado: false,
         paymentSource: null,
         reconciliationType: null,
@@ -567,8 +589,8 @@ export default function BankinterEURPage() {
       // Salvar no banco
       const rowsToInsert = splitRows.map(row => ({
         id: row.id,
-        file_name: 'bankinter-eur.csv',
-        source: 'bankinter-eur',
+        file_name: 'sabadell.csv',
+        source: 'sabadell',
         date: row.date,
         description: row.description,
         amount: row.amount.toString(),
@@ -580,6 +602,7 @@ export default function BankinterEURPage() {
           date: row.date,
           description: row.description,
           amount: row.amount,
+          balance: row.balance,
           conciliado: row.conciliado,
           paymentSource: row.paymentSource,
           reconciliationType: row.reconciliationType,
@@ -596,7 +619,7 @@ export default function BankinterEURPage() {
       const response = await fetch('/api/csv-rows', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
+        body: JSON.stringify({ rows: rowsToInsert, source: 'sabadell' })
       })
 
       const result = await response.json()
@@ -626,7 +649,7 @@ export default function BankinterEURPage() {
 
   const downloadCSV = () => {
     try {
-      const headers = ['ID', 'Date', 'Description', 'Amount', 'Payment Source', 'Payout Reconciliation', 'Split Info']
+      const headers = ['ID', 'Date', 'Description', 'Amount', 'Balance', 'Payment Source', 'Payout Reconciliation', 'Split Info']
 
       const csvContent = [
         headers.join(','),
@@ -635,6 +658,7 @@ export default function BankinterEURPage() {
           formatDate(row.date),
           `"${row.description.replace(/"/g, '""')}"`,
           row.amount.toFixed(2),
+          row.balance.toFixed(2),
           row.paymentSource || 'N/A',
           row.conciliado ? 'Yes' : 'No',
           row.isSplit ? `Split ${row.splitIndex}` : ''
@@ -645,7 +669,7 @@ export default function BankinterEURPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `bankinter-eur-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `sabadell-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -671,11 +695,12 @@ export default function BankinterEURPage() {
         return acc
       }, {} as Record<string, number>)
     const unreconciledCount = filteredRows.filter(row => !row.conciliado).length
+    const currentBalance = filteredRows.length > 0 ? filteredRows[0].balance : 0
 
-    return { totalIncomes, incomesBySource, unreconciledCount }
+    return { totalIncomes, incomesBySource, unreconciledCount, currentBalance }
   }
 
-  const { totalIncomes, incomesBySource, unreconciledCount } = calculateStats()
+  const { totalIncomes, incomesBySource, unreconciledCount, currentBalance } = calculateStats()
 
   if (isLoading) {
     return (
@@ -687,7 +712,7 @@ export default function BankinterEURPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Sidebar currentPage="bankinter-eur" paymentSourceDates={{}} />
+      <Sidebar currentPage="sabadell" paymentSourceDates={{}} />
 
       <div className="md:pl-64">
         <header className="border-b-2 border-gray-200 bg-white shadow-lg sticky top-0 z-30">
@@ -702,7 +727,7 @@ export default function BankinterEURPage() {
                 </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-black">
-                    Bankinter EUR - Bank Statement
+                    Sabadell - Bank Statement
                   </h1>
                   <p className="text-sm text-gray-600 mt-1">
                     {filteredRows.length} records
@@ -736,9 +761,9 @@ export default function BankinterEURPage() {
                   accept=".csv"
                   onChange={handleFileUpload}
                   className="hidden"
-                  id="file-upload-bankinter"
+                  id="file-upload-sabadell"
                 />
-                <label htmlFor="file-upload-bankinter">
+                <label htmlFor="file-upload-sabadell">
                   <Button variant="outline" className="gap-2 border-black text-black hover:bg-gray-100" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
@@ -811,7 +836,18 @@ export default function BankinterEURPage() {
 
         <div className="container mx-auto px-6 py-8">
           {/* Estatísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-600">Current Balance</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-blue-600">
+                  {formatCurrency(currentBalance)}
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium text-gray-600">Total Incomes</CardTitle>
@@ -858,7 +894,7 @@ export default function BankinterEURPage() {
             <CardHeader className="bg-[#FF7300] text-white">
               <CardTitle className="text-white">Bank Statement Details</CardTitle>
               <CardDescription className="text-white/90">
-                Upload CSV files - Columns: FECHA VALOR → Date | DESCRIPCIÓN → Description | HABER → Amount
+                Upload CSV files - Columns: FECHA → Date | DESCRIPCIÓN → Description | IMPORTE → Amount | SALDO → Balance
               </CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -870,6 +906,7 @@ export default function BankinterEURPage() {
                       <th className="text-left py-4 px-4 font-bold text-sm text-black">Date</th>
                       <th className="text-left py-4 px-4 font-bold text-sm text-black">Description</th>
                       <th className="text-right py-4 px-4 font-bold text-sm text-black">Amount</th>
+                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Balance</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-black">Payment Source</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-black">Payout Reconciliation</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-black">Actions</th>
@@ -878,7 +915,7 @@ export default function BankinterEURPage() {
                   <tbody>
                     {filteredRows.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-8 text-center text-gray-500">
+                        <td colSpan={8} className="py-8 text-center text-gray-500">
                           No data available. Upload a CSV file to get started.
                         </td>
                       </tr>
@@ -927,6 +964,9 @@ export default function BankinterEURPage() {
                               ) : (
                                 formatCurrency(row.amount)
                               )}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-right font-bold text-blue-600">
+                              {formatCurrency(row.balance)}
                             </td>
                             <td className="py-3 px-4 text-center text-sm">
                               {editingRow === row.id ? (

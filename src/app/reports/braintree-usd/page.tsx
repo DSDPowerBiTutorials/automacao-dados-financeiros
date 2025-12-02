@@ -12,18 +12,19 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters"
 
-interface BraintreeEURRow {
+interface BraintreeUSDRow {
   id: string
   date: string
   description: string
   amount: number
   conciliado: boolean
-  destinationAccount: string | null
+  destinationAccount?: string
   reconciliationType?: 'automatic' | 'manual' | null
   [key: string]: any
 }
 
 interface BankStatementRow {
+  id: string
   date: string
   amount: number
   source: string
@@ -36,11 +37,12 @@ const destinationAccountColors: { [key: string]: { bg: string; text: string; bor
   'Bankinter GBP': { bg: 'bg-[#FF7300]/10', text: 'text-[#FF7300]', border: 'border-[#FF7300]/20' },
 }
 
-export default function BraintreeEURPage() {
-  const [rows, setRows] = useState<BraintreeEURRow[]>([])
+export default function BraintreeUSDPage() {
+  const [rows, setRows] = useState<BraintreeUSDRow[]>([])
+  const [bankStatements, setBankStatements] = useState<BankStatementRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [editingRow, setEditingRow] = useState<string | null>(null)
-  const [editedData, setEditedData] = useState<Partial<BraintreeEURRow>>({})
+  const [editedData, setEditedData] = useState<Partial<BraintreeUSDRow>>({})
   const [isDeleting, setIsDeleting] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<string | null>(null)
@@ -60,85 +62,6 @@ export default function BraintreeEURPage() {
     return diffDays <= dayRange
   }
 
-  const reconcileBankStatements = async (braintreeRows: BraintreeEURRow[]): Promise<BraintreeEURRow[]> => {
-    try {
-      if (!supabase) return braintreeRows
-
-      // Buscar dados dos bank statements (Bankinter EUR, USD, etc.)
-      const { data: bankStatementsData, error } = await supabase
-        .from('csv_rows')
-        .select('*')
-        .like('source', 'bankinter-%')
-
-      if (error || !bankStatementsData) {
-        console.error('Error loading bank statements:', error)
-        return braintreeRows
-      }
-
-      // Mapear bank statements
-      const bankStatements: BankStatementRow[] = bankStatementsData.map(row => ({
-        date: row.date,
-        amount: parseFloat(row.amount) || 0,
-        source: row.source === 'bankinter-eur' ? 'Bankinter EUR' : 
-                row.source === 'bankinter-usd' ? 'Bankinter USD' : 
-                'Bankinter'
-      }))
-
-      // Reconciliar cada linha do Braintree EUR
-      const reconciledRows = braintreeRows.map(braintreeRow => {
-        // Filtrar bank statements dentro do intervalo de ±3 dias
-        const matchingStatements = bankStatements.filter(bs => 
-          isWithinDateRange(braintreeRow.date, bs.date, 3)
-        )
-        
-        // Tentar match exato com um único ingresso
-        const exactMatch = matchingStatements.find(bs => 
-          Math.abs(bs.amount - braintreeRow.amount) < 0.01
-        )
-        
-        if (exactMatch) {
-          return {
-            ...braintreeRow,
-            destinationAccount: exactMatch.source,
-            conciliado: true,
-            reconciliationType: 'automatic' as const
-          }
-        }
-
-        // Tentar match com soma de múltiplos ingressos da mesma conta
-        const accountGroups = new Map<string, number>()
-        matchingStatements.forEach(bs => {
-          const currentSum = accountGroups.get(bs.source) || 0
-          accountGroups.set(bs.source, currentSum + bs.amount)
-        })
-
-        for (const [account, totalAmount] of accountGroups.entries()) {
-          if (Math.abs(totalAmount - braintreeRow.amount) < 0.01) {
-            return {
-              ...braintreeRow,
-              destinationAccount: account,
-              conciliado: true,
-              reconciliationType: 'automatic' as const
-            }
-          }
-        }
-
-        // Sem match encontrado
-        return {
-          ...braintreeRow,
-          destinationAccount: null,
-          conciliado: false,
-          reconciliationType: null
-        }
-      })
-
-      return reconciledRows
-    } catch (error) {
-      console.error('Error reconciling bank statements:', error)
-      return braintreeRows
-    }
-  }
-
   const loadData = async () => {
     setIsLoading(true)
     try {
@@ -149,29 +72,47 @@ export default function BraintreeEURPage() {
         return
       }
 
+      // Load bank statements from all sources
+      const { data: bankData, error: bankError } = await supabase
+        .from('csv_rows')
+        .select('*')
+        .in('source', ['bankinter-eur', 'bankinter-usd', 'bankinter-gbp'])
+
+      if (bankError) {
+        console.error('Error loading bank statements:', bankError)
+      } else if (bankData) {
+        const mappedBankStatements: BankStatementRow[] = bankData.map(row => ({
+          id: row.id,
+          date: row.date,
+          amount: parseFloat(row.amount) || 0,
+          source: row.source
+        }))
+        setBankStatements(mappedBankStatements)
+      }
+
       const { data: rowsData, error } = await supabase
         .from('csv_rows')
         .select('*')
-        .eq('source', 'braintree-eur')
+        .eq('source', 'braintree-usd')
         .order('date', { ascending: true })
 
       if (error) {
         console.error('Error loading data:', error)
         setRows([])
       } else if (rowsData) {
-        const mappedRows: BraintreeEURRow[] = rowsData.map(row => ({
-          id: row.id,
-          date: row.date,
-          description: row.description || '',
-          amount: parseFloat(row.amount) || 0,
-          conciliado: row.custom_data?.conciliado || false,
-          destinationAccount: row.custom_data?.destinationAccount || null,
-          reconciliationType: row.custom_data?.reconciliationType || null
-        }))
-
-        // Reconciliar com bank statements
-        const reconciledRows = await reconcileBankStatements(mappedRows)
-        setRows(reconciledRows)
+        const mappedRows: BraintreeUSDRow[] = rowsData.map(row => {
+          const customData = row.custom_data || {}
+          return {
+            id: row.id,
+            date: row.date,
+            description: row.description || '',
+            amount: parseFloat(row.amount) || 0,
+            conciliado: customData.conciliado || false,
+            destinationAccount: customData.destinationAccount || '',
+            reconciliationType: customData.reconciliationType || null
+          }
+        })
+        setRows(mappedRows)
       } else {
         setRows([])
       }
@@ -183,7 +124,57 @@ export default function BraintreeEURPage() {
     }
   }
 
-  const handleDestinationAccountClick = (destinationAccount: string | null) => {
+  const reconcilePayments = (paymentRows: BraintreeUSDRow[]) => {
+    return paymentRows.map(payment => {
+      // Filtrar bank statements dentro do intervalo de ±3 dias
+      const matchingStatements = bankStatements.filter(
+        statement => isWithinDateRange(statement.date, payment.date, 3)
+      )
+
+      // Tentar match exato com um único ingresso
+      const exactMatch = matchingStatements.find(
+        statement => Math.abs(statement.amount - payment.amount) < 0.01
+      )
+
+      if (exactMatch) {
+        return {
+          ...payment,
+          conciliado: true,
+          destinationAccount: exactMatch.source === 'bankinter-eur' ? 'Bankinter EUR' :
+                            exactMatch.source === 'bankinter-usd' ? 'Bankinter USD' :
+                            exactMatch.source === 'bankinter-gbp' ? 'Bankinter GBP' : '',
+          reconciliationType: 'automatic' as const
+        }
+      }
+
+      // Tentar match com soma de múltiplos ingressos da mesma conta
+      const accountGroups = new Map<string, number>()
+      matchingStatements.forEach(statement => {
+        const accountName = statement.source === 'bankinter-eur' ? 'Bankinter EUR' :
+                           statement.source === 'bankinter-usd' ? 'Bankinter USD' :
+                           statement.source === 'bankinter-gbp' ? 'Bankinter GBP' : ''
+        if (accountName) {
+          const currentSum = accountGroups.get(accountName) || 0
+          accountGroups.set(accountName, currentSum + statement.amount)
+        }
+      })
+
+      for (const [account, totalAmount] of accountGroups.entries()) {
+        if (Math.abs(totalAmount - payment.amount) < 0.01) {
+          return {
+            ...payment,
+            conciliado: true,
+            destinationAccount: account,
+            reconciliationType: 'automatic' as const
+          }
+        }
+      }
+
+      return payment
+    })
+  }
+
+  const handleDestinationAccountClick = (destinationAccount: string | undefined) => {
     if (!destinationAccount) return
     
     // Mapear o nome da conta para a URL correspondente
@@ -213,7 +204,7 @@ export default function BraintreeEURPage() {
         const text = e.target?.result as string
         const lines = text.split('\n')
         
-        console.log('=== BRAINTREE EUR CSV PROCESSING ===')
+        console.log('=== BRAINTREE USD CSV PROCESSING ===')
         console.log('Total lines:', lines.length)
         
         if (lines.length < 2) {
@@ -253,7 +244,7 @@ export default function BraintreeEURPage() {
           return
         }
         
-        const newRows: BraintreeEURRow[] = []
+        const newRows: BraintreeUSDRow[] = []
         let processedCount = 0
         
         for (let i = 1; i < lines.length; i++) {
@@ -288,15 +279,15 @@ export default function BraintreeEURPage() {
           
           if (payout === 0 && !disbursementDate) continue
           
-          const uniqueId = `BRAINTREE-EUR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          const uniqueId = `BRAINTREE-USD-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
           
           newRows.push({
             id: uniqueId,
             date: disbursementDate,
-            description: `Braintree EUR Disbursement - ${disbursementDate}`,
+            description: `Braintree USD Disbursement - ${disbursementDate}`,
             amount: payout,
             conciliado: false,
-            destinationAccount: null,
+            destinationAccount: '',
             reconciliationType: null
           })
           
@@ -310,16 +301,16 @@ export default function BraintreeEURPage() {
           return
         }
         
+        // Reconcile new rows
+        const reconciledRows = reconcilePayments(newRows)
+        
         try {
           setIsSaving(true)
 
-          // Reconciliar com bank statements antes de salvar
-          const reconciledRows = await reconcileBankStatements(newRows)
-
           const rowsToInsert = reconciledRows.map(row => ({
             id: row.id,
-            file_name: 'braintree-eur.csv',
-            source: 'braintree-eur',
+            file_name: 'braintree-usd.csv',
+            source: 'braintree-usd',
             date: row.date,
             description: row.description,
             amount: row.amount.toString(),
@@ -340,7 +331,7 @@ export default function BraintreeEURPage() {
           const response = await fetch('/api/csv-rows', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ rows: rowsToInsert, source: 'braintree-eur' })
+            body: JSON.stringify({ rows: rowsToInsert, source: 'braintree-usd' })
           })
 
           const result = await response.json()
@@ -351,8 +342,7 @@ export default function BraintreeEURPage() {
             return
           }
 
-          const updatedRows = [...rows, ...reconciledRows]
-          setRows(updatedRows)
+          await loadData()
 
           const now = new Date()
           const formattedTime = formatTimestamp(now)
@@ -380,8 +370,8 @@ export default function BraintreeEURPage() {
     try {
       const rowsToInsert = rows.map(row => ({
         id: row.id,
-        file_name: 'braintree-eur.csv',
-        source: 'braintree-eur',
+        file_name: 'braintree-usd.csv',
+        source: 'braintree-usd',
         date: row.date,
         description: row.description,
         amount: row.amount.toString(),
@@ -402,7 +392,7 @@ export default function BraintreeEURPage() {
       const response = await fetch('/api/csv-rows', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: rowsToInsert, source: 'braintree-eur' })
+        body: JSON.stringify({ rows: rowsToInsert, source: 'braintree-usd' })
       })
 
       const result = await response.json()
@@ -426,7 +416,7 @@ export default function BraintreeEURPage() {
     }
   }
 
-  const startEditing = (row: BraintreeEURRow) => {
+  const startEditing = (row: BraintreeUSDRow) => {
     setEditingRow(row.id)
     setEditedData({ ...row })
   }
@@ -434,23 +424,14 @@ export default function BraintreeEURPage() {
   const saveEdit = async () => {
     if (!editingRow) return
     
-    // Atualizar conciliado se destinationAccount foi definido
-    const shouldBeConciliado = editedData.destinationAccount !== null && editedData.destinationAccount !== undefined && editedData.destinationAccount !== ''
-    
     const updatedRows = rows.map(row => 
-      row.id === editingRow ? { 
-        ...row, 
-        ...editedData, 
-        conciliado: shouldBeConciliado,
-        reconciliationType: 'manual' as const 
-      } : row
+      row.id === editingRow ? { ...row, ...editedData, reconciliationType: 'manual' as const } : row
     )
     setRows(updatedRows)
     
     const rowToUpdate = updatedRows.find(r => r.id === editingRow)
     if (rowToUpdate && supabase) {
       try {
-        // Atualizar a linha existente diretamente
         const { error } = await supabase
           .from('csv_rows')
           .update({
@@ -521,12 +502,12 @@ export default function BraintreeEURPage() {
   }
 
   const handleDeleteAll = async () => {
-    if (!confirm('⚠️ WARNING: This will DELETE ALL rows from Braintree EUR! Are you sure?')) return
+    if (!confirm('⚠️ WARNING: This will DELETE ALL rows from Braintree USD! Are you sure?')) return
     if (!confirm('⚠️ FINAL WARNING: This action CANNOT be undone! Continue?')) return
     
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/csv-rows?source=braintree-eur`, {
+      const response = await fetch(`/api/csv-rows?source=braintree-usd`, {
         method: 'DELETE'
       })
 
@@ -572,7 +553,7 @@ export default function BraintreeEURPage() {
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `braintree-eur-${new Date().toISOString().split('T')[0]}.csv`
+      a.download = `braintree-usd-${new Date().toISOString().split('T')[0]}.csv`
       document.body.appendChild(a)
       a.click()
       document.body.removeChild(a)
@@ -583,7 +564,7 @@ export default function BraintreeEURPage() {
     }
   }
 
-  const getDestinationAccountStyle = (account: string | null) => {
+  const getDestinationAccountStyle = (account: string | undefined) => {
     if (!account) return { bg: 'bg-gray-100', text: 'text-gray-400', border: 'border-gray-200' }
     return destinationAccountColors[account] || { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-200' }
   }
@@ -598,7 +579,7 @@ export default function BraintreeEURPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
-      <Sidebar currentPage="braintree-eur" paymentSourceDates={{}} />
+      <Sidebar currentPage="braintree-usd" paymentSourceDates={{}} />
 
       <div className={`md:pl-64 transition-all duration-300 ${splitScreenUrl ? 'md:pr-[50%]' : ''}`}>
         <header className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-white dark:bg-[#1a2b4a] shadow-lg sticky top-0 z-30">
@@ -613,7 +594,7 @@ export default function BraintreeEURPage() {
                 </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">
-                    Braintree EUR - Payment Source
+                    Braintree USD - Payment Source
                   </h1>
                   <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
                     {rows.length} records
@@ -647,9 +628,9 @@ export default function BraintreeEURPage() {
                   accept=".csv"
                   onChange={handleFileUpload}
                   className="hidden"
-                  id="file-upload-braintree"
+                  id="file-upload-braintree-usd"
                 />
-                <label htmlFor="file-upload-braintree">
+                <label htmlFor="file-upload-braintree-usd">
                   <Button variant="outline" className="gap-2" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
