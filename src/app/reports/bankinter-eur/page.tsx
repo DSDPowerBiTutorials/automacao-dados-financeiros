@@ -205,7 +205,7 @@ export default function BraintreeEURPage() {
 
   
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const uploadFiles = event.target.uploadFiles;
+    
     if (!uploadFiles || uploadFiles.length === 0) return;
     const file = uploadFiles[0];
 
