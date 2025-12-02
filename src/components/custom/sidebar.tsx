@@ -46,68 +46,67 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   }
 
   const bankinterItems = [
-  { 
-    label: "Bankinter EUR", 
-    href: "/reports/bankinter-eur", 
-    id: "bankinter-eur",
-    source: "bankinter-eur"
-  },
-  { 
-    label: "Bankinter USD", 
-    href: "/reports/bankinter-usd", 
-    id: "bankinter-usd",
-    source: "bankinter-usd"
-  },
-]
+    { 
+      label: "Bankinter EUR", 
+      href: "/reports/bankinter-eur", 
+      id: "bankinter-eur",
+      source: "bankinter-eur"
+    },
+    { 
+      label: "Bankinter USD", 
+      href: "/reports/bankinter-usd", 
+      id: "bankinter-usd",
+      source: "bankinter-usd"
+    },
+  ]
 
-const sabadellItem = { 
-  icon: Building2, 
-  label: "Sabadell", 
-  href: "/reports/sabadell",  
-  id: "sabadell",
-  description: "Bank account",
-  source: "sabadell"
-}
+  const sabadellItem = { 
+    icon: Building2, 
+    label: "Sabadell", 
+    href: "/#sabadell", 
+    id: "sabadell",
+    description: "Bank account",
+    source: "sabadell"
+  }
 
-const braintreeItems = [
-  { 
-    label: "Braintree EUR", 
-    href: "/reports/braintree-eur", 
-    id: "braintree-eur",
-    source: "braintree-eur"
-  },
-  { 
-    label: "Braintree USD", 
-    href: "/reports/braintree-usd", 
-    id: "braintree-usd",
-    source: "braintree-usd"
-  },
-  { 
-    label: "Braintree Transactions", 
-    href: "/#braintree-transactions", 
-    id: "braintree-transactions",
-    source: "braintree-transactions"
-  },
-  { 
-    label: "Braintree Amex", 
-    href: "/reports/braintree-amex", 
-    id: "braintree-amex",
-    source: "braintree-amex"
-  },
-  { 
-    label: "Braintree Amex Transactions", 
-    href: "/reports/braintree-amex-transactions", 
-    id: "braintree-amex-transactions",
-    source: "braintree-amex-transactions"
-  },
-]
-
+  const braintreeItems = [
+    { 
+      label: "Braintree EUR", 
+      href: "/reports/braintree-eur", 
+      id: "braintree-eur",
+      source: "braintree-eur"
+    },
+    { 
+      label: "Braintree USD", 
+      href: "/reports/braintree-usd", 
+      id: "braintree-usd",
+      source: "braintree-usd"
+    },
+    { 
+      label: "Braintree Transactions", 
+      href: "/#braintree-transactions", 
+      id: "braintree-transactions",
+      source: "braintree-transactions"
+    },
+    { 
+      label: "Braintree Amex", 
+      href: "/#braintree-amex", 
+      id: "braintree-amex",
+      source: "braintree-amex"
+    },
+    { 
+      label: "Braintree Amex Transactions", 
+      href: "/#braintree-amex-transactions", 
+      id: "braintree-amex-transactions",
+      source: "braintree-amex-transactions"
+    },
+  ]
 
   const paymentSources = [
     { 
       icon: Wallet, 
       label: "Stripe", 
-      href: "/reports/stripe", 
+      href: "/#stripe", 
       id: "stripe",
       description: "Payment processing",
       source: "stripe"
@@ -115,7 +114,7 @@ const braintreeItems = [
     { 
       icon: CreditCard, 
       label: "GoCardless", 
-      href: "/reports/gocardless", 
+      href: "/#gocardless", 
       id: "gocardless",
       description: "Direct debits",
       source: "gocardless"
@@ -123,7 +122,7 @@ const braintreeItems = [
     { 
       icon: Wallet, 
       label: "PayPal", 
-      href: "/reports/paypal",  
+      href: "/#paypal", 
       id: "paypal",
       description: "PayPal transactions",
       source: "paypal"
