@@ -32,6 +32,8 @@ interface Props {
 export default function BraintreePage({ source, title }: Props) {
   const [rows, setRows] = useState<BraintreeRow[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [lastSaved, setLastSaved] = useState<string | null>(null)
+  const [saveSuccess, setSaveSuccess] = useState(false)
 
   useEffect(() => {
     const fetchRows = async () => {
@@ -59,12 +61,87 @@ export default function BraintreePage({ source, title }: Props) {
     fetchRows()
   }, [source])
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
-      </div>
-    )
+  const downloadCSV = () => {
+    const headers = ['ID', 'Date', 'Description', 'Amount', 'Destination Account', 'Payout Reconciliation']
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => [
+        row.id.substring(0, 8) + '...',
+        formatDate(row.date),
+        `"${row.description.replace(/"/g, '""')}"`,
+        row.amount.toFixed(2),
+        row.destinationAccount || '',
+        row.conciliado ? 'Yes' : 'No'
+      ].join(','))
+    ].join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = window.URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${source}-${new Date().toISOString().split('T')[0]}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    window.URL.revokeObjectURL(url)
+  }
+
+  const uploadCSV = () => {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = '.csv'
+    input.onchange = async (event: any) => {
+      const file = event.target.files[0]
+      if (!file) return
+
+      const reader = new FileReader()
+      reader.onload = async (e) => {
+        const text = e.target?.result as string
+        const lines = text.split('\n').filter(Boolean)
+        const headers = lines[0].split(',')
+
+        const newRows: BraintreeRow[] = lines.slice(1).map((line, idx) => {
+          const values = line.split(',')
+          return {
+            id: `${source}-${Date.now()}-${idx}`,
+            date: values[0],
+            description: values[1],
+            amount: parseFloat(values[2]) || 0,
+            conciliado: false,
+            destinationAccount: null,
+            reconciliationType: null,
+          }
+        })
+
+        const { error } = await supabase.from('csv_rows').insert(newRows.map(row => ({
+          id: row.id,
+          source,
+          date: row.date,
+          description: row.description,
+          amount: row.amount.toString(),
+          category: 'Other',
+          classification: 'Other',
+          reconciled: false,
+          custom_data: {
+            conciliado: row.conciliado,
+            destinationAccount: row.destinationAccount,
+            reconciliationType: row.reconciliationType,
+          }
+        })))
+
+        if (error) {
+          console.error(error)
+        } else {
+          setRows(prev => [...prev, ...newRows])
+          const now = new Date()
+          setLastSaved(formatTimestamp(now))
+          setSaveSuccess(true)
+          setTimeout(() => setSaveSuccess(false), 3000)
+        }
+      }
+      reader.readAsText(file)
+    }
+    input.click()
   }
 
   return (
@@ -83,21 +160,33 @@ export default function BraintreePage({ source, title }: Props) {
                 </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">{title}</h1>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    {rows.length} records
-                  </p>
+                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">{rows.length} records</p>
                 </div>
               </div>
+              <div className="flex gap-2">
+                <Button onClick={uploadCSV} variant="outline" className="gap-2">
+                  <Upload className="h-4 w-4" /> Upload
+                </Button>
+                <Button onClick={downloadCSV} className="gap-2 bg-[#1a2b4a] text-white">
+                  <Download className="h-4 w-4" /> Download
+                </Button>
+              </div>
             </div>
+            {saveSuccess && (
+              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
+                <CheckCircle className="h-5 w-5 text-emerald-600" />
+                <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
+                  ✅ All changes saved successfully to database! Last saved: {lastSaved}
+                </AlertDescription>
+              </Alert>
+            )}
           </div>
         </header>
         <div className="container mx-auto px-6 py-8">
           <Card>
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
-              <CardDescription className="text-white/80">
-                Upload CSV files - Columns: disbursement_date → Date | settlement_currency_sales → Amount (Payout calculated automatically)
-              </CardDescription>
+              <CardDescription className="text-white/80">Data for: <code>{source}</code></CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
@@ -119,9 +208,7 @@ export default function BraintreePage({ source, title }: Props) {
                         <td className="py-3 px-4 text-sm">{formatDate(row.date)}</td>
                         <td className="py-3 px-4 text-sm max-w-xs truncate">{row.description}</td>
                         <td className="py-3 px-4 text-sm text-right font-bold text-[#4fc3f7]">{formatCurrency(row.amount)}</td>
-                        <td className="py-3 px-4 text-center text-sm">
-                          {row.destinationAccount || <span className="text-gray-400 text-xs">N/A</span>}
-                        </td>
+                        <td className="py-3 px-4 text-center text-sm">{row.destinationAccount || <span className="text-gray-400 text-xs">N/A</span>}</td>
                         <td className="py-3 px-4 text-center">
                           {row.conciliado ? (
                             <Zap className="h-5 w-5 text-green-600 mx-auto" />
