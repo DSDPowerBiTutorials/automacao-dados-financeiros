@@ -17,9 +17,12 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Criado com a Lasy",
-  description: "Projeto criado com Lasy AI",
-};
+  title: "DSD Finance",
+  description: "Smart payment reconciliation.",
+  icons: {
+    icon: "/favicon-32x32.png",
+  },
+}
 
 export default function RootLayout({
   children,
