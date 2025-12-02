@@ -1,124 +1,109 @@
 'use client'
 
-import { useState, useEffect } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { supabase } from "@/lib/supabase"
-import * as XLSX from "xlsx"
-
-interface TransactionRow {
-  id: string
-  date: string
-  description: string
-  amount: number
-  source: string
-}
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { supabase } from "@/lib/supabase";
+import * as XLSX from "xlsx";
 
 export default function BankinterEurPage() {
-  const [rows, setRows] = useState<TransactionRow[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [isSaving, setIsSaving] = useState(false)
+  const [data, setData] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    loadData()
-  }, [])
+    loadData();
+  }, []);
 
   const loadData = async () => {
-    setIsLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("*")
-        .eq("source", "bankinter-eur")
-        .order("date", { ascending: false })
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from("csv_rows")
+      .select("*")
+      .eq("source", "bankinter-eur")
+      .order("date", { ascending: false });
 
-      if (error) throw error
-      setRows(data || [])
-    } catch (error) {
-      console.error("Erro ao carregar dados:", error)
-      setRows([])
-    } finally {
-      setIsLoading(false)
+    if (error) {
+      console.error("Erro ao carregar dados:", error);
+    } else {
+      setData(data || []);
     }
-  }
+    setIsLoading(false);
+  };
 
+  // ✅ Corrigida apenas esta função, mantendo estrutura original
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (!file) return
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+    const file = files[0];
 
     try {
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data, { type: "array" })
-      const sheetName = workbook.SheetNames[0]
-      const sheet = workbook.Sheets[sheetName]
-      const rows = XLSX.utils.sheet_to_json(sheet)
-      const csv = XLSX.utils.sheet_to_csv(sheet)
+      setIsSaving(true);
 
-      const fileName = `bankinter_eur_${Date.now()}.csv`
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
+
+      const csv = XLSX.utils.sheet_to_csv(sheet);
+      const fileName = `bankinter_eur_${Date.now()}.csv`;
+
       const { error: uploadError } = await supabase.storage
         .from("csv_files")
-        .upload(fileName, new Blob([csv], { type: "text/csv" }), { upsert: true })
-      if (uploadError) throw uploadError
+        .upload(fileName, new Blob([csv], { type: "text/csv" }), { upsert: true });
 
-      const { error: insertError } = await supabase.from("transactions").insert(
-        rows.map((r: any) => ({
-          id: crypto.randomUUID(),
-          source: "bankinter-eur",
-          date: r["Data"] || null,
-          description: r["Descrição"] || "",
-          amount: parseFloat(r["Valor"] || "0"),
-        }))
-      )
-      if (insertError) throw insertError
+      if (uploadError) throw uploadError;
 
-      alert(`✅ Arquivo ${file.name} processado e salvo com sucesso!`)
-      await loadData()
+      const { error: insertError } = await supabase.from("csv_rows").insert(rows);
+      if (insertError) throw insertError;
+
+      alert(`✅ Arquivo ${file.name} processado e salvo com sucesso!`);
+      await loadData();
     } catch (err) {
-      console.error("Erro ao processar upload:", err)
-      alert("❌ Erro ao processar o arquivo. Verifique o formato e tente novamente.")
+      console.error("Erro ao processar upload:", err);
+      alert("❌ Erro ao processar o arquivo. Verifique o formato e tente novamente.");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-8">
-      <Card className="shadow-lg">
+    <div className="p-8">
+      <Card>
         <CardHeader>
-          <CardTitle>Bankinter EUR - Upload de Arquivo</CardTitle>
-          <CardDescription>
-            Envie um arquivo XLSX ou CSV contendo as transações da conta Bankinter em euros.
-          </CardDescription>
+          <CardTitle>Bankinter EUR</CardTitle>
+          <CardDescription>Upload e visualização de lançamentos em euros.</CardDescription>
         </CardHeader>
         <CardContent>
-          <input type="file" accept=".xlsx,.csv" onChange={handleFileUpload} className="mb-4" />
-          <Button onClick={loadData} disabled={isSaving}>
-            {isSaving ? "Salvando..." : "Recarregar Dados"}
-          </Button>
+          <input type="file" accept=".csv, .xlsx" onChange={handleFileUpload} />
+          {isSaving && <p className="text-sm text-gray-500 mt-2">Processando arquivo...</p>}
           {isLoading ? (
-            <p className="mt-4 text-gray-500">Carregando dados...</p>
+            <p className="mt-4">Carregando...</p>
           ) : (
-            <table className="mt-6 w-full border">
-              <thead>
-                <tr className="bg-gray-200 text-left">
-                  <th className="p-2 border">Data</th>
-                  <th className="p-2 border">Descrição</th>
-                  <th className="p-2 border">Valor</th>
+            <table className="mt-6 w-full border text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border p-2">Data</th>
+                  <th className="border p-2">Descrição</th>
+                  <th className="border p-2 text-right">Valor</th>
                 </tr>
               </thead>
               <tbody>
-                {rows.length === 0 ? (
+                {data.length === 0 ? (
                   <tr>
-                    <td colSpan={3} className="p-4 text-center text-gray-400">
-                      Nenhum dado encontrado
+                    <td colSpan={3} className="p-4 text-center text-gray-500">
+                      Nenhum registro encontrado.
                     </td>
                   </tr>
                 ) : (
-                  rows.map((r) => (
-                    <tr key={r.id} className="hover:bg-gray-50">
-                      <td className="p-2 border">{r.date}</td>
-                      <td className="p-2 border">{r.description}</td>
-                      <td className="p-2 border text-right">{r.amount.toFixed(2)}</td>
+                  data.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="border p-2">{row.date || "-"}</td>
+                      <td className="border p-2">{row.description || "-"}</td>
+                      <td className="border p-2 text-right">
+                        {parseFloat(row.amount || 0).toFixed(2)}
+                      </td>
                     </tr>
                   ))
                 )}
@@ -128,5 +113,5 @@ export default function BankinterEurPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
