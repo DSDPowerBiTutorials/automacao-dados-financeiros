@@ -88,15 +88,19 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
       id: "braintree-transactions",
       source: "braintree-transactions"
     },
-    { 
-      label: "Braintree Amex", 
-      href: "/#braintree-amex", 
+{
+  label: "Braintree Amex",
+  href: "/reports/braintree-amex", 
+  id: "braintree-amex",
+  source: "braintree-amex"
+}
+
       id: "braintree-amex",
       source: "braintree-amex"
     },
     { 
       label: "Braintree Amex Transactions", 
-      href: "/#braintree-amex-transactions", 
+      href: "/reports/braintree-amex-transactions", 
       id: "braintree-amex-transactions",
       source: "braintree-amex-transactions"
     },
@@ -106,7 +110,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     { 
       icon: Wallet, 
       label: "Stripe", 
-      href: "/#stripe", 
+      href: "/reports/stripe", 
       id: "stripe",
       description: "Payment processing",
       source: "stripe"
@@ -114,7 +118,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     { 
       icon: CreditCard, 
       label: "GoCardless", 
-      href: "/#gocardless", 
+      href: "/reports/gocardless", 
       id: "gocardless",
       description: "Direct debits",
       source: "gocardless"
@@ -122,7 +126,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     { 
       icon: Wallet, 
       label: "PayPal", 
-      href: "/#paypal", 
+      href: "/reports/paypal",  
       id: "paypal",
       description: "PayPal transactions",
       source: "paypal"
