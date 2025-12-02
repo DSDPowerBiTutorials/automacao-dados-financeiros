@@ -63,7 +63,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
   const sabadellItem = { 
     icon: Building2, 
     label: "Sabadell", 
-    href: "/#sabadell", 
+    href: "/reports/sabadell", 
     id: "sabadell",
     description: "Bank account",
     source: "sabadell"
@@ -90,7 +90,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
     },
     { 
       label: "Braintree Amex", 
-      href: "/#braintree-amex", 
+      href: "/reports/braintree-amex", 
       id: "braintree-amex",
       source: "braintree-amex"
     },
