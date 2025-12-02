@@ -115,9 +115,16 @@ export default function BraintreeAmexTransactionsPage() {
         braintree_amex_conciliation: matchingPayout ? true : false
       }
     })
-    
     setRows(reconciledRows)
   }
 
   // As demais funções (upload, edição, exclusão, download) permanecem idênticas à versão Braintree EUR,
   // apenas substituindo as menções de EUR para AMEX.
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
+    </div>
+  )
+}
+
