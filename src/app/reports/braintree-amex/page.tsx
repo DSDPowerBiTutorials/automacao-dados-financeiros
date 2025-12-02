@@ -12,10 +12,9 @@ import { Sidebar } from "@/components/custom/sidebar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY as string
+const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString()
@@ -216,18 +215,6 @@ export default function BraintreeAmexPage() {
             <Button onClick={saveAllChanges} disabled={isSaving} className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white">
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
               Save All Changes
-            </Button>
-            <Button variant="outline" className="gap-2">
-              <Upload className="h-4 w-4" />
-              Upload CSV
-            </Button>
-            <Button className="gap-2 bg-[#1a2b4a] text-white">
-              <Download className="h-4 w-4" />
-              Download
-            </Button>
-            <Button variant="destructive" className="gap-2">
-              <Trash2 className="h-4 w-4" />
-              Delete All
             </Button>
           </div>
         </div>
