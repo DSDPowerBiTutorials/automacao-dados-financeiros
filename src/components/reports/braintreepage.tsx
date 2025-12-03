@@ -35,6 +35,13 @@ export default function BraintreePage({ source, title }: Props) {
 
   useEffect(() => {
     const fetchRows = async () => {
+      if (!supabase) {
+        console.error('Supabase client not configured.')
+        setRows([])
+        setIsLoading(false)
+        return
+      }
+
       const { data, error } = await supabase
         .from('csv_rows')
         .select('*')
@@ -89,6 +96,12 @@ export default function BraintreePage({ source, title }: Props) {
     input.type = 'file'
     input.accept = '.csv'
     input.onchange = async (event: any) => {
+      const client = supabase
+      if (!client) {
+        console.error('Supabase client not configured.')
+        return
+      }
+
       const file = event.target.files[0]
       if (!file) return
 
@@ -120,7 +133,7 @@ export default function BraintreePage({ source, title }: Props) {
           }
         })
 
-        const { error } = await supabase.from('csv_rows').insert(newRows.map(row => ({
+        const { error } = await client.from('csv_rows').insert(newRows.map(row => ({
           id: row.id,
           source,
           date: row.date,

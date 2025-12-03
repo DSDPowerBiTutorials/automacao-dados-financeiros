@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { Upload, FileSpreadsheet, Download, Edit2, Save, X, Calendar, CheckCircle, AlertCircle, Building2, CreditCard, Wallet, ArrowRightLeft, Settings, Plus, Trash2, TrendingUp, DollarSign, Loader2, Database, Search, ArrowUpDown } from "lucide-react"
 import { loadAllCSVFiles, saveCSVFile, updateCSVRow, deleteCSVRow, deleteAllReports } from "@/lib/database"
+import type { CSVFile, CSVRow } from "@/lib/database"
 import { downloadFinalCSV, downloadIndividualCSV } from "@/lib/download-helpers"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,30 +15,6 @@ import { Sidebar } from "@/components/custom/sidebar"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-
-interface CSVRow {
-  id: string
-  date: string
-  description: string
-  amount: number
-  category: string
-  classification: string
-  source: string
-  depositAccount?: string // Para gateways de pagamento
-  paymentMethod?: string // Para Bankinter - de onde veio o dinheiro
-  orderNumbers?: string[] // MÚLTIPLAS ordens de compra
-  reconciled?: boolean
-  matchedWith?: string
-  [key: string]: any // Para colunas customizadas
-}
-
-interface CSVFile {
-  name: string
-  lastUpdated: string
-  rows: CSVRow[]
-  totalAmount: number
-  source: 'sabadell' | 'braintree-eur' | 'braintree-usd' | 'braintree-transactions' | 'braintree-amex' | 'braintree-amex-transactions' | 'stripe' | 'gocardless' | 'paypal'
-}
 
 interface CustomColumn {
   id: string
@@ -1405,7 +1382,7 @@ export default function Home() {
             <Alert className="border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
               <AlertCircle className="h-5 w-5 text-blue-600" />
               <AlertDescription className="text-blue-800 dark:text-blue-200 font-medium">
-                Bank statement data is managed in dedicated pages. Access <strong>Bankinter EUR</strong> and <strong>Bankinter USD</strong> from the sidebar menu under "Bank Statements".
+                Bank statement data is managed in dedicated pages. Access <strong>Bankinter EUR</strong> and <strong>Bankinter USD</strong> from the sidebar menu under &quot;Bank Statements&quot;.
               </AlertDescription>
             </Alert>
           </div>
