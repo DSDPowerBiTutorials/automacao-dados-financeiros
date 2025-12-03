@@ -1,0 +1,38 @@
+name: 🧠 Codex Self-Healing & Maintenance
+
+on:
+  workflow_run:
+    workflows: ["Vercel Deployment"]
+    types:
+      - completed
+  schedule:
+    - cron: "0 */6 * * *"
+  push:
+    branches:
+      - main
+      - codex/*
+  workflow_dispatch:
+
+jobs:
+  heal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧩 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: ⚙️ Install dependencies
+        run: npm install prettier --legacy-peer-deps
+
+      - name: 🧠 Run Codex Self-Healing Script
+        run: node scripts/codex-self-healing-build.js
+
+      - name: 🚀 Force rebuild after healing
+        run: |
+          echo "🧩 Triggering new Vercel build..."
+          curl -X POST "https://api.vercel.com/v1/integrations/deploy/prj_${{ secrets.VERCEL_PROJECT_ID }}" \
+          -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" || true
