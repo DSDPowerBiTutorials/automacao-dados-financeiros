@@ -1,5 +1,6 @@
 name: 🤖 Codex Auto Fix
 
+
 on:
   workflow_dispatch: # ✅ permite rodar manualmente no GitHub Actions
   push:
