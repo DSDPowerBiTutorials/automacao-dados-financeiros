@@ -5,6 +5,21 @@ const FILE_NAME = 'bankinter-eur.csv'
 const SOURCE = 'bankinter-eur'
 const HEADER_OFFSET = 5
 
+function parseAmount(value: any): number {
+  if (value === undefined || value === null) return 0
+
+  const raw = String(value).replace(/\s+/g, '')
+
+  if (raw.includes(',')) {
+    const normalized = raw.replace(/\./g, '').replace(/,/g, '.')
+    const parsed = parseFloat(normalized)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const parsed = parseFloat(raw)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 function parseDate(value: any): string | null {
   if (!value) return null
 
@@ -15,9 +30,18 @@ function parseDate(value: any): string | null {
   }
 
   if (typeof value === 'string') {
-    const [day, month, year] = value.split('/')
-    if (day && month && year) {
-      return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    const trimmed = value.trim()
+    const delimiterMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/)
+
+    if (delimiterMatch) {
+      const [, day, month, year] = delimiterMatch
+      const parsedYear = year.length === 2 ? 2000 + Number(year) : Number(year)
+      return `${parsedYear}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+    }
+
+    const parsed = new Date(trimmed)
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString().split('T')[0]
     }
   }
 
@@ -107,8 +131,8 @@ export async function POST(request: NextRequest) {
       .map((row, index) => {
         const fechaValor = row[fechaValorIndex]
         const descripcion = sanitizeDescription(row[descripcionIndex])
-        const haber = parseFloat(String(row[haberIndex] ?? '0').replace(',', '.')) || 0
-        const debe = parseFloat(String(row[debeIndex] ?? '0').replace(',', '.')) || 0
+        const haber = parseAmount(row[haberIndex])
+        const debe = parseAmount(row[debeIndex])
         const amount = haber - debe
         const parsedDate = parseDate(fechaValor)
 
