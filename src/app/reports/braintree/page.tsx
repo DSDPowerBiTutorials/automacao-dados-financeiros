@@ -88,17 +88,17 @@ export default function BraintreePage() {
         const lines = text.split("\n");
         const headers = lines[0]
           .split(",")
-          .map((h) => h.trim().replace(/^"|"$/g, ""));
+          .map((h) => String(h ?? "").trim().replace(/^"|"$/g, ""));
 
         const newRows: BraintreeRow[] = [];
         let idCounter = rows.length + 1;
 
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
+          if (!String(lines[i] ?? "").trim()) continue;
 
           const values = lines[i]
             .split(",")
-            .map((v) => v.trim().replace(/^"|"$/g, ""));
+            .map((v) => String(v ?? "").trim().replace(/^"|"$/g, ""));
           const row: any = {};
 
           headers.forEach((header, index) => {

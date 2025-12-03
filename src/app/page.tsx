@@ -208,7 +208,7 @@ export default function Home() {
     if (!dateString) return "";
 
     // Remove espaços e pega apenas a parte da data (ignora hora se existir)
-    const cleanDate = dateString.trim().split(" ")[0];
+    const cleanDate = String(dateString ?? "").trim().split(" ")[0];
 
     // Tenta parsear diferentes formatos
     let day: number, month: number, year: number;
@@ -259,7 +259,7 @@ export default function Home() {
     const cleaned = value
       .toString()
       .replace(/[€$£¥\s,]/g, "")
-      .trim();
+      String( ?? "").trim();
     // Substitui vírgula decimal por ponto se necessário
     const normalized = cleaned.replace(/,(\d{2})$/, ".$1");
     return parseFloat(normalized) || 0;
@@ -331,7 +331,7 @@ export default function Home() {
     let filtered = [...rows];
 
     // Filtrar por order number
-    if (searchOrderNumber.trim()) {
+    if String((searchOrderNumber ?? "").trim()) {
       filtered = filtered.filter((row) =>
         row.orderNumbers?.some((order) =>
           order.toLowerCase().includes(searchOrderNumber.toLowerCase()),
@@ -386,7 +386,7 @@ export default function Home() {
         const lines = text.split("\n");
         const headers = lines[0]
           .split(",")
-          .map((h) => h.trim().replace(/^"|"$/g, ""));
+          .map((h) => String(h ?? "").trim().replace(/^"|"$/g, ""));
 
         const newRows: CSVRow[] = [];
 
@@ -395,11 +395,11 @@ export default function Home() {
         let idCounter = existingFile ? existingFile.rows.length + 1 : 1;
 
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
+          if (!String(lines[i] ?? "").trim()) continue;
 
           const values = lines[i]
             .split(",")
-            .map((v) => v.trim().replace(/^"|"$/g, ""));
+            .map((v) => String(v ?? "").trim().replace(/^"|"$/g, ""));
           const row: any = {};
 
           headers.forEach((header, index) => {
@@ -423,7 +423,7 @@ export default function Home() {
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
                   .split(/[,;]/)
-                  .map((o: string) => o.trim())
+                  .map((o: string) => String(o ?? "").trim())
                   .filter((o: string) => o)
               : [];
 
@@ -476,7 +476,7 @@ export default function Home() {
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
                   .split(/[,;]/)
-                  .map((o: string) => o.trim())
+                  .map((o: string) => String(o ?? "").trim())
                   .filter((o: string) => o)
               : [];
 
@@ -512,7 +512,7 @@ export default function Home() {
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
                   .split(/[,;]/)
-                  .map((o: string) => o.trim())
+                  .map((o: string) => String(o ?? "").trim())
                   .filter((o: string) => o)
               : [];
 
@@ -562,7 +562,7 @@ export default function Home() {
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
                   .split(/[,;]/)
-                  .map((o: string) => o.trim())
+                  .map((o: string) => String(o ?? "").trim())
                   .filter((o: string) => o)
               : [];
 
@@ -641,7 +641,7 @@ export default function Home() {
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
                   .split(/[,;]/)
-                  .map((o: string) => o.trim())
+                  .map((o: string) => String(o ?? "").trim())
                   .filter((o: string) => o)
               : [];
 
@@ -728,7 +728,7 @@ export default function Home() {
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
                   .split(/[,;]/)
-                  .map((o: string) => o.trim())
+                  .map((o: string) => String(o ?? "").trim())
                   .filter((o: string) => o)
               : [];
 
@@ -824,8 +824,8 @@ export default function Home() {
   };
 
   const addOrderNumber = () => {
-    if (newOrderInput.trim()) {
-      setEditedOrderNumbers([...editedOrderNumbers, newOrderInput.trim()]);
+    if String((newOrderInput ?? "").trim()) {
+      setEditedOrderNumbers([...editedOrderNumbers, String(newOrderInput ?? "").trim()]);
       setNewOrderInput("");
     }
   };
@@ -1045,7 +1045,7 @@ export default function Home() {
         type: newColumnType,
         options:
           newColumnType === "select"
-            ? newColumnOptions.split(",").map((o) => o.trim())
+            ? newColumnOptions.split(",").map((o) => String(o ?? "").trim())
             : undefined,
       };
       setCustomColumns([...customColumns, newColumn]);
