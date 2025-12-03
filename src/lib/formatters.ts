@@ -4,27 +4,27 @@
  * @returns Data formatada como "31/12/2025"
  */
 export function formatDate(dateString: string): string {
-  if (!dateString) return ''
-  
+  if (!dateString) return "";
+
   // Tenta parsear a data
-  const date = new Date(dateString)
-  
+  const date = new Date(dateString);
+
   // Verifica se é uma data válida
   if (isNaN(date.getTime())) {
     // Se não conseguir parsear, tenta extrair DD/MM/YYYY do próprio string
-    const match = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/)
+    const match = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (match) {
-      const [, day, month, year] = match
-      return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`
+      const [, day, month, year] = match;
+      return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
     }
-    return dateString // Retorna original se não conseguir formatar
+    return dateString; // Retorna original se não conseguir formatar
   }
-  
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const year = date.getFullYear()
-  
-  return `${day}/${month}/${year}`
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
 }
 
 /**
@@ -35,19 +35,19 @@ export function formatDate(dateString: string): string {
  * @returns Número formatado
  */
 export function formatNumber(value: number, decimals: number = 2): string {
-  if (value === 0) return '-'
-  
-  const isNegative = value < 0
-  const absValue = Math.abs(value)
-  
+  if (value === 0) return "-";
+
+  const isNegative = value < 0;
+  const absValue = Math.abs(value);
+
   // Formata com separador de milhares (.) e decimais (,)
-  const formatted = absValue.toLocaleString('pt-BR', {
+  const formatted = absValue.toLocaleString("pt-BR", {
     minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals
-  })
-  
+    maximumFractionDigits: decimals,
+  });
+
   // Se negativo, envolve em parênteses
-  return isNegative ? `(${formatted})` : formatted
+  return isNegative ? `(${formatted})` : formatted;
 }
 
 /**
@@ -56,17 +56,17 @@ export function formatNumber(value: number, decimals: number = 2): string {
  * @returns Valor formatado com símbolo € e padrão brasileiro
  */
 export function formatCurrency(value: number): string {
-  if (value === 0) return '€ -'
-  
-  const isNegative = value < 0
-  const absValue = Math.abs(value)
-  
-  const formatted = absValue.toLocaleString('pt-BR', {
+  if (value === 0) return "€ -";
+
+  const isNegative = value < 0;
+  const absValue = Math.abs(value);
+
+  const formatted = absValue.toLocaleString("pt-BR", {
     minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  })
-  
-  return isNegative ? `€ (${formatted})` : `€ ${formatted}`
+    maximumFractionDigits: 2,
+  });
+
+  return isNegative ? `€ (${formatted})` : `€ ${formatted}`;
 }
 
 /**
@@ -75,11 +75,11 @@ export function formatCurrency(value: number): string {
  * @returns String formatada como "31/12/2025 23:59"
  */
 export function formatTimestamp(date: Date): string {
-  const day = String(date.getDate()).padStart(2, '0')
-  const month = String(date.getMonth() + 1).padStart(2, '0')
-  const year = date.getFullYear()
-  const hours = String(date.getHours()).padStart(2, '0')
-  const minutes = String(date.getMinutes()).padStart(2, '0')
-  
-  return `${day}/${month}/${year} ${hours}:${minutes}`
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
 }

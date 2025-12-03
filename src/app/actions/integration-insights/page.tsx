@@ -1,16 +1,22 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { BarChart3, PlugZap } from "lucide-react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Sidebar } from "@/components/custom/sidebar"
+import Link from "next/link";
+import { BarChart3, PlugZap } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Sidebar } from "@/components/custom/sidebar";
 
 interface IntegrationItem {
-  source: string
-  type: string
-  difficulty: string
-  steps: string[]
-  url: string
+  source: string;
+  type: string;
+  difficulty: string;
+  steps: string[];
+  url: string;
 }
 
 const integrations: IntegrationItem[] = [
@@ -67,7 +73,11 @@ const integrations: IntegrationItem[] = [
     source: "Sabadell",
     type: "CSV + Portal API",
     difficulty: "🟢 Fácil",
-    steps: ["Upload manual", "API opcional (SABI Connect)", "Ingestão automática"],
+    steps: [
+      "Upload manual",
+      "API opcional (SABI Connect)",
+      "Ingestão automática",
+    ],
     url: "https://www.bancsabadell.com",
   },
   {
@@ -77,7 +87,7 @@ const integrations: IntegrationItem[] = [
     steps: ["API key", "Fetch via GraphQL", "Sincronizar no Supabase"],
     url: "https://dsdplanning.com/admin/graphql",
   },
-]
+];
 
 export default function IntegrationInsights() {
   return (
@@ -91,8 +101,13 @@ export default function IntegrationInsights() {
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-[#1a2b4a]">Integration Insights Dashboard</h1>
-              <p className="text-sm text-gray-600">Panorama das integrações API e híbridas conectadas ao Finance Hub.</p>
+              <h1 className="text-2xl font-bold text-[#1a2b4a]">
+                Integration Insights Dashboard
+              </h1>
+              <p className="text-sm text-gray-600">
+                Panorama das integrações API e híbridas conectadas ao Finance
+                Hub.
+              </p>
             </div>
           </div>
         </header>
@@ -116,22 +131,39 @@ export default function IntegrationInsights() {
                 <thead className="border-b bg-gray-50">
                   <tr>
                     <th className="text-left py-3 px-4 font-bold">Fonte</th>
-                    <th className="text-left py-3 px-4 font-bold">Tipo de Integração</th>
-                    <th className="text-center py-3 px-4 font-bold">Complexidade</th>
+                    <th className="text-left py-3 px-4 font-bold">
+                      Tipo de Integração
+                    </th>
+                    <th className="text-center py-3 px-4 font-bold">
+                      Complexidade
+                    </th>
                     <th className="text-left py-3 px-4 font-bold">Passos</th>
-                    <th className="text-left py-3 px-4 font-bold">Documentação</th>
+                    <th className="text-left py-3 px-4 font-bold">
+                      Documentação
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
                   {integrations.map((integration) => (
-                    <tr key={integration.source} className="border-b hover:bg-gray-50">
-                      <td className="py-3 px-4 font-semibold text-gray-800">{integration.source}</td>
-                      <td className="py-3 px-4 text-gray-700">{integration.type}</td>
-                      <td className="py-3 px-4 text-center">{integration.difficulty}</td>
+                    <tr
+                      key={integration.source}
+                      className="border-b hover:bg-gray-50"
+                    >
+                      <td className="py-3 px-4 font-semibold text-gray-800">
+                        {integration.source}
+                      </td>
+                      <td className="py-3 px-4 text-gray-700">
+                        {integration.type}
+                      </td>
+                      <td className="py-3 px-4 text-center">
+                        {integration.difficulty}
+                      </td>
                       <td className="py-3 px-4 text-gray-700">
                         <ul className="list-disc list-inside space-y-1">
                           {integration.steps.map((step) => (
-                            <li key={`${integration.source}-${step}`}>{step}</li>
+                            <li key={`${integration.source}-${step}`}>
+                              {step}
+                            </li>
                           ))}
                         </ul>
                       </td>
@@ -154,5 +186,5 @@ export default function IntegrationInsights() {
         </section>
       </main>
     </div>
-  )
+  );
 }
