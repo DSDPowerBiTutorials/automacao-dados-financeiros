@@ -1,3 +1,4 @@
+````md
 # 🧾 Supabase Data Handling & Upload Guidelines  
 **DSD Finance Hub — Automação de Dados Financeiros**
 
@@ -47,7 +48,7 @@ garantindo ingestão de dados validada, segura e padronizada para todos os relat
 let { data: csv_rows, error } = await supabase
   .from('csv_rows')
   .select('*')
-```
+````
 
 ### 🔎 Ler colunas específicas
 
@@ -153,7 +154,7 @@ const channel = supabase.channel('delete-channel')
 * `.xlsx` deve ser convertido internamente para `.csv`
 * Cabeçalho obrigatório (linha 1)
 * Encoding: UTF-8 sem BOM
-* Separador: vírgula (`,`) 
+* Separador: vírgula (`,`)
 
 ### Colunas obrigatórias:
 
@@ -202,8 +203,6 @@ O Codex deve:
 
 ## ✅ Commit e Deploy automáticos
 
-Após a criação:
-
 ```bash
 git add docs/supabase-guidelines.md
 git commit -m "docs: add Supabase data handling and upload guidelines"
@@ -217,3 +216,6 @@ git push origin main
 **Data:** 2025-12-03
 **Responsável:** DSD Data Engineering
 **Contato:** [data@dsdgroup.es](mailto:data@dsdgroup.es)
+
+```
+```
