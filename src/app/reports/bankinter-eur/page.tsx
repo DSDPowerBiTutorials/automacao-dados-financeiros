@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "@/lib/supabase";
 import {
   Loader2,
@@ -8,13 +8,18 @@ import {
   ArrowLeft,
   Filter,
   X,
-  Database,
   CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Sidebar } from "@/components/custom/sidebar";
 import { formatCurrency } from "@/lib/formatters";
@@ -37,6 +42,7 @@ export default function BankinterEURPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     loadData();
@@ -49,18 +55,14 @@ export default function BankinterEURPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      if (!supabase) {
-        console.error("❌ Supabase client não configurado.");
-        setRows([]);
-        return;
-      }
-
       const { data, error } = await supabase
         .from("csv_rows")
         .select("*")
         .eq("source", "bankinter-eur")
         .order("date", { ascending: false });
+
       if (error) throw error;
+
       const parsed =
         data?.map((r) => ({
           id: r.id,
@@ -71,6 +73,7 @@ export default function BankinterEURPage() {
           reference: r.reference,
           conciliado: r.custom_data?.conciliado ?? false,
         })) ?? [];
+
       setRows(parsed);
     } catch (err) {
       console.error("❌ Error loading data:", err);
@@ -109,12 +112,11 @@ export default function BankinterEURPage() {
       });
 
       const result = await response.json();
-
       if (!response.ok || !result.success) {
         throw new Error(result.error || "Erro ao processar upload.");
       }
 
-      alert(`✅ ${result.inserted} transações enviadas com sucesso!`);
+      alert(`✅ ${result.message || "Arquivo enviado com sucesso!"}`);
       await loadData();
       const now = new Date().toLocaleString();
       setLastSaved(now);
@@ -174,31 +176,32 @@ export default function BankinterEURPage() {
 
               <div className="flex gap-2">
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept=".csv,.xlsx,.xls"
-                  id="unified-upload"
+                  id="bankinter-upload"
                   onChange={handleUpload}
                   className="hidden"
                 />
-                <label htmlFor="unified-upload">
-                  <Button
-                    variant="outline"
-                    className="gap-2 border-black text-black hover:bg-gray-100"
-                    disabled={isUploading}
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Uploading…
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4" />
-                        Upload XLSX
-                      </>
-                    )}
-                  </Button>
-                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 border-black text-black hover:bg-gray-100"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Upload XLSX
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
 
@@ -284,8 +287,7 @@ export default function BankinterEURPage() {
                 Bank Statement Details
               </CardTitle>
               <CardDescription className="text-white/90">
-                You can edit this subtitle to describe your data source or
-                mapping details.
+                Imported data from Supabase (Bankinter EUR)
               </CardDescription>
             </CardHeader>
 
