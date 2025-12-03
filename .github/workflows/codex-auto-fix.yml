@@ -13,7 +13,7 @@ jobs:
   auto-fix:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # necessário para o bot poder fazer git push
+      contents: write # necessário para o bot poder fazer git push
 
     steps:
       - name: 🧩 Checkout repo
@@ -27,6 +27,9 @@ jobs:
       - name: ⚙️ Install dependencies
         run: |
           npm install prettier
+
+      - name: 🧠 Fix Upload Explorer (Bankinter EUR)
+        run: node scripts/codex-fix-bankinter-upload-ui.js
 
       - name: 🧠 Auto-fix source code
         run: |

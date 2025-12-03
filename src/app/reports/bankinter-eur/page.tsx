@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import * as XLSX from "xlsx";
 import { supabase } from "@/lib/supabase";
 import {
@@ -15,7 +15,13 @@ import {
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+} from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Sidebar } from "@/components/custom/sidebar";
 import { formatCurrency } from "@/lib/formatters";
@@ -38,6 +44,7 @@ export default function BankinterEURPage() {
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     loadData();
@@ -50,6 +57,10 @@ export default function BankinterEURPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      if (!supabase) {
+        throw new Error("Supabase client is not configured.");
+      }
+
       const { data, error } = await supabase
         .from("csv_rows")
         .select("*")
@@ -86,13 +97,19 @@ export default function BankinterEURPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      alert("❌ Only .xlsx files are accepted.");
+    const normalizedName = file.name.toLowerCase();
+    if (!normalizedName.endsWith(".xlsx") && !normalizedName.endsWith(".csv")) {
+      alert("❌ Only .csv or .xlsx files are accepted.");
+      e.target.value = "";
       return;
     }
 
     setIsUploading(true);
     try {
+      if (!supabase) {
+        throw new Error("Supabase client is not configured.");
+      }
+
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -101,10 +118,12 @@ export default function BankinterEURPage() {
       // Ignore first 5 rows and anything after “INFORMACIÓN DE INTERÉS”
       const startIndex = 5;
       let endIndex = json.findIndex((r) =>
-        String(r[0] || "").includes("INFORMACIÓN DE INTERÉS")
+        String(r[0] || "").includes("INFORMACIÓN DE INTERÉS"),
       );
       if (endIndex === -1) endIndex = json.length;
-      const validRows = json.slice(startIndex, endIndex).filter((r) => r.length > 1);
+      const validRows = json
+        .slice(startIndex, endIndex)
+        .filter((r) => r.length > 1);
 
       const mapped = validRows.map((r) => {
         const [fecha, descripcion, haber, debe, saldo, referencia] = r;
@@ -190,32 +209,36 @@ export default function BankinterEURPage() {
               </div>
 
               <div className="flex gap-2">
+                <label htmlFor="file-upload-bankinter" className="sr-only">
+                  Upload Bankinter EUR file
+                </label>
                 <input
+                  ref={fileInputRef}
                   type="file"
-                  accept=".xlsx"
-                  id="bankinter-upload"
+                  accept=".csv,.xlsx"
+                  id="file-upload-bankinter"
                   onChange={handleUpload}
                   className="hidden"
                 />
-                <label htmlFor="bankinter-upload">
-                  <Button
-                    variant="outline"
-                    className="gap-2 border-black text-black hover:bg-gray-100"
-                    disabled={isUploading}
-                  >
-                    {isUploading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        Uploading…
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="h-4 w-4" />
-                        Upload XLSX
-                      </>
-                    )}
-                  </Button>
-                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 border-black text-black hover:bg-gray-100"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Upload CSV/XLSX
+                    </>
+                  )}
+                </Button>
               </div>
             </div>
 
