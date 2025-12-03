@@ -131,6 +131,18 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
 
   const actionItems = [
     { icon: Upload, label: "Upload Files", href: "/#upload", id: "upload" },
+    {
+      icon: FileSpreadsheet,
+      label: "Reconciliation Center",
+      href: "/actions/reconciliation-center",
+      id: "reconciliation-center",
+    },
+    {
+      icon: BarChart3,
+      label: "Integration Insights",
+      href: "/actions/integration-insights",
+      id: "integration-insights",
+    },
     { icon: BarChart3, label: "Reconciliation", href: "/#reconciliation", id: "reconciliation" },
     { icon: Download, label: "Export Data", href: "/#export", id: "export" },
     { icon: Settings, label: "Settings", href: "/#settings", id: "settings" },
@@ -219,13 +231,13 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                   Main
                 </p>
               )}
-              <a
+              <Link
                 href="/"
                 onClick={() => setIsOpen(false)}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
                   ${currentPage === 'home'
-                    ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
+                    ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800'
                   }
                   ${isCollapsed ? 'justify-center' : ''}
@@ -234,7 +246,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
               >
                 <Home className="h-5 w-5 flex-shrink-0" />
                 {!isCollapsed && <span>Dashboard</span>}
-              </a>
+              </Link>
             </div>
 
             {/* Reports Section */}

@@ -5,9 +5,9 @@ export interface CSVRow {
   date: string
   description: string
   amount: number
-  category: string
-  classification: string
-  source: string
+  category?: string
+  classification?: string
+  source?: string
   depositAccount?: string
   paymentMethod?: string
   orderNumbers?: string[]
@@ -50,7 +50,7 @@ export interface CSVFile {
   lastUpdated: string
   rows: CSVRow[]
   totalAmount: number
-  source: 'bankinter-eur' | 'bankinter-usd' | 'sabadell' | 'braintree-eur' | 'braintree-usd' | 'braintree-transactions' | 'braintree-amex' | 'braintree-amex-transactions' | 'stripe' | 'gocardless' | 'paypal'
+  source: 'bankinter' | 'bankinter-eur' | 'bankinter-usd' | 'sabadell' | 'braintree-eur' | 'braintree-usd' | 'braintree-transactions' | 'braintree-amex' | 'braintree-amex-transactions' | 'stripe' | 'gocardless' | 'paypal'
 }
 
 // Salvar arquivo CSV no banco via API route

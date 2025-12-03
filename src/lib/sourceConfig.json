@@ -1,0 +1,4 @@
+{
+  "banks": ["bankinter-eur", "bankinter-usd", "sabadell-eur"],
+  "payment_sources": ["paypal", "stripe", "braintree", "gocardless", "dsd-web"]
+}
