@@ -50,6 +50,10 @@ jobs:
           # 💅 Formata o código (Prettier ignora erros)
           npx prettier --write "src/**/*.{js,ts,tsx,jsx,json,css,md}" || true
 
+          - name: 🧠 Check & Repair Bankinter Upload
+          run: node scripts/codex-check-last-bankinter-log.js
+
+
       - name: 🚀 Commit & Push changes
         run: |
           git config --global user.name "Codex AutoFix Bot"
