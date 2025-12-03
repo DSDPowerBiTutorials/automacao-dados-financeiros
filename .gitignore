@@ -45,3 +45,9 @@ tsconfig.tsbuildinfo
 # Codex / Local scripts and logs
 logs/
 scripts/tmp/
+
+# Codex Auto-Learning artifacts
+!logs/
+!logs/errors/
+!logs/errors/.gitkeep
+!logs/meta_knowledge.json
