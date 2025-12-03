@@ -1,13 +1,47 @@
+# ============================================================
+# 🧩 DSD Finance Hub — Unified .gitignore
+# ------------------------------------------------------------
+# Standardized for Next.js + Supabase + Vercel + Codex CI/CD
+# ============================================================
+
+# Dependencies
 node_modules
+
+# Build outputs
 .next
 out
+dist
+
+# Testing and coverage
+coverage
+
+# Env files
 .env
 .env.local
-.DS_Store
+.env.*.local
+.env.development
+.env.production
+.env.test
+
+# Logs and temporary files
+*.log
+*.tmp
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 bun.lockb
+
+# OS / Editor configs
+.DS_Store
+.vscode
+.idea
+
+# Build cache / Vercel / Turbo
 .vercel
-coverage
+.turbo
+tsconfig.tsbuildinfo
+
+# Codex / Local scripts and logs
+logs/
+scripts/tmp/
