@@ -1,28 +1,5 @@
 // Helper functions para download de CSV
-
-interface CSVRow {
-  id: string
-  date: string
-  description: string
-  amount: number
-  category: string
-  classification: string
-  source: string
-  depositAccount?: string
-  paymentMethod?: string
-  orderNumbers?: string[]
-  reconciled?: boolean
-  matchedWith?: string
-  [key: string]: any
-}
-
-interface CSVFile {
-  name: string
-  lastUpdated: string
-  rows: CSVRow[]
-  totalAmount: number
-  source: 'bankinter-eur' | 'bankinter-usd' | 'sabadell' | 'braintree-eur' | 'braintree-usd' | 'braintree-transactions' | 'braintree-amex' | 'braintree-amex-transactions' | 'stripe' | 'gocardless' | 'paypal'
-}
+import type { CSVFile, CSVRow } from "./database"
 
 export function downloadFinalCSV(csvFiles: CSVFile[]) {
   if (csvFiles.length === 0) {

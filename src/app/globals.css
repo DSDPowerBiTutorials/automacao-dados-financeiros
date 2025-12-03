@@ -47,7 +47,11 @@
   --radius: 0.625rem;
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
-  
+
+  /* Geist font variables for local fontsource setup */
+  --font-geist-sans: "Geist Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-geist-mono: "Geist Mono", ui-monospace, SFMono-Regular, "SF Mono", monospace;
+
   /* Additional font families for AI usage */
   --font-inter: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-roboto: "Roboto", ui-sans-serif, system-ui, sans-serif;
