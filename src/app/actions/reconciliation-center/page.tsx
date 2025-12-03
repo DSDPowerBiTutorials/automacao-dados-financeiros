@@ -3,18 +3,12 @@
 import { useEffect, useMemo, useState } from "react"
 import { format } from "date-fns"
 import { AlertCircle, CheckCircle2, FileSpreadsheet, Loader2 } from "lucide-react"
-import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Sidebar } from "@/components/custom/sidebar"
 import { useToast } from "@/hooks/use-toast"
-
-interface CsvFileRow {
-  source: string
-  created_at: string | null
-  url: string | null
-}
+import { getAllSources, listenToSourceChanges, SourceRecord, updateSourceURL } from "@/lib/sourceSync"
 
 interface SourceItem {
   source: string
@@ -25,29 +19,33 @@ const sources: SourceItem[] = [
   { source: "bankinter-eur", label: "Bankinter EUR" },
   { source: "bankinter-usd", label: "Bankinter USD" },
   { source: "sabadell-eur", label: "Sabadell EUR" },
+  { source: "paypal", label: "PayPal" },
+  { source: "stripe", label: "Stripe" },
+  { source: "braintree-eur", label: "Braintree EUR" },
+  { source: "braintree-usd", label: "Braintree USD" },
+  { source: "braintree-amex", label: "Braintree Amex" },
+  { source: "gocardless", label: "GoCardless" },
+  { source: "braintree-transactions", label: "Braintree Transactions" },
+  { source: "pleo", label: "Pleo" },
+  { source: "dsd-web", label: "DSD Web" },
 ]
 
 export default function ReconciliationCenter() {
-  const [rows, setRows] = useState<CsvFileRow[]>([])
+  const [rows, setRows] = useState<SourceRecord[]>([])
   const [links, setLinks] = useState<Record<string, string>>({})
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState<Record<string, boolean>>({})
   const { toast } = useToast()
 
   useEffect(() => {
+    let isMounted = true
+
     const loadRows = async () => {
       setIsLoading(true)
       try {
-        const { data, error } = await supabase
-          .from("csv_files")
-          .select("source, created_at, url")
-          .order("created_at", { ascending: false })
+        const sanitizedData = await getAllSources()
+        if (!isMounted) return
 
-        if (error) {
-          throw error
-        }
-
-        const sanitizedData = data ?? []
         setRows(sanitizedData)
 
         const initialLinks: Record<string, string> = {}
@@ -65,11 +63,30 @@ export default function ReconciliationCenter() {
           variant: "destructive",
         })
       } finally {
-        setIsLoading(false)
+        if (isMounted) {
+          setIsLoading(false)
+        }
       }
     }
 
+    const unsubscribe = listenToSourceChanges((updated) => {
+      setRows((prev) => {
+        const exists = prev.find((item) => item.source === updated.source)
+        if (exists) {
+          return prev.map((item) => (item.source === updated.source ? updated : item))
+        }
+        return [...prev, updated]
+      })
+
+      setLinks((prev) => ({ ...prev, [updated.source]: updated.url ?? "" }))
+    })
+
     void loadRows()
+
+    return () => {
+      isMounted = false
+      unsubscribe?.()
+    }
   }, [toast])
 
   const handleSave = async (src: string) => {
@@ -86,11 +103,7 @@ export default function ReconciliationCenter() {
     setIsSaving((prev) => ({ ...prev, [src]: true }))
 
     try {
-      const { error } = await supabase.from("csv_files").update({ url: link }).eq("source", src)
-
-      if (error) {
-        throw error
-      }
+      await updateSourceURL(src, link)
 
       toast({
         title: "Link atualizado",
