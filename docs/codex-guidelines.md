@@ -5,6 +5,7 @@ mas sem detalhes desnecessários (como o tratamento de `.xlsx`) e **com foco abs
 
 Abaixo está a **versão final revisada e consolidada**, pronta para uso em “Instruções Personalizadas” no Codex.
 
+
 ---
 
 # 🧩 Diretrizes Técnicas — Projeto `automacao-dados-financeiros`
