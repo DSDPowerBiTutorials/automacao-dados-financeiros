@@ -16,6 +16,12 @@ export default function BankinterEurPage() {
   }, []);
 
   const loadData = async () => {
+    if (!supabase) {
+      console.error("Supabase client not configured.");
+      setData([]);
+      return;
+    }
+
     setIsLoading(true);
     const { data, error } = await supabase
       .from("csv_rows")
@@ -33,6 +39,11 @@ export default function BankinterEurPage() {
 
   // ✅ Corrigida apenas esta função, mantendo estrutura original
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!supabase) {
+      console.error("Supabase client not configured.");
+      return;
+    }
+
     const files = event.target.files;
     if (!files || files.length === 0) return;
     const file = files[0];
