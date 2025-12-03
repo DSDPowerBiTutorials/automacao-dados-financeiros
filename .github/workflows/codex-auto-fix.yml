@@ -57,3 +57,9 @@ jobs:
           git add .
           git commit -m "🤖 auto-fix: format and clean code" || echo "No changes to commit"
           git push
+
+      - name: 🧯 Codex Emergency Auto-Fix (Fallback)
+        if: failure()
+        run: |
+          echo "🔥 Build falhou — executando rotina de emergência..."
+          node scripts/codex-emergency-fix.js || true

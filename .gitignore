@@ -43,5 +43,11 @@ bun.lockb
 tsconfig.tsbuildinfo
 
 # Codex / Local scripts and logs
-logs/
 scripts/tmp/
+
+# Allow resilience learning logs
+!logs/
+!logs/meta_knowledge.json
+!logs/errors/
+!logs/errors/build-failures.log
+!logs/errors/emergency-fix.log

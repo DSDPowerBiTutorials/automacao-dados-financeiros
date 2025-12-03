@@ -1,0 +1,11 @@
+{
+  "patterns": [
+    {
+      "timestamp": "2025-01-01T00:00:00.000Z",
+      "errorType": "bootstrap",
+      "action": "initialized-emergency-fix",
+      "note": "Seed knowledge for Codex emergency fallback to start tracking failures."
+    }
+  ],
+  "lastUpdated": "2025-01-01T00:00:00.000Z"
+}
