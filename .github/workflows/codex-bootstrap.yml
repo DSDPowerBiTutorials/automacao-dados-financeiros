@@ -1,28 +1,10 @@
-name: 🤖 Codex Bootstrap Setup
+name: 🤖 Codex Bootstrap and Cleanup Workflow
 
 on:
   workflow_dispatch:
 
 jobs:
-  setup:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-
-    steps:
-      - name: 🧩 Checkout repo
-        uses: actions/checkout@v4
-
-      - name: 🧠 Create Cleanup Workflow
-        run: |
-          mkdir -p .github/workflows
-          echo 'name: 🧹 Codex Cleanup PRs
-
-on:
-  workflow_dispatch:
-
-jobs:
-  cleanup:
+  bootstrap:
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -32,33 +14,58 @@ jobs:
       - name: 🧩 Checkout repo
         uses: actions/checkout@v4
 
-      - name: 🧠 Close old Codex PRs
+      - name: 🧠 Generate Codex Cleanup workflow
+        run: |
+          mkdir -p .github/workflows
+          cat << 'EOF' > .github/workflows/codex-cleanup.yml
+          name: 🧹 Codex Cleanup PRs
+
+          on:
+            workflow_dispatch:
+
+          jobs:
+            cleanup:
+              runs-on: ubuntu-latest
+              permissions:
+                contents: write
+                pull-requests: write
+
+              steps:
+                - name: 🧩 Checkout repo
+                  uses: actions/checkout@v4
+
+                - name: 🧠 Close old Codex PRs
+                  env:
+                    GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+                  run: |
+                    echo "🔍 Searching for old Codex PRs..."
+                    prs=$(gh pr list --state open --json number,title | jq -r '.[] | select(.title | test("Codex|auto|fix|xlsx|parser|upload"; "i")) | .number')
+                    for pr in $prs; do
+                      echo "❌ Closing PR #$pr..."
+                      gh pr close $pr --delete-branch --comment "Auto-closed by Codex Cleanup"
+                    done
+                    echo "✅ All old Codex PRs closed successfully!"
+
+                - name: 🧠 Create new clean branch
+                  run: |
+                    git config --global user.email "codex@dsdgroup.es"
+                    git config --global user.name "Codex Cleanup Bot"
+                    git fetch origin main
+                    git checkout main
+                    git pull
+                    git checkout -b codex/fresh-clean-state
+                    git push origin codex/fresh-clean-state
+                    gh pr create --base main --head codex/fresh-clean-state --title "🧠 Codex Fresh State PR" --body "Reinitialized clean state after automatic cleanup."
+          EOF
+
+      - name: 🚀 Commit & Push via Pull Request
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "🔍 Searching for old Codex PRs..."
-          prs=$(gh pr list --state open --json number,title | jq -r \'.[] | select(.title | test("Codex|auto|fix|xlsx|parser|upload"; "i")) | .number\')
-          for pr in $prs; do
-            echo "❌ Closing PR #$pr..."
-            gh pr close $pr --delete-branch --comment "Auto-closed by Codex Cleanup"
-          done
-          echo "✅ All old Codex PRs closed successfully!"
-
-      - name: 🧠 Create new clean branch
-        run: |
-          git config --global user.email "codex@dsdgroup.es"
-          git config --global user.name "Codex Cleanup Bot"
-          git fetch origin main
-          git checkout main
-          git pull
-          git checkout -b codex/fresh-clean-state
-          git push origin codex/fresh-clean-state
-          gh pr create --base main --head codex/fresh-clean-state --title "🧠 Codex Fresh State PR" --body "Reinitialized clean state after automatic cleanup."' > .github/workflows/codex-cleanup.yml
-
-      - name: 🚀 Commit and push cleanup workflow
-        run: |
-          git config --global user.email "codex@dsdgroup.es"
           git config --global user.name "Codex Bootstrap Bot"
+          git config --global user.email "codex@dsdgroup.es"
+          git checkout -b codex/add-cleanup-workflow
           git add .github/workflows/codex-cleanup.yml
-          git commit -m "🚀 bootstrap: add Codex cleanup workflow" || echo "No changes to commit"
-          git push
+          git commit -m "🧠 add Codex Cleanup workflow"
+          git push origin codex/add-cleanup-workflow
+          gh pr create --base main --head codex/add-cleanup-workflow --title "🧠 Add Codex Cleanup Workflow" --body "Bootstrap automatically created Codex cleanup workflow."
