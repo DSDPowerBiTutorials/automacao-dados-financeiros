@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import React, { useState, useEffect } from "react"
 import {
   Upload,
   Download,
@@ -27,7 +27,6 @@ import { Sidebar } from "@/components/custom/sidebar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { formatCurrency, formatTimestamp } from "@/lib/formatters"
-import * as XLSX from "xlsx"
 
 interface BankinterEURRow {
   id: string
@@ -126,248 +125,31 @@ export default function BankinterEURPage() {
   }
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
-    if (!files || files.length === 0) return
+    const file = event.target.files?.[0]
+    if (!file) return
 
-    const file = files[0]
-
-    if (!file.name.toLowerCase().endsWith('.xlsx')) {
-      alert('❌ Invalid file type. Please upload a .xlsx file.')
-      return
-    }
-
-    setIsSaving(true)
-    setSaveSuccess(false)
+    const formData = new FormData()
+    formData.append("file", file)
 
     try {
-      const buffer = await file.arrayBuffer()
-      const workbook = XLSX.read(buffer, { type: 'array' })
-
-      if (!workbook.SheetNames.length) {
-        alert('❌ No sheets found in the uploaded file.')
-        return
-      }
-
-      const sheet = workbook.Sheets[workbook.SheetNames[0]]
-      const rawRows = XLSX.utils.sheet_to_json<any[]>(sheet, { header: 1, defval: '' })
-
-      if (!rawRows.length) {
-        alert('❌ File is empty or unreadable.')
-        return
-      }
-
-      const normalizeHeader = (value: string) =>
-        value
-          .normalize('NFD')
-          .replace(/[\u0300-\u036f]/g, '')
-          .replace(/"/g, '')
-          .toUpperCase()
-          .trim()
-
-      const dataRows = rawRows
-        .slice(5)
-        .filter(row => Array.isArray(row) && row.some(cell => String(cell).trim() !== ''))
-
-      const headerIndex = dataRows.findIndex(row => {
-        const normalizedRow = row.map(cell => normalizeHeader(String(cell || '')))
-        return (
-          normalizedRow.some(cell => cell.includes('FECHA') && cell.includes('VALOR')) &&
-          normalizedRow.some(cell => cell.includes('DESCRIPCION')) &&
-          (normalizedRow.includes('HABER') || normalizedRow.includes('DEBE'))
-        )
-      })
-
-      if (headerIndex === -1) {
-        alert('❌ Required columns not found! Expected: FECHA VALOR, DESCRIPCIÓN, HABER, DEBE')
-        console.error('Available rows:', dataRows.slice(0, 5))
-        return
-      }
-
-      const headerRow = dataRows[headerIndex].map(cell => String(cell))
-      const normalizedHeaderRow = headerRow.map(cell => normalizeHeader(cell))
-
-      const fechaValorIndex = normalizedHeaderRow.findIndex(cell => cell.includes('FECHA') && cell.includes('VALOR'))
-      const descripcionIndex = normalizedHeaderRow.findIndex(cell => cell.includes('DESCRIPCION'))
-      const haberIndex = normalizedHeaderRow.findIndex(cell => cell === 'HABER')
-      const debeIndex = normalizedHeaderRow.findIndex(cell => cell === 'DEBE')
-      const saldoIndex = normalizedHeaderRow.findIndex(cell => cell === 'SALDO')
-      const referenciaIndex = normalizedHeaderRow.findIndex(cell => cell.includes('CLAVE') || cell.includes('REFERENCIA'))
-
-      console.log('=== BANKINTER EUR XLSX PROCESSING ===')
-      console.log('Headers found:', headerRow)
-
-      if (fechaValorIndex === -1 || descripcionIndex === -1 || haberIndex === -1 || debeIndex === -1) {
-        alert('❌ Required columns not found! Expected: FECHA VALOR, DESCRIPCIÓN, HABER, DEBE')
-        console.error('Available columns:', headerRow)
-        return
-      }
-
-      const parseAmount = (value: any) => {
-        const cleaned = String(value ?? '0')
-          .replace(/\./g, '')
-          .replace(/\s/g, '')
-          .replace(',', '.')
-
-        const parsed = parseFloat(cleaned)
-        return isNaN(parsed) ? 0 : parsed
-      }
-
-      const normalizeDate = (value: any) => {
-        if (value instanceof Date) {
-          return value.toISOString().split('T')[0]
-        }
-
-        if (typeof value === 'number') {
-          const date = XLSX.SSF.parse_date_code(value)
-          if (date) {
-            const pad = (num: number) => num.toString().padStart(2, '0')
-            return `${date.y}-${pad(date.m)}-${pad(date.d)}`
-          }
-        }
-
-        if (typeof value === 'string') {
-          const trimmed = value.trim()
-
-          const parts = trimmed.split(/[\/\-]/)
-          if (parts.length === 3) {
-            const [day, month, year] = parts
-            const paddedYear = year.length === 2 ? `20${year}` : year
-            return `${paddedYear.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
-          }
-
-          const parsedDate = new Date(trimmed)
-          if (!isNaN(parsedDate.getTime())) {
-            return parsedDate.toISOString().split('T')[0]
-          }
-        }
-
-        return ''
-      }
-
-      const dataStartIndex = headerIndex + 1
-      const newRows: BankinterEURRow[] = []
-      let processedCount = 0
-
-      for (let i = dataStartIndex; i < dataRows.length; i++) {
-        const row = dataRows[i]
-        if (!row || row.length === 0 || row.every(cell => String(cell).trim() === '')) continue
-
-        const containsInfoSection = row.some(cell =>
-          typeof cell === 'string' && cell.toUpperCase().includes('INFORMACIÓN DE INTERÉS')
-        )
-        if (containsInfoSection) break
-
-        const fechaValor = row[fechaValorIndex]
-        const descripcion = row[descripcionIndex]
-        const haberValue = row[haberIndex]
-        const debeValue = row[debeIndex]
-        const saldoValue = saldoIndex !== -1 ? row[saldoIndex] : null
-        const referenciaValue = referenciaIndex !== -1 ? row[referenciaIndex] : null
-
-        const amountNumber = parseAmount(haberValue) - parseAmount(debeValue)
-        const descriptionClean = String(descripcion || '').replace(/"/g, '').trim()
-        const normalizedDate = normalizeDate(fechaValor)
-        const balanceNumber = saldoValue !== null ? parseAmount(saldoValue) : null
-        const referenceClean = referenciaValue ? String(referenciaValue).trim() : null
-
-        if (!normalizedDate) {
-          console.warn('⚠️ Skipping row with invalid date:', row)
-          continue
-        }
-
-        if (!descriptionClean && amountNumber === 0) continue
-
-        const uniqueId = `BANKINTER-EUR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
-
-        newRows.push({
-          id: uniqueId,
-          date: normalizedDate,
-          description: descriptionClean,
-          amount: amountNumber,
-          conciliado: false,
-          paymentSource: null,
-          reconciliationType: null,
-          balance: balanceNumber ?? undefined,
-          reference: referenceClean ?? undefined
-        })
-
-        processedCount++
-      }
-
-      if (newRows.length === 0) {
-        alert('❌ No valid data found in file')
-        return
-      }
-
-      const rowsToInsert = newRows.map(row => ({
-        id: row.id,
-        file_name: 'bankinter-eur.csv',
-        source: 'bankinter-eur',
-        date: row.date,
-        description: row.description,
-        amount: row.amount.toString(),
-        category: 'Other',
-        classification: 'Other',
-        reconciled: false,
-        custom_data: {
-          id: row.id,
-          date: row.date,
-          description: row.description,
-          amount: row.amount,
-          conciliado: row.conciliado,
-          paymentSource: row.paymentSource,
-          reconciliationType: row.reconciliationType,
-          balance: row.balance,
-          reference: row.reference
-        }
-      }))
-
-      const csvContent = [
-        'date,description,amount',
-        ...newRows.map(row => `${row.date},"${row.description.replace(/"/g, '""')}",${row.amount}`)
-      ].join('\n')
-
-      const storageFileName = 'bankinter-eur.csv'
-
-      const { error: uploadError } = await supabase.storage
-        .from('csv_files')
-        .upload(storageFileName, new Blob([csvContent], { type: 'text/csv' }), { upsert: true })
-
-      if (uploadError) {
-        console.error('❌ Error uploading file to Supabase:', uploadError)
-        alert('❌ Error uploading file to storage. Please try again.')
-        return
-      }
-
-      const response = await fetch('/api/csv-rows', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
+      const response = await fetch("/api/upload-bankinter-eur", {
+        method: "POST",
+        body: formData,
       })
 
       const result = await response.json()
 
       if (!response.ok || !result.success) {
-        console.error('Error saving to database:', result.error)
-        alert(`❌ Error saving to database: ${result.error || 'Unknown error'}`)
+        console.error("Erro ao enviar:", result.error)
+        alert(`❌ Erro no upload: ${result.error}`)
         return
       }
 
-      const updatedRows = [...rows, ...newRows]
-      setRows(updatedRows)
-
-      const now = new Date()
-      const formattedTime = formatTimestamp(now)
-      setLastSaved(formattedTime)
-      setSaveSuccess(true)
-      setTimeout(() => setSaveSuccess(false), 3000)
-
-      alert(`✅ File uploaded successfully! ${processedCount} rows saved to database.`)
-    } catch (error) {
-      console.error('Error processing XLSX file:', error)
-      alert('⚠️ Error processing file. Please check the format and try again.')
-    } finally {
-      setIsSaving(false)
+      alert(`✅ ${result.inserted} linhas enviadas com sucesso!`)
+      loadData()
+    } catch (err) {
+      console.error("Erro inesperado:", err)
+      alert("❌ Falha ao enviar o arquivo. Verifique o formato e tente novamente.")
     }
   }
 
