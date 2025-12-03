@@ -3,7 +3,7 @@
  * ------------------------------------------------------
  * This script scans the repository for `.trim(` usages and ensures that
  * only strings are passed to trim(), replacing unsafe calls with
- * `String(value ?? "").trim()`.
+ * `String(value ?? ""String() ?? "").trim()`.
  */
 
 import fs from "fs";
@@ -30,7 +30,7 @@ function getAllFiles(dir) {
 function fixTrimCalls(filePath) {
   let content = fs.readFileSync(filePath, "utf8");
 
-  // Regex para capturar chamadas `.trim()` em variáveis não protegidas
+  // Regex para capturar chamadas `String( ?? "").trim()` em variáveis não protegidas
   const regex = /([a-zA-Z0-9_.\[\]()]*)\.trim\s*\(\s*\)/g;
 
   let modified = false;
@@ -38,7 +38,7 @@ function fixTrimCalls(filePath) {
     // Ignora se já está em formato seguro (String(...).trim())
     if (/String\s*\(/.test(variable)) return match;
     modified = true;
-    return `String(${variable} ?? "").trim()`;
+    return `String(${variable} ?? ""String() ?? "").trim()`;
   });
 
   if (modified) {
@@ -51,7 +51,7 @@ function fixTrimCalls(filePath) {
 }
 
 function main() {
-  console.log("🤖 Codex Trim Fix — scanning for unsafe .trim() calls...\n");
+  console.log("🤖 Codex Trim Fix — scanning for unsafe String( ?? "").trim() calls...\n");
   let scannedCount = 0;
   let fixedCount = 0;
 

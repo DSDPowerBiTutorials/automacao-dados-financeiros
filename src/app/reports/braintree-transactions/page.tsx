@@ -136,7 +136,7 @@ export default function BraintreeTransactionsPage() {
         return {
           ...tx,
           customer_name:
-            `${tx.customer_first_name || ""} ${tx.customer_last_name || ""}`.trim(),
+            `${tx.customer_first_name || ""} ${tx.customer_last_name || ""}`String( ?? "").trim(),
           bank_conciliation: false,
           braintree_eur_conciliation: false,
         };
@@ -163,7 +163,7 @@ export default function BraintreeTransactionsPage() {
       return {
         ...tx,
         customer_name:
-          `${tx.customer_first_name || ""} ${tx.customer_last_name || ""}`.trim(),
+          `${tx.customer_first_name || ""} ${tx.customer_last_name || ""}`String( ?? "").trim(),
         bank_conciliation: matchingPayout ? true : false,
         braintree_eur_conciliation: matchingPayout ? true : false,
       };
@@ -185,17 +185,17 @@ export default function BraintreeTransactionsPage() {
         const lines = text.split("\n");
         const headers = lines[0]
           .split(",")
-          .map((h) => h.trim().replace(/^"|"$/g, ""));
+          .map((h) => String(h ?? "").trim().replace(/^"|"$/g, ""));
 
         const newRows: BraintreeTransactionRow[] = [];
         let idCounter = rows.length + 1;
 
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
+          if (!String(lines[i] ?? "").trim()) continue;
 
           const values = lines[i]
             .split(",")
-            .map((v) => v.trim().replace(/^"|"$/g, ""));
+            .map((v) => String(v ?? "").trim().replace(/^"|"$/g, ""));
           const row: any = {};
 
           headers.forEach((header, index) => {
@@ -222,7 +222,7 @@ export default function BraintreeTransactionsPage() {
             order_id_3: orderIds[2] || "",
             order_id_4: orderIds[3] || "",
             customer_name:
-              `${row["Customer First Name"] || ""} ${row["Customer Last Name"] || ""}`.trim(),
+              `${row["Customer First Name"] || ""} ${row["Customer Last Name"] || ""}`String( ?? "").trim(),
             bank_conciliation: false,
             braintree_eur_conciliation: false,
             ...row,
