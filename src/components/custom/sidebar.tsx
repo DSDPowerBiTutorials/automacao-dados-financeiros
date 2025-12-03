@@ -133,7 +133,9 @@ export function Sidebar({ currentPage }: SidebarProps) {
             {/* Main Section */}
             <div className="mb-4">
               {!isCollapsed && (
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-3">Main</p>
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 px-3">
+                  Main
+                </p>
               )}
               <Link
                 href="/"
