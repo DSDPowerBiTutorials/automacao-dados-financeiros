@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Upload, Download, Edit2, Save, X, Trash2, ArrowLeft, Loader2, CheckCircle, XCircle, Settings, Database, XIcon, Zap, User } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -47,10 +47,6 @@ export default function BraintreeEURPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [splitScreenUrl, setSplitScreenUrl] = useState<string | null>(null)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
   // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (date1: string, date2: string, dayRange: number = 3): boolean => {
     const d1 = new Date(date1)
@@ -60,7 +56,7 @@ export default function BraintreeEURPage() {
     return diffDays <= dayRange
   }
 
-  const reconcileBankStatements = async (braintreeRows: BraintreeEURRow[]): Promise<BraintreeEURRow[]> => {
+  const reconcileBankStatements = useCallback(async (braintreeRows: BraintreeEURRow[]): Promise<BraintreeEURRow[]> => {
     try {
       if (!supabase) return braintreeRows
 
@@ -137,9 +133,9 @@ export default function BraintreeEURPage() {
       console.error('Error reconciling bank statements:', error)
       return braintreeRows
     }
-  }
+  }, [])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       if (!supabase) {
@@ -181,7 +177,11 @@ export default function BraintreeEURPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [reconcileBankStatements])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const handleDestinationAccountClick = (destinationAccount: string | null) => {
     if (!destinationAccount) return

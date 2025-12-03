@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Upload, Download, Edit2, Save, X, Trash2, ArrowLeft, Loader2, CheckCircle, XCircle, Settings, Database, Zap, User, Filter } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -45,15 +45,7 @@ export default function BankinterUSDPage() {
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useEffect(() => {
-    applyFilters()
-  }, [rows, dateFrom, dateTo])
-
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = rows
 
     if (dateFrom) {
@@ -65,9 +57,9 @@ export default function BankinterUSDPage() {
     }
 
     setFilteredRows(filtered)
-  }
+  }, [dateFrom, dateTo, rows])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       if (!supabase) {
@@ -106,7 +98,15 @@ export default function BankinterUSDPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files

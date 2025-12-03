@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Upload, Download, Edit2, Save, X, Trash2, ArrowLeft, Loader2, CheckCircle, XCircle } from "lucide-react"
 import { loadAllCSVFiles, saveCSVFile, updateCSVRow, deleteCSVRow } from "@/lib/database"
 import { Button } from "@/components/ui/button"
@@ -44,11 +44,7 @@ export default function BraintreeTransactionsPage() {
   const [editedData, setEditedData] = useState<Partial<BraintreeTransactionRow>>({})
   const [isDeleting, setIsDeleting] = useState(false)
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       const data = await loadAllCSVFiles()
@@ -77,7 +73,11 @@ export default function BraintreeTransactionsPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
 
   const performConciliation = (transactionsData: BraintreeTransactionRow[], braintreeEURData: BraintreeEURRow[]) => {
     // Agrupar transações por Disbursement Date e Currency = EUR
