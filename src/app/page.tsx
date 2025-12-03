@@ -1446,6 +1446,10 @@ export default function Home() {
             </CardContent>
           </Card>
         </div>
+
+        <footer className="text-center text-sm text-gray-500 py-6">
+          © {new Date().getFullYear()} DSD Finance Hub — Todos os direitos reservados.
+        </footer>
       </div>
     </div>
   )

@@ -6,8 +6,12 @@ import "./globals.css";
 import "../lib/fonts";
 
 export const metadata: Metadata = {
-  title: "Criado com a Lasy",
-  description: "Projeto criado com Lasy AI",
+  title: "DSD Finance Hub",
+  description:
+    "Sistema financeiro inteligente de conciliação bancária e relatórios.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({
