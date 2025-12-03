@@ -1,59 +1,31 @@
-name: 🤖 Codex Auto Fix
+name: 🧠 Codex Auto-Learning Maintenance
 
 on:
   push:
-    branches:
-      - main
-      - codex/*
+    branches: [main, codex/*]
   pull_request:
-    branches:
-      - main
+    branches: [main]
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
 
 jobs:
-  auto-fix:
+  codex-maintenance:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write   # necessário para o bot poder fazer git push
-
     steps:
-      - name: 🧩 Checkout repo
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: 🧰 Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 20
 
-      - name: ⚙️ Install dependencies
-        run: |
-          npm install prettier
+      - run: npm install prettier eslint @supabase/supabase-js --legacy-peer-deps
 
-      - name: 🧠 Auto-fix source code
-        run: |
-          echo "Running Codex Auto-Fix..."
+      - name: 🧩 Auto-Fix
+        run: node scripts/auto-fix-and-commit.js
 
-          # 🔍 Limpa marcadores de conflito apenas em código-fonte (não em dependências)
-          find src app -type f \( -name "*.js" -o -name "*.ts" -o -name "*.tsx" -o -name "*.jsx" \) \
-            -not -path "*/node_modules/*" \
-            -not -path "*/.next/*" \
-            -not -path "*/dist/*" \
-            -exec sed -i '/<<<<<<<\|=======\|>>>>>>>/d' {} \;
+      - name: 🧠 Decisor
+        run: node scripts/codex-decisor.js
 
-          # 🧩 Garante que páginas cliente tenham "use client" no topo
-          grep -rl --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist "^import" src app \
-            | while read file; do
-              if ! grep -q "^\"use client\"" "$file"; then
-                sed -i '1i"use client"\n' "$file"
-              fi
-            done
-
-          # 💅 Formata o código (Prettier ignora erros)
-          npx prettier --write "src/**/*.{js,ts,tsx,jsx,json,css,md}" || true
-
-      - name: 🚀 Commit & Push changes
-        run: |
-          git config --global user.name "Codex AutoFix Bot"
-          git config --global user.email "codex@dsdgroup.es"
-          git add .
-          git commit -m "🤖 auto-fix: format and clean code" || echo "No changes to commit"
-          git push
+      - name: 📘 Aprendizado
+        run: node scripts/codex-log-learning.js
