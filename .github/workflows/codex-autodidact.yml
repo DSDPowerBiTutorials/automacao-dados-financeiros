@@ -44,6 +44,24 @@ jobs:
             exit 1
           fi
 
+      - name: 🧠 Codex Bankinter Self-Learning
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🚀 Executando Codex Bankinter Self-Learning..."
+          if [ -z "${NEXT_PUBLIC_SUPABASE_URL}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY}" ]; then
+            echo "⚠️ Variáveis do Supabase ausentes. Pulando etapa de upload Bankinter."
+            exit 0
+          fi
+
+          if [ -f "scripts/codex-bankinter-self-learning.js" ]; then
+            node scripts/codex-bankinter-self-learning.js || echo "⚠️ Bankinter self-learning retornou aviso."
+          else
+            echo "❌ scripts/codex-bankinter-self-learning.js não encontrado."
+            exit 1
+          fi
+
       - name: 🧾 Commit any changes (if present)
         run: |
           echo "🔍 Checking for changes..."
