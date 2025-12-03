@@ -35,7 +35,14 @@ export default function BankinterEurPage() {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
+
     const file = files[0];
+    const extension = file.name.split(".").pop()?.toLowerCase();
+
+    if (extension !== "xlsx") {
+      alert("❌ Apenas arquivos .xlsx são aceitos. Selecione um arquivo válido e tente novamente.");
+      return;
+    }
 
     try {
       setIsSaving(true);
@@ -44,9 +51,12 @@ export default function BankinterEurPage() {
       const workbook = XLSX.read(buffer, { type: "array" });
       const sheetName = workbook.SheetNames[0];
       const sheet = workbook.Sheets[sheetName];
-      const rows = XLSX.utils.sheet_to_json(sheet, { defval: "" });
-
       const csv = XLSX.utils.sheet_to_csv(sheet);
+
+      const csvWorkbook = XLSX.read(csv, { type: "string" });
+      const csvSheet = csvWorkbook.Sheets[csvWorkbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(csvSheet, { defval: "" });
+
       const fileName = `bankinter_eur_${Date.now()}.csv`;
 
       const { error: uploadError } = await supabase.storage
@@ -76,7 +86,7 @@ export default function BankinterEurPage() {
           <CardDescription>Upload e visualização de lançamentos em euros.</CardDescription>
         </CardHeader>
         <CardContent>
-          <input type="file" accept=".csv, .xlsx" onChange={handleFileUpload} />
+          <input type="file" accept=".xlsx" onChange={handleFileUpload} />
           {isSaving && <p className="text-sm text-gray-500 mt-2">Processando arquivo...</p>}
           {isLoading ? (
             <p className="mt-4">Carregando...</p>
