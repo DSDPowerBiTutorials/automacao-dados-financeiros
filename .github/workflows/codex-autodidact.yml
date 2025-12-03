@@ -1,0 +1,49 @@
+name: 🧠 Codex Autodidact Maintenance
+
+on:
+  schedule:
+    - cron: "0 */6 * * *" # executa a cada 6 horas
+  push:
+    branches:
+      - main
+      - codex/*
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  codex-maintenance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧩 Checkout repository
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: ⚙️ Install dependencies
+        run: |
+          npm install prettier eslint js-yaml supabase --legacy-peer-deps || true
+
+      - name: 🧠 Run Codex Autodidact Maintenance
+        run: |
+          echo "🚀 Running Codex Self-Repair & Learning"
+          node scripts/codex-autodidact-maintenance.js || true
+
+      - name: 🚀 Commit and open PR if changes exist
+        uses: peter-evans/create-pull-request@v5
+        with:
+          branch: codex/auto-maintenance
+          title: "🧠 Codex Self-Learning Maintenance Run"
+          body: |
+            This automated PR includes:
+            - Self-repair and format cleanup
+            - Updated Supabase schema validation
+            - Auto-learned fixes and documentation updates
+          commit-message: "🤖 Codex Maintenance: self-learning and workflow sync"
+          delete-branch: true
