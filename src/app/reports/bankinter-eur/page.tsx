@@ -27,6 +27,7 @@ import { Sidebar } from "@/components/custom/sidebar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { formatCurrency, formatTimestamp } from "@/lib/formatters"
+import Papa from "@/lib/papaparse"
 
 interface BankinterEURRow {
   id: string
@@ -128,29 +129,31 @@ export default function BankinterEURPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    const formData = new FormData()
-    formData.append("file", file)
+    const supabaseClient = supabase
 
-    try {
-      const response = await fetch("/api/upload-bankinter-eur", {
-        method: "POST",
-        body: formData,
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        console.error("Erro ao enviar:", result.error)
-        alert(`❌ Erro no upload: ${result.error}`)
-        return
-      }
-
-      alert(`✅ ${result.inserted} linhas enviadas com sucesso!`)
-      loadData()
-    } catch (err) {
-      console.error("Erro inesperado:", err)
-      alert("❌ Falha ao enviar o arquivo. Verifique o formato e tente novamente.")
+    if (!supabaseClient) {
+      console.error('❌ Supabase not configured for upload')
+      alert('❌ Supabase não configurado para upload.')
+      return
     }
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      worker: true,
+      step: async row => {
+        try {
+          await supabaseClient.from('csv_rows').insert(row.data)
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error'
+          console.error('❌ Upload error:', message)
+        }
+      },
+      complete: () => {
+        alert('✅ Upload complete!')
+        loadData()
+      }
+    })
   }
 
   const saveAllChanges = async () => {
