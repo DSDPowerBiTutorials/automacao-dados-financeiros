@@ -7,6 +7,7 @@ Abaixo está a **versão final revisada e consolidada**, pronta para uso em “I
 
 ---
 
+
 # 🧩 Diretrizes Técnicas — Projeto `automacao-dados-financeiros`
 
 ## 🏗️ Contexto Geral do Projeto
