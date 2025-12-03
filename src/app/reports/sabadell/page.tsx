@@ -19,7 +19,7 @@ interface SabadellRow {
   amount: number
   balance: number
   conciliado: boolean
-  paymentSource: string | null
+  paymentSource: string | null | undefined
   reconciliationType?: 'automatic' | 'manual' | null
   isSplit?: boolean
   splitFrom?: string
@@ -685,7 +685,7 @@ export default function SabadellPage() {
     }
   }
 
-  const getPaymentSourceStyle = (source: string | null) => {
+  const getPaymentSourceStyle = (source: string | null | undefined) => {
     if (!source) return { bg: 'bg-gray-100', text: 'text-gray-400', border: 'border-gray-200' }
     return paymentSourceColors[source] || { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-200' }
   }
