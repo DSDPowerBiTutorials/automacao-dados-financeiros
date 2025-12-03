@@ -3,11 +3,97 @@ import { createClient } from "@supabase/supabase-js"
 import * as XLSX from "xlsx"
 import crypto from "crypto"
 
+const CRLF = "\r\n"
+
 // Inicializa Supabase
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 )
+
+async function extractFileBuffer(req: NextApiRequest) {
+  const contentType = req.headers["content-type"] || ""
+
+  if (!contentType.includes("multipart/form-data")) {
+    throw new Error("Content-Type inválido. Envie um FormData com o arquivo XLSX.")
+  }
+
+  const boundaryMatch = contentType.match(/boundary=([^;]+)/)
+  if (!boundaryMatch) {
+    throw new Error("Boundary do multipart não encontrado.")
+  }
+
+  const boundary = boundaryMatch[1]
+  const chunks: Uint8Array[] = []
+  for await (const chunk of req) chunks.push(chunk)
+  const buffer = Buffer.concat(chunks)
+
+  const headerDelimiter = Buffer.from(`${CRLF}${CRLF}`)
+  const headerEndIndex = buffer.indexOf(headerDelimiter)
+
+  if (headerEndIndex === -1) {
+    throw new Error("Cabeçalhos do multipart não encontrados.")
+  }
+
+  const boundaryDelimiter = Buffer.from(`${CRLF}--${boundary}`)
+  const fileStart = headerEndIndex + headerDelimiter.length
+  const fileEnd = buffer.indexOf(boundaryDelimiter, fileStart)
+
+  if (fileEnd === -1) {
+    throw new Error("Delimitador do multipart não encontrado no corpo da requisição.")
+  }
+
+  return buffer.slice(fileStart, fileEnd)
+}
+
+function parseAmount(value: any) {
+  if (value === undefined || value === null) return 0
+
+  const raw = String(value).replace(/\s+/g, "")
+
+  if (raw.includes(",")) {
+    const normalized = raw.replace(/\./g, "").replace(/,/g, ".")
+    const parsed = parseFloat(normalized)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const parsed = parseFloat(raw)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+function normalizeBankinterDate(fecha: any) {
+  if (typeof fecha === "number") {
+    const parsed = XLSX.SSF.parse_date_code(fecha)
+
+    if (!parsed) {
+      throw new Error("Não foi possível interpretar a data numérica do XLSX.")
+    }
+
+    const date = new Date(Date.UTC(parsed.y, parsed.m - 1, parsed.d))
+    return date.toISOString().split("T")[0]
+  }
+
+  if (typeof fecha === "string") {
+    const trimmed = fecha.trim()
+    const match = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/)
+
+    if (match) {
+      const day = Number(match[1])
+      const month = Number(match[2])
+      const year = match[3].length === 2 ? 2000 + Number(match[3]) : Number(match[3])
+      const parsedDate = new Date(Date.UTC(year, month - 1, day))
+      return parsedDate.toISOString().split("T")[0]
+    }
+
+    const parsed = new Date(trimmed)
+
+    if (!isNaN(parsed.getTime())) {
+      return parsed.toISOString().split("T")[0]
+    }
+  }
+
+  throw new Error("Formato de data não reconhecido no arquivo.")
+}
 
 export const config = {
   api: {
@@ -21,10 +107,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(405).json({ error: "Method not allowed" })
     }
 
-    // Lê o corpo binário
-    const chunks: Uint8Array[] = []
-    for await (const chunk of req) chunks.push(chunk)
-    const buffer = Buffer.concat(chunks)
+    const buffer = await extractFileBuffer(req)
 
     // Lê o arquivo XLSX
     const workbook = XLSX.read(buffer, { type: "buffer" })
@@ -36,7 +119,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // Remove rodapé
     const endIndex = filteredData.findIndex(
-      (r: any[]) => r[0]?.toString().toUpperCase().includes("INFORMACIÓN DE INTERÉS")
+      (r: any[]) => r[0]?.toString().toUpperCase().includes("INFORMACIÓN DE INTERÉS"),
     )
     const cleanData = endIndex !== -1 ? filteredData.slice(0, endIndex) : filteredData
 
@@ -58,8 +141,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .map((r: any[]) => {
         const fecha = r[fechaValorIndex]
         const descripcion = r[descripcionIndex]
-        const haber = parseFloat(String(r[haberIndex] || "0").replace(",", ".")) || 0
-        const debe = parseFloat(String(r[debeIndex] || "0").replace(",", ".")) || 0
+        const haber = parseAmount(r[haberIndex])
+        const debe = parseAmount(r[debeIndex])
         const amount = haber - debe
 
         if (!fecha || (!haber && !debe)) return null
@@ -68,7 +151,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id: crypto.randomUUID(),
           file_name: "bankinter-eur.xlsx",
           source: "bankinter-eur",
-          date: new Date(fecha).toISOString().split("T")[0],
+          date: normalizeBankinterDate(fecha),
           description: descripcion || "",
           amount: amount,
           category: "Other",
