@@ -19,7 +19,7 @@ interface SabadellRow {
   amount: number
   balance: number
   conciliado: boolean
-  paymentSource: string | null
+  paymentSource: string | null | undefined
   reconciliationType?: 'automatic' | 'manual' | null
   isSplit?: boolean
   splitFrom?: string
@@ -92,6 +92,11 @@ export default function SabadellPage() {
 
       // Reconciliar cada linha do Sabadell
       const reconciledRows = bankRows.map(bankRow => {
+        // Preserve manual reconciliations and split metadata without reprocessing
+        if (bankRow.reconciliationType === 'manual' || bankRow.isSplit) {
+          return bankRow
+        }
+
         // Filtrar payment sources dentro do intervalo de ±3 dias
         const matchingSources = paymentSources.filter(ps =>
           isWithinDateRange(bankRow.date, ps.date, 3)
@@ -559,7 +564,7 @@ export default function SabadellPage() {
     if (!originalRow) return
 
     const total = splitValues.reduce((sum, val) => sum + val, 0)
-    if (Math.abs(total - originalRow.amount) < 0.01) {
+    if (Math.abs(total - originalRow.amount) >= 0.01) {
       alert(`❌ O total do split (${formatCurrency(total)}) deve ser igual ao valor original (${formatCurrency(originalRow.amount)})`)
       return
     }
@@ -680,7 +685,7 @@ export default function SabadellPage() {
     }
   }
 
-  const getPaymentSourceStyle = (source: string | null) => {
+  const getPaymentSourceStyle = (source: string | null | undefined) => {
     if (!source) return { bg: 'bg-gray-100', text: 'text-gray-400', border: 'border-gray-200' }
     return paymentSourceColors[source] || { bg: 'bg-gray-100', text: 'text-gray-600', border: 'border-gray-200' }
   }
