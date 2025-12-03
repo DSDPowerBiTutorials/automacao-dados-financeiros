@@ -184,10 +184,12 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
             {!isCollapsed ? (
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
-                  <img 
-                    src="https://k6hrqrxuu8obbfwn.public.blob.vercel-storage.com/temp/baf537c4-2708-4a07-8e30-4cf8ad2de2e8.png" 
-                    alt="DSD Logo" 
+                  <Image
+                    src="https://k6hrqrxuu8obbfwn.public.blob.vercel-storage.com/temp/baf537c4-2708-4a07-8e30-4cf8ad2de2e8.png"
+                    alt="DSD Logo"
                     className="h-10 w-auto object-contain"
+                    width={40}
+                    height={40}
                   />
                 </div>
                 <div>
@@ -202,10 +204,12 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
             ) : (
               <div className="flex justify-center">
                 <div className="h-10 w-10 flex items-center justify-center">
-                  <img 
-                    src="https://k6hrqrxuu8obbfwn.public.blob.vercel-storage.com/temp/baf537c4-2708-4a07-8e30-4cf8ad2de2e8.png" 
-                    alt="DSD Logo" 
+                  <Image
+                    src="https://k6hrqrxuu8obbfwn.public.blob.vercel-storage.com/temp/baf537c4-2708-4a07-8e30-4cf8ad2de2e8.png"
+                    alt="DSD Logo"
                     className="h-10 w-auto object-contain"
+                    width={40}
+                    height={40}
                   />
                 </div>
               </div>
@@ -256,13 +260,13 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                   Reports
                 </p>
               )}
-              <a
+              <Link
                 href="/pnl"
                 onClick={() => setIsOpen(false)}
                 className={`
                   flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
                   ${currentPage === 'pnl'
-                    ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
+                    ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
                     : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800'
                   }
                   ${isCollapsed ? 'justify-center' : ''}
@@ -278,7 +282,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                     </div>
                   </div>
                 )}
-              </a>
+              </Link>
             </div>
 
             {/* Bank Statements Section */}
@@ -311,14 +315,14 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                         const dateString = item.source ? paymentSourceDates[item.source] : undefined
                         
                         return (
-                          <a
+                          <Link
                             key={item.id}
                             href={item.href}
                             onClick={() => setIsOpen(false)}
                             className={`
                               flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-xs
-                              ${isActive 
-                                ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
+                              ${isActive
+                                ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
                               }
                             `}
@@ -329,7 +333,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                                 {dateString}
                               </span>
                             )}
-                          </a>
+                          </Link>
                         )
                       })}
                     </div>
@@ -337,13 +341,13 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                 </div>
 
                 {/* Sabadell */}
-                <a
+                <Link
                   href={sabadellItem.href}
                   onClick={() => setIsOpen(false)}
                   className={`
                     flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
                     ${currentPage === sabadellItem.id
-                      ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
+                      ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
                       : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800'
                     }
                   `}
@@ -364,7 +368,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                       </div>
                     )}
                   </div>
-                </a>
+                </Link>
               </div>
             )}
 
@@ -396,16 +400,16 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                       {braintreeItems.map((item) => {
                         const isActive = currentPage === item.id
                         const dateString = item.source ? paymentSourceDates[item.source] : undefined
-                        
+
                         return (
-                          <a
+                          <Link
                             key={item.id}
                             href={item.href}
                             onClick={() => setIsOpen(false)}
                             className={`
                               flex items-center justify-between gap-2 px-3 py-2 rounded-lg transition-all duration-200 text-xs
-                              ${isActive 
-                                ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
+                              ${isActive
+                                ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
                                 : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-slate-800'
                               }
                             `}
@@ -416,7 +420,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                                 {dateString}
                               </span>
                             )}
-                          </a>
+                          </Link>
                         )
                       })}
                     </div>
@@ -428,16 +432,16 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                   const Icon = item.icon
                   const isActive = currentPage === item.id
                   const dateString = item.source ? paymentSourceDates[item.source] : undefined
-                  
+
                   return (
-                    <a
+                    <Link
                       key={item.id}
                       href={item.href}
                       onClick={() => setIsOpen(false)}
                       className={`
                         flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
-                        ${isActive 
-                          ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
+                        ${isActive
+                          ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
                           : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800'
                         }
                       `}
@@ -458,7 +462,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                           </div>
                         )}
                       </div>
-                    </a>
+                    </Link>
                   )
                 })}
               </div>
@@ -474,16 +478,16 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
               {actionItems.map((item) => {
                 const Icon = item.icon
                 const isActive = currentPage === item.id
-                
+
                 return (
-                  <a
+                  <Link
                     key={item.id}
                     href={item.href}
                     onClick={() => setIsOpen(false)}
                     className={`
                       flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200
-                      ${isActive 
-                        ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium' 
+                      ${isActive
+                        ? 'bg-blue-50 dark:bg-blue-950 text-blue-600 dark:text-blue-400 font-medium'
                         : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800'
                       }
                       ${isCollapsed ? 'justify-center' : ''}
@@ -492,7 +496,7 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
                   >
                     <Icon className="h-5 w-5 flex-shrink-0" />
                     {!isCollapsed && <span>{item.label}</span>}
-                  </a>
+                  </Link>
                 )
               })}
             </div>
