@@ -27,11 +27,12 @@ import { Sidebar } from "@/components/custom/sidebar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { formatCurrency, formatTimestamp } from "@/lib/formatters"
-import Script from "next/script"
+import { usePapaParse } from "@/hooks/use-papaparse"
+import type { PapaParseInstance } from "@/hooks/use-papaparse"
 
 declare global {
   interface Window {
-    Papa: any
+    Papa?: PapaParseInstance
   }
 }
 
@@ -68,7 +69,7 @@ export default function BankinterEURPage() {
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
   const [isUploading, setIsUploading] = useState(false)
-  const [isParserReady, setIsParserReady] = useState(false)
+  const { papa, isReady: isPapaReady, error: papaError } = usePapaParse()
 
   interface CsvInsertRow {
     id: string
@@ -157,6 +158,12 @@ export default function BankinterEURPage() {
     applyFilters()
   }, [rows, dateFrom, dateTo])
 
+  useEffect(() => {
+    if (papaError) {
+      console.error("❌ Erro ao carregar o parser CSV de forma assíncrona:", papaError)
+    }
+  }, [papaError])
+
   const applyFilters = () => {
     let filtered = rows
 
@@ -221,7 +228,7 @@ export default function BankinterEURPage() {
       return
     }
 
-    if (typeof window === 'undefined' || !window.Papa || !isParserReady) {
+    if (!isPapaReady || !papa) {
       alert('❌ Parser CSV ainda não está pronto. Aguarde e tente novamente.')
       return
     }
@@ -229,7 +236,7 @@ export default function BankinterEURPage() {
     setIsUploading(true)
     const rowsToInsert: CsvInsertRow[] = []
 
-    window.Papa.parse(file, {
+    papa.parse<Record<string, string>>(file, {
       header: true,
       skipEmptyLines: true,
       worker: true,
@@ -511,12 +518,6 @@ export default function BankinterEURPage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Script
-        src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
-        strategy="lazyOnload"
-        onLoad={() => setIsParserReady(true)}
-        onError={() => console.error('❌ Falha ao carregar PapaParse')}
-      />
       <Sidebar currentPage="bankinter-eur" paymentSourceDates={{}} />
 
       <div className="md:pl-64">
