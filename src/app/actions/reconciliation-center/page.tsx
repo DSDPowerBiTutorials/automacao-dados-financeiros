@@ -36,6 +36,17 @@ export default function ReconciliationCenter() {
 
   useEffect(() => {
     const loadRows = async () => {
+      if (!supabase) {
+        console.error("❌ Supabase client não configurado para reconciliation-center")
+        toast({
+          title: "Supabase indisponível",
+          description: "Configure as variáveis de ambiente do Supabase para carregar os uploads.",
+          variant: "destructive",
+        })
+        setIsLoading(false)
+        return
+      }
+
       setIsLoading(true)
       try {
         const { data, error } = await supabase
@@ -73,6 +84,16 @@ export default function ReconciliationCenter() {
   }, [toast])
 
   const handleSave = async (src: string) => {
+    if (!supabase) {
+      console.error("❌ Supabase client não configurado para salvar link")
+      toast({
+        title: "Supabase indisponível",
+        description: "Configure as variáveis de ambiente do Supabase para salvar os links.",
+        variant: "destructive",
+      })
+      return
+    }
+
     const link = links[src]
     if (!link) {
       toast({
