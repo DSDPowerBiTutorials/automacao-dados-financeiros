@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import type { CSVRow } from "@/lib/database"
 import { Upload, Download, Edit2, Save, X, Trash2, ArrowLeft, Loader2, CheckCircle, XCircle } from "lucide-react"
 import { loadAllCSVFiles, saveCSVFile, updateCSVRow, deleteCSVRow } from "@/lib/database"
 import { Button } from "@/components/ui/button"
@@ -56,7 +57,7 @@ export default function BraintreeTransactionsPage() {
       // Carregar Braintree Transactions
       const transactionsFile = data.find(f => f.source === 'braintree-transactions')
       if (transactionsFile) {
-        setRows(transactionsFile.rows as BraintreeTransactionRow[])
+        setRows(transactionsFile.rows as unknown as BraintreeTransactionRow[])
       } else {
         setRows([])
       }
@@ -64,12 +65,15 @@ export default function BraintreeTransactionsPage() {
       // Carregar Braintree EUR para conciliação
       const braintreeEURFile = data.find(f => f.source === 'braintree-eur')
       if (braintreeEURFile) {
-        setBraintreeEURRows(braintreeEURFile.rows as BraintreeEURRow[])
+        setBraintreeEURRows(braintreeEURFile.rows as unknown as BraintreeEURRow[])
       }
       
       // Executar conciliação automática
       if (transactionsFile && braintreeEURFile) {
-        performConciliation(transactionsFile.rows as BraintreeTransactionRow[], braintreeEURFile.rows as BraintreeEURRow[])
+        performConciliation(
+          transactionsFile.rows as unknown as BraintreeTransactionRow[],
+          braintreeEURFile.rows as unknown as BraintreeEURRow[]
+        )
       }
     } catch (error) {
       console.error('Error loading data:', error)
@@ -193,7 +197,7 @@ export default function BraintreeTransactionsPage() {
         await saveCSVFile({
           name: file.name,
           lastUpdated: formattedDate,
-          rows: updatedRows,
+        rows: updatedRows as unknown as CSVRow[],
           totalAmount: totalAmount,
           source: 'braintree-transactions'
         })
