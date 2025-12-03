@@ -1,128 +1,148 @@
+#!/usr/bin/env node
 /**
- * 🤖 Codex Repair Script
- * Executa automaticamente dentro do ambiente GitHub Actions
- * Repara workflows quebrados, recria os principais e commita.
+ * 🧠 Codex Workflow Repair Script
+ * -----------------------------------------------------
+ * Corrige workflows quebrados, reinstala dependências
+ * e garante integridade da estrutura .github/workflows.
+ * -----------------------------------------------------
  */
 
 import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 
-const WORKFLOW_DIR = ".github/workflows";
-fs.mkdirSync(WORKFLOW_DIR, { recursive: true });
+const ROOT = process.cwd();
+const WORKFLOWS_DIR = path.join(ROOT, ".github", "workflows");
+const LOGS_DIR = path.join(ROOT, "logs");
+const LOG_FILE = path.join(LOGS_DIR, "repair.log");
 
-function writeFile(file, content) {
-  const target = path.join(WORKFLOW_DIR, file);
-  fs.writeFileSync(target, content.trimStart());
-  console.log(`✅ Recreated ${file}`);
+// Garante pastas
+fs.mkdirSync(LOGS_DIR, { recursive: true });
+
+// Logger robusto
+function log(message) {
+  const timestamp = new Date().toISOString();
+  const entry = `[${timestamp}] ${message}`;
+  console.log(entry);
+  fs.appendFileSync(LOG_FILE, entry + "\n");
 }
 
-// --- Workflow 1: Codex Auto Fix ---
-writeFile(
-  "codex-auto-fix.yml",
-  `
-name: 🤖 Codex Auto Fix
+// Execução segura de comandos shell
+function run(cmd) {
+  try {
+    execSync(cmd, { stdio: "inherit" });
+  } catch (err) {
+    log(`⚠️ Command failed: ${cmd}`);
+    log(err.message);
+  }
+}
 
-on:
-  push:
-    branches:
-      - main
-      - codex/*
-  pull_request:
-    branches:
-      - main
+// Tratamento global de erros
+process.on("uncaughtException", (err) => {
+  log(`❌ Uncaught Exception: ${err.message}`);
+  log(err.stack);
+  process.exit(1);
+});
 
-jobs:
-  auto-fix:
-    runs-on: ubuntu-latest
-    steps:
-      - name: 🧩 Checkout repo
-        uses: actions/checkout@v4
+process.on("unhandledRejection", (reason) => {
+  log(`❌ Unhandled Promise Rejection: ${reason}`);
+  process.exit(1);
+});
 
-      - name: 🧰 Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
+log("🚀 Starting Codex Workflow Repair");
 
-      - name: ⚙️ Install dependencies
-        run: npm install prettier
+// 1️⃣ Valida diretório de workflows
+if (!fs.existsSync(WORKFLOWS_DIR)) {
+  log("⚠️ .github/workflows not found, creating...");
+  fs.mkdirSync(WORKFLOWS_DIR, { recursive: true });
+}
 
-      - name: 🧠 Auto-fix source code
-        run: |
-          echo "Running Codex Auto-Fix..."
-          find . -type f \\( -name '*.tsx' -o -name '*.ts' -o -name '*.js' -o -name '*.jsx' \\) -print | while read file; do
-            sed -i '/<<<<<<<\\|=======\\|>>>>>>>/d' "$file"
-            if ! grep -q '"use client"' "$file"; then
-              sed -i '1i"use client"\\n' "$file"
-            fi
-          done
-          npx prettier --write .
+// 2️⃣ Corrige cabeçalho e permissões dos YAMLs
+function fixWorkflows() {
+  const files = fs.readdirSync(WORKFLOWS_DIR).filter(f => f.endsWith(".yml") || f.endsWith(".yaml"));
+  if (files.length === 0) {
+    log("⚠️ Nenhum arquivo YAML encontrado.");
+    return;
+  }
 
-      - name: 🚀 Commit & Push changes
-        run: |
-          git config user.name "Codex AutoFix Bot"
-          git config user.email "codex@dsdgroup.es"
-          git add .
-          git commit -m "🤖 auto-fix: format and clean code" || echo "No changes to commit"
-          git push
-`
-);
+  for (const file of files) {
+    const filePath = path.join(WORKFLOWS_DIR, file);
+    let content = fs.readFileSync(filePath, "utf8");
 
-// --- Workflow 2: Codex Cleanup ---
-writeFile(
-  "codex-cleanup.yml",
-  `
-name: 🧹 Codex Cleanup PRs
+    // Corrige sintaxe comum
+    content = content.replace(/\t/g, "  "); // substitui tabs
+    content = content.replace(/\r\n/g, "\n");
 
-on:
-  workflow_dispatch:
+    // Atualiza actions
+    content = content.replace(/actions\/setup-node@v[23]/g, "actions/setup-node@v4");
+    content = content.replace(/actions\/checkout@v[12]/g, "actions/checkout@v4");
 
-jobs:
-  cleanup:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
+    // Garante permissões básicas
+    if (!content.includes("permissions:")) {
+      content += `
+permissions:
+  contents: write
+  pull-requests: write
+`;
+    }
 
-    steps:
-      - name: 🧩 Checkout repo
-        uses: actions/checkout@v4
+    fs.writeFileSync(filePath, content);
+    log(`✅ Workflow verificado e ajustado: ${file}`);
+  }
+}
 
-      - name: 🧠 Close old Codex PRs
-        env:
-          GH_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-        run: |
-          echo "🔍 Searching for old Codex PRs..."
-          prs=$(gh pr list --state open --json number,title | jq -r '.[] | select(.title | test("Codex|auto|fix|xlsx|parser|upload"; "i")) | .number')
-          for pr in $prs; do
-            echo "❌ Closing PR #$pr..."
-            gh pr close $pr --delete-branch --comment "Auto-closed by Codex Cleanup"
-          done
-          echo "✅ All old Codex PRs closed successfully!"
+// 3️⃣ Instala dependências se faltarem
+function installDeps() {
+  try {
+    log("📦 Verificando dependências...");
+    run("npm install prettier eslint js-yaml --legacy-peer-deps || true");
+  } catch (e) {
+    log(`⚠️ Erro ao instalar dependências: ${e.message}`);
+  }
+}
 
-      - name: 🧠 Create new clean branch
-        run: |
-          git config --global user.email "codex@dsdgroup.es"
-          git config --global user.name "Codex Cleanup Bot"
-          git fetch origin main
-          git checkout main
-          git pull
-          git checkout -b codex/fresh-clean-state
-          git push origin codex/fresh-clean-state
-          gh pr create --base main --head codex/fresh-clean-state --title "🧠 Codex Fresh State PR" --body "Reinitialized clean state after automatic cleanup."
-`
-);
+// 4️⃣ Executa validação Prettier e ESLint
+function lintWorkflows() {
+  log("🎨 Formatando YAMLs e JS...");
+  run("npx prettier --write .github/workflows || true");
+  run("npx eslint --fix scripts/*.js || true");
+}
 
-// --- Git commit ---
+// 5️⃣ Confirma estrutura correta do repositório
+function validateRepoStructure() {
+  const expected = ["src", "scripts", "public"];
+  const missing = expected.filter(d => !fs.existsSync(path.join(ROOT, d)));
+  if (missing.length > 0) {
+    log(`⚠️ Estrutura incompleta, criando: ${missing.join(", ")}`);
+    missing.forEach(d => fs.mkdirSync(path.join(ROOT, d), { recursive: true }));
+  }
+}
+
+// 6️⃣ Commit automático de correções
+function autoCommit() {
+  try {
+    log("💾 Preparando commit automático...");
+    run("git config user.name 'Codex Workflow Bot'");
+    run("git config user.email 'codex@dsdgroup.es'");
+    run("git add .");
+    execSync("git diff --cached --quiet") 
+      ? log("✅ Nenhuma alteração detectada.") 
+      : run("git commit -m '🤖 Codex: repaired workflows and dependencies' || true");
+  } catch (err) {
+    log(`⚠️ Commit skipped: ${err.message}`);
+  }
+}
+
+// 🧠 Execução
 try {
-  execSync(`
-    git config --global user.name "Codex Repair Bot"
-    git config --global user.email "codex@dsdgroup.es"
-    git add ${WORKFLOW_DIR}
-    git commit -m "🧩 fix: repaired Codex workflows (auto-fix + cleanup)"
-    git push
-  `);
-  console.log("🚀 Workflows fixed and pushed successfully.");
-} catch {
-  console.log("⚠️ Nothing new to commit or push failed (ignored).");
+  validateRepoStructure();
+  fixWorkflows();
+  installDeps();
+  lintWorkflows();
+  autoCommit();
+  log("✅ Codex Workflow Repair finished successfully.");
+} catch (error) {
+  log(`❌ Erro crítico: ${error.message}`);
+  log(error.stack);
+  process.exit(1);
 }
