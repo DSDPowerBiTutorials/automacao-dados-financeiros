@@ -103,9 +103,11 @@ export default function BankinterPage() {
         console.log("📄 Raw CSV content:", text.substring(0, 500));
 
         const lines = text.split("\n");
-        const headers = lines[0]
-          .split(",")
-          .map((h) => String(h ?? "").trim().replace(/^\"|\"$/g, ""));
+        const headers = lines[0].split(",").map((h) =>
+          String(h ?? "")
+            .trim()
+            .replace(/^\"|\"$/g, ""),
+        );
         console.log("📋 Headers detected:", headers);
 
         const newRows: BankinterRow[] = [];
@@ -114,9 +116,11 @@ export default function BankinterPage() {
         for (let i = 1; i < lines.length; i++) {
           if (!String(lines[i] ?? "").trim()) continue;
 
-          const values = lines[i]
-            .split(",")
-            .map((v) => String(v ?? "").trim().replace(/^\"|\"$/g, ""));
+          const values = lines[i].split(",").map((v) =>
+            String(v ?? "")
+              .trim()
+              .replace(/^\"|\"$/g, ""),
+          );
           const row: any = {};
 
           headers.forEach((header, index) => {
