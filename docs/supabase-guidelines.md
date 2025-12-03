@@ -1,4 +1,5 @@
-# 🧾 Supabase Data Handling & Upload Guidelines
+````md
+# 🧾 Supabase Data Handling & Upload Guidelines  
 **DSD Finance Hub — Automação de Dados Financeiros**
 
 ---
@@ -47,7 +48,7 @@ garantindo ingestão de dados validada, segura e padronizada para todos os relat
 let { data: csv_rows, error } = await supabase
   .from('csv_rows')
   .select('*')
-```
+````
 
 ### 🔎 Ler colunas específicas
 
@@ -153,7 +154,7 @@ const channel = supabase.channel('delete-channel')
 * `.xlsx` deve ser convertido internamente para `.csv`
 * Cabeçalho obrigatório (linha 1)
 * Encoding: UTF-8 sem BOM
-* Separador: vírgula (`,"`)
+* Separador: vírgula (`,`)
 
 ### Colunas obrigatórias:
 
@@ -202,8 +203,6 @@ O Codex deve:
 
 ## ✅ Commit e Deploy automáticos
 
-Após a criação:
-
 ```bash
 git add docs/supabase-guidelines.md
 git commit -m "docs: add Supabase data handling and upload guidelines"
@@ -219,26 +218,4 @@ git push origin main
 **Contato:** [data@dsdgroup.es](mailto:data@dsdgroup.es)
 
 ```
-
----
-
-## 🧠 **Como usar**
-
-1. Abra o **Codex**.  
-2. Cole **tudo isso** no campo de comando principal.  
-3. Execute o prompt.  
-4. Ele criará `/docs/supabase-guidelines.md`, fará commit e configurará o aprendizado contínuo.
-
----
-
-💬 Após execução bem-sucedida, o Codex retornará:
 ```
-
-✅ Supabase guidelines file created and enforced globally across Codex and CI/CD pipeline.
-✅ Auto-learning on CSV/XLSX uploads activated.
-
-```
-
----
-
-Quer que eu adicione uma extensão pra esse prompt permitir também que o Codex **faça auto-fix nos dados CSV/XLSX antes do upload** (como o script Python que você tinha)?
