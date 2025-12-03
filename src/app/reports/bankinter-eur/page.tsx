@@ -138,16 +138,21 @@ export default function BankinterEURPage() {
 
       const { data, error } = await supabase.storage
         .from("csv_files")
-        .list("", { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+        .list("", {
+          limit: 1,
+          sortBy: { column: "created_at", order: "desc" },
+        });
 
-      if (error || !data?.length) throw new Error("Nenhum arquivo CSV encontrado.");
+      if (error || !data?.length)
+        throw new Error("Nenhum arquivo CSV encontrado.");
 
       const latestFile = data[0].name;
       const { data: fileUrlData } = await supabase.storage
         .from("csv_files")
         .getPublicUrl(latestFile);
 
-      if (!fileUrlData?.publicUrl) throw new Error("Erro ao gerar link de download.");
+      if (!fileUrlData?.publicUrl)
+        throw new Error("Erro ao gerar link de download.");
 
       const link = document.createElement("a");
       link.href = fileUrlData.publicUrl;
@@ -270,7 +275,9 @@ export default function BankinterEURPage() {
         <div className="container mx-auto px-6 py-8">
           <Card className="shadow-xl border-2 border-gray-200">
             <CardHeader className="bg-[#FF7300] text-white">
-              <CardTitle className="text-white">Bank Statement Details</CardTitle>
+              <CardTitle className="text-white">
+                Bank Statement Details
+              </CardTitle>
               <CardDescription className="text-white/90">
                 Imported data from Supabase (Bankinter EUR)
               </CardDescription>

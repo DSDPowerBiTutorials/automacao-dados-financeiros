@@ -1,3 +1,5 @@
+"use client";
+
 import "./globals.css";
 import "../lib/fonts";
 import type { Metadata } from "next";
