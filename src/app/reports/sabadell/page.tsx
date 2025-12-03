@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Upload, Download, Edit2, Save, X, ArrowLeft, Loader2, CheckCircle, XCircle, Settings, Database, Zap, User, Split, Filter } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -57,14 +57,6 @@ export default function SabadellPage() {
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
 
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useEffect(() => {
-    applyFilters()
-  }, [rows, dateFrom, dateTo])
-
   // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (date1: string, date2: string, dayRange: number = 3): boolean => {
     const d1 = new Date(date1)
@@ -74,7 +66,7 @@ export default function SabadellPage() {
     return diffDays <= dayRange
   }
 
-  const reconcilePaymentSources = async (bankRows: SabadellRow[]): Promise<SabadellRow[]> => {
+  const reconcilePaymentSources = useCallback(async (bankRows: SabadellRow[]): Promise<SabadellRow[]> => {
     try {
       if (!supabase) return bankRows
 
@@ -151,9 +143,9 @@ export default function SabadellPage() {
       console.error('Error reconciling payment sources:', error)
       return bankRows
     }
-  }
+  }, [])
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true)
     try {
       if (!supabase) {
@@ -199,9 +191,9 @@ export default function SabadellPage() {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [reconcilePaymentSources])
 
-  const applyFilters = () => {
+  const applyFilters = useCallback(() => {
     let filtered = rows
 
     if (dateFrom) {
@@ -213,7 +205,15 @@ export default function SabadellPage() {
     }
 
     setFilteredRows(filtered)
-  }
+  }, [dateFrom, dateTo, rows])
+
+  useEffect(() => {
+    loadData()
+  }, [loadData])
+
+  useEffect(() => {
+    applyFilters()
+  }, [applyFilters])
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files

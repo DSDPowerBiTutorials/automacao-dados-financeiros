@@ -1405,7 +1405,7 @@ export default function Home() {
             <Alert className="border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
               <AlertCircle className="h-5 w-5 text-blue-600" />
               <AlertDescription className="text-blue-800 dark:text-blue-200 font-medium">
-                Bank statement data is managed in dedicated pages. Access <strong>Bankinter EUR</strong> and <strong>Bankinter USD</strong> from the sidebar menu under "Bank Statements".
+                Bank statement data is managed in dedicated pages. Access <strong>Bankinter EUR</strong> and <strong>Bankinter USD</strong> from the sidebar menu under the Bank Statements section.
               </AlertDescription>
             </Alert>
           </div>
