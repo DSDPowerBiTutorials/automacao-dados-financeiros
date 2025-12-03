@@ -125,7 +125,7 @@ export default function BankinterEURPage() {
       alert(
         err instanceof Error
           ? err.message
-          : "Não foi possível processar o upload. Tente novamente."
+          : "Não foi possível processar o upload. Tente novamente.",
       );
     } finally {
       setIsUploading(false);

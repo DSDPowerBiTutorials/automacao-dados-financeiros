@@ -1,267 +1,314 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Upload, Download, Edit2, Save, X, Trash2, ArrowLeft, Loader2, CheckCircle, XCircle, Settings, Database } from "lucide-react"
-import { loadAllCSVFiles, saveCSVFile, updateCSVRow, deleteCSVRow } from "@/lib/database"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Sidebar } from "@/components/custom/sidebar"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import Link from "next/link"
+import { useState, useEffect } from "react";
+import {
+  Upload,
+  Download,
+  Edit2,
+  Save,
+  X,
+  Trash2,
+  ArrowLeft,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  Settings,
+  Database,
+} from "lucide-react";
+import {
+  loadAllCSVFiles,
+  saveCSVFile,
+  updateCSVRow,
+  deleteCSVRow,
+} from "@/lib/database";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Sidebar } from "@/components/custom/sidebar";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import Link from "next/link";
 
 interface GoCardlessRow {
-  id: string
-  date: string
-  description: string
-  amount: number
-  conciliado: boolean
-  [key: string]: any
+  id: string;
+  date: string;
+  description: string;
+  amount: number;
+  conciliado: boolean;
+  [key: string]: any;
 }
 
 export default function GoCardlessPage() {
-  const [rows, setRows] = useState<GoCardlessRow[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [editingRow, setEditingRow] = useState<string | null>(null)
-  const [editedData, setEditedData] = useState<Partial<GoCardlessRow>>({})
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [isSaving, setIsSaving] = useState(false)
-  const [lastSaved, setLastSaved] = useState<string | null>(null)
-  const [saveSuccess, setSaveSuccess] = useState(false)
+  const [rows, setRows] = useState<GoCardlessRow[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [editingRow, setEditingRow] = useState<string | null>(null);
+  const [editedData, setEditedData] = useState<Partial<GoCardlessRow>>({});
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSaved, setLastSaved] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
-    loadData()
-  }, [])
+    loadData();
+  }, []);
 
   const loadData = async () => {
-    setIsLoading(true)
+    setIsLoading(true);
     try {
-      const data = await loadAllCSVFiles()
-      const gocardlessFile = data.find(f => f.source === 'gocardless')
+      const data = await loadAllCSVFiles();
+      const gocardlessFile = data.find((f) => f.source === "gocardless");
       if (gocardlessFile) {
-        setRows(gocardlessFile.rows as GoCardlessRow[])
+        setRows(gocardlessFile.rows as GoCardlessRow[]);
       } else {
-        setRows([])
+        setRows([]);
       }
     } catch (error) {
-      console.error('Error loading data:', error)
-      setRows([])
+      console.error("Error loading data:", error);
+      setRows([]);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files
+  const handleFileUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const files = event.target.files;
     if (files && files.length > 0) {
-      const file = files[0]
-      const reader = new FileReader()
-      
+      const file = files[0];
+      const reader = new FileReader();
+
       reader.onload = async (e) => {
-        const text = e.target?.result as string
-        const lines = text.split('\n')
-        const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
-        
-        const newRows: GoCardlessRow[] = []
-        let idCounter = rows.length + 1
-        
+        const text = e.target?.result as string;
+        const lines = text.split("\n");
+        const headers = lines[0]
+          .split(",")
+          .map((h) => h.trim().replace(/^"|"$/g, ""));
+
+        const newRows: GoCardlessRow[] = [];
+        let idCounter = rows.length + 1;
+
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue
-          
-          const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
-          const row: any = {}
-          
+          if (!lines[i].trim()) continue;
+
+          const values = lines[i]
+            .split(",")
+            .map((v) => v.trim().replace(/^"|"$/g, ""));
+          const row: any = {};
+
           headers.forEach((header, index) => {
-            row[header] = values[index] || ''
-          })
-          
-          const arrivalDate = row['payouts.arrival_date'] || new Date().toLocaleDateString('pt-BR')
-          const netAmount = parseFloat(row['net_amount']) || 0
-          
+            row[header] = values[index] || "";
+          });
+
+          const arrivalDate =
+            row["payouts.arrival_date"] ||
+            new Date().toLocaleDateString("pt-BR");
+          const netAmount = parseFloat(row["net_amount"]) || 0;
+
           newRows.push({
-            id: `GC-${String(idCounter).padStart(4, '0')}`,
+            id: `GC-${String(idCounter).padStart(4, "0")}`,
             date: arrivalDate,
-            description: row['resources.description'] || `GoCardless Payment - ${arrivalDate}`,
+            description:
+              row["resources.description"] ||
+              `GoCardless Payment - ${arrivalDate}`,
             amount: netAmount,
             conciliado: false,
-            ...row
-          })
-          
-          idCounter++
+            ...row,
+          });
+
+          idCounter++;
         }
-        
-        const updatedRows = [...rows, ...newRows]
-        setRows(updatedRows)
-        
-        const totalAmount = updatedRows.reduce((sum, row) => sum + row.amount, 0)
-        const today = new Date()
-        const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`
-        
+
+        const updatedRows = [...rows, ...newRows];
+        setRows(updatedRows);
+
+        const totalAmount = updatedRows.reduce(
+          (sum, row) => sum + row.amount,
+          0,
+        );
+        const today = new Date();
+        const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+
         await saveCSVFile({
           name: file.name,
           lastUpdated: formattedDate,
           rows: updatedRows,
           totalAmount: totalAmount,
-          source: 'gocardless'
-        })
-        
-        const now = new Date()
-        const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-        setLastSaved(formattedTime)
-        
-        alert(`✅ File uploaded successfully! ${newRows.length} rows processed and saved to database.`)
-      }
-      
-      reader.readAsText(file)
+          source: "gocardless",
+        });
+
+        const now = new Date();
+        const formattedTime = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        setLastSaved(formattedTime);
+
+        alert(
+          `✅ File uploaded successfully! ${newRows.length} rows processed and saved to database.`,
+        );
+      };
+
+      reader.readAsText(file);
     }
-  }
+  };
 
   const saveAllChanges = async () => {
-    setIsSaving(true)
-    setSaveSuccess(false)
-    
+    setIsSaving(true);
+    setSaveSuccess(false);
+
     try {
-      const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0)
-      const today = new Date()
-      const formattedDate = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`
-      
+      const totalAmount = rows.reduce((sum, row) => sum + row.amount, 0);
+      const today = new Date();
+      const formattedDate = `${String(today.getDate()).padStart(2, "0")}/${String(today.getMonth() + 1).padStart(2, "0")}/${today.getFullYear()}`;
+
       await saveCSVFile({
-        name: 'gocardless.csv',
+        name: "gocardless.csv",
         lastUpdated: formattedDate,
         rows: rows,
         totalAmount: totalAmount,
-        source: 'gocardless'
-      })
-      
-      const now = new Date()
-      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-      setLastSaved(formattedTime)
-      setSaveSuccess(true)
-      
-      setTimeout(() => setSaveSuccess(false), 3000)
+        source: "gocardless",
+      });
+
+      const now = new Date();
+      const formattedTime = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      setLastSaved(formattedTime);
+      setSaveSuccess(true);
+
+      setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
-      console.error('Error saving data:', error)
-      alert('Error saving data. Please check your Supabase configuration.')
+      console.error("Error saving data:", error);
+      alert("Error saving data. Please check your Supabase configuration.");
     } finally {
-      setIsSaving(false)
+      setIsSaving(false);
     }
-  }
+  };
 
   const startEditing = (row: GoCardlessRow) => {
-    setEditingRow(row.id)
-    setEditedData({ ...row })
-  }
+    setEditingRow(row.id);
+    setEditedData({ ...row });
+  };
 
   const saveEdit = async () => {
-    if (!editingRow) return
-    
-    const updatedRows = rows.map(row => 
-      row.id === editingRow ? { ...row, ...editedData } : row
-    )
-    setRows(updatedRows)
-    
-    const rowToUpdate = updatedRows.find(r => r.id === editingRow)
+    if (!editingRow) return;
+
+    const updatedRows = rows.map((row) =>
+      row.id === editingRow ? { ...row, ...editedData } : row,
+    );
+    setRows(updatedRows);
+
+    const rowToUpdate = updatedRows.find((r) => r.id === editingRow);
     if (rowToUpdate) {
-      await updateCSVRow(rowToUpdate as any)
-      
-      const now = new Date()
-      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-      setLastSaved(formattedTime)
+      await updateCSVRow(rowToUpdate as any);
+
+      const now = new Date();
+      const formattedTime = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      setLastSaved(formattedTime);
     }
-    
-    setEditingRow(null)
-    setEditedData({})
-  }
+
+    setEditingRow(null);
+    setEditedData({});
+  };
 
   const cancelEdit = () => {
-    setEditingRow(null)
-    setEditedData({})
-  }
+    setEditingRow(null);
+    setEditedData({});
+  };
 
   const handleDeleteRow = async (rowId: string) => {
-    if (!confirm('Are you sure you want to delete this row?')) return
-    
-    setIsDeleting(true)
+    if (!confirm("Are you sure you want to delete this row?")) return;
+
+    setIsDeleting(true);
     try {
-      const result = await deleteCSVRow(rowId)
+      const result = await deleteCSVRow(rowId);
       if (result.success) {
-        await loadData()
-        
-        const now = new Date()
-        const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-        setLastSaved(formattedTime)
+        await loadData();
+
+        const now = new Date();
+        const formattedTime = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+        setLastSaved(formattedTime);
       } else {
-        alert('Error deleting row. Please try again.')
+        alert("Error deleting row. Please try again.");
       }
     } catch (error) {
-      console.error('Error deleting row:', error)
-      alert('Error deleting row. Please try again.')
+      console.error("Error deleting row:", error);
+      alert("Error deleting row. Please try again.");
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   const handleDeleteAll = async () => {
-    if (!confirm('⚠️ WARNING: This will DELETE ALL rows from GoCardless! Are you sure?')) return
-    if (!confirm('⚠️ FINAL WARNING: This action CANNOT be undone! Continue?')) return
-    
-    setIsDeleting(true)
+    if (
+      !confirm(
+        "⚠️ WARNING: This will DELETE ALL rows from GoCardless! Are you sure?",
+      )
+    )
+      return;
+    if (!confirm("⚠️ FINAL WARNING: This action CANNOT be undone! Continue?"))
+      return;
+
+    setIsDeleting(true);
     try {
       for (const row of rows) {
-        await deleteCSVRow(row.id)
+        await deleteCSVRow(row.id);
       }
-      
-      await loadData()
-      
-      const now = new Date()
-      const formattedTime = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}/${now.getFullYear()} ${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-      setLastSaved(formattedTime)
-      
-      alert('✅ All rows deleted successfully!')
+
+      await loadData();
+
+      const now = new Date();
+      const formattedTime = `${String(now.getDate()).padStart(2, "0")}/${String(now.getMonth() + 1).padStart(2, "0")}/${now.getFullYear()} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+      setLastSaved(formattedTime);
+
+      alert("✅ All rows deleted successfully!");
     } catch (error) {
-      console.error('Error deleting all rows:', error)
-      alert('Error deleting rows. Please try again.')
+      console.error("Error deleting all rows:", error);
+      alert("Error deleting rows. Please try again.");
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   const downloadCSV = () => {
     try {
-      const headers = ['ID', 'Date', 'Description', 'Amount', 'Conciliado']
-      
+      const headers = ["ID", "Date", "Description", "Amount", "Conciliado"];
+
       const csvContent = [
-        headers.join(','),
-        ...rows.map(row => [
-          row.id,
-          row.date,
-          `"${row.description.replace(/"/g, '""')}"`,
-          row.amount.toFixed(2),
-          row.conciliado ? 'Yes' : 'No'
-        ].join(','))
-      ].join('\n')
-      
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `gocardless-${new Date().toISOString().split('T')[0]}.csv`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      window.URL.revokeObjectURL(url)
+        headers.join(","),
+        ...rows.map((row) =>
+          [
+            row.id,
+            row.date,
+            `"${row.description.replace(/"/g, '""')}"`,
+            row.amount.toFixed(2),
+            row.conciliado ? "Yes" : "No",
+          ].join(","),
+        ),
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `gocardless-${new Date().toISOString().split("T")[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Error saving CSV file:', error)
-      alert('Error downloading CSV file')
+      console.error("Error saving CSV file:", error);
+      alert("Error downloading CSV file");
     }
-  }
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
       </div>
-    )
+    );
   }
 
   return (
@@ -293,7 +340,7 @@ export default function GoCardlessPage() {
                   <Settings className="h-4 w-4" />
                   Settings
                 </Button>
-                <Button 
+                <Button
                   onClick={saveAllChanges}
                   disabled={isSaving || rows.length === 0}
                   className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
@@ -329,9 +376,9 @@ export default function GoCardlessPage() {
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
-                <Button 
-                  onClick={handleDeleteAll} 
-                  variant="destructive" 
+                <Button
+                  onClick={handleDeleteAll}
+                  variant="destructive"
                   className="gap-2"
                   disabled={isDeleting || rows.length === 0}
                 >
@@ -349,7 +396,8 @@ export default function GoCardlessPage() {
               <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
                 <CheckCircle className="h-5 w-5 text-emerald-600" />
                 <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
-                  ✅ All changes saved successfully to database! Last saved: {lastSaved}
+                  ✅ All changes saved successfully to database! Last saved:{" "}
+                  {lastSaved}
                 </AlertDescription>
               </Alert>
             )}
@@ -376,30 +424,55 @@ export default function GoCardlessPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">ID</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Date</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Description</th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Amount</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Conciliado</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">Actions</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                        ID
+                      </th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                        Date
+                      </th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                        Description
+                      </th>
+                      <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                        Amount
+                      </th>
+                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                        Conciliado
+                      </th>
+                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                        Actions
+                      </th>
                     </tr>
                   </thead>
                   <tbody>
                     {rows.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-gray-500">
+                        <td
+                          colSpan={6}
+                          className="py-8 text-center text-gray-500"
+                        >
                           No data available. Upload a CSV file to get started.
                         </td>
                       </tr>
                     ) : (
                       rows.map((row) => (
-                        <tr key={row.id} className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50">
-                          <td className="py-3 px-4 text-sm font-bold">{row.id}</td>
+                        <tr
+                          key={row.id}
+                          className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                        >
+                          <td className="py-3 px-4 text-sm font-bold">
+                            {row.id}
+                          </td>
                           <td className="py-3 px-4 text-sm">
                             {editingRow === row.id ? (
                               <Input
-                                value={editedData.date || ''}
-                                onChange={(e) => setEditedData({ ...editedData, date: e.target.value })}
+                                value={editedData.date || ""}
+                                onChange={(e) =>
+                                  setEditedData({
+                                    ...editedData,
+                                    date: e.target.value,
+                                  })
+                                }
                                 className="w-32"
                               />
                             ) : (
@@ -409,8 +482,13 @@ export default function GoCardlessPage() {
                           <td className="py-3 px-4 text-sm max-w-xs truncate">
                             {editingRow === row.id ? (
                               <Input
-                                value={editedData.description || ''}
-                                onChange={(e) => setEditedData({ ...editedData, description: e.target.value })}
+                                value={editedData.description || ""}
+                                onChange={(e) =>
+                                  setEditedData({
+                                    ...editedData,
+                                    description: e.target.value,
+                                  })
+                                }
                                 className="w-full"
                               />
                             ) : (
@@ -423,7 +501,12 @@ export default function GoCardlessPage() {
                                 type="number"
                                 step="0.01"
                                 value={editedData.amount || 0}
-                                onChange={(e) => setEditedData({ ...editedData, amount: parseFloat(e.target.value) })}
+                                onChange={(e) =>
+                                  setEditedData({
+                                    ...editedData,
+                                    amount: parseFloat(e.target.value),
+                                  })
+                                }
                                 className="w-32"
                               />
                             ) : (
@@ -440,28 +523,37 @@ export default function GoCardlessPage() {
                           <td className="py-3 px-4 text-center">
                             {editingRow === row.id ? (
                               <div className="flex items-center justify-center gap-2">
-                                <Button size="sm" onClick={saveEdit} className="h-8 w-8 p-0">
+                                <Button
+                                  size="sm"
+                                  onClick={saveEdit}
+                                  className="h-8 w-8 p-0"
+                                >
                                   <Save className="h-4 w-4" />
                                 </Button>
-                                <Button size="sm" variant="outline" onClick={cancelEdit} className="h-8 w-8 p-0">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={cancelEdit}
+                                  className="h-8 w-8 p-0"
+                                >
                                   <X className="h-4 w-4" />
                                 </Button>
                               </div>
                             ) : (
                               <div className="flex items-center justify-center gap-2">
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  onClick={() => startEditing(row)} 
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => startEditing(row)}
                                   className="h-8 w-8 p-0"
                                   disabled={isDeleting}
                                 >
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="ghost" 
-                                  onClick={() => handleDeleteRow(row.id)} 
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  onClick={() => handleDeleteRow(row.id)}
                                   className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
                                   disabled={isDeleting}
                                 >
@@ -485,5 +577,5 @@ export default function GoCardlessPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }

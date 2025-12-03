@@ -1,10 +1,10 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { type ReactElement, useMemo, useState } from "react"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { type ReactElement, useMemo, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   BarChart2,
   BarChart3,
@@ -22,47 +22,75 @@ import {
   TrendingUp,
   Upload,
   X,
-} from "lucide-react"
+} from "lucide-react";
 
 interface SidebarProps {
-  currentPage?: string
-  paymentSourceDates?: { [key: string]: string }
+  currentPage?: string;
+  paymentSourceDates?: { [key: string]: string };
 }
 
 interface NavItem {
-  name: string
-  path: string
-  icon: ReactElement
+  name: string;
+  path: string;
+  icon: ReactElement;
 }
 
 export function Sidebar({ currentPage }: SidebarProps) {
-  const pathname = usePathname()
-  const activePath = currentPage ?? pathname
+  const pathname = usePathname();
+  const activePath = currentPage ?? pathname;
 
-  const [isOpen, setIsOpen] = useState(false)
-  const [isCollapsed, setIsCollapsed] = useState(false)
-  const [bankinterExpanded, setBankinterExpanded] = useState(true)
+  const [isOpen, setIsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [bankinterExpanded, setBankinterExpanded] = useState(true);
 
   const bankStatementItems: NavItem[] = useMemo(
     () => [
-      { name: "Bankinter EUR", path: "/reports/bankinter-eur", icon: <LayoutDashboard className="h-4 w-4" /> },
-      { name: "Bankinter USD", path: "/reports/bankinter-usd", icon: <LayoutDashboard className="h-4 w-4" /> },
-      { name: "Sabadell EUR", path: "/reports/sabadell-eur", icon: <LayoutDashboard className="h-4 w-4" /> },
+      {
+        name: "Bankinter EUR",
+        path: "/reports/bankinter-eur",
+        icon: <LayoutDashboard className="h-4 w-4" />,
+      },
+      {
+        name: "Bankinter USD",
+        path: "/reports/bankinter-usd",
+        icon: <LayoutDashboard className="h-4 w-4" />,
+      },
+      {
+        name: "Sabadell EUR",
+        path: "/reports/sabadell-eur",
+        icon: <LayoutDashboard className="h-4 w-4" />,
+      },
     ],
     [],
-  )
+  );
 
   const quickActions: NavItem[] = useMemo(
     () => [
-      { name: "Reconciliation Center", path: "/actions/reconciliation-center", icon: <FileSpreadsheet className="h-4 w-4" /> },
-      { name: "Integration Insights", path: "/actions/integration-insights", icon: <Link2 className="h-4 w-4" /> },
-      { name: "Analytics", path: "/reports/analytics", icon: <BarChart2 className="h-4 w-4" /> },
-      { name: "Settings", path: "/settings", icon: <Settings className="h-4 w-4" /> },
+      {
+        name: "Reconciliation Center",
+        path: "/actions/reconciliation-center",
+        icon: <FileSpreadsheet className="h-4 w-4" />,
+      },
+      {
+        name: "Integration Insights",
+        path: "/actions/integration-insights",
+        icon: <Link2 className="h-4 w-4" />,
+      },
+      {
+        name: "Analytics",
+        path: "/reports/analytics",
+        icon: <BarChart2 className="h-4 w-4" />,
+      },
+      {
+        name: "Settings",
+        path: "/settings",
+        icon: <Settings className="h-4 w-4" />,
+      },
     ],
     [],
-  )
+  );
 
-  const isActive = (path: string) => activePath === path
+  const isActive = (path: string) => activePath === path;
 
   return (
     <>
@@ -77,7 +105,12 @@ export function Sidebar({ currentPage }: SidebarProps) {
       </Button>
 
       {/* Overlay for mobile */}
-      {isOpen && <div className="fixed inset-0 bg-black/50 z-40 md:hidden" onClick={() => setIsOpen(false)} />}
+      {isOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
 
       {/* Sidebar */}
       <aside
@@ -101,8 +134,12 @@ export function Sidebar({ currentPage }: SidebarProps) {
                   />
                 </div>
                 <div>
-                  <h2 className="font-bold text-gray-900 dark:text-gray-100">Digital Smile Design</h2>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Finance Hub</p>
+                  <h2 className="font-bold text-gray-900 dark:text-gray-100">
+                    Digital Smile Design
+                  </h2>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Finance Hub
+                  </p>
                 </div>
               </div>
             ) : (
@@ -124,7 +161,12 @@ export function Sidebar({ currentPage }: SidebarProps) {
               className="absolute -right-3 top-1/2 -translate-y-1/2 h-6 w-6 rounded-full border border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 shadow-md hidden md:flex items-center justify-center hover:bg-gray-100 dark:hover:bg-slate-800"
               onClick={() => setIsCollapsed(!isCollapsed)}
             >
-              <ChevronLeft className={cn("h-4 w-4 transition-transform duration-300", isCollapsed && "rotate-180")} />
+              <ChevronLeft
+                className={cn(
+                  "h-4 w-4 transition-transform duration-300",
+                  isCollapsed && "rotate-180",
+                )}
+              />
             </Button>
           </div>
 
@@ -177,7 +219,9 @@ export function Sidebar({ currentPage }: SidebarProps) {
                 {!isCollapsed && (
                   <div className="flex-1">
                     <div className="text-sm">DSD Departamental P&L</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">Profit &amp; Loss Report</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">
+                      Profit &amp; Loss Report
+                    </div>
                   </div>
                 )}
               </Link>
@@ -196,8 +240,14 @@ export function Sidebar({ currentPage }: SidebarProps) {
                     className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-slate-800"
                   >
                     <Building2 className="h-5 w-5" />
-                    <span className="flex-1 text-left text-sm font-medium">Bankinter</span>
-                    {bankinterExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                    <span className="flex-1 text-left text-sm font-medium">
+                      Bankinter
+                    </span>
+                    {bankinterExpanded ? (
+                      <ChevronDown className="h-4 w-4" />
+                    ) : (
+                      <ChevronRight className="h-4 w-4" />
+                    )}
                   </button>
 
                   {bankinterExpanded && (
@@ -297,5 +347,5 @@ export function Sidebar({ currentPage }: SidebarProps) {
         </div>
       </aside>
     </>
-  )
+  );
 }
