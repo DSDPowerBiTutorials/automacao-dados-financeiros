@@ -1,5 +1,3 @@
-"use client";
-
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import fs from "fs/promises";
@@ -24,7 +22,7 @@ function normalizeDate(val: any): string {
     const { y, m, d } = XLSX.SSF.parse_date_code(val);
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
-  const parts = String(val)
+  const parts = String(val ?? "")
     .trim()
     .split(/[\/\-]/);
   if (parts.length === 3) {
