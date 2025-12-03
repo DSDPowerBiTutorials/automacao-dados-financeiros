@@ -5,14 +5,12 @@ import { supabase } from "@/lib/supabase";
 import {
   Loader2,
   Upload,
+  Download,
   ArrowLeft,
-  Filter,
-  X,
   CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Card,
   CardHeader,
@@ -39,6 +37,7 @@ export default function BankinterEURPage() {
   const [filteredRows, setFilteredRows] = useState<BankinterEURRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploading, setIsUploading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -133,6 +132,37 @@ export default function BankinterEURPage() {
     }
   };
 
+  const handleDownload = async () => {
+    try {
+      setIsDownloading(true);
+
+      const { data, error } = await supabase.storage
+        .from("csv_files")
+        .list("", { limit: 1, sortBy: { column: "created_at", order: "desc" } });
+
+      if (error || !data?.length) throw new Error("Nenhum arquivo CSV encontrado.");
+
+      const latestFile = data[0].name;
+      const { data: fileUrlData } = await supabase.storage
+        .from("csv_files")
+        .getPublicUrl(latestFile);
+
+      if (!fileUrlData?.publicUrl) throw new Error("Erro ao gerar link de download.");
+
+      const link = document.createElement("a");
+      link.href = fileUrlData.publicUrl;
+      link.download = latestFile;
+      link.click();
+
+      alert("✅ Download iniciado com sucesso.");
+    } catch (error) {
+      console.error("❌ Erro ao baixar arquivo:", error);
+      alert("Falha ao baixar o arquivo mais recente.");
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const { totalIncomes, unreconciled } = React.useMemo(() => {
     const totalIncomes = filteredRows
       .filter((r) => r.amount > 0)
@@ -183,6 +213,7 @@ export default function BankinterEURPage() {
                   onChange={handleUpload}
                   className="hidden"
                 />
+
                 <Button
                   type="button"
                   variant="outline"
@@ -202,44 +233,27 @@ export default function BankinterEURPage() {
                     </>
                   )}
                 </Button>
-              </div>
-            </div>
 
-            <div className="mt-4 flex items-center gap-4">
-              <Filter className="h-4 w-4 text-gray-600" />
-              <span className="text-sm font-medium text-gray-700">
-                Date Filters:
-              </span>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">From:</label>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-40"
-                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="gap-2 border-black text-black hover:bg-gray-100"
+                  onClick={handleDownload}
+                  disabled={isDownloading}
+                >
+                  {isDownloading ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Downloading…
+                    </>
+                  ) : (
+                    <>
+                      <Download className="h-4 w-4" />
+                      Download CSV
+                    </>
+                  )}
+                </Button>
               </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">To:</label>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setDateFrom("");
-                  setDateTo("");
-                }}
-                className="gap-2"
-              >
-                <X className="h-4 w-4" />
-                Clear Filters
-              </Button>
             </div>
 
             {lastSaved && (
@@ -254,43 +268,13 @@ export default function BankinterEURPage() {
         </header>
 
         <div className="container mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Total Incomes
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalIncomes)}
-                </div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Unreconciled Entries
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  {unreconciled}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
           <Card className="shadow-xl border-2 border-gray-200">
             <CardHeader className="bg-[#FF7300] text-white">
-              <CardTitle className="text-white">
-                Bank Statement Details
-              </CardTitle>
+              <CardTitle className="text-white">Bank Statement Details</CardTitle>
               <CardDescription className="text-white/90">
                 Imported data from Supabase (Bankinter EUR)
               </CardDescription>
             </CardHeader>
-
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full">
