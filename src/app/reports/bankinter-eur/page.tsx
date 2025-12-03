@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import * as XLSX from "xlsx";
 import { supabase } from "@/lib/supabase";
 import {
   Loader2,
@@ -50,6 +49,12 @@ export default function BankinterEURPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      if (!supabase) {
+        console.error("❌ Supabase client não configurado.");
+        setRows([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("csv_rows")
         .select("*")
@@ -86,62 +91,40 @@ export default function BankinterEURPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.name.toLowerCase().endsWith(".xlsx")) {
-      alert("❌ Only .xlsx files are accepted.");
+    const isSupported = /\.(csv|xlsx|xls)$/i.test(file.name);
+    if (!isSupported) {
+      alert("❌ Apenas arquivos .csv ou .xlsx são aceitos.");
+      e.target.value = "";
       return;
     }
 
     setIsUploading(true);
     try {
-      const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const json = XLSX.utils.sheet_to_json(sheet, { header: 1 }) as string[][];
+      const formData = new FormData();
+      formData.append("file", file);
 
-      // Ignore first 5 rows and anything after “INFORMACIÓN DE INTERÉS”
-      const startIndex = 5;
-      let endIndex = json.findIndex((r) =>
-        String(r[0] || "").includes("INFORMACIÓN DE INTERÉS")
-      );
-      if (endIndex === -1) endIndex = json.length;
-      const validRows = json.slice(startIndex, endIndex).filter((r) => r.length > 1);
-
-      const mapped = validRows.map((r) => {
-        const [fecha, descripcion, haber, debe, saldo, referencia] = r;
-        const amount =
-          (parseFloat(haber || "0") || 0) - (parseFloat(debe || "0") || 0);
-        return {
-          id: `BANKINTER-EUR-${Date.now()}-${Math.random()
-            .toString(36)
-            .slice(2, 8)}`,
-          file_name: file.name,
-          source: "bankinter-eur",
-          date: XLSX.SSF.format("yyyy-mm-dd", new Date(fecha)),
-          description: descripcion?.toString().trim(),
-          amount,
-          balance: parseFloat(saldo || "0") || 0,
-          reference: referencia || null,
-          reconciled: false,
-          custom_data: {
-            date: XLSX.SSF.format("yyyy-mm-dd", new Date(fecha)),
-            description: descripcion?.toString().trim(),
-            amount,
-            conciliado: false,
-            source: "bankinter-eur",
-          },
-        };
+      const response = await fetch("/api/upload-bankinter-eur", {
+        method: "POST",
+        body: formData,
       });
 
-      const { error } = await supabase.from("csv_rows").insert(mapped);
-      if (error) throw error;
+      const result = await response.json();
 
-      alert(`✅ ${mapped.length} transactions uploaded successfully!`);
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Erro ao processar upload.");
+      }
+
+      alert(`✅ ${result.inserted} transações enviadas com sucesso!`);
       await loadData();
       const now = new Date().toLocaleString();
       setLastSaved(now);
     } catch (err) {
-      console.error("❌ XLSX upload error:", err);
-      alert("Error reading or saving file.");
+      console.error("❌ Erro ao enviar arquivo Bankinter EUR:", err);
+      alert(
+        err instanceof Error
+          ? err.message
+          : "Não foi possível processar o upload. Tente novamente."
+      );
     } finally {
       setIsUploading(false);
       e.target.value = "";
@@ -192,12 +175,12 @@ export default function BankinterEURPage() {
               <div className="flex gap-2">
                 <input
                   type="file"
-                  accept=".xlsx"
-                  id="bankinter-upload"
+                  accept=".csv,.xlsx,.xls"
+                  id="unified-upload"
                   onChange={handleUpload}
                   className="hidden"
                 />
-                <label htmlFor="bankinter-upload">
+                <label htmlFor="unified-upload">
                   <Button
                     variant="outline"
                     className="gap-2 border-black text-black hover:bg-gray-100"
