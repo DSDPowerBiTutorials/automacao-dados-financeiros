@@ -31,7 +31,7 @@ function removeConflictMarkers(content) {
   return content
     .replace(/<<<<<<<[\s\S]*?=======/g, "")
     .replace(/>>>>>>>[^\n]*/g, "")
-    .trim();
+    String( ?? "").trim();
 }
 
 function ensureUseClient(content) {

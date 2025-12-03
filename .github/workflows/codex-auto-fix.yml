@@ -54,6 +54,9 @@ jobs:
       - name: 🧠 Check & Repair Bankinter Upload
         run: node scripts/codex-check-last-bankinter-log.js || true
 
+      - name: 🧩 Fix "trim is not a function" globally
+        run: node scripts/codex-fix-trim-error.js || true
+
       - name: 🚀 Commit & Push changes
         run: |
           git config --global user.name "Codex AutoFix Bot"
