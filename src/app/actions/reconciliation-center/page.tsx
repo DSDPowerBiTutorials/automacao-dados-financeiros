@@ -38,6 +38,10 @@ export default function ReconciliationCenter() {
     const loadRows = async () => {
       setIsLoading(true)
       try {
+        if (!supabase) {
+          throw new Error("Supabase client is not configured.")
+        }
+
         const { data, error } = await supabase
           .from("csv_files")
           .select("source, created_at, url")
@@ -86,6 +90,10 @@ export default function ReconciliationCenter() {
     setIsSaving((prev) => ({ ...prev, [src]: true }))
 
     try {
+      if (!supabase) {
+        throw new Error("Supabase client is not configured.")
+      }
+
       const { error } = await supabase.from("csv_files").update({ url: link }).eq("source", src)
 
       if (error) {

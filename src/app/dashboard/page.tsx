@@ -19,6 +19,10 @@ export default function DashboardPage() {
   useEffect(() => {
     const loadStats = async () => {
       try {
+        if (!supabase) {
+          throw new Error("Supabase client is not configured.")
+        }
+
         const { count: bankTransactions, error: bankError } = await supabase
           .from("csv_rows")
           .select("id", { count: "exact", head: true })
