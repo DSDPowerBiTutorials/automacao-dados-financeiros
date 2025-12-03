@@ -1,224 +1,145 @@
-"use client";
-
-import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
+import formidable from "formidable";
+import fs from "fs/promises";
+import path from "path";
+import crypto from "crypto";
 
-const FILE_NAME = "bankinter-eur.csv";
-const SOURCE = "bankinter-eur";
-const HEADER_OFFSET = 5;
+export const config = { api: { bodyParser: false } };
 
-function parseAmount(value: any): number {
-  if (value === undefined || value === null) return 0;
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
 
-  const raw = String(value).replace(/\s+/g, "");
+// 🧩 Funções auxiliares seguras
+const normalizeNumber = (val?: any) => {
+  if (val === undefined || val === null) return 0;
+  return parseFloat(String(val).replace(/\./g, "").replace(",", ".").trim()) || 0;
+};
 
-  if (raw.includes(",")) {
-    const normalized = raw.replace(/\./g, "").replace(/,/g, ".");
-    const parsed = parseFloat(normalized);
-    return Number.isFinite(parsed) ? parsed : 0;
+const normalizeDate = (val: any) => {
+  if (!val) return "";
+  if (typeof val === "number") {
+    const { y, m, d } = XLSX.SSF.parse_date_code(val);
+    return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
-
-  const parsed = parseFloat(raw);
-  return Number.isFinite(parsed) ? parsed : 0;
-}
-
-function parseDate(value: any): string | null {
-  if (!value) return null;
-
-  if (typeof value === "number") {
-    const dateObj = XLSX.SSF.parse_date_code(value);
-    if (!dateObj) return null;
-    return new Date(Date.UTC(dateObj.y, dateObj.m - 1, dateObj.d))
-      .toISOString()
-      .split("T")[0];
+  const parts = String(val).trim().split(/[\/\-]/);
+  if (parts.length === 3) {
+    const [dd, mm, yyyy] = parts;
+    const fullYear = yyyy.length === 2 ? `20${yyyy}` : yyyy;
+    return `${fullYear}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
   }
+  return "";
+};
 
-  if (typeof value === "string") {
-    const trimmed = value.trim();
-    const delimiterMatch = trimmed.match(
-      /^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/,
-    );
+export default async function handler(req: any, res: any) {
+  if (req.method !== "POST")
+    return res.status(405).json({ error: "Method not allowed" });
 
-    if (delimiterMatch) {
-      const [, day, month, year] = delimiterMatch;
-      const parsedYear = year.length === 2 ? 2000 + Number(year) : Number(year);
-      return `${parsedYear}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
-    }
-
-    const parsed = new Date(trimmed);
-    if (!Number.isNaN(parsed.getTime())) {
-      return parsed.toISOString().split("T")[0];
-    }
-  }
-
-  return null;
-}
-
-function sanitizeDescription(value: any): string {
-  if (!value) return "";
-  return String(value).replace(/"/g, "").trim();
-}
-
-function buildCustomData(headers: string[], row: any[]) {
-  const rowData = Object.fromEntries(
-    headers.map((header, index) => [header, row[index] ?? ""]),
-  );
-
-  return {
-    ...rowData,
-    conciliado: false,
-    paymentSource: null,
-    reconciliationType: null,
-  };
-}
-
-async function parseUploadedFile(file: File): Promise<any[][]> {
-  const fileName = file.name?.toLowerCase() || "";
-
-  if (
-    !fileName.endsWith(".csv") &&
-    !fileName.endsWith(".xlsx") &&
-    !fileName.endsWith(".xls")
-  ) {
-    throw new Error(
-      "❌ Formato não suportado. Envie um arquivo .csv ou .xlsx.",
-    );
-  }
-
-  if (fileName.endsWith(".csv")) {
-    const csvText = await file.text();
-    if (!csvText.trim()) {
-      throw new Error("❌ O arquivo CSV está vazio.");
-    }
-    const workbook = XLSX.read(csvText, { type: "string" });
-    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    return XLSX.utils.sheet_to_json(sheet, {
-      header: 1,
-      defval: "",
-    }) as any[][];
-  }
-
-  const buffer = await file.arrayBuffer();
-  const workbook = XLSX.read(buffer, { type: "array" });
-  const sheet = workbook.Sheets[workbook.SheetNames[0]];
-  const csvText = XLSX.utils.sheet_to_csv(sheet);
-  if (!csvText.trim()) {
-    throw new Error("❌ O arquivo XLSX não pôde ser convertido para CSV.");
-  }
-  const parsedWorkbook = XLSX.read(csvText, { type: "string" });
-  const parsedSheet = parsedWorkbook.Sheets[parsedWorkbook.SheetNames[0]];
-  return XLSX.utils.sheet_to_json(parsedSheet, {
-    header: 1,
-    defval: "",
-  }) as any[][];
-}
-
-export async function POST(request: NextRequest) {
   try {
-    const formData = await request.formData();
-    const file = formData.get("file");
+    const form = formidable({ multiples: false });
+    const [_, files] = await form.parse(req);
+    const file = Array.isArray(files.file) ? files.file[0] : files.file;
+    if (!file) return res.status(400).json({ error: "No file uploaded" });
 
-    if (!file || !(file instanceof File)) {
-      return NextResponse.json(
-        { success: false, error: "Arquivo não enviado ou inválido." },
-        { status: 400 },
+    const buffer = await fs.readFile(file.filepath);
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+
+    // === Regras específicas Bankinter EUR ===
+    const validData = rows
+      .slice(5)
+      .filter(
+        (r: any[]) => r[0] && !String(r[0]).toUpperCase().includes("INFORMACIÓN DE INTERÉS")
       );
-    }
 
-    const data = await parseUploadedFile(file);
+    const headers = validData[0];
+    const fechaIdx = headers.findIndex((h: string) => /fecha valor/i.test(String(h)));
+    const descIdx = headers.findIndex((h: string) => /descrip/i.test(String(h)));
+    const haberIdx = headers.findIndex((h: string) => /haber/i.test(String(h)));
+    const debeIdx = headers.findIndex((h: string) => /debe/i.test(String(h)));
+    const saldoIdx = headers.findIndex((h: string) => /saldo/i.test(String(h)));
+    const refIdx = headers.findIndex((h: string) => /clave|referen/i.test(String(h)));
 
-    let filteredData = data
-      .slice(HEADER_OFFSET)
-      .filter((row) => row.some((cell) => String(cell ?? "").trim() !== ""));
+    if (fechaIdx === -1 || descIdx === -1)
+      throw new Error("Formato inesperado — colunas principais não encontradas.");
 
-    const endIndex = filteredData.findIndex((row) =>
-      String(row[0] ?? "")
-        .toUpperCase()
-        .includes("INFORMACIÓN DE INTERÉS"),
-    );
-    if (endIndex !== -1) {
-      filteredData = filteredData.slice(0, endIndex);
-    }
+    const dataRows = validData.slice(1);
 
-    if (!filteredData.length) {
-      throw new Error("❌ Nenhuma linha encontrada após processar o arquivo.");
-    }
-
-    const headers = (filteredData[0] as string[]).map((header) =>
-      header.trim().toUpperCase(),
-    );
-    const rows = filteredData.slice(1);
-
-    const fechaValorIndex = headers.indexOf("FECHA VALOR");
-    const descripcionIndex = headers.indexOf("DESCRIPCIÓN");
-    const haberIndex = headers.indexOf("HABER");
-    const debeIndex = headers.indexOf("DEBE");
-
-    if (fechaValorIndex === -1 || descripcionIndex === -1) {
-      throw new Error(
-        "❌ Colunas obrigatórias não encontradas (FECHA VALOR / DESCRIPCIÓN).",
-      );
-    }
-
-    const parsedRows = rows
-      .map((row, index) => {
-        const fechaValor = row[fechaValorIndex];
-        const descripcion = sanitizeDescription(row[descripcionIndex]);
-        const haber = parseAmount(row[haberIndex]);
-        const debe = parseAmount(row[debeIndex]);
+    const clean = dataRows
+      .map((r: any[]) => {
+        const date = normalizeDate(r[fechaIdx]);
+        const desc = String(r[descIdx] ?? "").trim();
+        const haber = normalizeNumber(r[haberIdx]);
+        const debe = normalizeNumber(r[debeIdx]);
         const amount = haber - debe;
-        const parsedDate = parseDate(fechaValor);
+        const saldo = normalizeNumber(r[saldoIdx]);
+        const ref = String(r[refIdx] ?? "").trim();
 
-        if (!parsedDate || (!haber && !debe)) {
-          return null;
-        }
+        if (!date || !desc || amount === 0) return null;
 
         return {
-          id: `BANKINTER-EUR-${Date.now()}-${index}`,
-          file_name: FILE_NAME,
-          source: SOURCE,
-          date: parsedDate,
-          description: descripcion,
+          id: crypto.randomUUID(),
+          file_name: file.originalFilename,
+          source: "bankinter-eur",
+          date,
+          description: desc,
           amount,
+          balance: saldo,
+          reference: ref,
           category: "Other",
-          classification: "Other",
+          classification: amount > 0 ? "Receita" : "Despesa",
           reconciled: false,
-          custom_data: buildCustomData(headers, row),
+          custom_data: { raw: r },
         };
       })
       .filter(Boolean);
 
-    if (!parsedRows.length) {
-      throw new Error("❌ Nenhuma linha válida encontrada no arquivo.");
-    }
+    // === Converter em CSV ===
+    const csvHeader =
+      "date,description,amount,balance,reference,category,classification,source";
+    const csvBody = clean
+      .map(
+        (r: any) =>
+          `${r.date},"${r.description.replace(/"/g, '""')}",${r.amount},${r.balance},"${r.reference}","${r.category}","${r.classification}",${r.source}`
+      )
+      .join("\n");
 
-    const csvRowsUrl = new URL("/api/csv-rows", request.url);
-    const response = await fetch(csvRowsUrl.toString(), {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows: parsedRows, source: SOURCE }),
+    const csvContent = `${csvHeader}\n${csvBody}`;
+    const filename = `bankinter-eur-${Date.now()}.csv`;
+    const tmpPath = path.join("/tmp", filename);
+    await fs.writeFile(tmpPath, csvContent);
+
+    // === Upload CSV ao Supabase ===
+    const { error: uploadError } = await supabase.storage
+      .from("csv_files")
+      .upload(filename, await fs.readFile(tmpPath), {
+        contentType: "text/csv",
+        upsert: true,
+      });
+    if (uploadError) throw uploadError;
+
+    // === Inserir no banco ===
+    const { error: dbError } = await supabase.from("csv_rows").insert(clean);
+    if (dbError) throw dbError;
+
+    await fs.unlink(tmpPath);
+
+    return res.status(200).json({
+      success: true,
+      message: `✅ ${clean.length} linhas importadas e armazenadas.`,
+      file: filename,
     });
-
-    const result = await response.json();
-
-    if (!response.ok || !result.success) {
-      throw new Error(result.error || "Falha ao salvar dados no Supabase.");
-    }
-
-    console.log(
-      `✅ Upload concluído: ${FILE_NAME} (${parsedRows.length} registros)`,
-    ); // eslint-disable-line no-console
-
-    return NextResponse.json({ success: true, inserted: parsedRows.length });
-  } catch (error) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : "Erro desconhecido ao processar upload.";
-    console.error("❌ Erro ao processar upload:", message); // eslint-disable-line no-console
-    return NextResponse.json(
-      { success: false, error: message },
-      { status: 500 },
-    );
+  } catch (err: any) {
+    console.error("❌ Erro no upload Bankinter EUR:", err.message);
+    const logName = `logs/errors/bankinter-eur-${Date.now()}.json`;
+    await supabase.storage
+      .from("logs")
+      .upload(logName, Buffer.from(JSON.stringify({ error: err.message }, null, 2)), {
+        contentType: "application/json",
+      });
+    return res.status(500).json({ error: "Upload failed", details: err.message });
   }
 }
