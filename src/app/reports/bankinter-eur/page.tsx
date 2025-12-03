@@ -27,6 +27,13 @@ import { Sidebar } from "@/components/custom/sidebar"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { formatCurrency, formatTimestamp } from "@/lib/formatters"
+import Script from "next/script"
+
+declare global {
+  interface Window {
+    Papa: any
+  }
+}
 
 interface BankinterEURRow {
   id: string
@@ -60,6 +67,87 @@ export default function BankinterEURPage() {
   const [saveSuccess, setSaveSuccess] = useState(false)
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
+  const [isUploading, setIsUploading] = useState(false)
+  const [isParserReady, setIsParserReady] = useState(false)
+
+  interface CsvInsertRow {
+    id: string
+    file_name: string
+    source: string
+    date: string
+    description: string
+    amount: string
+    category: string
+    classification: string
+    reconciled: boolean
+    custom_data: {
+      id: string
+      date: string
+      description: string
+      amount: number
+      conciliado: boolean
+      paymentSource: string | null
+      reconciliationType: 'automatic' | 'manual' | null
+    }
+  }
+
+  const formatCsvDate = (value?: string) => {
+    if (!value) return ''
+    const normalized = value.trim().replace(/"/g, '')
+    const parts = normalized.split(/[\/-]/)
+
+    if (parts.length === 3) {
+      const [day, month, year] = parts
+      if (day && month && year) {
+        return `${year.padStart(4, '0')}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`
+      }
+    }
+
+    return normalized
+  }
+
+  const parseAmountValue = (value?: string) => {
+    if (!value) return 0
+    const cleaned = value.replace(/\./g, '').replace(',', '.').trim()
+    const parsed = parseFloat(cleaned)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const transformCsvRow = (rawRow: Record<string, string>): CsvInsertRow | null => {
+    const date = formatCsvDate(rawRow['FECHA VALOR'] || rawRow['FECHA_VALOR'] || rawRow['date'])
+    const description = (rawRow['DESCRIPCIÓN'] || rawRow['DESCRIPCION'] || rawRow['description'] || '')
+      .replace(/\s+/g, ' ')
+      .replace(/\"/g, '"')
+      .trim()
+    const haber = parseAmountValue(rawRow['HABER'] || rawRow['haber'])
+    const debe = parseAmountValue(rawRow['DEBE'] || rawRow['debe'])
+    const amountNumber = haber - debe
+
+    if (!date || !description) return null
+
+    const id = `BANKINTER-EUR-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+
+    return {
+      id,
+      file_name: 'bankinter-eur.csv',
+      source: 'bankinter-eur',
+      date,
+      description,
+      amount: amountNumber.toFixed(2),
+      category: 'Other',
+      classification: 'Other',
+      reconciled: false,
+      custom_data: {
+        id,
+        date,
+        description,
+        amount: amountNumber,
+        conciliado: false,
+        paymentSource: null,
+        reconciliationType: null
+      }
+    }
+  }
 
   useEffect(() => {
     loadData()
@@ -128,29 +216,67 @@ export default function BankinterEURPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
-    const formData = new FormData()
-    formData.append("file", file)
-
-    try {
-      const response = await fetch("/api/upload-bankinter-eur", {
-        method: "POST",
-        body: formData,
-      })
-
-      const result = await response.json()
-
-      if (!response.ok || !result.success) {
-        console.error("Erro ao enviar:", result.error)
-        alert(`❌ Erro no upload: ${result.error}`)
-        return
-      }
-
-      alert(`✅ ${result.inserted} linhas enviadas com sucesso!`)
-      loadData()
-    } catch (err) {
-      console.error("Erro inesperado:", err)
-      alert("❌ Falha ao enviar o arquivo. Verifique o formato e tente novamente.")
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+      alert('❌ Formato inválido. Envie um arquivo CSV.')
+      return
     }
+
+    if (typeof window === 'undefined' || !window.Papa || !isParserReady) {
+      alert('❌ Parser CSV ainda não está pronto. Aguarde e tente novamente.')
+      return
+    }
+
+    setIsUploading(true)
+    const rowsToInsert: CsvInsertRow[] = []
+
+    window.Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      worker: true,
+      step: (row: { data: Record<string, string> }) => {
+        const mappedRow = transformCsvRow(row.data)
+        if (mappedRow) {
+          rowsToInsert.push(mappedRow)
+        }
+      },
+      error: (error: { message: string }) => {
+        console.error('❌ Erro ao processar CSV:', error.message)
+        alert(`❌ Erro ao processar o arquivo: ${error.message}`)
+        setIsUploading(false)
+      },
+      complete: async () => {
+        if (!rowsToInsert.length) {
+          alert('❌ Nenhuma linha válida encontrada no CSV.')
+          setIsUploading(false)
+          return
+        }
+
+        try {
+          const response = await fetch('/api/csv-rows', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ rows: rowsToInsert, source: 'bankinter-eur' })
+          })
+
+          const result = await response.json()
+
+          if (!response.ok || !result.success) {
+            console.error('❌ Erro ao enviar:', result.error)
+            alert(`❌ Erro ao salvar dados: ${result.error}`)
+            return
+          }
+
+          alert(`✅ ${rowsToInsert.length} linhas enviadas com sucesso!`)
+          await loadData()
+        } catch (err) {
+          console.error('❌ Erro inesperado:', err)
+          alert('❌ Falha ao enviar o arquivo. Verifique o formato e tente novamente.')
+        } finally {
+          setIsUploading(false)
+          event.target.value = ''
+        }
+      }
+    })
   }
 
   const saveAllChanges = async () => {
@@ -385,6 +511,12 @@ export default function BankinterEURPage() {
 
   return (
     <div className="min-h-screen bg-white">
+      <Script
+        src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"
+        strategy="lazyOnload"
+        onLoad={() => setIsParserReady(true)}
+        onError={() => console.error('❌ Falha ao carregar PapaParse')}
+      />
       <Sidebar currentPage="bankinter-eur" paymentSourceDates={{}} />
 
       <div className="md:pl-64">
@@ -431,16 +563,21 @@ export default function BankinterEURPage() {
                 </Button>
                 <input
                   type="file"
-                  accept=".xlsx"
+                  accept=".csv"
                   onChange={handleFileUpload}
                   className="hidden"
                   id="file-upload-bankinter"
                 />
                 <label htmlFor="file-upload-bankinter">
-                  <Button variant="outline" className="gap-2 border-black text-black hover:bg-gray-100" asChild>
+                  <Button
+                    variant="outline"
+                    className="gap-2 border-black text-black hover:bg-gray-100"
+                    asChild
+                    disabled={isUploading}
+                  >
                     <span>
-                      <Upload className="h-4 w-4" />
-                      Upload XLSX
+                      {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                      {isUploading ? 'Uploading CSV...' : 'Upload CSV'}
                     </span>
                   </Button>
                 </label>
