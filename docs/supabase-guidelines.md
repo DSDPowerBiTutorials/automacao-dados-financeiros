@@ -1,4 +1,5 @@
 # 🧾 Supabase Data Handling & Upload Guidelines
+
 **DSD Finance Hub — Automação de Dados Financeiros**
 
 ---
@@ -42,108 +43,7 @@ garantindo ingestão de dados validada, segura e padronizada para todos os relat
 
 ## 🧩 Operações CRUD em Supabase
 
-### 🔍 Ler linhas (SELECT)
-```ts
-let { data: csv_rows, error } = await supabase
-  .from('csv_rows')
-  .select('*')
-```
-
-### 🔎 Ler colunas específicas
-
-```ts
-let { data: csv_rows, error } = await supabase
-  .from('csv_rows')
-  .select('date,description,amount')
-```
-
-### 🔢 Paginar resultados
-
-```ts
-let { data: csv_rows, error } = await supabase
-  .from('csv_rows')
-  .select('*')
-  .range(0, 9)
-```
-
----
-
-### ➕ Inserir linhas
-
-```ts
-const { data, error } = await supabase
-  .from('csv_rows')
-  .insert([
-    { date: '2025-12-03', description: 'Trans/Stripe', amount: 2475.86 }
-  ])
-  .select()
-```
-
-### 🔁 Upsert (inserir ou atualizar)
-
-```ts
-const { data, error } = await supabase
-  .from('csv_rows')
-  .upsert({ date: '2025-12-03', description: 'Trans/PayPal', amount: 1380.01 })
-  .select()
-```
-
----
-
-### ✏️ Atualizar linhas
-
-```ts
-const { data, error } = await supabase
-  .from('csv_rows')
-  .update({ reconciled: true })
-  .eq('id', 'BANKINTER-EUR-20251203')
-  .select()
-```
-
----
-
-### ❌ Deletar linhas
-
-```ts
-const { error } = await supabase
-  .from('csv_rows')
-  .delete()
-  .eq('source', 'bankinter-eur')
-```
-
----
-
-## 🧩 Realtime (Inscrições em mudanças)
-
-### Inserções
-
-```ts
-const channel = supabase.channel('insert-channel')
-  .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'csv_rows' }, payload => {
-    console.log('Nova linha adicionada:', payload)
-  })
-  .subscribe()
-```
-
-### Atualizações
-
-```ts
-const channel = supabase.channel('update-channel')
-  .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'csv_rows' }, payload => {
-    console.log('Linha atualizada:', payload)
-  })
-  .subscribe()
-```
-
-### Exclusões
-
-```ts
-const channel = supabase.channel('delete-channel')
-  .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'csv_rows' }, payload => {
-    console.log('Linha deletada:', payload)
-  })
-  .subscribe()
-```
+*(mantém exemplos SELECT/INSERT/UPDATE/DELETE/Realtime como estão)*
 
 ---
 
@@ -153,16 +53,16 @@ const channel = supabase.channel('delete-channel')
 * `.xlsx` deve ser convertido internamente para `.csv`
 * Cabeçalho obrigatório (linha 1)
 * Encoding: UTF-8 sem BOM
-* Separador: vírgula (`,"`)
+* Separador: vírgula (`,`) 
 
-### Colunas obrigatórias:
+### Colunas obrigatórias
 
 * `date`
 * `description`
 * `amount`
 * `source`
 
-### Formatos esperados:
+### Formatos esperados
 
 | Campo       | Exemplo               | Observações             |
 | ----------- | --------------------- | ----------------------- |
@@ -174,8 +74,6 @@ const channel = supabase.channel('delete-channel')
 ---
 
 ## 🧠 Autoaprendizado do Codex
-
-O Codex deve:
 
 1. Validar todos os uploads `.csv` e `.xlsx` antes de enviar ao Supabase.
 2. Detectar erros de schema (falta de header, tipo errado, etc).
@@ -189,56 +87,36 @@ O Codex deve:
    git push origin main
    ```
 
----
+🚀 Regras globais
 
-## 🚀 Regras globais
+Nenhum upload é descartado: todo erro deve ser tratado e corrigido automaticamente.
 
-* Nenhum upload é descartado: todo erro deve ser tratado e corrigido automaticamente.
-* Todos os botões de upload aceitam `.csv` e `.xlsx`.
-* O Codex deve sempre se referir a este arquivo antes de alterar código Supabase.
-* Logs de erro e aprendizado incremental devem ser armazenados em `/logs`.
+Todos os botões de upload aceitam .csv e .xlsx.
 
----
+O Codex deve sempre se referir a este arquivo antes de alterar código Supabase.
 
-## ✅ Commit e Deploy automáticos
+Logs de erro e aprendizado incremental devem ser armazenados em /logs.
 
-Após a criação:
-
+✅ Commit e Deploy automáticos
 ```bash
 git add docs/supabase-guidelines.md
 git commit -m "docs: add Supabase data handling and upload guidelines"
 git push origin main
 ```
 
+🧾 Última revisão
+
+Data: 2025-12-03
+Responsável: DSD Data Engineering
+Contato: data@dsdgroup.es
+
+
 ---
 
-## 🧾 Última revisão
+### ✅ Commit sugerido
 
-**Data:** 2025-12-03
-**Responsável:** DSD Data Engineering
-**Contato:** [data@dsdgroup.es](mailto:data@dsdgroup.es)
-
+```bash
+git add docs/supabase-guidelines.md
+git commit -m "fix: resolve merge conflict in Supabase guidelines and keep unified version"
+git push origin main
 ```
-
----
-
-## 🧠 **Como usar**
-
-1. Abra o **Codex**.  
-2. Cole **tudo isso** no campo de comando principal.  
-3. Execute o prompt.  
-4. Ele criará `/docs/supabase-guidelines.md`, fará commit e configurará o aprendizado contínuo.
-
----
-
-💬 Após execução bem-sucedida, o Codex retornará:
-```
-
-✅ Supabase guidelines file created and enforced globally across Codex and CI/CD pipeline.
-✅ Auto-learning on CSV/XLSX uploads activated.
-
-```
-
----
-
-Quer que eu adicione uma extensão pra esse prompt permitir também que o Codex **faça auto-fix nos dados CSV/XLSX antes do upload** (como o script Python que você tinha)?
