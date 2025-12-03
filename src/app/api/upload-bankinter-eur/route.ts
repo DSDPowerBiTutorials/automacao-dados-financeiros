@@ -1,3 +1,5 @@
+"use client";
+
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import formidable from "formidable";
@@ -9,13 +11,15 @@ export const config = { api: { bodyParser: false } };
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
 // 🧩 Funções auxiliares seguras
 const normalizeNumber = (val?: any) => {
   if (val === undefined || val === null) return 0;
-  return parseFloat(String(val).replace(/\./g, "").replace(",", ".").trim()) || 0;
+  return (
+    parseFloat(String(val).replace(/\./g, "").replace(",", ".").trim()) || 0
+  );
 };
 
 const normalizeDate = (val: any) => {
@@ -24,7 +28,9 @@ const normalizeDate = (val: any) => {
     const { y, m, d } = XLSX.SSF.parse_date_code(val);
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
-  const parts = String(val).trim().split(/[\/\-]/);
+  const parts = String(val)
+    .trim()
+    .split(/[\/\-]/);
   if (parts.length === 3) {
     const [dd, mm, yyyy] = parts;
     const fullYear = yyyy.length === 2 ? `20${yyyy}` : yyyy;
@@ -52,19 +58,29 @@ export default async function handler(req: any, res: any) {
     const validData = rows
       .slice(5)
       .filter(
-        (r: any[]) => r[0] && !String(r[0]).toUpperCase().includes("INFORMACIÓN DE INTERÉS")
+        (r: any[]) =>
+          r[0] &&
+          !String(r[0]).toUpperCase().includes("INFORMACIÓN DE INTERÉS"),
       );
 
     const headers = validData[0];
-    const fechaIdx = headers.findIndex((h: string) => /fecha valor/i.test(String(h)));
-    const descIdx = headers.findIndex((h: string) => /descrip/i.test(String(h)));
+    const fechaIdx = headers.findIndex((h: string) =>
+      /fecha valor/i.test(String(h)),
+    );
+    const descIdx = headers.findIndex((h: string) =>
+      /descrip/i.test(String(h)),
+    );
     const haberIdx = headers.findIndex((h: string) => /haber/i.test(String(h)));
     const debeIdx = headers.findIndex((h: string) => /debe/i.test(String(h)));
     const saldoIdx = headers.findIndex((h: string) => /saldo/i.test(String(h)));
-    const refIdx = headers.findIndex((h: string) => /clave|referen/i.test(String(h)));
+    const refIdx = headers.findIndex((h: string) =>
+      /clave|referen/i.test(String(h)),
+    );
 
     if (fechaIdx === -1 || descIdx === -1)
-      throw new Error("Formato inesperado — colunas principais não encontradas.");
+      throw new Error(
+        "Formato inesperado — colunas principais não encontradas.",
+      );
 
     const dataRows = validData.slice(1);
 
@@ -103,7 +119,7 @@ export default async function handler(req: any, res: any) {
     const csvBody = clean
       .map(
         (r: any) =>
-          `${r.date},"${r.description.replace(/"/g, '""')}",${r.amount},${r.balance},"${r.reference}","${r.category}","${r.classification}",${r.source}`
+          `${r.date},"${r.description.replace(/"/g, '""')}",${r.amount},${r.balance},"${r.reference}","${r.category}","${r.classification}",${r.source}`,
       )
       .join("\n");
 
@@ -137,9 +153,15 @@ export default async function handler(req: any, res: any) {
     const logName = `logs/errors/bankinter-eur-${Date.now()}.json`;
     await supabase.storage
       .from("logs")
-      .upload(logName, Buffer.from(JSON.stringify({ error: err.message }, null, 2)), {
-        contentType: "application/json",
-      });
-    return res.status(500).json({ error: "Upload failed", details: err.message });
+      .upload(
+        logName,
+        Buffer.from(JSON.stringify({ error: err.message }, null, 2)),
+        {
+          contentType: "application/json",
+        },
+      );
+    return res
+      .status(500)
+      .json({ error: "Upload failed", details: err.message });
   }
 }
