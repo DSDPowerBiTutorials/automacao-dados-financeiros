@@ -13,7 +13,7 @@ jobs:
   auto-fix:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # necessário para o bot poder fazer git push
+      contents: write # necessário para o bot poder fazer git push
 
     steps:
       - name: 🧩 Checkout repo
@@ -49,6 +49,9 @@ jobs:
 
           # 💅 Formata o código (Prettier ignora erros)
           npx prettier --write "src/**/*.{js,ts,tsx,jsx,json,css,md}" || true
+
+      - name: 🏦 Implement Bankinter EUR Upload Endpoint with Validation
+        run: node scripts/codex-implement-bankinter-validation.js
 
       - name: 🚀 Commit & Push changes
         run: |
