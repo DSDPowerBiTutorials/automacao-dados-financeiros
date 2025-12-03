@@ -1,0 +1,22 @@
+# Dependencies
+node_modules
+
+# Production
+.next
+out
+
+# Testing and coverage
+coverage
+
+# Env files
+.env*
+
+# OS / Editor
+.DS_Store
+*.log
+*.tmp
+
+# Vercel / build cache
+.vercel
+.turbo
+tsconfig.tsbuildinfo
