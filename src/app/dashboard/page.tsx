@@ -18,6 +18,11 @@ export default function DashboardPage() {
 
   useEffect(() => {
     const loadStats = async () => {
+      if (!supabase) {
+        console.error("Supabase client não configurado para o dashboard")
+        return
+      }
+
       try {
         const { count: bankTransactions, error: bankError } = await supabase
           .from("csv_rows")
