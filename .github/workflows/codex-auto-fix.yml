@@ -1,0 +1,44 @@
+name: 🤖 Codex Auto Fix
+
+on:
+  push:
+    branches:
+      - main
+      - codex/*
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  auto-fix:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🧩 Checkout repo
+        uses: actions/checkout@v4
+
+      - name: 🧰 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: ⚙️ Install dependencies
+        run: npm install prettier
+
+      - name: 🧠 Auto-fix source code
+        run: |
+          echo "Running Codex Auto-Fix..."
+          find . -type f -name '*.tsx' -o -name '*.ts' -o -name '*.js' -o -name '*.jsx' | while read file; do
+            sed -i '/<<<<<<<\|=======\|>>>>>>>/d' "$file"
+            if ! grep -q '"use client"' "$file"; then
+              sed -i '1i"use client"\n' "$file"
+            fi
+          done
+          npx prettier --write .
+
+      - name: 🚀 Commit & Push changes
+        run: |
+          git config user.name "Codex AutoFix Bot"
+          git config user.email "codex@dsdgroup.es"
+          git add .
+          git commit -m "🤖 auto-fix: format and clean code" || echo "No changes to commit"
+          git push
