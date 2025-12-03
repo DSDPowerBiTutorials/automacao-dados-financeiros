@@ -131,6 +131,18 @@ export function Sidebar({ currentPage = "home", paymentSourceDates = {} }: Sideb
 
   const actionItems = [
     { icon: Upload, label: "Upload Files", href: "/#upload", id: "upload" },
+    {
+      icon: FileSpreadsheet,
+      label: "Reconciliation Center",
+      href: "/actions/reconciliation-center",
+      id: "reconciliation-center",
+    },
+    {
+      icon: BarChart3,
+      label: "Integration Insights",
+      href: "/actions/integration-insights",
+      id: "integration-insights",
+    },
     { icon: BarChart3, label: "Reconciliation", href: "/#reconciliation", id: "reconciliation" },
     { icon: Download, label: "Export Data", href: "/#export", id: "export" },
     { icon: Settings, label: "Settings", href: "/#settings", id: "settings" },
