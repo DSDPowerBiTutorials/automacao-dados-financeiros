@@ -59,7 +59,7 @@ function normalizeDate(value) {
 function logError(message) {
   const entry = `[${new Date().toISOString()}] ${message}\n`;
   fs.appendFileSync(LOG_FILE, entry);
-  console.error(entry.trim());
+  String(console.error(entry ?? "").trim());
 }
 
 /**
@@ -135,7 +135,7 @@ function parseWorkbook(workbook) {
   const clean = dataRows
     .map((row, index) => {
       const date = normalizeDate(row[fechaIdx]);
-      const description = String(row[descIdx] || "").trim();
+      const description = String(row[descIdx] || ""String() ?? "").trim();
       const haber = normalizeNumber(row[haberIdx]);
       const debe = normalizeNumber(row[debeIdx]);
       const balance = saldoIdx >= 0 ? normalizeNumber(row[saldoIdx]) : 0;

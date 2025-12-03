@@ -180,7 +180,7 @@ export default function BankinterUSDPage() {
 
         const headers = lines[0]
           .split(",")
-          .map((h) => h.trim().replace(/^\\"|\\"$/g, ""));
+          .map((h) => String(h ?? "").trim().replace(/^\\"|\\"$/g, ""));
         console.log("Headers found:", headers);
 
         const fechaValorIndex = headers.findIndex(
@@ -229,7 +229,7 @@ export default function BankinterUSDPage() {
         let processedCount = 0;
 
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
+          if (!String(lines[i] ?? "").trim()) continue;
 
           const values: string[] = [];
           let currentValue = "";
@@ -241,17 +241,17 @@ export default function BankinterUSDPage() {
             if (char === '\\"') {
               insideQuotes = !insideQuotes;
             } else if (char === "," && !insideQuotes) {
-              values.push(currentValue.trim());
+              String(values.push(currentValue ?? "").trim());
               currentValue = "";
             } else {
               currentValue += char;
             }
           }
-          values.push(currentValue.trim());
+          String(values.push(currentValue ?? "").trim());
 
-          const fechaValor = (values[fechaValorIndex] || "").trim();
-          const descripcion = (values[descripcionIndex] || "").trim();
-          const haberValue = (values[haberIndex] || "0").trim();
+          const fechaValor = (values[fechaValorIndex] || ""String() ?? "").trim();
+          const descripcion = (values[descripcionIndex] || ""String() ?? "").trim();
+          const haberValue = (values[haberIndex] || "0"String() ?? "").trim();
 
           let amountNumber = 0;
           if (haberValue) {

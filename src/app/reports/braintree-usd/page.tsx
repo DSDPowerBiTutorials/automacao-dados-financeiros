@@ -276,7 +276,7 @@ export default function BraintreeUSDPage() {
 
         const headers = lines[0]
           .split(",")
-          .map((h) => h.trim().replace(/^"|"$/g, ""));
+          .map((h) => String(h ?? "").trim().replace(/^"|"$/g, ""));
         console.log("Headers found:", headers);
 
         const disbursementDateIndex = headers.findIndex(
@@ -332,7 +332,7 @@ export default function BraintreeUSDPage() {
         let processedCount = 0;
 
         for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
+          if (!String(lines[i] ?? "").trim()) continue;
 
           const values: string[] = [];
           let currentValue = "";
@@ -344,15 +344,15 @@ export default function BraintreeUSDPage() {
             if (char === '"') {
               insideQuotes = !insideQuotes;
             } else if (char === "," && !insideQuotes) {
-              values.push(currentValue.trim());
+              String(values.push(currentValue ?? "").trim());
               currentValue = "";
             } else {
               currentValue += char;
             }
           }
-          values.push(currentValue.trim());
+          String(values.push(currentValue ?? "").trim());
 
-          const disbursementDate = (values[disbursementDateIndex] || "").trim();
+          const disbursementDate = (values[disbursementDateIndex] || ""String() ?? "").trim();
           const settlementSales =
             parseFloat(
               (values[settlementSalesIndex] || "0").replace(/[^\d.-]/g, ""),

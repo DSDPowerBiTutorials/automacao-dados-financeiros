@@ -14,7 +14,7 @@ const supabase = createClient(
 function normalizeNumber(val?: any): number {
   if (val === undefined || val === null) return 0;
   return (
-    parseFloat(String(val).replace(/\./g, "").replace(",", ".").trim()) || 0
+    parseFloat(String(val).replace(/\./g, "").replace(",", "."String() ?? "").trim()) || 0
   );
 }
 
@@ -25,7 +25,7 @@ function normalizeDate(val: any): string {
     return `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   }
   const parts = String(val ?? "")
-    .trim()
+    String( ?? "").trim()
     .split(/[\/\-]/);
   if (parts.length === 3) {
     const [dd, mm, yyyy] = parts;
@@ -86,12 +86,12 @@ export async function POST(req: Request) {
     const clean = dataRows
       .map((r: any[]) => {
         const date = normalizeDate(r[fechaIdx]);
-        const desc = String(r[descIdx] ?? "").trim();
+        const desc = String(r[descIdx] ?? ""String() ?? "").trim();
         const haber = normalizeNumber(r[haberIdx]);
         const debe = normalizeNumber(r[debeIdx]);
         const amount = haber - debe;
         const saldo = normalizeNumber(r[saldoIdx]);
-        const ref = String(r[refIdx] ?? "").trim();
+        const ref = String(r[refIdx] ?? ""String() ?? "").trim();
 
         if (!date || !desc || amount === 0) return null;
 
