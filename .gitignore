@@ -23,13 +23,14 @@ coverage
 .env.production
 .env.test
 
-# Logs and temporary
+# Logs and temporary files
 *.log
 *.tmp
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+bun.lockb
 
 # OS / Editor configs
 .DS_Store
@@ -40,3 +41,7 @@ pnpm-debug.log*
 .vercel
 .turbo
 tsconfig.tsbuildinfo
+
+# Codex / Local scripts and logs
+logs/
+scripts/tmp/
