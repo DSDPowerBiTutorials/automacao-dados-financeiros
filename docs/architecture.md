@@ -6,7 +6,7 @@ Este projeto é uma aplicação web construída com **Next.js (App Router)** e *
 O objetivo é criar um sistema de **gestão financeira** que permita:
 
 - cadastrar **contas a pagar e a receber**;
-- registrar **receitas e despesas**;
+- registrar **receitas e despesas**; 
 - gerar relatórios como **P&L (DRE)**, **Balanço** e **Fluxo de Caixa**;
 - futuramente, integrar com **Supabase** para persistência dos dados.
 
