@@ -1,9 +1,9 @@
 name: Block Main Deploys
 
-on:
+off:
   push:
     branches:
-      - main
+      - mai  n
 
 jobs:
   block-production-deploy:
