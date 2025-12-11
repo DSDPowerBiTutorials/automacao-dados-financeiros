@@ -1,3 +1,5 @@
+"use client";
+
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import fs from "fs/promises";
@@ -37,7 +39,9 @@ function normalizeDate(val: any): string {
 
 function safeTrim(value: unknown): string {
   if (value === undefined || value === null) return "";
-  return String(value).replace(/^"+|"+$/g, "").trim();
+  return String(value)
+    .replace(/^"+|"+$/g, "")
+    .trim();
 }
 
 export async function POST(req: Request) {
@@ -61,16 +65,14 @@ export async function POST(req: Request) {
     });
 
     // Ignora cabeçalhos e rodapés
-    const validData = rows
-      .slice(5)
-      .filter((r): r is SheetRow => {
-        const firstCell = r?.[0];
-        return (
-          Array.isArray(r) &&
-          Boolean(firstCell) &&
-          !String(firstCell).toUpperCase().includes("INFORMACIÓN DE INTERÉS")
-        );
-      });
+    const validData = rows.slice(5).filter((r): r is SheetRow => {
+      const firstCell = r?.[0];
+      return (
+        Array.isArray(r) &&
+        Boolean(firstCell) &&
+        !String(firstCell).toUpperCase().includes("INFORMACIÓN DE INTERÉS")
+      );
+    });
 
     if (!validData.length) {
       throw new Error("Formato inesperado — nenhuma linha válida encontrada.");
