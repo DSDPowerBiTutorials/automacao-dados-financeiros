@@ -82,7 +82,11 @@ export function FornecedorForm({ initialData, onSave }: FornecedorFormProps) {
       </div>
 
       <div className="flex justify-end">
-        <Button type="submit" disabled={isSaving} className="bg-[#1a2b4a] text-white">
+        <Button
+          type="submit"
+          disabled={isSaving}
+          className="bg-[#1a2b4a] text-white"
+        >
           {isSaving ? "Salvando..." : "Salvar"}
         </Button>
       </div>
