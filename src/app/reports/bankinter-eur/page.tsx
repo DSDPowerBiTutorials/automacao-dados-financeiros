@@ -54,6 +54,36 @@ export default function BankinterEURPage() {
 
   const loadData = async () => {
     setIsLoading(true);
+<<<<<<< HEAD
+=======
+    const { data, error } = await supabase
+      .from("csv_rows")
+      .select("*")
+      .eq("source", "bankinter-eur")
+      .order("date", { ascending: false });
+
+    if (error) {
+      console.error("Erro ao carregar dados:", error);
+    } else {
+      setData(data || []);
+    }
+    setIsLoading(false);
+  };
+
+  // ✅ Corrigida apenas esta função, mantendo estrutura original
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    const file = files[0];
+    const extension = file.name.split(".").pop()?.toLowerCase();
+
+    if (extension !== "xlsx") {
+      alert("❌ Apenas arquivos .xlsx são aceitos. Selecione um arquivo válido e tente novamente.");
+      return;
+    }
+
+>>>>>>> ba3cae81 (fix: enforce xlsx upload conversion)
     try {
       const { data, error } = await supabase
         .from("csv_rows")
@@ -61,6 +91,7 @@ export default function BankinterEURPage() {
         .eq("source", "bankinter-eur")
         .order("date", { ascending: false });
 
+<<<<<<< HEAD
       if (error) throw error;
 
       const parsed =
@@ -73,6 +104,19 @@ export default function BankinterEURPage() {
           reference: r.reference,
           conciliado: r.custom_data?.conciliado ?? false,
         })) ?? [];
+=======
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const csv = XLSX.utils.sheet_to_csv(sheet);
+
+      const csvWorkbook = XLSX.read(csv, { type: "string" });
+      const csvSheet = csvWorkbook.Sheets[csvWorkbook.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(csvSheet, { defval: "" });
+
+      const fileName = `bankinter_eur_${Date.now()}.csv`;
+>>>>>>> ba3cae81 (fix: enforce xlsx upload conversion)
 
       setRows(parsed);
     } catch (err) {
@@ -150,6 +194,7 @@ export default function BankinterEURPage() {
   }
 
   return (
+<<<<<<< HEAD
     <div className="min-h-screen bg-white">
       <Sidebar currentPage="bankinter-eur" paymentSourceDates={{}} />
 
@@ -305,6 +350,43 @@ export default function BankinterEURPage() {
                       <th className="text-right py-4 px-4 font-bold text-sm text-black">
                         Amount
                       </th>
+=======
+    <div className="p-8">
+      <Card>
+        <CardHeader>
+          <CardTitle>Bankinter EUR</CardTitle>
+          <CardDescription>Upload e visualização de lançamentos em euros.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <input type="file" accept=".xlsx" onChange={handleFileUpload} />
+          {isSaving && <p className="text-sm text-gray-500 mt-2">Processando arquivo...</p>}
+          {isLoading ? (
+            <p className="mt-4">Carregando...</p>
+          ) : (
+            <table className="mt-6 w-full border text-sm">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border p-2">Data</th>
+                  <th className="border p-2">Descrição</th>
+                  <th className="border p-2 text-right">Valor</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.length === 0 ? (
+                  <tr>
+                    <td colSpan={3} className="p-4 text-center text-gray-500">
+                      Nenhum registro encontrado.
+                    </td>
+                  </tr>
+                ) : (
+                  data.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      <td className="border p-2">{row.date || "-"}</td>
+                      <td className="border p-2">{row.description || "-"}</td>
+                      <td className="border p-2 text-right">
+                        {parseFloat(row.amount || 0).toFixed(2)}
+                      </td>
+>>>>>>> ba3cae81 (fix: enforce xlsx upload conversion)
                     </tr>
                   </thead>
                   <tbody>
