@@ -14,7 +14,7 @@ jobs:
   auto-fix:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # necessário para o bot poder fazer git push
+      contents: write # necessário para o bot poder fazer git push
 
     steps:
       - name: 🧩 Checkout repo
@@ -51,6 +51,9 @@ jobs:
 
       - name: 🧠 Check & Repair Bankinter Upload
         run: node scripts/codex-check-last-bankinter-log.js || true
+
+      - name: 🏦 Implement Bankinter EUR Upload Endpoint with Validation
+        run: node scripts/codex-implement-bankinter-validation.js
 
       - name: 🚀 Commit & Push changes
         run: |
