@@ -1,5 +1,3 @@
-"use client";
-
 import { createClient } from "@supabase/supabase-js";
 import * as XLSX from "xlsx";
 import fs from "fs/promises";
@@ -10,6 +8,8 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
+
+type SheetRow = (string | number)[];
 
 function normalizeNumber(val?: any): number {
   if (val === undefined || val === null) return 0;
@@ -35,6 +35,11 @@ function normalizeDate(val: any): string {
   return "";
 }
 
+function safeTrim(value: unknown): string {
+  if (value === undefined || value === null) return "";
+  return String(value).replace(/^"+|"+$/g, "").trim();
+}
+
 export async function POST(req: Request) {
   try {
     const formData = await req.formData();
@@ -50,30 +55,34 @@ export async function POST(req: Request) {
     const buffer = Buffer.from(arrayBuffer);
     const workbook = XLSX.read(buffer, { type: "buffer" });
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-    const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+    const rows = XLSX.utils.sheet_to_json<SheetRow>(sheet, {
+      header: 1,
+      defval: "",
+    });
 
     // Ignora cabeçalhos e rodapés
     const validData = rows
       .slice(5)
-      .filter(
-        (r: any[]) =>
-          r[0] &&
-          !String(r[0]).toUpperCase().includes("INFORMACIÓN DE INTERÉS"),
-      );
+      .filter((r): r is SheetRow => {
+        const firstCell = r?.[0];
+        return (
+          Array.isArray(r) &&
+          Boolean(firstCell) &&
+          !String(firstCell).toUpperCase().includes("INFORMACIÓN DE INTERÉS")
+        );
+      });
+
+    if (!validData.length) {
+      throw new Error("Formato inesperado — nenhuma linha válida encontrada.");
+    }
 
     const headers = validData[0];
-    const fechaIdx = headers.findIndex((h: string) =>
-      /fecha valor/i.test(String(h)),
-    );
-    const descIdx = headers.findIndex((h: string) =>
-      /descrip/i.test(String(h)),
-    );
-    const haberIdx = headers.findIndex((h: string) => /haber/i.test(String(h)));
-    const debeIdx = headers.findIndex((h: string) => /debe/i.test(String(h)));
-    const saldoIdx = headers.findIndex((h: string) => /saldo/i.test(String(h)));
-    const refIdx = headers.findIndex((h: string) =>
-      /clave|referen/i.test(String(h)),
-    );
+    const fechaIdx = headers.findIndex((h) => /fecha valor/i.test(String(h)));
+    const descIdx = headers.findIndex((h) => /descrip/i.test(String(h)));
+    const haberIdx = headers.findIndex((h) => /haber/i.test(String(h)));
+    const debeIdx = headers.findIndex((h) => /debe/i.test(String(h)));
+    const saldoIdx = headers.findIndex((h) => /saldo/i.test(String(h)));
+    const refIdx = headers.findIndex((h) => /clave|referen/i.test(String(h)));
 
     if (fechaIdx === -1 || descIdx === -1) {
       throw new Error(
@@ -86,12 +95,12 @@ export async function POST(req: Request) {
     const clean = dataRows
       .map((r: any[]) => {
         const date = normalizeDate(r[fechaIdx]);
-        const desc = String(r[descIdx] ?? "").trim();
+        const desc = safeTrim(r[descIdx]);
         const haber = normalizeNumber(r[haberIdx]);
         const debe = normalizeNumber(r[debeIdx]);
         const amount = haber - debe;
         const saldo = normalizeNumber(r[saldoIdx]);
-        const ref = String(r[refIdx] ?? "").trim();
+        const ref = safeTrim(r[refIdx]);
 
         if (!date || !desc || amount === 0) return null;
 
