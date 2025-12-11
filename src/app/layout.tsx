@@ -3,6 +3,7 @@
 /* @auto-fix-disable */
 /* @formatter:off */
 
+
 // 🚫 This file MUST remain a Server Component.
 // 🚫 DO NOT ADD client directives — It breaks metadata export and Vercel builds.
 
