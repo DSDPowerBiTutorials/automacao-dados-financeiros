@@ -4,7 +4,7 @@
 4 | /* @formatter:off */
 5 | 
 6 | // 🚫 This file MUST remain a Server Component.
-7 | // 🚫 DO NOT ADD "use client" — It breaks metadata export and Vercel builds.
+7 | // 🚫 DO NOT ADD client directives — It breaks metadata export and Vercel builds.
 8 | 
 9 | import "../lib/fonts";
 10| import type { Metadata } from "next";

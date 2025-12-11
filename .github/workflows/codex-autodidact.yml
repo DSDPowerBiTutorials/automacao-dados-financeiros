@@ -19,6 +19,8 @@ jobs:
   codex-maintenance:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      FIX_EXCLUDE: "src/app/layout.tsx src/app/_app.tsx src/app/**/layout.tsx"
 
     steps:
       - name: 🧩 Checkout repository
@@ -35,6 +37,9 @@ jobs:
         run: |
           echo "📦 Installing dependencies..."
           npm install prettier eslint js-yaml supabase --legacy-peer-deps || true
+
+      - name: 🔒 Protect sensitive layout files
+        run: echo "⛔ Ignorando arquivos protegidos: $FIX_EXCLUDE"
 
       - name: 🧠 Run Codex Autodidact Maintenance
         run: |
