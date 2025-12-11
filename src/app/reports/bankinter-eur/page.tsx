@@ -54,8 +54,6 @@ export default function BankinterEURPage() {
 
   const loadData = async () => {
     setIsLoading(true);
-<<<<<<< HEAD
-=======
     const { data, error } = await supabase
       .from("csv_rows")
       .select("*")
@@ -83,7 +81,6 @@ export default function BankinterEURPage() {
       return;
     }
 
->>>>>>> ba3cae81 (fix: enforce xlsx upload conversion)
     try {
       const { data, error } = await supabase
         .from("csv_rows")
@@ -91,7 +88,6 @@ export default function BankinterEURPage() {
         .eq("source", "bankinter-eur")
         .order("date", { ascending: false });
 
-<<<<<<< HEAD
       if (error) throw error;
 
       const parsed =
@@ -104,7 +100,6 @@ export default function BankinterEURPage() {
           reference: r.reference,
           conciliado: r.custom_data?.conciliado ?? false,
         })) ?? [];
-=======
       const buffer = await file.arrayBuffer();
       const workbook = XLSX.read(buffer, { type: "array" });
       const sheetName = workbook.SheetNames[0];
@@ -116,7 +111,6 @@ export default function BankinterEURPage() {
       const rows = XLSX.utils.sheet_to_json(csvSheet, { defval: "" });
 
       const fileName = `bankinter_eur_${Date.now()}.csv`;
->>>>>>> ba3cae81 (fix: enforce xlsx upload conversion)
 
       setRows(parsed);
     } catch (err) {
@@ -194,7 +188,6 @@ export default function BankinterEURPage() {
   }
 
   return (
-<<<<<<< HEAD
     <div className="min-h-screen bg-white">
       <Sidebar currentPage="bankinter-eur" paymentSourceDates={{}} />
 
@@ -350,7 +343,6 @@ export default function BankinterEURPage() {
                       <th className="text-right py-4 px-4 font-bold text-sm text-black">
                         Amount
                       </th>
-=======
     <div className="p-8">
       <Card>
         <CardHeader>
@@ -386,7 +378,6 @@ export default function BankinterEURPage() {
                       <td className="border p-2 text-right">
                         {parseFloat(row.amount || 0).toFixed(2)}
                       </td>
->>>>>>> ba3cae81 (fix: enforce xlsx upload conversion)
                     </tr>
                   </thead>
                   <tbody>
