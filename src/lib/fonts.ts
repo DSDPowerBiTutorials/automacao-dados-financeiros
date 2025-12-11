@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * 🎨 Font Configuration for Lasy AI Templates
  *
