@@ -63,7 +63,9 @@ export function TabelaDespesas({ despesas, onEdit }: TabelaDespesasProps) {
           />
           <Select
             value={statusFilter}
-            onValueChange={(value) => setStatusFilter(value as DespesaStatus | "all")}
+            onValueChange={(value) =>
+              setStatusFilter(value as DespesaStatus | "all")
+            }
           >
             <SelectTrigger className="w-[160px]">
               <SelectValue placeholder="Status" />
@@ -114,7 +116,9 @@ export function TabelaDespesas({ despesas, onEdit }: TabelaDespesasProps) {
                     {despesa.status}
                   </Badge>
                 </td>
-                <td className="py-2 text-gray-700">{despesa.bank_account || "-"}</td>
+                <td className="py-2 text-gray-700">
+                  {despesa.bank_account || "-"}
+                </td>
                 <td className="py-2">
                   <Button
                     variant="outline"
@@ -130,7 +134,9 @@ export function TabelaDespesas({ despesas, onEdit }: TabelaDespesasProps) {
           </tbody>
         </table>
         {filtered.length === 0 && (
-          <p className="text-center text-gray-500 py-4">Nenhuma despesa encontrada.</p>
+          <p className="text-center text-gray-500 py-4">
+            Nenhuma despesa encontrada.
+          </p>
         )}
       </CardContent>
     </Card>

@@ -5,9 +5,17 @@ import { Loader2, Plus } from "lucide-react";
 import { Sidebar } from "@/components/custom/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { ContaGerencial } from "@/lib/supabase/queries/contas-a-pagar";
-import { listContasGerenciais, upsertContaGerencial } from "@/lib/supabase/queries/contas-a-pagar";
+import {
+  listContasGerenciais,
+  upsertContaGerencial,
+} from "@/lib/supabase/queries/contas-a-pagar";
 import { LayoutTabs } from "../components/LayoutTabs";
 import { ContaGerencialForm } from "../components/ContaGerencialForm";
 
@@ -52,7 +60,9 @@ export default function ContasGerenciaisPage() {
         <header className="border-b-2 border-gray-200 bg-white shadow-lg sticky top-0 z-30">
           <div className="container mx-auto px-6 py-5 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-black">Contas Gerenciais</h1>
+              <h1 className="text-2xl font-bold text-black">
+                Contas Gerenciais
+              </h1>
               <p className="text-sm text-gray-600 mt-1">
                 Configure grupos e descrições para classificar despesas
               </p>
@@ -94,9 +104,15 @@ export default function ContasGerenciaisPage() {
                   <tbody>
                     {contas.map((conta) => (
                       <tr key={conta.id} className="border-b last:border-0">
-                        <td className="py-2 text-gray-700">{conta.codigo || "-"}</td>
-                        <td className="py-2 font-semibold text-gray-900">{conta.descricao}</td>
-                        <td className="py-2 text-gray-700">{conta.grupo || "-"}</td>
+                        <td className="py-2 text-gray-700">
+                          {conta.codigo || "-"}
+                        </td>
+                        <td className="py-2 font-semibold text-gray-900">
+                          {conta.descricao}
+                        </td>
+                        <td className="py-2 text-gray-700">
+                          {conta.grupo || "-"}
+                        </td>
                         <td className="py-2">
                           <Button
                             variant="outline"
@@ -123,9 +139,14 @@ export default function ContasGerenciaisPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{selected ? "Editar conta" : "Nova conta"}</DialogTitle>
+            <DialogTitle>
+              {selected ? "Editar conta" : "Nova conta"}
+            </DialogTitle>
           </DialogHeader>
-          <ContaGerencialForm initialData={selected ?? undefined} onSave={handleSave} />
+          <ContaGerencialForm
+            initialData={selected ?? undefined}
+            onSave={handleSave}
+          />
         </DialogContent>
       </Dialog>
     </div>

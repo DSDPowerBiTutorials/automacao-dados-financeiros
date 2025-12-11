@@ -5,9 +5,17 @@ import { Loader2, Plus } from "lucide-react";
 import { Sidebar } from "@/components/custom/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import type { Fornecedor } from "@/lib/supabase/queries/contas-a-pagar";
-import { listFornecedores, upsertFornecedor } from "@/lib/supabase/queries/contas-a-pagar";
+import {
+  listFornecedores,
+  upsertFornecedor,
+} from "@/lib/supabase/queries/contas-a-pagar";
 import { LayoutTabs } from "../components/LayoutTabs";
 import { FornecedorForm } from "../components/FornecedorForm";
 
@@ -53,7 +61,9 @@ export default function FornecedoresPage() {
           <div className="container mx-auto px-6 py-5 flex items-center justify-between">
             <div>
               <h1 className="text-2xl font-bold text-black">Fornecedores</h1>
-              <p className="text-sm text-gray-600 mt-1">Gerencie fornecedores e contatos</p>
+              <p className="text-sm text-gray-600 mt-1">
+                Gerencie fornecedores e contatos
+              </p>
             </div>
             <Button
               className="bg-[#1a2b4a] text-white gap-2"
@@ -92,11 +102,22 @@ export default function FornecedoresPage() {
                   </thead>
                   <tbody>
                     {fornecedores.map((fornecedor) => (
-                      <tr key={fornecedor.id} className="border-b last:border-0">
-                        <td className="py-2 font-semibold text-gray-900">{fornecedor.nome}</td>
-                        <td className="py-2 text-gray-700">{fornecedor.cnpj || "-"}</td>
-                        <td className="py-2 text-gray-700">{fornecedor.email || "-"}</td>
-                        <td className="py-2 text-gray-700">{fornecedor.telefone || "-"}</td>
+                      <tr
+                        key={fornecedor.id}
+                        className="border-b last:border-0"
+                      >
+                        <td className="py-2 font-semibold text-gray-900">
+                          {fornecedor.nome}
+                        </td>
+                        <td className="py-2 text-gray-700">
+                          {fornecedor.cnpj || "-"}
+                        </td>
+                        <td className="py-2 text-gray-700">
+                          {fornecedor.email || "-"}
+                        </td>
+                        <td className="py-2 text-gray-700">
+                          {fornecedor.telefone || "-"}
+                        </td>
                         <td className="py-2">
                           <Button
                             variant="outline"
@@ -123,9 +144,14 @@ export default function FornecedoresPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{selected ? "Editar fornecedor" : "Novo fornecedor"}</DialogTitle>
+            <DialogTitle>
+              {selected ? "Editar fornecedor" : "Novo fornecedor"}
+            </DialogTitle>
           </DialogHeader>
-          <FornecedorForm initialData={selected ?? undefined} onSave={handleSave} />
+          <FornecedorForm
+            initialData={selected ?? undefined}
+            onSave={handleSave}
+          />
         </DialogContent>
       </Dialog>
     </div>

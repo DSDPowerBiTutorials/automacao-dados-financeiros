@@ -83,9 +83,15 @@ export function ConciliationTable({
             >
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
                 <div>
-                  <p className="text-sm text-gray-600">{despesa.data_vencimento}</p>
-                  <p className="font-semibold text-gray-900">{despesa.descricao}</p>
-                  <p className="text-sm text-gray-600">{despesa.bank_account || "Sem conta"}</p>
+                  <p className="text-sm text-gray-600">
+                    {despesa.data_vencimento}
+                  </p>
+                  <p className="font-semibold text-gray-900">
+                    {despesa.descricao}
+                  </p>
+                  <p className="text-sm text-gray-600">
+                    {despesa.bank_account || "Sem conta"}
+                  </p>
                 </div>
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Valor</p>

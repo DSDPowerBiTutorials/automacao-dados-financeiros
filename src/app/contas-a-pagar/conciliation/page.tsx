@@ -47,7 +47,10 @@ export default function ConciliationPage() {
     [despesas],
   );
 
-  const handleMatch = async (despesa: Despesa, transaction: BankTransaction) => {
+  const handleMatch = async (
+    despesa: Despesa,
+    transaction: BankTransaction,
+  ) => {
     const ok = await createConciliation(despesa, transaction);
     if (ok) {
       alert("✅ Conciliação criada!");
@@ -82,7 +85,9 @@ export default function ConciliationPage() {
             <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4 text-gray-800">
               <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
                 <p className="text-sm text-gray-600">Despesas incorridas</p>
-                <p className="text-2xl font-bold text-[#1a2b4a]">{despesas.length}</p>
+                <p className="text-2xl font-bold text-[#1a2b4a]">
+                  {despesas.length}
+                </p>
               </div>
               <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
                 <p className="text-sm text-gray-600">Valor incorrido</p>
@@ -92,7 +97,9 @@ export default function ConciliationPage() {
               </div>
               <div className="p-3 rounded-lg bg-gray-50 border border-gray-200">
                 <p className="text-sm text-gray-600">Transações carregadas</p>
-                <p className="text-2xl font-bold text-[#1a2b4a]">{transactions.length}</p>
+                <p className="text-2xl font-bold text-[#1a2b4a]">
+                  {transactions.length}
+                </p>
               </div>
             </CardContent>
           </Card>

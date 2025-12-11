@@ -1,3 +1,5 @@
+"use client";
+
 import { supabase } from "@/lib/supabase";
 
 export type DespesaStatus = "Pending" | "Incurred" | "Paid";
@@ -143,10 +145,9 @@ export async function listDespesas(
     const client = ensureClient();
     let query = client
       .from("despesas")
-      .select(
-        "*, fornecedores(*), contas_gerenciais(*)",
-        { count: "estimated" },
-      )
+      .select("*, fornecedores(*), contas_gerenciais(*)", {
+        count: "estimated",
+      })
       .order("data_vencimento", { ascending: false });
 
     if (filters.status && filters.status !== "all") {
@@ -155,9 +156,7 @@ export async function listDespesas(
 
     if (filters.search) {
       const term = `%${filters.search}%`;
-      query = query.or(
-        `descricao.ilike.${term},bank_account.ilike.${term}`,
-      );
+      query = query.or(`descricao.ilike.${term},bank_account.ilike.${term}`);
     }
 
     const { data, error } = await query;
@@ -177,9 +176,7 @@ export async function upsertDespesa(
     const { data, error } = await client
       .from("despesas")
       .upsert(payload, { onConflict: "id" })
-      .select(
-        "*, fornecedores(*), contas_gerenciais(*)",
-      )
+      .select("*, fornecedores(*), contas_gerenciais(*)")
       .single();
 
     if (error) throw error;
@@ -285,9 +282,11 @@ export async function getOverviewMetrics(): Promise<OverviewMetrics> {
 
     if (error) throw error;
 
-    const total = data?.reduce((acc, row) => acc + Number(row.valor || 0), 0) || 0;
+    const total =
+      data?.reduce((acc, row) => acc + Number(row.valor || 0), 0) || 0;
     const pending = data?.filter((row) => row.status === "Pending").length || 0;
-    const incurred = data?.filter((row) => row.status === "Incurred").length || 0;
+    const incurred =
+      data?.filter((row) => row.status === "Incurred").length || 0;
     const paid = data?.filter((row) => row.status === "Paid").length || 0;
     const conciliated = data?.filter((row) => row.conciliated).length || 0;
     const differences = 0;

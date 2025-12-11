@@ -105,7 +105,9 @@ export function DespesaForm({
           <Label htmlFor="status">Status</Label>
           <Select
             value={form.status}
-            onValueChange={(value) => handleChange("status", value as DespesaStatus)}
+            onValueChange={(value) =>
+              handleChange("status", value as DespesaStatus)
+            }
           >
             <SelectTrigger>
               <SelectValue placeholder="Selecione o status" />
@@ -175,7 +177,11 @@ export function DespesaForm({
             Cancelar
           </Button>
         )}
-        <Button type="submit" disabled={isSaving} className="bg-[#1a2b4a] text-white">
+        <Button
+          type="submit"
+          disabled={isSaving}
+          className="bg-[#1a2b4a] text-white"
+        >
           {isSaving ? "Salvando..." : "Salvar"}
         </Button>
       </div>

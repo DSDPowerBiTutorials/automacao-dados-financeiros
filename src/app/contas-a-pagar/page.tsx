@@ -45,7 +45,9 @@ export default function ContasAPagarPage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-black">Contas a Pagar</h1>
+                  <h1 className="text-2xl font-bold text-black">
+                    Contas a Pagar
+                  </h1>
                   <p className="text-sm text-gray-600 mt-1">
                     Overview, despesas, fornecedores e conciliação bancária
                   </p>

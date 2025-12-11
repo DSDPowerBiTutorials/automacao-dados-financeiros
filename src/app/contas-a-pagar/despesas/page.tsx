@@ -5,7 +5,12 @@ import { Loader2, Plus } from "lucide-react";
 import { Sidebar } from "@/components/custom/sidebar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   ContaGerencial,
   Despesa,
@@ -70,7 +75,8 @@ export default function DespesasPage() {
             <div>
               <h1 className="text-2xl font-bold text-black">Despesas</h1>
               <p className="text-sm text-gray-600 mt-1">
-                Cadastre e edite despesas vinculadas a fornecedores e contas gerenciais
+                Cadastre e edite despesas vinculadas a fornecedores e contas
+                gerenciais
               </p>
             </div>
             <Button
@@ -93,10 +99,13 @@ export default function DespesasPage() {
               <Loader2 className="h-8 w-8 animate-spin text-[#FF7300]" />
             </div>
           ) : (
-            <TabelaDespesas despesas={despesas} onEdit={(d) => {
-              setSelected(d);
-              setDialogOpen(true);
-            }} />
+            <TabelaDespesas
+              despesas={despesas}
+              onEdit={(d) => {
+                setSelected(d);
+                setDialogOpen(true);
+              }}
+            />
           )}
         </main>
       </div>
@@ -104,7 +113,9 @@ export default function DespesasPage() {
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
-            <DialogTitle>{selected ? "Editar despesa" : "Nova despesa"}</DialogTitle>
+            <DialogTitle>
+              {selected ? "Editar despesa" : "Nova despesa"}
+            </DialogTitle>
           </DialogHeader>
           <DespesaForm
             initialData={selected ?? undefined}
