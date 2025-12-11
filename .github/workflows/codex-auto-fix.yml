@@ -27,29 +27,27 @@ jobs:
 
       - name: ⚙️ Install dependencies
         run: |
-          npm install prettier
+          npm ci
 
       - name: 🧠 Auto-fix source code
+        env:
+          FIX_EXCLUDE: "src/app/layout.tsx src/app/_app.tsx src/app/**/layout.tsx"
         run: |
           echo "Running Codex Auto-Fix..."
+          echo "⛔ Ignorando arquivos protegidos: $FIX_EXCLUDE"
 
           # 🔍 Limpa marcadores de conflito apenas em código-fonte (sem erro se a pasta não existir)
           find src src/app -type f \( -name "*.js" -o -name "*.ts" -o -name "*.tsx" -o -name "*.jsx" \) 2>/dev/null \
             -not -path "*/node_modules/*" \
             -not -path "*/.next/*" \
             -not -path "*/dist/*" \
+            -not -path "*/layout.tsx" \
+            -not -name "_app.tsx" \
             -exec sed -i '/<<<<<<<\|=======\|>>>>>>>/d' {} \; || true
 
-          # 🧩 Garante que páginas cliente tenham "use client" no topo
-          grep -rl --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=dist "^import" src src/app 2>/dev/null \
-            | while read file; do
-              if ! grep -q "^\"use client\"" "$file"; then
-                sed -i '1i"use client"\n' "$file"
-              fi
-            done || true
-
           # 💅 Formata o código (Prettier ignora erros)
-          npx prettier --write "src/**/*.{js,ts,tsx,jsx,json,css,md}" || true
+          npx prettier --write . --ignore-path .prettierignore || true
+          npx eslint --fix . --ext .tsx,.ts --ignore-pattern "src/app/layout.tsx" --ignore-pattern "src/app/_app.tsx" --ignore-pattern "src/app/**/layout.tsx" || true
 
       - name: 🧠 Check & Repair Bankinter Upload
         run: node scripts/codex-check-last-bankinter-log.js || true
