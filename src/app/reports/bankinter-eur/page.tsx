@@ -55,6 +55,12 @@ export default function BankinterEURPage() {
   const loadData = async () => {
     setIsLoading(true);
     try {
+      if (!supabase) {
+        console.error("❌ Supabase client não configurado.");
+        setRows([]);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("csv_rows")
         .select("*")
