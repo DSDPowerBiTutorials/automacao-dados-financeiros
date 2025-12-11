@@ -7,9 +7,21 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 const tabs = [
   { value: "overview", label: "Overview", href: "/contas-a-pagar" },
   { value: "despesas", label: "Despesas", href: "/contas-a-pagar/despesas" },
-  { value: "fornecedores", label: "Fornecedores", href: "/contas-a-pagar/fornecedores" },
-  { value: "contas", label: "Contas Gerenciais", href: "/contas-a-pagar/contas-gerenciais" },
-  { value: "conciliation", label: "Conciliation", href: "/contas-a-pagar/conciliation" },
+  {
+    value: "fornecedores",
+    label: "Fornecedores",
+    href: "/contas-a-pagar/fornecedores",
+  },
+  {
+    value: "contas",
+    label: "Contas Gerenciais",
+    href: "/contas-a-pagar/contas-gerenciais",
+  },
+  {
+    value: "conciliation",
+    label: "Conciliation",
+    href: "/contas-a-pagar/conciliation",
+  },
 ];
 
 export function LayoutTabs() {
