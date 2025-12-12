@@ -1,5 +1,3 @@
-"use client";
-
 import { supabase } from "./supabase";
 
 export interface CSVRow {
