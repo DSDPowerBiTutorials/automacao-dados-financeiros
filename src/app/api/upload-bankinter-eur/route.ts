@@ -3,9 +3,9 @@
 /* @auto-fix-disable */
 /* @formatter:off */
 
-// 🚫 This file must remain a server-side API Route.
-// 🚫 DO NOT add "use client" or any browser-only imports.
-// 🚫 DO NOT modify or reformat — protected from auto-fix bots.
+// 🚫 This file must remain a Server Component.
+// 🚫 DO NOT add "use client" or any fs/promises imports.
+// 🚫 Protected from auto-fix bots and formatters.
 
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
@@ -55,3 +55,99 @@ export async function POST(req: Request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json<SheetRow>(sheet, { header: 1, defval: "" });
+
+    const validData = rows.slice(5).filter((r): r is SheetRow => {
+      const firstCell = r?.[0];
+      return (
+        Array.isArray(r) &&
+        Boolean(firstCell) &&
+        !String(firstCell).toUpperCase().includes("INFORMACIÓN DE INTERÉS")
+      );
+    });
+    if (!validData.length)
+      throw new Error("Formato inesperado — nenhuma linha válida encontrada.");
+
+    const headers = validData[0];
+    const fechaIdx = headers.findIndex((h) => /fecha valor/i.test(String(h)));
+    const descIdx = headers.findIndex((h) => /descrip/i.test(String(h)));
+    const haberIdx = headers.findIndex((h) => /haber/i.test(String(h)));
+    const debeIdx = headers.findIndex((h) => /debe/i.test(String(h)));
+    const saldoIdx = headers.findIndex((h) => /saldo/i.test(String(h)));
+    const refIdx = headers.findIndex((h) => /clave|referen/i.test(String(h)));
+
+    if (fechaIdx === -1 || descIdx === -1)
+      throw new Error("Formato inesperado — colunas principais não encontradas.");
+
+    const clean = validData.slice(1)
+      .map((r: any[]) => {
+        const date = normalizeDate(r[fechaIdx]);
+        const desc = safeTrim(r[descIdx]);
+        const haber = normalizeNumber(r[haberIdx]);
+        const debe = normalizeNumber(r[debeIdx]);
+        const amount = haber - debe;
+        const saldo = normalizeNumber(r[saldoIdx]);
+        const ref = safeTrim(r[refIdx]);
+        if (!date || !desc || amount === 0) return null;
+        return {
+          id: crypto.randomUUID(),
+          file_name: file.name,
+          source: "bankinter-eur",
+          date,
+          description: desc,
+          amount,
+          balance: saldo,
+          reference: ref,
+          category: "Other",
+          classification: amount > 0 ? "Receita" : "Despesa",
+          reconciled: false,
+          custom_data: { raw: r },
+        };
+      })
+      .filter(Boolean);
+
+    const csvHeader =
+      "date,description,amount,balance,reference,category,classification,source";
+    const csvBody = clean
+      .map(
+        (r: any) =>
+          `${r.date},"${r.description.replace(/"/g, '""')}",${r.amount},${r.balance},"${r.reference}","${r.category}","${r.classification}",${r.source}`,
+      )
+      .join("\n");
+
+    const csvBuffer = Buffer.from(`${csvHeader}\n${csvBody}`, "utf-8");
+    const filename = `bankinter-eur-${Date.now()}.csv`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("csv_files")
+      .upload(filename, csvBuffer, {
+        contentType: "text/csv",
+        upsert: true,
+      });
+    if (uploadError) throw uploadError;
+
+    const { error: dbError } = await supabase.from("csv_rows").insert(clean);
+    if (dbError) throw dbError;
+
+    return NextResponse.json({
+      success: true,
+      message: `✅ ${clean.length} linhas importadas e armazenadas.`,
+      file: filename,
+    });
+  } catch (err: any) {
+    console.error("❌ Erro no upload Bankinter EUR:", err.message);
+    const logName = `logs/errors/bankinter-eur-${Date.now()}.json`;
+    await supabase.storage
+      .from("logs")
+      .upload(logName, Buffer.from(JSON.stringify({ error: err.message }, null, 2)), {
+        contentType: "application/json",
+      });
+    return NextResponse.json(
+      { error: "Upload failed", details: err.message },
+      { status: 500 },
+    );
+  }
+}
+
+/* prettier-ignore-end */
