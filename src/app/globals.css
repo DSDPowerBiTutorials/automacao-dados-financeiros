@@ -2,40 +2,11 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ===== DSD GLOBAL BASE ===== */
-html, body {
-  height: 100%;
-  background-color: #f9fafb;
-  color: #1f2937;
-  font-family: 'Inter', system-ui, sans-serif;
+:root {
+  --background: 0 0% 100%;
+  --foreground: 224 71.4% 4.1%;
 }
 
-h1, h2, h3, h4, h5, h6 {
-  font-weight: 600;
-  color: #111827;
-}
-
-a {
-  color: #2563eb;
-  text-decoration: none;
-}
-a:hover {
-  text-decoration: underline;
-}
-
-/* Scrollbar */
-::-webkit-scrollbar {
-  width: 8px;
-}
-::-webkit-scrollbar-thumb {
-  background: rgba(107,114,128,0.4);
-  border-radius: 4px;
-}
-
-/* Card and button utility classes */
-.card {
-  @apply bg-white rounded-xl shadow-sm p-4 border border-gray-200;
-}
-.button-primary {
-  @apply bg-blue-600 text-white rounded-lg px-4 py-2 hover:bg-blue-700 transition-all;
+body {
+  @apply bg-white text-gray-900;
 }
