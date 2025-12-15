@@ -1,6 +1,38 @@
 import { createClient } from "@supabase/supabase-js";
 import fs from "fs";
-import Papa from "papaparse";
+function parseCsv(csv: string): Record<string, string>[] {
+  const rows = csv
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (rows.length === 0) {
+    return [];
+  }
+
+  const headers = parseCsvLine(rows[0]);
+
+  return rows.slice(1).map((line) => {
+    const values = parseCsvLine(line);
+    return headers.reduce<Record<string, string>>((record, header, index) => {
+      record[header] = values[index] ?? "";
+      return record;
+    }, {});
+  });
+}
+
+function parseCsvLine(line: string): string[] {
+  const values: string[] = [];
+  const regex = /(?:^|,)(?:"((?:[^"]|"")*)"|([^",]*))/g;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(line)) !== null) {
+    const value = (match[1] ?? match[2] ?? "").replace(/""/g, "\"");
+    values.push(value.trim());
+  }
+
+  return values;
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,10 +41,7 @@ const supabase = createClient(
 
 async function seed() {
   const csv = fs.readFileSync("./data/AP_DB.csv", "utf8");
-  const { data } = Papa.parse<Record<string, string>>(csv, {
-    header: true,
-    skipEmptyLines: true,
-  });
+  const data = parseCsv(csv);
 
   for (const row of data) {
     const fornecedorNome = row["Provider"];
