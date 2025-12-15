@@ -14,9 +14,10 @@ import crypto from "crypto";
 
 export const runtime = "nodejs";
 
-const supabase = createClient(
+// ✅ Cria cliente Supabase corretamente
+export const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
 type SheetRow = (string | number)[];
@@ -51,9 +52,8 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
-    if (!file) {
+    if (!file)
       return NextResponse.json({ error: "Nenhum arquivo enviado." }, { status: 400 });
-    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const workbook = XLSX.read(buffer, { type: "buffer" });
@@ -96,7 +96,7 @@ export async function POST(req: Request) {
         return {
           id: crypto.randomUUID(),
           file_name: file.name,
-          source: "bankinter-eur",
+          source: "bank",
           date,
           description: desc,
           amount,
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
       .join("\n");
 
     const csvBuffer = Buffer.from(`${csvHeader}\n${csvBody}`, "utf-8");
-    const filename = `bankinter-eur-${Date.now()}.csv`;
+    const filename = `upload-${Date.now()}.csv`;
 
     const { error: uploadError } = await supabase.storage
       .from("csv_files")
@@ -139,8 +139,8 @@ export async function POST(req: Request) {
       file: filename,
     });
   } catch (err: any) {
-    console.error("❌ Erro no upload Bankinter EUR:", err.message);
-    const logName = `logs/errors/bankinter-eur-${Date.now()}.json`;
+    console.error("❌ Erro no upload:", err.message);
+    const logName = `logs/errors/upload-${Date.now()}.json`;
     await supabase.storage
       .from("logs")
       .upload(logName, Buffer.from(JSON.stringify({ error: err.message }, null, 2)), {
