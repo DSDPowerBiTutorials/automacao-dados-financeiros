@@ -1,0 +1,7 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "next build",
+  "installCommand": "npm install",
+  "ignoreCommand": "echo '✅ Ignorando auto-fix bots da Vercel'",
+  "functions": {}
+}
