@@ -1,0 +1,8 @@
+{
+  "buildCommand": "npm run build",
+  "installCommand": "npm ci --legacy-peer-deps && npm run postinstall",
+  "framework": "nextjs",
+  "env": {
+    "TAILWIND_MODE": "build"
+  }
+}
