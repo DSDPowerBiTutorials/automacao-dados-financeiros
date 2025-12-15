@@ -3,29 +3,30 @@
 /* @auto-fix-disable */
 /* @formatter:off */
 
-
-// 🚫 This file MUST remain a Server Component.
-// 🚫 DO NOT ADD client directives — It breaks metadata export and Vercel builds.
-
-import "../lib/fonts"
-import type { Metadata } from "next"
+// 🚫 DO NOT add "use client" — this must remain a Server Component.
+// ✅ Global Tailwind + Font imports
+import "./globals.css";
+import "../lib/fonts";
+import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "DSD Finance Hub",
   description:
     "Sistema financeiro inteligente de conciliação bancária e relatórios.",
-}
+};
 
 export default function RootLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
-    <html lang="pt-BR">
-      <body>{children}</body>
+    <html lang="pt-BR" suppressHydrationWarning>
+      <body className="bg-gray-50 text-gray-900 min-h-screen">
+        {children}
+      </body>
     </html>
-  )
+  );
 }
 
 /* prettier-ignore-end */
