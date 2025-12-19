@@ -14,6 +14,8 @@ interface BreadcrumbsProps {
 }
 
 export function Breadcrumbs({ items }: BreadcrumbsProps) {
+  if (!items || items.length === 0) return null;
+  
   return (
     <nav className="flex items-center space-x-2 text-sm text-muted-foreground mb-4">
       {items.map((item, index) => (
