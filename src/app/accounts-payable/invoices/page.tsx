@@ -1767,7 +1767,7 @@ export default function InvoicesPage() {
                         max="5"
                         value={newAccountData.level}
                         onChange={(e) => setNewAccountData({...newAccountData, level: parseInt(e.target.value)})}
-                        required
+"!"                        required
                       />
                     </div>
                     <div className="space-y-2">
