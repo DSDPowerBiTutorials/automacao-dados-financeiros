@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body {
+  font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #2c3e5f; /* institucional cinza-azulado para área externa */
+  color: #111827;
+  margin: 0;
+  padding: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Scrollbar institucional */
+/* WebKit (Chrome, Edge, Safari) */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: #1a2b4a; /* azul institucional */
+}
+::-webkit-scrollbar-thumb {
+  background-color: #2c3e5f; /* cinza institucional */
+  border-radius: 6px;
+  border: 2px solid #1a2b4a; /* contorno no azul */
+}
+
+/* Sidebar nav scrollbar específico */
+aside nav::-webkit-scrollbar-track { background: #1a2b4a; }
+aside nav::-webkit-scrollbar-thumb {
+  background-color: #2c3e5f;
+  border: 2px solid #1a2b4a;
+}
+
+/* Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #2c3e5f #1a2b4a;
+}
