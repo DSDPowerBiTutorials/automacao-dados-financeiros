@@ -23,7 +23,7 @@ export function CompanyViewSelector() {
               <span>DSD Spain</span>
             </div>
           </SelectItem>
-          <selectItem value="lh">
+          <SelectItem value="lh">
             <div className="flex items-center gap-2">
               <Image src="/united-states.svg" alt="USA" width={16} height={12} />
               <span>LH United States</span>
