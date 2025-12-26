@@ -5,6 +5,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV } from "@/config/navigation";
+import { SCOPE_CONFIG, type ScopeType } from "@/lib/scope-utils";
+import { useGlobalScope } from "@/contexts/global-scope-context";
 import {
   Home,
   Menu,
@@ -20,6 +22,7 @@ import { Input } from "@/components/ui/input";
 
 export default function Sidebar() {
   const pathname = usePathname();
+  const { selectedScope, setSelectedScope } = useGlobalScope();
   const [collapsed, setCollapsed] = useState(true); // Start collapsed
   const [mobileOpen, setMobileOpen] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
@@ -131,7 +134,7 @@ export default function Sidebar() {
             <div key={child.href}>
               <Link href={child.href} className={itemClass(isActive(child.href))}>
                 {child.icon && <child.icon className="h-4 w-4" />}
-                <span style={{color: isActive(child.href) ? '#fff' : '#1e40af'}} className="text-sm">{child.title}</span>
+                <span style={{ color: isActive(child.href) ? '#fff' : '#1e40af' }} className="text-sm">{child.title}</span>
               </Link>
               {child.children && child.children.length > 0 && (
                 <div className="ml-6 mt-0.5 space-y-0.5">
@@ -147,7 +150,7 @@ export default function Sidebar() {
                       )}
                     >
                       {subChild.icon && <subChild.icon className="h-3 w-3" />}
-                      <span style={{color: isActive(subChild.href) ? '#fff' : '#1e40af'}}>{subChild.title}</span>
+                      <span style={{ color: isActive(subChild.href) ? '#fff' : '#1e40af' }}>{subChild.title}</span>
                     </Link>
                   ))}
                 </div>
@@ -196,8 +199,8 @@ export default function Sidebar() {
               </div>
               {!collapsed && (
                 <div>
-                  <h1 style={{color: '#1e3a8a'}} className="text-gray-800 font-bold text-base">DSD Finance</h1>
-                  <p style={{color: '#3b82f6'}} className="text-gray-500 text-xs">Proprietary Software</p>
+                  <h1 style={{ color: '#1e3a8a' }} className="text-gray-800 font-bold text-base">DSD Finance</h1>
+                  <p style={{ color: '#3b82f6' }} className="text-gray-500 text-xs">Proprietary Software</p>
                 </div>
               )}
             </div>
@@ -207,17 +210,48 @@ export default function Sidebar() {
         {/* Country Selector */}
         {!collapsed && (
           <div className="p-4 border-b border-gray-200">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Country Scope</p>
             <div className="flex items-center gap-2">
-              <button className="flex items-center justify-center w-10 h-8 border border-gray-300 hover:bg-gray-50 transition-colors">
+              <button
+                onClick={() => setSelectedScope("ES")}
+                className={cn(
+                  "flex items-center justify-center w-10 h-8 border transition-colors rounded",
+                  selectedScope === "ES"
+                    ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500"
+                    : "border-gray-300 hover:bg-gray-50"
+                )}
+                title="Spain"
+              >
                 <span className="text-lg">🇪🇸</span>
               </button>
-              <button className="flex items-center justify-center w-10 h-8 border border-gray-300 hover:bg-gray-50 transition-colors">
+              <button
+                onClick={() => setSelectedScope("US")}
+                className={cn(
+                  "flex items-center justify-center w-10 h-8 border transition-colors rounded",
+                  selectedScope === "US"
+                    ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500"
+                    : "border-gray-300 hover:bg-gray-50"
+                )}
+                title="United States"
+              >
                 <span className="text-lg">🇺🇸</span>
               </button>
-              <button className="flex items-center justify-center w-10 h-8 bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+              <button
+                onClick={() => setSelectedScope("GLOBAL")}
+                className={cn(
+                  "flex items-center justify-center w-10 h-8 border transition-colors rounded",
+                  selectedScope === "GLOBAL"
+                    ? "border-blue-500 bg-blue-50 ring-2 ring-blue-500"
+                    : "border-gray-300 hover:bg-gray-50"
+                )}
+                title="Global (Consolidated)"
+              >
                 <span className="text-sm">🌐</span>
               </button>
             </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {SCOPE_CONFIG[selectedScope].label}
+            </p>
           </div>
         )}
 
@@ -240,12 +274,12 @@ export default function Sidebar() {
           {/* Quick Access */}
           {!collapsed && (
             <div className={labelClass}>
-              <span style={{color: '#3b82f6'}}>Quick Access</span>
+              <span style={{ color: '#3b82f6' }}>Quick Access</span>
             </div>
           )}
           <Link href="/" className={itemClass(isActive("/"))} title={collapsed ? "Hub" : ""}>
             <Home className="h-4 w-4 flex-shrink-0" />
-            {!collapsed && <span style={{color: isActive("/") ? '#fff' : '#1e40af'}}>Hub</span>}
+            {!collapsed && <span style={{ color: isActive("/") ? '#fff' : '#1e40af' }}>Hub</span>}
           </Link>
 
           {/* Main Navigation Groups */}
@@ -253,7 +287,7 @@ export default function Sidebar() {
             <div key={group.label} className="mt-4">
               {!collapsed && (
                 <div className={labelClass}>
-                  <span style={{color: '#3b82f6'}}>{group.label}</span>
+                  <span style={{ color: '#3b82f6' }}>{group.label}</span>
                 </div>
               )}
 
@@ -270,12 +304,12 @@ export default function Sidebar() {
                           {item.icon && <item.icon className="h-4 w-4 flex-shrink-0" />}
                           {!collapsed && (
                             <>
-                              <span style={{color: isActive(item.href) ? '#fff' : '#1e40af'}} className="flex-1">{item.title}</span>
-                              <ChevronDown 
+                              <span style={{ color: isActive(item.href) ? '#fff' : '#1e40af' }} className="flex-1">{item.title}</span>
+                              <ChevronDown
                                 className={cn(
                                   "h-4 w-4 transition-transform duration-200",
                                   expandedItems.has(item.href) ? "rotate-180" : ""
-                                )} 
+                                )}
                               />
                             </>
                           )}
@@ -283,18 +317,18 @@ export default function Sidebar() {
                       ) : (
                         <Link href={item.href} className={itemClass(isActive(item.href))} title={collapsed ? item.title : ""}>
                           {item.icon && <item.icon className="h-4 w-4 flex-shrink-0" />}
-                          {!collapsed && <span style={{color: isActive(item.href) ? '#fff' : '#1e40af'}}>{item.title}</span>}
+                          {!collapsed && <span style={{ color: isActive(item.href) ? '#fff' : '#1e40af' }}>{item.title}</span>}
                         </Link>
                       )}
                     </div>
-                    
+
                     {/* Inline expanded children when sidebar is expanded */}
                     {!collapsed && item.children && item.children.length > 0 && expandedItems.has(item.href) && (
                       <div className="ml-8 mt-1 space-y-0.5">
                         {item.children.map((child: any) => (
                           <div key={child.href}>
-                            <Link 
-                              href={child.href} 
+                            <Link
+                              href={child.href}
                               className={cn(
                                 "flex items-center gap-2 px-3 py-2 text-sm transition-all rounded-md",
                                 isActive(child.href)
@@ -303,9 +337,9 @@ export default function Sidebar() {
                               )}
                             >
                               {child.icon && <child.icon className="h-3.5 w-3.5" />}
-                              <span style={{color: isActive(child.href) ? '#fff' : '#1e40af'}}>{child.title}</span>
+                              <span style={{ color: isActive(child.href) ? '#fff' : '#1e40af' }}>{child.title}</span>
                             </Link>
-                            
+
                             {/* Third level children */}
                             {child.children && child.children.length > 0 && (
                               <div className="ml-6 mt-0.5 space-y-0.5">
@@ -321,7 +355,7 @@ export default function Sidebar() {
                                     )}
                                   >
                                     {subChild.icon && <subChild.icon className="h-3 w-3" />}
-                                    <span style={{color: isActive(subChild.href) ? '#fff' : '#1e40af'}}>{subChild.title}</span>
+                                    <span style={{ color: isActive(subChild.href) ? '#fff' : '#1e40af' }}>{subChild.title}</span>
                                   </Link>
                                 ))}
                               </div>

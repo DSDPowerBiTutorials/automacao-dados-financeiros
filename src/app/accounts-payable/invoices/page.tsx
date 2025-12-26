@@ -18,6 +18,7 @@ import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
 import { ScopeSelector } from "@/components/app/scope-selector";
 import { type ScopeType, getRecordScope, getScopeIcon, matchesScope, scopeToFields, SCOPE_CONFIG } from "@/lib/scope-utils";
+import { useGlobalScope } from "@/contexts/global-scope-context";
 
 type InvoiceType = "INCURRED" | "BUDGET" | "ADJUSTMENT";
 type SortField = "invoice_date" | "invoice_number" | "provider_code" | "invoice_amount" | "invoice_type";
@@ -102,6 +103,7 @@ function formatEuropeanNumber(value: number, decimals: number = 2): string {
 }
 
 export default function InvoicesPage() {
+  const { selectedScope } = useGlobalScope();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +131,6 @@ export default function InvoicesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<InvoiceType | "ALL">("ALL");
   const [selectedCountry, setSelectedCountry] = useState<string>("ALL");
-  const [selectedScopes, setSelectedScopes] = useState<Set<ScopeType>>(new Set(["ES" as ScopeType, "US" as ScopeType, "GLOBAL" as ScopeType]));
   const [sortField, setSortField] = useState<SortField>("invoice_date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [appliedFilters, setAppliedFilters] = useState<{ field: string, value: string, label: string }[]>([]);
@@ -222,6 +223,17 @@ export default function InvoicesPage() {
     loadInvoices();
     loadMasterData();
   }, []);
+
+  // Sincronizar form com scope global quando abrir diálogo
+  useEffect(() => {
+    if (dialogOpen && !editingInvoice) {
+      setFormData(prev => ({
+        ...prev,
+        scope: selectedScope,
+        country_code: selectedScope
+      }));
+    }
+  }, [dialogOpen, selectedScope, editingInvoice]);
 
   async function loadMasterData() {
     try {
@@ -1187,8 +1199,15 @@ export default function InvoicesPage() {
   const filteredInvoices = useMemo(() => {
     let filtered = invoices;
 
-    // Filter by scope
-    filtered = filtered.filter(inv => matchesScope(inv, selectedScopes));
+    // Filter by global scope (from sidebar)
+    if (selectedScope === "ES") {
+      filtered = filtered.filter(inv => inv.scope === "ES");
+    } else if (selectedScope === "US") {
+      filtered = filtered.filter(inv => inv.scope === "US");
+    } else if (selectedScope === "GLOBAL") {
+      // GLOBAL mostra ES + US consolidado (não há invoices com scope=GLOBAL)
+      filtered = filtered.filter(inv => inv.scope === "ES" || inv.scope === "US");
+    }
 
     // Filter by type
     if (selectedType !== "ALL") {
@@ -1269,7 +1288,7 @@ export default function InvoicesPage() {
     });
 
     return filtered;
-  }, [invoices, selectedType, selectedCountry, searchTerm, sortField, sortDirection, selectedScopes, columnFilters, multiSelectFilters, dateFilters, amountFilter]);
+  }, [invoices, selectedType, selectedCountry, searchTerm, sortField, sortDirection, selectedScope, columnFilters, multiSelectFilters, dateFilters, amountFilter]);
 
   const stats = useMemo(() => {
     const incurred = invoices.filter(i => i.invoice_type === "INCURRED");
@@ -1320,11 +1339,16 @@ export default function InvoicesPage() {
           <Breadcrumbs />
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={selectedScope === "GLOBAL"}>
                 <Plus className="h-4 w-4 mr-2" />
                 New Invoice
               </Button>
             </DialogTrigger>
+            {selectedScope === "GLOBAL" && (
+              <p className="text-xs text-gray-500 mt-1">
+                Switch to ES or US to create invoices
+              </p>
+            )}
             <DialogContent className="max-w-[95vw] w-[1400px] max-h-[95vh] overflow-y-auto bg-white">
               <DialogHeader>
                 <DialogTitle className="text-2xl">{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
@@ -1416,12 +1440,30 @@ export default function InvoicesPage() {
                 {/* Scope & Invoice Number */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <ScopeSelector
-                      selectedScopes={new Set([formData.scope])}
-                      onScopeChange={handleFormScopeChange}
-                      label="Scope (Country) *"
-                      multiSelect={false}
-                    />
+                    <Label htmlFor="scope">Scope (Country) *</Label>
+                    <Select
+                      value={formData.scope}
+                      onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val })}
+                      required
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="ES">
+                          <span className="flex items-center gap-2">
+                            <span>🇪🇸</span>
+                            <span>Spain (EUR)</span>
+                          </span>
+                        </SelectItem>
+                        <SelectItem value="US">
+                          <span className="flex items-center gap-2">
+                            <span>🇺🇸</span>
+                            <span>United States (USD)</span>
+                          </span>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                     <p className="text-xs text-muted-foreground">
                       Company location, not invoice currency
                     </p>
@@ -2356,19 +2398,15 @@ export default function InvoicesPage() {
           </CardHeader>
           <CardContent>
             {/* Filters - Not sticky, just normal flow */}
-            <div className="bg-white pb-4 mb-4 border-b">
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-sm font-semibold">Scope View</span>
-                {selectedScopes.has("ES" as ScopeType) && <Image src="/spain.svg" alt="Spain" width={20} height={15} className="rounded" />}
-                {selectedScopes.has("US" as ScopeType) && <Image src="/united-states.svg" alt="USA" width={20} height={15} className="rounded" />}
-                {selectedScopes.has("GLOBAL" as ScopeType) && <Image src="/globe.svg" alt="Global" width={18} height={18} className="rounded" />}
-              </div>
-              <ScopeSelector
-                selectedScopes={selectedScopes}
-                onScopeChange={handleScopeChange}
-                label=""
-                multiSelect={true}
-              />
+            <div className="bg-white pb-4 mb-4 border-b flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-500">Current View:</span>
+              <span className="text-lg">{SCOPE_CONFIG[selectedScope].icon}</span>
+              <span className="text-sm font-semibold">{SCOPE_CONFIG[selectedScope].label}</span>
+              {selectedScope === "GLOBAL" ? (
+                <span className="text-xs text-gray-500">(Consolidated: ES + US - View Only)</span>
+              ) : (
+                <span className="text-xs text-gray-500">({SCOPE_CONFIG[selectedScope].description})</span>
+              )}
             </div>
 
             {/* Applied Filters */}

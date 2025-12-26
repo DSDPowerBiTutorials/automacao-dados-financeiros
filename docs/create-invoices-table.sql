@@ -23,8 +23,8 @@ CREATE TABLE IF NOT EXISTS public.invoices (
   cost_center_code TEXT NOT NULL,
   description TEXT,
   invoice_number TEXT,
-  country_code TEXT NOT NULL CHECK (country_code IN ('ES', 'US', 'GLOBAL')),
-  scope TEXT NOT NULL CHECK (scope IN ('ES', 'US', 'GLOBAL')),
+  country_code TEXT NOT NULL CHECK (country_code IN ('ES', 'US')),
+  scope TEXT NOT NULL CHECK (scope IN ('ES', 'US')),
   applies_to_all_countries BOOLEAN DEFAULT FALSE,
   dre_impact BOOLEAN NOT NULL DEFAULT TRUE,
   cash_impact BOOLEAN NOT NULL DEFAULT TRUE,
@@ -107,7 +107,7 @@ GRANT USAGE, SELECT ON SEQUENCE invoices_id_seq TO anon;
 -- Add comments for documentation
 COMMENT ON TABLE public.invoices IS 'Accounts payable invoices with multi-currency and multi-country support';
 COMMENT ON COLUMN public.invoices.invoice_type IS 'Type of invoice: INCURRED (actual expense), BUDGET (planned expense), ADJUSTMENT (balance adjustment)';
-COMMENT ON COLUMN public.invoices.scope IS 'Country scope: ES (Spain), US (United States), GLOBAL (consolidated)';
+COMMENT ON COLUMN public.invoices.scope IS 'Country scope: ES (Spain) or US (United States) - GLOBAL is view-only in UI';
 COMMENT ON COLUMN public.invoices.dre_impact IS 'Whether this invoice impacts the Income Statement (DRE)';
 COMMENT ON COLUMN public.invoices.cash_impact IS 'Whether this invoice impacts Cash Flow';
 COMMENT ON COLUMN public.invoices.is_split IS 'Indicates if this invoice is part of a split transaction';
