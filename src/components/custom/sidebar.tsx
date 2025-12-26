@@ -196,10 +196,10 @@ export default function Sidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
-                <Image 
-                  src="/favicon-32x32.png" 
-                  alt="DSD Logo" 
-                  width={32} 
+                <Image
+                  src="/favicon-32x32.png"
+                  alt="DSD Logo"
+                  width={32}
                   height={32}
                   className="w-8 h-8"
                 />

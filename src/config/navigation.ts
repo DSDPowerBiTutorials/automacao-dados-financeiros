@@ -117,7 +117,7 @@ export const NAV: NavGroup[] = [
           },
           {
             title: "Payments",
-            href: "/accounts-payable/transactions/payments",
+            href: "/accounts-payable/invoices/payments",
             icon: DollarSign
           },
           {
