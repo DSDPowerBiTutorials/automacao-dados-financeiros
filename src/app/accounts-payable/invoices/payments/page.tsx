@@ -461,9 +461,9 @@ export default function PaymentsPage() {
                         {accountBalances.length === 0 ? (
                             <p className="text-center text-gray-500 py-8">No active bank accounts found</p>
                         ) : (
-                            accountBalances.map((balance) => (
+                            accountBalances.map((balance, index) => (
                                 <div
-                                    key={balance.account.id}
+                                    key={`bank-balance-${balance.account.code}-${index}`}
                                     className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
                                 >
                                     <div className="flex-1">
@@ -563,8 +563,8 @@ export default function PaymentsPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Accounts</SelectItem>
-                                {bankAccounts.map((acc) => (
-                                    <SelectItem key={acc.id} value={acc.code}>
+                                {bankAccounts.map((acc, index) => (
+                                    <SelectItem key={`bank-select-${acc.code}-${index}`} value={acc.code}>
                                         {acc.name}
                                     </SelectItem>
                                 ))}
