@@ -31,7 +31,6 @@ interface BankAccount {
   code: string;
   name: string;
   bank_name: string;
-  account_number: string;
   iban?: string;
   swift_bic?: string;
   currency: string;
@@ -56,7 +55,6 @@ export default function BankAccountsPage() {
     code: "",
     name: "",
     bank_name: "",
-    account_number: "",
     iban: "",
     swift_bic: "",
     currency: "EUR",
@@ -113,8 +111,7 @@ export default function BankAccountsPage() {
         (acc) =>
           acc.code.toLowerCase().includes(term) ||
           acc.name.toLowerCase().includes(term) ||
-          acc.bank_name.toLowerCase().includes(term) ||
-          acc.account_number.toLowerCase().includes(term)
+          acc.bank_name.toLowerCase().includes(term)
       );
     }
 
@@ -128,7 +125,6 @@ export default function BankAccountsPage() {
         code: account.code,
         name: account.name,
         bank_name: account.bank_name,
-        account_number: account.account_number,
         iban: account.iban || "",
         swift_bic: account.swift_bic || "",
         currency: account.currency,
@@ -141,7 +137,6 @@ export default function BankAccountsPage() {
         code: "",
         name: "",
         bank_name: "",
-        account_number: "",
         iban: "",
         swift_bic: "",
         currency: "EUR",
@@ -168,7 +163,6 @@ export default function BankAccountsPage() {
         code: formData.code.trim(),
         name: formData.name.trim(),
         bank_name: formData.bank_name.trim(),
-        account_number: formData.account_number?.trim() || "",
         iban: formData.iban?.trim() || null,
         swift_bic: formData.swift_bic?.trim() || null,
         currency: formData.currency,
@@ -200,7 +194,7 @@ export default function BankAccountsPage() {
         const { error } = await supabase
           .from("bank_accounts")
           .insert([{ ...dataToSave, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
-        
+
         if (error) {
           console.error("Supabase error:", {
             message: error.message,
@@ -318,7 +312,6 @@ export default function BankAccountsPage() {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bank Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Account Number</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Currency</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
@@ -326,11 +319,11 @@ export default function BankAccountsPage() {
             <tbody className="bg-white divide-y divide-gray-200">
               {loading ? (
                 <tr key="loading">
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">Loading...</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">Loading...</td>
                 </tr>
               ) : filteredAccounts.length === 0 ? (
                 <tr key="empty">
-                  <td colSpan={8} className="px-4 py-8 text-center text-gray-500">No bank accounts found</td>
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">No bank accounts found</td>
                 </tr>
               ) : (
                 filteredAccounts.map((account, index) => (
@@ -359,7 +352,6 @@ export default function BankAccountsPage() {
                     <td className="px-4 py-3 font-mono text-sm">{account.code}</td>
                     <td className="px-4 py-3">{account.name}</td>
                     <td className="px-4 py-3 text-gray-600">{account.bank_name}</td>
-                    <td className="px-4 py-3 font-mono text-sm">{account.account_number}</td>
                     <td className="px-4 py-3">{account.currency}</td>
                     <td className="px-4 py-3">
                       <Badge
@@ -472,15 +464,6 @@ export default function BankAccountsPage() {
                     <SelectItem value="GBP">GBP</SelectItem>
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="account_number" className="text-sm font-medium text-gray-700">Account Number</Label>
-                <Input
-                  id="account_number"
-                  value={formData.account_number}
-                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                  className="h-11"
-                />
               </div>
             </div>
 
