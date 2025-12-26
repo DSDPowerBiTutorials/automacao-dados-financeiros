@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { NAV } from "@/config/navigation";
@@ -195,7 +196,13 @@ export default function Sidebar() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
-                <span className="text-orange-500 font-bold text-2xl">🔲</span>
+                <Image 
+                  src="/favicon-32x32.png" 
+                  alt="DSD Logo" 
+                  width={32} 
+                  height={32}
+                  className="w-8 h-8"
+                />
               </div>
               {!collapsed && (
                 <div>
