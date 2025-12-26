@@ -8,11 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { 
-  formatDateForDB, 
-  formatDateForInput, 
+import {
+  formatDateForDB,
+  formatDateForInput,
   getCurrentDateForDB,
-  getCurrentTimestamp 
+  getCurrentTimestamp
 } from "@/lib/date-utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";

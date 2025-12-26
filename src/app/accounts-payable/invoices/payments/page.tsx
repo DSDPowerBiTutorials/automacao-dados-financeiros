@@ -46,7 +46,8 @@ interface BankAccount {
     name: string;
     bank_name: string;
     currency: string;
-    scope: "ES" | "US" | "GLOBAL";
+    country: string;
+    applies_to_all_countries: boolean;
     current_balance?: number;
     is_active: boolean;
 }
@@ -106,34 +107,48 @@ export default function PaymentsPage() {
             setLoading(true);
 
             // Load bank accounts
-            const accountsQuery = supabase
+            let accountsQuery = supabase
                 .from("bank_accounts")
                 .select("*")
-                .eq("is_active", true)
-                .order("code", { ascending: true });
+                .eq("is_active", true);
 
             // Load invoices
-            const invoicesQuery = supabase
+            let invoicesQuery = supabase
                 .from("invoices")
-                .select("*")
-                .order("schedule_date", { ascending: true });
+                .select("*");
 
             // Apply scope filter
             if (selectedScope === "GLOBAL") {
-                accountsQuery.in("scope", ["ES", "US"]);
-                invoicesQuery.in("scope", ["ES", "US"]);
+                // For GLOBAL view, load all accounts and invoices
+                // Bank accounts filter by country or applies_to_all_countries
+                accountsQuery = accountsQuery.or("country.in.(ES,US),applies_to_all_countries.eq.true");
+                invoicesQuery = invoicesQuery.in("scope", ["ES", "US"]);
             } else {
-                accountsQuery.eq("scope", selectedScope);
-                invoicesQuery.eq("scope", selectedScope);
+                // Filter bank accounts by country matching scope
+                accountsQuery = accountsQuery.or(`country.eq.${selectedScope},applies_to_all_countries.eq.true`);
+                invoicesQuery = invoicesQuery.eq("scope", selectedScope);
             }
+
+            // Order queries
+            accountsQuery = accountsQuery.order("code", { ascending: true });
+            invoicesQuery = invoicesQuery.order("due_date", { ascending: true, nullsFirst: false });
 
             const [accountsResult, invoicesResult] = await Promise.all([
                 accountsQuery,
                 invoicesQuery,
             ]);
 
-            if (accountsResult.error) throw accountsResult.error;
-            if (invoicesResult.error) throw invoicesResult.error;
+            if (accountsResult.error) {
+                console.error("Bank accounts error:", accountsResult.error);
+                throw accountsResult.error;
+            }
+            if (invoicesResult.error) {
+                console.error("Invoices error:", invoicesResult.error);
+                throw invoicesResult.error;
+            }
+
+            console.log(`✅ Loaded ${accountsResult.data?.length || 0} bank accounts`);
+            console.log(`✅ Loaded ${invoicesResult.data?.length || 0} invoices`);
 
             setBankAccounts(accountsResult.data || []);
             setInvoices(invoicesResult.data || []);
@@ -141,7 +156,7 @@ export default function PaymentsPage() {
             console.error("Error loading data:", error);
             toast({
                 title: "Error",
-                description: "Failed to load payment data",
+                description: "Failed to load payment data. Please check the console for details.",
                 variant: "destructive",
             });
         } finally {
@@ -225,12 +240,33 @@ export default function PaymentsPage() {
         });
     }, [bankAccounts, invoices]);
 
-    // Filter invoices
-    const filteredInvoices = useMemo(() => {
+    // Separate scheduled and unscheduled invoices
+    const { scheduledInvoices, unscheduledInvoices } = useMemo(() => {
+        const scheduled: Invoice[] = [];
+        const unscheduled: Invoice[] = [];
+
         const today = getMadridDate();
         today.setHours(0, 0, 0, 0);
 
-        return invoices.filter((inv) => {
+        invoices.forEach((inv) => {
+            const hasAccount = inv.bank_account_code !== null && inv.bank_account_code !== "";
+
+            if (hasAccount) {
+                scheduled.push(inv);
+            } else {
+                unscheduled.push(inv);
+            }
+        });
+
+        return { scheduledInvoices: scheduled, unscheduledInvoices: unscheduled };
+    }, [invoices]);
+
+    // Filter scheduled invoices
+    const filteredScheduledInvoices = useMemo(() => {
+        const today = getMadridDate();
+        today.setHours(0, 0, 0, 0);
+
+        return scheduledInvoices.filter((inv) => {
             // Search filter
             if (searchTerm) {
                 const search = searchTerm.toLowerCase();
@@ -244,30 +280,48 @@ export default function PaymentsPage() {
             }
 
             // Account filter
-            if (accountFilter !== "ALL") {
-                if (accountFilter === "NONE") {
-                    if (inv.bank_account_code) return false;
-                } else {
-                    if (inv.bank_account_code !== accountFilter) return false;
-                }
+            if (accountFilter !== "ALL" && accountFilter !== "NONE") {
+                if (inv.bank_account_code !== accountFilter) return false;
             }
 
             // Status filter
-            if (statusFilter !== "ALL") {
+            if (statusFilter !== "ALL" && statusFilter !== "UNSCHEDULED") {
                 const scheduleDate = parseMadridDate(inv.schedule_date);
                 const isPaid = inv.payment_date !== null || inv.is_reconciled;
-                const hasAccount = inv.bank_account_code !== null && inv.bank_account_code !== "";
                 const isOverdue = scheduleDate < today && !isPaid;
 
                 if (statusFilter === "PAID" && !isPaid) return false;
                 if (statusFilter === "OVERDUE" && !isOverdue) return false;
-                if (statusFilter === "SCHEDULED" && (!hasAccount || isPaid || isOverdue)) return false;
-                if (statusFilter === "UNSCHEDULED" && (hasAccount || isPaid)) return false;
+                if (statusFilter === "SCHEDULED" && (isPaid || isOverdue)) return false;
             }
 
             return true;
         });
-    }, [invoices, searchTerm, statusFilter, accountFilter]);
+    }, [scheduledInvoices, searchTerm, statusFilter, accountFilter]);
+
+    // Filter unscheduled invoices
+    const filteredUnscheduledInvoices = useMemo(() => {
+        return unscheduledInvoices.filter((inv) => {
+            // Search filter
+            if (searchTerm) {
+                const search = searchTerm.toLowerCase();
+                if (
+                    !inv.invoice_number?.toLowerCase().includes(search) &&
+                    !inv.provider_code?.toLowerCase().includes(search) &&
+                    !inv.description?.toLowerCase().includes(search)
+                ) {
+                    return false;
+                }
+            }
+
+            // Status filter - only show unscheduled if filter is ALL or UNSCHEDULED
+            if (statusFilter !== "ALL" && statusFilter !== "UNSCHEDULED") {
+                return false;
+            }
+
+            return true;
+        });
+    }, [unscheduledInvoices, searchTerm, statusFilter]);
 
     const getStatusBadge = (invoice: Invoice) => {
         const today = getMadridDate();
@@ -466,11 +520,14 @@ export default function PaymentsPage() {
                 </CardContent>
             </Card>
 
-            {/* Filters and Payment List */}
+            {/* Scheduled Payments */}
             <Card>
                 <CardHeader>
-                    <CardTitle>Payment Schedule</CardTitle>
-                    <CardDescription>Manage and track all invoice payments</CardDescription>
+                    <CardTitle className="flex items-center gap-2">
+                        <Calendar className="h-5 w-5 text-blue-600" />
+                        Payment Schedule
+                    </CardTitle>
+                    <CardDescription>Payments with assigned bank accounts and schedule dates</CardDescription>
                 </CardHeader>
                 <CardContent>
                     {/* Filters */}
@@ -506,7 +563,6 @@ export default function PaymentsPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">All Accounts</SelectItem>
-                                <SelectItem value="NONE">No Account Assigned</SelectItem>
                                 {bankAccounts.map((acc) => (
                                     <SelectItem key={acc.id} value={acc.code}>
                                         {acc.name}
@@ -531,14 +587,14 @@ export default function PaymentsPage() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filteredInvoices.length === 0 ? (
+                                {filteredScheduledInvoices.length === 0 ? (
                                     <TableRow>
                                         <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                                            No invoices found
+                                            No scheduled payments found
                                         </TableCell>
                                     </TableRow>
                                 ) : (
-                                    filteredInvoices.map((invoice) => (
+                                    filteredScheduledInvoices.map((invoice) => (
                                         <TableRow key={invoice.id}>
                                             <TableCell className="font-medium">
                                                 <div>
@@ -572,11 +628,7 @@ export default function PaymentsPage() {
                                                 </div>
                                             </TableCell>
                                             <TableCell>
-                                                {invoice.bank_account_code ? (
-                                                    <Badge variant="outline">{invoice.bank_account_code}</Badge>
-                                                ) : (
-                                                    <span className="text-xs text-gray-400">Not assigned</span>
-                                                )}
+                                                <Badge variant="outline">{invoice.bank_account_code}</Badge>
                                             </TableCell>
                                             <TableCell>{getStatusBadge(invoice)}</TableCell>
                                             <TableCell className="text-right">
@@ -594,19 +646,150 @@ export default function PaymentsPage() {
                     {/* Summary */}
                     <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
                         <p>
-                            Showing {filteredInvoices.length} of {invoices.length} invoice
-                            {invoices.length !== 1 ? "s" : ""}
+                            Showing {filteredScheduledInvoices.length} of {scheduledInvoices.length} scheduled payment
+                            {scheduledInvoices.length !== 1 ? "s" : ""}
                         </p>
                         <p>
                             Total:{" "}
                             <span className="font-semibold">
                                 {formatCurrency(
-                                    filteredInvoices.reduce((sum, inv) => sum + inv.invoice_amount, 0),
+                                    filteredScheduledInvoices.reduce((sum, inv) => sum + inv.invoice_amount, 0),
                                     mainCurrency
                                 )}
                             </span>
                         </p>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* Unscheduled Payments */}
+            <Card className="border-yellow-200 bg-yellow-50/30">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-yellow-600" />
+                        Unscheduled Payments
+                    </CardTitle>
+                    <CardDescription>
+                        Invoices without bank account assignment - organize these payments to add them to your schedule
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {/* Table */}
+                    <div className="border rounded-lg overflow-hidden bg-white">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Invoice</TableHead>
+                                    <TableHead>Provider</TableHead>
+                                    <TableHead>Amount</TableHead>
+                                    <TableHead>Due Date</TableHead>
+                                    <TableHead>Days Until Due</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredUnscheduledInvoices.length === 0 ? (
+                                    <TableRow>
+                                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
+                                            {statusFilter === "UNSCHEDULED" || statusFilter === "ALL"
+                                                ? "No unscheduled payments - all invoices have been organized!"
+                                                : "No unscheduled payments match the current filter"}
+                                        </TableCell>
+                                    </TableRow>
+                                ) : (
+                                    filteredUnscheduledInvoices.map((invoice) => {
+                                        const today = getMadridDate();
+                                        today.setHours(0, 0, 0, 0);
+                                        const dueDate = parseMadridDate(invoice.due_date);
+                                        const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                        const isOverdue = daysUntilDue < 0;
+
+                                        return (
+                                            <TableRow key={invoice.id} className={isOverdue ? "bg-red-50" : ""}>
+                                                <TableCell className="font-medium">
+                                                    <div>
+                                                        <p className="font-semibold">{invoice.invoice_number}</p>
+                                                        <p className="text-xs text-gray-500">{formatDate(invoice.invoice_date)}</p>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div>
+                                                        <p className="font-medium">{invoice.provider_code}</p>
+                                                        {invoice.description && (
+                                                            <p className="text-xs text-gray-500 truncate max-w-[200px]">
+                                                                {invoice.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <p className="font-semibold">
+                                                        {formatCurrency(invoice.invoice_amount, invoice.currency)}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <p className={`font-medium ${isOverdue ? "text-red-600" : ""}`}>
+                                                        {formatDate(invoice.due_date)}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {isOverdue ? (
+                                                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+                                                            <XCircle className="h-3 w-3 mr-1" />
+                                                            {Math.abs(daysUntilDue)} day{Math.abs(daysUntilDue) !== 1 ? "s" : ""} overdue
+                                                        </Badge>
+                                                    ) : daysUntilDue === 0 ? (
+                                                        <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+                                                            <Clock className="h-3 w-3 mr-1" />
+                                                            Due today
+                                                        </Badge>
+                                                    ) : daysUntilDue <= 7 ? (
+                                                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+                                                            <Clock className="h-3 w-3 mr-1" />
+                                                            {daysUntilDue} day{daysUntilDue !== 1 ? "s" : ""} left
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline">
+                                                            {daysUntilDue} days left
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700">
+                                                        Schedule Payment
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
+                                )}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Summary */}
+                    {filteredUnscheduledInvoices.length > 0 && (
+                        <div className="mt-4 flex items-center justify-between text-sm">
+                            <p className="text-gray-600">
+                                Showing {filteredUnscheduledInvoices.length} of {unscheduledInvoices.length} unscheduled payment
+                                {unscheduledInvoices.length !== 1 ? "s" : ""}
+                            </p>
+                            <div className="flex items-center gap-4">
+                                <p className="text-gray-600">
+                                    Total:{" "}
+                                    <span className="font-semibold text-yellow-700">
+                                        {formatCurrency(
+                                            filteredUnscheduledInvoices.reduce((sum, inv) => sum + inv.invoice_amount, 0),
+                                            mainCurrency
+                                        )}
+                                    </span>
+                                </p>
+                                <Button size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white">
+                                    Organize All Payments
+                                </Button>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>
