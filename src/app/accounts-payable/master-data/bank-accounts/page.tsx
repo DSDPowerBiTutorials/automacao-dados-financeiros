@@ -163,27 +163,49 @@ export default function BankAccountsPage() {
         return;
       }
 
+      // Prepare data object with only the fields that exist in the database
+      const dataToSave = {
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        bank_name: formData.bank_name.trim(),
+        account_number: formData.account_number.trim(),
+        iban: formData.iban.trim() || null,
+        swift_bic: formData.swift_bic.trim() || null,
+        currency: formData.currency,
+        country: formData.country,
+        is_active: formData.is_active,
+      };
+
       if (editingAccount) {
         const { error } = await supabase
           .from("bank_accounts")
-          .update({ ...formData, updated_at: new Date().toISOString() })
+          .update({ ...dataToSave, updated_at: new Date().toISOString() })
           .eq("id", editingAccount.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase error details:", error);
+          throw new Error(error.message || "Failed to update bank account");
+        }
         toast({ title: "Success", description: "Bank account updated successfully" });
       } else {
-        const { error } = await supabase.from("bank_accounts").insert([formData]);
-        if (error) throw error;
+        const { error } = await supabase
+          .from("bank_accounts")
+          .insert([{ ...dataToSave, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
+        
+        if (error) {
+          console.error("Supabase error details:", error);
+          throw new Error(error.message || "Failed to create bank account");
+        }
         toast({ title: "Success", description: "Bank account created successfully" });
       }
 
       setIsDialogOpen(false);
       loadAccounts();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving bank account:", error);
       toast({
         title: "Error",
-        description: "Failed to save bank account",
+        description: error.message || "Failed to save bank account",
         variant: "destructive",
       });
     }
