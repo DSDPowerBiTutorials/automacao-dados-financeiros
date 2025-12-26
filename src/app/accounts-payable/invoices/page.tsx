@@ -8,6 +8,20 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+
+// Helper function to format date without timezone issues
+function formatDateForDB(dateString: string): string {
+  if (!dateString) return "";
+  // Ensure date stays in YYYY-MM-DD format without timezone conversion
+  return dateString;
+}
+
+// Helper function to format date from DB for input (YYYY-MM-DD)
+function formatDateForInput(dateString: string | null | undefined): string {
+  if (!dateString) return "";
+  // Just return the date string as-is (already in YYYY-MM-DD from DB)
+  return dateString.split('T')[0];
+}
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -364,11 +378,11 @@ export default function InvoicesPage() {
       }
 
       const payload = {
-        invoice_date: formData.invoice_date,
-        benefit_date: formData.benefit_date,
-        due_date: formData.due_date || null,
-        schedule_date: formData.schedule_date || formData.due_date || null,
-        payment_date: formData.payment_date || null,
+        invoice_date: formatDateForDB(formData.invoice_date),
+        benefit_date: formatDateForDB(formData.benefit_date),
+        due_date: formData.due_date ? formatDateForDB(formData.due_date) : null,
+        schedule_date: formData.schedule_date ? formatDateForDB(formData.schedule_date) : (formData.due_date ? formatDateForDB(formData.due_date) : null),
+        payment_date: formData.payment_date ? formatDateForDB(formData.payment_date) : null,
         invoice_type: formData.invoice_type,
         entry_type: formData.entry_type,
         financial_account_code: formData.financial_account_code,
@@ -1132,11 +1146,11 @@ export default function InvoicesPage() {
   function handleEdit(invoice: Invoice) {
     setEditingInvoice(invoice);
     setFormData({
-      invoice_date: invoice.invoice_date,
-      benefit_date: invoice.benefit_date,
-      due_date: invoice.due_date || "",
-      schedule_date: invoice.schedule_date || "",
-      payment_date: invoice.payment_date || "",
+      invoice_date: formatDateForInput(invoice.invoice_date),
+      benefit_date: formatDateForInput(invoice.benefit_date),
+      due_date: formatDateForInput(invoice.due_date) || "",
+      schedule_date: formatDateForInput(invoice.schedule_date) || "",
+      payment_date: formatDateForInput(invoice.payment_date) || "",
       invoice_type: invoice.invoice_type,
       entry_type: invoice.entry_type,
       financial_account_code: invoice.financial_account_code,
