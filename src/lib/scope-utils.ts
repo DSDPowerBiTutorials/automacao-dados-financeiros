@@ -32,7 +32,7 @@ export const SCOPE_CONFIG: Record<ScopeType, ScopeConfig> = {
     color: "purple",
     countryCode: "GLOBAL",
     currency: "EUR",
-    description: "Consolidated (Spain + US)"
+    description: "Consolidated View (ES + US) - Read Only"
   }
 };
 
