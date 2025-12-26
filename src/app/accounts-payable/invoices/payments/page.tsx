@@ -34,6 +34,8 @@ import {
     Clock,
     CheckCircle2,
     XCircle,
+    BarChart3,
+    PieChart,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalScope } from "@/contexts/global-scope-context";
@@ -445,80 +447,308 @@ export default function PaymentsPage() {
                 </Card>
             </div>
 
-            {/* Bank Account Balances */}
+            {/* Unscheduled Payments - Moved here right after summary cards */}
+            {filteredUnscheduledInvoices.length > 0 && (
+                <Card className="border-yellow-200 bg-yellow-50/30">
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-yellow-600" />
+                            Unscheduled Payments
+                        </CardTitle>
+                        <CardDescription>
+                            Invoices without bank account assignment - organize these payments to add them to your schedule
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        {/* Table */}
+                        <div className="border rounded-lg overflow-hidden bg-white">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Invoice</TableHead>
+                                        <TableHead>Provider</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Due Date</TableHead>
+                                        <TableHead>Days Until Due</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredUnscheduledInvoices.map((invoice) => {
+                                        const today = getMadridDate();
+                                        today.setHours(0, 0, 0, 0);
+                                        const dueDate = parseMadridDate(invoice.due_date);
+                                        const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                                        const isOverdue = daysUntilDue < 0;
+
+                                        return (
+                                            <TableRow key={invoice.id} className={isOverdue ? "bg-red-50" : ""}>
+                                                <TableCell className="font-medium">
+                                                    <div>
+                                                        <p className="font-semibold">{invoice.invoice_number}</p>
+                                                        <p className="text-xs text-gray-500">{formatDate(invoice.invoice_date)}</p>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <div>
+                                                        <p className="font-medium">{invoice.provider_code}</p>
+                                                        {invoice.description && (
+                                                            <p className="text-xs text-gray-500 truncate max-w-[200px]">
+                                                                {invoice.description}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <p className="font-semibold">
+                                                        {formatCurrency(invoice.invoice_amount, invoice.currency)}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <p className={`font-medium ${isOverdue ? "text-red-600" : ""}`}>
+                                                        {formatDate(invoice.due_date)}
+                                                    </p>
+                                                </TableCell>
+                                                <TableCell>
+                                                    {isOverdue ? (
+                                                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
+                                                            <XCircle className="h-3 w-3 mr-1" />
+                                                            {Math.abs(daysUntilDue)} day{Math.abs(daysUntilDue) !== 1 ? "s" : ""} overdue
+                                                        </Badge>
+                                                    ) : daysUntilDue === 0 ? (
+                                                        <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
+                                                            <Clock className="h-3 w-3 mr-1" />
+                                                            Due today
+                                                        </Badge>
+                                                    ) : daysUntilDue <= 7 ? (
+                                                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
+                                                            <Clock className="h-3 w-3 mr-1" />
+                                                            {daysUntilDue} day{daysUntilDue !== 1 ? "s" : ""} left
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge variant="outline">
+                                                            {daysUntilDue} days left
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700">
+                                                        Schedule Payment
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {/* Summary */}
+                        <div className="mt-4 flex items-center justify-between text-sm">
+                            <p className="text-gray-600">
+                                Showing {filteredUnscheduledInvoices.length} of {unscheduledInvoices.length} unscheduled payment
+                                {unscheduledInvoices.length !== 1 ? "s" : ""}
+                            </p>
+                            <div className="flex items-center gap-4">
+                                <p className="text-gray-600">
+                                    Total:{" "}
+                                    <span className="font-semibold text-yellow-700">
+                                        {formatCurrency(
+                                            filteredUnscheduledInvoices.reduce((sum, inv) => sum + inv.invoice_amount, 0),
+                                            mainCurrency
+                                        )}
+                                    </span>
+                                </p>
+                                <Button size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white">
+                                    Organize All Payments
+                                </Button>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* Cash Flow Overview - All Accounts */}
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Wallet className="h-5 w-5 text-blue-600" />
-                        Bank Account Balances & Projections
+                        <BarChart3 className="h-5 w-5 text-blue-600" />
+                        Cash Flow Overview
                     </CardTitle>
                     <CardDescription>
-                        Current balances and projected balances after scheduled payments
+                        Consolidated view of all bank account balances and projections
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <div className="space-y-4">
-                        {accountBalances.length === 0 ? (
-                            <p className="text-center text-gray-500 py-8">No active bank accounts found</p>
-                        ) : (
-                            accountBalances.map((balance, index) => (
-                                <div
-                                    key={`bank-balance-${balance.account.code}-${index}`}
-                                    className="flex items-center justify-between p-4 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-                                >
-                                    <div className="flex-1">
-                                        <div className="flex items-center gap-3 mb-1">
-                                            <h3 className="font-semibold text-gray-900">{balance.account.name}</h3>
-                                            <Badge variant="outline" className="text-xs">
-                                                {balance.account.code}
-                                            </Badge>
-                                            <Badge variant="outline" className="text-xs">
-                                                {balance.account.currency}
-                                            </Badge>
-                                        </div>
-                                        <p className="text-sm text-gray-600">{balance.account.bank_name}</p>
-                                    </div>
-
-                                    <div className="flex items-center gap-8">
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500 mb-1">Current Balance</p>
-                                            <p className="text-lg font-bold text-gray-900">
-                                                {formatCurrency(balance.current_balance, balance.account.currency)}
-                                            </p>
-                                        </div>
-
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500 mb-1">Scheduled Payments</p>
-                                            <p className="text-lg font-semibold text-red-600">
-                                                -{formatCurrency(balance.scheduled_payments, balance.account.currency)}
-                                            </p>
-                                            <p className="text-xs text-gray-500">
-                                                {balance.payment_count} payment{balance.payment_count !== 1 ? "s" : ""}
-                                            </p>
-                                        </div>
-
-                                        <div className="text-right">
-                                            <p className="text-xs text-gray-500 mb-1">Projected Balance</p>
-                                            <p
-                                                className={`text-lg font-bold ${balance.projected_balance >= 0 ? "text-green-600" : "text-red-600"
-                                                    }`}
-                                            >
-                                                {formatCurrency(balance.projected_balance, balance.account.currency)}
-                                            </p>
-                                            {balance.projected_balance < 0 && (
-                                                <div className="flex items-center gap-1 text-red-600 text-xs mt-1">
-                                                    <TrendingDown className="h-3 w-3" />
-                                                    Insufficient funds
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
+                    {accountBalances.length === 0 ? (
+                        <p className="text-center text-gray-500 py-8">No active bank accounts found</p>
+                    ) : (
+                        <div className="space-y-6">
+                            {/* Overall Summary Chart */}
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                                <div className="text-center">
+                                    <p className="text-sm text-gray-600 mb-2">Total Current Balance</p>
+                                    <p className="text-3xl font-bold text-gray-900">
+                                        {formatCurrency(
+                                            accountBalances.reduce((sum, b) => sum + b.current_balance, 0),
+                                            mainCurrency
+                                        )}
+                                    </p>
                                 </div>
-                            ))
-                        )}
-                    </div>
+                                <div className="text-center">
+                                    <p className="text-sm text-gray-600 mb-2">Total Scheduled Payments</p>
+                                    <p className="text-3xl font-bold text-red-600">
+                                        -{formatCurrency(
+                                            accountBalances.reduce((sum, b) => sum + b.scheduled_payments, 0),
+                                            mainCurrency
+                                        )}
+                                    </p>
+                                    <p className="text-xs text-gray-500 mt-1">
+                                        {accountBalances.reduce((sum, b) => sum + b.payment_count, 0)} payment(s)
+                                    </p>
+                                </div>
+                                <div className="text-center">
+                                    <p className="text-sm text-gray-600 mb-2">Total Projected Balance</p>
+                                    <p className={`text-3xl font-bold ${accountBalances.reduce((sum, b) => sum + b.projected_balance, 0) >= 0
+                                        ? "text-green-600"
+                                        : "text-red-600"
+                                        }`}>
+                                        {formatCurrency(
+                                            accountBalances.reduce((sum, b) => sum + b.projected_balance, 0),
+                                            mainCurrency
+                                        )}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
+
+            {/* Individual Bank Account Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {accountBalances.map((balance, index) => (
+                    <Card key={`bank-chart-${balance.account.code}-${index}`}>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle className="text-lg">{balance.account.name}</CardTitle>
+                                    <CardDescription className="flex items-center gap-2 mt-1">
+                                        <span>{balance.account.bank_name}</span>
+                                        <Badge variant="outline" className="text-xs">
+                                            {balance.account.code}
+                                        </Badge>
+                                        <Badge variant="outline" className="text-xs">
+                                            {balance.account.currency}
+                                        </Badge>
+                                    </CardDescription>
+                                </div>
+                                <Wallet className="h-8 w-8 text-blue-600" />
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="space-y-4">
+                                {/* Visual bars */}
+                                <div className="space-y-3">
+                                    {/* Current Balance Bar */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-sm text-gray-600">Current Balance</span>
+                                            <span className="text-sm font-semibold text-gray-900">
+                                                {formatCurrency(balance.current_balance, balance.account.currency)}
+                                            </span>
+                                        </div>
+                                        <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
+                                            <div
+                                                className="h-full bg-blue-500 flex items-center justify-end pr-2"
+                                                style={{ width: '100%' }}
+                                            >
+                                                <span className="text-xs font-medium text-white">100%</span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Scheduled Payments Bar */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-sm text-gray-600">Scheduled Payments</span>
+                                            <span className="text-sm font-semibold text-red-600">
+                                                -{formatCurrency(balance.scheduled_payments, balance.account.currency)}
+                                            </span>
+                                        </div>
+                                        <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
+                                            <div
+                                                className="h-full bg-red-500 flex items-center justify-end pr-2"
+                                                style={{
+                                                    width: balance.current_balance > 0
+                                                        ? `${Math.min((balance.scheduled_payments / balance.current_balance) * 100, 100)}%`
+                                                        : '100%'
+                                                }}
+                                            >
+                                                <span className="text-xs font-medium text-white">
+                                                    {balance.payment_count} payment{balance.payment_count !== 1 ? 's' : ''}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Projected Balance Bar */}
+                                    <div>
+                                        <div className="flex items-center justify-between mb-1">
+                                            <span className="text-sm text-gray-600">Projected Balance</span>
+                                            <span className={`text-sm font-semibold ${balance.projected_balance >= 0 ? "text-green-600" : "text-red-600"
+                                                }`}>
+                                                {formatCurrency(balance.projected_balance, balance.account.currency)}
+                                            </span>
+                                        </div>
+                                        <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
+                                            <div
+                                                className={`h-full flex items-center justify-end pr-2 ${balance.projected_balance >= 0 ? "bg-green-500" : "bg-red-500"
+                                                    }`}
+                                                style={{
+                                                    width: balance.current_balance > 0
+                                                        ? `${Math.max(Math.min((balance.projected_balance / balance.current_balance) * 100, 100), 0)}%`
+                                                        : '0%'
+                                                }}
+                                            >
+                                                {balance.projected_balance >= 0 && (
+                                                    <span className="text-xs font-medium text-white">
+                                                        {balance.current_balance > 0
+                                                            ? `${Math.round((balance.projected_balance / balance.current_balance) * 100)}%`
+                                                            : '0%'}
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                        {balance.projected_balance < 0 && (
+                                            <div className="flex items-center gap-1 text-red-600 text-xs mt-2 p-2 bg-red-50 rounded">
+                                                <AlertCircle className="h-4 w-4" />
+                                                <span className="font-medium">
+                                                    Insufficient funds - {formatCurrency(Math.abs(balance.projected_balance), balance.account.currency)} deficit
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                {/* Summary Numbers */}
+                                <div className="pt-4 border-t border-gray-200">
+                                    <div className="flex items-center justify-between text-xs text-gray-600">
+                                        <span>Impact: </span>
+                                        <span className={`font-semibold ${balance.projected_balance >= 0 ? "text-green-600" : "text-red-600"
+                                            }`}>
+                                            {balance.current_balance > 0
+                                                ? `${((balance.scheduled_payments / balance.current_balance) * 100).toFixed(1)}% of balance`
+                                                : 'No balance'
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+                ))}
+            </div>
 
             {/* Scheduled Payments */}
             <Card>
@@ -659,137 +889,6 @@ export default function PaymentsPage() {
                             </span>
                         </p>
                     </div>
-                </CardContent>
-            </Card>
-
-            {/* Unscheduled Payments */}
-            <Card className="border-yellow-200 bg-yellow-50/30">
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-yellow-600" />
-                        Unscheduled Payments
-                    </CardTitle>
-                    <CardDescription>
-                        Invoices without bank account assignment - organize these payments to add them to your schedule
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {/* Table */}
-                    <div className="border rounded-lg overflow-hidden bg-white">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Invoice</TableHead>
-                                    <TableHead>Provider</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead>Due Date</TableHead>
-                                    <TableHead>Days Until Due</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredUnscheduledInvoices.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                            {statusFilter === "UNSCHEDULED" || statusFilter === "ALL"
-                                                ? "No unscheduled payments - all invoices have been organized!"
-                                                : "No unscheduled payments match the current filter"}
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    filteredUnscheduledInvoices.map((invoice) => {
-                                        const today = getMadridDate();
-                                        today.setHours(0, 0, 0, 0);
-                                        const dueDate = parseMadridDate(invoice.due_date);
-                                        const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                                        const isOverdue = daysUntilDue < 0;
-
-                                        return (
-                                            <TableRow key={invoice.id} className={isOverdue ? "bg-red-50" : ""}>
-                                                <TableCell className="font-medium">
-                                                    <div>
-                                                        <p className="font-semibold">{invoice.invoice_number}</p>
-                                                        <p className="text-xs text-gray-500">{formatDate(invoice.invoice_date)}</p>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <p className="font-medium">{invoice.provider_code}</p>
-                                                        {invoice.description && (
-                                                            <p className="text-xs text-gray-500 truncate max-w-[200px]">
-                                                                {invoice.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <p className="font-semibold">
-                                                        {formatCurrency(invoice.invoice_amount, invoice.currency)}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <p className={`font-medium ${isOverdue ? "text-red-600" : ""}`}>
-                                                        {formatDate(invoice.due_date)}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {isOverdue ? (
-                                                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-                                                            <XCircle className="h-3 w-3 mr-1" />
-                                                            {Math.abs(daysUntilDue)} day{Math.abs(daysUntilDue) !== 1 ? "s" : ""} overdue
-                                                        </Badge>
-                                                    ) : daysUntilDue === 0 ? (
-                                                        <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
-                                                            <Clock className="h-3 w-3 mr-1" />
-                                                            Due today
-                                                        </Badge>
-                                                    ) : daysUntilDue <= 7 ? (
-                                                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                                                            <Clock className="h-3 w-3 mr-1" />
-                                                            {daysUntilDue} day{daysUntilDue !== 1 ? "s" : ""} left
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="outline">
-                                                            {daysUntilDue} days left
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700">
-                                                        Schedule Payment
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
-
-                    {/* Summary */}
-                    {filteredUnscheduledInvoices.length > 0 && (
-                        <div className="mt-4 flex items-center justify-between text-sm">
-                            <p className="text-gray-600">
-                                Showing {filteredUnscheduledInvoices.length} of {unscheduledInvoices.length} unscheduled payment
-                                {unscheduledInvoices.length !== 1 ? "s" : ""}
-                            </p>
-                            <div className="flex items-center gap-4">
-                                <p className="text-gray-600">
-                                    Total:{" "}
-                                    <span className="font-semibold text-yellow-700">
-                                        {formatCurrency(
-                                            filteredUnscheduledInvoices.reduce((sum, inv) => sum + inv.invoice_amount, 0),
-                                            mainCurrency
-                                        )}
-                                    </span>
-                                </p>
-                                <Button size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white">
-                                    Organize All Payments
-                                </Button>
-                            </div>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
         </div>
