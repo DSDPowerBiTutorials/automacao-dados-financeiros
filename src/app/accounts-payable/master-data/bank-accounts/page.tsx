@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Globe, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useGlobalScope } from "@/contexts/global-scope-context";
 
 interface BankAccount {
   id: string;
@@ -34,18 +35,19 @@ interface BankAccount {
   iban?: string;
   swift_bic?: string;
   currency: string;
-  scope: "ES" | "US" | "GLOBAL";
+  country: "ES" | "US";
   is_active: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export default function BankAccountsPage() {
+  const { selectedScope } = useGlobalScope();
   const [accounts, setAccounts] = useState<BankAccount[]>([]);
   const [filteredAccounts, setFilteredAccounts] = useState<BankAccount[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"ES" | "US" | "GLOBAL" | "ALL">("ALL");
+  const [countryFilter, setCountryFilter] = useState<"ES" | "US" | "ALL">("ALL");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const { toast } = useToast();
@@ -58,7 +60,7 @@ export default function BankAccountsPage() {
     iban: "",
     swift_bic: "",
     currency: "EUR",
-    scope: "GLOBAL" as "ES" | "US" | "GLOBAL",
+    country: "ES" as "ES" | "US",
     is_active: true,
   });
 
@@ -68,7 +70,7 @@ export default function BankAccountsPage() {
 
   useEffect(() => {
     filterAccounts();
-  }, [accounts, searchTerm, scopeFilter]);
+  }, [accounts, searchTerm, countryFilter, selectedScope]);
 
   const loadAccounts = async () => {
     try {
@@ -95,8 +97,14 @@ export default function BankAccountsPage() {
   const filterAccounts = () => {
     let filtered = [...accounts];
 
-    if (scopeFilter !== "ALL") {
-      filtered = filtered.filter((acc) => acc.scope === scopeFilter);
+    // Apply GlobalScopeContext filter first
+    if (selectedScope !== "GLOBAL") {
+      filtered = filtered.filter((acc) => acc.country === selectedScope);
+    }
+
+    // Then apply manual country filter
+    if (countryFilter !== "ALL") {
+      filtered = filtered.filter((acc) => acc.country === countryFilter);
     }
 
     if (searchTerm.trim()) {
@@ -124,7 +132,7 @@ export default function BankAccountsPage() {
         iban: account.iban || "",
         swift_bic: account.swift_bic || "",
         currency: account.currency,
-        scope: account.scope,
+        country: account.country,
         is_active: account.is_active,
       });
     } else {
@@ -137,7 +145,7 @@ export default function BankAccountsPage() {
         iban: "",
         swift_bic: "",
         currency: "EUR",
-        scope: "GLOBAL",
+        country: selectedScope === "GLOBAL" ? "ES" : selectedScope,
         is_active: true,
       });
     }
@@ -206,12 +214,12 @@ export default function BankAccountsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Bank Accounts</h1>
           <p className="text-gray-500 mt-1">Manage company bank accounts and payment methods</p>
         </div>
-        <Button 
+        <Button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             handleOpenDialog();
-          }} 
+          }}
           className="bg-blue-600 hover:bg-blue-700"
           type="button"
         >
@@ -223,33 +231,27 @@ export default function BankAccountsPage() {
       <Card className="p-4">
         <div className="space-y-4">
           <div>
-            <Label className="text-sm font-medium mb-2 block">Filter by Scope</Label>
+            <Label className="text-sm font-medium mb-2 block">Current View: {selectedScope === "GLOBAL" ? "🌐 All Countries" : selectedScope === "ES" ? "🇪🇸 Spain" : "🇺🇸 United States"}</Label>
+            <Label className="text-sm font-medium mb-2 block">Additional Filter by Country</Label>
             <div className="flex gap-2">
               <Button
-                variant={scopeFilter === "ES" ? "default" : "outline"}
+                variant={countryFilter === "ES" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setScopeFilter("ES")}
+                onClick={() => setCountryFilter("ES")}
               >
-                🇪🇸 ES
+                🇪🇸 Spain
               </Button>
               <Button
-                variant={scopeFilter === "US" ? "default" : "outline"}
+                variant={countryFilter === "US" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setScopeFilter("US")}
+                onClick={() => setCountryFilter("US")}
               >
-                🇺🇸 US
+                🇺🇸 United States
               </Button>
               <Button
-                variant={scopeFilter === "GLOBAL" ? "default" : "outline"}
+                variant={countryFilter === "ALL" ? "default" : "outline"}
                 size="sm"
-                onClick={() => setScopeFilter("GLOBAL")}
-              >
-                🌐 GLOBAL
-              </Button>
-              <Button
-                variant={scopeFilter === "ALL" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setScopeFilter("ALL")}
+                onClick={() => setCountryFilter("ALL")}
               >
                 All
               </Button>
@@ -274,7 +276,7 @@ export default function BankAccountsPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Country</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
@@ -294,10 +296,12 @@ export default function BankAccountsPage() {
                   <td colSpan={8} className="px-4 py-8 text-center text-gray-500">No bank accounts found</td>
                 </tr>
               ) : (
-                filteredAccounts.map((account) => (
-                  <tr key={account.id} className="hover:bg-gray-50">
+                filteredAccounts.map((account, index) => (
+                  <tr key={`bank-account-${account.code}-${index}`} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <Globe className="h-5 w-5 text-blue-500" />
+                      <Badge variant="outline" className="font-semibold">
+                        {account.country === "ES" ? "🇪🇸 ES" : "🇺🇸 US"}
+                      </Badge>
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
@@ -399,6 +403,24 @@ export default function BankAccountsPage() {
                 />
               </div>
               <div className="space-y-2">
+                <Label htmlFor="country" className="text-sm font-medium text-gray-700">Country/Headquarters *</Label>
+                <Select
+                  value={formData.country}
+                  onValueChange={(value: "ES" | "US") => setFormData({ ...formData, country: value })}
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ES">🇪🇸 Spain (ES)</SelectItem>
+                    <SelectItem value="US">🇺🇸 United States (US)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
                 <Label htmlFor="currency" className="text-sm font-medium text-gray-700">Currency</Label>
                 <Select
                   value={formData.currency}
@@ -414,16 +436,15 @@ export default function BankAccountsPage() {
                   </SelectContent>
                 </Select>
               </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="account_number" className="text-sm font-medium text-gray-700">Account Number</Label>
-              <Input
-                id="account_number"
-                value={formData.account_number}
-                onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
-                className="h-11"
-              />
+              <div className="space-y-2">
+                <Label htmlFor="account_number" className="text-sm font-medium text-gray-700">Account Number</Label>
+                <Input
+                  id="account_number"
+                  value={formData.account_number}
+                  onChange={(e) => setFormData({ ...formData, account_number: e.target.value })}
+                  className="h-11"
+                />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-6">
@@ -460,15 +481,15 @@ export default function BankAccountsPage() {
           </div>
 
           <DialogFooter className="border-t pt-4 gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsDialogOpen(false)}
               className="px-6 h-11"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               className="bg-blue-600 hover:bg-blue-700 px-6 h-11"
             >
               {editingAccount ? "Update Bank Account" : "Create Bank Account"}
