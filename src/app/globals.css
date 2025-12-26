@@ -14,30 +14,35 @@ html, body {
   box-sizing: border-box;
 }
 
-/* Scrollbar institucional */
+/* Scrollbar clean e minimalista */
 /* WebKit (Chrome, Edge, Safari) */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: #1a2b4a; /* azul institucional */
+  background: #ffffff; /* fundo branco */
 }
 ::-webkit-scrollbar-thumb {
-  background-color: #2c3e5f; /* cinza institucional */
-  border-radius: 6px;
-  border: 2px solid #1a2b4a; /* contorno no azul */
+  background-color: #d1d5db; /* cinza suave */
+  border-radius: 4px;
+  border: 2px solid #ffffff; /* borda branca */
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af; /* cinza mais escuro no hover */
 }
 
-/* Sidebar nav scrollbar específico */
-aside nav::-webkit-scrollbar-track { background: #1a2b4a; }
+/* Sidebar nav scrollbar */
+aside nav::-webkit-scrollbar-track { 
+  background: #ffffff; 
+}
 aside nav::-webkit-scrollbar-thumb {
-  background-color: #2c3e5f;
-  border: 2px solid #1a2b4a;
+  background-color: #d1d5db;
+  border: 2px solid #ffffff;
 }
 
 /* Firefox */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2c3e5f #1a2b4a;
+  scrollbar-color: #d1d5db #ffffff;
 }

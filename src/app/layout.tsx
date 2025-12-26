@@ -1,5 +1,5 @@
 import "./globals.css"
-import { AppSidebar } from "@/components/app/app-sidebar"
+import Sidebar from "@/components/custom/sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { CompanyViewProvider } from "@/contexts/company-view-context"
 
@@ -8,14 +8,18 @@ export const metadata = {
   description: "Financial management system by Digital Smile Design",
 }
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body className="flex bg-[#2c3e5f] text-neutral-900">
+      <body className="flex bg-gradient-to-br from-gray-50 to-gray-100 text-neutral-900">
         <CompanyViewProvider>
-          <AppSidebar />
-          <main className="flex-1 bg-white min-h-screen transition-all duration-300" style={{ marginLeft: 'var(--sidebar-width)' }}>
-            {children}
+          <Sidebar />
+          <main className="flex-1 min-h-screen transition-all duration-300 ease-in-out" style={{ marginLeft: 'var(--sidebar-width, 4rem)' }}>
+            <div className="p-6">
+              <div className="bg-white rounded-3xl shadow-xl min-h-[calc(100vh-3rem)] p-8">
+                {children}
+              </div>
+            </div>
           </main>
           <Toaster />
         </CompanyViewProvider>
