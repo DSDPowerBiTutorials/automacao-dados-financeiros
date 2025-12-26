@@ -95,9 +95,9 @@ const COUNTRIES = [
 
 // Helper function to format numbers in European format (1.250,00)
 function formatEuropeanNumber(value: number, decimals: number = 2): string {
-  return value.toLocaleString("pt-BR", { 
-    minimumFractionDigits: decimals, 
-    maximumFractionDigits: decimals 
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
   });
 }
 
@@ -129,35 +129,35 @@ export default function InvoicesPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedType, setSelectedType] = useState<InvoiceType | "ALL">("ALL");
   const [selectedCountry, setSelectedCountry] = useState<string>("ALL");
-  const [selectedScopes, setSelectedScopes] = useState<Set<ScopeType>>(new Set(["ES", "US", "GLOBAL"]));
+  const [selectedScopes, setSelectedScopes] = useState<Set<ScopeType>>(new Set(["ES" as ScopeType, "US" as ScopeType, "GLOBAL" as ScopeType]));
   const [sortField, setSortField] = useState<SortField>("invoice_date");
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
-  const [appliedFilters, setAppliedFilters] = useState<{field: string, value: string, label: string}[]>([]);
+  const [appliedFilters, setAppliedFilters] = useState<{ field: string, value: string, label: string }[]>([]);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
   const [multiSelectFilters, setMultiSelectFilters] = useState<Record<string, string[]>>({});
-  const [filterPopoverOpen, setFilterPopoverOpen] = useState<{field: string, anchor: HTMLElement} | null>(null);
+  const [filterPopoverOpen, setFilterPopoverOpen] = useState<{ field: string, anchor: HTMLElement } | null>(null);
   const [tempFilterSelection, setTempFilterSelection] = useState<string[]>([]);
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
-  
+
   // Date and amount filters
-  const [dateFilters, setDateFilters] = useState<Record<string, {start?: string, end?: string}>>({});
-  const [amountFilter, setAmountFilter] = useState<{operator: 'lt' | 'gt' | 'eq' | 'between', value1: number, value2?: number} | null>(null);
-  
+  const [dateFilters, setDateFilters] = useState<Record<string, { start?: string, end?: string }>>({});
+  const [amountFilter, setAmountFilter] = useState<{ operator: 'lt' | 'gt' | 'eq' | 'between', value1: number, value2?: number } | null>(null);
+
   // Column visibility
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
     "actions", "split", "scope", "impact", "type", "input_date", "invoice_date", "benefit_date", "due_date", "schedule_date",
     "provider", "description", "invoice_number", "amount", "currency", "financial_account",
-    "cost_center", "cost_type", "dep_cost_type", "payment_status", "payment_method", 
+    "cost_center", "cost_type", "dep_cost_type", "payment_status", "payment_method",
     "bank_account", "payment_date"
   ]));
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
   const [tempVisibleColumns, setTempVisibleColumns] = useState<Set<string>>(new Set());
-  
+
   // Inline editing
-  const [editingCell, setEditingCell] = useState<{invoiceId: number, field: string} | null>(null);
+  const [editingCell, setEditingCell] = useState<{ invoiceId: number, field: string } | null>(null);
   const [editValue, setEditValue] = useState("");
   const [selectSearchTerm, setSelectSearchTerm] = useState("");
-  
+
   // Master data creation popups
   const [providerDialogOpen, setProviderDialogOpen] = useState(false);
   const [financialAccountDialogOpen, setFinancialAccountDialogOpen] = useState(false);
@@ -256,7 +256,7 @@ export default function InvoicesPage() {
     setError(null);
     try {
       const { data, error } = await supabase
-        .from("accounts_payable")
+        .from("invoices")
         .select("*")
         .order("invoice_date", { ascending: false });
 
@@ -286,7 +286,71 @@ export default function InvoicesPage() {
     setSubmitting(true);
 
     try {
+      // Validar campos obrigatórios
+      if (!formData.provider_code) {
+        toast({ title: "Error", description: "Provider is required", variant: "destructive", className: "bg-white" });
+        setSubmitting(false);
+        return;
+      }
+      if (!formData.financial_account_code) {
+        toast({ title: "Error", description: "Financial Account is required", variant: "destructive", className: "bg-white" });
+        setSubmitting(false);
+        return;
+      }
+      if (!formData.cost_center_code) {
+        toast({ title: "Error", description: "Cost Center is required", variant: "destructive", className: "bg-white" });
+        setSubmitting(false);
+        return;
+      }
+      if (!formData.cost_type_code) {
+        toast({ title: "Error", description: "Cost Type is required", variant: "destructive", className: "bg-white" });
+        setSubmitting(false);
+        return;
+      }
+      if (!formData.dep_cost_type_code) {
+        toast({ title: "Error", description: "Dep Cost Type is required", variant: "destructive", className: "bg-white" });
+        setSubmitting(false);
+        return;
+      }
+      if (!formData.due_date) {
+        toast({ title: "Error", description: "Due Date is required", variant: "destructive", className: "bg-white" });
+        setSubmitting(false);
+        return;
+      }
+      if (!formData.schedule_date) {
+        toast({ title: "Error", description: "Schedule Date is required", variant: "destructive", className: "bg-white" });
+        setSubmitting(false);
+        return;
+      }
+
       const scopeFields = scopeToFields(formData.scope);
+
+      // Auto-generate invoice number for new invoices if not provided
+      let finalInvoiceNumber = formData.invoice_number?.trim() || null;
+
+      if (!editingInvoice && !finalInvoiceNumber) {
+        const year = new Date(formData.invoice_date).getFullYear();
+        const month = String(new Date(formData.invoice_date).getMonth() + 1).padStart(2, '0');
+
+        const { data: maxInvoiceData } = await supabase
+          .from("invoices")
+          .select("invoice_number")
+          .like("invoice_number", `${formData.scope}-INV-${year}${month}%`)
+          .order("invoice_number", { ascending: false })
+          .limit(1);
+
+        let nextNumber = 1;
+        if (maxInvoiceData && maxInvoiceData.length > 0 && maxInvoiceData[0].invoice_number) {
+          const lastInvoiceNumber = maxInvoiceData[0].invoice_number;
+          const match = lastInvoiceNumber.match(/-(\d+)$/);
+          if (match) {
+            nextNumber = parseInt(match[1]) + 1;
+          }
+        }
+
+        finalInvoiceNumber = `${formData.scope}-INV-${year}${month}-${String(nextNumber).padStart(4, '0')}`;
+      }
+
       const payload = {
         invoice_date: formData.invoice_date,
         benefit_date: formData.benefit_date,
@@ -307,7 +371,7 @@ export default function InvoicesPage() {
         dep_cost_type_code: formData.dep_cost_type_code || null,
         cost_center_code: formData.cost_center_code || null,
         description: formData.description || null,
-        invoice_number: formData.invoice_number || null,
+        invoice_number: finalInvoiceNumber,
         ...scopeFields,
         dre_impact: formData.dre_impact,
         cash_impact: formData.cash_impact,
@@ -318,14 +382,14 @@ export default function InvoicesPage() {
 
       if (editingInvoice) {
         const { error } = await supabase
-          .from("accounts_payable")
+          .from("invoices")
           .update(payload)
           .eq("id", editingInvoice.id);
 
         if (error) throw error;
         toast({ title: "Success", description: "Invoice updated successfully", className: "bg-white" });
       } else {
-        const { error } = await supabase.from("accounts_payable").insert([{
+        const { error } = await supabase.from("invoices").insert([{
           ...payload,
           input_date: new Date().toISOString(),
         }]);
@@ -388,7 +452,7 @@ export default function InvoicesPage() {
 
     try {
       const { error } = await supabase
-        .from("accounts_payable")
+        .from("invoices")
         .delete()
         .eq("id", invoice.id);
 
@@ -431,12 +495,12 @@ export default function InvoicesPage() {
         // Split by installments
         const installmentAmount = splitInvoice.invoice_amount / splitConfig.installments;
         const baseDueDate = new Date(splitInvoice.due_date || splitInvoice.invoice_date);
-        
+
         const splits = [];
         for (let i = 0; i < splitConfig.installments; i++) {
           const dueDate = new Date(baseDueDate);
           dueDate.setMonth(dueDate.getMonth() + i);
-          
+
           splits.push({
             ...splitInvoice,
             id: undefined,
@@ -456,7 +520,7 @@ export default function InvoicesPage() {
 
         // Insert all splits
         const { error } = await supabase.from('accounts_payable').insert(splits);
-        
+
         if (error) throw error;
 
         // Mark original as parent
@@ -486,7 +550,7 @@ export default function InvoicesPage() {
         }));
 
         const { error } = await supabase.from('accounts_payable').insert(splits);
-        
+
         if (error) throw error;
 
         await supabase
@@ -524,7 +588,7 @@ export default function InvoicesPage() {
     console.log("Handling inline edit:", { invoiceId, field, value });
     try {
       const { error } = await supabase
-        .from("accounts_payable")
+        .from("invoices")
         .update({ [field]: value, updated_at: new Date().toISOString() })
         .eq("id", invoiceId);
 
@@ -578,7 +642,7 @@ export default function InvoicesPage() {
       });
     }
   }
-  
+
   async function createNewProvider() {
     try {
       const { data, error } = await supabase
@@ -613,7 +677,7 @@ export default function InvoicesPage() {
         payment_terms: "Net 30",
         currency: "EUR"
       });
-      
+
       // Set the new provider as selected value
       if (editingCell) {
         setEditValue(data.code);
@@ -627,11 +691,11 @@ export default function InvoicesPage() {
       });
     }
   }
-  
+
   async function createNewFinancialAccount() {
     try {
       const scopeFields = scopeToFields(newAccountData.scope);
-      
+
       const { data, error } = await supabase
         .from("financial_accounts")
         .insert([{
@@ -663,7 +727,7 @@ export default function InvoicesPage() {
         parent_code: "",
         scope: "ES"
       });
-      
+
       // Set the new account as selected value
       if (editingCell) {
         setEditValue(data.code);
@@ -719,32 +783,32 @@ export default function InvoicesPage() {
     setAppliedFilters([]);
     setSearchTerm("");
   }
-  
+
   function openFilterPopover(field: string, event: React.MouseEvent<HTMLButtonElement>) {
     const currentFilters = multiSelectFilters[field] || [];
     setTempFilterSelection(currentFilters);
     setFilterSearchTerm("");
     setFilterPopoverOpen({ field, anchor: event.currentTarget });
   }
-  
+
   function closeFilterPopover() {
     setFilterPopoverOpen(null);
     setTempFilterSelection([]);
     setFilterSearchTerm("");
   }
-  
+
   function toggleFilterOption(value: string) {
-    setTempFilterSelection(prev => 
-      prev.includes(value) 
+    setTempFilterSelection(prev =>
+      prev.includes(value)
         ? prev.filter(v => v !== value)
         : [...prev, value]
     );
   }
-  
+
   function applyMultiSelectFilter(field: string) {
     if (tempFilterSelection.length > 0) {
       setMultiSelectFilters(prev => ({ ...prev, [field]: tempFilterSelection }));
-      
+
       // Create friendly labels for filters
       const fieldLabels: Record<string, string> = {
         'provider_code': 'Provider',
@@ -757,7 +821,7 @@ export default function InvoicesPage() {
         'payment_status': 'Payment Status',
         'entry_type': 'Entry Type'
       };
-      
+
       const friendlyLabel = fieldLabels[field] || field;
       const displayValues = tempFilterSelection.map(code => {
         if (field === 'provider_code') return getNameByCode(providers, code);
@@ -767,13 +831,13 @@ export default function InvoicesPage() {
         if (field === 'dep_cost_type_code') return getNameByCode(depCostTypes, code);
         return code;
       }).join(', ');
-      
+
       setAppliedFilters(prev => {
         const filtered = prev.filter(f => f.field !== field);
-        return [...filtered, { 
-          field, 
-          value: tempFilterSelection.join(", "), 
-          label: `${friendlyLabel}: ${displayValues.length > 50 ? tempFilterSelection.length + ' selected' : displayValues}` 
+        return [...filtered, {
+          field,
+          value: tempFilterSelection.join(", "),
+          label: `${friendlyLabel}: ${displayValues.length > 50 ? tempFilterSelection.length + ' selected' : displayValues}`
         }];
       });
     } else {
@@ -786,13 +850,13 @@ export default function InvoicesPage() {
     }
     closeFilterPopover();
   }
-  
-  function getDatePreset(preset: string): {start: string, end: string} {
+
+  function getDatePreset(preset: string): { start: string, end: string } {
     const now = new Date();
     const start = new Date();
     const end = new Date();
-    
-    switch(preset) {
+
+    switch (preset) {
       case "This Week":
         start.setDate(now.getDate() - now.getDay());
         end.setDate(start.getDate() + 6);
@@ -818,9 +882,9 @@ export default function InvoicesPage() {
         end.setFullYear(now.getFullYear() + 1, 11, 31);
         break;
       default:
-        return {start: now.toISOString().split('T')[0], end: now.toISOString().split('T')[0]};
+        return { start: now.toISOString().split('T')[0], end: now.toISOString().split('T')[0] };
     }
-    
+
     return {
       start: start.toISOString().split('T')[0],
       end: end.toISOString().split('T')[0]
@@ -861,7 +925,7 @@ export default function InvoicesPage() {
 
       const exportData = filteredInvoices.map(invoice => {
         const row: any = {};
-        
+
         if (visibleColumns.has('scope')) row['Scope'] = getRecordScope(invoice);
         if (visibleColumns.has('impact')) {
           const impacts = [];
@@ -889,7 +953,7 @@ export default function InvoicesPage() {
         if (visibleColumns.has('payment_method')) row['Payment Method'] = invoice.payment_method_code ? getNameByCode(paymentMethods, invoice.payment_method_code) : '';
         if (visibleColumns.has('bank_account')) row['Bank Account'] = invoice.bank_account_code ? getNameByCode(bankAccounts, invoice.bank_account_code) : '';
         if (visibleColumns.has('payment_date')) row['Payment Date'] = invoice.payment_date || '';
-        
+
         return row;
       });
 
@@ -897,7 +961,7 @@ export default function InvoicesPage() {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Invoices");
       XLSX.writeFile(wb, `invoices_${new Date().toISOString().split('T')[0]}.xlsx`);
-      
+
       toast({
         title: "Export Successful",
         description: `${exportData.length} invoices exported to Excel`,
@@ -920,7 +984,7 @@ export default function InvoicesPage() {
       const { default: autoTable } = await import('jspdf-autotable');
 
       const doc = new jsPDF('landscape');
-      
+
       // Header
       doc.setFontSize(16);
       doc.text('Accounts Payable - Invoices', 14, 15);
@@ -955,7 +1019,7 @@ export default function InvoicesPage() {
       // Table data
       const rows = filteredInvoices.map(invoice => {
         const row: string[] = [];
-        
+
         if (visibleColumns.has('scope')) row.push(getRecordScope(invoice));
         if (visibleColumns.has('impact')) {
           const impacts = [];
@@ -983,7 +1047,7 @@ export default function InvoicesPage() {
         if (visibleColumns.has('payment_method')) row.push(invoice.payment_method_code ? getNameByCode(paymentMethods, invoice.payment_method_code) : '');
         if (visibleColumns.has('bank_account')) row.push(invoice.bank_account_code ? getNameByCode(bankAccounts, invoice.bank_account_code) : '');
         if (visibleColumns.has('payment_date')) row.push(invoice.payment_date || '');
-        
+
         return row;
       });
 
@@ -998,7 +1062,7 @@ export default function InvoicesPage() {
       });
 
       doc.save(`invoices_${new Date().toISOString().split('T')[0]}.pdf`);
-      
+
       toast({
         title: "Export Successful",
         description: `${filteredInvoices.length} invoices exported to PDF`,
@@ -1024,22 +1088,22 @@ export default function InvoicesPage() {
       return newSet;
     });
   }
-  
+
   function openColumnSelector() {
     setTempVisibleColumns(new Set(visibleColumns));
     setColumnSelectorOpen(true);
   }
-  
+
   function confirmColumnSelection() {
     setVisibleColumns(new Set(tempVisibleColumns));
     setColumnSelectorOpen(false);
   }
-  
+
   function cancelColumnSelection() {
     setTempVisibleColumns(new Set(visibleColumns));
     setColumnSelectorOpen(false);
   }
-  
+
   function isColumnFiltered(field: string): boolean {
     return !!multiSelectFilters[field] || !!dateFilters[field] || (field === 'invoice_amount' && !!amountFilter);
   }
@@ -1104,8 +1168,8 @@ export default function InvoicesPage() {
   function handleCountryChange(countryCode: string) {
     const country = COUNTRIES.find(c => c.code === countryCode);
     const defaultCurrency = country?.defaultCurrency || "EUR";
-    setFormData({ 
-      ...formData, 
+    setFormData({
+      ...formData,
       country_code: countryCode,
       currency: defaultCurrency,
       eur_exchange: defaultCurrency === "EUR" ? "1.00" : formData.eur_exchange
@@ -1142,14 +1206,14 @@ export default function InvoicesPage() {
         filtered = filtered.filter(inv => (inv as any)[field] === value);
       }
     });
-    
+
     // Filter by multi-select filters
     Object.entries(multiSelectFilters).forEach(([field, values]) => {
       if (values && values.length > 0) {
         filtered = filtered.filter(inv => values.includes((inv as any)[field]));
       }
     });
-    
+
     // Filter by date ranges
     Object.entries(dateFilters).forEach(([field, range]) => {
       if (range.start || range.end) {
@@ -1162,12 +1226,12 @@ export default function InvoicesPage() {
         });
       }
     });
-    
+
     // Filter by amount
     if (amountFilter) {
       filtered = filtered.filter(inv => {
         const amount = inv.invoice_amount * inv.eur_exchange;
-        switch(amountFilter.operator) {
+        switch (amountFilter.operator) {
           case 'lt': return amount < amountFilter.value1;
           case 'gt': return amount > amountFilter.value1;
           case 'eq': return Math.abs(amount - amountFilter.value1) < 0.01;
@@ -1261,7 +1325,7 @@ export default function InvoicesPage() {
                 New Invoice
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-[95vw] w-[1400px] max-h-[95vh] overflow-y-auto">
+            <DialogContent className="max-w-[95vw] w-[1400px] max-h-[95vh] overflow-y-auto bg-white">
               <DialogHeader>
                 <DialogTitle className="text-2xl">{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
                 <DialogDescription className="text-base">
@@ -1269,550 +1333,558 @@ export default function InvoicesPage() {
                 </DialogDescription>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Invoice Type Selection */}
-              <div className="space-y-3">
-                <Label className="text-base">Invoice Type *</Label>
-                    <div className="grid grid-cols-3 gap-4">
-                      {Object.entries(INVOICE_TYPE_CONFIG).map(([type, config]) => {
-                        const Icon = config.icon;
-                        return (
-                          <button
-                            key={type}
-                            type="button"
-                            onClick={() => handleTypeChange(type as InvoiceType)}
-                            className={`p-4 border-2 rounded-lg text-left transition-all ${
-                              formData.invoice_type === type
-                                ? config.color
-                                : "border-gray-200 hover:border-gray-300"
+                {/* Invoice Type Selection */}
+                <div className="space-y-3">
+                  <Label className="text-base">Invoice Type *</Label>
+                  <div className="grid grid-cols-3 gap-4">
+                    {Object.entries(INVOICE_TYPE_CONFIG).map(([type, config]) => {
+                      const Icon = config.icon;
+                      return (
+                        <button
+                          key={type}
+                          type="button"
+                          onClick={() => handleTypeChange(type as InvoiceType)}
+                          className={`p-4 border-2 rounded-lg text-left transition-all ${formData.invoice_type === type
+                            ? config.color
+                            : "border-gray-200 hover:border-gray-300"
                             }`}
-                          >
-                            <div className="flex items-center gap-2 mb-1">
-                              <Icon className="h-4 w-4" />
-                              <span className="font-semibold text-sm">{config.label}</span>
-                            </div>
-                            <p className="text-xs opacity-75">{config.description}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
+                        >
+                          <div className="flex items-center gap-2 mb-1">
+                            <Icon className="h-4 w-4" />
+                            <span className="font-semibold text-sm">{config.label}</span>
+                          </div>
+                          <p className="text-xs opacity-75">{config.description}</p>
+                        </button>
+                      );
+                    })}
                   </div>
+                </div>
 
-                  {/* Dates Row */}
-                  <div className="grid grid-cols-4 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="invoice_date">Invoice Date *</Label>
-                      <Input
-                        id="invoice_date"
-                        type="date"
-                        value={formData.invoice_date}
-                        onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="benefit_date">Benefit Date *</Label>
-                      <Input
-                        id="benefit_date"
-                        type="date"
-                        value={formData.benefit_date}
-                        onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="due_date">Due Date *</Label>
-                      <Input
-                        id="due_date"
-                        type="date"
-                        value={formData.due_date}
-                        onChange={(e) => {
-                          const newDueDate = e.target.value;
-                          setFormData({ 
-                            ...formData, 
-                            due_date: newDueDate,
-                            schedule_date: formData.schedule_date || newDueDate
-                          });
-                        }}
-                        required
-                      />
-                      <p className="text-xs text-muted-foreground">Invoice due date</p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="schedule_date">Schedule Date</Label>
-                      <Input
-                        id="schedule_date"
-                        type="date"
-                        value={formData.schedule_date}
-                        onChange={(e) => setFormData({ ...formData, schedule_date: e.target.value })}
-                      />
-                      <p className="text-xs text-muted-foreground">Defaults to Due Date</p>
-                    </div>
-                  </div>
-
-                  {/* Scope & Invoice Number */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <ScopeSelector
-                        selectedScopes={new Set([formData.scope])}
-                        onScopeChange={handleFormScopeChange}
-                        label="Scope (Country) *"
-                        multiSelect={false}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Company location, not invoice currency
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="invoice_number">Invoice Number</Label>
-                      <Input
-                        id="invoice_number"
-                        value={formData.invoice_number}
-                        onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                        placeholder="INV-2024-001"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Provider & Financial Account */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="provider_code">Provider *</Label>
-                      <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })} required>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select provider" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white max-h-[300px]">
-                          {providers.map((provider) => (
-                            <SelectItem key={provider.code} value={provider.code}>{provider.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="financial_account_code">Financial Account *</Label>
-                      <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })} required>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select account" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white max-h-[300px]">
-                          {financialAccounts
-                            .filter(acc => acc.level >= 2)
-                            .map((account) => (
-                            <SelectItem key={account.code} value={account.code} className="cursor-pointer hover:bg-gray-100">{account.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Amount & Currency */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="invoice_amount">Amount *</Label>
-                      <Input
-                        id="invoice_amount"
-                        type="number"
-                        step="0.01"
-                        value={formData.invoice_amount}
-                        onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="currency">Currency *</Label>
-                      <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="EUR">EUR - Euro</SelectItem>
-                          <SelectItem value="USD">USD - US Dollar</SelectItem>
-                          <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                          <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Invoice currency (can differ from company country)
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="eur_exchange">EUR Exchange Rate</Label>
-                      <Input
-                        id="eur_exchange"
-                        type="number"
-                        step="0.000001"
-                        value={formData.eur_exchange}
-                        onChange={(e) => setFormData({ ...formData, eur_exchange: e.target.value })}
-                      />
-                    </div>
-                  </div>
-
-                  {/* Cost Type, Dep Cost Type & Cost Center */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="cost_type_code">Cost Type</Label>
-                      <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })}>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select cost type" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {costTypes.map((type) => (
-                            <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="dep_cost_type_code">Dep Cost Type</Label>
-                      <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })}>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select dep cost type" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {depCostTypes.map((type) => (
-                            <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="cost_center_code">Cost Center</Label>
-                      <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val })}>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select cost center" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {costCenters.map((center) => (
-                            <SelectItem key={center.code} value={center.code}>
-                              {center.code} - {center.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Payment Details */}
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="bank_account_code">Bank Account</Label>
-                      <Select value={formData.bank_account_code} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select bank account" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {bankAccounts.map((account) => (
-                            <SelectItem key={account.code} value={account.code}>{account.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="payment_method_code">Payment Method</Label>
-                      <Select value={formData.payment_method_code} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select method" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {paymentMethods.map((method) => (
-                            <SelectItem key={method.code} value={method.code}>{method.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="course_code">Course</Label>
-                      <Select value={formData.course_code} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select course" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white max-h-[300px]">
-                          {courses.map((course) => (
-                            <SelectItem key={course.code} value={course.code}>{course.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {/* Description & Notes */}
+                {/* Dates Row */}
+                <div className="grid grid-cols-4 gap-4">
                   <div className="space-y-2">
-                    <Label htmlFor="description">Description</Label>
-                    <Textarea
-                      id="description"
-                      value={formData.description}
-                      onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                      rows={2}
-                      placeholder="Invoice description..."
+                    <Label htmlFor="invoice_date">Invoice Date *</Label>
+                    <Input
+                      id="invoice_date"
+                      type="date"
+                      value={formData.invoice_date}
+                      onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
+                      required
                     />
                   </div>
-
                   <div className="space-y-2">
-                    <Label htmlFor="notes">Internal Notes</Label>
-                    <Textarea
-                      id="notes"
-                      value={formData.notes}
-                      onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                      rows={2}
-                      placeholder="Internal notes (not visible to providers)..."
+                    <Label htmlFor="benefit_date">Benefit Date *</Label>
+                    <Input
+                      id="benefit_date"
+                      type="date"
+                      value={formData.benefit_date}
+                      onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })}
+                      required
                     />
                   </div>
-
-                  {/* Impact Flags */}
-                  <div className="space-y-3 pt-2">
-                    <Label>Financial Impact</Label>
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="dre_impact"
-                          checked={formData.dre_impact}
-                          onCheckedChange={(checked) => setFormData({ ...formData, dre_impact: checked as boolean })}
-                        />
-                        <Label htmlFor="dre_impact" className="font-normal cursor-pointer">
-                          Impacts Income Statement (DRE)
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="cash_impact"
-                          checked={formData.cash_impact}
-                          onCheckedChange={(checked) => setFormData({ ...formData, cash_impact: checked as boolean })}
-                        />
-                        <Label htmlFor="cash_impact" className="font-normal cursor-pointer">
-                          Impacts Cash Flow
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="is_intercompany"
-                          checked={formData.is_intercompany}
-                          onCheckedChange={(checked) => setFormData({ ...formData, is_intercompany: checked as boolean })}
-                        />
-                        <Label htmlFor="is_intercompany" className="font-normal cursor-pointer">
-                          Intercompany Transaction
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={submitting} className={editingInvoice ? "bg-green-600 hover:bg-green-700" : ""}>
-                      {submitting ? "Saving..." : editingInvoice ? "Update Invoice" : "Create Invoice"}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-            
-            {/* Provider Creation Dialog */}
-            <Dialog open={providerDialogOpen} onOpenChange={setProviderDialogOpen}>
-              <DialogContent className="max-w-2xl bg-white">
-                <DialogHeader>
-                  <DialogTitle>Create New Provider</DialogTitle>
-                  <DialogDescription>Add a new provider to the system</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); createNewProvider(); }} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-provider-code">Code *</Label>
-                      <Input
-                        id="new-provider-code"
-                        value={newProviderData.code}
-                        onChange={(e) => setNewProviderData({...newProviderData, code: e.target.value})}
-                        placeholder="DSD-ES-AP-PV0001"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-provider-name">Name *</Label>
-                      <Input
-                        id="new-provider-name"
-                        value={newProviderData.name}
-                        onChange={(e) => setNewProviderData({...newProviderData, name: e.target.value})}
-                        placeholder="Provider Name"
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-provider-country">Country *</Label>
-                      <Select 
-                        value={newProviderData.country} 
-                        onValueChange={(val) => setNewProviderData({...newProviderData, country: val})}
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="ES">Spain</SelectItem>
-                          <SelectItem value="US">United States</SelectItem>
-                          <SelectItem value="BR">Brazil</SelectItem>
-                          <SelectItem value="GB">United Kingdom</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-provider-currency">Currency *</Label>
-                      <Select 
-                        value={newProviderData.currency} 
-                        onValueChange={(val) => setNewProviderData({...newProviderData, currency: val})}
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="EUR">EUR - Euro</SelectItem>
-                          <SelectItem value="USD">USD - US Dollar</SelectItem>
-                          <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                          <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-provider-email">Email</Label>
-                      <Input
-                        id="new-provider-email"
-                        type="email"
-                        value={newProviderData.email}
-                        onChange={(e) => setNewProviderData({...newProviderData, email: e.target.value})}
-                        placeholder="provider@example.com"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-provider-payment-terms">Payment Terms</Label>
-                      <Input
-                        id="new-provider-payment-terms"
-                        value={newProviderData.payment_terms}
-                        onChange={(e) => setNewProviderData({...newProviderData, payment_terms: e.target.value})}
-                        placeholder="Net 30"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setProviderDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      Create Provider
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-            
-            {/* Financial Account Creation Dialog */}
-            <Dialog open={financialAccountDialogOpen} onOpenChange={setFinancialAccountDialogOpen}>
-              <DialogContent className="max-w-2xl bg-white">
-                <DialogHeader>
-                  <DialogTitle>Create New Financial Account</DialogTitle>
-                  <DialogDescription>Add a new account to the chart of accounts</DialogDescription>
-                </DialogHeader>
-                <form onSubmit={(e) => { e.preventDefault(); createNewFinancialAccount(); }} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-account-code">Code *</Label>
-                      <Input
-                        id="new-account-code"
-                        value={newAccountData.code}
-                        onChange={(e) => setNewAccountData({...newAccountData, code: e.target.value})}
-                        placeholder="201.5"
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-account-name">Name *</Label>
-                      <Input
-                        id="new-account-name"
-                        value={newAccountData.name}
-                        onChange={(e) => setNewAccountData({...newAccountData, name: e.target.value})}
-                        placeholder="Account Name"
-                        required
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-account-type">Type *</Label>
-                      <Select 
-                        value={newAccountData.type} 
-                        onValueChange={(val) => setNewAccountData({...newAccountData, type: val})}
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          <SelectItem value="Expense">Expense</SelectItem>
-                          <SelectItem value="Revenue">Revenue</SelectItem>
-                          <SelectItem value="Asset">Asset</SelectItem>
-                          <SelectItem value="Liability">Liability</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-account-level">Level *</Label>
-                      <Input
-                        id="new-account-level"
-                        type="number"
-                        min="1"
-                        max="5"
-                        value={newAccountData.level}
-                        onChange={(e) => setNewAccountData({...newAccountData, level: parseInt(e.target.value)})}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="new-account-parent">Parent Code</Label>
-                      <Input
-                        id="new-account-parent"
-                        value={newAccountData.parent_code}
-                        onChange={(e) => setNewAccountData({...newAccountData, parent_code: e.target.value})}
-                        placeholder="201.0"
-                      />
-                    </div>
-                  </div>
-                  
                   <div className="space-y-2">
-                    <Label>Scope *</Label>
+                    <Label htmlFor="due_date">Due Date *</Label>
+                    <Input
+                      id="due_date"
+                      type="date"
+                      value={formData.due_date}
+                      onChange={(e) => {
+                        const newDueDate = e.target.value;
+                        setFormData({
+                          ...formData,
+                          due_date: newDueDate,
+                          schedule_date: formData.schedule_date || newDueDate
+                        });
+                      }}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">Invoice due date</p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="schedule_date">Schedule Date *</Label>
+                    <Input
+                      id="schedule_date"
+                      type="date"
+                      value={formData.schedule_date}
+                      onChange={(e) => setFormData({ ...formData, schedule_date: e.target.value })}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground">Defaults to Due Date</p>
+                  </div>
+                </div>
+
+                {/* Scope & Invoice Number */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
                     <ScopeSelector
-                      selectedScopes={new Set([newAccountData.scope])}
-                      onScopeChange={(scope) => setNewAccountData({...newAccountData, scope})}
-                      label=""
+                      selectedScopes={new Set([formData.scope])}
+                      onScopeChange={handleFormScopeChange}
+                      label="Scope (Country) *"
                       multiSelect={false}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Company location, not invoice currency
+                    </p>
                   </div>
-                  
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="outline" onClick={() => setFinancialAccountDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button type="submit">
-                      Create Account
-                    </Button>
+                  <div className="space-y-2">
+                    <Label htmlFor="invoice_number">
+                      Invoice Number
+                      {!editingInvoice && <span className="text-xs text-gray-500 ml-1">(auto-generated if empty)</span>}
+                    </Label>
+                    <Input
+                      id="invoice_number"
+                      value={formData.invoice_number}
+                      onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                      placeholder={editingInvoice ? "INV-2024-001" : "Leave empty for auto-generation"}
+                    />
+                    {!editingInvoice && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Format: {formData.scope}-INV-YYYYMM-0001
+                      </p>
+                    )}
                   </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+                </div>
+
+                {/* Provider & Financial Account */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="provider_code">Provider *</Label>
+                    <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })} required>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select provider" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white max-h-[300px]">
+                        {providers.map((provider) => (
+                          <SelectItem key={provider.code} value={provider.code}>{provider.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="financial_account_code">Financial Account *</Label>
+                    <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })} required>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select account" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white max-h-[300px]">
+                        {financialAccounts
+                          .filter(acc => acc.level >= 2)
+                          .map((account) => (
+                            <SelectItem key={account.code} value={account.code} className="cursor-pointer hover:bg-gray-100">{account.name}</SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Amount & Currency */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="invoice_amount">Amount *</Label>
+                    <Input
+                      id="invoice_amount"
+                      type="number"
+                      step="0.01"
+                      value={formData.invoice_amount}
+                      onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="currency">Currency *</Label>
+                    <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="EUR">EUR - Euro</SelectItem>
+                        <SelectItem value="USD">USD - US Dollar</SelectItem>
+                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                        <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      Invoice currency (can differ from company country)
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="eur_exchange">EUR Exchange Rate</Label>
+                    <Input
+                      id="eur_exchange"
+                      type="number"
+                      step="0.000001"
+                      value={formData.eur_exchange}
+                      onChange={(e) => setFormData({ ...formData, eur_exchange: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Cost Type, Dep Cost Type & Cost Center */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="cost_type_code">Cost Type *</Label>
+                    <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })} required>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select cost type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {costTypes.map((type) => (
+                          <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dep_cost_type_code">Dep Cost Type *</Label>
+                    <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })} required>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select dep cost type" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {depCostTypes.map((type) => (
+                          <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="cost_center_code">Cost Center *</Label>
+                    <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val })} required>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select cost center" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {costCenters.map((center) => (
+                          <SelectItem key={center.code} value={center.code}>
+                            {center.code} - {center.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Payment Details */}
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="bank_account_code">Bank Account</Label>
+                    <Select value={formData.bank_account_code} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select bank account" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {bankAccounts.map((account) => (
+                          <SelectItem key={account.code} value={account.code}>{account.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_method_code">Payment Method</Label>
+                    <Select value={formData.payment_method_code} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select method" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {paymentMethods.map((method) => (
+                          <SelectItem key={method.code} value={method.code}>{method.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="course_code">Course</Label>
+                    <Select value={formData.course_code} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select course" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white max-h-[300px]">
+                        {courses.map((course) => (
+                          <SelectItem key={course.code} value={course.code}>{course.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Description & Notes */}
+                <div className="space-y-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                    rows={2}
+                    placeholder="Invoice description..."
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="notes">Internal Notes</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={2}
+                    placeholder="Internal notes (not visible to providers)..."
+                  />
+                </div>
+
+                {/* Impact Flags */}
+                <div className="space-y-3 pt-2">
+                  <Label>Financial Impact</Label>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="dre_impact"
+                        checked={formData.dre_impact}
+                        onCheckedChange={(checked) => setFormData({ ...formData, dre_impact: checked as boolean })}
+                      />
+                      <Label htmlFor="dre_impact" className="font-normal cursor-pointer">
+                        Impacts Income Statement (DRE)
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="cash_impact"
+                        checked={formData.cash_impact}
+                        onCheckedChange={(checked) => setFormData({ ...formData, cash_impact: checked as boolean })}
+                      />
+                      <Label htmlFor="cash_impact" className="font-normal cursor-pointer">
+                        Impacts Cash Flow
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="is_intercompany"
+                        checked={formData.is_intercompany}
+                        onCheckedChange={(checked) => setFormData({ ...formData, is_intercompany: checked as boolean })}
+                      />
+                      <Label htmlFor="is_intercompany" className="font-normal cursor-pointer">
+                        Intercompany Transaction
+                      </Label>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={submitting} className={editingInvoice ? "bg-green-600 hover:bg-green-700" : ""}>
+                    {submitting ? "Saving..." : editingInvoice ? "Update Invoice" : "Create Invoice"}
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Provider Creation Dialog */}
+          <Dialog open={providerDialogOpen} onOpenChange={setProviderDialogOpen}>
+            <DialogContent className="max-w-2xl bg-white">
+              <DialogHeader>
+                <DialogTitle>Create New Provider</DialogTitle>
+                <DialogDescription>Add a new provider to the system</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); createNewProvider(); }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-provider-code">Code *</Label>
+                    <Input
+                      id="new-provider-code"
+                      value={newProviderData.code}
+                      onChange={(e) => setNewProviderData({ ...newProviderData, code: e.target.value })}
+                      placeholder="DSD-ES-AP-PV0001"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-provider-name">Name *</Label>
+                    <Input
+                      id="new-provider-name"
+                      value={newProviderData.name}
+                      onChange={(e) => setNewProviderData({ ...newProviderData, name: e.target.value })}
+                      placeholder="Provider Name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-provider-country">Country *</Label>
+                    <Select
+                      value={newProviderData.country}
+                      onValueChange={(val) => setNewProviderData({ ...newProviderData, country: val })}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="ES">Spain</SelectItem>
+                        <SelectItem value="US">United States</SelectItem>
+                        <SelectItem value="BR">Brazil</SelectItem>
+                        <SelectItem value="GB">United Kingdom</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-provider-currency">Currency *</Label>
+                    <Select
+                      value={newProviderData.currency}
+                      onValueChange={(val) => setNewProviderData({ ...newProviderData, currency: val })}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="EUR">EUR - Euro</SelectItem>
+                        <SelectItem value="USD">USD - US Dollar</SelectItem>
+                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                        <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-provider-email">Email</Label>
+                    <Input
+                      id="new-provider-email"
+                      type="email"
+                      value={newProviderData.email}
+                      onChange={(e) => setNewProviderData({ ...newProviderData, email: e.target.value })}
+                      placeholder="provider@example.com"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-provider-payment-terms">Payment Terms</Label>
+                    <Input
+                      id="new-provider-payment-terms"
+                      value={newProviderData.payment_terms}
+                      onChange={(e) => setNewProviderData({ ...newProviderData, payment_terms: e.target.value })}
+                      placeholder="Net 30"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setProviderDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    Create Provider
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+
+          {/* Financial Account Creation Dialog */}
+          <Dialog open={financialAccountDialogOpen} onOpenChange={setFinancialAccountDialogOpen}>
+            <DialogContent className="max-w-2xl bg-white">
+              <DialogHeader>
+                <DialogTitle>Create New Financial Account</DialogTitle>
+                <DialogDescription>Add a new account to the chart of accounts</DialogDescription>
+              </DialogHeader>
+              <form onSubmit={(e) => { e.preventDefault(); createNewFinancialAccount(); }} className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-account-code">Code *</Label>
+                    <Input
+                      id="new-account-code"
+                      value={newAccountData.code}
+                      onChange={(e) => setNewAccountData({ ...newAccountData, code: e.target.value })}
+                      placeholder="201.5"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-account-name">Name *</Label>
+                    <Input
+                      id="new-account-name"
+                      value={newAccountData.name}
+                      onChange={(e) => setNewAccountData({ ...newAccountData, name: e.target.value })}
+                      placeholder="Account Name"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="new-account-type">Type *</Label>
+                    <Select
+                      value={newAccountData.type}
+                      onValueChange={(val) => setNewAccountData({ ...newAccountData, type: val })}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="Expense">Expense</SelectItem>
+                        <SelectItem value="Revenue">Revenue</SelectItem>
+                        <SelectItem value="Asset">Asset</SelectItem>
+                        <SelectItem value="Liability">Liability</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-account-level">Level *</Label>
+                    <Input
+                      id="new-account-level"
+                      type="number"
+                      min="1"
+                      max="5"
+                      value={newAccountData.level}
+                      onChange={(e) => setNewAccountData({ ...newAccountData, level: parseInt(e.target.value) })}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="new-account-parent">Parent Code</Label>
+                    <Input
+                      id="new-account-parent"
+                      value={newAccountData.parent_code}
+                      onChange={(e) => setNewAccountData({ ...newAccountData, parent_code: e.target.value })}
+                      placeholder="201.0"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Scope *</Label>
+                  <ScopeSelector
+                    selectedScopes={new Set([newAccountData.scope])}
+                    onScopeChange={(scope) => setNewAccountData({ ...newAccountData, scope })}
+                    label=""
+                    multiSelect={false}
+                  />
+                </div>
+
+                <div className="flex justify-end gap-3 pt-4">
+                  <Button type="button" variant="outline" onClick={() => setFinancialAccountDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">
+                    Create Account
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
 
           {/* Split Invoice Configuration Dialog */}
           <Dialog open={splitDialogOpen} onOpenChange={setSplitDialogOpen}>
-            <DialogContent className="max-w-[800px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-[800px] max-h-[90vh] overflow-y-auto bg-white">
               <DialogHeader>
                 <DialogTitle>Split Invoice</DialogTitle>
                 <DialogDescription>
                   Divide this invoice into multiple parts by installments or by dimensions
                 </DialogDescription>
               </DialogHeader>
-              
+
               {splitInvoice && (
                 <div className="space-y-4">
                   {/* Original Invoice Info */}
@@ -1908,7 +1980,7 @@ export default function InvoicesPage() {
                           </option>
                         ))}
                       </Select>
-                      
+
                       {splitConfig.installments > 0 && (
                         <div className="mt-4 p-4 bg-blue-50 rounded-lg">
                           <h5 className="font-semibold mb-2">Preview</h5>
@@ -1937,8 +2009,8 @@ export default function InvoicesPage() {
                       <p className="text-sm text-muted-foreground">
                         Add multiple splits by selecting different {splitConfig.type.replace('_', ' ')}s and specifying amounts or percentages.
                       </p>
-                      <Button 
-                        variant="outline" 
+                      <Button
+                        variant="outline"
                         size="sm"
                         onClick={() => {
                           setSplitConfig({
@@ -1960,7 +2032,7 @@ export default function InvoicesPage() {
                         <Plus className="h-3 w-3 mr-1" />
                         Add Split
                       </Button>
-                      
+
                       <div className="space-y-2 max-h-[300px] overflow-y-auto">
                         {splitConfig.splits.map((split, index) => (
                           <div key={index} className="p-3 border rounded-lg space-y-2">
@@ -1980,7 +2052,7 @@ export default function InvoicesPage() {
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
-                            
+
                             {splitConfig.type === 'financial_account' && (
                               <Select
                                 value={split.financial_account_code || ''}
@@ -1996,7 +2068,7 @@ export default function InvoicesPage() {
                                 ))}
                               </Select>
                             )}
-                            
+
                             {splitConfig.type === 'cost_center' && (
                               <Select
                                 value={split.cost_center_code || ''}
@@ -2012,7 +2084,7 @@ export default function InvoicesPage() {
                                 ))}
                               </Select>
                             )}
-                            
+
                             {splitConfig.type === 'cost_type' && (
                               <Select
                                 value={split.cost_type_code || ''}
@@ -2028,7 +2100,7 @@ export default function InvoicesPage() {
                                 ))}
                               </Select>
                             )}
-                            
+
                             {splitConfig.type === 'dep_cost_type' && (
                               <Select
                                 value={split.dep_cost_type_code || ''}
@@ -2044,7 +2116,7 @@ export default function InvoicesPage() {
                                 ))}
                               </Select>
                             )}
-                            
+
                             <div className="grid grid-cols-2 gap-2">
                               <div>
                                 <Label className="text-xs">Amount</Label>
@@ -2082,7 +2154,7 @@ export default function InvoicesPage() {
                           </div>
                         ))}
                       </div>
-                      
+
                       {splitConfig.splits.length > 0 && (
                         <div className="p-3 bg-muted rounded-lg">
                           <div className="flex justify-between text-sm font-semibold">
@@ -2117,14 +2189,14 @@ export default function InvoicesPage() {
 
           {/* View Splits Dialog */}
           <Dialog open={viewSplitsDialogOpen} onOpenChange={setViewSplitsDialogOpen}>
-            <DialogContent className="max-w-[900px] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="max-w-[900px] max-h-[90vh] overflow-y-auto bg-white">
               <DialogHeader>
                 <DialogTitle>Split Invoice Details</DialogTitle>
                 <DialogDescription>
                   View all parts of this split invoice
                 </DialogDescription>
               </DialogHeader>
-              
+
               {viewingSplitInvoice && (
                 <div className="space-y-4">
                   {/* Original/Parent Invoice */}
@@ -2145,7 +2217,7 @@ export default function InvoicesPage() {
                     <h4 className="font-semibold">Split Parts ({viewingSplitInvoice.total_splits || 0})</h4>
                     <div className="space-y-2 max-h-[400px] overflow-y-auto">
                       {invoices
-                        .filter(inv => 
+                        .filter(inv =>
                           inv.parent_invoice_id === (viewingSplitInvoice.parent_invoice_id || viewingSplitInvoice.id)
                         )
                         .sort((a, b) => (a.split_number || 0) - (b.split_number || 0))
@@ -2224,7 +2296,7 @@ export default function InvoicesPage() {
                           </div>
                         ))}
                     </div>
-                    
+
                     <div className="p-3 bg-muted rounded-lg">
                       <div className="flex justify-between text-sm font-semibold">
                         <span>Total of all splits:</span>
@@ -2287,9 +2359,9 @@ export default function InvoicesPage() {
             <div className="bg-white pb-4 mb-4 border-b">
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-sm font-semibold">Scope View</span>
-                {selectedScopes.has('ES') && <Image src="/spain.svg" alt="Spain" width={20} height={15} className="rounded" />}
-                {selectedScopes.has('US') && <Image src="/united-states.svg" alt="USA" width={20} height={15} className="rounded" />}
-                {selectedScopes.has('GLOBAL') && <Image src="/globe.svg" alt="Global" width={18} height={18} className="rounded" />}
+                {selectedScopes.has("ES" as ScopeType) && <Image src="/spain.svg" alt="Spain" width={20} height={15} className="rounded" />}
+                {selectedScopes.has("US" as ScopeType) && <Image src="/united-states.svg" alt="USA" width={20} height={15} className="rounded" />}
+                {selectedScopes.has("GLOBAL" as ScopeType) && <Image src="/globe.svg" alt="Global" width={18} height={18} className="rounded" />}
               </div>
               <ScopeSelector
                 selectedScopes={selectedScopes}
@@ -2310,20 +2382,20 @@ export default function InvoicesPage() {
                       onClick={() => removeFilter(filter.field)}
                       className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
                     >
-                    <X className="h-3 w-3" />
-                  </button>
-                </Badge>
-              ))}
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={clearAllFilters}
-                className="h-6 text-xs"
-              >
-                Clear All
-              </Button>
-            </div>
-          )}
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="h-6 text-xs"
+                >
+                  Clear All
+                </Button>
+              </div>
+            )}
 
             <div className="flex gap-4 mb-4">
               {/* Action Buttons - Now on the left */}
@@ -2337,9 +2409,9 @@ export default function InvoicesPage() {
                   }
                 }}>
                   <DialogTrigger asChild>
-                    <Button 
-                      variant={columnSelectorOpen ? "default" : "outline"} 
-                      size="sm" 
+                    <Button
+                      variant={columnSelectorOpen ? "default" : "outline"}
+                      size="sm"
                       onClick={openColumnSelector}
                       className={`relative overflow-visible ${columnSelectorOpen ? 'bg-[#243140] hover:bg-[#1a2530] text-white' : ''}`}
                     >
@@ -2366,7 +2438,7 @@ export default function InvoicesPage() {
                       )}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-md">
+                  <DialogContent className="max-w-md bg-white">
                     <DialogHeader>
                       <DialogTitle>Select Visible Columns</DialogTitle>
                       <DialogDescription>
@@ -2462,7 +2534,7 @@ export default function InvoicesPage() {
                   Export PDF
                 </Button>
               </div>
-              
+
               <div className="flex-1">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -2476,1180 +2548,1261 @@ export default function InvoicesPage() {
               </div>
             </div>
 
-          {/* Table */}
-          {error ? (
-            <div className="text-center py-8 text-destructive">{error}</div>
-          ) : filteredInvoices.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-              <p>No invoices found</p>
-              <p className="text-sm">Create your first invoice to get started</p>
-            </div>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-                <table className="w-full text-xs">
-                  <thead className="sticky top-0 z-10 bg-white shadow-sm">
-                    <tr className="border-b bg-white">
-                      {visibleColumns.has('actions') && (
-                        <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-20 bg-white">Actions</th>
-                      )}
-                      {visibleColumns.has('split') && (
-                        <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-16 bg-white">Split</th>
-                      )}
-                      {visibleColumns.has('scope') && (
-                        <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-14 bg-white">
-                          <div className="flex items-center justify-center gap-1">
-                            Scope
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('impact') && (
-                        <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-24 bg-white">
-                          <div className="flex items-center justify-center gap-1">
-                            Impact
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('type') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-32 bg-white">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleSort("invoice_type")} className="flex items-center gap-1 hover:text-primary">
-                              Type
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button 
-                              onClick={(e) => openFilterPopover("invoice_type", e)}
-                              className="hover:text-primary" 
-                              title="Filter by Type"
-                            >
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('input_date') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-24 bg-white">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleSort("input_date")} className="flex items-center gap-1 hover:text-primary">
-                              Input Date
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button onClick={(e) => openFilterPopover("input_date", e)} className="hover:text-primary" title="Filter by Input Date">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('invoice_date') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleSort("invoice_date")} className="flex items-center gap-1 hover:text-primary">
-                              Invoice Date
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button onClick={(e) => openFilterPopover("invoice_date", e)} className="hover:text-primary" title="Filter by Invoice Date">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('benefit_date') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleSort("benefit_date")} className="flex items-center gap-1 hover:text-primary">
-                              Benefit Date
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button onClick={(e) => openFilterPopover("benefit_date", e)} className="hover:text-primary" title="Filter by Benefit Date">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('due_date') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleSort("due_date")} className="flex items-center gap-1 hover:text-primary">
-                              Due Date
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button onClick={(e) => openFilterPopover("due_date", e)} className="hover:text-primary" title="Filter by Due Date">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('schedule_date') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleSort("schedule_date")} className="flex items-center gap-1 hover:text-primary">
-                              Schedule Date
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button onClick={(e) => openFilterPopover("schedule_date", e)} className="hover:text-primary" title="Filter by Schedule Date">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('provider') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-32 bg-white">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleSort("provider_code")} className="flex items-center gap-1 hover:text-primary">
-                              Provider
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button 
-                              onClick={(e) => openFilterPopover("provider_code", e)}
-                              className={`hover:text-primary ${isColumnFiltered('provider_code') ? 'text-green-600' : ''}`}
-                              title="Filter by Provider"
-                            >
-                              <Filter className={`h-3 w-3 ${isColumnFiltered('provider_code') ? 'fill-green-600' : ''}`} />
-                            </button>
-                            {isColumnFiltered('provider_code') && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeFilter('provider_code');
-                                }}
-                                className="hover:text-destructive"
-                                title="Clear filter"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('description') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 bg-white">
-                          <div className="flex items-center gap-1">
-                            Description
-                            <button 
-                              onClick={() => {
-                                const value = prompt("Filter by Description:");
-                                if (value) addColumnFilter("description", value, value);
-                              }}
-                              className="hover:text-primary" 
-                              title="Filter by Description"
-                            >
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('invoice_number') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <div className="flex items-center gap-1">
-                            <button onClick={() => handleSort("invoice_number")} className="flex items-center gap-1 hover:text-primary">
-                              Invoice ID
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button onClick={(e) => openFilterPopover("invoice_number", e)} className="hover:text-primary" title="Filter by Invoice ID">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('amount') && (
-                        <th className="px-2 py-1.5 text-right font-semibold text-gray-700 w-24 bg-white">
-                          <div className="flex items-center justify-end gap-1">
-                            <button onClick={() => handleSort("invoice_amount")} className="flex items-center gap-1 hover:text-primary ml-auto">
-                              Amount
-                              <ArrowUpDown className="h-3 w-3" />
-                            </button>
-                            <button 
-                              onClick={(e) => openFilterPopover("invoice_amount", e)} 
-                              className={`hover:text-primary ${isColumnFiltered('invoice_amount') ? 'text-green-600' : ''}`}
-                              title="Filter by Amount"
-                            >
-                              <Filter className={`h-3 w-3 ${isColumnFiltered('invoice_amount') ? 'fill-green-600' : ''}`} />
-                            </button>
-                            {isColumnFiltered('invoice_amount') && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  removeFilter('invoice_amount');
-                                }}
-                                className="hover:text-destructive"
-                                title="Clear filter"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            )}
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('currency') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-20 bg-white">
-                          <div className="flex items-center gap-1">
-                            Currency
-                            <button                               onClick={(e) => openFilterPopover("currency", e)}
-                              className="hover:text-primary" 
-                              title="Filter by Currency"
-                            >
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('financial_account') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-48 bg-white">
-                          <div className="flex items-center gap-1">
-                            Financial Account
-                            <button 
-                              onClick={(e) => openFilterPopover("financial_account_code", e)}
-                              className="hover:text-primary" 
-                              title="Filter by Financial Account"
-                            >
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('cost_center') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <div className="flex items-center gap-1">
-                            Cost Center
-                            <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Cost Center">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('cost_type') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <div className="flex items-center gap-1">
-                            Cost Type
-                            <button onClick={(e) => openFilterPopover("cost_type_code", e)} className="hover:text-primary" title="Filter by Cost Type">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('dep_cost_type') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <div className="flex items-center gap-1">
-                            Dep Cost Type
-                            <button onClick={(e) => openFilterPopover("dep_cost_type_code", e)} className="hover:text-primary" title="Filter by Dep Cost Type">
-                              <Filter className="h-3 w-3" />
-                            </button>
-                          </div>
-                        </th>
-                      )}
-                      {visibleColumns.has('payment_status') && (
-                        <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Payment Status</th>
-                      )}
-                      {visibleColumns.has('payment_method') && (
-                        <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Payment Method</th>
-                      )}
-                      {visibleColumns.has('bank_account') && (
-                        <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Bank Account</th>
-                      )}
-                      {visibleColumns.has('payment_date') && (
-                        <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
-                          <button onClick={() => handleSort("payment_date")} className="flex items-center gap-1 hover:text-primary">
-                            Payment Date
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
-                        </th>
-                      )}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {filteredInvoices.map((invoice) => {
-                      const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
-                      const Icon = config.icon;
-                      const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
-                      const paymentStatus = invoice.payment_status || 'NOT_SCHEDULED';
-                      
-                      return (
-                        <tr key={invoice.id} className="hover:bg-muted/30 group">
-                          {/* Actions */}
-                          {visibleColumns.has('actions') && (
-                            <td className="px-2 py-1 text-center">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0" title="Split Invoice">
-                                  <Split className="h-3 w-3 text-blue-600" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0">
-                                  <Edit2 className="h-3 w-3" />
-                                </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </td>
-                          )}
-                          
-                          {/* Split Status */}
-                          {visibleColumns.has('split') && (
-                            <td className="px-2 py-1 text-center">
-                              {invoice.is_split && invoice.parent_invoice_id && (
-                                <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0" title={`Part ${invoice.split_number}/${invoice.total_splits}`}>
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-800">
-                                    {invoice.split_number}/{invoice.total_splits}
-                                  </Badge>
-                                </Button>
-                              )}
-                              {invoice.is_split && !invoice.parent_invoice_id && (
-                                <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0" title="View splits">
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800 cursor-pointer hover:bg-green-200">
-                                    <Eye className="h-3 w-3 mr-1 inline" />
-                                    {invoice.total_splits}
-                                  </Badge>
-                                </Button>
-                              )}
-                              {!invoice.is_split && (
-                                <span className="text-gray-300">-</span>
-                              )}
-                            </td>
-                          )}
-                          
-                          {/* Scope */}
-                          {visibleColumns.has('scope') && (
-                            <td className="px-2 py-1 text-center">
-                              <span 
-                                className="cursor-help inline-block"
-                                title={SCOPE_CONFIG[getRecordScope(invoice) as ScopeType].description}
-                              >
-                                {getRecordScope(invoice) === 'ES' && (
-                                  <Image src="/spain.svg" alt="Spain" width={20} height={15} className="rounded" />
-                                )}
-                                {getRecordScope(invoice) === 'US' && (
-                                  <Image src="/united-states.svg" alt="USA" width={20} height={15} className="rounded" />
-                                )}
-                                {getRecordScope(invoice) === 'GLOBAL' && (
-                                  <Image src="/globe.svg" alt="Global" width={18} height={18} className="rounded" />
-                                )}
-                              </span>
-                            </td>
-                          )}
-                          
-                          {/* Impact */}
-                          {visibleColumns.has('impact') && (
-                            <td className="px-2 py-1">
-                              <div className="flex gap-1 justify-center">
-                                {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-white">DRE</Badge>}
-                                {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-white">Cash</Badge>}
-                                {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 bg-white">IC</Badge>}
-                              </div>
-                            </td>
-                          )}
-                          
-                          {/* Type */}
-                          {visibleColumns.has('type') && (
-                            <td className="px-2 py-1">
-                              <Badge className={`text-[10px] px-1.5 py-0 ${config.color}`}>
-                                {config.label}
-                              </Badge>
-                            </td>
-                          )}
-                          
-                          {/* Input Date */}
-                          {visibleColumns.has('input_date') && (
-                            <td className="px-2 py-1 text-[11px]">{new Date(invoice.input_date).toLocaleDateString('en-GB')}</td>
-                          )}
-                          
-                          {/* Invoice Date */}
-                          {visibleColumns.has('invoice_date') && (
-                            <td className="px-2 py-1 text-[11px] font-medium">{new Date(invoice.invoice_date).toLocaleDateString('en-GB')}</td>
-                          )}
-                          
-                          {/* Benefit Date */}
-                          {visibleColumns.has('benefit_date') && (
-                            <td className="px-2 py-1 text-[11px]">{new Date(invoice.benefit_date).toLocaleDateString('en-GB')}</td>
-                          )}
-                          
-                          {/* Due Date */}
-                          {visibleColumns.has('due_date') && (
-                            <td className="px-2 py-1 text-[11px]">
-                              {invoice.due_date ? (
-                                <Badge variant={new Date(invoice.due_date) < new Date() ? "destructive" : "outline"} className="text-[10px] px-1.5 py-0">
-                                  {new Date(invoice.due_date).toLocaleDateString('en-GB')}
-                                </Badge>
-                              ) : '-'}
-                            </td>
-                          )}
-                          
-                          {/* Schedule Date */}
-                          {visibleColumns.has('schedule_date') && (
-                            <td className="px-2 py-1 text-[11px]">
-                              {invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('en-GB') : '-'}
-                            </td>
-                          )}
-                          
-                          {/* Provider */}
-                          {visibleColumns.has('provider') && (
-                          <td className="px-2 py-1 text-center group/cell relative">
-                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "provider_code" ? (
-                              <div className="flex items-center gap-1">
-                                <Select 
-                                  value={editValue} 
-                                  onValueChange={setEditValue}
-                                >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white max-h-[300px]">
-                                    <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
-                                      <Input
-                                        placeholder="Search providers..."
-                                        value={selectSearchTerm}
-                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
-                                        className="h-7 text-xs"
-                                      />
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        className="w-full h-7 text-xs"
-                                        onClick={() => {
-                                          setProviderDialogOpen(true);
-                                        }}
-                                      >
-                                        <Plus className="h-3 w-3 mr-1" />
-                                        Add New Provider
-                                      </Button>
-                                    </div>
-                                    <div className="max-h-[150px] overflow-y-auto">
-                                      {providers
-                                        .filter(p => 
-                                          p.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                          p.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                                        )
-                                        .map(p => (
-                                          <SelectItem key={p.code} value={p.code} className="cursor-pointer hover:bg-gray-100">{p.name}</SelectItem>
-                                        ))}
-                                    </div>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    saveInlineEdit(invoice.id, "provider_code");
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    cancelInlineEdit();
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-center gap-1">
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
-                                  {getNameByCode(providers, invoice.provider_code)}
-                                </Badge>
-                                <button
-                                  onClick={() => startInlineEdit(invoice.id, "provider_code", invoice.provider_code)}
-                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          )}
-                          
-                          {/* Description */}
-                          {visibleColumns.has('description') && (
-                          <td className="px-2 py-1 group/cell relative">
-                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "description" ? (
-                              <div className="flex items-center gap-1">
-                                <Textarea
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  className="h-20 text-xs w-full"
-                                  autoFocus
-                                  onFocus={(e) => e.target.select()}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => saveInlineEdit(invoice.id, "description")}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={cancelInlineEdit}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <div className="text-[11px] max-w-xs truncate hover:whitespace-normal hover:absolute hover:bg-popover hover:border hover:p-2 hover:rounded hover:shadow-lg hover:z-10" title={invoice.description || ""}>
-                                  {invoice.description || "-"}
-                                </div>
-                                <button
-                                  onClick={() => startInlineEdit(invoice.id, "description", invoice.description)}
-                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          )}
-                          
-                          {/* Invoice ID */}
-                          {visibleColumns.has('invoice_number') && (
-                          <td className="px-2 py-1 group/cell relative">
-                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "invoice_number" ? (
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  className="h-6 text-xs w-full"
-                                  autoFocus
-                                  onFocus={(e) => e.target.select()}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => saveInlineEdit(invoice.id, "invoice_number")}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={cancelInlineEdit}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <span 
-                                  className="text-[11px] font-mono max-w-[100px] truncate inline-block cursor-default" 
-                                  title={invoice.invoice_number || ""}
-                                >
-                                  {invoice.invoice_number || "-"}
-                                </span>
-                                <button
-                                  onClick={() => startInlineEdit(invoice.id, "invoice_number", invoice.invoice_number)}
-                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          )}
-                          
-                          {/* Amount */}
-                          {visibleColumns.has('amount') && (
-                          <td className="px-2 py-1 text-right font-semibold group/cell relative">
-                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "invoice_amount" ? (
-                              <div className="flex items-center gap-1 justify-end">
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={editValue}
-                                  onChange={(e) => setEditValue(e.target.value)}
-                                  className="h-6 text-xs w-24 text-right"
-                                  autoFocus
-                                  onFocus={(e) => e.target.select()}
-                                />
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => saveInlineEdit(invoice.id, "invoice_amount")}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={cancelInlineEdit}
-                                  className="h-6 w-6 p-0"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center justify-end gap-1">
-                                <span className="text-[11px]">
-                                  {formatEuropeanNumber(invoice.invoice_amount)}
-                                </span>
-                                <button
-                                  onClick={() => startInlineEdit(invoice.id, "invoice_amount", invoice.invoice_amount.toString())}
-                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          )}
-                          
-                          {/* Currency */}
-                          {visibleColumns.has('currency') && (
-                          <td className="px-2 py-1 text-center">
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-white">{invoice.currency}</Badge>
-                          </td>
-                          )}
-                          
-                          {/* Financial Account */}
-                          {visibleColumns.has('financial_account') && (
-                          <td className="px-2 py-1 group/cell relative">
-                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "financial_account_code" ? (
-                              <div className="flex items-center gap-1">
-                                <Select 
-                                  value={editValue} 
-                                  onValueChange={setEditValue}
-                                >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white max-h-[300px]">
-                                    <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
-                                      <Input
-                                        placeholder="Search accounts..."
-                                        value={selectSearchTerm}
-                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
-                                        className="h-7 text-xs"
-                                      />
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        className="w-full h-7 text-xs"
-                                        onClick={() => {
-                                          setFinancialAccountDialogOpen(true);
-                                        }}
-                                      >
-                                        <Plus className="h-3 w-3 mr-1" />
-                                        Add New Account
-                                      </Button>
-                                    </div>
-                                    <div className="max-h-[150px] overflow-y-auto">
-                                      {financialAccounts
-                                        .filter(a => 
-                                          a.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                          a.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                                        )
-                                        .map(a => (
-                                          <SelectItem key={a.code} value={a.code}>{a.code} - {a.name}</SelectItem>
-                                        ))}
-                                    </div>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    saveInlineEdit(invoice.id, "financial_account_code");
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    cancelInlineEdit();
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 max-w-[180px] truncate bg-white" title={financialAccount?.name}>
-                                  {financialAccount?.name || invoice.financial_account_code}
-                                </Badge>
-                                <button
-                                  onClick={() => startInlineEdit(invoice.id, "financial_account_code", invoice.financial_account_code)}
-                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          )}
-                          
-                          {/* Cost Center */}
-                          {visibleColumns.has('cost_center') && (
-                          <td className="px-2 py-1 text-center group/cell relative">
-                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_center_code" ? (
-                              <div className="flex items-center gap-1">
-                                <Select 
-                                  value={editValue} 
-                                  onValueChange={setEditValue}
-                                >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white max-h-[300px]">
-                                    <div className="p-2 sticky top-0 bg-white border-b z-10">
-                                      <Input
-                                        placeholder="Search cost centers..."
-                                        value={selectSearchTerm}
-                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
-                                        className="h-7 text-xs"
-                                      />
-                                    </div>
-                                    <div className="max-h-[150px] overflow-y-auto">
-                                      {costCenters
-                                        .filter(c => 
-                                          c.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                          c.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                                        )
-                                        .map(c => (
-                                          <SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>
-                                        ))}
-                                    </div>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    saveInlineEdit(invoice.id, "cost_center_code");
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    cancelInlineEdit();
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                {invoice.cost_center_code ? (
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
-                                    {getNameByCode(costCenters, invoice.cost_center_code)}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                                <button
-                                  onClick={() => startInlineEdit(invoice.id, "cost_center_code", invoice.cost_center_code)}
-                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          )}
-                          
-                          {/* Cost Type */}
-                          {visibleColumns.has('cost_type') && (
-                          <td className="px-2 py-1 text-center group/cell relative">
-                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_type_code" ? (
-                              <div className="flex items-center gap-1">
-                                <Select 
-                                  value={editValue} 
-                                  onValueChange={setEditValue}
-                                >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white max-h-[300px]">
-                                    <div className="p-2 sticky top-0 bg-white border-b z-10">
-                                      <Input
-                                        placeholder="Search cost types..."
-                                        value={selectSearchTerm}
-                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
-                                        className="h-7 text-xs"
-                                      />
-                                    </div>
-                                    <div className="max-h-[150px] overflow-y-auto">
-                                      {costTypes
-                                        .filter(t => 
-                                          t.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                          t.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                                        )
-                                        .map(t => (
-                                          <SelectItem key={t.code} value={t.code}>{t.code} - {t.name}</SelectItem>
-                                        ))}
-                                    </div>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    saveInlineEdit(invoice.id, "cost_type_code");
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    cancelInlineEdit();
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                {invoice.cost_type_code ? (
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
-                                    {getNameByCode(costTypes, invoice.cost_type_code)}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                                <button
-                                  onClick={() => startInlineEdit(invoice.id, "cost_type_code", invoice.cost_type_code)}
-                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          )}
-                          
-                          {/* Dep Cost Type */}
-                          {visibleColumns.has('dep_cost_type') && (
-                          <td className="px-2 py-1 text-center group/cell relative">
-                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "dep_cost_type_code" ? (
-                              <div className="flex items-center gap-1">
-                                <Select 
-                                  value={editValue} 
-                                  onValueChange={setEditValue}
-                                >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-white max-h-[300px]">
-                                    <div className="p-2 sticky top-0 bg-white border-b z-10">
-                                      <Input
-                                        placeholder="Search dep cost types..."
-                                        value={selectSearchTerm}
-                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
-                                        className="h-7 text-xs"
-                                      />
-                                    </div>
-                                    <div className="max-h-[150px] overflow-y-auto">
-                                      {depCostTypes
-                                        .filter(d => 
-                                          d.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                          d.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                                        )
-                                        .map(d => (
-                                          <SelectItem key={d.code} value={d.code}>{d.code} - {d.name}</SelectItem>
-                                        ))}
-                                    </div>
-                                  </SelectContent>
-                                </Select>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    saveInlineEdit(invoice.id, "dep_cost_type_code");
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <Check className="h-3 w-3 text-green-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={(e) => {
-                                    e.preventDefault();
-                                    e.stopPropagation();
-                                    cancelInlineEdit();
-                                  }}
-                                  className="h-6 w-6 p-0 flex-shrink-0"
-                                >
-                                  <X className="h-3 w-3 text-destructive" />
-                                </Button>
-                              </div>
-                            ) : (
-                              <div className="flex items-center gap-1">
-                                {invoice.dep_cost_type_code ? (
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
-                                    {getNameByCode(depCostTypes, invoice.dep_cost_type_code)}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-gray-400">-</span>
-                                )}
-                                <button
-                                  onClick={() => startInlineEdit(invoice.id, "dep_cost_type_code", invoice.dep_cost_type_code)}
-                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                                >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
-                                </button>
-                              </div>
-                            )}
-                          </td>
-                          )}
-                          
-                          {/* Payment Status */}
-                          {visibleColumns.has('payment_status') && (
-                          <td className="px-2 py-1 text-center">
-                            <Badge 
-                              variant={paymentStatus === 'PAID' ? 'default' : paymentStatus === 'OVERDUE' ? 'destructive' : 'outline'}
-                              className="text-[10px] px-1.5 py-0 bg-white"
-                            >
-                              {paymentStatus.replace('_', ' ')}
-                            </Badge>
-                          </td>
-                          )}
-                          
-                          {/* Payment Method - NO INLINE EDIT (set by reconciliation) */}
-                          {visibleColumns.has('payment_method') && (
-                          <td className="px-2 py-1 text-center">
-                            {invoice.payment_method_code ? (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
-                                {getNameByCode(paymentMethods, invoice.payment_method_code)}
-                              </Badge>
-                            ) : <span className="text-gray-400">-</span>}
-                          </td>
-                          )}
-                          
-                          {/* Bank Account - NO INLINE EDIT (set by reconciliation) */}
-                          {visibleColumns.has('bank_account') && (
-                          <td className="px-2 py-1 text-center">
-                            {invoice.bank_account_code ? (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
-                                {getNameByCode(bankAccounts, invoice.bank_account_code)}
-                              </Badge>
-                            ) : <span className="text-gray-400">-</span>}
-                          </td>
-                          )}
-                          
-                          {/* Payment Date - NO INLINE EDIT (set by reconciliation) */}
-                          {visibleColumns.has('payment_date') && (
-                          <td className="px-2 py-1 text-[11px]">
-                            {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('en-GB') : <span className="text-gray-400">-</span>}
-                          </td>
-                          )}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+            {/* Table */}
+            {error ? (
+              <div className="text-center py-8 text-destructive">{error}</div>
+            ) : filteredInvoices.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                <p>No invoices found</p>
+                <p className="text-sm">Create your first invoice to get started</p>
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="border rounded-lg overflow-hidden">
+                <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+                  <table className="w-full text-xs">
+                    <thead className="sticky top-0 z-10 bg-white shadow-sm">
+                      <tr className="border-b bg-white">
+                        {visibleColumns.has('actions') && (
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-20 bg-white">Actions</th>
+                        )}
+                        {visibleColumns.has('split') && (
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-16 bg-white">Split</th>
+                        )}
+                        {visibleColumns.has('scope') && (
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-14 bg-white">
+                            <div className="flex items-center justify-center gap-1">
+                              Scope
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('impact') && (
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-24 bg-white">
+                            <div className="flex items-center justify-center gap-1">
+                              Impact
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('type') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-32 bg-white">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleSort("invoice_type")} className="flex items-center gap-1 hover:text-primary">
+                                Type
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={(e) => openFilterPopover("invoice_type", e)}
+                                className="hover:text-primary"
+                                title="Filter by Type"
+                              >
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('input_date') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-24 bg-white">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleSort("input_date")} className="flex items-center gap-1 hover:text-primary">
+                                Input Date
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button onClick={(e) => openFilterPopover("input_date", e)} className="hover:text-primary" title="Filter by Input Date">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('invoice_date') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleSort("invoice_date")} className="flex items-center gap-1 hover:text-primary">
+                                Invoice Date
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button onClick={(e) => openFilterPopover("invoice_date", e)} className="hover:text-primary" title="Filter by Invoice Date">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('benefit_date') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleSort("benefit_date")} className="flex items-center gap-1 hover:text-primary">
+                                Benefit Date
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button onClick={(e) => openFilterPopover("benefit_date", e)} className="hover:text-primary" title="Filter by Benefit Date">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('due_date') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleSort("due_date")} className="flex items-center gap-1 hover:text-primary">
+                                Due Date
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button onClick={(e) => openFilterPopover("due_date", e)} className="hover:text-primary" title="Filter by Due Date">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('schedule_date') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleSort("schedule_date")} className="flex items-center gap-1 hover:text-primary">
+                                Schedule Date
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button onClick={(e) => openFilterPopover("schedule_date", e)} className="hover:text-primary" title="Filter by Schedule Date">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('provider') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-32 bg-white">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleSort("provider_code")} className="flex items-center gap-1 hover:text-primary">
+                                Provider
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={(e) => openFilterPopover("provider_code", e)}
+                                className={`hover:text-primary ${isColumnFiltered('provider_code') ? 'text-green-600' : ''}`}
+                                title="Filter by Provider"
+                              >
+                                <Filter className={`h-3 w-3 ${isColumnFiltered('provider_code') ? 'fill-green-600' : ''}`} />
+                              </button>
+                              {isColumnFiltered('provider_code') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFilter('provider_code');
+                                  }}
+                                  className="hover:text-destructive"
+                                  title="Clear filter"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('description') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 bg-white">
+                            <div className="flex items-center gap-1">
+                              Description
+                              <button
+                                onClick={() => {
+                                  const value = prompt("Filter by Description:");
+                                  if (value) addColumnFilter("description", value, value);
+                                }}
+                                className="hover:text-primary"
+                                title="Filter by Description"
+                              >
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('invoice_number') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              <button onClick={() => handleSort("invoice_number")} className="flex items-center gap-1 hover:text-primary">
+                                Invoice ID
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button onClick={(e) => openFilterPopover("invoice_number", e)} className="hover:text-primary" title="Filter by Invoice ID">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('amount') && (
+                          <th className="px-2 py-1.5 text-right font-semibold text-gray-700 w-24 bg-white">
+                            <div className="flex items-center justify-end gap-1">
+                              <button onClick={() => handleSort("invoice_amount")} className="flex items-center gap-1 hover:text-primary ml-auto">
+                                Amount
+                                <ArrowUpDown className="h-3 w-3" />
+                              </button>
+                              <button
+                                onClick={(e) => openFilterPopover("invoice_amount", e)}
+                                className={`hover:text-primary ${isColumnFiltered('invoice_amount') ? 'text-green-600' : ''}`}
+                                title="Filter by Amount"
+                              >
+                                <Filter className={`h-3 w-3 ${isColumnFiltered('invoice_amount') ? 'fill-green-600' : ''}`} />
+                              </button>
+                              {isColumnFiltered('invoice_amount') && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    removeFilter('invoice_amount');
+                                  }}
+                                  className="hover:text-destructive"
+                                  title="Clear filter"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              )}
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('currency') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-20 bg-white">
+                            <div className="flex items-center gap-1">
+                              Currency
+                              <button onClick={(e) => openFilterPopover("currency", e)}
+                                className="hover:text-primary"
+                                title="Filter by Currency"
+                              >
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('financial_account') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-48 bg-white">
+                            <div className="flex items-center gap-1">
+                              Financial Account
+                              <button
+                                onClick={(e) => openFilterPopover("financial_account_code", e)}
+                                className="hover:text-primary"
+                                title="Filter by Financial Account"
+                              >
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('cost_center') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              Cost Center
+                              <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Cost Center">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('cost_type') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              Cost Type
+                              <button onClick={(e) => openFilterPopover("cost_type_code", e)} className="hover:text-primary" title="Filter by Cost Type">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('dep_cost_type') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              Dep Cost Type
+                              <button onClick={(e) => openFilterPopover("dep_cost_type_code", e)} className="hover:text-primary" title="Filter by Dep Cost Type">
+                                <Filter className="h-3 w-3" />
+                              </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('payment_status') && (
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Payment Status</th>
+                        )}
+                        {visibleColumns.has('payment_method') && (
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Payment Method</th>
+                        )}
+                        {visibleColumns.has('bank_account') && (
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Bank Account</th>
+                        )}
+                        {visibleColumns.has('payment_date') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <button onClick={() => handleSort("payment_date")} className="flex items-center gap-1 hover:text-primary">
+                              Payment Date
+                              <ArrowUpDown className="h-3 w-3" />
+                            </button>
+                          </th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y">
+                      {filteredInvoices.map((invoice) => {
+                        const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
+                        const Icon = config.icon;
+                        const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
+                        const paymentStatus = invoice.payment_status || 'NOT_SCHEDULED';
 
-          <div className="mt-4 text-sm text-muted-foreground">
-            Showing {filteredInvoices.length} of {invoices.length} invoices
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-    
-    {/* Multi-Select Filter Dialog */}
-    {filterPopoverOpen && (
-      <Dialog open={!!filterPopoverOpen} onOpenChange={() => closeFilterPopover()}>
-        <DialogContent className="max-w-md bg-white">
-          <DialogHeader>
-            <DialogTitle>Filter by {filterPopoverOpen.field.replace(/_/g, ' ')}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-3">
-            {(() => {
-              const field = filterPopoverOpen.field;
-              
-              // Date filters
-              if (['input_date', 'invoice_date', 'benefit_date'].includes(field)) {
-                const presets = ["This Week", "Last Week", "Next Week", "This Month", "Last Month", "Next Year"];
-                return (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      {presets.map(preset => (
-                        <Button
-                          key={preset}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const range = getDatePreset(preset);
-                            setDateFilters(prev => ({ ...prev, [field]: range }));
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: preset, label: `${field}: ${preset}` }];
-                            });
-                            closeFilterPopover();
-                          }}
-                          className="text-xs"
-                        >
-                          {preset}
-                        </Button>
-                      ))}
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Custom Range:</Label>
+                        return (
+                          <tr key={invoice.id} className="hover:bg-muted/30 group">
+                            {/* Actions */}
+                            {visibleColumns.has('actions') && (
+                              <td className="px-2 py-1 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0" title="Split Invoice">
+                                    <Split className="h-3 w-3 text-blue-600" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0">
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                  <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </td>
+                            )}
+
+                            {/* Split Status */}
+                            {visibleColumns.has('split') && (
+                              <td className="px-2 py-1 text-center">
+                                {invoice.is_split && invoice.parent_invoice_id && (
+                                  <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0" title={`Part ${invoice.split_number}/${invoice.total_splits}`}>
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-800">
+                                      {invoice.split_number}/{invoice.total_splits}
+                                    </Badge>
+                                  </Button>
+                                )}
+                                {invoice.is_split && !invoice.parent_invoice_id && (
+                                  <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0" title="View splits">
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800 cursor-pointer hover:bg-green-200">
+                                      <Eye className="h-3 w-3 mr-1 inline" />
+                                      {invoice.total_splits}
+                                    </Badge>
+                                  </Button>
+                                )}
+                                {!invoice.is_split && (
+                                  <span className="text-gray-300">-</span>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Scope */}
+                            {visibleColumns.has('scope') && (
+                              <td className="px-2 py-1 text-center">
+                                <span
+                                  className="cursor-help inline-block"
+                                  title={SCOPE_CONFIG[getRecordScope(invoice) as ScopeType].description}
+                                >
+                                  {getRecordScope(invoice) === ("ES" as ScopeType) && (
+                                    <Image src="/spain.svg" alt="Spain" width={20} height={15} className="rounded" />
+                                  )}
+                                  {getRecordScope(invoice) === ("US" as ScopeType) && (
+                                    <Image src="/united-states.svg" alt="USA" width={20} height={15} className="rounded" />
+                                  )}
+                                  {getRecordScope(invoice) === ("GLOBAL" as ScopeType) && (
+                                    <Image src="/globe.svg" alt="Global" width={18} height={18} className="rounded" />
+                                  )}
+                                </span>
+                              </td>
+                            )}
+
+                            {/* Impact */}
+                            {visibleColumns.has('impact') && (
+                              <td className="px-2 py-1">
+                                <div className="flex gap-1 justify-center">
+                                  {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-white">DRE</Badge>}
+                                  {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-white">Cash</Badge>}
+                                  {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 bg-white">IC</Badge>}
+                                </div>
+                              </td>
+                            )}
+
+                            {/* Type */}
+                            {visibleColumns.has('type') && (
+                              <td className="px-2 py-1">
+                                <Badge className={`text-[10px] px-1.5 py-0 ${config.color}`}>
+                                  {config.label}
+                                </Badge>
+                              </td>
+                            )}
+
+                            {/* Input Date */}
+                            {visibleColumns.has('input_date') && (
+                              <td className="px-2 py-1 text-[11px]">{new Date(invoice.input_date).toLocaleDateString('en-GB')}</td>
+                            )}
+
+                            {/* Invoice Date */}
+                            {visibleColumns.has('invoice_date') && (
+                              <td className="px-2 py-1 text-[11px] font-medium">{new Date(invoice.invoice_date).toLocaleDateString('en-GB')}</td>
+                            )}
+
+                            {/* Benefit Date */}
+                            {visibleColumns.has('benefit_date') && (
+                              <td className="px-2 py-1 text-[11px]">{new Date(invoice.benefit_date).toLocaleDateString('en-GB')}</td>
+                            )}
+
+                            {/* Due Date */}
+                            {visibleColumns.has('due_date') && (
+                              <td className="px-2 py-1 text-[11px]">
+                                {invoice.due_date ? (
+                                  <Badge variant={new Date(invoice.due_date) < new Date() ? "destructive" : "outline"} className="text-[10px] px-1.5 py-0">
+                                    {new Date(invoice.due_date).toLocaleDateString('en-GB')}
+                                  </Badge>
+                                ) : '-'}
+                              </td>
+                            )}
+
+                            {/* Schedule Date */}
+                            {visibleColumns.has('schedule_date') && (
+                              <td className="px-2 py-1 text-[11px]">
+                                {invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('en-GB') : '-'}
+                              </td>
+                            )}
+
+                            {/* Provider */}
+                            {visibleColumns.has('provider') && (
+                              <td className="px-2 py-1 text-center group/cell relative">
+                                {editingCell?.invoiceId === invoice.id && editingCell?.field === "provider_code" ? (
+                                  <div className="flex items-center gap-1">
+                                    <Select
+                                      value={editValue}
+                                      onValueChange={setEditValue}
+                                    >
+                                      <SelectTrigger className="h-6 text-[10px] bg-white">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white max-h-[300px]">
+                                        <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
+                                          <Input
+                                            placeholder="Search providers..."
+                                            value={selectSearchTerm}
+                                            onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                            className="h-7 text-xs"
+                                          />
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            className="w-full h-7 text-xs"
+                                            onClick={() => {
+                                              setProviderDialogOpen(true);
+                                            }}
+                                          >
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Add New Provider
+                                          </Button>
+                                        </div>
+                                        <div className="max-h-[150px] overflow-y-auto">
+                                          {providers
+                                            .filter(p =>
+                                              p.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                              p.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                            )
+                                            .map(p => (
+                                              <SelectItem key={p.code} value={p.code} className="cursor-pointer hover:bg-gray-100">{p.name}</SelectItem>
+                                            ))}
+                                        </div>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        saveInlineEdit(invoice.id, "provider_code");
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        cancelInlineEdit();
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-1">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
+                                      {getNameByCode(providers, invoice.provider_code)}
+                                    </Badge>
+                                    <button
+                                      onClick={() => startInlineEdit(invoice.id, "provider_code", invoice.provider_code)}
+                                      className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Description */}
+                            {visibleColumns.has('description') && (
+                              <td className="px-2 py-1 group/cell relative">
+                                {editingCell?.invoiceId === invoice.id && editingCell?.field === "description" ? (
+                                  <div className="flex items-center gap-1">
+                                    <Textarea
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      className="h-20 text-xs w-full"
+                                      autoFocus
+                                      onFocus={(e) => e.target.select()}
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => saveInlineEdit(invoice.id, "description")}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={cancelInlineEdit}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <div className="text-[11px] max-w-xs truncate hover:whitespace-normal hover:absolute hover:bg-popover hover:border hover:p-2 hover:rounded hover:shadow-lg hover:z-10" title={invoice.description || ""}>
+                                      {invoice.description || "-"}
+                                    </div>
+                                    <button
+                                      onClick={() => startInlineEdit(invoice.id, "description", invoice.description)}
+                                      className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Invoice ID */}
+                            {visibleColumns.has('invoice_number') && (
+                              <td className="px-2 py-1 group/cell relative">
+                                {editingCell?.invoiceId === invoice.id && editingCell?.field === "invoice_number" ? (
+                                  <div className="flex items-center gap-1">
+                                    <Input
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      className="h-6 text-xs w-full"
+                                      autoFocus
+                                      onFocus={(e) => e.target.select()}
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => saveInlineEdit(invoice.id, "invoice_number")}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={cancelInlineEdit}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <span
+                                      className="text-[11px] font-mono max-w-[100px] truncate inline-block cursor-default"
+                                      title={invoice.invoice_number || ""}
+                                    >
+                                      {invoice.invoice_number || "-"}
+                                    </span>
+                                    <button
+                                      onClick={() => startInlineEdit(invoice.id, "invoice_number", invoice.invoice_number)}
+                                      className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Amount */}
+                            {visibleColumns.has('amount') && (
+                              <td className="px-2 py-1 text-right font-semibold group/cell relative">
+                                {editingCell?.invoiceId === invoice.id && editingCell?.field === "invoice_amount" ? (
+                                  <div className="flex items-center gap-1 justify-end">
+                                    <Input
+                                      type="number"
+                                      step="0.01"
+                                      value={editValue}
+                                      onChange={(e) => setEditValue(e.target.value)}
+                                      className="h-6 text-xs w-24 text-right"
+                                      autoFocus
+                                      onFocus={(e) => e.target.select()}
+                                    />
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => saveInlineEdit(invoice.id, "invoice_amount")}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={cancelInlineEdit}
+                                      className="h-6 w-6 p-0"
+                                    >
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-end gap-1">
+                                    <span className="text-[11px]">
+                                      {formatEuropeanNumber(invoice.invoice_amount)}
+                                    </span>
+                                    <button
+                                      onClick={() => startInlineEdit(invoice.id, "invoice_amount", invoice.invoice_amount.toString())}
+                                      className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Currency */}
+                            {visibleColumns.has('currency') && (
+                              <td className="px-2 py-1 text-center">
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-white">{invoice.currency}</Badge>
+                              </td>
+                            )}
+
+                            {/* Financial Account */}
+                            {visibleColumns.has('financial_account') && (
+                              <td className="px-2 py-1 group/cell relative">
+                                {editingCell?.invoiceId === invoice.id && editingCell?.field === "financial_account_code" ? (
+                                  <div className="flex items-center gap-1">
+                                    <Select
+                                      value={editValue}
+                                      onValueChange={setEditValue}
+                                    >
+                                      <SelectTrigger className="h-6 text-[10px] bg-white">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white max-h-[300px]">
+                                        <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
+                                          <Input
+                                            placeholder="Search accounts..."
+                                            value={selectSearchTerm}
+                                            onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                            className="h-7 text-xs"
+                                          />
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            className="w-full h-7 text-xs"
+                                            onClick={() => {
+                                              setFinancialAccountDialogOpen(true);
+                                            }}
+                                          >
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Add New Account
+                                          </Button>
+                                        </div>
+                                        <div className="max-h-[150px] overflow-y-auto">
+                                          {financialAccounts
+                                            .filter(a =>
+                                              a.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                              a.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                            )
+                                            .map(a => (
+                                              <SelectItem key={a.code} value={a.code}>{a.code} - {a.name}</SelectItem>
+                                            ))}
+                                        </div>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        saveInlineEdit(invoice.id, "financial_account_code");
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        cancelInlineEdit();
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 max-w-[180px] truncate bg-white" title={financialAccount?.name}>
+                                      {financialAccount?.name || invoice.financial_account_code}
+                                    </Badge>
+                                    <button
+                                      onClick={() => startInlineEdit(invoice.id, "financial_account_code", invoice.financial_account_code)}
+                                      className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Cost Center */}
+                            {visibleColumns.has('cost_center') && (
+                              <td className="px-2 py-1 text-center group/cell relative">
+                                {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_center_code" ? (
+                                  <div className="flex items-center gap-1">
+                                    <Select
+                                      value={editValue}
+                                      onValueChange={setEditValue}
+                                    >
+                                      <SelectTrigger className="h-6 text-[10px] bg-white">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white max-h-[300px]">
+                                        <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                          <Input
+                                            placeholder="Search cost centers..."
+                                            value={selectSearchTerm}
+                                            onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                            className="h-7 text-xs"
+                                          />
+                                        </div>
+                                        <div className="max-h-[150px] overflow-y-auto">
+                                          {costCenters
+                                            .filter(c =>
+                                              c.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                              c.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                            )
+                                            .map(c => (
+                                              <SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>
+                                            ))}
+                                        </div>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        saveInlineEdit(invoice.id, "cost_center_code");
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        cancelInlineEdit();
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    {invoice.cost_center_code ? (
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
+                                        {getNameByCode(costCenters, invoice.cost_center_code)}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                    <button
+                                      onClick={() => startInlineEdit(invoice.id, "cost_center_code", invoice.cost_center_code)}
+                                      className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Cost Type */}
+                            {visibleColumns.has('cost_type') && (
+                              <td className="px-2 py-1 text-center group/cell relative">
+                                {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_type_code" ? (
+                                  <div className="flex items-center gap-1">
+                                    <Select
+                                      value={editValue}
+                                      onValueChange={setEditValue}
+                                    >
+                                      <SelectTrigger className="h-6 text-[10px] bg-white">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white max-h-[300px]">
+                                        <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                          <Input
+                                            placeholder="Search cost types..."
+                                            value={selectSearchTerm}
+                                            onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                            className="h-7 text-xs"
+                                          />
+                                        </div>
+                                        <div className="max-h-[150px] overflow-y-auto">
+                                          {costTypes
+                                            .filter(t =>
+                                              t.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                              t.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                            )
+                                            .map(t => (
+                                              <SelectItem key={t.code} value={t.code}>{t.code} - {t.name}</SelectItem>
+                                            ))}
+                                        </div>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        saveInlineEdit(invoice.id, "cost_type_code");
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        cancelInlineEdit();
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    {invoice.cost_type_code ? (
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
+                                        {getNameByCode(costTypes, invoice.cost_type_code)}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                    <button
+                                      onClick={() => startInlineEdit(invoice.id, "cost_type_code", invoice.cost_type_code)}
+                                      className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Dep Cost Type */}
+                            {visibleColumns.has('dep_cost_type') && (
+                              <td className="px-2 py-1 text-center group/cell relative">
+                                {editingCell?.invoiceId === invoice.id && editingCell?.field === "dep_cost_type_code" ? (
+                                  <div className="flex items-center gap-1">
+                                    <Select
+                                      value={editValue}
+                                      onValueChange={setEditValue}
+                                    >
+                                      <SelectTrigger className="h-6 text-[10px] bg-white">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent className="bg-white max-h-[300px]">
+                                        <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                          <Input
+                                            placeholder="Search dep cost types..."
+                                            value={selectSearchTerm}
+                                            onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                            className="h-7 text-xs"
+                                          />
+                                        </div>
+                                        <div className="max-h-[150px] overflow-y-auto">
+                                          {depCostTypes
+                                            .filter(d =>
+                                              d.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                              d.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                            )
+                                            .map(d => (
+                                              <SelectItem key={d.code} value={d.code}>{d.code} - {d.name}</SelectItem>
+                                            ))}
+                                        </div>
+                                      </SelectContent>
+                                    </Select>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        saveInlineEdit(invoice.id, "dep_cost_type_code");
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <Check className="h-3 w-3 text-green-600" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        cancelInlineEdit();
+                                      }}
+                                      className="h-6 w-6 p-0 flex-shrink-0"
+                                    >
+                                      <X className="h-3 w-3 text-destructive" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1">
+                                    {invoice.dep_cost_type_code ? (
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
+                                        {getNameByCode(depCostTypes, invoice.dep_cost_type_code)}
+                                      </Badge>
+                                    ) : (
+                                      <span className="text-gray-400">-</span>
+                                    )}
+                                    <button
+                                      onClick={() => startInlineEdit(invoice.id, "dep_cost_type_code", invoice.dep_cost_type_code)}
+                                      className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                    >
+                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                    </button>
+                                  </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Payment Status */}
+                            {visibleColumns.has('payment_status') && (
+                              <td className="px-2 py-1 text-center">
+                                <Badge
+                                  variant={paymentStatus === 'PAID' ? 'default' : paymentStatus === 'OVERDUE' ? 'destructive' : 'outline'}
+                                  className="text-[10px] px-1.5 py-0 bg-white"
+                                >
+                                  {paymentStatus.replace('_', ' ')}
+                                </Badge>
+                              </td>
+                            )}
+
+                            {/* Payment Method - NO INLINE EDIT (set by reconciliation) */}
+                            {visibleColumns.has('payment_method') && (
+                              <td className="px-2 py-1 text-center">
+                                {invoice.payment_method_code ? (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
+                                    {getNameByCode(paymentMethods, invoice.payment_method_code)}
+                                  </Badge>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
+                            )}
+
+                            {/* Bank Account - NO INLINE EDIT (set by reconciliation) */}
+                            {visibleColumns.has('bank_account') && (
+                              <td className="px-2 py-1 text-center">
+                                {invoice.bank_account_code ? (
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
+                                    {getNameByCode(bankAccounts, invoice.bank_account_code)}
+                                  </Badge>
+                                ) : <span className="text-gray-400">-</span>}
+                              </td>
+                            )}
+
+                            {/* Payment Date - NO INLINE EDIT (set by reconciliation) */}
+                            {visibleColumns.has('payment_date') && (
+                              <td className="px-2 py-1 text-[11px]">
+                                {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('en-GB') : <span className="text-gray-400">-</span>}
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            <div className="mt-4 text-sm text-muted-foreground">
+              Showing {filteredInvoices.length} of {invoices.length} invoices
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Multi-Select Filter Dialog */}
+      {filterPopoverOpen && (
+        <Dialog open={!!filterPopoverOpen} onOpenChange={() => closeFilterPopover()}>
+          <DialogContent className="max-w-md bg-white">
+            <DialogHeader>
+              <DialogTitle>Filter by {filterPopoverOpen.field.replace(/_/g, ' ')}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              {(() => {
+                const field = filterPopoverOpen.field;
+
+                // Date filters
+                if (['input_date', 'invoice_date', 'benefit_date'].includes(field)) {
+                  const presets = ["This Week", "Last Week", "Next Week", "This Month", "Last Month", "Next Year"];
+                  return (
+                    <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs">From:</Label>
-                          <Input type="date" className="h-8 text-xs" id="date-start" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">To:</Label>
-                          <Input type="date" className="h-8 text-xs" id="date-end" />
-                        </div>
-                      </div>
-                      <Button 
-                        size="sm" 
-                        className="w-full"
-                        onClick={() => {
-                          const start = (document.getElementById('date-start') as HTMLInputElement).value;
-                          const end = (document.getElementById('date-end') as HTMLInputElement).value;
-                          if (start || end) {
-                            setDateFilters(prev => ({ ...prev, [field]: {start, end} }));
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }}
-                      >
-                        Apply Custom Range
-                      </Button>
-                    </div>
-                  </div>
-                );
-              }
-              
-              // Amount filter
-              if (field === 'invoice_amount') {
-                return (
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          const value = prompt("Less than:");
-                          if (value) {
-                            setAmountFilter({ operator: 'lt', value1: parseFloat(value) });
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `< ${value}`, label: `Amount: < ${value}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }}
-                      >
-                        Less than (-)
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          const value = prompt("Greater than:");
-                          if (value) {
-                            setAmountFilter({ operator: 'gt', value1: parseFloat(value) });
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `> ${value}`, label: `Amount: > ${value}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }}
-                      >
-                        Greater than (+)
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          const value = prompt("Exact value:");
-                          if (value) {
-                            setAmountFilter({ operator: 'eq', value1: parseFloat(value) });
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `= ${value}`, label: `Amount: = ${value}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }}
-                      >
-                        Exact value (=)
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          const min = prompt("Minimum value:");
-                          if (min) {
-                            const max = prompt("Maximum value:");
-                            if (max) {
-                              setAmountFilter({ operator: 'between', value1: parseFloat(min), value2: parseFloat(max) });
+                        {presets.map(preset => (
+                          <Button
+                            key={preset}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const range = getDatePreset(preset);
+                              setDateFilters(prev => ({ ...prev, [field]: range }));
                               setAppliedFilters(prev => {
                                 const filtered = prev.filter(f => f.field !== field);
-                                return [...filtered, { field, value: `${min} - ${max}`, label: `Amount: ${min} - ${max}` }];
+                                return [...filtered, { field, value: preset, label: `${field}: ${preset}` }];
+                              });
+                              closeFilterPopover();
+                            }}
+                            className="text-xs"
+                          >
+                            {preset}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Custom Range:</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">From:</Label>
+                            <Input type="date" className="h-8 text-xs" id="date-start" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">To:</Label>
+                            <Input type="date" className="h-8 text-xs" id="date-end" />
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={() => {
+                            const start = (document.getElementById('date-start') as HTMLInputElement).value;
+                            const end = (document.getElementById('date-end') as HTMLInputElement).value;
+                            if (start || end) {
+                              setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
+                              setAppliedFilters(prev => {
+                                const filtered = prev.filter(f => f.field !== field);
+                                return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
                               });
                               closeFilterPopover();
                             }
-                          }
-                        }}
-                      >
-                        Between (range)
-                      </Button>
+                          }}
+                        >
+                          Apply Custom Range
+                        </Button>
+                      </div>
                     </div>
-                  </div>
+                  );
+                }
+
+                // Amount filter
+                if (field === 'invoice_amount') {
+                  return (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const value = prompt("Less than:");
+                            if (value) {
+                              setAmountFilter({ operator: 'lt', value1: parseFloat(value) });
+                              setAppliedFilters(prev => {
+                                const filtered = prev.filter(f => f.field !== field);
+                                return [...filtered, { field, value: `< ${value}`, label: `Amount: < ${value}` }];
+                              });
+                              closeFilterPopover();
+                            }
+                          }}
+                        >
+                          Less than (-)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const value = prompt("Greater than:");
+                            if (value) {
+                              setAmountFilter({ operator: 'gt', value1: parseFloat(value) });
+                              setAppliedFilters(prev => {
+                                const filtered = prev.filter(f => f.field !== field);
+                                return [...filtered, { field, value: `> ${value}`, label: `Amount: > ${value}` }];
+                              });
+                              closeFilterPopover();
+                            }
+                          }}
+                        >
+                          Greater than (+)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const value = prompt("Exact value:");
+                            if (value) {
+                              setAmountFilter({ operator: 'eq', value1: parseFloat(value) });
+                              setAppliedFilters(prev => {
+                                const filtered = prev.filter(f => f.field !== field);
+                                return [...filtered, { field, value: `= ${value}`, label: `Amount: = ${value}` }];
+                              });
+                              closeFilterPopover();
+                            }
+                          }}
+                        >
+                          Exact value (=)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const min = prompt("Minimum value:");
+                            if (min) {
+                              const max = prompt("Maximum value:");
+                              if (max) {
+                                setAmountFilter({ operator: 'between', value1: parseFloat(min), value2: parseFloat(max) });
+                                setAppliedFilters(prev => {
+                                  const filtered = prev.filter(f => f.field !== field);
+                                  return [...filtered, { field, value: `${min} - ${max}`, label: `Amount: ${min} - ${max}` }];
+                                });
+                                closeFilterPopover();
+                              }
+                            }
+                          }}
+                        >
+                          Between (range)
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Invoice Number filter
+                if (field === 'invoice_number') {
+                  const availableInvoiceNumbers = Array.from(new Set(
+                    filteredInvoices.map(inv => inv.invoice_number).filter(Boolean)
+                  )) as string[];
+
+                  return (
+                    <>
+                      <Input
+                        placeholder="Search..."
+                        value={filterSearchTerm}
+                        onChange={(e) => setFilterSearchTerm(e.target.value)}
+                        className="h-9"
+                      />
+                      <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                        {availableInvoiceNumbers
+                          .filter(num => num.toLowerCase().includes(filterSearchTerm.toLowerCase()))
+                          .map(num => (
+                            <div
+                              key={num}
+                              className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => toggleFilterOption(num)}
+                            >
+                              <span className="text-sm">{num}</span>
+                              {tempFilterSelection.includes(num) && (
+                                <Check className="h-4 w-4 text-green-600" />
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={closeFilterPopover}>
+                          <X className="h-3 w-3 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={() => applyMultiSelectFilter(field)}>
+                          <Check className="h-3 w-3 mr-1" />
+                          OK ({tempFilterSelection.length})
+                        </Button>
+                      </div>
+                    </>
+                  );
+                }
+
+                // Multi-select filters with cascade (only show available options)
+                let options: { value: string, label: string }[] = [];
+
+                if (field === "provider_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.provider_code));
+                  options = providers.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
+                } else if (field === "financial_account_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.financial_account_code));
+                  options = financialAccounts.filter(acc => acc.level >= 2 && availableCodes.has(acc.code)).map(acc => ({ value: acc.code, label: acc.name }));
+                } else if (field === "cost_center_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_center_code).filter(Boolean));
+                  options = costCenters.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                } else if (field === "cost_type_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_type_code).filter(Boolean));
+                  options = costTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                } else if (field === "dep_cost_type_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.dep_cost_type_code).filter(Boolean));
+                  options = depCostTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                } else if (field === "bank_account_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.bank_account_code).filter(Boolean));
+                  options = bankAccounts.filter(b => availableCodes.has(b.code)).map(b => ({ value: b.code, label: b.name }));
+                } else if (field === "payment_method_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.payment_method_code).filter(Boolean));
+                  options = paymentMethods.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
+                } else if (field === "entry_type") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.entry_type));
+                  options = entryTypes.filter(e => availableCodes.has(e.code)).map(e => ({ value: e.code, label: e.name }));
+                } else if (field === "invoice_type") {
+                  const availableTypes = new Set(filteredInvoices.map(inv => inv.invoice_type));
+                  options = [
+                    { value: "INCURRED", label: "Incurred" },
+                    { value: "BUDGET", label: "Budget" },
+                    { value: "ADJUSTMENT", label: "Adjustments" }
+                  ].filter(opt => availableTypes.has(opt.value as InvoiceType));
+                } else if (field === "currency") {
+                  const availableCurrencies = new Set(filteredInvoices.map(i => i.currency));
+                  options = Array.from(availableCurrencies).map(c => ({ value: c, label: c }));
+                }
+
+                const filtered = options.filter(opt =>
+                  opt.label.toLowerCase().includes(filterSearchTerm.toLowerCase())
                 );
-              }
-              
-              // Invoice Number filter
-              if (field === 'invoice_number') {
-                const availableInvoiceNumbers = Array.from(new Set(
-                  filteredInvoices.map(inv => inv.invoice_number).filter(Boolean)
-                )) as string[];
-                
+
                 return (
                   <>
                     <Input
@@ -3659,20 +3812,18 @@ export default function InvoicesPage() {
                       className="h-9"
                     />
                     <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                      {availableInvoiceNumbers
-                        .filter(num => num.toLowerCase().includes(filterSearchTerm.toLowerCase()))
-                        .map(num => (
-                          <div
-                            key={num}
-                            className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => toggleFilterOption(num)}
-                          >
-                            <span className="text-sm">{num}</span>
-                            {tempFilterSelection.includes(num) && (
-                              <Check className="h-4 w-4 text-green-600" />
-                            )}
-                          </div>
-                        ))}
+                      {filtered.map(opt => (
+                        <div
+                          key={opt.value}
+                          className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => toggleFilterOption(opt.value)}
+                        >
+                          <span className="text-sm">{opt.label}</span>
+                          {tempFilterSelection.includes(opt.value) && (
+                            <Check className="h-4 w-4 text-green-600" />
+                          )}
+                        </div>
+                      ))}
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                       <Button variant="outline" size="sm" onClick={closeFilterPopover}>
@@ -3686,90 +3837,11 @@ export default function InvoicesPage() {
                     </div>
                   </>
                 );
-              }
-              
-              // Multi-select filters with cascade (only show available options)
-              let options: {value: string, label: string}[] = [];
-              
-              if (field === "provider_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.provider_code));
-                options = providers.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
-              } else if (field === "financial_account_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.financial_account_code));
-                options = financialAccounts.filter(acc => acc.level >= 2 && availableCodes.has(acc.code)).map(acc => ({ value: acc.code, label: acc.name }));
-              } else if (field === "cost_center_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_center_code).filter(Boolean));
-                options = costCenters.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-              } else if (field === "cost_type_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_type_code).filter(Boolean));
-                options = costTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-              } else if (field === "dep_cost_type_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.dep_cost_type_code).filter(Boolean));
-                options = depCostTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-              } else if (field === "bank_account_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.bank_account_code).filter(Boolean));
-                options = bankAccounts.filter(b => availableCodes.has(b.code)).map(b => ({ value: b.code, label: b.name }));
-              } else if (field === "payment_method_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.payment_method_code).filter(Boolean));
-                options = paymentMethods.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
-              } else if (field === "entry_type") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.entry_type));
-                options = entryTypes.filter(e => availableCodes.has(e.code)).map(e => ({ value: e.code, label: e.name }));
-              } else if (field === "invoice_type") {
-                const availableTypes = new Set(filteredInvoices.map(inv => inv.invoice_type));
-                options = [
-                  { value: "INCURRED", label: "Incurred" },
-                  { value: "BUDGET", label: "Budget" },
-                  { value: "ADJUSTMENT", label: "Adjustments" }
-                ].filter(opt => availableTypes.has(opt.value as InvoiceType));
-              } else if (field === "currency") {
-                const availableCurrencies = new Set(filteredInvoices.map(i => i.currency));
-                options = Array.from(availableCurrencies).map(c => ({ value: c, label: c }));
-              }
-              
-              const filtered = options.filter(opt => 
-                opt.label.toLowerCase().includes(filterSearchTerm.toLowerCase())
-              );
-              
-              return (
-                <>
-                  <Input
-                    placeholder="Search..."
-                    value={filterSearchTerm}
-                    onChange={(e) => setFilterSearchTerm(e.target.value)}
-                    className="h-9"
-                  />
-                  <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                    {filtered.map(opt => (
-                      <div
-                        key={opt.value}
-                        className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => toggleFilterOption(opt.value)}
-                      >
-                        <span className="text-sm">{opt.label}</span>
-                        {tempFilterSelection.includes(opt.value) && (
-                          <Check className="h-4 w-4 text-green-600" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" size="sm" onClick={closeFilterPopover}>
-                      <X className="h-3 w-3 mr-1" />
-                      Cancel
-                    </Button>
-                    <Button size="sm" onClick={() => applyMultiSelectFilter(field)}>
-                      <Check className="h-3 w-3 mr-1" />
-                      OK ({tempFilterSelection.length})
-                    </Button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </DialogContent>
-      </Dialog>
-    )}
-  </>
-);
+              })()}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+    </>
+  );
 }

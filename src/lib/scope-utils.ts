@@ -1,31 +1,38 @@
-export type ScopeType = "all" | "dsd" | "lh" | "dsd_lh";
+export type ScopeType = "ES" | "US" | "GLOBAL";
 
 export interface ScopeConfig {
   label: string;
   icon: string;
   color: string;
+  countryCode: string;
+  currency: string;
+  description: string;
 }
 
 export const SCOPE_CONFIG: Record<ScopeType, ScopeConfig> = {
-  all: {
-    label: "All",
+  ES: {
+    label: "Spain",
+    icon: "🇪🇸",
+    color: "red",
+    countryCode: "ES",
+    currency: "EUR",
+    description: "Spain Operations"
+  },
+  US: {
+    label: "United States",
+    icon: "🇺🇸",
+    color: "blue",
+    countryCode: "US",
+    currency: "USD",
+    description: "United States Operations"
+  },
+  GLOBAL: {
+    label: "Global",
     icon: "🌐",
-    color: "gray"
-  },
-  dsd: {
-    label: "DSD",
-    icon: "🎓",
-    color: "blue"
-  },
-  lh: {
-    label: "LH",
-    icon: "🏠",
-    color: "green"
-  },
-  dsd_lh: {
-    label: "DSD+LH",
-    icon: "🔗",
-    color: "purple"
+    color: "purple",
+    countryCode: "GLOBAL",
+    currency: "EUR",
+    description: "Consolidated (Spain + US)"
   }
 };
 
@@ -34,28 +41,37 @@ export function getScopeIcon(scope: ScopeType): string {
 }
 
 export function getRecordScope(record: any): ScopeType {
-  if (record.scope) return record.scope;
-  if (record.dsd && record.lh) return "dsd_lh";
-  if (record.dsd) return "dsd";
-  if (record.lh) return "lh";
-  return "all";
+  if (record.scope) return record.scope as ScopeType;
+  if (record.country_code === "ES") return "ES";
+  if (record.country_code === "US") return "US";
+  if (record.applies_to_all_countries) return "GLOBAL";
+  return record.country_code || "ES";
 }
 
-export function matchesScope(record: any, targetScope: ScopeType): boolean {
-  if (targetScope === "all") return true;
+export function matchesScope(record: any, targetScopes: ScopeType | Set<ScopeType>): boolean {
   const recordScope = getRecordScope(record);
-  return recordScope === targetScope || recordScope === "dsd_lh";
+
+  // Se targetScopes é um Set, verificar se o recordScope está nele
+  if (targetScopes instanceof Set) {
+    return targetScopes.has(recordScope) ||
+      (targetScopes.has("GLOBAL") && (recordScope === "ES" || recordScope === "US")) ||
+      (recordScope === "GLOBAL");
+  }
+
+  // Se targetScopes é um único valor
+  if (targetScopes === "GLOBAL") return true; // GLOBAL mostra tudo
+  return recordScope === targetScopes || recordScope === "GLOBAL";
 }
 
-export function scopeToFields(scope: ScopeType): { dsd: boolean; lh: boolean } {
+export function scopeToFields(scope: ScopeType): { country_code: string; scope: string; applies_to_all_countries: boolean } {
   switch (scope) {
-    case "dsd":
-      return { dsd: true, lh: false };
-    case "lh":
-      return { dsd: false, lh: true };
-    case "dsd_lh":
-      return { dsd: true, lh: true };
+    case "ES":
+      return { country_code: "ES", scope: "ES", applies_to_all_countries: false };
+    case "US":
+      return { country_code: "US", scope: "US", applies_to_all_countries: false };
+    case "GLOBAL":
+      return { country_code: "GLOBAL", scope: "GLOBAL", applies_to_all_countries: true };
     default:
-      return { dsd: false, lh: false };
+      return { country_code: "ES", scope: "ES", applies_to_all_countries: false };
   }
 }

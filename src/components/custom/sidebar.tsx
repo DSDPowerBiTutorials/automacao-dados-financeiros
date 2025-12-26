@@ -1,79 +1,157 @@
 "use client";
 
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useRef } from "react";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { NAV } from "@/config/navigation";
-import type { NavItem, NavGroup } from "@/config/navigation";
 import {
-  ChevronDown,
-  ChevronLeft,
-  ChevronRight,
+  Home,
   Menu,
   X,
+  ChevronDown,
+  Search,
   User,
-  HelpCircle,
+  Settings,
+  LogOut,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
-export function Sidebar() {
+export default function Sidebar() {
   const pathname = usePathname();
-
+  const [collapsed, setCollapsed] = useState(true); // Start collapsed
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set()); // For inline expansion
   const [flyoutPosition, setFlyoutPosition] = useState({ top: 0, left: 0 });
-  const sidebarRef = useRef<HTMLDivElement>(null);
   const [isHovering, setIsHovering] = useState(false);
+  const [sidebarHovered, setSidebarHovered] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const isActive = (path: string) => pathname === path;
+  const isActive = (href: string) => pathname === href || pathname.startsWith(href + "/");
 
-  const itemClass = (active: boolean, isChild = false) =>
-    cn(
-      "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all relative group",
-      active
-        ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-lg shadow-blue-500/50"
-        : "text-gray-300 hover:bg-gray-700/50 hover:text-white",
-      isChild && "ml-3"
-    );
-
-  const labelClass =
-    "text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-3 mb-2 mt-4";
-
-  const handleItemHover = (itemKey: string, event: React.MouseEvent, item: NavItem) => {
-    if (!collapsed || !item.children) return;
-    
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    setFlyoutPosition({ 
-      top: rect.top, 
-      left: rect.right + 8 
-    });
-    setHoveredItem(itemKey);
+  // Handle sidebar hover
+  const handleSidebarMouseEnter = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    setSidebarHovered(true);
+    setCollapsed(false);
   };
 
-  const renderFlyout = (item: NavItem) => {
-    if (!item.children || !collapsed || hoveredItem !== item.href) return null;
+  const handleSidebarMouseLeave = () => {
+    hoverTimeoutRef.current = setTimeout(() => {
+      if (!isHovering) {
+        setSidebarHovered(false);
+        setCollapsed(true);
+        setHoveredItem(null);
+      }
+    }, 200);
+  };
 
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (hoverTimeoutRef.current) {
+        clearTimeout(hoverTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Update CSS variable for sidebar width
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--sidebar-width',
+      collapsed ? '4rem' : '18rem'
+    );
+  }, [collapsed]);
+
+  const itemClass = (active: boolean) =>
+    cn(
+      "flex items-center gap-3 px-4 py-2.5 transition-all cursor-pointer",
+      collapsed ? "justify-center px-2" : "",
+      active
+        ? "bg-slate-800 text-white font-medium"
+        : "text-gray-900 hover:bg-gray-100"
+    );
+
+  const labelClass = cn(
+    "text-xs font-semibold text-gray-600 uppercase tracking-wider px-4 py-2 flex items-center justify-between"
+  );
+
+  const handleItemHover = (item: any, event: React.MouseEvent<HTMLDivElement>) => {
+    if (item.children && item.children.length > 0) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      setHoveredItem(item.href);
+      setFlyoutPosition({
+        top: rect.top,
+        left: collapsed ? rect.right + 8 : rect.right + 8,
+      });
+    }
+  };
+
+  const handleItemLeave = () => {
+    setTimeout(() => {
+      if (!isHovering && !sidebarHovered) {
+        setHoveredItem(null);
+      }
+    }, 100);
+  };
+
+  const toggleItemExpansion = (href: string) => {
+    setExpandedItems(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(href)) {
+        newSet.delete(href);
+      } else {
+        newSet.add(href);
+      }
+      return newSet;
+    });
+  };
+
+  const renderFlyout = (items: any[]) => {
     return (
       <div
-        className="fixed bg-[#1e293b] border border-gray-700 rounded-2xl shadow-2xl p-2 min-w-[220px] z-[60] animate-in fade-in slide-in-from-left-2"
-        style={{ 
-          top: flyoutPosition.top, 
-          left: flyoutPosition.left 
+        className="fixed bg-white border border-gray-200 shadow-xl p-2 z-60 min-w-[240px]"
+        style={{
+          top: `${flyoutPosition.top}px`,
+          left: `${flyoutPosition.left}px`,
         }}
-        onMouseEnter={() => setHoveredItem(item.href)}
-        onMouseLeave={() => setHoveredItem(null)}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => {
+          setIsHovering(false);
+          setHoveredItem(null);
+        }}
       >
-        <div className="px-2 py-1 mb-1">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-            {item.title}
-          </p>
-        </div>
         <div className="space-y-0.5">
-          {item.children.map((child) => (
+          {items.map((child) => (
             <div key={child.href}>
-              {renderFlyoutItem(child)}
+              <Link href={child.href} className={itemClass(isActive(child.href))}>
+                {child.icon && <child.icon className="h-4 w-4" />}
+                <span style={{color: isActive(child.href) ? '#fff' : '#1e40af'}} className="text-sm">{child.title}</span>
+              </Link>
+              {child.children && child.children.length > 0 && (
+                <div className="ml-6 mt-0.5 space-y-0.5">
+                  {child.children.map((subChild: any) => (
+                    <Link
+                      key={subChild.href}
+                      href={subChild.href}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 text-sm transition-all",
+                        isActive(subChild.href)
+                          ? "bg-slate-800 text-white font-medium"
+                          : "text-gray-900 hover:bg-gray-100"
+                      )}
+                    >
+                      {subChild.icon && <subChild.icon className="h-3 w-3" />}
+                      <span style={{color: isActive(subChild.href) ? '#fff' : '#1e40af'}}>{subChild.title}</span>
+                    </Link>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -81,243 +159,215 @@ export function Sidebar() {
     );
   };
 
-  const renderFlyoutItem = (item: NavItem): JSX.Element => {
-    const Icon = item.icon;
-    const hasChildren = item.children && item.children.length > 0;
-
-    if (hasChildren) {
-      return (
-        <div className="group/submenu relative">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-300 hover:bg-gray-700/50 hover:text-white transition-all cursor-pointer">
-            <Icon className="h-4 w-4 flex-shrink-0" />
-            <span className="flex-1">{item.title}</span>
-            <ChevronRight className="h-4 w-4" />
-          </div>
-          <div className="hidden group-hover/submenu:block absolute left-full top-0 ml-2">
-            <div className="bg-[#1e293b] border border-gray-700 rounded-2xl shadow-2xl p-2 min-w-[200px]">
-              <div className="space-y-0.5">
-                {item.children!.map((child) => renderFlyoutItem(child))}
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    return (
-      <Link
-        href={item.href}
-        className={cn(
-          "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
-          isActive(item.href)
-            ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium"
-            : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
-        )}
-        onClick={() => {
-          setMobileOpen(false);
-        ref={sidebarRef}
-        className={cn(
-          "fixed top-0 left-0 h-full bg-[#1e293b] border-r border-gray-700 z-50 flex flex-col",
-          "transition-all duration-300 rounded-r-3xl",
-          collapsed && !isHovering ? "w-20" : "w-72",
-          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
-        )}
-        style={{ "--sidebar-width": (collapsed && !isHovering) ? "5rem" : "18rem" } as any}
-        onMouseEnter={() => setIsHovering(true)}
-        onMouseLeave={() => {
-          setIsHovering(false);
-          setHoveredItem(null);
-        }}
+  return (
+    <>
+      {/* Mobile Toggle */}
+      <Button
+        variant="ghost"
+        size="icon"
+        className="md:hidden fixed top-4 left-4 z-[60] bg-gray-800 text-white hover:bg-gray-700"
+        onClick={() => setMobileOpen(!mobileOpen)}
       >
-        {/* Header */}
-        <div className="relative p-4 border-b border-gray-700 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-            <User className="h-6 w-6 text-white" />
-          </div>
-          {(!collapsed || isHovering) && (
-            <div className="flex-1">
-              <div className="font-bold text-white text-sm">Kate Russell</div>
-              <div className="text-xs text-gray-400">Project Manager</div>
-            </div>
-          )}
-          <button
-            className="text-gray-400 hover:text-white p-1.5 hover:bg-gray-700 rounded-lg transition-all"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-5 w-5" />
-            ) : (
-              <ChevronLeft className="h-5 w-5" />
-            )}
-          </button>
-        </div>
+        {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+      </Button>
 
-        {/* Search */}
-        {(!collapsed || isHovering) && (
-          <div className="p-3 border-b border-gray-700">
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="Search"
-                className="w-full bg-gray-800 text-gray-200 text-sm px-3 py-2.5 rounded-xl border border-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-gray-500 transition-all"
-              />
-              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-xs text-gray-500 bg-gray-700 rounded border border-gray-600">
-                ⌘F
-              </kbd>
-            </div>
-          </div>
-        )}
-
-        {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
-          {NAV.map((group: NavGroup) => (
-            <div key={group.label}>
-              {(!collapsed || isHovering) && <div className={labelClass}>{group.label}</div>}
-              <div className="space-y-1">
-                {group.items.map((item) => renderNavItem(item))}
-              </div>
-            </div>
-          ))}
-        </nav>
-
-        {/* Footer */}
-        <div className="border-t border-gray-700">
-          {(!collapsed || isHovering) && (
-            <>
-              <button className="flex items-center gap-3 px-4 py-3 w-full hover:bg-gray-700/50 text-gray-300 hover:text-white transition-all rounded-xl mx-2 my-2">
-                <span className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-lg">
-                  HC
-                </span>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium">Help Center</div>
-                  <div className="text-xs text-gray-400">Answers here</div>
-                </div>
-                <ChevronRight className="h-4 w-4" />
-              </button>
-
-              <button 
-                className="flex items-center gap-3 px-4 py-2 w-full hover:bg-gray-700/50 text-gray-300 hover:text-white transition-all text-sm rounded-xl mx-2 mb-2"
-                onClick={() => setCollapsed(!collapsed)}
-              >
-                <span className="text-gray-400">▾</span>
-                <span>Collapse menu</span>
-              </button>
-            </>
-          )}
-          {collapsed && !isHovering && (
-            <button
-              className="flex items-center justify-center py-4 w-full hover:bg-gray-700/50 text-gray-300 hover:text-white transition-all rounded-x
-          onClick={() => setMobileOpen(false)}
-        />
-      )}
-
+      {/* Sidebar */}
       <aside
+        ref={sidebarRef}
+        onMouseEnter={handleSidebarMouseEnter}
+        onMouseLeave={handleSidebarMouseLeave}
         className={cn(
-          "fixed top-0 left-0 h-full bg-[#1e293b] border-r border-gray-700 z-50 flex flex-col",
-          "transition-all duration-300",
-          collapsed ? "w-20" : "w-72",
-          mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          "fixed top-0 left-0 h-full bg-white border-r border-gray-200 z-50 flex flex-col shadow-sm overflow-hidden",
+          "transition-all duration-300 ease-in-out",
+          collapsed ? "w-16" : "w-72",
+          // Mobile: hidden by default, visible when mobileOpen is true
+          // Desktop (md and up): always visible
+          "max-md:-translate-x-full",
+          mobileOpen && "max-md:translate-x-0",
+          "md:translate-x-0"
         )}
-        style={{ "--sidebar-width": collapsed ? "5rem" : "18rem" } as any}
       >
         {/* Header */}
-        <div className="relative p-4 border-b border-gray-700 flex items-center gap-3">
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <User className="h-6 w-6 text-white" />
-          </div>
-          {!collapsed && (
-            <div className="flex-1">
-              <div className="font-bold text-white text-sm">Kate Russell</div>
-              <div className="text-xs text-gray-400">Project Manager</div>
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
+                <span className="text-orange-500 font-bold text-2xl">🔲</span>
+              </div>
+              {!collapsed && (
+                <div>
+                  <h1 style={{color: '#1e3a8a'}} className="text-gray-800 font-bold text-base">DSD Finance</h1>
+                  <p style={{color: '#3b82f6'}} className="text-gray-500 text-xs">Proprietary Software</p>
+                </div>
+              )}
             </div>
-          )}
-          <button
-            className="text-gray-400 hover:text-white p-1"
-            onClick={() => setCollapsed(!collapsed)}
-          >
-            {collapsed ? (
-              <ChevronRight className="h-5 w-5" />
-            ) : (
-              <ChevronLeft className="h-5 w-5" />
-            )}
-          </button>
+          </div>
         </div>
+
+        {/* Country Selector */}
+        {!collapsed && (
+          <div className="p-4 border-b border-gray-200">
+            <div className="flex items-center gap-2">
+              <button className="flex items-center justify-center w-10 h-8 border border-gray-300 hover:bg-gray-50 transition-colors">
+                <span className="text-lg">🇪🇸</span>
+              </button>
+              <button className="flex items-center justify-center w-10 h-8 border border-gray-300 hover:bg-gray-50 transition-colors">
+                <span className="text-lg">🇺🇸</span>
+              </button>
+              <button className="flex items-center justify-center w-10 h-8 bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+                <span className="text-sm">🌐</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Search */}
         {!collapsed && (
-          <div className="p-3 border-b border-gray-700">
+          <div className="p-4">
             <div className="relative">
-              <input
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
                 type="text"
-                placeholder="Search"
-                className="w-full bg-gray-800 text-gray-200 text-sm px-3 py-2 rounded-lg border border-gray-700 focus:outline-none focus:border-blue-500 placeholder:text-gray-500"
+                placeholder="Search..."
+                className="pl-10 bg-gray-50 border-gray-300 text-gray-800 placeholder:text-gray-400 focus:border-blue-500"
               />
-              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-                ⌘F
-              </kbd>
             </div>
           </div>
         )}
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 space-y-1 overflow-y-auto custom-scrollbar">
-          {NAV.map((group: NavGroup) => (
-            <div key={group.label}>
-              {!collapsed && <div className={labelClass}>{group.label}</div>}
-              <div className="space-y-1">
-                {group.items.map((item) => renderNavItem(item))}
+        <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-1">
+          {/* Quick Access */}
+          {!collapsed && (
+            <div className={labelClass}>
+              <span style={{color: '#3b82f6'}}>Quick Access</span>
+            </div>
+          )}
+          <Link href="/" className={itemClass(isActive("/"))} title={collapsed ? "Hub" : ""}>
+            <Home className="h-4 w-4 flex-shrink-0" />
+            {!collapsed && <span style={{color: isActive("/") ? '#fff' : '#1e40af'}}>Hub</span>}
+          </Link>
+
+          {/* Main Navigation Groups */}
+          {NAV.map((group) => (
+            <div key={group.label} className="mt-4">
+              {!collapsed && (
+                <div className={labelClass}>
+                  <span style={{color: '#3b82f6'}}>{group.label}</span>
+                </div>
+              )}
+
+              <div className="space-y-0.5">
+                {group.items.map((item) => (
+                  <div key={item.href}>
+                    <div
+                      onMouseEnter={(e) => collapsed ? handleItemHover(item, e) : undefined}
+                      onMouseLeave={collapsed ? handleItemLeave : undefined}
+                      onClick={() => !collapsed && item.children && item.children.length > 0 ? toggleItemExpansion(item.href) : undefined}
+                    >
+                      {item.children && item.children.length > 0 ? (
+                        <div className={itemClass(isActive(item.href))} title={collapsed ? item.title : ""}>
+                          {item.icon && <item.icon className="h-4 w-4 flex-shrink-0" />}
+                          {!collapsed && (
+                            <>
+                              <span style={{color: isActive(item.href) ? '#fff' : '#1e40af'}} className="flex-1">{item.title}</span>
+                              <ChevronDown 
+                                className={cn(
+                                  "h-4 w-4 transition-transform duration-200",
+                                  expandedItems.has(item.href) ? "rotate-180" : ""
+                                )} 
+                              />
+                            </>
+                          )}
+                        </div>
+                      ) : (
+                        <Link href={item.href} className={itemClass(isActive(item.href))} title={collapsed ? item.title : ""}>
+                          {item.icon && <item.icon className="h-4 w-4 flex-shrink-0" />}
+                          {!collapsed && <span style={{color: isActive(item.href) ? '#fff' : '#1e40af'}}>{item.title}</span>}
+                        </Link>
+                      )}
+                    </div>
+                    
+                    {/* Inline expanded children when sidebar is expanded */}
+                    {!collapsed && item.children && item.children.length > 0 && expandedItems.has(item.href) && (
+                      <div className="ml-8 mt-1 space-y-0.5">
+                        {item.children.map((child: any) => (
+                          <div key={child.href}>
+                            <Link 
+                              href={child.href} 
+                              className={cn(
+                                "flex items-center gap-2 px-3 py-2 text-sm transition-all rounded-md",
+                                isActive(child.href)
+                                  ? "bg-slate-800 text-white font-medium"
+                                  : "text-gray-700 hover:bg-gray-100"
+                              )}
+                            >
+                              {child.icon && <child.icon className="h-3.5 w-3.5" />}
+                              <span style={{color: isActive(child.href) ? '#fff' : '#1e40af'}}>{child.title}</span>
+                            </Link>
+                            
+                            {/* Third level children */}
+                            {child.children && child.children.length > 0 && (
+                              <div className="ml-6 mt-0.5 space-y-0.5">
+                                {child.children.map((subChild: any) => (
+                                  <Link
+                                    key={subChild.href}
+                                    href={subChild.href}
+                                    className={cn(
+                                      "flex items-center gap-2 px-3 py-1.5 text-xs transition-all rounded-md",
+                                      isActive(subChild.href)
+                                        ? "bg-slate-800 text-white font-medium"
+                                        : "text-gray-600 hover:bg-gray-100"
+                                    )}
+                                  >
+                                    {subChild.icon && <subChild.icon className="h-3 w-3" />}
+                                    <span style={{color: isActive(subChild.href) ? '#fff' : '#1e40af'}}>{subChild.title}</span>
+                                  </Link>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
             </div>
           ))}
         </nav>
 
-        {/* Footer */}
-        <div className="border-t border-gray-700">
-          {!collapsed && (
-            <>
-              <button className="flex items-center gap-3 px-4 py-3 w-full hover:bg-gray-700 text-gray-300 hover:text-white transition-all">
-                <span className="h-8 w-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-bold">
-                  HC
-                </span>
-                <div className="flex-1 text-left">
-                  <div className="text-sm font-medium">Help Center</div>
-                  <div className="text-xs text-gray-400">Answers here</div>
-                </div>
-                <ChevronRight className="h-4 w-4" />
-              </button>
+        {/* Flyout Menu - only in collapsed mode */}
+        {collapsed && hoveredItem && NAV.flatMap((g) => g.items).find((i) => i.href === hoveredItem)?.children && (
+          renderFlyout(NAV.flatMap((g) => g.items).find((i) => i.href === hoveredItem)!.children!)
+        )}
+        {hoveredItem && NAV.flatMap((g) => g.items).find((i) => i.href === hoveredItem)?.children && (
+          renderFlyout(NAV.flatMap((g) => g.items).find((i) => i.href === hoveredItem)!.children!)
+        )}
 
-              <button className="flex items-center gap-3 px-4 py-3 w-full hover:bg-gray-700 text-gray-300 hover:text-white transition-all text-sm">
-                <span className="text-gray-400">▾</span>
-                <span>Collapse menu</span>
-              </button>
-            </>
-          )}
-          {collapsed && (
-            <button
-              className="flex items-center justify-center py-4 w-full hover:bg-gray-700 text-gray-300 hover:text-white transition-all"
-              onClick={() => setCollapsed(false)}
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
+        {/* Footer - User Profile */}
+        <div className="p-4 border-t border-gray-200">
+          {!collapsed ? (
+            <div className="text-center">
+              <p className="text-xs text-gray-500 font-medium">DSD Finance Hub</p>
+              <p className="text-[10px] text-gray-400 mt-1">Developed by DSD Corporate Team</p>
+              <p className="text-xs text-gray-400 mt-1">© 2025</p>
+            </div>
+          ) : (
+            <div className="text-center">
+              <span className="text-orange-500 font-bold text-xl">🔲</span>
+            </div>
           )}
         </div>
       </aside>
 
-      <style jsx global>{`
-        .custom-scrollbar::-webkit-scrollbar {
-          width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-          background: #1e293b;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-          background: #475569;
-          border-radius: 3px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-          background: #64748b;
-        }
-      `}</style>
+      {/* Mobile Overlay */}
+      {mobileOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
     </>
   );
 }
