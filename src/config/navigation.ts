@@ -49,39 +49,46 @@ export const NAV: NavGroup[] = [
     label: "Executive Insights",
     items: [
       {
-        title: "Overview Dashboard",
-        href: "/dashboard",
-        icon: LayoutDashboard
-      },
-      {
-        title: "Performance Analytics",
-        href: "/executive/performance",
-        icon: Activity
-      },
-      {
-        title: "P&L",
-        href: "/pnl",
-        icon: TrendingUp
-      },
-      {
-        title: "Cash Flow Summary",
-        href: "/executive/cash-flow",
-        icon: TrendingDown
-      },
-      {
-        title: "KPIs & Ratios",
-        href: "/executive/kpis",
-        icon: Target
-      },
-      {
-        title: "Forecasts",
-        href: "/executive/forecasts",
-        icon: LineChart
-      },
-      {
-        title: "Consolidated Reports",
-        href: "/executive/reports",
-        icon: FileText
+        title: "Executive",
+        href: "/executive",
+        icon: LayoutDashboard,
+        children: [
+          {
+            title: "Overview Dashboard",
+            href: "/dashboard",
+            icon: LayoutDashboard
+          },
+          {
+            title: "Performance Analytics",
+            href: "/executive/performance",
+            icon: Activity
+          },
+          {
+            title: "P&L",
+            href: "/pnl",
+            icon: TrendingUp
+          },
+          {
+            title: "Cash Flow Summary",
+            href: "/executive/cash-flow",
+            icon: TrendingDown
+          },
+          {
+            title: "KPIs & Ratios",
+            href: "/executive/kpis",
+            icon: Target
+          },
+          {
+            title: "Forecasts",
+            href: "/executive/forecasts",
+            icon: LineChart
+          },
+          {
+            title: "Consolidated Reports",
+            href: "/executive/reports",
+            icon: FileText
+          }
+        ]
       }
     ]
   },

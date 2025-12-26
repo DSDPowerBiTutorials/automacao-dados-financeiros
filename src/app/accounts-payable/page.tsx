@@ -173,7 +173,7 @@ export default function AccountsPayableOverviewPage() {
                     <p className="text-sm text-gray-600">Supplier {i}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">€{(Math.random() * 5000 + 1000).toFixed(2)}</p>
+                    <p className="font-bold">€{[2450.50, 3820.75, 1950.30, 4200.90][i-1]}</p>
                     <p className="text-xs text-gray-500">Due: Dec {20 + i}</p>
                   </div>
                 </div>
@@ -196,7 +196,7 @@ export default function AccountsPayableOverviewPage() {
                     <p className="text-sm text-gray-600">Vendor {i}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">€{(Math.random() * 3000 + 500).toFixed(2)}</p>
+                    <p className="font-bold">€{[1850.25, 2650.80, 890.50, 3100.75][i-1]}</p>
                     <p className="text-xs text-orange-600">Due: Dec {22 + i}</p>
                   </div>
                 </div>
