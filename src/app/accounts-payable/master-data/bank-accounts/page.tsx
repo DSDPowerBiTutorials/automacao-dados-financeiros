@@ -176,6 +176,9 @@ export default function BankAccountsPage() {
         is_active: formData.is_active,
       };
 
+      console.log("Saving bank account data:", dataToSave);
+      console.log("Editing account ID:", editingAccount?.id);
+
       if (editingAccount) {
         const { error } = await supabase
           .from("bank_accounts")
@@ -183,8 +186,14 @@ export default function BankAccountsPage() {
           .eq("id", editingAccount.id);
 
         if (error) {
-          console.error("Supabase error details:", error);
-          throw new Error(error.message || "Failed to update bank account");
+          console.error("Supabase error:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            full: error
+          });
+          throw new Error(error.message || error.details || "Failed to update bank account");
         }
         toast({ title: "Success", description: "Bank account updated successfully" });
       } else {
@@ -193,8 +202,14 @@ export default function BankAccountsPage() {
           .insert([{ ...dataToSave, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
         
         if (error) {
-          console.error("Supabase error details:", error);
-          throw new Error(error.message || "Failed to create bank account");
+          console.error("Supabase error:", {
+            message: error.message,
+            details: error.details,
+            hint: error.hint,
+            code: error.code,
+            full: error
+          });
+          throw new Error(error.message || error.details || "Failed to create bank account");
         }
         toast({ title: "Success", description: "Bank account created successfully" });
       }
