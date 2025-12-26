@@ -38,6 +38,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { getMadridDate, parseMadridDate } from "@/lib/date-utils";
 
 interface BankAccount {
     id: string;
@@ -150,7 +151,7 @@ export default function PaymentsPage() {
 
     // Calculate payment summary
     const paymentSummary: PaymentSummary = useMemo(() => {
-        const today = new Date();
+        const today = getMadridDate();
         today.setHours(0, 0, 0, 0);
 
         let total_scheduled = 0;
@@ -163,7 +164,7 @@ export default function PaymentsPage() {
         let count_overdue = 0;
 
         invoices.forEach((inv) => {
-            const scheduleDate = new Date(inv.schedule_date);
+            const scheduleDate = parseMadridDate(inv.schedule_date);
             const isPaid = inv.payment_date !== null || inv.is_reconciled;
             const hasAccount = inv.bank_account_code !== null && inv.bank_account_code !== "";
             const isOverdue = scheduleDate < today && !isPaid;
@@ -226,7 +227,7 @@ export default function PaymentsPage() {
 
     // Filter invoices
     const filteredInvoices = useMemo(() => {
-        const today = new Date();
+        const today = getMadridDate();
         today.setHours(0, 0, 0, 0);
 
         return invoices.filter((inv) => {
@@ -253,7 +254,7 @@ export default function PaymentsPage() {
 
             // Status filter
             if (statusFilter !== "ALL") {
-                const scheduleDate = new Date(inv.schedule_date);
+                const scheduleDate = parseMadridDate(inv.schedule_date);
                 const isPaid = inv.payment_date !== null || inv.is_reconciled;
                 const hasAccount = inv.bank_account_code !== null && inv.bank_account_code !== "";
                 const isOverdue = scheduleDate < today && !isPaid;
@@ -269,9 +270,9 @@ export default function PaymentsPage() {
     }, [invoices, searchTerm, statusFilter, accountFilter]);
 
     const getStatusBadge = (invoice: Invoice) => {
-        const today = new Date();
+        const today = getMadridDate();
         today.setHours(0, 0, 0, 0);
-        const scheduleDate = new Date(invoice.schedule_date);
+        const scheduleDate = parseMadridDate(invoice.schedule_date);
         const isPaid = invoice.payment_date !== null || invoice.is_reconciled;
         const hasAccount = invoice.bank_account_code !== null && invoice.bank_account_code !== "";
         const isOverdue = scheduleDate < today && !isPaid;

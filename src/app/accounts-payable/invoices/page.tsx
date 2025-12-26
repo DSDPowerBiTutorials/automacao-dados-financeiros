@@ -8,20 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-
-// Helper function to format date without timezone issues
-function formatDateForDB(dateString: string): string {
-  if (!dateString) return "";
-  // Ensure date stays in YYYY-MM-DD format without timezone conversion
-  return dateString;
-}
-
-// Helper function to format date from DB for input (YYYY-MM-DD)
-function formatDateForInput(dateString: string | null | undefined): string {
-  if (!dateString) return "";
-  // Just return the date string as-is (already in YYYY-MM-DD from DB)
-  return dateString.split('T')[0];
-}
+import { 
+  formatDateForDB, 
+  formatDateForInput, 
+  getCurrentDateForDB,
+  getCurrentTimestamp 
+} from "@/lib/date-utils";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -205,8 +197,8 @@ export default function InvoicesPage() {
   const [courses, setCourses] = useState<any[]>([]);
 
   const [formData, setFormData] = useState({
-    invoice_date: new Date().toISOString().split("T")[0],
-    benefit_date: new Date().toISOString().split("T")[0],
+    invoice_date: getCurrentDateForDB(),
+    benefit_date: getCurrentDateForDB(),
     due_date: "",
     schedule_date: "",
     payment_date: "",
@@ -403,7 +395,7 @@ export default function InvoicesPage() {
         cash_impact: formData.cash_impact,
         is_intercompany: formData.is_intercompany,
         notes: formData.notes || null,
-        updated_at: new Date().toISOString(),
+        updated_at: getCurrentTimestamp(),
       };
 
       if (editingInvoice) {
@@ -417,7 +409,7 @@ export default function InvoicesPage() {
       } else {
         const { error } = await supabase.from("invoices").insert([{
           ...payload,
-          input_date: new Date().toISOString(),
+          input_date: getCurrentTimestamp(),
         }]);
 
         if (error) throw error;
@@ -441,8 +433,8 @@ export default function InvoicesPage() {
 
   function resetForm() {
     setFormData({
-      invoice_date: new Date().toISOString().split("T")[0],
-      benefit_date: new Date().toISOString().split("T")[0],
+      invoice_date: getCurrentDateForDB(),
+      benefit_date: getCurrentDateForDB(),
       due_date: "",
       schedule_date: "",
       payment_date: "",
@@ -615,7 +607,7 @@ export default function InvoicesPage() {
     try {
       const { error } = await supabase
         .from("invoices")
-        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .update({ [field]: value, updated_at: getCurrentTimestamp() })
         .eq("id", invoiceId);
 
       if (error) throw error;
@@ -986,7 +978,7 @@ export default function InvoicesPage() {
       const ws = XLSX.utils.json_to_sheet(exportData);
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Invoices");
-      XLSX.writeFile(wb, `invoices_${new Date().toISOString().split('T')[0]}.xlsx`);
+      XLSX.writeFile(wb, `invoices_${getCurrentDateForDB()}.xlsx`);
 
       toast({
         title: "Export Successful",
@@ -1087,7 +1079,7 @@ export default function InvoicesPage() {
         margin: { top: 32 },
       });
 
-      doc.save(`invoices_${new Date().toISOString().split('T')[0]}.pdf`);
+      doc.save(`invoices_${getCurrentDateForDB()}.pdf`);
 
       toast({
         title: "Export Successful",
