@@ -227,8 +227,11 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     loadInvoices();
-    loadMasterData();
   }, []);
+
+  useEffect(() => {
+    loadMasterData();
+  }, [selectedScope]);
 
   // Sincronizar form com scope global quando abrir diálogo
   useEffect(() => {
@@ -243,9 +246,24 @@ export default function InvoicesPage() {
 
   async function loadMasterData() {
     try {
+      // Build bank accounts query with scope filter
+      let bankAccountsQuery = supabase
+        .from("bank_accounts")
+        .select("*")
+        .eq("is_active", true);
+
+      // Apply scope filter for bank accounts
+      if (selectedScope === "GLOBAL") {
+        // GLOBAL: show all accounts
+        // No additional filter needed
+      } else {
+        // ES or US: show only accounts matching the scope or those that apply to all countries
+        bankAccountsQuery = bankAccountsQuery.or(`country.eq.${selectedScope},applies_to_all_countries.eq.true`);
+      }
+
       const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, entryTypesRes, financialAccountsRes, coursesRes] = await Promise.all([
         supabase.from("providers").select("*").eq("is_active", true),
-        supabase.from("bank_accounts").select("*").eq("is_active", true),
+        bankAccountsQuery,
         supabase.from("payment_methods").select("*").eq("is_active", true),
         supabase.from("cost_types").select("*").eq("is_active", true),
         supabase.from("dep_cost_types").select("*").eq("is_active", true),

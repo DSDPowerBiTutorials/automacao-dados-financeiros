@@ -766,7 +766,7 @@ export default function BraintreeEURPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" size="sm" variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Settings className="h-4 w-4" />
                   Settings
                 </Button>
@@ -795,7 +795,7 @@ export default function BraintreeEURPage() {
                   id="file-upload-braintree"
                 />
                 <label htmlFor="file-upload-braintree">
-                  <Button variant="outline" size="sm" variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" className="gap-2" asChild>
+                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload CSV

@@ -7,13 +7,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
-    Select,
-    SelectContent,
-    SelectItem,
-    SelectTrigger,
-    SelectValue,
-} from "@/components/ui/select";
-import {
     Table,
     TableBody,
     TableCell,
@@ -21,21 +14,14 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Wallet,
+    TrendingDown,
+    TrendingUp,
     Calendar,
     AlertCircle,
-    TrendingUp,
-    TrendingDown,
-    Search,
-    Filter,
-    DollarSign,
-    Clock,
     CheckCircle2,
-    XCircle,
     BarChart3,
-    PieChart,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalScope } from "@/contexts/global-scope-context";
@@ -43,7 +29,6 @@ import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getMadridDate, parseMadridDate } from "@/lib/date-utils";
 
 interface BankAccount {
-    id: string;
     code: string;
     name: string;
     bank_name: string;
@@ -55,180 +40,179 @@ interface BankAccount {
 }
 
 interface Invoice {
-    id: string;
+    id: number;
     invoice_number: string;
     invoice_date: string;
-    schedule_date: string;
     due_date: string;
+    schedule_date: string | null;
     payment_date: string | null;
     invoice_amount: number;
     currency: string;
     provider_code: string;
     bank_account_code: string | null;
-    payment_status: string | null;
-    description: string;
-    scope: "ES" | "US";
+    scope: string;
     is_reconciled: boolean;
 }
 
-interface PaymentSummary {
-    total_scheduled: number;
-    total_unscheduled: number;
-    total_paid: number;
-    total_overdue: number;
-    count_scheduled: number;
-    count_unscheduled: number;
-    count_paid: number;
-    count_overdue: number;
-}
-
-interface BankAccountBalance {
+interface AccountBalance {
     account: BankAccount;
     current_balance: number;
     scheduled_payments: number;
+    paid_in_period: number;
     projected_balance: number;
-    payment_count: number;
 }
 
 export default function PaymentsPage() {
     const { selectedScope } = useGlobalScope();
     const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
+    const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
     const [loading, setLoading] = useState(true);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [statusFilter, setStatusFilter] = useState<"ALL" | "SCHEDULED" | "UNSCHEDULED" | "PAID" | "OVERDUE">("ALL");
-    const [accountFilter, setAccountFilter] = useState<string>("ALL");
     const { toast } = useToast();
+
+    // Date range filter
+    const today = useMemo(() => getMadridDate(), []);
+    const [startDate, setStartDate] = useState(() => {
+        const d = new Date(today);
+        d.setDate(d.getDate() - 30); // Last 30 days by default
+        return d.toISOString().split('T')[0];
+    });
+    const [endDate, setEndDate] = useState(today.toISOString().split('T')[0]);
+    const [dateFilterType, setDateFilterType] = useState<"due_date" | "schedule_date" | "invoice_date" | "payment_date">("due_date");
 
     useEffect(() => {
         loadData();
     }, [selectedScope]);
 
-    const loadData = async () => {
-        try {
-            setLoading(true);
-
-            // Load bank accounts
-            let accountsQuery = supabase
-                .from("bank_accounts")
-                .select("*")
-                .eq("is_active", true);
-
-            // Load invoices
-            let invoicesQuery = supabase
-                .from("invoices")
-                .select("*");
-
-            // Apply scope filter
-            if (selectedScope === "GLOBAL") {
-                // For GLOBAL view, load all accounts and invoices
-                // Bank accounts filter by country or applies_to_all_countries
-                accountsQuery = accountsQuery.or("country.in.(ES,US),applies_to_all_countries.eq.true");
-                invoicesQuery = invoicesQuery.in("scope", ["ES", "US"]);
-            } else {
-                // Filter bank accounts by country matching scope
-                accountsQuery = accountsQuery.or(`country.eq.${selectedScope},applies_to_all_countries.eq.true`);
-                invoicesQuery = invoicesQuery.eq("scope", selectedScope);
-            }
-
-            // Order queries
-            accountsQuery = accountsQuery.order("code", { ascending: true });
-            invoicesQuery = invoicesQuery.order("due_date", { ascending: true, nullsFirst: false });
-
-            const [accountsResult, invoicesResult] = await Promise.all([
-                accountsQuery,
-                invoicesQuery,
-            ]);
-
-            if (accountsResult.error) {
-                console.error("Bank accounts error:", accountsResult.error);
-                throw accountsResult.error;
-            }
-            if (invoicesResult.error) {
-                console.error("Invoices error:", invoicesResult.error);
-                throw invoicesResult.error;
-            }
-
-            console.log(`✅ Loaded ${accountsResult.data?.length || 0} bank accounts`);
-            console.log(`✅ Loaded ${invoicesResult.data?.length || 0} invoices`);
-
-            setBankAccounts(accountsResult.data || []);
-            setInvoices(invoicesResult.data || []);
-        } catch (error) {
-            console.error("Error loading data:", error);
-            toast({
-                title: "Error",
-                description: "Failed to load payment data. Please check the console for details.",
-                variant: "destructive",
-            });
-        } finally {
-            setLoading(false);
+    // Filter bank accounts by scope
+    const visibleBankAccounts = useMemo(() => {
+        if (selectedScope === "GLOBAL") {
+            return bankAccounts;
         }
-    };
+        return bankAccounts.filter(
+            (acc) => acc.country === selectedScope || acc.applies_to_all_countries
+        );
+    }, [bankAccounts, selectedScope]);
 
-    // Calculate payment summary
-    const paymentSummary: PaymentSummary = useMemo(() => {
-        const today = getMadridDate();
-        today.setHours(0, 0, 0, 0);
+    // Filter invoices by scope and date range
+    const filteredInvoices = useMemo(() => {
+        return allInvoices.filter((inv) => {
+            // Scope filter
+            if (selectedScope !== "GLOBAL" && inv.scope !== selectedScope) {
+                return false;
+            }
 
-        let total_scheduled = 0;
-        let total_unscheduled = 0;
-        let total_paid = 0;
-        let total_overdue = 0;
-        let count_scheduled = 0;
-        let count_unscheduled = 0;
-        let count_paid = 0;
-        let count_overdue = 0;
+            // Get the date to compare based on filter type
+            let dateToCompare: string | null = null;
+            switch (dateFilterType) {
+                case "due_date":
+                    dateToCompare = inv.due_date;
+                    break;
+                case "schedule_date":
+                    dateToCompare = inv.schedule_date;
+                    break;
+                case "invoice_date":
+                    dateToCompare = inv.invoice_date;
+                    break;
+                case "payment_date":
+                    dateToCompare = inv.payment_date;
+                    break;
+            }
 
-        invoices.forEach((inv) => {
-            const scheduleDate = parseMadridDate(inv.schedule_date);
+            if (!dateToCompare) return false;
+
+            const compareDate = parseMadridDate(dateToCompare);
+            const startD = parseMadridDate(startDate);
+            const endD = parseMadridDate(endDate);
+
+            return compareDate >= startD && compareDate <= endD;
+        });
+    }, [allInvoices, selectedScope, startDate, endDate, dateFilterType]);
+
+    // Separate by status
+    const { pendingPayments, scheduledPayments, paidInPeriod } = useMemo(() => {
+        const pending: Invoice[] = [];
+        const scheduled: Invoice[] = [];
+        const paid: Invoice[] = [];
+
+        filteredInvoices.forEach((inv) => {
             const isPaid = inv.payment_date !== null || inv.is_reconciled;
-            const hasAccount = inv.bank_account_code !== null && inv.bank_account_code !== "";
-            const isOverdue = scheduleDate < today && !isPaid;
 
             if (isPaid) {
-                total_paid += inv.invoice_amount;
-                count_paid++;
-            } else if (isOverdue) {
-                total_overdue += inv.invoice_amount;
-                count_overdue++;
-            } else if (hasAccount) {
-                total_scheduled += inv.invoice_amount;
-                count_scheduled++;
+                paid.push(inv);
+            } else if (inv.schedule_date) {
+                scheduled.push(inv);
             } else {
-                total_unscheduled += inv.invoice_amount;
-                count_unscheduled++;
+                pending.push(inv);
+            }
+        });
+
+        return { pendingPayments: pending, scheduledPayments: scheduled, paidInPeriod: paid };
+    }, [filteredInvoices]);
+
+    // Calculate totals
+    const totals = useMemo(() => {
+        const pending = pendingPayments.reduce((sum, inv) => sum + inv.invoice_amount, 0);
+        const scheduled = scheduledPayments.reduce((sum, inv) => sum + inv.invoice_amount, 0);
+        const paid = paidInPeriod.reduce((sum, inv) => sum + inv.invoice_amount, 0);
+
+        // Count invoices with due dates inside/outside period
+        const todayDate = parseMadridDate(today.toISOString().split('T')[0]);
+        const startD = parseMadridDate(startDate);
+        const endD = parseMadridDate(endDate);
+        const isPastPeriod = endD < todayDate;
+
+        let duingInsidePeriod = 0;
+        let dueOutsidePeriod = 0;
+
+        [...pendingPayments, ...scheduledPayments].forEach((inv) => {
+            if (inv.due_date) {
+                const dueDate = parseMadridDate(inv.due_date);
+                const isInPeriod = dueDate >= startD && dueDate <= endD;
+
+                // If past period and invoice is paid, don't count it in due calculations
+                if (isPastPeriod && (inv.payment_date || inv.is_reconciled)) {
+                    return;
+                }
+
+                if (isInPeriod) {
+                    duingInsidePeriod++;
+                } else {
+                    dueOutsidePeriod++;
+                }
             }
         });
 
         return {
-            total_scheduled,
-            total_unscheduled,
-            total_paid,
-            total_overdue,
-            count_scheduled,
-            count_unscheduled,
-            count_paid,
-            count_overdue,
+            pending,
+            scheduled,
+            paid,
+            dueInsidePeriod: duingInsidePeriod,
+            dueOutsidePeriod: dueOutsidePeriod
         };
-    }, [invoices]);
+    }, [pendingPayments, scheduledPayments, paidInPeriod, startDate, endDate, today]);
 
-    // Calculate bank account balances
-    const accountBalances: BankAccountBalance[] = useMemo(() => {
-        return bankAccounts.map((account) => {
-            const accountInvoices = invoices.filter(
-                (inv) =>
-                    inv.bank_account_code === account.code &&
-                    !inv.payment_date &&
-                    !inv.is_reconciled
+    // Account balances
+    const accountBalances: AccountBalance[] = useMemo(() => {
+        return visibleBankAccounts.map((account) => {
+            const accountPending = pendingPayments.filter(
+                (inv) => inv.bank_account_code === account.code
+            );
+            const accountScheduled = scheduledPayments.filter(
+                (inv) => inv.bank_account_code === account.code
+            );
+            const accountPaid = paidInPeriod.filter(
+                (inv) => inv.bank_account_code === account.code
             );
 
-            const scheduled_payments = accountInvoices.reduce(
+            const scheduled_payments = [...accountPending, ...accountScheduled].reduce(
+                (sum, inv) => sum + inv.invoice_amount,
+                0
+            );
+            const paid_in_period = accountPaid.reduce(
                 (sum, inv) => sum + inv.invoice_amount,
                 0
             );
 
-            // For now, current_balance is 0 (will be updated later with real data)
             const current_balance = account.current_balance || 0;
             const projected_balance = current_balance - scheduled_payments;
 
@@ -236,661 +220,637 @@ export default function PaymentsPage() {
                 account,
                 current_balance,
                 scheduled_payments,
+                paid_in_period,
                 projected_balance,
-                payment_count: accountInvoices.length,
             };
         });
-    }, [bankAccounts, invoices]);
+    }, [visibleBankAccounts, pendingPayments, scheduledPayments, paidInPeriod]);
 
-    // Separate scheduled and unscheduled invoices
-    const { scheduledInvoices, unscheduledInvoices } = useMemo(() => {
-        const scheduled: Invoice[] = [];
-        const unscheduled: Invoice[] = [];
-
-        const today = getMadridDate();
-        today.setHours(0, 0, 0, 0);
-
-        invoices.forEach((inv) => {
-            const hasAccount = inv.bank_account_code !== null && inv.bank_account_code !== "";
-
-            if (hasAccount) {
-                scheduled.push(inv);
-            } else {
-                unscheduled.push(inv);
-            }
-        });
-
-        return { scheduledInvoices: scheduled, unscheduledInvoices: unscheduled };
-    }, [invoices]);
-
-    // Filter scheduled invoices
-    const filteredScheduledInvoices = useMemo(() => {
-        const today = getMadridDate();
-        today.setHours(0, 0, 0, 0);
-
-        return scheduledInvoices.filter((inv) => {
-            // Search filter
-            if (searchTerm) {
-                const search = searchTerm.toLowerCase();
-                if (
-                    !inv.invoice_number?.toLowerCase().includes(search) &&
-                    !inv.provider_code?.toLowerCase().includes(search) &&
-                    !inv.description?.toLowerCase().includes(search)
-                ) {
-                    return false;
-                }
-            }
-
-            // Account filter
-            if (accountFilter !== "ALL" && accountFilter !== "NONE") {
-                if (inv.bank_account_code !== accountFilter) return false;
-            }
-
-            // Status filter
-            if (statusFilter !== "ALL" && statusFilter !== "UNSCHEDULED") {
-                const scheduleDate = parseMadridDate(inv.schedule_date);
-                const isPaid = inv.payment_date !== null || inv.is_reconciled;
-                const isOverdue = scheduleDate < today && !isPaid;
-
-                if (statusFilter === "PAID" && !isPaid) return false;
-                if (statusFilter === "OVERDUE" && !isOverdue) return false;
-                if (statusFilter === "SCHEDULED" && (isPaid || isOverdue)) return false;
-            }
-
-            return true;
-        });
-    }, [scheduledInvoices, searchTerm, statusFilter, accountFilter]);
-
-    // Filter unscheduled invoices
-    const filteredUnscheduledInvoices = useMemo(() => {
-        return unscheduledInvoices.filter((inv) => {
-            // Search filter
-            if (searchTerm) {
-                const search = searchTerm.toLowerCase();
-                if (
-                    !inv.invoice_number?.toLowerCase().includes(search) &&
-                    !inv.provider_code?.toLowerCase().includes(search) &&
-                    !inv.description?.toLowerCase().includes(search)
-                ) {
-                    return false;
-                }
-            }
-
-            // Status filter - only show unscheduled if filter is ALL or UNSCHEDULED
-            if (statusFilter !== "ALL" && statusFilter !== "UNSCHEDULED") {
-                return false;
-            }
-
-            return true;
-        });
-    }, [unscheduledInvoices, searchTerm, statusFilter]);
-
-    const getStatusBadge = (invoice: Invoice) => {
-        const today = getMadridDate();
-        today.setHours(0, 0, 0, 0);
-        const scheduleDate = parseMadridDate(invoice.schedule_date);
-        const isPaid = invoice.payment_date !== null || invoice.is_reconciled;
-        const hasAccount = invoice.bank_account_code !== null && invoice.bank_account_code !== "";
-        const isOverdue = scheduleDate < today && !isPaid;
-
-        if (isPaid) {
-            return (
-                <Badge className="bg-green-100 text-green-800 hover:bg-green-100">
-                    <CheckCircle2 className="h-3 w-3 mr-1" />
-                    Paid
-                </Badge>
-            );
-        }
-        if (isOverdue) {
-            return (
-                <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-                    <XCircle className="h-3 w-3 mr-1" />
-                    Overdue
-                </Badge>
-            );
-        }
-        if (hasAccount) {
-            return (
-                <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">
-                    <Calendar className="h-3 w-3 mr-1" />
-                    Scheduled
-                </Badge>
-            );
-        }
-        return (
-            <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                <AlertCircle className="h-3 w-3 mr-1" />
-                Unscheduled
-            </Badge>
+    // Summary card stats
+    const summaryStats = useMemo(() => {
+        const totalBalance = visibleBankAccounts.reduce(
+            (sum, acc) => sum + (acc.current_balance || 0),
+            0
         );
+        const totalProjected = accountBalances.reduce(
+            (sum, ab) => sum + ab.projected_balance,
+            0
+        );
+
+        return {
+            totalBalance,
+            totalProjected,
+            projection: totalProjected - totalBalance,
+            pendingCount: pendingPayments.length,
+            scheduledCount: scheduledPayments.length,
+            paidCount: paidInPeriod.length,
+        };
+    }, [visibleBankAccounts, accountBalances, pendingPayments, scheduledPayments, paidInPeriod]);
+
+    const loadData = async () => {
+        try {
+            setLoading(true);
+
+            // Load bank accounts
+            const accountsQuery = supabase
+                .from("bank_accounts")
+                .select("code, name, bank_name, currency, country, applies_to_all_countries, current_balance, is_active")
+                .eq("is_active", true);
+
+            // Load invoices with schedule_date
+            let invoicesQuery = supabase
+                .from("invoices")
+                .select("*")
+                .not("schedule_date", "is", null);
+
+            // Filter invoices by scope
+            if (selectedScope !== "GLOBAL") {
+                invoicesQuery = invoicesQuery.eq("scope", selectedScope);
+            }
+
+            const [accountsResult, invoicesResult] = await Promise.all([
+                accountsQuery.order("code", { ascending: true }),
+                invoicesQuery.order("schedule_date", { ascending: true }),
+            ]);
+
+            if (accountsResult.error) throw accountsResult.error;
+            if (invoicesResult.error) throw invoicesResult.error;
+
+            // Filter accounts by scope in memory
+            let filteredAccounts = accountsResult.data || [];
+            if (selectedScope !== "GLOBAL") {
+                filteredAccounts = filteredAccounts.filter(
+                    (acc) => acc.country === selectedScope || acc.applies_to_all_countries
+                );
+            }
+
+            console.log(`✅ [${selectedScope}] Loaded ${filteredAccounts.length} bank accounts (from ${accountsResult.data?.length || 0} total)`);
+            console.log(`✅ [${selectedScope}] Loaded ${invoicesResult.data?.length || 0} invoices with schedule_date`);
+
+            setBankAccounts(filteredAccounts);
+            setAllInvoices(invoicesResult.data || []);
+        } catch (error: any) {
+            console.error("Error loading data:", error);
+            console.error("Error details:", {
+                message: error?.message,
+                details: error?.details,
+                hint: error?.hint,
+                code: error?.code
+            });
+            toast({
+                title: "Error",
+                description: error?.message || "Failed to load cash data",
+                variant: "destructive",
+            });
+        } finally {
+            setLoading(false);
+        }
     };
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-[400px]">
-                <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-                    <p className="text-gray-600">Loading payment data...</p>
+            <div className="p-6 space-y-6">
+                <div className="animate-pulse space-y-4">
+                    <div className="h-32 bg-gray-200 rounded-lg"></div>
+                    <div className="grid grid-cols-4 gap-4">
+                        {[...Array(4)].map((_, i) => (
+                            <div key={i} className="h-24 bg-gray-200 rounded-lg"></div>
+                        ))}
+                    </div>
                 </div>
             </div>
         );
     }
 
-    const mainCurrency = selectedScope === "US" ? "USD" : "EUR";
-
     return (
-        <div className="space-y-6">
+        <div className="p-6 space-y-6">
             {/* Header */}
-            <div>
-                <h1 className="text-3xl font-bold text-gray-900 mb-2">Payment Management</h1>
-                <p className="text-gray-600">
-                    Monitor cash flow, bank balances, and payment schedules
-                </p>
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-3xl font-bold text-gray-900">Cash Management</h1>
+                    <p className="text-gray-500 mt-1">View cash position, scheduled payments, and account balances</p>
+                </div>
             </div>
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Scheduled Payments</CardTitle>
-                        <Calendar className="h-4 w-4 text-blue-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(paymentSummary.total_scheduled, mainCurrency)}</div>
-                        <p className="text-xs text-gray-600 mt-1">
-                            {paymentSummary.count_scheduled} invoice{paymentSummary.count_scheduled !== 1 ? "s" : ""}
-                        </p>
-                    </CardContent>
-                </Card>
+            {/* Date Filter Type Selector */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-base">Filter By Date Type</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                        <Button
+                            variant={dateFilterType === "due_date" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setDateFilterType("due_date")}
+                        >
+                            Due Date
+                        </Button>
+                        <Button
+                            variant={dateFilterType === "schedule_date" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setDateFilterType("schedule_date")}
+                        >
+                            Benefit Date (Schedule)
+                        </Button>
+                        <Button
+                            variant={dateFilterType === "invoice_date" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setDateFilterType("invoice_date")}
+                        >
+                            Invoice Date
+                        </Button>
+                        <Button
+                            variant={dateFilterType === "payment_date" ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setDateFilterType("payment_date")}
+                        >
+                            Payment Date (Input)
+                        </Button>
+                    </div>
+                </CardContent>
+            </Card>
 
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Unscheduled</CardTitle>
-                        <AlertCircle className="h-4 w-4 text-yellow-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{formatCurrency(paymentSummary.total_unscheduled, mainCurrency)}</div>
-                        <p className="text-xs text-gray-600 mt-1">
-                            {paymentSummary.count_unscheduled} invoice{paymentSummary.count_unscheduled !== 1 ? "s" : ""} without bank account
-                        </p>
-                    </CardContent>
-                </Card>
-
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Overdue</CardTitle>
-                        <XCircle className="h-4 w-4 text-red-600" />
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold text-red-600">
-                            {formatCurrency(paymentSummary.total_overdue, mainCurrency)}
+            {/* Date Range Filters */}
+            <Card>
+                <CardContent className="pt-6">
+                    <div className="space-y-4">
+                        <div className="flex items-end gap-4">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">From Date</label>
+                                <Input
+                                    type="date"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                    className="w-36"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">To Date</label>
+                                <Input
+                                    type="date"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                    className="w-36"
+                                />
+                            </div>
                         </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                            {paymentSummary.count_overdue} invoice{paymentSummary.count_overdue !== 1 ? "s" : ""} past due
+
+                        <div className="space-y-3">
+                            <div>
+                                <p className="text-sm font-medium text-gray-700 mb-2">Past Periods</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() - 30);
+                                        setStartDate(d.toISOString().split('T')[0]);
+                                        setEndDate(today.toISOString().split('T')[0]);
+                                    }}>Last 30 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() - 25);
+                                        setStartDate(d.toISOString().split('T')[0]);
+                                        setEndDate(today.toISOString().split('T')[0]);
+                                    }}>Last 25 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() - 20);
+                                        setStartDate(d.toISOString().split('T')[0]);
+                                        setEndDate(today.toISOString().split('T')[0]);
+                                    }}>Last 20 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() - 15);
+                                        setStartDate(d.toISOString().split('T')[0]);
+                                        setEndDate(today.toISOString().split('T')[0]);
+                                    }}>Last 15 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() - 10);
+                                        setStartDate(d.toISOString().split('T')[0]);
+                                        setEndDate(today.toISOString().split('T')[0]);
+                                    }}>Last 10 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() - 7);
+                                        setStartDate(d.toISOString().split('T')[0]);
+                                        setEndDate(today.toISOString().split('T')[0]);
+                                    }}>Past Week</Button>
+                                </div>
+                            </div>
+                            <div>
+                                <p className="text-sm font-medium text-gray-700 mb-2">Future Periods</p>
+                                <div className="flex flex-wrap gap-2">
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() + 7);
+                                        setStartDate(today.toISOString().split('T')[0]);
+                                        setEndDate(d.toISOString().split('T')[0]);
+                                    }}>Next Week</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() + 10);
+                                        setStartDate(today.toISOString().split('T')[0]);
+                                        setEndDate(d.toISOString().split('T')[0]);
+                                    }}>Next 10 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() + 15);
+                                        setStartDate(today.toISOString().split('T')[0]);
+                                        setEndDate(d.toISOString().split('T')[0]);
+                                    }}>Next 15 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() + 20);
+                                        setStartDate(today.toISOString().split('T')[0]);
+                                        setEndDate(d.toISOString().split('T')[0]);
+                                    }}>Next 20 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() + 25);
+                                        setStartDate(today.toISOString().split('T')[0]);
+                                        setEndDate(d.toISOString().split('T')[0]);
+                                    }}>Next 25 Days</Button>
+                                    <Button variant="outline" size="sm" onClick={() => {
+                                        const d = new Date(today);
+                                        d.setDate(d.getDate() + 30);
+                                        setStartDate(today.toISOString().split('T')[0]);
+                                        setEndDate(d.toISOString().split('T')[0]);
+                                    }}>Next 30 Days</Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Summary Cards */}
+            <div className="grid grid-cols-5 gap-4">
+                {/* Total Balance */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <Wallet className="h-4 w-4 text-blue-600" />
+                            Current Balance
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">
+                            {formatCurrency(summaryStats.totalBalance, "EUR")}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">All visible accounts</p>
+                    </CardContent>
+                </Card>
+
+                {/* Pending Payments */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <AlertCircle className="h-4 w-4 text-orange-600" />
+                            Pending ({summaryStats.pendingCount})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-orange-600">
+                            {formatCurrency(totals.pending, "EUR")}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Unscheduled payments</p>
+                    </CardContent>
+                </Card>
+
+                {/* Scheduled Payments */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-blue-600" />
+                            Scheduled ({summaryStats.scheduledCount})
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-blue-600">
+                            {formatCurrency(totals.scheduled, "EUR")}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {totals.dueInsidePeriod} due inside period
                         </p>
                     </CardContent>
                 </Card>
 
+                {/* Paid in Period */}
                 <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Paid</CardTitle>
-                        <CheckCircle2 className="h-4 w-4 text-green-600" />
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <CheckCircle2 className="h-4 w-4 text-green-600" />
+                            Paid ({summaryStats.paidCount})
+                        </CardTitle>
                     </CardHeader>
                     <CardContent>
                         <div className="text-2xl font-bold text-green-600">
-                            {formatCurrency(paymentSummary.total_paid, mainCurrency)}
+                            {formatCurrency(totals.paid, "EUR")}
                         </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                            {paymentSummary.count_paid} invoice{paymentSummary.count_paid !== 1 ? "s" : ""} completed
+                        <p className="text-xs text-gray-500 mt-1">In selected period</p>
+                    </CardContent>
+                </Card>
+
+                {/* Projected Balance */}
+                <Card>
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium flex items-center gap-2">
+                            <TrendingUp className="h-4 w-4 text-purple-600" />
+                            Projected Balance
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-2xl font-bold ${summaryStats.projection >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                            {formatCurrency(summaryStats.totalProjected, "EUR")}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {summaryStats.projection >= 0 ? '↑' : '↓'} {formatCurrency(Math.abs(summaryStats.projection), "EUR")}
                         </p>
                     </CardContent>
                 </Card>
             </div>
 
-            {/* Unscheduled Payments - Moved here right after summary cards */}
-            {filteredUnscheduledInvoices.length > 0 && (
-                <Card className="border-yellow-200 bg-yellow-50/30">
+            {/* Due Date Summary */}
+            <Card className="bg-blue-50 border-blue-200">
+                <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="text-sm font-medium text-blue-900">
+                                Due Inside Selected Period
+                            </p>
+                            <p className="text-3xl font-bold text-blue-700 mt-1">
+                                {totals.dueInsidePeriod} invoices
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <p className="text-sm font-medium text-gray-700">
+                                Due Outside Period
+                            </p>
+                            <p className="text-2xl font-semibold text-gray-600 mt-1">
+                                {totals.dueOutsidePeriod} invoices
+                            </p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Bank Accounts Grid */}
+            {accountBalances.length > 0 && (
+                <Card>
                     <CardHeader>
                         <CardTitle className="flex items-center gap-2">
-                            <AlertCircle className="h-5 w-5 text-yellow-600" />
-                            Unscheduled Payments
+                            <BarChart3 className="h-5 w-5 text-blue-600" />
+                            Account Status
                         </CardTitle>
                         <CardDescription>
-                            Invoices without bank account assignment - organize these payments to add them to your schedule
+                            Current balance, scheduled payments, and projected balance
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        {/* Table */}
-                        <div className="border rounded-lg overflow-hidden bg-white">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Invoice</TableHead>
-                                        <TableHead>Provider</TableHead>
-                                        <TableHead>Amount</TableHead>
-                                        <TableHead>Due Date</TableHead>
-                                        <TableHead>Days Until Due</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {filteredUnscheduledInvoices.map((invoice) => {
-                                        const today = getMadridDate();
-                                        today.setHours(0, 0, 0, 0);
-                                        const dueDate = parseMadridDate(invoice.due_date);
-                                        const daysUntilDue = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                                        const isOverdue = daysUntilDue < 0;
+                        <div className="grid grid-cols-2 gap-4">
+                            {accountBalances.map((ab, idx) => (
+                                <Card key={`account-${ab.account.code}-${idx}`} className="bg-gray-50">
+                                    <CardContent className="pt-6">
+                                        <div className="space-y-4">
+                                            <div>
+                                                <p className="text-sm font-medium text-gray-600">
+                                                    {ab.account.name}
+                                                </p>
+                                                <p className="text-xs text-gray-500">
+                                                    {ab.account.bank_name} • {ab.account.currency}
+                                                </p>
+                                            </div>
 
-                                        return (
-                                            <TableRow key={invoice.id} className={isOverdue ? "bg-red-50" : ""}>
-                                                <TableCell className="font-medium">
-                                                    <div>
-                                                        <p className="font-semibold">{invoice.invoice_number}</p>
-                                                        <p className="text-xs text-gray-500">{formatDate(invoice.invoice_date)}</p>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <div>
-                                                        <p className="font-medium">{invoice.provider_code}</p>
-                                                        {invoice.description && (
-                                                            <p className="text-xs text-gray-500 truncate max-w-[200px]">
-                                                                {invoice.description}
-                                                            </p>
-                                                        )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <p className="font-semibold">
-                                                        {formatCurrency(invoice.invoice_amount, invoice.currency)}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <p className={`font-medium ${isOverdue ? "text-red-600" : ""}`}>
-                                                        {formatDate(invoice.due_date)}
-                                                    </p>
-                                                </TableCell>
-                                                <TableCell>
-                                                    {isOverdue ? (
-                                                        <Badge className="bg-red-100 text-red-800 hover:bg-red-100">
-                                                            <XCircle className="h-3 w-3 mr-1" />
-                                                            {Math.abs(daysUntilDue)} day{Math.abs(daysUntilDue) !== 1 ? "s" : ""} overdue
-                                                        </Badge>
-                                                    ) : daysUntilDue === 0 ? (
-                                                        <Badge className="bg-orange-100 text-orange-800 hover:bg-orange-100">
-                                                            <Clock className="h-3 w-3 mr-1" />
-                                                            Due today
-                                                        </Badge>
-                                                    ) : daysUntilDue <= 7 ? (
-                                                        <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-100">
-                                                            <Clock className="h-3 w-3 mr-1" />
-                                                            {daysUntilDue} day{daysUntilDue !== 1 ? "s" : ""} left
-                                                        </Badge>
-                                                    ) : (
-                                                        <Badge variant="outline">
-                                                            {daysUntilDue} days left
-                                                        </Badge>
-                                                    )}
-                                                </TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button variant="outline" size="sm" className="text-blue-600 hover:text-blue-700">
-                                                        Schedule Payment
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
-                        </div>
+                                            {/* Current Balance */}
+                                            <div>
+                                                <p className="text-xs font-medium text-gray-500 mb-1">Current Balance</p>
+                                                <p className="text-xl font-bold text-blue-600">
+                                                    {formatCurrency(ab.current_balance, ab.account.currency)}
+                                                </p>
+                                            </div>
 
-                        {/* Summary */}
-                        <div className="mt-4 flex items-center justify-between text-sm">
-                            <p className="text-gray-600">
-                                Showing {filteredUnscheduledInvoices.length} of {unscheduledInvoices.length} unscheduled payment
-                                {unscheduledInvoices.length !== 1 ? "s" : ""}
-                            </p>
-                            <div className="flex items-center gap-4">
-                                <p className="text-gray-600">
-                                    Total:{" "}
-                                    <span className="font-semibold text-yellow-700">
-                                        {formatCurrency(
-                                            filteredUnscheduledInvoices.reduce((sum, inv) => sum + inv.invoice_amount, 0),
-                                            mainCurrency
-                                        )}
-                                    </span>
-                                </p>
-                                <Button size="sm" className="bg-yellow-600 hover:bg-yellow-700 text-white">
-                                    Organize All Payments
-                                </Button>
-                            </div>
+                                            {/* Scheduled */}
+                                            {ab.scheduled_payments > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-500 mb-1">
+                                                        Scheduled Payments
+                                                    </p>
+                                                    <p className="text-lg font-semibold text-red-600">
+                                                        -{formatCurrency(ab.scheduled_payments, ab.account.currency)}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Paid in period */}
+                                            {ab.paid_in_period > 0 && (
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-500 mb-1">
+                                                        Paid in Period
+                                                    </p>
+                                                    <p className="text-lg font-semibold text-green-600">
+                                                        {formatCurrency(ab.paid_in_period, ab.account.currency)}
+                                                    </p>
+                                                </div>
+                                            )}
+
+                                            {/* Projected */}
+                                            <div className="pt-2 border-t">
+                                                <p className="text-xs font-medium text-gray-500 mb-1">
+                                                    Projected Balance
+                                                </p>
+                                                <p className={`text-lg font-bold ${ab.projected_balance >= 0 ? 'text-green-600' : 'text-red-600'
+                                                    }`}>
+                                                    {formatCurrency(ab.projected_balance, ab.account.currency)}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
                         </div>
                     </CardContent>
                 </Card>
             )}
 
-            {/* Cash Flow Overview - All Accounts */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <BarChart3 className="h-5 w-5 text-blue-600" />
-                        Cash Flow Overview
-                    </CardTitle>
-                    <CardDescription>
-                        Consolidated view of all bank account balances and projections
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {accountBalances.length === 0 ? (
-                        <p className="text-center text-gray-500 py-8">No active bank accounts found</p>
-                    ) : (
-                        <div className="space-y-6">
-                            {/* Overall Summary Chart */}
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 p-6 bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-600 mb-2">Total Current Balance</p>
-                                    <p className="text-3xl font-bold text-gray-900">
-                                        {formatCurrency(
-                                            accountBalances.reduce((sum, b) => sum + b.current_balance, 0),
-                                            mainCurrency
-                                        )}
-                                    </p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-600 mb-2">Total Scheduled Payments</p>
-                                    <p className="text-3xl font-bold text-red-600">
-                                        -{formatCurrency(
-                                            accountBalances.reduce((sum, b) => sum + b.scheduled_payments, 0),
-                                            mainCurrency
-                                        )}
-                                    </p>
-                                    <p className="text-xs text-gray-500 mt-1">
-                                        {accountBalances.reduce((sum, b) => sum + b.payment_count, 0)} payment(s)
-                                    </p>
-                                </div>
-                                <div className="text-center">
-                                    <p className="text-sm text-gray-600 mb-2">Total Projected Balance</p>
-                                    <p className={`text-3xl font-bold ${accountBalances.reduce((sum, b) => sum + b.projected_balance, 0) >= 0
-                                        ? "text-green-600"
-                                        : "text-red-600"
-                                        }`}>
-                                        {formatCurrency(
-                                            accountBalances.reduce((sum, b) => sum + b.projected_balance, 0),
-                                            mainCurrency
-                                        )}
-                                    </p>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
-            {/* Individual Bank Account Charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {accountBalances.map((balance, index) => (
-                    <Card key={`bank-chart-${balance.account.code}-${index}`}>
-                        <CardHeader>
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <CardTitle className="text-lg">{balance.account.name}</CardTitle>
-                                    <CardDescription className="flex items-center gap-2 mt-1">
-                                        <span>{balance.account.bank_name}</span>
-                                        <Badge variant="outline" className="text-xs">
-                                            {balance.account.code}
-                                        </Badge>
-                                        <Badge variant="outline" className="text-xs">
-                                            {balance.account.currency}
-                                        </Badge>
-                                    </CardDescription>
-                                </div>
-                                <Wallet className="h-8 w-8 text-blue-600" />
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="space-y-4">
-                                {/* Visual bars */}
-                                <div className="space-y-3">
-                                    {/* Current Balance Bar */}
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm text-gray-600">Current Balance</span>
-                                            <span className="text-sm font-semibold text-gray-900">
-                                                {formatCurrency(balance.current_balance, balance.account.currency)}
-                                            </span>
-                                        </div>
-                                        <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
-                                            <div
-                                                className="h-full bg-blue-500 flex items-center justify-end pr-2"
-                                                style={{ width: '100%' }}
-                                            >
-                                                <span className="text-xs font-medium text-white">100%</span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Scheduled Payments Bar */}
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm text-gray-600">Scheduled Payments</span>
-                                            <span className="text-sm font-semibold text-red-600">
-                                                -{formatCurrency(balance.scheduled_payments, balance.account.currency)}
-                                            </span>
-                                        </div>
-                                        <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
-                                            <div
-                                                className="h-full bg-red-500 flex items-center justify-end pr-2"
-                                                style={{
-                                                    width: balance.current_balance > 0
-                                                        ? `${Math.min((balance.scheduled_payments / balance.current_balance) * 100, 100)}%`
-                                                        : '100%'
-                                                }}
-                                            >
-                                                <span className="text-xs font-medium text-white">
-                                                    {balance.payment_count} payment{balance.payment_count !== 1 ? 's' : ''}
-                                                </span>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    {/* Projected Balance Bar */}
-                                    <div>
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="text-sm text-gray-600">Projected Balance</span>
-                                            <span className={`text-sm font-semibold ${balance.projected_balance >= 0 ? "text-green-600" : "text-red-600"
-                                                }`}>
-                                                {formatCurrency(balance.projected_balance, balance.account.currency)}
-                                            </span>
-                                        </div>
-                                        <div className="h-8 bg-gray-100 rounded-lg overflow-hidden">
-                                            <div
-                                                className={`h-full flex items-center justify-end pr-2 ${balance.projected_balance >= 0 ? "bg-green-500" : "bg-red-500"
-                                                    }`}
-                                                style={{
-                                                    width: balance.current_balance > 0
-                                                        ? `${Math.max(Math.min((balance.projected_balance / balance.current_balance) * 100, 100), 0)}%`
-                                                        : '0%'
-                                                }}
-                                            >
-                                                {balance.projected_balance >= 0 && (
-                                                    <span className="text-xs font-medium text-white">
-                                                        {balance.current_balance > 0
-                                                            ? `${Math.round((balance.projected_balance / balance.current_balance) * 100)}%`
-                                                            : '0%'}
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </div>
-                                        {balance.projected_balance < 0 && (
-                                            <div className="flex items-center gap-1 text-red-600 text-xs mt-2 p-2 bg-red-50 rounded">
-                                                <AlertCircle className="h-4 w-4" />
-                                                <span className="font-medium">
-                                                    Insufficient funds - {formatCurrency(Math.abs(balance.projected_balance), balance.account.currency)} deficit
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-
-                                {/* Summary Numbers */}
-                                <div className="pt-4 border-t border-gray-200">
-                                    <div className="flex items-center justify-between text-xs text-gray-600">
-                                        <span>Impact: </span>
-                                        <span className={`font-semibold ${balance.projected_balance >= 0 ? "text-green-600" : "text-red-600"
-                                            }`}>
-                                            {balance.current_balance > 0
-                                                ? `${((balance.scheduled_payments / balance.current_balance) * 100).toFixed(1)}% of balance`
-                                                : 'No balance'
-                                            }
-                                        </span>
-                                    </div>
-                                </div>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-            </div>
-
-            {/* Scheduled Payments */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                        <Calendar className="h-5 w-5 text-blue-600" />
-                        Payment Schedule
-                    </CardTitle>
-                    <CardDescription>Payments with assigned bank accounts and schedule dates</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {/* Filters */}
-                    <div className="flex flex-wrap gap-4 mb-6">
-                        <div className="flex-1 min-w-[200px]">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Search invoices..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10"
-                                />
-                            </div>
-                        </div>
-
-                        <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
-                            <SelectTrigger className="w-[180px]">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ALL">All Status</SelectItem>
-                                <SelectItem value="SCHEDULED">Scheduled</SelectItem>
-                                <SelectItem value="UNSCHEDULED">Unscheduled</SelectItem>
-                                <SelectItem value="PAID">Paid</SelectItem>
-                                <SelectItem value="OVERDUE">Overdue</SelectItem>
-                            </SelectContent>
-                        </Select>
-
-                        <Select value={accountFilter} onValueChange={setAccountFilter}>
-                            <SelectTrigger className="w-[200px]">
-                                <SelectValue placeholder="Bank Account" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="ALL">All Accounts</SelectItem>
-                                {bankAccounts.map((acc, index) => (
-                                    <SelectItem key={`bank-select-${acc.code}-${index}`} value={acc.code}>
-                                        {acc.name}
-                                    </SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-
-                    {/* Table */}
-                    <div className="border rounded-lg overflow-hidden">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Invoice</TableHead>
-                                    <TableHead>Provider</TableHead>
-                                    <TableHead>Amount</TableHead>
-                                    <TableHead>Schedule Date</TableHead>
-                                    <TableHead>Bank Account</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredScheduledInvoices.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8 text-gray-500">
-                                            No scheduled payments found
-                                        </TableCell>
+            {/* Pending Payments Section */}
+            {pendingPayments.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-orange-600" />
+                            Pending Payments ({pendingPayments.length})
+                        </CardTitle>
+                        <CardDescription>
+                            Unscheduled invoices without a scheduled payment date
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-gray-50">
+                                        <TableHead>Invoice</TableHead>
+                                        <TableHead>Provider</TableHead>
+                                        <TableHead>Due Date</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Account</TableHead>
                                     </TableRow>
-                                ) : (
-                                    filteredScheduledInvoices.map((invoice) => (
-                                        <TableRow key={invoice.id}>
-                                            <TableCell className="font-medium">
-                                                <div>
-                                                    <p className="font-semibold">{invoice.invoice_number}</p>
-                                                    <p className="text-xs text-gray-500">{formatDate(invoice.invoice_date)}</p>
-                                                </div>
+                                </TableHeader>
+                                <TableBody>
+                                    {pendingPayments.map((inv) => (
+                                        <TableRow key={inv.id}>
+                                            <TableCell className="font-mono text-sm">
+                                                {inv.invoice_number}
+                                            </TableCell>
+                                            <TableCell>{inv.provider_code}</TableCell>
+                                            <TableCell>
+                                                {formatDate(inv.due_date)}
+                                            </TableCell>
+                                            <TableCell className="font-semibold text-orange-600">
+                                                {formatCurrency(inv.invoice_amount, inv.currency)}
                                             </TableCell>
                                             <TableCell>
-                                                <div>
-                                                    <p className="font-medium">{invoice.provider_code}</p>
-                                                    {invoice.description && (
-                                                        <p className="text-xs text-gray-500 truncate max-w-[200px]">
-                                                            {invoice.description}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <p className="font-semibold">
-                                                    {formatCurrency(invoice.invoice_amount, invoice.currency)}
-                                                </p>
-                                            </TableCell>
-                                            <TableCell>
-                                                <div>
-                                                    <p className="font-medium">{formatDate(invoice.schedule_date)}</p>
-                                                    {invoice.payment_date && (
-                                                        <p className="text-xs text-green-600">
-                                                            Paid: {formatDate(invoice.payment_date)}
-                                                        </p>
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline">{invoice.bank_account_code}</Badge>
-                                            </TableCell>
-                                            <TableCell>{getStatusBadge(invoice)}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button variant="ghost" size="sm">
-                                                    View
-                                                </Button>
+                                                {inv.bank_account_code ? (
+                                                    <Badge variant="outline">{inv.bank_account_code}</Badge>
+                                                ) : (
+                                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                                        Not Assigned
+                                                    </Badge>
+                                                )}
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
 
-                    {/* Summary */}
-                    <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
-                        <p>
-                            Showing {filteredScheduledInvoices.length} of {scheduledInvoices.length} scheduled payment
-                            {scheduledInvoices.length !== 1 ? "s" : ""}
-                        </p>
-                        <p>
-                            Total:{" "}
-                            <span className="font-semibold">
-                                {formatCurrency(
-                                    filteredScheduledInvoices.reduce((sum, inv) => sum + inv.invoice_amount, 0),
-                                    mainCurrency
-                                )}
-                            </span>
-                        </p>
-                    </div>
-                </CardContent>
-            </Card>
+            {/* Scheduled Payments Section */}
+            {scheduledPayments.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Calendar className="h-5 w-5 text-blue-600" />
+                            Scheduled Payments ({scheduledPayments.length})
+                        </CardTitle>
+                        <CardDescription>
+                            Invoices with a scheduled payment date (benefit date)
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-gray-50">
+                                        <TableHead>Invoice</TableHead>
+                                        <TableHead>Provider</TableHead>
+                                        <TableHead>Schedule Date</TableHead>
+                                        <TableHead>Due Date</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Account</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {scheduledPayments.map((inv) => (
+                                        <TableRow key={inv.id}>
+                                            <TableCell className="font-mono text-sm">
+                                                {inv.invoice_number}
+                                            </TableCell>
+                                            <TableCell>{inv.provider_code}</TableCell>
+                                            <TableCell className="font-semibold text-blue-600">
+                                                {formatDate(inv.schedule_date!)}
+                                            </TableCell>
+                                            <TableCell>
+                                                {formatDate(inv.due_date)}
+                                            </TableCell>
+                                            <TableCell className="font-semibold">
+                                                {formatCurrency(inv.invoice_amount, inv.currency)}
+                                            </TableCell>
+                                            <TableCell>
+                                                {inv.bank_account_code ? (
+                                                    <Badge variant="outline">{inv.bank_account_code}</Badge>
+                                                ) : (
+                                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                                        Not Assigned
+                                                    </Badge>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {paidInPeriod.length > 0 && (
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <CheckCircle2 className="h-5 w-5 text-green-600" />
+                            Paid Invoices ({paidInPeriod.length})
+                        </CardTitle>
+                        <CardDescription>
+                            Invoices paid in the selected period
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="border rounded-lg overflow-hidden">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-gray-50">
+                                        <TableHead>Invoice</TableHead>
+                                        <TableHead>Provider</TableHead>
+                                        <TableHead>Scheduled</TableHead>
+                                        <TableHead>Paid Date</TableHead>
+                                        <TableHead>Amount</TableHead>
+                                        <TableHead>Account</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {paidInPeriod.map((inv) => (
+                                        <TableRow key={inv.id} className="bg-green-50">
+                                            <TableCell className="font-mono text-sm">
+                                                {inv.invoice_number}
+                                            </TableCell>
+                                            <TableCell>{inv.provider_code}</TableCell>
+                                            <TableCell>
+                                                {formatDate(inv.schedule_date || inv.due_date)}
+                                            </TableCell>
+                                            <TableCell>
+                                                {formatDate(inv.payment_date || "")}
+                                            </TableCell>
+                                            <TableCell className="font-semibold">
+                                                {formatCurrency(inv.invoice_amount, inv.currency)}
+                                            </TableCell>
+                                            <TableCell>
+                                                {inv.bank_account_code ? (
+                                                    <Badge variant="outline">{inv.bank_account_code}</Badge>
+                                                ) : (
+                                                    <Badge variant="secondary">-</Badge>
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    </CardContent>
+                </Card>
+            )}
+
+            {toPayInPeriod.length === 0 && paidInPeriod.length === 0 && (
+                <Card>
+                    <CardContent className="pt-12 text-center">
+                        <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <p className="text-gray-500">No invoices found in the selected period</p>
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }

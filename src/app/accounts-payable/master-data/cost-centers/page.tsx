@@ -26,12 +26,12 @@ import { Globe, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CostCenter {
-  id: string;
   code: string;
   name: string;
-  description?: string;
-  manager?: string;
-  scope: "ES" | "US" | "GLOBAL";
+  level?: number;
+  parent_code?: string | null;
+  country_code?: string;
+  applies_to_all_countries?: boolean;
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -42,7 +42,7 @@ export default function CostCentersPage() {
   const [filteredCostCenters, setFilteredCostCenters] = useState<CostCenter[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"ES" | "US" | "GLOBAL" | "ALL">("ALL");
+  const [scopeFilter, setScopeFilter] = useState<"ES" | "US" | "ALL">("ALL");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCostCenter, setEditingCostCenter] = useState<CostCenter | null>(null);
   const { toast } = useToast();
@@ -50,9 +50,10 @@ export default function CostCentersPage() {
   const [formData, setFormData] = useState({
     code: "",
     name: "",
-    description: "",
-    manager: "",
-    scope: "GLOBAL" as "ES" | "US" | "GLOBAL",
+    level: 1,
+    parent_code: "",
+    country_code: "ES",
+    applies_to_all_countries: true,
     is_active: true,
   });
 
@@ -90,7 +91,9 @@ export default function CostCentersPage() {
     let filtered = [...costCenters];
 
     if (scopeFilter !== "ALL") {
-      filtered = filtered.filter((cc) => cc.scope === scopeFilter);
+      filtered = filtered.filter((cc) =>
+        cc.applies_to_all_countries || cc.country_code === scopeFilter
+      );
     }
 
     if (searchTerm.trim()) {
@@ -111,9 +114,10 @@ export default function CostCentersPage() {
       setFormData({
         code: costCenter.code,
         name: costCenter.name,
-        description: costCenter.description || "",
-        manager: costCenter.manager || "",
-        scope: costCenter.scope,
+        level: costCenter.level || 1,
+        parent_code: costCenter.parent_code || "",
+        country_code: costCenter.country_code || "ES",
+        applies_to_all_countries: costCenter.applies_to_all_countries ?? true,
         is_active: costCenter.is_active,
       });
     } else {
@@ -121,9 +125,10 @@ export default function CostCentersPage() {
       setFormData({
         code: "",
         name: "",
-        description: "",
-        manager: "",
-        scope: "GLOBAL",
+        level: 1,
+        parent_code: "",
+        country_code: "ES",
+        applies_to_all_countries: true,
         is_active: true,
       });
     }
@@ -141,16 +146,26 @@ export default function CostCentersPage() {
         return;
       }
 
+      const dataToSave = {
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        level: formData.level,
+        parent_code: formData.parent_code?.trim() || null,
+        country_code: formData.country_code,
+        applies_to_all_countries: formData.applies_to_all_countries,
+        is_active: formData.is_active,
+      };
+
       if (editingCostCenter) {
         const { error } = await supabase
           .from("cost_centers")
-          .update({ ...formData, updated_at: new Date().toISOString() })
-          .eq("id", editingCostCenter.id);
+          .update({ ...dataToSave, updated_at: new Date().toISOString() })
+          .eq("code", editingCostCenter.code);
 
         if (error) throw error;
         toast({ title: "Success", description: "Cost center updated successfully" });
       } else {
-        const { error } = await supabase.from("cost_centers").insert([formData]);
+        const { error } = await supabase.from("cost_centers").insert([dataToSave]);
         if (error) throw error;
         toast({ title: "Success", description: "Cost center created successfully" });
       }
@@ -167,11 +182,11 @@ export default function CostCentersPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (code: string) => {
     if (!confirm("Are you sure you want to delete this cost center?")) return;
 
     try {
-      const { error } = await supabase.from("cost_centers").delete().eq("id", id);
+      const { error } = await supabase.from("cost_centers").delete().eq("code", code);
       if (error) throw error;
       toast({ title: "Success", description: "Cost center deleted successfully" });
       loadCostCenters();
@@ -192,12 +207,12 @@ export default function CostCentersPage() {
           <h1 className="text-3xl font-bold text-gray-900">Cost Centers</h1>
           <p className="text-gray-500 mt-1">Manage organizational cost centers</p>
         </div>
-        <Button 
+        <Button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             handleOpenDialog();
-          }} 
+          }}
           className="bg-blue-600 hover:bg-blue-700"
           type="button"
         >
@@ -224,13 +239,6 @@ export default function CostCentersPage() {
                 onClick={() => setScopeFilter("US")}
               >
                 🇺🇸 US
-              </Button>
-              <Button
-                variant={scopeFilter === "GLOBAL" ? "default" : "outline"}
-                size="sm"
-                onClick={() => setScopeFilter("GLOBAL")}
-              >
-                🌐 GLOBAL
               </Button>
               <Button
                 variant={scopeFilter === "ALL" ? "default" : "outline"}
@@ -260,12 +268,12 @@ export default function CostCentersPage() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Country</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Description</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Manager</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Level</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Parent</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
               </tr>
             </thead>
@@ -279,10 +287,16 @@ export default function CostCentersPage() {
                   <td colSpan={7} className="px-4 py-8 text-center text-gray-500">No cost centers found</td>
                 </tr>
               ) : (
-                filteredCostCenters.map((cc) => (
-                  <tr key={cc.id} className="hover:bg-gray-50">
+                filteredCostCenters.map((cc, index) => (
+                  <tr key={`cost-center-${cc.code}-${index}`} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
-                      <Globe className="h-5 w-5 text-blue-500" />
+                      {cc.applies_to_all_countries ? (
+                        <span title="All Countries">🌐</span>
+                      ) : cc.country_code === "ES" ? (
+                        <span title="Spain">🇪🇸</span>
+                      ) : (
+                        <span title="United States">🇺🇸</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex gap-2">
@@ -293,7 +307,7 @@ export default function CostCentersPage() {
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(cc.id)}
+                          onClick={() => handleDelete(cc.code)}
                           className="text-gray-600 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -302,8 +316,8 @@ export default function CostCentersPage() {
                     </td>
                     <td className="px-4 py-3 font-mono text-sm">{cc.code}</td>
                     <td className="px-4 py-3">{cc.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{cc.description || "-"}</td>
-                    <td className="px-4 py-3 text-gray-600">{cc.manager || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{cc.level || 1}</td>
+                    <td className="px-4 py-3 text-gray-600 font-mono text-sm">{cc.parent_code || "-"}</td>
                     <td className="px-4 py-3">
                       <Badge
                         variant={cc.is_active ? "default" : "secondary"}
@@ -340,25 +354,20 @@ export default function CostCentersPage() {
                   value={formData.code}
                   onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                   className="h-11"
+                  placeholder="e.g., 1.0.0"
+                  disabled={!!editingCostCenter}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="scope" className="text-sm font-medium text-gray-700">Scope</Label>
-                <Select
-                  value={formData.scope}
-                  onValueChange={(value: "ES" | "US" | "GLOBAL") =>
-                    setFormData({ ...formData, scope: value })
-                  }
-                >
-                  <SelectTrigger className="h-11">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ES">🇪🇸 Spain</SelectItem>
-                    <SelectItem value="US">🇺🇸 United States</SelectItem>
-                    <SelectItem value="GLOBAL">🌐 Global</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="level" className="text-sm font-medium text-gray-700">Level</Label>
+                <Input
+                  id="level"
+                  type="number"
+                  min="1"
+                  value={formData.level}
+                  onChange={(e) => setFormData({ ...formData, level: parseInt(e.target.value) || 1 })}
+                  className="h-11"
+                />
               </div>
             </div>
 
@@ -372,24 +381,47 @@ export default function CostCentersPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="description" className="text-sm font-medium text-gray-700">Description</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="h-11"
-              />
+            <div className="grid grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <Label htmlFor="parent_code" className="text-sm font-medium text-gray-700">Parent Code</Label>
+                <Input
+                  id="parent_code"
+                  value={formData.parent_code}
+                  onChange={(e) => setFormData({ ...formData, parent_code: e.target.value })}
+                  className="h-11"
+                  placeholder="Optional"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="country_code" className="text-sm font-medium text-gray-700">Country</Label>
+                <Select
+                  value={formData.country_code}
+                  onValueChange={(value: "ES" | "US") =>
+                    setFormData({ ...formData, country_code: value })
+                  }
+                >
+                  <SelectTrigger className="h-11">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ES">🇪🇸 Spain (ES)</SelectItem>
+                    <SelectItem value="US">🇺🇸 United States (US)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="manager" className="text-sm font-medium text-gray-700">Manager</Label>
-              <Input
-                id="manager"
-                value={formData.manager}
-                onChange={(e) => setFormData({ ...formData, manager: e.target.value })}
-                className="h-11"
+            <div className="flex items-center gap-2 pt-2">
+              <input
+                type="checkbox"
+                id="applies_to_all_countries"
+                checked={formData.applies_to_all_countries}
+                onChange={(e) => setFormData({ ...formData, applies_to_all_countries: e.target.checked })}
+                className="h-4 w-4 rounded border-gray-300"
               />
+              <Label htmlFor="applies_to_all_countries" className="text-sm font-medium text-gray-700 cursor-pointer">
+                Applies to All Countries
+              </Label>
             </div>
 
             <div className="flex items-center gap-2 pt-2">
@@ -405,15 +437,15 @@ export default function CostCentersPage() {
           </div>
 
           <DialogFooter className="border-t pt-4 gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsDialogOpen(false)}
               className="px-6 h-11"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               className="bg-blue-600 hover:bg-blue-700 px-6 h-11"
             >
               {editingCostCenter ? "Update Cost Center" : "Create Cost Center"}

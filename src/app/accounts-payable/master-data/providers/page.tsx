@@ -26,17 +26,12 @@ import { Globe, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Provider {
-  id: string;
   code: string;
   name: string;
-  tax_id?: string;
-  email?: string;
-  phone?: string;
-  address?: string;
-  city?: string;
+  provider_type?: string;
   country?: string;
+  currency?: string;
   payment_terms?: string;
-  scope: "ES" | "US" | "GLOBAL";
   is_active: boolean;
   created_at: string;
   updated_at: string;
@@ -47,7 +42,7 @@ export default function ProvidersPage() {
   const [filteredProviders, setFilteredProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [scopeFilter, setScopeFilter] = useState<"ES" | "US" | "GLOBAL" | "ALL">("ALL");
+  const [scopeFilter, setScopeFilter] = useState<"ES" | "US" | "ALL">("ALL");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
   const { toast } = useToast();
@@ -55,14 +50,10 @@ export default function ProvidersPage() {
   const [formData, setFormData] = useState({
     code: "",
     name: "",
-    tax_id: "",
-    email: "",
-    phone: "",
-    address: "",
-    city: "",
-    country: "",
-    payment_terms: "NET30",
-    scope: "GLOBAL" as "ES" | "US" | "GLOBAL",
+    provider_type: "professional_services",
+    country: "ES",
+    currency: "EUR",
+    payment_terms: "net_30",
     is_active: true,
   });
 
@@ -101,7 +92,7 @@ export default function ProvidersPage() {
     let filtered = [...providers];
 
     if (scopeFilter !== "ALL") {
-      filtered = filtered.filter((p) => p.scope === scopeFilter);
+      filtered = filtered.filter((p) => p.country === scopeFilter);
     }
 
     if (searchTerm.trim()) {
@@ -109,8 +100,7 @@ export default function ProvidersPage() {
       filtered = filtered.filter(
         (p) =>
           p.code.toLowerCase().includes(term) ||
-          p.name.toLowerCase().includes(term) ||
-          p.tax_id?.toLowerCase().includes(term)
+          p.name.toLowerCase().includes(term)
       );
     }
 
@@ -123,14 +113,10 @@ export default function ProvidersPage() {
       setFormData({
         code: provider.code,
         name: provider.name,
-        tax_id: provider.tax_id || "",
-        email: provider.email || "",
-        phone: provider.phone || "",
-        address: provider.address || "",
-        city: provider.city || "",
-        country: provider.country || "",
-        payment_terms: provider.payment_terms || "NET30",
-        scope: provider.scope,
+        provider_type: provider.provider_type || "professional_services",
+        country: provider.country || "ES",
+        currency: provider.currency || "EUR",
+        payment_terms: provider.payment_terms || "net_30",
         is_active: provider.is_active,
       });
     } else {
@@ -138,14 +124,10 @@ export default function ProvidersPage() {
       setFormData({
         code: "",
         name: "",
-        tax_id: "",
-        email: "",
-        phone: "",
-        address: "",
-        city: "",
-        country: "",
-        payment_terms: "NET30",
-        scope: "GLOBAL",
+        provider_type: "professional_services",
+        country: "ES",
+        currency: "EUR",
+        payment_terms: "net_30",
         is_active: true,
       });
     }
@@ -156,21 +138,21 @@ export default function ProvidersPage() {
     try {
       // For new providers, generate automatic code if empty
       let finalCode = formData.code ? formData.code.trim() : "";
-      
+
       if (!editingProvider && !finalCode) {
-        // Generate automatic sequential code
+        // Generate automatic sequential code based on country
         const { data: maxCodeData, error: queryError } = await supabase
           .from("providers")
           .select("code")
-          .like("code", `${formData.scope}-PV%`)
+          .like("code", `${formData.country}-PV%`)
           .order("code", { ascending: false })
           .limit(1);
-        
+
         if (queryError) {
           console.error("Error querying max code:", queryError);
           throw queryError;
         }
-        
+
         let nextNumber = 1;
         if (maxCodeData && maxCodeData.length > 0 && maxCodeData[0].code) {
           const lastCode = maxCodeData[0].code;
@@ -179,11 +161,11 @@ export default function ProvidersPage() {
             nextNumber = parseInt(match[1]) + 1;
           }
         }
-        
-        finalCode = `${formData.scope}-PV${String(nextNumber).padStart(5, '0')}`;
+
+        finalCode = `${formData.country}-PV${String(nextNumber).padStart(5, '0')}`;
         console.log("Generated code:", finalCode);
       }
-      
+
       if (!finalCode || !formData.name.trim()) {
         toast({
           title: "Validation Error",
@@ -198,11 +180,15 @@ export default function ProvidersPage() {
         const { error } = await supabase
           .from("providers")
           .update({
-            ...formData,
-            code: finalCode,
+            name: formData.name,
+            provider_type: formData.provider_type,
+            country: formData.country,
+            currency: formData.currency,
+            payment_terms: formData.payment_terms,
+            is_active: formData.is_active,
             updated_at: new Date().toISOString(),
           })
-          .eq("id", editingProvider.id);
+          .eq("code", editingProvider.code);
 
         if (error) {
           console.error("Update error:", error);
@@ -213,20 +199,16 @@ export default function ProvidersPage() {
         const insertData = {
           code: finalCode,
           name: formData.name,
-          tax_id: formData.tax_id || null,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          address: formData.address || null,
-          city: formData.city || null,
-          country: formData.country || null,
+          provider_type: formData.provider_type,
+          country: formData.country,
+          currency: formData.currency,
           payment_terms: formData.payment_terms,
-          scope: formData.scope,
           is_active: formData.is_active
         };
         console.log("Inserting provider:", insertData);
-        
+
         const { data, error } = await supabase.from("providers").insert([insertData]).select();
-        
+
         if (error) {
           console.error("Insert error:", error);
           throw error;
@@ -249,11 +231,11 @@ export default function ProvidersPage() {
     }
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (code: string) => {
     if (!confirm("Are you sure you want to delete this provider?")) return;
 
     try {
-      const { error } = await supabase.from("providers").delete().eq("id", id);
+      const { error } = await supabase.from("providers").delete().eq("code", code);
       if (error) throw error;
       toast({ title: "Success", description: "Provider deleted successfully", className: "bg-white" });
       loadProviders();
@@ -277,12 +259,12 @@ export default function ProvidersPage() {
             Manage supplier and vendor master data
           </p>
         </div>
-        <Button 
+        <Button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             handleOpenDialog();
-          }} 
+          }}
           className="bg-blue-600 hover:bg-blue-700"
           type="button"
         >
@@ -365,8 +347,8 @@ export default function ProvidersPage() {
                   <td colSpan={8} className="px-4 py-8 text-center text-gray-500">No providers found</td>
                 </tr>
               ) : (
-                filteredProviders.map((provider) => (
-                  <tr key={provider.id} className="hover:bg-gray-50">
+                filteredProviders.map((provider, index) => (
+                  <tr key={`provider-${provider.code}-${index}`} className="hover:bg-gray-50">
                     <td className="px-4 py-3">
                       <Globe className="h-5 w-5 text-blue-500" />
                     </td>
@@ -379,7 +361,7 @@ export default function ProvidersPage() {
                           <Pencil className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(provider.id)}
+                          onClick={() => handleDelete(provider.code)}
                           className="text-gray-600 hover:text-red-600"
                         >
                           <Trash2 className="h-4 w-4" />
@@ -388,8 +370,8 @@ export default function ProvidersPage() {
                     </td>
                     <td className="px-4 py-3 font-mono text-sm">{provider.code}</td>
                     <td className="px-4 py-3">{provider.name}</td>
-                    <td className="px-4 py-3 text-gray-600">{provider.tax_id || "-"}</td>
-                    <td className="px-4 py-3 text-gray-600">{provider.email || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{provider.country || "-"}</td>
+                    <td className="px-4 py-3 text-gray-600">{provider.currency || "-"}</td>
                     <td className="px-4 py-3">{provider.payment_terms || "-"}</td>
                     <td className="px-4 py-3">
                       <Badge
@@ -427,12 +409,12 @@ export default function ProvidersPage() {
                 </div>
               </div>
             )}
-            
+
             {!editingProvider && (
               <div className="bg-green-50 border border-green-200 rounded-lg p-3">
                 <div className="flex items-center gap-2">
                   <span className="text-xs font-medium text-green-700">Code will be auto-generated:</span>
-                  <span className="font-mono text-sm font-semibold text-green-900">{formData.scope}-PV#####</span>
+                  <span className="font-mono text-sm font-semibold text-green-900">{formData.country}-PV#####</span>
                 </div>
               </div>
             )}
@@ -564,15 +546,15 @@ export default function ProvidersPage() {
           </div>
 
           <DialogFooter className="border-t pt-4 gap-3">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsDialogOpen(false)}
               className="px-6 h-11"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               className="bg-blue-600 hover:bg-blue-700 px-6 h-11"
             >
               {editingProvider ? "Update Provider" : "Create Provider"}

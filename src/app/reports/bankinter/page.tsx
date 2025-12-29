@@ -344,14 +344,14 @@ export default function BankinterPage() {
                   id="file-upload-bankinter"
                 />
                 <label htmlFor="file-upload-bankinter">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" size="sm" variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
+                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload CSV
                     </span>
                   </Button>
                 </label>
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" size="sm" variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
                 </Button>

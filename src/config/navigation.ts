@@ -119,11 +119,6 @@ export const NAV: NavGroup[] = [
             title: "Payments",
             href: "/accounts-payable/invoices/payments",
             icon: DollarSign
-          },
-          {
-            title: "Providers",
-            href: "/accounts-payable/transactions/providers",
-            icon: Users
           }
         ]
       },
@@ -159,11 +154,6 @@ export const NAV: NavGroup[] = [
         href: "/accounts-payable/master-data",
         icon: Boxes,
         children: [
-          {
-            title: "Bank Accounts",
-            href: "/accounts-payable/master-data/bank-accounts",
-            icon: Building2
-          },
           {
             title: "Chart of Accounts",
             href: "/accounts-payable/master-data/chart-accounts",
@@ -351,6 +341,11 @@ export const NAV: NavGroup[] = [
   {
     label: "Cash Management",
     items: [
+      {
+        title: "Bank Accounts",
+        href: "/cash-management/bank-accounts",
+        icon: Building2
+      },
       {
         title: "Bank Statements",
         href: "/cash-management/bank-statements",

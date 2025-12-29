@@ -198,7 +198,7 @@ export default function AccountsReceivableOverviewPage() {
                     <p className="text-sm text-gray-600">Customer {i}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">€{[5240.80, 8950.50, 3820.25, 11200.90][i-1]}</p>
+                    <p className="font-bold">€{[5240.80, 8950.50, 3820.25, 11200.90][i - 1]}</p>
                     <p className="text-xs text-gray-500">Issued: Dec {18 + i}</p>
                   </div>
                 </div>
@@ -221,7 +221,7 @@ export default function AccountsReceivableOverviewPage() {
                     <p className="text-sm text-gray-600">Customer {i}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-green-600">€{[4820.50, 6950.75, 2340.25, 8100.90][i-1]}</p>
+                    <p className="font-bold text-green-600">€{[4820.50, 6950.75, 2340.25, 8100.90][i - 1]}</p>
                     <p className="text-xs text-gray-500">Received: Dec {19 + i}</p>
                   </div>
                 </div>
@@ -235,7 +235,7 @@ export default function AccountsReceivableOverviewPage() {
       <Card className="rounded-2xl border-gray-100 shadow-lg">
         <CardHeader>
           <CardTitle>Revenue by Payment Channel</CardTitle>
-          <CardDescription>This month's collections breakdown</CardDescription>
+          <CardDescription>This month&apos;s collections breakdown</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

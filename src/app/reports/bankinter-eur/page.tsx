@@ -403,7 +403,7 @@ export default function BankinterEURPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Settings className="h-4 w-4" />
                   Settings
                 </Button>
@@ -426,7 +426,7 @@ export default function BankinterEURPage() {
                 </Button>
                 <input type="file" accept=".xlsx" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
                 <label htmlFor="file-upload-bankinter">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
+                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload XLSX
@@ -437,7 +437,7 @@ export default function BankinterEURPage() {
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
-                <Button onClick={handleDeleteAll} variant="outline" size="sm" variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" className="gap-2" disabled={isDeleting || rows.length === 0}>
+                <Button onClick={handleDeleteAll} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" disabled={isDeleting || rows.length === 0}>
                   {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
                   Delete All
                 </Button>
@@ -649,7 +649,7 @@ export default function BankinterEURPage() {
                             <td className="py-3 px-4 text-center">
                               {editingRow === row.id ? (
                                 <div className="flex items-center justify-center gap-2">
-                                  <Button size="sm" onClick={saveEdit} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                                  <Button size="sm" onClick={saveEdit} variant="outline" className="gap-2 border-white text-white hover:bg-white/10">
                                     <Save className="h-4 w-4" />
                                   </Button>
                                   <Button

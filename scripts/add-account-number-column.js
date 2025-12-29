@@ -14,22 +14,22 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.
 const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 async function addMissingColumns() {
-  console.log('🔧 Adding missing columns to bank_accounts table...\n');
+    console.log('🔧 Adding missing columns to bank_accounts table...\n');
 
-  console.log('📋 Current columns found:');
-  console.log('   - code, name, currency, bank_name');
-  console.log('   - account_type, is_active');
-  console.log('   - created_at, updated_at');
-  console.log('   - country, applies_to_all_countries\n');
+    console.log('📋 Current columns found:');
+    console.log('   - code, name, currency, bank_name');
+    console.log('   - account_type, is_active');
+    console.log('   - created_at, updated_at');
+    console.log('   - country, applies_to_all_countries\n');
 
-  console.log('➕ Columns to add:');
-  console.log('   - account_number (TEXT)');
-  console.log('   - iban (TEXT)');
-  console.log('   - swift_bic (TEXT)\n');
+    console.log('➕ Columns to add:');
+    console.log('   - account_number (TEXT)');
+    console.log('   - iban (TEXT)');
+    console.log('   - swift_bic (TEXT)\n');
 
-  console.log('📋 SQL to execute in Supabase Dashboard:\n');
-  console.log('============================================');
-  console.log(`
+    console.log('📋 SQL to execute in Supabase Dashboard:\n');
+    console.log('============================================');
+    console.log(`
 -- Add account_number column
 ALTER TABLE bank_accounts 
 ADD COLUMN IF NOT EXISTS account_number TEXT;
@@ -60,18 +60,18 @@ FROM information_schema.columns
 WHERE table_name = 'bank_accounts'
 ORDER BY ordinal_position;
     `);
-  console.log('============================================\n');
+    console.log('============================================\n');
 
-  console.log('🚀 To execute this SQL:\n');
-  console.log('1. Go to: ' + supabaseUrl.replace('/rest/v1', '') + '/project/_/sql');
-  console.log('2. Or navigate to: Dashboard > SQL Editor > New query');
-  console.log('3. Paste the SQL above');
-  console.log('4. Click "Run" or press Cmd/Ctrl + Enter\n');
+    console.log('🚀 To execute this SQL:\n');
+    console.log('1. Go to: ' + supabaseUrl.replace('/rest/v1', '') + '/project/_/sql');
+    console.log('2. Or navigate to: Dashboard > SQL Editor > New query');
+    console.log('3. Paste the SQL above');
+    console.log('4. Click "Run" or press Cmd/Ctrl + Enter\n');
 
-  console.log('✅ After running the SQL, verify with:');
-  console.log('   node scripts/check-bank-accounts-columns.js\n');
+    console.log('✅ After running the SQL, verify with:');
+    console.log('   node scripts/check-bank-accounts-columns.js\n');
 
-  process.exit(0);
+    process.exit(0);
 }
 
 addMissingColumns();

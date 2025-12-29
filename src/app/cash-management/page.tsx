@@ -37,7 +37,7 @@ export default function CashManagementOverviewPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Today's Inflow</p>
+                <p className="text-sm font-medium text-gray-600">Today&apos;s Inflow</p>
                 <h3 className="text-2xl font-bold text-green-600 mt-2">€45,680</h3>
                 <p className="text-sm text-gray-500 mt-1">32 transactions</p>
               </div>
@@ -52,7 +52,7 @@ export default function CashManagementOverviewPage() {
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm font-medium text-gray-600">Today's Outflow</p>
+                <p className="text-sm font-medium text-gray-600">Today&apos;s Outflow</p>
                 <h3 className="text-2xl font-bold text-red-600 mt-2">€38,250</h3>
                 <p className="text-sm text-gray-500 mt-1">24 transactions</p>
               </div>

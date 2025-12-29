@@ -425,7 +425,7 @@ export default function BraintreeTransactionsPage() {
                   id="file-upload-transactions"
                 />
                 <label htmlFor="file-upload-transactions">
-                  <Button variant="outline" size="sm" variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" className="gap-2" asChild>
+                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload CSV
