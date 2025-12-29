@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { NAV } from "@/config/navigation";
 import { SCOPE_CONFIG, type ScopeType } from "@/lib/scope-utils";
 import { useGlobalScope } from "@/contexts/global-scope-context";
+import { UserMenu } from "@/components/auth/UserMenu";
 import {
   Home,
   Menu,
@@ -389,14 +390,19 @@ export default function Sidebar() {
         {/* Footer - User Profile */}
         <div className="p-4 border-t border-gray-200">
           {!collapsed ? (
-            <div className="text-center">
-              <p className="text-xs text-gray-500 font-medium">DSD Finance Hub</p>
-              <p className="text-[10px] text-gray-400 mt-1">Developed by DSD Corporate Team</p>
-              <p className="text-xs text-gray-400 mt-1">© 2025</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-center">
+                <UserMenu />
+              </div>
+              <div className="text-center">
+                <p className="text-xs text-gray-500 font-medium">DSD Finance Hub</p>
+                <p className="text-[10px] text-gray-400 mt-1">Developed by DSD Corporate Team</p>
+                <p className="text-xs text-gray-400 mt-1">© 2025</p>
+              </div>
             </div>
           ) : (
             <div className="text-center">
-              <span className="text-orange-500 font-bold text-xl">🔲</span>
+              <UserMenu />
             </div>
           )}
         </div>

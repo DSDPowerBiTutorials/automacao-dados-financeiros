@@ -1,165 +1,332 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { BarChart3, Banknote, CheckCircle2, Link2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Breadcrumbs } from "@/components/app/breadcrumbs";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
-import sourceConfig from "@/lib/sourceConfig.json";
-
-type DashboardStats = {
-  banks: number;
-  paymentSources: number;
-  reconciliationRate: string;
-  totalTransactions: number;
-};
+import { Loader2, ArrowRight, Building2, Shield } from "lucide-react";
+import { useGlobalScope } from "@/contexts/global-scope-context";
+import { useAuth } from "@/contexts/auth-context";
+import { OverviewCards } from "@/components/dashboard/OverviewCards";
+import { CashFlowChart } from "@/components/dashboard/CashFlowChart";
+import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
+import { VendorChart } from "@/components/dashboard/VendorChart";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const { selectedScope } = useGlobalScope();
+  const { profile } = useAuth();
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+
+  // Overview data
+  const [overviewData, setOverviewData] = useState({
+    totalPayables: 0,
+    totalReceivables: 0,
+    reconciledPercentage: 0,
+    activeEntities: 2,
+    activeUsers: 0,
+    lastSync: new Date().toISOString(),
+  });
+
+  // Cash flow data
+  const [cashFlowData, setCashFlowData] = useState<Array<{
+    month: string;
+    inflow: number;
+    outflow: number;
+    net: number;
+  }>>([]);
+
+  // Expense breakdown data
+  const [expenseData, setExpenseData] = useState<Array<{
+    name: string;
+    value: number;
+  }>>([]);
+
+  // Top vendors data
+  const [vendorData, setVendorData] = useState<Array<{
+    name: string;
+    amount: number;
+  }>>([]);
 
   useEffect(() => {
-    const loadStats = async () => {
-      if (!supabase) {
-        console.error("Supabase client não configurado para o dashboard");
-        return;
-      }
+    loadDashboardData();
+  }, [selectedScope]);
 
-      try {
-        const { count: bankTransactions, error: bankError } = await supabase
-          .from("csv_rows")
-          .select("id", { count: "exact", head: true })
-          .in("source", sourceConfig.banks);
+  const loadDashboardData = async () => {
+    setLoading(true);
+    try {
+      await Promise.all([
+        loadOverviewStats(),
+        loadCashFlowData(),
+        loadExpenseData(),
+        loadVendorData(),
+      ]);
+    } catch (error) {
+      console.error('Error loading dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (bankError) {
-          console.error("Error counting bank transactions:", bankError);
-        }
+  const loadOverviewStats = async () => {
+    try {
+      // Get total payables (AP invoices)
+      const { data: apInvoices } = await supabase
+        .from('invoices')
+        .select('invoice_amount, is_reconciled')
+        .eq('invoice_type', 'INCURRED')
+        .eq('scope', selectedScope === 'GLOBAL' ? selectedScope : selectedScope);
 
-        const { count: paymentTransactions, error: paymentError } =
-          await supabase
-            .from("csv_rows")
-            .select("id", { count: "exact", head: true })
-            .in("source", sourceConfig.payment_sources);
+      const totalPayables = apInvoices?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
 
-        if (paymentError) {
-          console.error("Error counting payment transactions:", paymentError);
-        }
+      // Get total receivables (AR invoices)
+      const { data: arInvoices } = await supabase
+        .from('invoices')
+        .select('invoice_amount, is_reconciled')
+        .eq('invoice_type', 'REVENUE')
+        .eq('scope', selectedScope === 'GLOBAL' ? selectedScope : selectedScope);
 
-        setStats({
-          banks: bankTransactions ?? 0,
-          paymentSources: paymentTransactions ?? 0,
-          reconciliationRate: "91%",
-          totalTransactions:
-            (bankTransactions ?? 0) + (paymentTransactions ?? 0),
+      const totalReceivables = arInvoices?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
+
+      // Calculate reconciliation percentage
+      const allInvoices = [...(apInvoices || []), ...(arInvoices || [])];
+      const reconciledCount = allInvoices.filter(inv => inv.is_reconciled).length;
+      const reconciledPercentage = allInvoices.length > 0
+        ? Math.round((reconciledCount / allInvoices.length) * 100)
+        : 0;
+
+      // Get active users count
+      const { count: userCount } = await supabase
+        .from('users')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_active', true);
+
+      setOverviewData({
+        totalPayables,
+        totalReceivables,
+        reconciledPercentage,
+        activeEntities: 2, // ES and US
+        activeUsers: userCount || 0,
+        lastSync: new Date().toISOString(),
+      });
+    } catch (error) {
+      console.error('Error loading overview stats:', error);
+    }
+  };
+
+  const loadCashFlowData = async () => {
+    try {
+      // Get last 12 months of cash flow
+      const months = [];
+      for (let i = 11; i >= 0; i--) {
+        const date = new Date();
+        date.setMonth(date.getMonth() - i);
+        const monthKey = date.toISOString().substring(0, 7); // YYYY-MM
+
+        // Get inflows (receivables paid)
+        const { data: inflows } = await supabase
+          .from('invoices')
+          .select('invoice_amount')
+          .eq('invoice_type', 'REVENUE')
+          .eq('is_reconciled', true)
+          .gte('payment_date', `${monthKey}-01`)
+          .lt('payment_date', `${monthKey}-32`);
+
+        // Get outflows (payables paid)
+        const { data: outflows } = await supabase
+          .from('invoices')
+          .select('invoice_amount')
+          .eq('invoice_type', 'INCURRED')
+          .eq('is_reconciled', true)
+          .gte('payment_date', `${monthKey}-01`)
+          .lt('payment_date', `${monthKey}-32`);
+
+        const inflow = inflows?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
+        const outflow = outflows?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
+
+        months.push({
+          month: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+          inflow,
+          outflow,
+          net: inflow - outflow,
         });
-      } catch (error) {
-        console.error("Failed to load dashboard stats:", error);
       }
-    };
 
-    loadStats();
-  }, []);
+      setCashFlowData(months);
+    } catch (error) {
+      console.error('Error loading cash flow data:', error);
+    }
+  };
 
-  const highlights = [
+  const loadExpenseData = async () => {
+    try {
+      const { data: expenses } = await supabase
+        .from('invoices')
+        .select('cost_center_code, invoice_amount')
+        .eq('invoice_type', 'INCURRED')
+        .not('cost_center_code', 'is', null);
+
+      // Group by cost center
+      const grouped: Record<string, number> = {};
+      expenses?.forEach(exp => {
+        if (exp.cost_center_code) {
+          grouped[exp.cost_center_code] = (grouped[exp.cost_center_code] || 0) + exp.invoice_amount;
+        }
+      });
+
+      // Get top 8 cost centers
+      const sorted = Object.entries(grouped)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 8)
+        .map(([name, value]) => ({ name, value }));
+
+      setExpenseData(sorted);
+    } catch (error) {
+      console.error('Error loading expense data:', error);
+    }
+  };
+
+  const loadVendorData = async () => {
+    try {
+      const { data: vendors } = await supabase
+        .from('invoices')
+        .select('provider_code, invoice_amount, providers(name)')
+        .eq('invoice_type', 'INCURRED')
+        .not('provider_code', 'is', null);
+
+      // Group by provider
+      const grouped: Record<string, { name: string; amount: number }> = {};
+      vendors?.forEach(vendor => {
+        if (vendor.provider_code) {
+          if (!grouped[vendor.provider_code]) {
+            grouped[vendor.provider_code] = {
+              name: (vendor.providers as any)?.name || vendor.provider_code,
+              amount: 0,
+            };
+          }
+          grouped[vendor.provider_code].amount += vendor.invoice_amount;
+        }
+      });
+
+      // Get top 10 vendors
+      const sorted = Object.values(grouped)
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 10);
+
+      setVendorData(sorted);
+    } catch (error) {
+      console.error('Error loading vendor data:', error);
+    }
+  };
+
+  const quickActions = [
     {
-      icon: <Banknote className="h-6 w-6 text-green-600" />,
-      title: "Bank Accounts",
-      stat: `${sourceConfig.banks.length} connected`,
-      detail: "All accounts synced with Supabase",
+      title: 'Accounts Payable',
+      description: 'Manage invoices and payments',
+      href: '/accounts-payable/invoices',
+      icon: Building2,
     },
     {
-      icon: <Link2 className="h-6 w-6 text-blue-600" />,
-      title: "Payment Sources",
-      stat: `${sourceConfig.payment_sources.length} active`,
-      detail: "API-linked revenue channels",
+      title: 'Accounts Receivable',
+      description: 'Track revenues and customers',
+      href: '/accounts-receivable/invoices',
+      icon: Shield,
     },
     {
-      icon: <CheckCircle2 className="h-6 w-6 text-emerald-500" />,
-      title: "Reconciliation Rate",
-      stat: stats?.reconciliationRate ?? "—",
-      detail: "Automated matching success",
+      title: 'Cash Management',
+      description: 'Bank accounts and reconciliation',
+      href: '/cash-management',
+      icon: Building2,
     },
     {
-      icon: <BarChart3 className="h-6 w-6 text-indigo-600" />,
-      title: "Transactions",
-      stat: stats?.totalTransactions ?? "—",
-      detail: "Monthly processed data",
+      title: 'Reports',
+      description: 'Financial analysis and insights',
+      href: '/reports/bankinter-eur',
+      icon: Shield,
     },
   ];
 
-  return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 p-8">
-      <h1 className="text-3xl font-bold text-[#1a2b4a] mb-6">
-        DSD Finance Overview
-      </h1>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-[#243140]" />
+      </div>
+    );
+  }
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-        {highlights.map((highlight) => (
-          <Card
-            key={highlight.title}
-            className="shadow-md hover:shadow-lg transition-all"
-          >
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {highlight.title}
-              </CardTitle>
-              {highlight.icon}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-[#1a2b4a]">
-                {highlight.stat}
+  return (
+    <div className="flex flex-col gap-6 p-6">
+      <Breadcrumbs
+        items={[
+          { label: "Home", href: "/" },
+          { label: "Dashboard", href: "/dashboard" },
+        ]}
+      />
+
+      {/* Institutional Header */}
+      <div className="bg-gradient-to-r from-[#243140] to-[#1a2530] rounded-lg p-8 text-white shadow-lg">
+        <div className="max-w-4xl">
+          <h1 className="text-4xl font-bold mb-2">DSD Finance Hub</h1>
+          <p className="text-lg text-gray-200 mb-4">
+            Integrated Financial Management Platform — empowering global operations from Spain and USA
+          </p>
+          {profile && (
+            <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-2">
+                <Shield className="w-4 h-4" />
+                <span>Logged in as: <strong>{profile.name}</strong></span>
               </div>
-              <p className="text-xs text-gray-500 mt-1">{highlight.detail}</p>
-            </CardContent>
-          </Card>
-        ))}
+              <div className="flex items-center gap-2">
+                <Building2 className="w-4 h-4" />
+                <span>Scope: <strong>{selectedScope}</strong></span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
-      <Card className="p-6 shadow-lg mb-8">
-        <CardTitle className="text-xl mb-4 text-[#1a2b4a] font-semibold">
-          Connected Bank Accounts
-        </CardTitle>
-        <div className="flex flex-wrap gap-2">
-          {sourceConfig.banks.map((bank) => (
-            <span
-              key={bank}
-              className="px-3 py-1 rounded-full bg-green-50 text-green-700 border border-green-100 text-sm"
-            >
-              {bank}
-            </span>
-          ))}
-        </div>
-      </Card>
+      {/* Overview Cards */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Financial Overview</h2>
+        <OverviewCards data={overviewData} />
+      </div>
 
-      <Card className="p-6 shadow-lg mb-8">
-        <CardTitle className="text-xl mb-4 text-[#1a2b4a] font-semibold">
-          Payment Sources
-        </CardTitle>
-        <div className="flex flex-wrap gap-2">
-          {sourceConfig.payment_sources.map((source) => (
-            <span
-              key={source}
-              className="px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-100 text-sm"
-            >
-              {source}
-            </span>
-          ))}
-        </div>
-      </Card>
+      {/* Cash Flow Chart */}
+      <CashFlowChart data={cashFlowData} />
 
-      <Card className="p-6 shadow-lg">
-        <CardTitle className="text-xl mb-4 text-[#1a2b4a] font-semibold">
-          Daily Health Summary
-        </CardTitle>
-        <p className="text-gray-600 text-sm">
-          All systems operational. Reconciliation engines running normally. No
-          schema or ingestion errors detected in the past 24 hours.
-        </p>
-        {stats && (
-          <p className="mt-4 text-sm text-gray-700">
-            Bank transactions tracked: {stats.banks} · Payment source
-            transactions tracked: {stats.paymentSources}
-          </p>
-        )}
-      </Card>
+      {/* Charts Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <ExpenseChart data={expenseData} />
+        <VendorChart data={vendorData} />
+      </div>
+
+      {/* Quick Actions */}
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">Quick Actions</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {quickActions.map((action, index) => {
+            const Icon = action.icon;
+            return (
+              <Button
+                key={index}
+                variant="outline"
+                className="h-auto flex flex-col items-start p-6 hover:bg-gray-50 hover:border-[#243140] transition-all"
+                onClick={() => router.push(action.href)}
+              >
+                <div className="flex items-center justify-between w-full mb-2">
+                  <Icon className="w-5 h-5 text-[#243140]" />
+                  <ArrowRight className="w-4 h-4 text-gray-400" />
+                </div>
+                <div className="text-left">
+                  <h3 className="font-semibold text-gray-900 mb-1">{action.title}</h3>
+                  <p className="text-sm text-gray-500">{action.description}</p>
+                </div>
+              </Button>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

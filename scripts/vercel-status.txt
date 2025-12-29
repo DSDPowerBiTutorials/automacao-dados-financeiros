@@ -1,0 +1,32 @@
+✅ DEPLOY EM PRODUÇÃO INICIADO!
+
+Push para GitHub: CONCLUÍDO
+Branch: main
+Commit: f8dd19a
+
+O Vercel irá automaticamente:
+1. Detectar o push
+2. Fazer build da aplicação
+3. Executar testes
+4. Deploy em produção (se passar)
+
+Acesse o dashboard do Vercel para acompanhar:
+https://vercel.com/dashboard
+
+Ou verifique o status via CLI:
+npx vercel --prod
+
+Tempo estimado: 2-5 minutos
+
+📋 Mudanças Incluídas:
+- ✅ Módulo Accounts Receivable completo
+- ✅ Página de Customers (CRUD)
+- ✅ 38 financial accounts de receita (série 100)
+- ✅ Todos os erros de lint corrigidos
+- ✅ Build de produção passando
+- ✅ TypeScript sem erros
+- ✅ 46 arquivos modificados/criados
+
+🚨 Ação Necessária Após Deploy:
+Executar SQL no Supabase para criar tabelas:
+- docs/AR-QUICK-SETUP.sql
