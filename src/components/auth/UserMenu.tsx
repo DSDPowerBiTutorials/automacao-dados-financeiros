@@ -43,8 +43,8 @@ export function UserMenu() {
     return (
         <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-                <Button 
-                    variant="ghost" 
+                <Button
+                    variant="ghost"
                     className="relative h-10 w-10 rounded-full hover:opacity-80 transition-opacity"
                 >
                     <Avatar className="h-10 w-10 border-2 border-[#243140]">
@@ -57,8 +57,8 @@ export function UserMenu() {
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent 
-                className="w-72 bg-white shadow-lg" 
+            <DropdownMenuContent
+                className="w-72 bg-white shadow-lg"
                 align="end"
                 sideOffset={5}
             >
