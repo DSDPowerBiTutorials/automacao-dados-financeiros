@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -38,7 +37,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [session, setSession] = useState<Session | null>(null);
     const [loading, setLoading] = useState(true);
-    const router = useRouter();
 
     // Fetch user profile from users table
     const fetchProfile = async (userId: string) => {
@@ -111,8 +109,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     setProfile(userProfile);
 
                     if (userProfile && !userProfile.is_active) {
-                        await signOut();
-                        router.push('/login?error=inactive');
+                        // Don't auto-signout here, let the page handle it
+                        console.warn('User account is inactive');
                     }
                 }
             } catch (error) {
@@ -171,7 +169,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
                 await updateLastLogin(data.user.id);
                 await logAudit('login');
-                router.push('/dashboard');
+                // Don't redirect here - AuthGuard will handle it
             }
 
             return { error: null };

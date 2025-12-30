@@ -15,16 +15,17 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
     const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route));
 
     useEffect(() => {
-        if (!loading) {
-            if (!user && !isPublicRoute) {
-                // Not logged in and trying to access protected route
-                router.push(`/login?redirectTo=${pathname}`);
-            } else if (user && isPublicRoute) {
-                // Logged in and trying to access login page
-                router.push('/dashboard');
-            }
+        if (loading) return; // Don't do anything while loading
+
+        if (!user && !isPublicRoute) {
+            // Not logged in and trying to access protected route
+            router.push(`/login?redirectTo=${pathname}`);
+        } else if (user && isPublicRoute) {
+            // Logged in and trying to access login page
+            router.push('/dashboard');
         }
-    }, [user, loading, isPublicRoute, pathname, router]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user, loading, isPublicRoute, pathname]); // Remove router from dependencies to prevent loop
 
     // Show loading screen while checking authentication
     if (loading) {

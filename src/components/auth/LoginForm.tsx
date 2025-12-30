@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import Image from 'next/image';
 
 export function LoginForm() {
     const { signIn } = useAuth();
+    const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -27,6 +29,9 @@ export function LoginForm() {
 
             if (signInError) {
                 setError(signInError.message || 'Invalid email or password');
+            } else {
+                // Login successful - redirect to dashboard
+                router.push('/dashboard');
             }
         } catch (err: any) {
             setError(err.message || 'An error occurred during login');
