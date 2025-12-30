@@ -2,7 +2,7 @@
 
 import { useAuth } from '@/contexts/auth-context';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenu,
@@ -41,17 +41,27 @@ export function UserMenu() {
     };
 
     return (
-        <DropdownMenu>
+        <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
+                <Button 
+                    variant="ghost" 
+                    className="relative h-10 w-10 rounded-full hover:opacity-80 transition-opacity"
+                >
                     <Avatar className="h-10 w-10 border-2 border-[#243140]">
+                        {profile.avatar_url && (
+                            <AvatarImage src={profile.avatar_url} alt={profile.name} />
+                        )}
                         <AvatarFallback className="bg-[#243140] text-white font-semibold">
                             {getInitials(profile.name)}
                         </AvatarFallback>
                     </Avatar>
                 </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent className="w-72 bg-white" align="end">
+            <DropdownMenuContent 
+                className="w-72 bg-white shadow-lg" 
+                align="end"
+                sideOffset={5}
+            >
                 <DropdownMenuLabel>
                     <div className="flex flex-col space-y-2">
                         <div className="flex items-center justify-between">
