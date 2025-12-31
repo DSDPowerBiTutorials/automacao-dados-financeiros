@@ -7,36 +7,51 @@
 
 import braintree from "braintree";
 
-// Valida variáveis de ambiente obrigatórias
-const requiredEnvVars = [
-  "BRAINTREE_MERCHANT_ID",
-  "BRAINTREE_PUBLIC_KEY",
-  "BRAINTREE_PRIVATE_KEY",
-  "BRAINTREE_ENVIRONMENT",
-] as const;
+/**
+ * Valida variáveis de ambiente (executa apenas quando gateway for acessado)
+ */
+function validateEnvVars() {
+  const requiredEnvVars = [
+    "BRAINTREE_MERCHANT_ID",
+    "BRAINTREE_PUBLIC_KEY",
+    "BRAINTREE_PRIVATE_KEY",
+    "BRAINTREE_ENVIRONMENT",
+  ] as const;
 
-for (const envVar of requiredEnvVars) {
-  if (!process.env[envVar]) {
-    throw new Error(
-      `Missing required environment variable: ${envVar}. Check your .env.local file.`
-    );
+  for (const envVar of requiredEnvVars) {
+    if (!process.env[envVar]) {
+      throw new Error(
+        `Missing required environment variable: ${envVar}. Check your .env.local file.`
+      );
+    }
   }
 }
 
-// Determina ambiente (sandbox ou production)
-const environment =
-  process.env.BRAINTREE_ENVIRONMENT === "production"
-    ? braintree.Environment.Production
-    : braintree.Environment.Sandbox;
-
 /**
- * Gateway do Braintree - cliente autenticado
+ * Gateway do Braintree - lazy initialization
  */
-export const braintreeGateway = new braintree.BraintreeGateway({
-  environment,
-  merchantId: process.env.BRAINTREE_MERCHANT_ID!,
-  publicKey: process.env.BRAINTREE_PUBLIC_KEY!,
-  privateKey: process.env.BRAINTREE_PRIVATE_KEY!,
+let _gateway: braintree.BraintreeGateway | null = null;
+
+export const braintreeGateway = new Proxy({} as braintree.BraintreeGateway, {
+  get(target, prop) {
+    if (!_gateway) {
+      validateEnvVars();
+      
+      const environment =
+        process.env.BRAINTREE_ENVIRONMENT === "production"
+          ? braintree.Environment.Production
+          : braintree.Environment.Sandbox;
+
+      _gateway = new braintree.BraintreeGateway({
+        environment,
+        merchantId: process.env.BRAINTREE_MERCHANT_ID!,
+        publicKey: process.env.BRAINTREE_PUBLIC_KEY!,
+        privateKey: process.env.BRAINTREE_PRIVATE_KEY!,
+      });
+    }
+    
+    return (_gateway as any)[prop];
+  },
 });
 
 /**
