@@ -233,6 +233,13 @@ export default function BraintreeUSDPage() {
     }
   };
 
+  // ==========================================
+  // RECONCILIAÇÃO AUTOMÁTICA COM BANK STATEMENTS
+  // ==========================================
+  // DESABILITADO TEMPORARIAMENTE - Aguardando dados de bank statements
+  // Quando houver dados do Bankinter, altere ENABLE_AUTO_RECONCILIATION para true
+  const ENABLE_AUTO_RECONCILIATION = false;
+
   // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
     date1: string,
@@ -249,6 +256,12 @@ export default function BraintreeUSDPage() {
   const reconcileBankStatements = async (
     braintreeRows: BraintreeUSDRow[],
   ): Promise<BraintreeUSDRow[]> => {
+    // Verifica se a reconciliação automática está habilitada
+    if (!ENABLE_AUTO_RECONCILIATION) {
+      console.log("Auto-reconciliation is currently disabled");
+      return braintreeRows;
+    }
+
     try {
       if (!supabase) return braintreeRows;
 
