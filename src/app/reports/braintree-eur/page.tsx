@@ -202,32 +202,39 @@ export default function BraintreeEURPage() {
         return;
       }
 
+      // Carregar dados da API Braintree (source: braintree-api-revenue)
       const { data: rowsData, error } = await supabase
         .from("csv_rows")
         .select("*")
-        .eq("source", "braintree-eur")
-        .order("date", { ascending: true });
+        .or("source.eq.braintree-api-revenue,source.eq.braintree-eur")
+        .order("date", { ascending: false })
+        .limit(200);
 
       if (error) {
         console.error("Error loading data:", error);
         setRows([]);
-      } else if (rowsData) {
-        const mappedRows: BraintreeEURRow[] = rowsData.map((row) => ({
-          id: row.id,
-          date: row.date,
-          description: row.description || "",
-          amount: parseFloat(row.amount) || 0,
-          conciliado: row.custom_data?.conciliado || false,
-          destinationAccount: row.custom_data?.destinationAccount || null,
-          reconciliationType: row.custom_data?.reconciliationType || null,
-        }));
-
-        // Reconciliar com bank statements
-        const reconciledRows = await reconcileBankStatements(mappedRows);
-        setRows(reconciledRows);
-      } else {
-        setRows([]);
+        setIsLoading(false);
+        return;
       }
+
+      if (!rowsData || rowsData.length === 0) {
+        console.log("No data found");
+        setRows([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const mappedRows: BraintreeEURRow[] = rowsData.map((row) => ({
+        id: row.id,
+        date: row.date,
+        description: row.description || "",
+        amount: parseFloat(row.amount) || 0,
+        conciliado: row.custom_data?.conciliado || false,
+        destinationAccount: row.custom_data?.destinationAccount || null,
+        reconciliationType: row.custom_data?.reconciliationType || null,
+      }));
+
+      setRows(mappedRows);
     } catch (error) {
       console.error("Error loading data:", error);
       setRows([]);
