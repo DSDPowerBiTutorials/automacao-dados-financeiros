@@ -77,9 +77,12 @@ export async function POST(req: NextRequest) {
     // Processa cada transação
     for (const transaction of transactions) {
       // 1️⃣ RECEITA - Registro principal da transação (Contas a Receber)
+      const transactionDate = new Date(transaction.createdAt);
       const revenueRow = {
+        id: `braintree-rev-${transaction.id}`,
+        file_name: "braintree-api-sync.csv",
         source: "braintree-api-revenue",
-        date: transaction.createdAt.toISOString().split("T")[0],
+        date: transactionDate.toISOString().split("T")[0],
         description: `${getCustomerName(transaction)} - ${getPaymentMethod(transaction)}`,
         amount: parseFloat(transaction.amount),
         reconciled: false,
@@ -95,8 +98,8 @@ export async function POST(req: NextRequest) {
           customer_email: transaction.customer?.email,
           payment_method: getPaymentMethod(transaction),
           merchant_account_id: transaction.merchantAccountId,
-          created_at: transaction.createdAt.toISOString(),
-          updated_at: transaction.updatedAt.toISOString(),
+          created_at: transactionDate.toISOString(),
+          updated_at: new Date(transaction.updatedAt).toISOString(),
         },
       };
 
@@ -107,8 +110,10 @@ export async function POST(req: NextRequest) {
 
       if (fee > 0) {
         const feeRow = {
+          id: `braintree-fee-${transaction.id}`,
+          file_name: "braintree-api-sync.csv",
           source: "braintree-api-fees",
-          date: transaction.createdAt.toISOString().split("T")[0],
+          date: transactionDate.toISOString().split("T")[0],
           description: `Fee Braintree - ${transaction.id}`,
           amount: -fee, // Negativo porque é uma despesa
           reconciled: false,

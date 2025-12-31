@@ -144,9 +144,15 @@ export async function searchTransactions(
         }
 
         // Use each() para iterar pelos resultados
+        let hasError = false;
+        let hasEnded = false;
+        
         response.each((err, transaction) => {
+          if (hasError || hasEnded) return;
+          
           if (err) {
             console.error(`[searchTransactions] Erro ao iterar:`, err);
+            hasError = true;
             reject(err);
             return;
           }
@@ -157,17 +163,20 @@ export async function searchTransactions(
 
             // Limita quantidade
             if (options?.limit && transactions.length >= options.limit) {
+              hasEnded = true;
               resolve(transactions);
               return;
             }
           }
         });
 
-        // Ao terminar iteração
+        // Aguarda mais tempo para garantir que todas foram processadas
         setTimeout(() => {
-          console.log(`[searchTransactions] Busca finalizada. Total: ${transactions.length}`);
-          resolve(transactions);
-        }, 100);
+          if (!hasError && !hasEnded) {
+            console.log(`[searchTransactions] Busca finalizada. Total: ${transactions.length}`);
+            resolve(transactions);
+          }
+        }, 2000); // Aumentado para 2 segundos
       }
     );
   });
