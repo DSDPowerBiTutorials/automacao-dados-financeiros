@@ -416,21 +416,13 @@ export default function BraintreeEURPage() {
       console.log(`[Braintree EUR] Found ${rowsData.length} rows`);
 
       const mappedRows: BraintreeEURRow[] = rowsData
+        .filter((row) => {
+          // Filtrar apenas merchant account EUR
+          const merchantAccount = row.custom_data?.merchant_account_id;
+          return !merchantAccount || merchantAccount === "digitalsmiledesignEUR" || row.source === "braintree-eur";
+        })
         .map((row) => ({
-      const mappedRows: BraintreeEURRow[] = rowsData
-        .map((row) => ({
-      const mappedRows: BraintreeEURRow[] = rowsData
-        .map((row) => ({
-      const mappedRows: BraintreeEURRow[] = rowsData
-        .map((row) => ({
-      const mappedRows: BraintreeEURRow[] = rowsData
-        .map((row) => ({
-      const mappedRows: BraintreeEURRow[] = rowsData
-        .map((row) => ({
-      const mappedRows: BraintreeEURRow[] = rowsData
-        .map((row) => ({
-      const mappedRows: BraintreeEURRow[] = rowsData
-        .map((row) => ({
+          id: row.id,
           date: row.date,
           description: row.description || "",
           amount: parseFloat(row.amount) || 0,

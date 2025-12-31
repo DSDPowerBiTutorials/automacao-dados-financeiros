@@ -385,6 +385,11 @@ export default function BraintreeAUDPage() {
       }
 
       const mappedRows: BraintreeAUDRow[] = rowsData
+        .filter((row) => {
+          // Filtrar apenas merchant account AUD
+          const merchantAccount = row.custom_data?.merchant_account_id;
+          return !merchantAccount || merchantAccount === "digitalsmiledesignAUD" || row.source === "braintree-aud";
+        })
         .map((row) => ({
           id: row.id,
           date: row.date,
