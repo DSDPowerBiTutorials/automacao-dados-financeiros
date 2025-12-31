@@ -69,23 +69,23 @@ WHERE (custom_data->>'disbursement_date') IS NOT NULL;
 -- Verificar tamanho dos índices criados
 SELECT 
     schemaname,
-    tablename,
-    indexname,
+    relname AS tablename,
+    indexrelname AS indexname,
     pg_size_pretty(pg_relation_size(indexrelid)) AS index_size
 FROM pg_stat_user_indexes
-WHERE tablename = 'csv_rows'
+WHERE relname = 'csv_rows'
 ORDER BY pg_relation_size(indexrelid) DESC;
 
 -- Verificar uso dos índices (após queries)
 SELECT 
     schemaname,
-    tablename,
-    indexname,
+    relname AS tablename,
+    indexrelname AS indexname,
     idx_scan AS index_scans,
     idx_tup_read AS tuples_read,
     idx_tup_fetch AS tuples_fetched
 FROM pg_stat_user_indexes
-WHERE tablename = 'csv_rows'
+WHERE relname = 'csv_rows'
 ORDER BY idx_scan DESC;
 
 -- Verificar distribuição de transações por moeda
