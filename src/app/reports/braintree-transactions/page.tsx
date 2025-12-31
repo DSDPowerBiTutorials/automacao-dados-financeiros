@@ -433,10 +433,10 @@ export default function BraintreeTransactionsPage() {
                     </span>
                   </Button>
                 </label>
-                
+
                 {/* Sincronização direta via API */}
                 <BraintreeApiSync />
-                
+
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download

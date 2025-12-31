@@ -80,10 +80,10 @@ export async function POST(req: NextRequest) {
     // EVENTOS DE CANCELAMENTO/EXPIRAÇÃO
     if (["subscription_canceled", "subscription_expired"].includes(eventKind)) {
       const subscription = webhookNotification.subscription;
-      
+
       if (subscription) {
         const status = eventKind === "subscription_canceled" ? "canceled" : "expired";
-        
+
         // Atualiza status de transações relacionadas a essa subscription
         const { error } = await supabaseAdmin
           .from("csv_rows")
@@ -107,10 +107,10 @@ export async function POST(req: NextRequest) {
     // EVENTOS DE DISPUTE (Chargeback)
     if (["dispute_opened", "dispute_won", "dispute_lost"].includes(eventKind)) {
       const dispute = webhookNotification.dispute;
-      
+
       if (dispute) {
         const disputeStatus = eventKind.replace("dispute_", "");
-        
+
         // Atualiza transação relacionada
         const { error } = await supabaseAdmin
           .from("csv_rows")
@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
     // EVENTO DE DISBURSEMENT (Transferência bancária)
     if (eventKind === "disbursement") {
       const disbursement = webhookNotification.disbursement;
-      
+
       if (disbursement) {
         // Cria registro de disbursement (importante pra conciliação bancária)
         const disbursementRow = {
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
     // EVENTOS DE LOCAL PAYMENT
     if (["local_payment_completed", "local_payment_reversed", "local_payment_funded"].includes(eventKind)) {
       const localPayment = webhookNotification.localPayment;
-      
+
       if (localPayment) {
         const paymentRow = {
           source: "braintree-api-revenue",
@@ -214,10 +214,10 @@ export async function POST(req: NextRequest) {
     // EVENTOS DE SUBSCRIPTION (charged_successfully/unsuccessfully)
     if (["subscription_charged_successfully", "subscription_charged_unsuccessfully"].includes(eventKind)) {
       const subscription = webhookNotification.subscription;
-      
+
       if (subscription && subscription.transactions && subscription.transactions.length > 0) {
         const transaction = subscription.transactions[0];
-        
+
         // Cria registro de revenue
         const revenueRow = {
           source: "braintree-api-revenue",
@@ -288,7 +288,7 @@ export async function POST(req: NextRequest) {
     // EVENTO DE REFUND_FAILED
     if (eventKind === "refund_failed") {
       console.log(`[Braintree Webhook] Refund failed detectado - verificar manualmente`);
-      
+
       return NextResponse.json({
         success: true,
         message: "Refund failed logged",
@@ -303,9 +303,9 @@ export async function POST(req: NextRequest) {
 
   } catch (error: unknown) {
     console.error("[Braintree Webhook] Error:", error);
-    
+
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    
+
     return NextResponse.json(
       { error: "Webhook processing failed", details: errorMessage },
       { status: 500 }

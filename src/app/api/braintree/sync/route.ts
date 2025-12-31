@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     const transactions = await searchTransactions(start, end);
 
     console.log(`[Braintree Sync] Encontradas ${transactions.length} transações`);
-    
+
     if (transactions.length > 0) {
       console.log(`[Braintree Sync] Primeira transação:`, {
         id: transactions[0].id,
@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
         description: `${getCustomerName(transaction)} - ${getPaymentMethod(transaction)}`,
         amount: parseFloat(transaction.amount),
         reconciled: false,
-        
+
         // Dados customizados do Braintree (armazenados em custom_data JSONB)
         custom_data: {
           transaction_id: transaction.id,
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
 
       // 2️⃣ FEE - Registro do fee do Braintree (Contas a Pagar)
       const fee = calculateTransactionFee(transaction);
-      
+
       if (fee > 0) {
         const feeRow = {
           source: "braintree-api-fees",
@@ -112,7 +112,7 @@ export async function POST(req: NextRequest) {
           description: `Fee Braintree - ${transaction.id}`,
           amount: -fee, // Negativo porque é uma despesa
           reconciled: false,
-          
+
           custom_data: {
             transaction_id: transaction.id,
             related_revenue_amount: parseFloat(transaction.amount),

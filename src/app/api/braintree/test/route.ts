@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
           const endDate = new Date();
           const startDate = new Date();
           startDate.setDate(startDate.getDate() - 7);
-          
+
           search.createdAt().between(startDate, endDate);
         },
         (err, response) => {
@@ -26,11 +26,11 @@ export async function GET(req: NextRequest) {
             reject(err);
             return;
           }
-          
+
           // Conta quantas transações existem
           let count = 0;
           const transactions: any[] = [];
-          
+
           if (response && response.each) {
             response.each((err, transaction) => {
               if (!err && transaction) {
@@ -46,7 +46,7 @@ export async function GET(req: NextRequest) {
               }
             });
           }
-          
+
           setTimeout(() => {
             resolve({
               authenticated: true,

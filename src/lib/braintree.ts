@@ -36,7 +36,7 @@ export const braintreeGateway = new Proxy({} as braintree.BraintreeGateway, {
   get(target, prop) {
     if (!_gateway) {
       validateEnvVars();
-      
+
       const environment =
         process.env.BRAINTREE_ENVIRONMENT === "production"
           ? braintree.Environment.Production
@@ -49,7 +49,7 @@ export const braintreeGateway = new Proxy({} as braintree.BraintreeGateway, {
         privateKey: process.env.BRAINTREE_PRIVATE_KEY!,
       });
     }
-    
+
     return (_gateway as any)[prop];
   },
 });
@@ -65,7 +65,7 @@ export interface BraintreeTransactionData {
   createdAt: Date;
   updatedAt: Date;
   merchantAccountId: string;
-  
+
   // Dados do cliente
   customer?: {
     id: string;
@@ -73,7 +73,7 @@ export interface BraintreeTransactionData {
     lastName?: string;
     email?: string;
   };
-  
+
   // Método de pagamento
   paymentInstrumentType?: string;
   creditCard?: {
@@ -83,7 +83,7 @@ export interface BraintreeTransactionData {
   paypalAccount?: {
     payerEmail?: string;
   };
-  
+
   // Fees (importante para contas a pagar)
   serviceFeeAmount?: string;
   discounts?: Array<{
@@ -108,17 +108,17 @@ export async function searchTransactions(
 ): Promise<BraintreeTransactionData[]> {
   return new Promise((resolve, reject) => {
     console.log(`[searchTransactions] Buscando entre ${startDate.toISOString()} e ${endDate.toISOString()}`);
-    
+
     braintreeGateway.transaction.search(
       (search) => {
         search.createdAt().between(startDate, endDate);
-        
+
         // Apenas aplica filtro de status se especificado
         if (options?.status && options.status.length > 0) {
           search.status().in(options.status);
           console.log(`[searchTransactions] Filtrando por status:`, options.status);
         }
-        
+
         // Filtro por merchant account (se especificado)
         if (options?.merchantAccountId) {
           search.merchantAccountId().is(options.merchantAccountId);
@@ -131,12 +131,12 @@ export async function searchTransactions(
           reject(err);
           return;
         }
-        
+
         const transactions: BraintreeTransactionData[] = [];
-        
+
         console.log(`[searchTransactions] Response success:`, response?.success);
         console.log(`[searchTransactions] Response type:`, typeof response);
-        
+
         if (!response || !response.success) {
           console.log(`[searchTransactions] Response inválida ou não sucesso, retornando array vazio`);
           resolve([]);
@@ -150,11 +150,11 @@ export async function searchTransactions(
             reject(err);
             return;
           }
-          
+
           if (transaction) {
             console.log(`[searchTransactions] Transação encontrada: ${transaction.id} - ${transaction.amount}`);
             transactions.push(transaction as unknown as BraintreeTransactionData);
-            
+
             // Limita quantidade
             if (options?.limit && transactions.length >= options.limit) {
               resolve(transactions);
@@ -162,7 +162,7 @@ export async function searchTransactions(
             }
           }
         });
-        
+
         // Ao terminar iteração
         setTimeout(() => {
           console.log(`[searchTransactions] Busca finalizada. Total: ${transactions.length}`);
@@ -212,16 +212,16 @@ export function calculateTransactionFee(
  */
 export function getCustomerName(transaction: BraintreeTransactionData): string {
   if (!transaction.customer) return "Unknown";
-  
+
   const { firstName, lastName, email } = transaction.customer;
-  
+
   if (firstName && lastName) {
     return `${firstName} ${lastName}`;
   }
   if (firstName) return firstName;
   if (lastName) return lastName;
   if (email) return email;
-  
+
   return `Customer ${transaction.customer.id}`;
 }
 

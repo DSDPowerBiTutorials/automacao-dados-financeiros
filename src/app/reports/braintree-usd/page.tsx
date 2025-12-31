@@ -360,26 +360,26 @@ export default function BraintreeUSDPage() {
           const discount =
             discountIndex !== -1
               ? parseFloat(
-                  (values[discountIndex] || "0").replace(/[^\d.-]/g, ""),
-                ) || 0
+                (values[discountIndex] || "0").replace(/[^\d.-]/g, ""),
+              ) || 0
               : 0;
           const multicurrency =
             multicurrencyIndex !== -1
               ? parseFloat(
-                  (values[multicurrencyIndex] || "0").replace(/[^\d.-]/g, ""),
-                ) || 0
+                (values[multicurrencyIndex] || "0").replace(/[^\d.-]/g, ""),
+              ) || 0
               : 0;
           const perTransaction =
             perTransactionIndex !== -1
               ? parseFloat(
-                  (values[perTransactionIndex] || "0").replace(/[^\d.-]/g, ""),
-                ) || 0
+                (values[perTransactionIndex] || "0").replace(/[^\d.-]/g, ""),
+              ) || 0
               : 0;
           const crossBorder =
             crossBorderIndex !== -1
               ? parseFloat(
-                  (values[crossBorderIndex] || "0").replace(/[^\d.-]/g, ""),
-                ) || 0
+                (values[crossBorderIndex] || "0").replace(/[^\d.-]/g, ""),
+              ) || 0
               : 0;
 
           const payout =
@@ -788,10 +788,10 @@ export default function BraintreeUSDPage() {
                     </span>
                   </Button>
                 </label>
-                
+
                 {/* Sincronização direta via API */}
                 <BraintreeApiSync />
-                
+
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
