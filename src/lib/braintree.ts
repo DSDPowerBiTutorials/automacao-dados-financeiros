@@ -83,7 +83,7 @@ export interface BraintreeTransactionData {
   paypalAccount?: {
     payerEmail?: string;
   };
-  
+
   // Moeda da transação
   currencyIsoCode?: string;
 
@@ -94,7 +94,7 @@ export interface BraintreeTransactionData {
     id: string;
     name: string;
   }>;
-  
+
   // 💰 Disbursement Details (para reconciliação bancária)
   disbursementDetails?: {
     disbursementDate?: Date;
@@ -158,10 +158,10 @@ export async function searchTransactions(
         // Use each() para iterar pelos resultados
         let hasError = false;
         let hasEnded = false;
-        
+
         response.each((err, transaction) => {
           if (hasError || hasEnded) return;
-          
+
           if (err) {
             console.error(`[searchTransactions] Erro ao iterar:`, err);
             hasError = true;

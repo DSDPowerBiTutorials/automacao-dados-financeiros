@@ -411,6 +411,16 @@ export const NAV: NavGroup[] = [
                 icon: CreditCard
               },
               {
+                title: "Braintree (GBP)",
+                href: "/reports/braintree-gbp",
+                icon: CreditCard
+              },
+              {
+                title: "Braintree (AUD)",
+                href: "/reports/braintree-aud",
+                icon: CreditCard
+              },
+              {
                 title: "Braintree (Amex)",
                 href: "/reports/braintree-amex",
                 icon: CreditCard

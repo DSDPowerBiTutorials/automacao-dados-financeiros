@@ -78,7 +78,7 @@ export async function POST(req: NextRequest) {
     for (const transaction of transactions) {
       // Detecta moeda da transação
       const txCurrency = transaction.currencyIsoCode || currency;
-      
+
       // 1️⃣ RECEITA - Registro principal da transação (Contas a Receber)
       const transactionDate = new Date(transaction.createdAt);
       const revenueRow = {
@@ -104,10 +104,10 @@ export async function POST(req: NextRequest) {
           merchant_account_id: transaction.merchantAccountId,
           created_at: transactionDate.toISOString(),
           updated_at: new Date(transaction.updatedAt).toISOString(),
-          
+
           // 💰 Campos de Disbursement (settlement/transferência bancária)
-          disbursement_date: transaction.disbursementDetails?.disbursementDate 
-            ? new Date(transaction.disbursementDetails.disbursementDate).toISOString() 
+          disbursement_date: transaction.disbursementDetails?.disbursementDate
+            ? new Date(transaction.disbursementDetails.disbursementDate).toISOString()
             : null,
           settlement_amount: transaction.disbursementDetails?.settlementAmount || null,
           settlement_currency: transaction.disbursementDetails?.settlementCurrencyIsoCode || null,
