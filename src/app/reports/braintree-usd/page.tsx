@@ -1081,13 +1081,13 @@ export default function BraintreeUSDPage() {
                         <SelectItem value="none">No filter</SelectItem>
                         <SelectItem value="gt:0">Amount {">"} 0</SelectItem>
                         <SelectItem value="gt:100">
-                          Amount {">"} $100
+                          Amount {">"} €100
                         </SelectItem>
                         <SelectItem value="gt:1000">
-                          Amount {">"} $1000
+                          Amount {">"} €1000
                         </SelectItem>
                         <SelectItem value="lt:100">
-                          Amount {"<"} $100
+                          Amount {"<"} €100
                         </SelectItem>
                       </SelectContent>
                     </Select>

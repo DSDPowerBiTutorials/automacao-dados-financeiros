@@ -650,7 +650,7 @@ export default function BraintreeGBPPage() {
 
       // Filtro de currency
       if (currencyFilter && currencyFilter !== "all") {
-        const rowCurrency = row.currency || "EUR";
+        const rowCurrency = row.currency || "GBP";
         if (rowCurrency !== currencyFilter) return false;
       }
 
@@ -1081,13 +1081,13 @@ export default function BraintreeGBPPage() {
                         <SelectItem value="none">No filter</SelectItem>
                         <SelectItem value="gt:0">Amount {">"} 0</SelectItem>
                         <SelectItem value="gt:100">
-                          Amount {">"} £100
+                          Amount {">"} €100
                         </SelectItem>
                         <SelectItem value="gt:1000">
-                          Amount {">"} £1000
+                          Amount {">"} €1000
                         </SelectItem>
                         <SelectItem value="lt:100">
-                          Amount {"<"} £100
+                          Amount {"<"} €100
                         </SelectItem>
                       </SelectContent>
                     </Select>
@@ -1518,7 +1518,7 @@ export default function BraintreeGBPPage() {
                             )}
                             {visibleColumns.has("currency") && (
                               <td className="py-3 px-4 text-center text-sm font-bold">
-                                {row.currency || "EUR"}
+                                {row.currency || "GBP"}
                               </td>
                             )}
                             {visibleColumns.has("customer_name") && (
