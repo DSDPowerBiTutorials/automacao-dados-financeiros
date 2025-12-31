@@ -60,6 +60,23 @@ interface BraintreeGBPRow {
   conciliado: boolean;
   destinationAccount: string | null;
   reconciliationType?: "automatic" | "manual" | null;
+
+  // Campos adicionais da Braintree API
+  transaction_id?: string;
+  status?: string;
+  type?: string;
+  currency?: string;
+  customer_id?: string;
+  customer_name?: string;
+  customer_email?: string;
+  payment_method?: string;
+  merchant_account_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  disbursement_date?: string | null;
+  settlement_amount?: number | null;
+  settlement_currency?: string | null;
+
   [key: string]: any;
 }
 
@@ -112,6 +129,16 @@ export default function BraintreeGBPPage() {
       "destinationAccount",
       "reconciliation",
       "actions",
+      "transaction_id",
+      "status",
+      "type",
+      "currency",
+      "customer_name",
+      "customer_email",
+      "payment_method",
+      "merchant_account_id",
+      "disbursement_date",
+      "settlement_amount",
     ])
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -139,6 +166,11 @@ export default function BraintreeGBPPage() {
   const [dateFilters, setDateFilters] = useState<{
     [key: string]: { start?: string; end?: string };
   }>({});
+  const [statusFilter, setStatusFilter] = useState<string>("settled"); // Default to settled
+  const [merchantFilter, setMerchantFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [currencyFilter, setCurrencyFilter] = useState<string>("");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("");
 
   useEffect(() => {
     loadData();
@@ -353,16 +385,20 @@ export default function BraintreeGBPPage() {
   };
 
   const loadData = async () => {
+    console.log("[Braintree GBP] Starting loadData...");
     setIsLoading(true);
+
     try {
       if (!supabase) {
-        console.warn("Supabase not configured");
+        console.error("[Braintree GBP] Supabase not configured!");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
+      console.log("[Braintree GBP] Fetching data from Supabase...");
+
       // Carregar dados da API Braintree (source: braintree-api-revenue)
+      // Filtrar apenas merchant account EUR, a partir de 01/01/2024
       const { data: rowsData, error } = await supabase
         .from("csv_rows")
         .select("*")
@@ -371,22 +407,22 @@ export default function BraintreeGBPPage() {
         .order("date", { ascending: false });
 
       if (error) {
-        console.error("Error loading data:", error);
+        console.error("[Braintree GBP] Error loading data:", error);
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
       if (!rowsData || rowsData.length === 0) {
-        console.log("No data found");
+        console.log("[Braintree GBP] No data found");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
+      console.log(`[Braintree GBP] Found ${rowsData.length} rows`);
+
       const mappedRows: BraintreeGBPRow[] = rowsData
         .filter((row) => {
-          // Filtrar apenas merchant account GBP
+          // Filtrar apenas merchant account EUR
           const merchantAccount = row.custom_data?.merchant_account_id;
           return !merchantAccount || merchantAccount === "digitalsmiledesignGBP" || row.source === "braintree-gbp";
         })
@@ -398,6 +434,22 @@ export default function BraintreeGBPPage() {
           conciliado: row.custom_data?.conciliado || false,
           destinationAccount: row.custom_data?.destinationAccount || null,
           reconciliationType: row.custom_data?.reconciliationType || null,
+
+          // Campos adicionais da Braintree
+          transaction_id: row.custom_data?.transaction_id,
+          status: row.custom_data?.status,
+          type: row.custom_data?.type,
+          currency: row.custom_data?.currency,
+          customer_id: row.custom_data?.customer_id,
+          customer_name: row.custom_data?.customer_name,
+          customer_email: row.custom_data?.customer_email,
+          payment_method: row.custom_data?.payment_method,
+          merchant_account_id: row.custom_data?.merchant_account_id,
+          created_at: row.custom_data?.created_at,
+          updated_at: row.custom_data?.updated_at,
+          disbursement_date: row.custom_data?.disbursement_date,
+          settlement_amount: row.custom_data?.settlement_amount,
+          settlement_currency: row.custom_data?.settlement_currency,
         }));
 
       setRows(mappedRows);
@@ -411,12 +463,15 @@ export default function BraintreeGBPPage() {
       // Reset para página 1 quando dados são carregados
       setCurrentPage(1);
 
-      // Carregar última data de sync
-      await loadLastSyncDate();
+      console.log("[Braintree GBP] Data loaded successfully");
+
+      // Carregar última data de sync (sem bloquear)
+      loadLastSyncDate().catch(err => console.error("[Braintree GBP] Error loading sync date:", err));
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("[Braintree GBP] Unexpected error:", error);
       setRows([]);
     } finally {
+      console.log("[Braintree GBP] Setting isLoading to false");
       setIsLoading(false);
     }
   };
@@ -563,8 +618,45 @@ export default function BraintreeGBPPage() {
           row.description.toLowerCase().includes(search) ||
           row.id.toLowerCase().includes(search) ||
           (row.destinationAccount &&
-            row.destinationAccount.toLowerCase().includes(search));
+            row.destinationAccount.toLowerCase().includes(search)) ||
+          (row.transaction_id &&
+            row.transaction_id.toLowerCase().includes(search)) ||
+          (row.customer_name &&
+            row.customer_name.toLowerCase().includes(search)) ||
+          (row.customer_email &&
+            row.customer_email.toLowerCase().includes(search));
         if (!matchesSearch) return false;
+      }
+
+      // Filtro de status (padrão: settled)
+      if (statusFilter && statusFilter !== "all") {
+        if (statusFilter === "settled") {
+          // Match both "settled" and "settled_successfully"
+          if (!row.status || (!row.status.includes("settled") && row.status !== "settled_successfully")) return false;
+        } else if (row.status !== statusFilter) {
+          return false;
+        }
+      }
+
+      // Filtro de merchant account
+      if (merchantFilter && merchantFilter !== "all") {
+        if (!row.merchant_account_id || row.merchant_account_id !== merchantFilter) return false;
+      }
+
+      // Filtro de tipo
+      if (typeFilter && typeFilter !== "all") {
+        if (!row.type || row.type !== typeFilter) return false;
+      }
+
+      // Filtro de currency
+      if (currencyFilter && currencyFilter !== "all") {
+        const rowCurrency = row.currency || "EUR";
+        if (rowCurrency !== currencyFilter) return false;
+      }
+
+      // Filtro de payment method
+      if (paymentMethodFilter && paymentMethodFilter !== "all") {
+        if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
       }
 
       // Filtro de valor
@@ -609,18 +701,27 @@ export default function BraintreeGBPPage() {
 
       switch (sortField) {
         case "date":
-          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        case "disbursement_date":
+        case "created_at":
+          comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
           break;
         case "amount":
-          comparison = a.amount - b.amount;
+        case "settlement_amount":
+          comparison = (a[sortField] || 0) - (b[sortField] || 0);
           break;
         case "description":
-          comparison = a.description.localeCompare(b.description);
-          break;
+        case "transaction_id":
+        case "status":
+        case "type":
+        case "currency":
+        case "customer_name":
+        case "customer_email":
+        case "payment_method":
+        case "merchant_account_id":
         case "destinationAccount":
-          const aAccount = a.destinationAccount || "";
-          const bAccount = b.destinationAccount || "";
-          comparison = aAccount.localeCompare(bAccount);
+          const aValue = (a[sortField] || "").toString();
+          const bValue = (b[sortField] || "").toString();
+          comparison = aValue.localeCompare(bValue);
           break;
         default:
           comparison = 0;
@@ -764,7 +865,7 @@ export default function BraintreeGBPPage() {
                       >
                         <Columns3 className="h-4 w-4 mr-2" />
                         Select Columns
-                        {visibleColumns.size < 7 && (
+                        {visibleColumns.size < 17 && (
                           <>
                             <span
                               onClick={(e) => {
@@ -778,6 +879,16 @@ export default function BraintreeGBPPage() {
                                   "destinationAccount",
                                   "reconciliation",
                                   "actions",
+                                  "transaction_id",
+                                  "status",
+                                  "type",
+                                  "currency",
+                                  "customer_name",
+                                  "customer_email",
+                                  "payment_method",
+                                  "merchant_account_id",
+                                  "disbursement_date",
+                                  "settlement_amount",
                                 ]);
                                 setVisibleColumns(allColumns);
                               }}
@@ -787,7 +898,7 @@ export default function BraintreeGBPPage() {
                               <X className="h-3 w-3" />
                             </span>
                             <span className="absolute -top-2 -right-2 bg-[#243140] text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
-                              {visibleColumns.size}/7
+                              {visibleColumns.size}/17
                             </span>
                           </>
                         )}
@@ -812,6 +923,16 @@ export default function BraintreeGBPPage() {
                             label: "Payout Reconciliation",
                           },
                           { id: "actions", label: "Actions" },
+                          { id: "transaction_id", label: "Transaction ID" },
+                          { id: "status", label: "Status" },
+                          { id: "type", label: "Type" },
+                          { id: "currency", label: "Currency" },
+                          { id: "customer_name", label: "Customer Name" },
+                          { id: "customer_email", label: "Customer Email" },
+                          { id: "payment_method", label: "Payment Method" },
+                          { id: "merchant_account_id", label: "Merchant Account" },
+                          { id: "disbursement_date", label: "Disbursement Date" },
+                          { id: "settlement_amount", label: "Settlement Amount" },
                         ].map((column) => (
                           <div
                             key={column.id}
@@ -858,6 +979,86 @@ export default function BraintreeGBPPage() {
 
                 {/* Quick Filters */}
                 <div className="flex gap-2 flex-wrap">
+                  {/* Status Filter */}
+                  <Select
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                  >
+                    <SelectTrigger className="w-[180px] h-9">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="settled">Settled</SelectItem>
+                      <SelectItem value="settling">Settling</SelectItem>
+                      <SelectItem value="submitted_for_settlement">Submitted</SelectItem>
+                      <SelectItem value="authorized">Authorized</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Merchant Account Filter */}
+                  <Select
+                    value={merchantFilter}
+                    onValueChange={setMerchantFilter}
+                  >
+                    <SelectTrigger className="w-[220px] h-9">
+                      <SelectValue placeholder="Filter by merchant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Merchants</SelectItem>
+                      <SelectItem value="digitalsmiledesignGBP">digitalsmiledesignGBP</SelectItem>
+                      <SelectItem value="digitalsmiledesignUSD">digitalsmiledesignUSD</SelectItem>
+                      <SelectItem value="digitalsmiledesignGBP">digitalsmiledesignGBP</SelectItem>
+                      <SelectItem value="digitalsmiledesign_instant">digitalsmiledesign_instant</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Type Filter */}
+                  <Select
+                    value={typeFilter}
+                    onValueChange={setTypeFilter}
+                  >
+                    <SelectTrigger className="w-[180px] h-9">
+                      <SelectValue placeholder="Filter by type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="sale">Sale</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Currency Filter */}
+                  <Select
+                    value={currencyFilter}
+                    onValueChange={setCurrencyFilter}
+                  >
+                    <SelectTrigger className="w-[140px] h-9">
+                      <SelectValue placeholder="Currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Currencies</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Payment Method Filter */}
+                  <Select
+                    value={paymentMethodFilter}
+                    onValueChange={setPaymentMethodFilter}
+                  >
+                    <SelectTrigger className="w-[180px] h-9">
+                      <SelectValue placeholder="Payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Methods</SelectItem>
+                      <SelectItem value="credit_card">Credit Card</SelectItem>
+                      <SelectItem value="paypal">PayPal</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   {/* Amount Filter */}
                   <div className="flex gap-1">
                     <Select
@@ -880,26 +1081,31 @@ export default function BraintreeGBPPage() {
                         <SelectItem value="none">No filter</SelectItem>
                         <SelectItem value="gt:0">Amount {">"} 0</SelectItem>
                         <SelectItem value="gt:100">
-                          Amount {">"} €100
+                          Amount {">"} £100
                         </SelectItem>
                         <SelectItem value="gt:1000">
-                          Amount {">"} €1000
+                          Amount {">"} £1000
                         </SelectItem>
                         <SelectItem value="lt:100">
-                          Amount {"<"} €100
+                          Amount {"<"} £100
                         </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
                   {/* Clear all filters button */}
-                  {(searchTerm || amountFilter || Object.keys(dateFilters).length > 0) && (
+                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || Object.keys(dateFilters).length > 0) && (
                     <Badge
                       variant="secondary"
                       className="cursor-pointer hover:bg-destructive/20 px-3 h-9 flex items-center"
                       onClick={() => {
                         setSearchTerm("");
                         setAmountFilter(null);
+                        setStatusFilter("settled");
+                        setMerchantFilter("");
+                        setTypeFilter("");
+                        setCurrencyFilter("");
+                        setPaymentMethodFilter("");
                         setDateFilters({});
                       }}
                     >
@@ -977,6 +1183,116 @@ export default function BraintreeGBPPage() {
                       {visibleColumns.has("actions") && (
                         <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
                           Actions
+                        </th>
+                      )}
+                      {visibleColumns.has("transaction_id") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("transaction_id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Transaction ID
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("status") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("status")}
+                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
+                          >
+                            Status
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("type") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("type")}
+                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
+                          >
+                            Type
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("currency") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("currency")}
+                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
+                          >
+                            Currency
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("customer_name") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("customer_name")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Customer Name
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("customer_email") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("customer_email")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Customer Email
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("payment_method") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("payment_method")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Payment Method
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("merchant_account_id") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("merchant_account_id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Merchant Account
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("disbursement_date") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("disbursement_date")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Disbursement Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("settlement_amount") && (
+                        <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("settlement_amount")}
+                            className="flex items-center gap-1 hover:text-blue-600 ml-auto"
+                          >
+                            Settlement Amount
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                     </tr>
@@ -1181,6 +1497,58 @@ export default function BraintreeGBPPage() {
                                     )}
                                   </div>
                                 )}
+                              </td>
+                            )}
+                            {visibleColumns.has("transaction_id") && (
+                              <td className="py-3 px-4 text-sm font-mono text-xs">
+                                {row.transaction_id || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("status") && (
+                              <td className="py-3 px-4 text-center">
+                                <Badge variant={row.status === "settled" || row.status === "settled_successfully" ? "default" : "secondary"}>
+                                  {row.status || "N/A"}
+                                </Badge>
+                              </td>
+                            )}
+                            {visibleColumns.has("type") && (
+                              <td className="py-3 px-4 text-center text-sm">
+                                {row.type || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("currency") && (
+                              <td className="py-3 px-4 text-center text-sm font-bold">
+                                {row.currency || "EUR"}
+                              </td>
+                            )}
+                            {visibleColumns.has("customer_name") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.customer_name || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("customer_email") && (
+                              <td className="py-3 px-4 text-sm text-blue-600">
+                                {row.customer_email || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("payment_method") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.payment_method || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("merchant_account_id") && (
+                              <td className="py-3 px-4 text-sm font-mono text-xs">
+                                {row.merchant_account_id || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("disbursement_date") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("settlement_amount") && (
+                              <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
+                                {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
                               </td>
                             )}
                           </tr>

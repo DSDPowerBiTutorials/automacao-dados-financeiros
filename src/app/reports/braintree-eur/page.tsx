@@ -166,6 +166,11 @@ export default function BraintreeEURPage() {
   const [dateFilters, setDateFilters] = useState<{
     [key: string]: { start?: string; end?: string };
   }>({});
+  const [statusFilter, setStatusFilter] = useState<string>("settled"); // Default to settled
+  const [merchantFilter, setMerchantFilter] = useState<string>("");
+  const [typeFilter, setTypeFilter] = useState<string>("");
+  const [currencyFilter, setCurrencyFilter] = useState<string>("");
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("");
 
   useEffect(() => {
     loadData();
@@ -613,8 +618,45 @@ export default function BraintreeEURPage() {
           row.description.toLowerCase().includes(search) ||
           row.id.toLowerCase().includes(search) ||
           (row.destinationAccount &&
-            row.destinationAccount.toLowerCase().includes(search));
+            row.destinationAccount.toLowerCase().includes(search)) ||
+          (row.transaction_id &&
+            row.transaction_id.toLowerCase().includes(search)) ||
+          (row.customer_name &&
+            row.customer_name.toLowerCase().includes(search)) ||
+          (row.customer_email &&
+            row.customer_email.toLowerCase().includes(search));
         if (!matchesSearch) return false;
+      }
+
+      // Filtro de status (padrão: settled)
+      if (statusFilter && statusFilter !== "all") {
+        if (statusFilter === "settled") {
+          // Match both "settled" and "settled_successfully"
+          if (!row.status || (!row.status.includes("settled") && row.status !== "settled_successfully")) return false;
+        } else if (row.status !== statusFilter) {
+          return false;
+        }
+      }
+
+      // Filtro de merchant account
+      if (merchantFilter && merchantFilter !== "all") {
+        if (!row.merchant_account_id || row.merchant_account_id !== merchantFilter) return false;
+      }
+
+      // Filtro de tipo
+      if (typeFilter && typeFilter !== "all") {
+        if (!row.type || row.type !== typeFilter) return false;
+      }
+
+      // Filtro de currency
+      if (currencyFilter && currencyFilter !== "all") {
+        const rowCurrency = row.currency || "EUR";
+        if (rowCurrency !== currencyFilter) return false;
+      }
+
+      // Filtro de payment method
+      if (paymentMethodFilter && paymentMethodFilter !== "all") {
+        if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
       }
 
       // Filtro de valor
@@ -659,18 +701,27 @@ export default function BraintreeEURPage() {
 
       switch (sortField) {
         case "date":
-          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+        case "disbursement_date":
+        case "created_at":
+          comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
           break;
         case "amount":
-          comparison = a.amount - b.amount;
+        case "settlement_amount":
+          comparison = (a[sortField] || 0) - (b[sortField] || 0);
           break;
         case "description":
-          comparison = a.description.localeCompare(b.description);
-          break;
+        case "transaction_id":
+        case "status":
+        case "type":
+        case "currency":
+        case "customer_name":
+        case "customer_email":
+        case "payment_method":
+        case "merchant_account_id":
         case "destinationAccount":
-          const aAccount = a.destinationAccount || "";
-          const bAccount = b.destinationAccount || "";
-          comparison = aAccount.localeCompare(bAccount);
+          const aValue = (a[sortField] || "").toString();
+          const bValue = (b[sortField] || "").toString();
+          comparison = aValue.localeCompare(bValue);
           break;
         default:
           comparison = 0;
@@ -928,6 +979,86 @@ export default function BraintreeEURPage() {
 
                 {/* Quick Filters */}
                 <div className="flex gap-2 flex-wrap">
+                  {/* Status Filter */}
+                  <Select
+                    value={statusFilter}
+                    onValueChange={setStatusFilter}
+                  >
+                    <SelectTrigger className="w-[180px] h-9">
+                      <SelectValue placeholder="Filter by status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="settled">Settled</SelectItem>
+                      <SelectItem value="settling">Settling</SelectItem>
+                      <SelectItem value="submitted_for_settlement">Submitted</SelectItem>
+                      <SelectItem value="authorized">Authorized</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Merchant Account Filter */}
+                  <Select
+                    value={merchantFilter}
+                    onValueChange={setMerchantFilter}
+                  >
+                    <SelectTrigger className="w-[220px] h-9">
+                      <SelectValue placeholder="Filter by merchant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Merchants</SelectItem>
+                      <SelectItem value="digitalsmiledesignEUR">digitalsmiledesignEUR</SelectItem>
+                      <SelectItem value="digitalsmiledesignUSD">digitalsmiledesignUSD</SelectItem>
+                      <SelectItem value="digitalsmiledesignGBP">digitalsmiledesignGBP</SelectItem>
+                      <SelectItem value="digitalsmiledesign_instant">digitalsmiledesign_instant</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Type Filter */}
+                  <Select
+                    value={typeFilter}
+                    onValueChange={setTypeFilter}
+                  >
+                    <SelectTrigger className="w-[180px] h-9">
+                      <SelectValue placeholder="Filter by type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Types</SelectItem>
+                      <SelectItem value="sale">Sale</SelectItem>
+                      <SelectItem value="credit">Credit</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Currency Filter */}
+                  <Select
+                    value={currencyFilter}
+                    onValueChange={setCurrencyFilter}
+                  >
+                    <SelectTrigger className="w-[140px] h-9">
+                      <SelectValue placeholder="Currency" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Currencies</SelectItem>
+                      <SelectItem value="EUR">EUR</SelectItem>
+                      <SelectItem value="USD">USD</SelectItem>
+                      <SelectItem value="GBP">GBP</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  {/* Payment Method Filter */}
+                  <Select
+                    value={paymentMethodFilter}
+                    onValueChange={setPaymentMethodFilter}
+                  >
+                    <SelectTrigger className="w-[180px] h-9">
+                      <SelectValue placeholder="Payment method" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Methods</SelectItem>
+                      <SelectItem value="credit_card">Credit Card</SelectItem>
+                      <SelectItem value="paypal">PayPal</SelectItem>
+                    </SelectContent>
+                  </Select>
+
                   {/* Amount Filter */}
                   <div className="flex gap-1">
                     <Select
@@ -963,13 +1094,18 @@ export default function BraintreeEURPage() {
                   </div>
 
                   {/* Clear all filters button */}
-                  {(searchTerm || amountFilter || Object.keys(dateFilters).length > 0) && (
+                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || Object.keys(dateFilters).length > 0) && (
                     <Badge
                       variant="secondary"
                       className="cursor-pointer hover:bg-destructive/20 px-3 h-9 flex items-center"
                       onClick={() => {
                         setSearchTerm("");
                         setAmountFilter(null);
+                        setStatusFilter("settled");
+                        setMerchantFilter("");
+                        setTypeFilter("");
+                        setCurrencyFilter("");
+                        setPaymentMethodFilter("");
                         setDateFilters({});
                       }}
                     >
@@ -1051,52 +1187,112 @@ export default function BraintreeEURPage() {
                       )}
                       {visibleColumns.has("transaction_id") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Transaction ID
+                          <button
+                            onClick={() => toggleSort("transaction_id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Transaction ID
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("status") && (
                         <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Status
+                          <button
+                            onClick={() => toggleSort("status")}
+                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
+                          >
+                            Status
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("type") && (
                         <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Type
+                          <button
+                            onClick={() => toggleSort("type")}
+                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
+                          >
+                            Type
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("currency") && (
                         <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Currency
+                          <button
+                            onClick={() => toggleSort("currency")}
+                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
+                          >
+                            Currency
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("customer_name") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Customer Name
+                          <button
+                            onClick={() => toggleSort("customer_name")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Customer Name
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("customer_email") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Customer Email
+                          <button
+                            onClick={() => toggleSort("customer_email")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Customer Email
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("payment_method") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Payment Method
+                          <button
+                            onClick={() => toggleSort("payment_method")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Payment Method
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("merchant_account_id") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Merchant Account
+                          <button
+                            onClick={() => toggleSort("merchant_account_id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Merchant Account
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("disbursement_date") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Disbursement Date
+                          <button
+                            onClick={() => toggleSort("disbursement_date")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Disbursement Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                       {visibleColumns.has("settlement_amount") && (
                         <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          Settlement Amount
+                          <button
+                            onClick={() => toggleSort("settlement_amount")}
+                            className="flex items-center gap-1 hover:text-blue-600 ml-auto"
+                          >
+                            Settlement Amount
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                     </tr>

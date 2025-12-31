@@ -90,9 +90,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Insert or update rows in Supabase
+        // Use id field from gocardless_id to avoid duplicates
+        const rowsWithIds = rows.map(row => ({
+            ...row,
+            id: `gocardless_${row.custom_data.gocardless_id}` // Create unique ID
+        }));
+
         const { data, error } = await supabase
             .from("csv_rows")
-            .upsert(rows, { onConflict: "custom_data->>gocardless_id" });
+            .upsert(rowsWithIds, { onConflict: "id" });
 
         if (error) {
             console.error("Supabase error:", error);
