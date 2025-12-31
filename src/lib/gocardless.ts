@@ -51,13 +51,15 @@ export async function fetchGoCardlessPayouts(): Promise<GoCardlessPayout[]> {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
+                "GoCardless-Version": "2015-07-06",
                 "Content-Type": "application/json",
             },
         });
 
         if (!response.ok) {
+            const errorBody = await response.text();
             throw new Error(
-                `GoCardless API error: ${response.status} ${response.statusText}`,
+                `GoCardless API error: ${response.status} ${response.statusText} - ${errorBody}`,
             );
         }
 
@@ -82,13 +84,15 @@ export async function fetchGoCardlessPayments(): Promise<GoCardlessPayment[]> {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
+                "GoCardless-Version": "2015-07-06",
                 "Content-Type": "application/json",
             },
         });
 
         if (!response.ok) {
+            const errorBody = await response.text();
             throw new Error(
-                `GoCardless API error: ${response.status} ${response.statusText}`,
+                `GoCardless API error: ${response.status} ${response.statusText} - ${errorBody}`,
             );
         }
 
@@ -195,14 +199,16 @@ export async function testGoCardlessConnection(): Promise<{
             method: "GET",
             headers: {
                 Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
+                "GoCardless-Version": "2015-07-06",
                 "Content-Type": "application/json",
             },
         });
 
         if (!response.ok) {
+            const errorBody = await response.text();
             return {
                 success: false,
-                message: `API error: ${response.status} ${response.statusText}`,
+                message: `API error: ${response.status} ${response.statusText} - ${errorBody}`,
             };
         }
 
