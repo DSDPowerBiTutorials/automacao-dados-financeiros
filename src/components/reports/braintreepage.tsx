@@ -49,49 +49,38 @@ export default function BraintreePage({ source, title }: Props) {
 
   useEffect(() => {
     const fetchRows = async () => {
-      if (!supabase) {
-        console.error("Supabase client not configured.");
-        setRows([]);
+      try {
+        if (!supabase) {
+          console.error("Supabase client not configured.");
+          setRows([]);
+          return;
+        }
+
+        const { data, error } = await supabase
+          .from("csv_rows")
+          .select("*")
+          .eq("source", source)
+          .order("date", { ascending: true });
+
+        if (error) console.error(error);
+        else if (data) {
+          setRows(
+            data.map((row) => ({
+              id: row.id,
+              date: row.date,
+              description: row.description,
+              amount: parseFloat(row.amount),
+              conciliado: row.custom_data?.conciliado || false,
+              destinationAccount: row.custom_data?.destinationAccount || null,
+              reconciliationType: row.custom_data?.reconciliationType || null,
+            })),
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching rows:", error);
+      } finally {
         setIsLoading(false);
-        return;
       }
-
-      const { data, error } = await supabase
-        .from("csv_rows")
-        .select("*")
-        .eq("source", source)
-        .order("date", { ascending: true });
-
-      if (error) console.error(error);
-      else if (data) {
-        setRows(
-          data.map((row) => ({
-            id: row.id,
-            date: row.date,
-            description: row.description,
-            amount: parseFloat(row.amount),
-            conciliado: row.custom_data?.conciliado || false,
-            destinationAccount: row.custom_data?.destinationAccount || null,
-            reconciliationType: row.custom_data?.reconciliationType || null,
-          })),
-        );
-      }
-      setIsLoading(false);
-    };
-
-    fetchRows();
-  }, [source]);
-
-  const downloadCSV = () => {
-    const headers = [
-      "ID",
-      "Date",
-      "Description",
-      "Amount",
-      "Destination Account",
-      "Payout Reconciliation",
-    ];
-    const csvContent = [
       headers.join(","),
       ...rows.map((row) =>
         [

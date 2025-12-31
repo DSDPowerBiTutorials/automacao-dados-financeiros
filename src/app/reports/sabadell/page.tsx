@@ -224,7 +224,6 @@ export default function SabadellPage() {
       if (!supabase) {
         console.warn("Supabase not configured");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
@@ -564,15 +563,15 @@ export default function SabadellPage() {
     const updatedRows = rows.map((row) =>
       row.id === editingRow
         ? {
-            ...row,
-            ...editedData,
-            paymentSource:
-              editedData.paymentSource === "N/A"
-                ? null
-                : editedData.paymentSource,
-            conciliado: shouldBeConciliado,
-            reconciliationType: "manual" as const,
-          }
+          ...row,
+          ...editedData,
+          paymentSource:
+            editedData.paymentSource === "N/A"
+              ? null
+              : editedData.paymentSource,
+          conciliado: shouldBeConciliado,
+          reconciliationType: "manual" as const,
+        }
         : row,
     );
     setRows(updatedRows);

@@ -113,7 +113,6 @@ export default function PaypalPage() {
       if (!supabase) {
         console.warn("Supabase not configured");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 

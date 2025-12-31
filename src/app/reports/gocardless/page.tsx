@@ -143,7 +143,6 @@ export default function GoCardlessPage() {
       if (!supabase) {
         console.warn("Supabase not configured");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
@@ -157,14 +156,12 @@ export default function GoCardlessPage() {
       if (error) {
         console.error("Error loading data:", error);
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
       if (!rowsData || rowsData.length === 0) {
         console.log("No data found");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 

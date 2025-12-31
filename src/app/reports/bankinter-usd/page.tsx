@@ -122,7 +122,6 @@ export default function BankinterUSDPage() {
       if (!supabase) {
         console.warn("Supabase not configured");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 

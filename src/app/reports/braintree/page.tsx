@@ -41,7 +41,6 @@ export default function BraintreeDashboard() {
     try {
       if (!supabase) {
         console.warn("Supabase not configured");
-        setIsLoading(false);
         return;
       }
 
@@ -53,7 +52,6 @@ export default function BraintreeDashboard() {
 
       if (revenueError) {
         console.error("Error loading revenue:", revenueError);
-        setIsLoading(false);
         return;
       }
 
@@ -65,7 +63,6 @@ export default function BraintreeDashboard() {
 
       if (feesError) {
         console.error("Error loading fees:", feesError);
-        setIsLoading(false);
         return;
       }
 

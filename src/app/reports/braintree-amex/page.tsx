@@ -198,7 +198,6 @@ export default function BraintreeEURPage() {
       if (!supabase) {
         console.warn("Supabase not configured");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
