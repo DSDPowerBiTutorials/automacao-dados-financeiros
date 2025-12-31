@@ -681,18 +681,10 @@ export default function BraintreeEURPage() {
 
   // Paginação
   const totalPages = Math.ceil(processedRows.length / rowsPerPage);
-  const startIndex = (currentPage - 1) * rowsPerPage;
+  const adjustedCurrentPage = currentPage > totalPages && totalPages > 0 ? totalPages : (totalPages === 0 ? 1 : currentPage);
+  const startIndex = (adjustedCurrentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
   const paginatedRows = processedRows.slice(startIndex, endIndex);
-
-  // Reset página se ela ficar vazia após filtrar
-  React.useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(totalPages);
-    } else if (totalPages === 0) {
-      setCurrentPage(1);
-    }
-  }, [totalPages, currentPage]);
 
   const getDestinationAccountStyle = (account: string | null) => {
     if (!account)
@@ -740,7 +732,7 @@ export default function BraintreeEURPage() {
                   </h1>
                   <div className="flex items-center gap-4 mt-1">
                     <p className="text-sm text-gray-300">
-                      {rows.length} records ({processedRows.length} filtered) - Page {currentPage} of {Math.max(1, totalPages)}
+                      {rows.length} records ({processedRows.length} filtered) - Page {adjustedCurrentPage} of {Math.max(1, totalPages)}
                     </p>
                     {mostRecentWebhookTransaction && (
                       <p className="text-sm text-green-300 flex items-center gap-1">
@@ -1396,7 +1388,7 @@ export default function BraintreeEURPage() {
                     </Button>
                     <div className="flex items-center gap-2 px-3">
                       <span className="text-sm font-medium">
-                        Page {currentPage} of {totalPages}
+                        Page {adjustedCurrentPage} of {totalPages}
                       </span>
                     </div>
                     <Button
