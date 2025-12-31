@@ -53,10 +53,14 @@ export function formatNumber(value: number, decimals: number = 2): string {
 /**
  * Formata valor monetário em EUR
  * @param value - Valor numérico
- * @returns Valor formatado com símbolo € e padrão brasileiro
+ * @param currency - Código da moeda (EUR, USD, GBP, etc.)
+ * @returns Valor formatado com símbolo e padrão brasileiro
  */
-export function formatCurrency(value: number): string {
-  if (value === 0) return "€ -";
+export function formatCurrency(value: number, currency: string = "EUR"): string {
+  if (value === 0) {
+    const symbol = getCurrencySymbol(currency);
+    return `${symbol} -`;
+  }
 
   const isNegative = value < 0;
   const absValue = Math.abs(value);
@@ -66,7 +70,21 @@ export function formatCurrency(value: number): string {
     maximumFractionDigits: 2,
   });
 
-  return isNegative ? `€ (${formatted})` : `€ ${formatted}`;
+  const symbol = getCurrencySymbol(currency);
+  return isNegative ? `${symbol} (${formatted})` : `${symbol} ${formatted}`;
+}
+
+/**
+ * Retorna o símbolo da moeda
+ */
+function getCurrencySymbol(currency: string): string {
+  const symbols: { [key: string]: string } = {
+    EUR: "€",
+    USD: "$",
+    GBP: "£",
+    AUD: "A$",
+  };
+  return symbols[currency] || currency;
 }
 
 /**

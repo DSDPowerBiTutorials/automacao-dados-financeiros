@@ -76,10 +76,14 @@ export async function POST(req: NextRequest) {
 
     // Processa cada transação
     for (const transaction of transactions) {
+      // Detecta moeda da transação
+      const txCurrency = transaction.currencyIsoCode || currency;
+      
       // 1️⃣ RECEITA - Registro principal da transação (Contas a Receber)
       const transactionDate = new Date(transaction.createdAt);
       const revenueRow = {
-        id: `braintree-rev-${transaction.id}`,
+        // ✅ ID único com currency prefix para evitar colisões
+        id: `braintree-rev-${txCurrency}-${transaction.id}`,
         file_name: "braintree-api-sync.csv",
         source: "braintree-api-revenue",
         date: transactionDate.toISOString().split("T")[0],
@@ -92,7 +96,7 @@ export async function POST(req: NextRequest) {
           transaction_id: transaction.id,
           status: transaction.status,
           type: transaction.type,
-          currency: currency,
+          currency: txCurrency,
           customer_id: transaction.customer?.id,
           customer_name: getCustomerName(transaction),
           customer_email: transaction.customer?.email,
@@ -100,6 +104,13 @@ export async function POST(req: NextRequest) {
           merchant_account_id: transaction.merchantAccountId,
           created_at: transactionDate.toISOString(),
           updated_at: new Date(transaction.updatedAt).toISOString(),
+          
+          // 💰 Campos de Disbursement (settlement/transferência bancária)
+          disbursement_date: transaction.disbursementDetails?.disbursementDate 
+            ? new Date(transaction.disbursementDetails.disbursementDate).toISOString() 
+            : null,
+          settlement_amount: transaction.disbursementDetails?.settlementAmount || null,
+          settlement_currency: transaction.disbursementDetails?.settlementCurrencyIsoCode || null,
         },
       };
 
@@ -110,7 +121,8 @@ export async function POST(req: NextRequest) {
 
       if (fee > 0) {
         const feeRow = {
-          id: `braintree-fee-${transaction.id}`,
+          // ✅ ID único com currency prefix para evitar colisões
+          id: `braintree-fee-${txCurrency}-${transaction.id}`,
           file_name: "braintree-api-sync.csv",
           source: "braintree-api-fees",
           date: transactionDate.toISOString().split("T")[0],
@@ -121,7 +133,7 @@ export async function POST(req: NextRequest) {
           custom_data: {
             transaction_id: transaction.id,
             related_revenue_amount: parseFloat(transaction.amount),
-            currency: currency,
+            currency: txCurrency,
             fee_type: "braintree_processing_fee",
             merchant_account_id: transaction.merchantAccountId,
           },

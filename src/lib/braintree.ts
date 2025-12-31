@@ -83,6 +83,9 @@ export interface BraintreeTransactionData {
   paypalAccount?: {
     payerEmail?: string;
   };
+  
+  // Moeda da transação
+  currencyIsoCode?: string;
 
   // Fees (importante para contas a pagar)
   serviceFeeAmount?: string;
@@ -91,6 +94,15 @@ export interface BraintreeTransactionData {
     id: string;
     name: string;
   }>;
+  
+  // 💰 Disbursement Details (para reconciliação bancária)
+  disbursementDetails?: {
+    disbursementDate?: Date;
+    settlementAmount?: string;
+    settlementCurrencyIsoCode?: string;
+    settlementCurrencyExchangeRate?: string;
+    fundsHeld?: boolean;
+  };
 }
 
 /**
