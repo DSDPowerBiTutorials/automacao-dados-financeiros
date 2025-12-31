@@ -38,6 +38,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
+import BraintreeApiSync from "@/components/braintree/api-sync-button";
 
 interface BraintreeUSDRow {
   id: string;
@@ -787,6 +788,10 @@ export default function BraintreeUSDPage() {
                     </span>
                   </Button>
                 </label>
+                
+                {/* Sincronização direta via API */}
+                <BraintreeApiSync />
+                
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download

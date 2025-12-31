@@ -38,6 +38,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
+import BraintreeApiSync from "@/components/braintree/api-sync-button";
 
 interface BraintreeEURRow {
   id: string;
