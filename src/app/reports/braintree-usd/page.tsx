@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import {
-  Upload,
   Download,
   Edit2,
   Save,
@@ -17,6 +16,10 @@ import {
   XIcon,
   Zap,
   User,
+  Columns3,
+  Filter,
+  ArrowUpDown,
+  RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -36,6 +39,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
@@ -88,10 +100,138 @@ export default function BraintreeUSDPage() {
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [splitScreenUrl, setSplitScreenUrl] = useState<string | null>(null);
+  const [lastSyncDate, setLastSyncDate] = useState<string | null>(null);
+
+  // Column visibility
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
+    new Set([
+      "id",
+      "date",
+      "description",
+      "amount",
+      "destinationAccount",
+      "reconciliation",
+      "actions",
+    ])
+  );
+  const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
+  const [tempVisibleColumns, setTempVisibleColumns] = useState<Set<string>>(
+    new Set()
+  );
+
+  // Sorting
+  const [sortField, setSortField] = useState<string>("date");
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [amountFilter, setAmountFilter] = useState<{
+    operator: string;
+    value: number;
+  } | null>(null);
+  const [dateFilters, setDateFilters] = useState<{
+    [key: string]: { start?: string; end?: string };
+  }>({});
 
   useEffect(() => {
     loadData();
   }, []);
+
+  // Função para carregar última data de sync
+  const loadLastSyncDate = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("csv_rows")
+        .select("created_at")
+        .or("source.eq.braintree-api-revenue,source.eq.braintree-usd")
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        setLastSyncDate(formatTimestamp(new Date(data[0].created_at)));
+      }
+    } catch (error) {
+      console.error("Error loading last sync date:", error);
+    }
+  };
+
+  // Função para abrir seletor de colunas
+  const openColumnSelector = () => {
+    setTempVisibleColumns(new Set(visibleColumns));
+    setColumnSelectorOpen(true);
+  };
+
+  // Função para cancelar seleção de colunas
+  const cancelColumnSelection = () => {
+    setTempVisibleColumns(new Set());
+    setColumnSelectorOpen(false);
+  };
+
+  // Função para aplicar seleção de colunas
+  const applyColumnSelection = () => {
+    setVisibleColumns(new Set(tempVisibleColumns));
+    setColumnSelectorOpen(false);
+  };
+
+  // Função para alternar coluna temporária
+  const toggleTempColumn = (column: string) => {
+    const newSet = new Set(tempVisibleColumns);
+    if (newSet.has(column)) {
+      newSet.delete(column);
+    } else {
+      newSet.add(column);
+    }
+    setTempVisibleColumns(newSet);
+  };
+
+  // Função para alternar ordenação
+  const toggleSort = (field: string) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === "asc" ? "desc" : "asc");
+    } else {
+      setSortField(field);
+      setSortDirection("desc");
+    }
+  };
+
+  // Função para unconcile (limpar reconciliação)
+  const handleUnconcile = async (rowId: string) => {
+    if (!confirm("Are you sure you want to clear the reconciliation for this transaction?")) return;
+
+    setIsDeleting(true);
+    try {
+      const row = rows.find((r) => r.id === rowId);
+      if (!row) return;
+
+      // Limpar campos de reconciliação
+      const { error } = await supabase
+        .from("csv_rows")
+        .update({
+          custom_data: {
+            ...row,
+            conciliado: false,
+            destinationAccount: null,
+            reconciliationType: null,
+          },
+        })
+        .eq("id", rowId);
+
+      if (error) {
+        console.error("Error updating row:", error);
+        alert(`❌ Error clearing reconciliation: ${error.message}`);
+      } else {
+        await loadData();
+        const now = new Date();
+        const formattedTime = formatTimestamp(now);
+        setLastSaved(formattedTime);
+      }
+    } catch (error) {
+      console.error("Error clearing reconciliation:", error);
+      alert("Error clearing reconciliation. Please try again.");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
@@ -203,7 +343,6 @@ export default function BraintreeUSDPage() {
       }
 
       // Carregar dados da API Braintree (source: braintree-api-revenue)
-      // Filtrar apenas transações USD pelo custom_data
       const { data: rowsData, error } = await supabase
         .from("csv_rows")
         .select("*")
@@ -225,12 +364,7 @@ export default function BraintreeUSDPage() {
         return;
       }
 
-      // Filtrar apenas transações em USD
-      const usdRows = rowsData.filter(
-        (row) => row.custom_data?.currency === "USD"
-      );
-
-      const mappedRows: BraintreeUSDRow[] = usdRows.map((row) => ({
+      const mappedRows: BraintreeUSDRow[] = rowsData.map((row) => ({
         id: row.id,
         date: row.date,
         description: row.description || "",
@@ -241,6 +375,9 @@ export default function BraintreeUSDPage() {
       }));
 
       setRows(mappedRows);
+
+      // Carregar última data de sync
+      await loadLastSyncDate();
     } catch (error) {
       console.error("Error loading data:", error);
       setRows([]);
@@ -269,291 +406,7 @@ export default function BraintreeUSDPage() {
     setSplitScreenUrl(null);
   };
 
-  const handleFileUpload = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-  ) => {
-    const files = event.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      const reader = new FileReader();
-
-      reader.onload = async (e) => {
-        const text = e.target?.result as string;
-        const lines = text.split("\n");
-
-        console.log("=== BRAINTREE USD CSV PROCESSING ===");
-        console.log("Total lines:", lines.length);
-
-        if (lines.length < 2) {
-          alert("❌ File is empty or invalid");
-          return;
-        }
-
-        const headers = lines[0]
-          .split(",")
-          .map((h) => h.trim().replace(/^"|"$/g, ""));
-        console.log("Headers found:", headers);
-
-        const disbursementDateIndex = headers.findIndex(
-          (h) =>
-            h.toLowerCase().includes("disbursement") &&
-            h.toLowerCase().includes("date"),
-        );
-        const settlementSalesIndex = headers.findIndex(
-          (h) =>
-            h.toLowerCase().includes("settlement") &&
-            h.toLowerCase().includes("sales"),
-        );
-        const discountIndex = headers.findIndex((h) =>
-          h.toLowerCase().includes("discount"),
-        );
-        const multicurrencyIndex = headers.findIndex((h) =>
-          h.toLowerCase().includes("multicurrency"),
-        );
-        const perTransactionIndex = headers.findIndex(
-          (h) =>
-            h.toLowerCase().includes("per") &&
-            h.toLowerCase().includes("transaction"),
-        );
-        const crossBorderIndex = headers.findIndex(
-          (h) =>
-            h.toLowerCase().includes("cross") &&
-            h.toLowerCase().includes("border"),
-        );
-
-        console.log("Column mapping:");
-        console.log(
-          "- Disbursement Date index:",
-          disbursementDateIndex,
-          "→",
-          headers[disbursementDateIndex],
-        );
-        console.log(
-          "- Settlement Sales index:",
-          settlementSalesIndex,
-          "→",
-          headers[settlementSalesIndex],
-        );
-
-        if (disbursementDateIndex === -1 || settlementSalesIndex === -1) {
-          alert(
-            "❌ Required columns not found! Make sure the file has: disbursement_date, settlement_currency_sales",
-          );
-          console.error("Available columns:", headers);
-          return;
-        }
-
-        const newRows: BraintreeEURRow[] = [];
-        let processedCount = 0;
-
-        for (let i = 1; i < lines.length; i++) {
-          if (!lines[i].trim()) continue;
-
-          const values: string[] = [];
-          let currentValue = "";
-          let insideQuotes = false;
-
-          for (let j = 0; j < lines[i].length; j++) {
-            const char = lines[i][j];
-
-            if (char === '"') {
-              insideQuotes = !insideQuotes;
-            } else if (char === "," && !insideQuotes) {
-              values.push(currentValue.trim());
-              currentValue = "";
-            } else {
-              currentValue += char;
-            }
-          }
-          values.push(currentValue.trim());
-
-          const disbursementDate = (values[disbursementDateIndex] || "").trim();
-          const settlementSales =
-            parseFloat(
-              (values[settlementSalesIndex] || "0").replace(/[^\d.-]/g, ""),
-            ) || 0;
-          const discount =
-            discountIndex !== -1
-              ? parseFloat(
-                (values[discountIndex] || "0").replace(/[^\d.-]/g, ""),
-              ) || 0
-              : 0;
-          const multicurrency =
-            multicurrencyIndex !== -1
-              ? parseFloat(
-                (values[multicurrencyIndex] || "0").replace(/[^\d.-]/g, ""),
-              ) || 0
-              : 0;
-          const perTransaction =
-            perTransactionIndex !== -1
-              ? parseFloat(
-                (values[perTransactionIndex] || "0").replace(/[^\d.-]/g, ""),
-              ) || 0
-              : 0;
-          const crossBorder =
-            crossBorderIndex !== -1
-              ? parseFloat(
-                (values[crossBorderIndex] || "0").replace(/[^\d.-]/g, ""),
-              ) || 0
-              : 0;
-
-          const payout =
-            settlementSales +
-            discount +
-            multicurrency +
-            perTransaction +
-            crossBorder;
-
-          if (payout === 0 && !disbursementDate) continue;
-
-          const uniqueId = `BRAINTREE-EUR-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-          newRows.push({
-            id: uniqueId,
-            date: disbursementDate,
-            description: `Braintree USD Disbursement - ${disbursementDate}`,
-            amount: payout,
-            conciliado: false,
-            destinationAccount: null,
-            reconciliationType: null,
-          });
-
-          processedCount++;
-        }
-
-        console.log("Processing complete:", processedCount, "rows processed");
-
-        if (newRows.length === 0) {
-          alert("❌ No valid data found in file");
-          return;
-        }
-
-        try {
-          setIsSaving(true);
-
-          // Reconciliar com bank statements antes de salvar
-          const reconciledRows = await reconcileBankStatements(newRows);
-
-          const rowsToInsert = reconciledRows.map((row) => ({
-            id: row.id,
-            file_name: "braintree-eur.csv",
-            source: "braintree-eur",
-            date: row.date,
-            description: row.description,
-            amount: row.amount.toString(),
-            category: "Other",
-            classification: "Other",
-            reconciled: false,
-            custom_data: {
-              id: row.id,
-              date: row.date,
-              description: row.description,
-              amount: row.amount,
-              conciliado: row.conciliado,
-              destinationAccount: row.destinationAccount,
-              reconciliationType: row.reconciliationType,
-            },
-          }));
-
-          const response = await fetch("/api/csv-rows", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              rows: rowsToInsert,
-              source: "braintree-eur",
-            }),
-          });
-
-          const result = await response.json();
-
-          if (!response.ok || !result.success) {
-            console.error("Error saving to database:", result.error);
-            alert(
-              `❌ Error saving to database: ${result.error || "Unknown error"}`,
-            );
-            return;
-          }
-
-          const updatedRows = [...rows, ...reconciledRows];
-          setRows(updatedRows);
-
-          const now = new Date();
-          const formattedTime = formatTimestamp(now);
-          setLastSaved(formattedTime);
-          setSaveSuccess(true);
-          setTimeout(() => setSaveSuccess(false), 3000);
-
-          alert(
-            `✅ File uploaded successfully! ${processedCount} rows saved to database.`,
-          );
-        } catch (error) {
-          console.error("Error saving to database:", error);
-          alert(
-            "⚠️ Error saving to database. Please check your Supabase configuration.",
-          );
-        } finally {
-          setIsSaving(false);
-        }
-      };
-
-      reader.readAsText(file);
-    }
-  };
-
-  const saveAllChanges = async () => {
-    setIsSaving(true);
-    setSaveSuccess(false);
-
-    try {
-      const rowsToInsert = rows.map((row) => ({
-        id: row.id,
-        file_name: "braintree-eur.csv",
-        source: "braintree-eur",
-        date: row.date,
-        description: row.description,
-        amount: row.amount.toString(),
-        category: "Other",
-        classification: "Other",
-        reconciled: false,
-        custom_data: {
-          id: row.id,
-          date: row.date,
-          description: row.description,
-          amount: row.amount,
-          conciliado: row.conciliado,
-          destinationAccount: row.destinationAccount,
-          reconciliationType: row.reconciliationType,
-        },
-      }));
-
-      const response = await fetch("/api/csv-rows", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rows: rowsToInsert, source: "braintree-eur" }),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        console.error("Error updating database:", result.error);
-        alert(`❌ Error updating database: ${result.error || "Unknown error"}`);
-        return;
-      }
-
-      const now = new Date();
-      const formattedTime = formatTimestamp(now);
-      setLastSaved(formattedTime);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } catch (error) {
-      console.error("Error saving data:", error);
-      alert("Error saving data. Please check your Supabase configuration.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const startEditing = (row: BraintreeEURRow) => {
+  const startEditing = (row: BraintreeUSDRow) => {
     setEditingRow(row.id);
     setEditedData({ ...row });
   };
@@ -623,72 +476,7 @@ export default function BraintreeUSDPage() {
     setEditedData({});
   };
 
-  const handleDeleteRow = async (rowId: string) => {
-    if (!confirm("Are you sure you want to delete this row?")) return;
 
-    setIsDeleting(true);
-    try {
-      const response = await fetch(`/api/csv-rows?id=${rowId}`, {
-        method: "DELETE",
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        console.error("Error deleting row:", result.error);
-        alert(`❌ Error deleting row: ${result.error || "Unknown error"}`);
-      } else {
-        await loadData();
-
-        const now = new Date();
-        const formattedTime = formatTimestamp(now);
-        setLastSaved(formattedTime);
-      }
-    } catch (error) {
-      console.error("Error deleting row:", error);
-      alert("Error deleting row. Please try again.");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
-
-  const handleDeleteAll = async () => {
-    if (
-      !confirm(
-        "⚠️ WARNING: This will DELETE ALL rows from Braintree USD! Are you sure?",
-      )
-    )
-      return;
-    if (!confirm("⚠️ FINAL WARNING: This action CANNOT be undone! Continue?"))
-      return;
-
-    setIsDeleting(true);
-    try {
-      const response = await fetch(`/api/csv-rows?source=braintree-eur`, {
-        method: "DELETE",
-      });
-
-      const result = await response.json();
-
-      if (!response.ok || !result.success) {
-        console.error("Error deleting all rows:", result.error);
-        alert(`❌ Error deleting rows: ${result.error || "Unknown error"}`);
-      } else {
-        await loadData();
-
-        const now = new Date();
-        const formattedTime = formatTimestamp(now);
-        setLastSaved(formattedTime);
-
-        alert("✅ All rows deleted successfully!");
-      }
-    } catch (error) {
-      console.error("Error deleting all rows:", error);
-      alert("Error deleting rows. Please try again.");
-    } finally {
-      setIsDeleting(false);
-    }
-  };
 
   const downloadCSV = () => {
     try {
@@ -719,7 +507,7 @@ export default function BraintreeUSDPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `braintree-eur-${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `braintree-usd-${new Date().toISOString().split("T")[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -729,6 +517,82 @@ export default function BraintreeUSDPage() {
       alert("Error downloading CSV file");
     }
   };
+
+  // Processar dados com filtros e ordenação
+  const processedRows = rows
+    .filter((row) => {
+      // Filtro de busca
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch =
+          row.description.toLowerCase().includes(search) ||
+          row.id.toLowerCase().includes(search) ||
+          (row.destinationAccount &&
+            row.destinationAccount.toLowerCase().includes(search));
+        if (!matchesSearch) return false;
+      }
+
+      // Filtro de valor
+      if (amountFilter) {
+        const { operator, value } = amountFilter;
+        switch (operator) {
+          case "eq":
+            if (Math.abs(row.amount - value) > 0.01) return false;
+            break;
+          case "gt":
+            if (row.amount <= value) return false;
+            break;
+          case "lt":
+            if (row.amount >= value) return false;
+            break;
+          case "gte":
+            if (row.amount < value) return false;
+            break;
+          case "lte":
+            if (row.amount > value) return false;
+            break;
+        }
+      }
+
+      // Filtro de data
+      if (dateFilters.date) {
+        const rowDate = new Date(row.date);
+        if (dateFilters.date.start) {
+          const startDate = new Date(dateFilters.date.start);
+          if (rowDate < startDate) return false;
+        }
+        if (dateFilters.date.end) {
+          const endDate = new Date(dateFilters.date.end);
+          if (rowDate > endDate) return false;
+        }
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
+        case "date":
+          comparison = new Date(a.date).getTime() - new Date(b.date).getTime();
+          break;
+        case "amount":
+          comparison = a.amount - b.amount;
+          break;
+        case "description":
+          comparison = a.description.localeCompare(b.description);
+          break;
+        case "destinationAccount":
+          const aAccount = a.destinationAccount || "";
+          const bAccount = b.destinationAccount || "";
+          comparison = aAccount.localeCompare(bAccount);
+          break;
+        default:
+          comparison = 0;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
 
   const getDestinationAccountStyle = (account: string | null) => {
     if (!account)
@@ -771,71 +635,29 @@ export default function BraintreeUSDPage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">
+                  <h1 className="text-2xl font-bold text-white">
                     Braintree USD - Payment Source
                   </h1>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    {rows.length} records
-                  </p>
+                  <div className="flex items-center gap-4 mt-1">
+                    <p className="text-sm text-gray-300">
+                      {rows.length} records ({processedRows.length} filtered)
+                    </p>
+                    {lastSyncDate && (
+                      <p className="text-sm text-gray-300 flex items-center gap-1">
+                        <Database className="h-3 w-3" />
+                        Last sync: {lastSyncDate}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Button>
-                <Button
-                  onClick={saveAllChanges}
-                  disabled={isSaving || rows.length === 0}
-                  className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Database className="h-4 w-4" />
-                      Save All Changes
-                    </>
-                  )}
-                </Button>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload-braintree"
-                />
-                <label htmlFor="file-upload-braintree">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
-                    <span>
-                      <Upload className="h-4 w-4" />
-                      Upload CSV
-                    </span>
-                  </Button>
-                </label>
-
                 {/* Sincronização direta via API */}
                 <BraintreeApiSync />
 
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
-                </Button>
-                <Button
-                  onClick={handleDeleteAll}
-                  variant="destructive"
-                  className="gap-2"
-                  disabled={isDeleting || rows.length === 0}
-                >
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                  Delete All
                 </Button>
               </div>
             </div>
@@ -849,13 +671,6 @@ export default function BraintreeUSDPage() {
                 </AlertDescription>
               </Alert>
             )}
-
-            {lastSaved && !saveSuccess && (
-              <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                <span>Last saved: {lastSaved}</span>
-              </div>
-            )}
           </div>
         </header>
 
@@ -864,51 +679,272 @@ export default function BraintreeUSDPage() {
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
               <CardDescription className="text-white/80">
-                Upload CSV files - Columns: disbursement_date → Date |
-                settlement_currency_sales → Amount (Payout calculated
-                automatically)
+                Manage Braintree USD transactions with filtering and sorting
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
+            <CardContent className="p-6">
+              {/* Controles de Filtros e Colunas */}
+              <div className="mb-6 space-y-4">
+                {/* Search and Column Selector */}
+                <div className="flex gap-4 items-center">
+                  <div className="flex-1">
+                    <Input
+                      placeholder="Search by description, ID or destination account..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="max-w-md"
+                    />
+                  </div>
+
+                  {/* Column Selector */}
+                  <Dialog
+                    open={columnSelectorOpen}
+                    onOpenChange={(open) => {
+                      if (open) {
+                        openColumnSelector();
+                      } else {
+                        cancelColumnSelection();
+                      }
+                    }}
+                  >
+                    <DialogTrigger asChild>
+                      <Button
+                        variant={columnSelectorOpen ? "default" : "outline"}
+                        size="sm"
+                        onClick={openColumnSelector}
+                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-[#243140] hover:bg-[#1a2530] text-white" : ""}`}
+                      >
+                        <Columns3 className="h-4 w-4 mr-2" />
+                        Select Columns
+                        {visibleColumns.size < 7 && (
+                          <>
+                            <span
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const allColumns = new Set([
+                                  "id",
+                                  "date",
+                                  "description",
+                                  "amount",
+                                  "destinationAccount",
+                                  "reconciliation",
+                                  "actions",
+                                ]);
+                                setVisibleColumns(allColumns);
+                              }}
+                              className="absolute -top-2 -left-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white z-10 cursor-pointer"
+                              title="Clear column filter (show all)"
+                            >
+                              <X className="h-3 w-3" />
+                            </span>
+                            <span className="absolute -top-2 -right-2 bg-[#243140] text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
+                              {visibleColumns.size}/7
+                            </span>
+                          </>
+                        )}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Select Visible Columns</DialogTitle>
+                      </DialogHeader>
+                      <div className="grid gap-3 py-4 max-h-[60vh] overflow-y-auto">
+                        {[
+                          { id: "id", label: "ID" },
+                          { id: "date", label: "Date" },
+                          { id: "description", label: "Description" },
+                          { id: "amount", label: "Amount" },
+                          {
+                            id: "destinationAccount",
+                            label: "Destination Account",
+                          },
+                          {
+                            id: "reconciliation",
+                            label: "Payout Reconciliation",
+                          },
+                          { id: "actions", label: "Actions" },
+                        ].map((column) => (
+                          <div
+                            key={column.id}
+                            className="flex items-center space-x-2"
+                          >
+                            <Checkbox
+                              id={column.id}
+                              checked={tempVisibleColumns.has(column.id)}
+                              onCheckedChange={() =>
+                                toggleTempColumn(column.id)
+                              }
+                            />
+                            <label
+                              htmlFor={column.id}
+                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                            >
+                              {column.label}
+                            </label>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={cancelColumnSelection}
+                        >
+                          Cancel
+                        </Button>
+                        <Button onClick={applyColumnSelection}>Apply</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={loadData}
+                    className="gap-2"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    Refresh
+                  </Button>
+                </div>
+
+                {/* Quick Filters */}
+                <div className="flex gap-2 flex-wrap">
+                  {/* Amount Filter */}
+                  <div className="flex gap-1">
+                    <Select
+                      value={
+                        amountFilter ? `${amountFilter.operator}:${amountFilter.value}` : ""
+                      }
+                      onValueChange={(value) => {
+                        if (!value) {
+                          setAmountFilter(null);
+                          return;
+                        }
+                        const [operator, val] = value.split(":");
+                        setAmountFilter({ operator, value: parseFloat(val) });
+                      }}
+                    >
+                      <SelectTrigger className="w-[180px] h-9">
+                        <SelectValue placeholder="Filter by amount" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="">No filter</SelectItem>
+                        <SelectItem value="gt:0">Amount {">"} 0</SelectItem>
+                        <SelectItem value="gt:100">
+                          Amount {">"} €100
+                        </SelectItem>
+                        <SelectItem value="gt:1000">
+                          Amount {">"} €1000
+                        </SelectItem>
+                        <SelectItem value="lt:100">
+                          Amount {"<"} €100
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Clear all filters button */}
+                  {(searchTerm || amountFilter || Object.keys(dateFilters).length > 0) && (
+                    <Badge
+                      variant="secondary"
+                      className="cursor-pointer hover:bg-destructive/20 px-3 h-9 flex items-center"
+                      onClick={() => {
+                        setSearchTerm("");
+                        setAmountFilter(null);
+                        setDateFilters({});
+                      }}
+                    >
+                      Clear all filters
+                      <X className="h-3 w-3 ml-2" />
+                    </Badge>
+                  )}
+                </div>
+              </div>
+
+              <div className="overflow-x-auto">{/* Tabela aqui */}
                 <table className="w-full">
                   <thead>
                     <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white w-24">
-                        ID
-                      </th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Date
-                      </th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Description
-                      </th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Amount
-                      </th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Destination Account
-                      </th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Payout Reconciliation
-                      </th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Actions
-                      </th>
+                      {visibleColumns.has("id") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white w-24">
+                          <button
+                            onClick={() => toggleSort("id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            ID
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("date") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("date")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("description") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("description")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Description
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("amount") && (
+                        <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("amount")}
+                            className="flex items-center gap-1 hover:text-blue-600 ml-auto"
+                          >
+                            Amount
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("destinationAccount") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("destinationAccount")}
+                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
+                          >
+                            Destination Account
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("reconciliation") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Payout Reconciliation
+                        </th>
+                      )}
+                      {visibleColumns.has("actions") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Actions
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.length === 0 ? (
+                    {processedRows.length === 0 ? (
                       <tr>
                         <td
                           colSpan={7}
                           className="py-8 text-center text-gray-500"
                         >
-                          No data available. Upload a CSV file to get started.
+                          No data available matching your filters.
                         </td>
                       </tr>
                     ) : (
-                      rows.map((row) => {
+                      processedRows.map((row) => {
                         const accountStyle = getDestinationAccountStyle(
                           row.destinationAccount,
                         );
@@ -917,171 +953,188 @@ export default function BraintreeUSDPage() {
                             key={row.id}
                             className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50"
                           >
-                            <td className="py-3 px-4 text-sm font-bold">
-                              {row.id.substring(0, 8)}...
-                            </td>
-                            <td className="py-3 px-4 text-sm">
-                              {editingRow === row.id ? (
-                                <Input
-                                  value={editedData.date || ""}
-                                  onChange={(e) =>
-                                    setEditedData({
-                                      ...editedData,
-                                      date: e.target.value,
-                                    })
-                                  }
-                                  className="w-32"
-                                />
-                              ) : (
-                                formatDate(row.date)
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm max-w-xs truncate">
-                              {editingRow === row.id ? (
-                                <Input
-                                  value={editedData.description || ""}
-                                  onChange={(e) =>
-                                    setEditedData({
-                                      ...editedData,
-                                      description: e.target.value,
-                                    })
-                                  }
-                                  className="w-full"
-                                />
-                              ) : (
-                                row.description
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-right font-bold text-[#4fc3f7]">
-                              {editingRow === row.id ? (
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={editedData.amount || 0}
-                                  onChange={(e) =>
-                                    setEditedData({
-                                      ...editedData,
-                                      amount: parseFloat(e.target.value),
-                                    })
-                                  }
-                                  className="w-32"
-                                />
-                              ) : (
-                                formatCurrency(row.amount, "USD")
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center text-sm">
-                              {editingRow === row.id ? (
-                                <Select
-                                  value={editedData.destinationAccount || ""}
-                                  onValueChange={(value) =>
-                                    setEditedData({
-                                      ...editedData,
-                                      destinationAccount: value,
-                                    })
-                                  }
-                                >
-                                  <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select account" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Bankinter EUR">
-                                      Bankinter EUR
-                                    </SelectItem>
-                                    <SelectItem value="Bankinter USD">
-                                      Bankinter USD
-                                    </SelectItem>
-                                    <SelectItem value="Bankinter GBP">
-                                      Bankinter GBP
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : row.destinationAccount ? (
-                                <button
-                                  onClick={() =>
-                                    handleDestinationAccountClick(
-                                      row.destinationAccount,
-                                    )
-                                  }
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${accountStyle.bg} ${accountStyle.text} border ${accountStyle.border} hover:opacity-80 transition-opacity cursor-pointer`}
-                                >
-                                  {row.destinationAccount}
-                                </button>
-                              ) : (
-                                <span className="text-gray-400 text-xs">
-                                  N/A
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {row.conciliado ? (
-                                <div className="flex items-center justify-center gap-2">
-                                  {row.reconciliationType === "automatic" ? (
-                                    <div className="relative group">
-                                      <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                        Automatic reconciliation
+                            {visibleColumns.has("id") && (
+                              <td className="py-3 px-4 text-sm font-bold">
+                                {row.id.substring(0, 8)}...
+                              </td>
+                            )}
+                            {visibleColumns.has("date") && (
+                              <td className="py-3 px-4 text-sm">
+                                {editingRow === row.id ? (
+                                  <Input
+                                    value={editedData.date || ""}
+                                    onChange={(e) =>
+                                      setEditedData({
+                                        ...editedData,
+                                        date: e.target.value,
+                                      })
+                                    }
+                                    className="w-32"
+                                  />
+                                ) : (
+                                  formatDate(row.date)
+                                )}
+                              </td>
+                            )}
+                            {visibleColumns.has("description") && (
+                              <td className="py-3 px-4 text-sm max-w-xs truncate">
+                                {editingRow === row.id ? (
+                                  <Input
+                                    value={editedData.description || ""}
+                                    onChange={(e) =>
+                                      setEditedData({
+                                        ...editedData,
+                                        description: e.target.value,
+                                      })
+                                    }
+                                    className="w-full"
+                                  />
+                                ) : (
+                                  row.description
+                                )}
+                              </td>
+                            )}
+                            {visibleColumns.has("amount") && (
+                              <td className="py-3 px-4 text-sm text-right font-bold text-[#4fc3f7]">
+                                {editingRow === row.id ? (
+                                  <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={editedData.amount || 0}
+                                    onChange={(e) =>
+                                      setEditedData({
+                                        ...editedData,
+                                        amount: parseFloat(e.target.value),
+                                      })
+                                    }
+                                    className="w-32"
+                                  />
+                                ) : (
+                                  formatCurrency(row.amount)
+                                )}
+                              </td>
+                            )}
+                            {visibleColumns.has("destinationAccount") && (
+                              <td className="py-3 px-4 text-center text-sm">
+                                {editingRow === row.id ? (
+                                  <Select
+                                    value={editedData.destinationAccount || ""}
+                                    onValueChange={(value) =>
+                                      setEditedData({
+                                        ...editedData,
+                                        destinationAccount: value,
+                                      })
+                                    }
+                                  >
+                                    <SelectTrigger className="w-full">
+                                      <SelectValue placeholder="Select account" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Bankinter EUR">
+                                        Bankinter EUR
+                                      </SelectItem>
+                                      <SelectItem value="Bankinter USD">
+                                        Bankinter USD
+                                      </SelectItem>
+                                      <SelectItem value="Bankinter GBP">
+                                        Bankinter GBP
+                                      </SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : row.destinationAccount ? (
+                                  <button
+                                    onClick={() =>
+                                      handleDestinationAccountClick(
+                                        row.destinationAccount,
+                                      )
+                                    }
+                                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${accountStyle.bg} ${accountStyle.text} border ${accountStyle.border} hover:opacity-80 transition-opacity cursor-pointer`}
+                                  >
+                                    {row.destinationAccount}
+                                  </button>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">
+                                    N/A
+                                  </span>
+                                )}
+                              </td>
+                            )}
+                            {visibleColumns.has("reconciliation") && (
+                              <td className="py-3 px-4 text-center">
+                                {row.conciliado ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    {row.reconciliationType === "automatic" ? (
+                                      <div className="relative group">
+                                        <Zap className="h-5 w-5 text-green-600 mx-auto" />
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                          Automatic reconciliation
+                                        </div>
                                       </div>
-                                    </div>
-                                  ) : (
-                                    <div className="relative group">
-                                      <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                        Manual reconciliation
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {editingRow === row.id ? (
-                                <div className="flex items-center justify-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={saveEdit}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <Save className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={cancelEdit}
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => startEditing(row)}
-                                    className="h-8 w-8 p-0"
-                                    disabled={isDeleting}
-                                  >
-                                    <Edit2 className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleDeleteRow(row.id)}
-                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    disabled={isDeleting}
-                                  >
-                                    {isDeleting ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
-                                      <Trash2 className="h-4 w-4" />
+                                      <div className="relative group">
+                                        <User className="h-5 w-5 text-blue-600 mx-auto" />
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                          Manual reconciliation
+                                        </div>
+                                      </div>
                                     )}
-                                  </Button>
-                                </div>
-                              )}
-                            </td>
+                                  </div>
+                                ) : (
+                                  <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                                )}
+                              </td>
+                            )}
+                            {visibleColumns.has("actions") && (
+                              <td className="py-3 px-4 text-center">
+                                {editingRow === row.id ? (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      onClick={saveEdit}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <Save className="h-4 w-4" />
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={cancelEdit}
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <X className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center justify-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      onClick={() => startEditing(row)}
+                                      className="h-8 w-8 p-0"
+                                      disabled={isDeleting}
+                                    >
+                                      <Edit2 className="h-4 w-4" />
+                                    </Button>
+                                    {row.conciliado && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => handleUnconcile(row.id)}
+                                        className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                                        disabled={isDeleting}
+                                        title="Clear reconciliation"
+                                      >
+                                        {isDeleting ? (
+                                          <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                          <RefreshCw className="h-4 w-4" />
+                                        )}
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
+                              </td>
+                            )}
                           </tr>
                         );
                       })
