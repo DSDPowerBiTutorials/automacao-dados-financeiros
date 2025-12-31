@@ -60,7 +60,7 @@ interface BraintreeEURRow {
   conciliado: boolean;
   destinationAccount: string | null;
   reconciliationType?: "automatic" | "manual" | null;
-  
+
   // Campos adicionais da Braintree API
   transaction_id?: string;
   status?: string;
@@ -76,7 +76,7 @@ interface BraintreeEURRow {
   disbursement_date?: string | null;
   settlement_amount?: number | null;
   settlement_currency?: string | null;
-  
+
   [key: string]: any;
 }
 
@@ -149,6 +149,13 @@ export default function BraintreeEURPage() {
   // Sorting
   const [sortField, setSortField] = useState<string>("date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 50;
+
+  // Webhook tracking
+  const [mostRecentWebhookTransaction, setMostRecentWebhookTransaction] = useState<BraintreeEURRow | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -386,13 +393,13 @@ export default function BraintreeEURPage() {
       console.log("[Braintree EUR] Fetching data from Supabase...");
 
       // Carregar dados da API Braintree (source: braintree-api-revenue)
-      // Filtrar apenas merchant account EUR
+      // Filtrar apenas merchant account EUR, a partir de 01/01/2024
       const { data: rowsData, error } = await supabase
         .from("csv_rows")
         .select("*")
         .or("source.eq.braintree-api-revenue,source.eq.braintree-eur")
-        .order("date", { ascending: false })
-        .limit(1000);
+        .gte("date", "2024-01-01")
+        .order("date", { ascending: false });
 
       if (error) {
         console.error("[Braintree EUR] Error loading data:", error);
@@ -415,32 +422,42 @@ export default function BraintreeEURPage() {
           return !merchantAccount || merchantAccount === "digitalsmiledesignEUR" || row.source === "braintree-eur";
         })
         .map((row) => ({
-        id: row.id,
-        date: row.date,
-        description: row.description || "",
-        amount: parseFloat(row.amount) || 0,
-        conciliado: row.custom_data?.conciliado || false,
-        destinationAccount: row.custom_data?.destinationAccount || null,
-        reconciliationType: row.custom_data?.reconciliationType || null,
-        
-        // Campos adicionais da Braintree
-        transaction_id: row.custom_data?.transaction_id,
-        status: row.custom_data?.status,
-        type: row.custom_data?.type,
-        currency: row.custom_data?.currency,
-        customer_id: row.custom_data?.customer_id,
-        customer_name: row.custom_data?.customer_name,
-        customer_email: row.custom_data?.customer_email,
-        payment_method: row.custom_data?.payment_method,
-        merchant_account_id: row.custom_data?.merchant_account_id,
-        created_at: row.custom_data?.created_at,
-        updated_at: row.custom_data?.updated_at,
-        disbursement_date: row.custom_data?.disbursement_date,
-        settlement_amount: row.custom_data?.settlement_amount,
-        settlement_currency: row.custom_data?.settlement_currency,
-      }));
+          id: row.id,
+          date: row.date,
+          description: row.description || "",
+          amount: parseFloat(row.amount) || 0,
+          conciliado: row.custom_data?.conciliado || false,
+          destinationAccount: row.custom_data?.destinationAccount || null,
+          reconciliationType: row.custom_data?.reconciliationType || null,
+
+          // Campos adicionais da Braintree
+          transaction_id: row.custom_data?.transaction_id,
+          status: row.custom_data?.status,
+          type: row.custom_data?.type,
+          currency: row.custom_data?.currency,
+          customer_id: row.custom_data?.customer_id,
+          customer_name: row.custom_data?.customer_name,
+          customer_email: row.custom_data?.customer_email,
+          payment_method: row.custom_data?.payment_method,
+          merchant_account_id: row.custom_data?.merchant_account_id,
+          created_at: row.custom_data?.created_at,
+          updated_at: row.custom_data?.updated_at,
+          disbursement_date: row.custom_data?.disbursement_date,
+          settlement_amount: row.custom_data?.settlement_amount,
+          settlement_currency: row.custom_data?.settlement_currency,
+        }));
 
       setRows(mappedRows);
+
+      // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
+      if (mappedRows.length > 0) {
+        setMostRecentWebhookTransaction(mappedRows[0]);
+        console.log("[Braintree EUR] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
+      }
+
+      // Reset para página 1 quando dados são carregados
+      setCurrentPage(1);
+
       console.log("[Braintree EUR] Data loaded successfully");
 
       // Carregar última data de sync (sem bloquear)
@@ -662,6 +679,21 @@ export default function BraintreeEURPage() {
       return sortDirection === "asc" ? comparison : -comparison;
     });
 
+  // Paginação
+  const totalPages = Math.ceil(processedRows.length / rowsPerPage);
+  const startIndex = (currentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedRows = processedRows.slice(startIndex, endIndex);
+
+  // Reset página se ela ficar vazia após filtrar
+  React.useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(totalPages);
+    } else if (totalPages === 0) {
+      setCurrentPage(1);
+    }
+  }, [totalPages, currentPage]);
+
   const getDestinationAccountStyle = (account: string | null) => {
     if (!account)
       return {
@@ -708,8 +740,14 @@ export default function BraintreeEURPage() {
                   </h1>
                   <div className="flex items-center gap-4 mt-1">
                     <p className="text-sm text-gray-300">
-                      {rows.length} records ({processedRows.length} filtered)
+                      {rows.length} records ({processedRows.length} filtered) - Page {currentPage} of {Math.max(1, totalPages)}
                     </p>
+                    {mostRecentWebhookTransaction && (
+                      <p className="text-sm text-green-300 flex items-center gap-1">
+                        <Zap className="h-3 w-3" />
+                        Most recent: {formatDate(mostRecentWebhookTransaction.date)}
+                      </p>
+                    )}
                     {lastSyncDate && (
                       <p className="text-sm text-gray-300 flex items-center gap-1">
                         <Database className="h-3 w-3" />
@@ -1072,7 +1110,7 @@ export default function BraintreeEURPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {processedRows.length === 0 ? (
+                    {paginatedRows.length === 0 ? (
                       <tr>
                         <td
                           colSpan={7}
@@ -1082,7 +1120,7 @@ export default function BraintreeEURPage() {
                         </td>
                       </tr>
                     ) : (
-                      processedRows.map((row) => {
+                      paginatedRows.map((row) => {
                         const accountStyle = getDestinationAccountStyle(
                           row.destinationAccount,
                         );
@@ -1332,6 +1370,54 @@ export default function BraintreeEURPage() {
                   </tbody>
                 </table>
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                  <div className="text-sm text-gray-600 dark:text-gray-300">
+                    Showing {startIndex + 1} to {Math.min(endIndex, processedRows.length)} of {processedRows.length} results
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(1)}
+                      disabled={currentPage === 1}
+                    >
+                      First
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage - 1)}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-2 px-3">
+                      <span className="text-sm font-medium">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(totalPages)}
+                      disabled={currentPage === totalPages}
+                    >
+                      Last
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
