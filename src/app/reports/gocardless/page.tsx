@@ -11,7 +11,7 @@ import {
   XCircle,
   Columns3,
   ArrowUpDown,
-  Sync,
+  RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -352,7 +352,7 @@ export default function GoCardlessPage() {
               </>
             ) : (
               <>
-                <Sync className="w-4 h-4" />
+                <RefreshCw className="w-4 h-4" />
                 Sync API
               </>
             )}
