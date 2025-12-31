@@ -361,7 +361,7 @@ export default function BraintreeAUDPage() {
         .select("*")
         .or("source.eq.braintree-api-revenue,source.eq.braintree-aud")
         .order("date", { ascending: false })
-        .limit(200);
+        .limit(1000);
 
       if (error) {
         console.error("Error loading data:", error);
@@ -377,7 +377,13 @@ export default function BraintreeAUDPage() {
         return;
       }
 
-      const mappedRows: BraintreeAUDRow[] = rowsData.map((row) => ({
+      const mappedRows: BraintreeAUDRow[] = rowsData
+        .filter((row) => {
+          // Filtrar apenas merchant account AUD
+          const merchantAccount = row.custom_data?.merchant_account_id;
+          return !merchantAccount || merchantAccount === "digitalsmiledesignAUD" || row.source === "braintree-aud";
+        })
+        .map((row) => ({
         id: row.id,
         date: row.date,
         description: row.description || "",

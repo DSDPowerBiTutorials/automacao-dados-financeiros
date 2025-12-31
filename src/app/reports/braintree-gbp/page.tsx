@@ -361,7 +361,7 @@ export default function BraintreeGBPPage() {
         .select("*")
         .or("source.eq.braintree-api-revenue,source.eq.braintree-gbp")
         .order("date", { ascending: false })
-        .limit(200);
+        .limit(1000);
 
       if (error) {
         console.error("Error loading data:", error);
@@ -377,7 +377,13 @@ export default function BraintreeGBPPage() {
         return;
       }
 
-      const mappedRows: BraintreeGBPRow[] = rowsData.map((row) => ({
+      const mappedRows: BraintreeGBPRow[] = rowsData
+        .filter((row) => {
+          // Filtrar apenas merchant account GBP
+          const merchantAccount = row.custom_data?.merchant_account_id;
+          return !merchantAccount || merchantAccount === "digitalsmiledesignGBP" || row.source === "braintree-gbp";
+        })
+        .map((row) => ({
         id: row.id,
         date: row.date,
         description: row.description || "",

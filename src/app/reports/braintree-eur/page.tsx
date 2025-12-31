@@ -386,12 +386,13 @@ export default function BraintreeEURPage() {
       console.log("[Braintree EUR] Fetching data from Supabase...");
 
       // Carregar dados da API Braintree (source: braintree-api-revenue)
+      // Filtrar apenas merchant account EUR
       const { data: rowsData, error } = await supabase
         .from("csv_rows")
         .select("*")
         .or("source.eq.braintree-api-revenue,source.eq.braintree-eur")
         .order("date", { ascending: false })
-        .limit(200);
+        .limit(1000);
 
       if (error) {
         console.error("[Braintree EUR] Error loading data:", error);
@@ -407,7 +408,13 @@ export default function BraintreeEURPage() {
 
       console.log(`[Braintree EUR] Found ${rowsData.length} rows`);
 
-      const mappedRows: BraintreeEURRow[] = rowsData.map((row) => ({
+      const mappedRows: BraintreeEURRow[] = rowsData
+        .filter((row) => {
+          // Filtrar apenas merchant account EUR
+          const merchantAccount = row.custom_data?.merchant_account_id;
+          return !merchantAccount || merchantAccount === "digitalsmiledesignEUR" || row.source === "braintree-eur";
+        })
+        .map((row) => ({
         id: row.id,
         date: row.date,
         description: row.description || "",
