@@ -39,7 +39,7 @@ interface GoCardlessTransaction {
 }
 
 /**
- * Fetches all payouts from GoCardless
+ * Fetches all payouts from GoCardless since 2024-01-01
  */
 export async function fetchGoCardlessPayouts(): Promise<GoCardlessPayout[]> {
     if (!GOCARDLESS_TOKEN) {
@@ -47,7 +47,8 @@ export async function fetchGoCardlessPayouts(): Promise<GoCardlessPayout[]> {
     }
 
     try {
-        const response = await fetch(`${GOCARDLESS_API_URL}/payouts`, {
+        // Fetch payouts from 2024-01-01 onwards
+        const response = await fetch(`${GOCARDLESS_API_URL}/payouts?created_at[gte]=2024-01-01T00:00:00Z&limit=500`, {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
@@ -72,7 +73,7 @@ export async function fetchGoCardlessPayouts(): Promise<GoCardlessPayout[]> {
 }
 
 /**
- * Fetches all payments from GoCardless
+ * Fetches all payments from GoCardless since 2024-01-01
  */
 export async function fetchGoCardlessPayments(): Promise<GoCardlessPayment[]> {
     if (!GOCARDLESS_TOKEN) {
@@ -80,7 +81,8 @@ export async function fetchGoCardlessPayments(): Promise<GoCardlessPayment[]> {
     }
 
     try {
-        const response = await fetch(`${GOCARDLESS_API_URL}/payments`, {
+        // Fetch payments from 2024-01-01 onwards
+        const response = await fetch(`${GOCARDLESS_API_URL}/payments?created_at[gte]=2024-01-01T00:00:00Z&limit=500`, {
             method: "GET",
             headers: {
                 Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
