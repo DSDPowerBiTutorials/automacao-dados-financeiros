@@ -52,12 +52,24 @@ export async function POST(req: NextRequest) {
     console.log(
       `[Braintree Sync] Buscando transações de ${startDate} até ${endDate}`
     );
+    console.log(`[Braintree Sync] Start Date Object:`, start);
+    console.log(`[Braintree Sync] End Date Object:`, end);
 
     // Busca TODAS as transações (sem filtro de status)
     // Para ver tudo que existe no período
     const transactions = await searchTransactions(start, end);
 
     console.log(`[Braintree Sync] Encontradas ${transactions.length} transações`);
+    
+    if (transactions.length > 0) {
+      console.log(`[Braintree Sync] Primeira transação:`, {
+        id: transactions[0].id,
+        amount: transactions[0].amount,
+        status: transactions[0].status,
+        createdAt: transactions[0].createdAt,
+        merchantAccountId: transactions[0].merchantAccountId,
+      });
+    }
 
     const rowsToInsert: any[] = [];
     const feeRowsToInsert: any[] = [];

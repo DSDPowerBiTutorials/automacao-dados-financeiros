@@ -107,6 +107,8 @@ export async function searchTransactions(
   }
 ): Promise<BraintreeTransactionData[]> {
   return new Promise((resolve, reject) => {
+    console.log(`[searchTransactions] Buscando entre ${startDate.toISOString()} e ${endDate.toISOString()}`);
+    
     braintreeGateway.transaction.search(
       (search) => {
         search.createdAt().between(startDate, endDate);
@@ -114,11 +116,13 @@ export async function searchTransactions(
         // Apenas aplica filtro de status se especificado
         if (options?.status && options.status.length > 0) {
           search.status().in(options.status);
+          console.log(`[searchTransactions] Filtrando por status:`, options.status);
         }
         
         // Filtro por merchant account (se especificado)
         if (options?.merchantAccountId) {
           search.merchantAccountId().is(options.merchantAccountId);
+          console.log(`[searchTransactions] Filtrando por merchant account:`, options.merchantAccountId);
         }
         // Caso contrário, busca TODOS os merchant accounts
       },
@@ -130,7 +134,11 @@ export async function searchTransactions(
         
         const transactions: BraintreeTransactionData[] = [];
         
+        console.log(`[searchTransactions] Response success:`, response?.success);
+        console.log(`[searchTransactions] Response type:`, typeof response);
+        
         if (!response || !response.success) {
+          console.log(`[searchTransactions] Response inválida ou não sucesso, retornando array vazio`);
           resolve([]);
           return;
         }
@@ -138,11 +146,13 @@ export async function searchTransactions(
         // Use each() para iterar pelos resultados
         response.each((err, transaction) => {
           if (err) {
+            console.error(`[searchTransactions] Erro ao iterar:`, err);
             reject(err);
             return;
           }
           
           if (transaction) {
+            console.log(`[searchTransactions] Transação encontrada: ${transaction.id} - ${transaction.amount}`);
             transactions.push(transaction as unknown as BraintreeTransactionData);
             
             // Limita quantidade
@@ -154,7 +164,10 @@ export async function searchTransactions(
         });
         
         // Ao terminar iteração
-        setTimeout(() => resolve(transactions), 100);
+        setTimeout(() => {
+          console.log(`[searchTransactions] Busca finalizada. Total: ${transactions.length}`);
+          resolve(transactions);
+        }, 100);
       }
     );
   });
