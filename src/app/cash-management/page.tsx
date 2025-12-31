@@ -242,7 +242,7 @@ export default function CashManagementOverviewPage() {
 
         <Card className="rounded-2xl border-gray-100 shadow-lg">
           <CardContent className="p-6">
-            <Link href="/cash-management/reports">
+            <Link href="/cash-management">
               <Button variant="outline" className="w-full h-24 flex-col gap-2 rounded-2xl border-2 hover:border-blue-500 hover:shadow-lg transition-all">
                 <TrendingUp className="h-8 w-8" />
                 <span>Cash Flow Reports</span>

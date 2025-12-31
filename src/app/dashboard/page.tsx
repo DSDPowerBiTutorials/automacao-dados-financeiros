@@ -123,6 +123,11 @@ export default function DashboardPage() {
         const date = new Date();
         date.setMonth(date.getMonth() - i);
         const monthKey = date.toISOString().substring(0, 7); // YYYY-MM
+        
+        // Calculate next month for the lt filter
+        const nextMonth = new Date(date);
+        nextMonth.setMonth(nextMonth.getMonth() + 1);
+        const nextMonthKey = nextMonth.toISOString().substring(0, 7);
 
         // Get inflows (receivables paid)
         const { data: inflows } = await supabase
@@ -131,7 +136,7 @@ export default function DashboardPage() {
           .eq('invoice_type', 'REVENUE')
           .eq('is_reconciled', true)
           .gte('payment_date', `${monthKey}-01`)
-          .lt('payment_date', `${monthKey}-32`);
+          .lt('payment_date', `${nextMonthKey}-01`);
 
         // Get outflows (payables paid)
         const { data: outflows } = await supabase
@@ -140,7 +145,7 @@ export default function DashboardPage() {
           .eq('invoice_type', 'INCURRED')
           .eq('is_reconciled', true)
           .gte('payment_date', `${monthKey}-01`)
-          .lt('payment_date', `${monthKey}-32`);
+          .lt('payment_date', `${nextMonthKey}-01`);
 
         const inflow = inflows?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
         const outflow = outflows?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;

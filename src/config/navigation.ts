@@ -438,11 +438,6 @@ export const NAV: NavGroup[] = [
         title: "Reconciliation Center",
         href: "/actions/reconciliation-center",
         icon: CheckCircle2
-      },
-      {
-        title: "Cash Flow Reports",
-        href: "/cash-management/reports",
-        icon: TrendingDown
       }
     ]
   }
