@@ -38,11 +38,14 @@ export async function POST(request: NextRequest) {
 
         // Prepare rows for insertion
         const rows: any[] = [];
+        const syncTimestamp = new Date().toISOString();
+        const fileName = `gocardless-sync-${syncTimestamp.split('T')[0]}.json`;
 
         // Add payouts
         payouts.forEach((payout) => {
             rows.push({
                 source: "gocardless",
+                file_name: fileName,
                 date: payout.arrival_date || payout.created_at,
                 description: payout.reference || `GoCardless Payout - ${payout.id}`,
                 amount: (payout.amount / 100).toString(), // Convert from cents to currency
@@ -53,7 +56,7 @@ export async function POST(request: NextRequest) {
                     currency: payout.currency,
                     status: payout.status,
                     gocardless_id: payout.id,
-                    sync_timestamp: new Date().toISOString(),
+                    sync_timestamp: syncTimestamp,
                 },
             });
         });
@@ -62,6 +65,7 @@ export async function POST(request: NextRequest) {
         payments.forEach((payment) => {
             rows.push({
                 source: "gocardless",
+                file_name: fileName,
                 date: payment.charge_date || payment.created_at,
                 description:
                     payment.reference ||
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
                     payout_id: payment.payout_id,
                     status: payment.status,
                     gocardless_id: payment.id,
-                    sync_timestamp: new Date().toISOString(),
+                    sync_timestamp: syncTimestamp,
                 },
             });
         });
