@@ -827,10 +827,10 @@ export default function BraintreeGBPPage() {
                   <div className="flex gap-1">
                     <Select
                       value={
-                        amountFilter ? `${amountFilter.operator}:${amountFilter.value}` : ""
+                        amountFilter ? `${amountFilter.operator}:${amountFilter.value}` : "none"
                       }
                       onValueChange={(value) => {
-                        if (!value) {
+                        if (!value || value === "none") {
                           setAmountFilter(null);
                           return;
                         }
@@ -842,7 +842,7 @@ export default function BraintreeGBPPage() {
                         <SelectValue placeholder="Filter by amount" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">No filter</SelectItem>
+                        <SelectItem value="none">No filter</SelectItem>
                         <SelectItem value="gt:0">Amount {">"} 0</SelectItem>
                         <SelectItem value="gt:100">
                           Amount {">"} €100

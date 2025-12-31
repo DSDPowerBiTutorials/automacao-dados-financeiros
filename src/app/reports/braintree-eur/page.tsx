@@ -60,6 +60,23 @@ interface BraintreeEURRow {
   conciliado: boolean;
   destinationAccount: string | null;
   reconciliationType?: "automatic" | "manual" | null;
+  
+  // Campos adicionais da Braintree API
+  transaction_id?: string;
+  status?: string;
+  type?: string;
+  currency?: string;
+  customer_id?: string;
+  customer_name?: string;
+  customer_email?: string;
+  payment_method?: string;
+  merchant_account_id?: string;
+  created_at?: string;
+  updated_at?: string;
+  disbursement_date?: string | null;
+  settlement_amount?: number | null;
+  settlement_currency?: string | null;
+  
   [key: string]: any;
 }
 
@@ -112,6 +129,16 @@ export default function BraintreeEURPage() {
       "destinationAccount",
       "reconciliation",
       "actions",
+      "transaction_id",
+      "status",
+      "type",
+      "currency",
+      "customer_name",
+      "customer_email",
+      "payment_method",
+      "merchant_account_id",
+      "disbursement_date",
+      "settlement_amount",
     ])
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -388,6 +415,22 @@ export default function BraintreeEURPage() {
         conciliado: row.custom_data?.conciliado || false,
         destinationAccount: row.custom_data?.destinationAccount || null,
         reconciliationType: row.custom_data?.reconciliationType || null,
+        
+        // Campos adicionais da Braintree
+        transaction_id: row.custom_data?.transaction_id,
+        status: row.custom_data?.status,
+        type: row.custom_data?.type,
+        currency: row.custom_data?.currency,
+        customer_id: row.custom_data?.customer_id,
+        customer_name: row.custom_data?.customer_name,
+        customer_email: row.custom_data?.customer_email,
+        payment_method: row.custom_data?.payment_method,
+        merchant_account_id: row.custom_data?.merchant_account_id,
+        created_at: row.custom_data?.created_at,
+        updated_at: row.custom_data?.updated_at,
+        disbursement_date: row.custom_data?.disbursement_date,
+        settlement_amount: row.custom_data?.settlement_amount,
+        settlement_currency: row.custom_data?.settlement_currency,
       }));
 
       setRows(mappedRows);
@@ -734,7 +777,7 @@ export default function BraintreeEURPage() {
                       >
                         <Columns3 className="h-4 w-4 mr-2" />
                         Select Columns
-                        {visibleColumns.size < 7 && (
+                        {visibleColumns.size < 17 && (
                           <>
                             <span
                               onClick={(e) => {
@@ -748,6 +791,16 @@ export default function BraintreeEURPage() {
                                   "destinationAccount",
                                   "reconciliation",
                                   "actions",
+                                  "transaction_id",
+                                  "status",
+                                  "type",
+                                  "currency",
+                                  "customer_name",
+                                  "customer_email",
+                                  "payment_method",
+                                  "merchant_account_id",
+                                  "disbursement_date",
+                                  "settlement_amount",
                                 ]);
                                 setVisibleColumns(allColumns);
                               }}
@@ -757,7 +810,7 @@ export default function BraintreeEURPage() {
                               <X className="h-3 w-3" />
                             </span>
                             <span className="absolute -top-2 -right-2 bg-[#243140] text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
-                              {visibleColumns.size}/7
+                              {visibleColumns.size}/17
                             </span>
                           </>
                         )}
@@ -782,6 +835,16 @@ export default function BraintreeEURPage() {
                             label: "Payout Reconciliation",
                           },
                           { id: "actions", label: "Actions" },
+                          { id: "transaction_id", label: "Transaction ID" },
+                          { id: "status", label: "Status" },
+                          { id: "type", label: "Type" },
+                          { id: "currency", label: "Currency" },
+                          { id: "customer_name", label: "Customer Name" },
+                          { id: "customer_email", label: "Customer Email" },
+                          { id: "payment_method", label: "Payment Method" },
+                          { id: "merchant_account_id", label: "Merchant Account" },
+                          { id: "disbursement_date", label: "Disbursement Date" },
+                          { id: "settlement_amount", label: "Settlement Amount" },
                         ].map((column) => (
                           <div
                             key={column.id}
@@ -947,6 +1010,56 @@ export default function BraintreeEURPage() {
                       {visibleColumns.has("actions") && (
                         <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
                           Actions
+                        </th>
+                      )}
+                      {visibleColumns.has("transaction_id") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Transaction ID
+                        </th>
+                      )}
+                      {visibleColumns.has("status") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Status
+                        </th>
+                      )}
+                      {visibleColumns.has("type") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Type
+                        </th>
+                      )}
+                      {visibleColumns.has("currency") && (
+                        <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Currency
+                        </th>
+                      )}
+                      {visibleColumns.has("customer_name") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Customer Name
+                        </th>
+                      )}
+                      {visibleColumns.has("customer_email") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Customer Email
+                        </th>
+                      )}
+                      {visibleColumns.has("payment_method") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Payment Method
+                        </th>
+                      )}
+                      {visibleColumns.has("merchant_account_id") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Merchant Account
+                        </th>
+                      )}
+                      {visibleColumns.has("disbursement_date") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Disbursement Date
+                        </th>
+                      )}
+                      {visibleColumns.has("settlement_amount") && (
+                        <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          Settlement Amount
                         </th>
                       )}
                     </tr>
@@ -1151,6 +1264,58 @@ export default function BraintreeEURPage() {
                                     )}
                                   </div>
                                 )}
+                              </td>
+                            )}
+                            {visibleColumns.has("transaction_id") && (
+                              <td className="py-3 px-4 text-sm font-mono text-xs">
+                                {row.transaction_id || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("status") && (
+                              <td className="py-3 px-4 text-center">
+                                <Badge variant={row.status === "settled" || row.status === "settled_successfully" ? "default" : "secondary"}>
+                                  {row.status || "N/A"}
+                                </Badge>
+                              </td>
+                            )}
+                            {visibleColumns.has("type") && (
+                              <td className="py-3 px-4 text-center text-sm">
+                                {row.type || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("currency") && (
+                              <td className="py-3 px-4 text-center text-sm font-bold">
+                                {row.currency || "EUR"}
+                              </td>
+                            )}
+                            {visibleColumns.has("customer_name") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.customer_name || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("customer_email") && (
+                              <td className="py-3 px-4 text-sm text-blue-600">
+                                {row.customer_email || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("payment_method") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.payment_method || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("merchant_account_id") && (
+                              <td className="py-3 px-4 text-sm font-mono text-xs">
+                                {row.merchant_account_id || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("disbursement_date") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("settlement_amount") && (
+                              <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
+                                {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
                               </td>
                             )}
                           </tr>

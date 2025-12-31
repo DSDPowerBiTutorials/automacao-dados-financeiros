@@ -434,12 +434,12 @@ export default function GoCardlessPage() {
                   className="w-full"
                 />
               </div>
-              <Select value={typeFilter || ""} onValueChange={setTypeFilter}>
+              <Select value={typeFilter || "none"} onValueChange={(value) => setTypeFilter(value === "none" ? null : value)}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="Filter by type" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Types</SelectItem>
+                  <SelectItem value="none">All Types</SelectItem>
                   <SelectItem value="payout">Payouts</SelectItem>
                   <SelectItem value="payment">Payments</SelectItem>
                   <SelectItem value="refund">Refunds</SelectItem>
