@@ -103,6 +103,7 @@ export async function searchTransactions(
   options?: {
     status?: braintree.Transaction.Status[];
     limit?: number;
+    merchantAccountId?: string;
   }
 ): Promise<BraintreeTransactionData[]> {
   return new Promise((resolve, reject) => {
@@ -114,7 +115,12 @@ export async function searchTransactions(
         if (options?.status && options.status.length > 0) {
           search.status().in(options.status);
         }
-        // Caso contrário, busca TODOS os status
+        
+        // Filtro por merchant account (se especificado)
+        if (options?.merchantAccountId) {
+          search.merchantAccountId().is(options.merchantAccountId);
+        }
+        // Caso contrário, busca TODOS os merchant accounts
       },
       (err, response) => {
         if (err) {
