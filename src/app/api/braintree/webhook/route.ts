@@ -23,7 +23,7 @@ import {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.text(); // Webhook vem como form-urlencoded
+    const body = await req.text();
 
     // Parse form data
     const params = new URLSearchParams(body);
@@ -60,7 +60,21 @@ export async function POST(req: NextRequest) {
       // Dispute (chargebacks)
       "dispute_opened",
       "dispute_won",
-      "Roteamento por tipo de evento
+      "dispute_lost",
+      // Local Payments
+      "local_payment_completed",
+      "local_payment_reversed",
+      "local_payment_funded",
+      // Refund
+      "refund_failed",
+    ];
+
+    if (!handledEvents.includes(webhookNotification.kind)) {
+      console.log(`[Braintree Webhook] Evento não processado: ${webhookNotification.kind}`);
+      return NextResponse.json({ success: true, message: "Event not handled" });
+    }
+
+    // Roteamento por tipo de evento
     const eventKind = webhookNotification.kind;
 
     // EVENTOS DE CANCELAMENTO/EXPIRAÇÃO
@@ -68,18 +82,20 @@ export async function POST(req: NextRequest) {
       const subscription = webhookNotification.subscription;
       
       if (subscription) {
+        const status = eventKind === "subscription_canceled" ? "canceled" : "expired";
+        
         // Atualiza status de transações relacionadas a essa subscription
         const { error } = await supabaseAdmin
           .from("csv_rows")
           .update({
             custom_data: supabaseAdmin.raw(
-              `custom_data || '{"subscription_status": "${eventKind === "subscription_canceled" ? "canceled" : "expired"}", "canceled_at": "${new Date().toISOString()}"}'::jsonb`
+              `custom_data || '{"subscription_status": "${status}", "canceled_at": "${new Date().toISOString()}"}'::jsonb`
             ),
           })
           .eq("source", "braintree-api-revenue")
           .eq("custom_data->>subscription_id", subscription.id);
 
-        console.log(`[Braintree Webhook] Subscription ${subscription.id} marcada como ${eventKind}`);
+        console.log(`[Braintree Webhook] Subscription ${subscription.id} marcada como ${status}`);
       }
 
       return NextResponse.json({
@@ -116,11 +132,9 @@ export async function POST(req: NextRequest) {
     }
 
     // EVENTO DE DISBURSEMENT (Transferência bancária)
-    if (subscription_id: transaction.subscriptionId,
-        created_at: transaction.createdAt,
-        webhook_received_at: new Date().toISOString(),
-        webhook_kind: webhookNotification.kind,
-        is_successful: eventKind.includes("successfully")
+    if (eventKind === "disbursement") {
+      const disbursement = webhookNotification.disbursement;
+      
       if (disbursement) {
         // Cria registro de disbursement (importante pra conciliação bancária)
         const disbursementRow = {
@@ -129,191 +143,181 @@ export async function POST(req: NextRequest) {
           description: `Disbursement Braintree - ${disbursement.id}`,
           amount: parseFloat(disbursement.amount),
           reconciled: false,
-
           custom_data: {
             disbursement_id: disbursement.id,
             merchant_account_id: disbursement.merchantAccount?.id,
             currency: disbursement.merchantAccount?.currencyIsoCode || "EUR",
-            success: disbursement.success,
-            disbursement_date: disbursement.disbursementDate,
+            webhook_received_at: new Date().toISOString(),
+            transaction_ids: disbursement.transactionIds,
+          },
+        };
+
+        const { error } = await supabaseAdmin
+          .from("csv_rows")
+          .insert(disbursementRow);
+
+        if (error) {
+          console.error("[Braintree Webhook] Erro ao salvar disbursement:", error);
+          return NextResponse.json(
+            { error: "Failed to save disbursement" },
+            { status: 500 }
+          );
+        }
+
+        console.log(`[Braintree Webhook] Disbursement salvo: ${disbursement.id}`);
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Disbursement saved",
+      });
+    }
+
+    // EVENTOS DE LOCAL PAYMENT
+    if (["local_payment_completed", "local_payment_reversed", "local_payment_funded"].includes(eventKind)) {
+      const localPayment = webhookNotification.localPayment;
+      
+      if (localPayment) {
+        const paymentRow = {
+          source: "braintree-api-revenue",
+          date: new Date().toISOString().split("T")[0],
+          description: `Local Payment ${eventKind.split("_")[2]} - ${localPayment.paymentId}`,
+          amount: parseFloat(localPayment.amount || "0"),
+          reconciled: false,
+          custom_data: {
+            payment_id: localPayment.paymentId,
+            transaction_id: localPayment.transactionId,
+            currency: localPayment.currencyIsoCode,
+            payment_method: localPayment.paymentMethodNonce,
+            status: eventKind.split("_")[2],
             webhook_received_at: new Date().toISOString(),
           },
         };
 
-        await supabaseAdmin.from("csv_rows").insert([disbursementRow]);
-        
-        console.log(`[Braintree Webhook] Disbursement ${disbursement.id} registrado: €${disbursement.amount}`);
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: "Disbursement recorded",
-      });
-    }
-
-    // EVENTOS DE TRANSAÇÃO (receitas)
-    const transaction = webhookNotification.transaction;
-
-    if (!transaction) {
-      console.log("[Braintree Webhook] Webhook sem dados de transação");
-      return NextResponse.json({ success: true, message: "No transaction data" });
-    }
-
-    // Verifica se já existe no banco (evita duplicatas)
-    const { data: existing } = await supabaseAdmin
-      .from("csv_rows")
-      .select("id")
-      .eq("source", "braintree-api-revenue")
-      .eq("custom_data->>transaction_id", transaction.id)
-      .single();
-
-    if (existing) {
-      console.log(`[Braintree Webhook] Transação ${transaction.id} já existe, atualizando status`);
-      
-      // Atualiza status se evento for de falha/reversão
-      if (eventKind.includes("unsuccessful") || eventKind.includes("reversed")) {
-        await supabaseAdmin
+        const { error } = await supabaseAdmin
           .from("csv_rows")
-          .update({
-            custom_data: supabaseAdmin.raw(
-              `custom_data || '{"status": "failed", "webhook_kind": "${eventKind}", "failed_at": "${new Date().toISOString()}"}'::jsonb`
-            ),
-          })
-          .eq("id", existing.id);
+          .insert(paymentRow);
+
+        if (error) {
+          console.error("[Braintree Webhook] Erro ao salvar local payment:", error);
+        } else {
+          console.log(`[Braintree Webhook] Local payment salvo: ${localPayment.paymentId}`);
+        }
       }
 
-      console.log("[Braintree Webhook] Webhook sem dados de transação");
-      return NextResponse.json({ success: true, message: "No transaction data" });
-    }
-
-    // Verifica se já existe no banco (evita duplicatas)
-    const { data: existing } = await supabaseAdmin
-      .from("csv_rows")
-      .select("id")
-      .eq("source", "braintree-api-revenue")
-      .eq("custom_data->>transaction_id", transaction.id)
-      .single();
-
-    if (existing) {
-      console.log(`[Braintree Webhook] Transação ${transaction.id} já existe, pulando`);
       return NextResponse.json({
         success: true,
-        message: "Transaction already exists",
+        message: "Local payment processed",
       });
     }
 
-    // Cria registros no banco (receita + fee)
-    const revenueRow = {
-      source: "braintree-api-revenue",
-      date: new Date(transaction.createdAt).toISOString().split("T")[0],
-      description: `${getCustomerName(transaction as any)} - ${getPaymentMethod(transaction as any)}`,
-      amount: parseFloat(transaction.amount),
-      reconciled: false,
+    // EVENTOS DE SUBSCRIPTION (charged_successfully/unsuccessfully)
+    if (["subscription_charged_successfully", "subscription_charged_unsuccessfully"].includes(eventKind)) {
+      const subscription = webhookNotification.subscription;
+      
+      if (subscription && subscription.transactions && subscription.transactions.length > 0) {
+        const transaction = subscription.transactions[0];
+        
+        // Cria registro de revenue
+        const revenueRow = {
+          source: "braintree-api-revenue",
+          date: transaction.createdAt.toISOString().split("T")[0],
+          description: `${getPaymentMethod(transaction)} - ${getCustomerName(transaction)}`,
+          amount: parseFloat(transaction.amount),
+          reconciled: false,
+          custom_data: {
+            transaction_id: transaction.id,
+            customer_name: getCustomerName(transaction),
+            customer_email: transaction.customer?.email,
+            currency: transaction.currencyIsoCode,
+            payment_method: getPaymentMethod(transaction),
+            subscription_id: transaction.subscriptionId,
+            created_at: transaction.createdAt,
+            webhook_received_at: new Date().toISOString(),
+            webhook_kind: webhookNotification.kind,
+            is_successful: eventKind.includes("successfully"),
+          },
+        };
 
-      custom_data: {
-        transaction_id: transaction.id,
-        status: transaction.status,
-        type: transaction.type,
-        currency: transaction.currencyIsoCode || "EUR",
-        customer_id: transaction.customer?.id,
-        customer_name: getCustomerName(transaction as any),
-        customer_email: transaction.customer?.email,
-        payment_method: getPaymentMethod(transaction as any),
-        merchant_account_id: transaction.merchantAccountId,
-        created_at: transaction.createdAt,
-        webhook_received_at: new Date().toISOString(),
-        webhook_kind: webhookNotification.kind,
-      },
-    };
+        const { error: revenueError } = await supabaseAdmin
+          .from("csv_rows")
+          .insert(revenueRow);
 
-    const { error: revenueError } = await supabaseAdmin
-      .from("csv_rows")
-      .insert([revenueRow]);
+        if (revenueError) {
+          console.error("[Braintree Webhook] Erro ao salvar revenue:", revenueError);
+        }
 
-    if (revenueError) {
-      console.error("[Braintree Webhook] Erro ao inserir receita:", revenueError);
-      throw revenueError;
-    }
+        // Se foi bem-sucedida, cria também a fee
+        if (eventKind.includes("successfully")) {
+          const feeAmount = calculateTransactionFee(transaction as BraintreeTransactionData);
 
-    // Cria registro de fee
-    const fee = calculateTransactionFee(transaction as any);
+          const feeRow = {
+            source: "braintree-api-fees",
+            date: transaction.createdAt.toISOString().split("T")[0],
+            description: `Braintree Fee - ${transaction.id}`,
+            amount: -Math.abs(feeAmount),
+            reconciled: false,
+            custom_data: {
+              transaction_id: transaction.id,
+              currency: transaction.currencyIsoCode,
+              payment_method: getPaymentMethod(transaction),
+              webhook_received_at: new Date().toISOString(),
+            },
+          };
 
-    if (fee > 0) {
-      const feeRow = {
-        source: "braintree-api-fees",
-        date: new Date(transaction.createdAt).toISOString().split("T")[0],
-        description: `Fee Braintree - ${transaction.id}`,
-        amount: -fee,
-        reconciled: false,
+          const { error: feeError } = await supabaseAdmin
+            .from("csv_rows")
+            .insert(feeRow);
 
-        custom_data: {
-          transaction_id: transaction.id,
-          related_revenue_amount: parseFloat(transaction.amount),
-          currency: transaction.currencyIsoCode || "EUR",
-          fee_type: "braintree_processing_fee",
-          merchant_account_id: transaction.merchantAccountId,
-          webhook_received_at: new Date().toISOString(),
-        },
-      };
+          if (feeError) {
+            console.error("[Braintree Webhook] Erro ao salvar fee:", feeError);
+          }
 
-      const { error: feeError } = await supabaseAdmin
-        .from("csv_rows")
-        .insert([feeRow]);
-
-      if (feeError) {
-        console.error("[Braintree Webhook] Erro ao inserir fee:", feeError);
+          console.log(`[Braintree Webhook] Transação salva: ${transaction.id} (Revenue + Fee)`);
+        } else {
+          console.log(`[Braintree Webhook] Transação falhada salva: ${transaction.id} (sem fee)`);
+        }
       }
+
+      return NextResponse.json({
+        success: true,
+        message: "Transaction saved",
+      });
     }
 
-    console.log(
-      `[Braintree Webhook] ✅ Transação ${transaction.id} processada: €${transaction.amount}`
-    );
+    // EVENTO DE REFUND_FAILED
+    if (eventKind === "refund_failed") {
+      console.log(`[Braintree Webhook] Refund failed detectado - verificar manualmente`);
+      
+      return NextResponse.json({
+        success: true,
+        message: "Refund failed logged",
+      });
+    }
 
+    // Default fallback
     return NextResponse.json({
       success: true,
-      message: "Webhook processed successfully",
-      transaction_id: transaction.id,
-      amount: transaction.amount,
+      message: "Event processed",
     });
-  } catch (error: any) {
-    console.error("[Braintree Webhook] Erro:", error);
 
-    // Se for erro de validação de assinatura, retorna 400
-    if (error.message?.includes("InvalidSignature")) {
-      return NextResponse.json(
-        { error: "Invalid webhook signature" },
-        { status: 400 }
-      );
-    }
-
+  } catch (error: unknown) {
+    console.error("[Braintree Webhook] Error:", error);
+    
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
     return NextResponse.json(
-      {
-        success: false,
-        error: error.message || "Erro ao processar webhook",
-      },
+      { error: "Webhook processing failed", details: errorMessage },
       { status: 500 }
     );
   }
 }
 
-/**
- * GET: Retorna informações sobre configuração do webhook
- */
 export async function GET() {
   return NextResponse.json({
-    webhook_url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://dsdfinancehub.com"}/api/braintree/webhook`,
-    instructions: [
-      "1. Acesse o painel do Braintree: Settings → Webhooks",
-      "2. Clique em 'Add New Webhook'",
-      "3. Cole a URL acima no campo 'Destination URL'",
-      "4. Selecione os eventos:",
-      "   - transaction_settled",
-      "   - transaction_settlement_declined",
-      "   - subscription_charged_successfully",
-      "5. Clique em 'Create Webhook'",
-      "6. Teste clicando em 'Send Test Notification'",
-    ],
-    supported_events: [
+    message: "Braintree Webhook Endpoint",
+    status: "active",
+    events: [
       "subscription_charged_successfully",
       "subscription_charged_unsuccessfully",
       "subscription_canceled",
