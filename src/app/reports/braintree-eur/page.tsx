@@ -346,15 +346,18 @@ export default function BraintreeEURPage() {
   };
 
   const loadData = async () => {
+    console.log("[Braintree EUR] Starting loadData...");
     setIsLoading(true);
+    
     try {
       if (!supabase) {
-        console.warn("Supabase not configured");
+        console.error("[Braintree EUR] Supabase not configured!");
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
+      console.log("[Braintree EUR] Fetching data from Supabase...");
+      
       // Carregar dados da API Braintree (source: braintree-api-revenue)
       const { data: rowsData, error } = await supabase
         .from("csv_rows")
@@ -364,18 +367,18 @@ export default function BraintreeEURPage() {
         .limit(200);
 
       if (error) {
-        console.error("Error loading data:", error);
+        console.error("[Braintree EUR] Error loading data:", error);
         setRows([]);
-        setIsLoading(false);
         return;
       }
 
       if (!rowsData || rowsData.length === 0) {
-        console.log("No data found");
+        console.log("[Braintree EUR] No data found");
         setRows([]);
-        setIsLoading(false);
         return;
       }
+
+      console.log(`[Braintree EUR] Found ${rowsData.length} rows`);
 
       const mappedRows: BraintreeEURRow[] = rowsData.map((row) => ({
         id: row.id,
@@ -388,13 +391,15 @@ export default function BraintreeEURPage() {
       }));
 
       setRows(mappedRows);
+      console.log("[Braintree EUR] Data loaded successfully");
 
       // Carregar última data de sync (sem bloquear)
-      loadLastSyncDate().catch(console.error);
+      loadLastSyncDate().catch(err => console.error("[Braintree EUR] Error loading sync date:", err));
     } catch (error) {
-      console.error("Error loading data:", error);
+      console.error("[Braintree EUR] Unexpected error:", error);
       setRows([]);
     } finally {
+      console.log("[Braintree EUR] Setting isLoading to false");
       setIsLoading(false);
     }
   };
