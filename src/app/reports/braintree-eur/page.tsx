@@ -389,8 +389,8 @@ export default function BraintreeEURPage() {
 
       setRows(mappedRows);
 
-      // Carregar última data de sync
-      await loadLastSyncDate();
+      // Carregar última data de sync (sem bloquear)
+      loadLastSyncDate().catch(console.error);
     } catch (error) {
       console.error("Error loading data:", error);
       setRows([]);
