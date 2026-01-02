@@ -29,6 +29,12 @@ import {
   Boxes,
   Layers,
   Split,
+  Users2,
+  Briefcase,
+  Contact,
+  Building2 as Company,
+  BarChart4,
+  Settings2,
   type LucideIcon
 } from "lucide-react"
 
@@ -406,11 +412,6 @@ export const NAV: NavGroup[] = [
                 icon: Split
               }
             ]
-          },
-          {
-            title: "HubSpot Deals",
-            href: "/reports/hubspot",
-            icon: TrendingUp
           }
         ]
       },
@@ -418,6 +419,43 @@ export const NAV: NavGroup[] = [
         title: "Reconciliation Center",
         href: "/actions/reconciliation-center",
         icon: CheckCircle2
+      }
+    ]
+  },
+  {
+    label: "CRM & Sales",
+    items: [
+      {
+        title: "HubSpot",
+        href: "/hubspot",
+        icon: Users2,
+        children: [
+          {
+            title: "Deals",
+            href: "/reports/hubspot",
+            icon: Briefcase
+          },
+          {
+            title: "Contacts",
+            href: "/hubspot/contacts",
+            icon: Contact
+          },
+          {
+            title: "Companies",
+            href: "/hubspot/companies",
+            icon: Company
+          },
+          {
+            title: "Pipeline Analytics",
+            href: "/hubspot/pipeline",
+            icon: BarChart4
+          },
+          {
+            title: "Sync Settings",
+            href: "/hubspot/settings",
+            icon: Settings2
+          }
+        ]
       }
     ]
   }
