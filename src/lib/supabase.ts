@@ -13,22 +13,31 @@ if (!supabaseUrl || !supabaseAnonKey) {
   );
 }
 
-// Cliente público (com RLS)
-// Usa valores vazios como fallback mas isso causará erro em runtime se usado
+// Cliente público (com RLS) - Configurado corretamente para autenticação persistente
 export const supabase = createClient(
-  supabaseUrl || "https://placeholder.supabase.co", 
-  supabaseAnonKey || "placeholder-key"
+  supabaseUrl || "https://placeholder.supabase.co",
+  supabaseAnonKey || "placeholder-key",
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      storageKey: 'sb-auth-token',
+      flowType: 'pkce'
+    },
+  }
 );
 
 // Cliente admin (bypassa RLS) - usar apenas em operações server-side
 export const supabaseAdmin =
   supabaseUrl && supabaseServiceKey
     ? createClient(supabaseUrl, supabaseServiceKey, {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
-      })
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    })
     : null;
 
 // Tipos para o banco de dados

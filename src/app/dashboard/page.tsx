@@ -123,7 +123,7 @@ export default function DashboardPage() {
         const date = new Date();
         date.setMonth(date.getMonth() - i);
         const monthKey = date.toISOString().substring(0, 7); // YYYY-MM
-        
+
         // Calculate next month for the lt filter
         const nextMonth = new Date(date);
         nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -194,11 +194,33 @@ export default function DashboardPage() {
 
   const loadVendorData = async () => {
     try {
-      const { data: vendors } = await supabase
+      // Buscar invoices INCURRED com provider_code
+      const { data: vendors, error: vendorsError } = await supabase
         .from('invoices')
-        .select('provider_code, invoice_amount, providers(name)')
+        .select('provider_code, invoice_amount')
         .eq('invoice_type', 'INCURRED')
         .not('provider_code', 'is', null);
+
+      if (vendorsError) {
+        console.error('Error loading vendors:', vendorsError);
+        return;
+      }
+
+      // Buscar nomes dos providers separadamente
+      let providersMap: Record<string, string> = {};
+      try {
+        const { data: providers } = await supabase
+          .from('providers')
+          .select('code, name');
+
+        if (providers) {
+          providersMap = Object.fromEntries(
+            providers.map(p => [p.code, p.name])
+          );
+        }
+      } catch (error) {
+        console.log('Providers table not available, using codes');
+      }
 
       // Group by provider
       const grouped: Record<string, { name: string; amount: number }> = {};
@@ -206,7 +228,7 @@ export default function DashboardPage() {
         if (vendor.provider_code) {
           if (!grouped[vendor.provider_code]) {
             grouped[vendor.provider_code] = {
-              name: (vendor.providers as any)?.name || vendor.provider_code,
+              name: providersMap[vendor.provider_code] || vendor.provider_code,
               amount: 0,
             };
           }

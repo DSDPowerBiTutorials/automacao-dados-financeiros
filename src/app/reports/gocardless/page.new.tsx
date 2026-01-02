@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import {
   Download,
   Edit2,
@@ -50,9 +50,8 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
-import BraintreeApiSync from "@/components/braintree/api-sync-button";
 
-interface BraintreeEURRow {
+interface GoCardlessRow {
   id: string;
   date: string;
   description: string;
@@ -61,21 +60,19 @@ interface BraintreeEURRow {
   destinationAccount: string | null;
   reconciliationType?: "automatic" | "manual" | null;
 
-  // Campos adicionais da Braintree API
-  transaction_id?: string;
+  // Campos adicionais do GoCardless
+  gocardless_id?: string;
   status?: string;
-  type?: string;
+  type?: "payment" | "payout" | "refund";
   currency?: string;
   customer_id?: string;
   customer_name?: string;
   customer_email?: string;
   payment_method?: string;
-  merchant_account_id?: string;
+  payout_id?: string;
+  payment_id?: string;
   created_at?: string;
   updated_at?: string;
-  disbursement_date?: string | null;
-  settlement_amount?: number | null;
-  settlement_currency?: string | null;
 
   [key: string]: any;
 }
@@ -107,11 +104,11 @@ const destinationAccountColors: {
   },
 };
 
-export default function BraintreeEURPage() {
-  const [rows, setRows] = useState<BraintreeEURRow[]>([]);
+export default function GoCardlessPage() {
+  const [rows, setRows] = useState<GoCardlessRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingRow, setEditingRow] = useState<string | null>(null);
-  const [editedData, setEditedData] = useState<Partial<BraintreeEURRow>>({});
+  const [editedData, setEditedData] = useState<Partial<GoCardlessRow>>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
@@ -129,16 +126,15 @@ export default function BraintreeEURPage() {
       "destinationAccount",
       "reconciliation",
       "actions",
-      "transaction_id",
+      "gocardless_id",
       "status",
       "type",
       "currency",
       "customer_name",
       "customer_email",
       "payment_method",
-      "merchant_account_id",
-      "disbursement_date",
-      "settlement_amount",
+      "payout_id",
+      "payment_id",
     ])
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -155,7 +151,7 @@ export default function BraintreeEURPage() {
   const rowsPerPage = 50;
 
   // Webhook tracking
-  const [mostRecentWebhookTransaction, setMostRecentWebhookTransaction] = useState<BraintreeEURRow | null>(null);
+  const [mostRecentWebhookTransaction, setMostRecentWebhookTransaction] = useState<GoCardlessRow | null>(null);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -166,8 +162,7 @@ export default function BraintreeEURPage() {
   const [dateFilters, setDateFilters] = useState<{
     [key: string]: { start?: string; end?: string };
   }>({});
-  const [statusFilter, setStatusFilter] = useState<string>("settled"); // Default to settled
-  const [merchantFilter, setMerchantFilter] = useState<string>("");
+  const [statusFilter, setStatusFilter] = useState<string>("confirmed"); // Default to confirmed
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [currencyFilter, setCurrencyFilter] = useState<string>("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("");
@@ -176,29 +171,13 @@ export default function BraintreeEURPage() {
     loadData();
   }, []);
 
-  // Reset para página 1 quando filtros mudam
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [
-    searchTerm,
-    statusFilter,
-    merchantFilter,
-    typeFilter,
-    currencyFilter,
-    paymentMethodFilter,
-    amountFilter,
-    dateFilters,
-    sortField,
-    sortDirection,
-  ]);
-
   // Função para carregar última data de sync
   const loadLastSyncDate = async () => {
     try {
       const { data, error } = await supabase
         .from("csv_rows")
         .select("created_at")
-        .or("source.eq.braintree-api-revenue,source.eq.braintree-eur")
+        .eq("source", "gocardless")
         .order("created_at", { ascending: false })
         .limit(1);
 
@@ -309,8 +288,8 @@ export default function BraintreeEURPage() {
   };
 
   const reconcileBankStatements = async (
-    braintreeRows: BraintreeEURRow[],
-  ): Promise<BraintreeEURRow[]> => {
+    braintreeRows: GoCardlessRow[],
+  ): Promise<GoCardlessRow[]> => {
     // Verifica se a reconciliação automática está habilitada
     if (!ENABLE_AUTO_RECONCILIATION) {
       console.log("Auto-reconciliation is currently disabled");
@@ -345,7 +324,7 @@ export default function BraintreeEURPage() {
         }),
       );
 
-      // Reconciliar cada linha do Braintree EUR
+      // Reconciliar cada linha do GoCardless
       const reconciledRows = braintreeRows.map((braintreeRow) => {
         // Filtrar bank statements dentro do intervalo de ±3 dias
         const matchingStatements = bankStatements.filter((bs) =>
@@ -401,47 +380,40 @@ export default function BraintreeEURPage() {
   };
 
   const loadData = async () => {
-    console.log("[Braintree EUR] Starting loadData...");
+    console.log("[GoCardless] Starting loadData...");
     setIsLoading(true);
 
     try {
       if (!supabase) {
-        console.error("[Braintree EUR] Supabase not configured!");
+        console.error("[GoCardless] Supabase not configured!");
         setRows([]);
         return;
       }
 
-      console.log("[Braintree EUR] Fetching data from Supabase...");
+      console.log("[GoCardless] Fetching data from Supabase...");
 
-      // Carregar dados da API Braintree (source: braintree-api-revenue)
-      // Filtrar apenas merchant account EUR, a partir de 01/01/2024
+      // Carregar dados do GoCardless (source: gocardless)
       const { data: rowsData, error } = await supabase
         .from("csv_rows")
         .select("*")
-        .or("source.eq.braintree-api-revenue,source.eq.braintree-eur")
-        .gte("date", "2024-01-01")
+        .eq("source", "gocardless")
         .order("date", { ascending: false });
 
       if (error) {
-        console.error("[Braintree EUR] Error loading data:", error);
+        console.error("[GoCardless] Error loading data:", error);
         setRows([]);
         return;
       }
 
       if (!rowsData || rowsData.length === 0) {
-        console.log("[Braintree EUR] No data found");
+        console.log("[GoCardless] No data found");
         setRows([]);
         return;
       }
 
-      console.log(`[Braintree EUR] Found ${rowsData.length} rows`);
+      console.log(`[GoCardless] Found ${rowsData.length} rows`);
 
-      const mappedRows: BraintreeEURRow[] = rowsData
-        .filter((row) => {
-          // Filtrar apenas merchant account EUR
-          const merchantAccount = row.custom_data?.merchant_account_id;
-          return !merchantAccount || merchantAccount === "digitalsmiledesignEUR" || row.source === "braintree-eur";
-        })
+      const mappedRows: GoCardlessRow[] = rowsData
         .map((row) => ({
           id: row.id,
           date: row.date,
@@ -451,8 +423,8 @@ export default function BraintreeEURPage() {
           destinationAccount: row.custom_data?.destinationAccount || null,
           reconciliationType: row.custom_data?.reconciliationType || null,
 
-          // Campos adicionais da Braintree
-          transaction_id: row.custom_data?.transaction_id,
+          // Campos adicionais do GoCardless
+          gocardless_id: row.custom_data?.gocardless_id,
           status: row.custom_data?.status,
           type: row.custom_data?.type,
           currency: row.custom_data?.currency,
@@ -460,12 +432,10 @@ export default function BraintreeEURPage() {
           customer_name: row.custom_data?.customer_name,
           customer_email: row.custom_data?.customer_email,
           payment_method: row.custom_data?.payment_method,
-          merchant_account_id: row.custom_data?.merchant_account_id,
+          payout_id: row.custom_data?.payout_id,
+          payment_id: row.custom_data?.payment_id,
           created_at: row.custom_data?.created_at,
           updated_at: row.custom_data?.updated_at,
-          disbursement_date: row.custom_data?.disbursement_date,
-          settlement_amount: row.custom_data?.settlement_amount,
-          settlement_currency: row.custom_data?.settlement_currency,
         }));
 
       setRows(mappedRows);
@@ -473,21 +443,21 @@ export default function BraintreeEURPage() {
       // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
       if (mappedRows.length > 0) {
         setMostRecentWebhookTransaction(mappedRows[0]);
-        console.log("[Braintree EUR] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
+        console.log("[GoCardless] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
       }
 
       // Reset para página 1 quando dados são carregados
       setCurrentPage(1);
 
-      console.log("[Braintree EUR] Data loaded successfully");
+      console.log("[GoCardless] Data loaded successfully");
 
       // Carregar última data de sync (sem bloquear)
-      loadLastSyncDate().catch(err => console.error("[Braintree EUR] Error loading sync date:", err));
+      loadLastSyncDate().catch(err => console.error("[GoCardless] Error loading sync date:", err));
     } catch (error) {
-      console.error("[Braintree EUR] Unexpected error:", error);
+      console.error("[GoCardless] Unexpected error:", error);
       setRows([]);
     } finally {
-      console.log("[Braintree EUR] Setting isLoading to false");
+      console.log("[GoCardless] Setting isLoading to false");
       setIsLoading(false);
     }
   };
@@ -512,7 +482,7 @@ export default function BraintreeEURPage() {
     setSplitScreenUrl(null);
   };
 
-  const startEditing = (row: BraintreeEURRow) => {
+  const startEditing = (row: GoCardlessRow) => {
     setEditingRow(row.id);
     setEditedData({ ...row });
   };
@@ -613,7 +583,7 @@ export default function BraintreeEURPage() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `braintree-eur-${new Date().toISOString().split("T")[0]}.csv`;
+      a.download = `gocardless-${new Date().toISOString().split("T")[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -624,157 +594,129 @@ export default function BraintreeEURPage() {
     }
   };
 
-  // Processar dados com filtros e ordenação (memoizado para evitar recálculos infinitos)
-  const processedRows = useMemo(() => {
-    return rows
-      .filter((row) => {
-        // Filtro de busca
-        if (searchTerm) {
-          const search = searchTerm.toLowerCase();
-          const matchesSearch =
-            row.description.toLowerCase().includes(search) ||
-            row.id.toLowerCase().includes(search) ||
-            (row.destinationAccount &&
-              row.destinationAccount.toLowerCase().includes(search)) ||
-            (row.transaction_id &&
-              row.transaction_id.toLowerCase().includes(search)) ||
-            (row.customer_name &&
-              row.customer_name.toLowerCase().includes(search)) ||
-            (row.customer_email &&
-              row.customer_email.toLowerCase().includes(search));
-          if (!matchesSearch) return false;
+  // Processar dados com filtros e ordenação
+  const processedRows = rows
+    .filter((row) => {
+      // Filtro de busca
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const matchesSearch =
+          row.description.toLowerCase().includes(search) ||
+          row.id.toLowerCase().includes(search) ||
+          (row.destinationAccount &&
+            row.destinationAccount.toLowerCase().includes(search)) ||
+          (row.gocardless_id &&
+            row.gocardless_id.toLowerCase().includes(search)) ||
+          (row.customer_name &&
+            row.customer_name.toLowerCase().includes(search)) ||
+          (row.customer_email &&
+            row.customer_email.toLowerCase().includes(search));
+        if (!matchesSearch) return false;
+      }
+
+      // Filtro de status (padrão: settled)
+      if (statusFilter && statusFilter !== "all") {
+        if (statusFilter === "settled") {
+          // Match both "settled" and "settled_successfully"
+          if (!row.status || (!row.status.includes("confirmed") && row.status !== "confirmed")) return false;
+        } else if (row.status !== statusFilter) {
+          return false;
         }
+      }
 
-        // Filtro de status (padrão: settled)
-        if (statusFilter && statusFilter !== "all") {
-          if (statusFilter === "settled") {
-            // Match both "settled" and "settled_successfully"
-            if (!row.status || (!row.status.includes("settled") && row.status !== "settled_successfully")) return false;
-          } else if (row.status !== statusFilter) {
-            return false;
-          }
-        }
+      // Filtro de tipo
+      if (typeFilter && typeFilter !== "all") {
+        if (!row.type || row.type !== typeFilter) return false;
+      }
 
-        // Filtro de merchant account
-        if (merchantFilter && merchantFilter !== "all") {
-          if (!row.merchant_account_id || row.merchant_account_id !== merchantFilter) return false;
-        }
+      // Filtro de currency
+      if (currencyFilter && currencyFilter !== "all") {
+        const rowCurrency = row.currency || "EUR";
+        if (rowCurrency !== currencyFilter) return false;
+      }
 
-        // Filtro de tipo
-        if (typeFilter && typeFilter !== "all") {
-          if (!row.type || row.type !== typeFilter) return false;
-        }
+      // Filtro de payment method
+      if (paymentMethodFilter && paymentMethodFilter !== "all") {
+        if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
+      }
 
-        // Filtro de currency
-        if (currencyFilter && currencyFilter !== "all") {
-          const rowCurrency = row.currency || "EUR";
-          if (rowCurrency !== currencyFilter) return false;
-        }
-
-        // Filtro de payment method
-        if (paymentMethodFilter && paymentMethodFilter !== "all") {
-          if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
-        }
-
-        // Filtro de valor
-        if (amountFilter) {
-          const { operator, value } = amountFilter;
-          switch (operator) {
-            case "eq":
-              if (Math.abs(row.amount - value) > 0.01) return false;
-              break;
-            case "gt":
-              if (row.amount <= value) return false;
-              break;
-            case "lt":
-              if (row.amount >= value) return false;
-              break;
-            case "gte":
-              if (row.amount < value) return false;
-              break;
-            case "lte":
-              if (row.amount > value) return false;
-              break;
-          }
-        }
-
-        // Filtro de data
-        if (dateFilters.date) {
-          const rowDate = new Date(row.date);
-          if (dateFilters.date.start) {
-            const startDate = new Date(dateFilters.date.start);
-            if (rowDate < startDate) return false;
-          }
-          if (dateFilters.date.end) {
-            const endDate = new Date(dateFilters.date.end);
-            if (rowDate > endDate) return false;
-          }
-        }
-
-        return true;
-      })
-      .sort((a, b) => {
-        let comparison = 0;
-
-        switch (sortField) {
-          case "date":
-          case "disbursement_date":
-          case "created_at":
-            comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
+      // Filtro de valor
+      if (amountFilter) {
+        const { operator, value } = amountFilter;
+        switch (operator) {
+          case "eq":
+            if (Math.abs(row.amount - value) > 0.01) return false;
             break;
-          case "amount":
-          case "settlement_amount":
-            comparison = (a[sortField] || 0) - (b[sortField] || 0);
+          case "gt":
+            if (row.amount <= value) return false;
             break;
-          case "description":
-          case "transaction_id":
-          case "status":
-          case "type":
-          case "currency":
-          case "customer_name":
-          case "customer_email":
-          case "payment_method":
-          case "merchant_account_id":
-          case "destinationAccount":
-            const aValue = (a[sortField] || "").toString();
-            const bValue = (b[sortField] || "").toString();
-            comparison = aValue.localeCompare(bValue);
+          case "lt":
+            if (row.amount >= value) return false;
             break;
-          default:
-            comparison = 0;
+          case "gte":
+            if (row.amount < value) return false;
+            break;
+          case "lte":
+            if (row.amount > value) return false;
+            break;
         }
+      }
 
-        return sortDirection === "asc" ? comparison : -comparison;
-      });
-  }, [
-    rows,
-    searchTerm,
-    statusFilter,
-    merchantFilter,
-    typeFilter,
-    currencyFilter,
-    paymentMethodFilter,
-    amountFilter,
-    dateFilters,
-    sortField,
-    sortDirection,
-  ]);
+      // Filtro de data
+      if (dateFilters.date) {
+        const rowDate = new Date(row.date);
+        if (dateFilters.date.start) {
+          const startDate = new Date(dateFilters.date.start);
+          if (rowDate < startDate) return false;
+        }
+        if (dateFilters.date.end) {
+          const endDate = new Date(dateFilters.date.end);
+          if (rowDate > endDate) return false;
+        }
+      }
 
-  // Paginação (memoizada para evitar recálculos)
-  const { totalPages, adjustedCurrentPage, paginatedRows, startIndex, endIndex } = useMemo(() => {
-    const totalPages = Math.ceil(processedRows.length / rowsPerPage);
-    const adjustedCurrentPage =
-      currentPage > totalPages && totalPages > 0
-        ? totalPages
-        : totalPages === 0
-          ? 1
-          : currentPage;
-    const startIndex = (adjustedCurrentPage - 1) * rowsPerPage;
-    const endIndex = startIndex + rowsPerPage;
-    const paginatedRows = processedRows.slice(startIndex, endIndex);
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
 
-    return { totalPages, adjustedCurrentPage, paginatedRows, startIndex, endIndex };
-  }, [processedRows, currentPage, rowsPerPage]);
+      switch (sortField) {
+        case "date":
+        case "disbursement_date":
+        case "created_at":
+          comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
+          break;
+        case "amount":
+        case "settlement_amount":
+          comparison = (a[sortField] || 0) - (b[sortField] || 0);
+          break;
+        case "description":
+        case "gocardless_id":
+        case "status":
+        case "type":
+        case "currency":
+        case "customer_name":
+        case "customer_email":
+        case "payment_method":
+        case "payment_method":
+        case "destinationAccount":
+          const aValue = (a[sortField] || "").toString();
+          const bValue = (b[sortField] || "").toString();
+          comparison = aValue.localeCompare(bValue);
+          break;
+        default:
+          comparison = 0;
+      }
+
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
+
+  // Paginação
+  const totalPages = Math.ceil(processedRows.length / rowsPerPage);
+  const adjustedCurrentPage = currentPage > totalPages && totalPages > 0 ? totalPages : (totalPages === 0 ? 1 : currentPage);
+  const startIndex = (adjustedCurrentPage - 1) * rowsPerPage;
+  const endIndex = startIndex + rowsPerPage;
+  const paginatedRows = processedRows.slice(startIndex, endIndex);
 
   const getDestinationAccountStyle = (account: string | null) => {
     if (!account)
@@ -818,7 +760,7 @@ export default function BraintreeEURPage() {
                 </Link>
                 <div>
                   <h1 className="text-2xl font-bold text-white">
-                    Braintree EUR - Payment Source
+                    GoCardless - Payment Source
                   </h1>
                   <div className="flex items-center gap-4 mt-1">
                     <p className="text-sm text-gray-300">
@@ -840,9 +782,6 @@ export default function BraintreeEURPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                {/* Sincronização direta via API */}
-                <BraintreeApiSync />
-
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
@@ -867,7 +806,7 @@ export default function BraintreeEURPage() {
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
               <CardDescription className="text-white/80">
-                Manage Braintree EUR transactions with filtering and sorting
+                Manage GoCardless transactions with filtering and sorting
               </CardDescription>
             </CardHeader>
             <CardContent className="p-6">
@@ -918,14 +857,14 @@ export default function BraintreeEURPage() {
                                   "destinationAccount",
                                   "reconciliation",
                                   "actions",
-                                  "transaction_id",
+                                  "gocardless_id",
                                   "status",
                                   "type",
                                   "currency",
                                   "customer_name",
                                   "customer_email",
                                   "payment_method",
-                                  "merchant_account_id",
+                                  "payment_method",
                                   "disbursement_date",
                                   "settlement_amount",
                                 ]);
@@ -962,14 +901,14 @@ export default function BraintreeEURPage() {
                             label: "Payout Reconciliation",
                           },
                           { id: "actions", label: "Actions" },
-                          { id: "transaction_id", label: "Transaction ID" },
+                          { id: "gocardless_id", label: "Transaction ID" },
                           { id: "status", label: "Status" },
                           { id: "type", label: "Type" },
                           { id: "currency", label: "Currency" },
                           { id: "customer_name", label: "Customer Name" },
                           { id: "customer_email", label: "Customer Email" },
                           { id: "payment_method", label: "Payment Method" },
-                          { id: "merchant_account_id", label: "Merchant Account" },
+                          { id: "payment_method", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
                           { id: "settlement_amount", label: "Settlement Amount" },
                         ].map((column) => (
@@ -1028,27 +967,11 @@ export default function BraintreeEURPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Status</SelectItem>
-                      <SelectItem value="settled">Settled</SelectItem>
-                      <SelectItem value="settling">Settling</SelectItem>
-                      <SelectItem value="submitted_for_settlement">Submitted</SelectItem>
-                      <SelectItem value="authorized">Authorized</SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  {/* Merchant Account Filter */}
-                  <Select
-                    value={merchantFilter}
-                    onValueChange={setMerchantFilter}
-                  >
-                    <SelectTrigger className="w-[220px] h-9">
-                      <SelectValue placeholder="Filter by merchant" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Merchants</SelectItem>
-                      <SelectItem value="digitalsmiledesignEUR">digitalsmiledesignEUR</SelectItem>
-                      <SelectItem value="digitalsmiledesignUSD">digitalsmiledesignUSD</SelectItem>
-                      <SelectItem value="digitalsmiledesignGBP">digitalsmiledesignGBP</SelectItem>
-                      <SelectItem value="digitalsmiledesign_instant">digitalsmiledesign_instant</SelectItem>
+                      <SelectItem value="confirmed">Confirmed</SelectItem>
+                      <SelectItem value="pending_submission">Pending</SelectItem>
+                      <SelectItem value="submitted">Submitted</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                      <SelectItem value="paid_out">Paid Out</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -1062,8 +985,9 @@ export default function BraintreeEURPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Types</SelectItem>
-                      <SelectItem value="sale">Sale</SelectItem>
-                      <SelectItem value="credit">Credit</SelectItem>
+                      <SelectItem value="payment">Payment</SelectItem>
+                      <SelectItem value="payout">Payout</SelectItem>
+                      <SelectItem value="refund">Refund</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -1093,8 +1017,10 @@ export default function BraintreeEURPage() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">All Methods</SelectItem>
-                      <SelectItem value="credit_card">Credit Card</SelectItem>
-                      <SelectItem value="paypal">PayPal</SelectItem>
+                      <SelectItem value="bacs">BACS</SelectItem>
+                      <SelectItem value="sepa">SEPA</SelectItem>
+                      <SelectItem value="ach">ACH</SelectItem>
+                      <SelectItem value="faster_payments">Faster Payments</SelectItem>
                     </SelectContent>
                   </Select>
 
@@ -1133,15 +1059,14 @@ export default function BraintreeEURPage() {
                   </div>
 
                   {/* Clear all filters button */}
-                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || Object.keys(dateFilters).length > 0) && (
+                  {(searchTerm || amountFilter || statusFilter !== "confirmed" || typeFilter || currencyFilter || paymentMethodFilter || Object.keys(dateFilters).length > 0) && (
                     <Badge
                       variant="secondary"
                       className="cursor-pointer hover:bg-destructive/20 px-3 h-9 flex items-center"
                       onClick={() => {
                         setSearchTerm("");
                         setAmountFilter(null);
-                        setStatusFilter("settled");
-                        setMerchantFilter("");
+                        setStatusFilter("confirmed");
                         setTypeFilter("");
                         setCurrencyFilter("");
                         setPaymentMethodFilter("");
@@ -1224,10 +1149,10 @@ export default function BraintreeEURPage() {
                           Actions
                         </th>
                       )}
-                      {visibleColumns.has("transaction_id") && (
+                      {visibleColumns.has("gocardless_id") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
                           <button
-                            onClick={() => toggleSort("transaction_id")}
+                            onClick={() => toggleSort("gocardless_id")}
                             className="flex items-center gap-1 hover:text-blue-600"
                           >
                             Transaction ID
@@ -1301,10 +1226,10 @@ export default function BraintreeEURPage() {
                           </button>
                         </th>
                       )}
-                      {visibleColumns.has("merchant_account_id") && (
+                      {visibleColumns.has("payment_method") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
                           <button
-                            onClick={() => toggleSort("merchant_account_id")}
+                            onClick={() => toggleSort("payment_method")}
                             className="flex items-center gap-1 hover:text-blue-600"
                           >
                             Merchant Account
@@ -1538,9 +1463,9 @@ export default function BraintreeEURPage() {
                                 )}
                               </td>
                             )}
-                            {visibleColumns.has("transaction_id") && (
+                            {visibleColumns.has("gocardless_id") && (
                               <td className="py-3 px-4 text-sm font-mono text-xs">
-                                {row.transaction_id || "N/A"}
+                                {row.gocardless_id || "N/A"}
                               </td>
                             )}
                             {visibleColumns.has("status") && (
@@ -1575,9 +1500,9 @@ export default function BraintreeEURPage() {
                                 {row.payment_method || "N/A"}
                               </td>
                             )}
-                            {visibleColumns.has("merchant_account_id") && (
+                            {visibleColumns.has("payment_method") && (
                               <td className="py-3 px-4 text-sm font-mono text-xs">
-                                {row.merchant_account_id || "N/A"}
+                                {row.payment_method || "N/A"}
                               </td>
                             )}
                             {visibleColumns.has("disbursement_date") && (

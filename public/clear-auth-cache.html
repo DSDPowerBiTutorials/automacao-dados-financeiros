@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Limpar Cache de Autenticação - DSD Finance Hub</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 40px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+        }
+
+        h1 {
+            color: #243140;
+            border-bottom: 3px solid #243140;
+            padding-bottom: 10px;
+        }
+
+        .button {
+            background: #243140;
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+            transition: all 0.3s;
+            display: inline-block;
+            text-align: center;
+        }
+
+        .button:hover {
+            background: #1a2530;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(36, 49, 64, 0.3);
+        }
+
+        .success {
+            background: #10b981;
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .code-block {
+            background: #1e293b;
+            color: #10b981;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            margin: 20px 0;
+            overflow-x: auto;
+        }
+
+        .step {
+            background: #f8fafc;
+            padding: 20px;
+            border-left: 4px solid #243140;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .step h3 {
+            margin-top: 0;
+            color: #243140;
+        }
+
+        .info {
+            background: #dbeafe;
+            border-left: 4px solid #3b82f6;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .warning {
+            background: #fef3c7;
+            border-left: 4px solid #f59e0b;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+
+        .status {
+            padding: 10px;
+            margin: 20px 0;
+            border-radius: 8px;
+            font-weight: bold;
+        }
+
+        #authStatus {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        #authStatus.active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>🔧 Limpar Cache de Autenticação</h1>
+
+        <div class="warning">
+            <strong>⚠️ Se você está tendo problemas de loading infinito ou precisa usar aba anônima:</strong><br>
+            Este é o lugar certo! Use os botões abaixo para limpar completamente o cache de autenticação.
+        </div>
+
+        <div id="authStatus" class="status">
+            Verificando autenticação...
+        </div>
+
+        <div class="step">
+            <h3>🚀 Solução Rápida (Recomendado)</h3>
+            <p>Clique no botão abaixo para limpar TUDO automaticamente:</p>
+            <button class="button" onclick="clearAll()">🗑️ Limpar Tudo e Recarregar</button>
+            <div id="success" class="success">
+                ✅ Cache limpo com sucesso! A página será recarregada em 2 segundos...
+            </div>
+        </div>
+
+        <div class="step">
+            <h3>🔍 Ver o que está armazenado</h3>
+            <p>Clique para ver todas as chaves de autenticação no seu navegador:</p>
+            <button class="button" onclick="showStorage()">👁️ Mostrar Cache</button>
+            <div id="storageInfo" style="margin-top: 20px;"></div>
+        </div>
+
+        <div class="step">
+            <h3>📋 Método Manual (Console do Navegador)</h3>
+            <p><strong>Passo 1:</strong> Abra o Console do Navegador:</p>
+            <ul>
+                <li><strong>Windows/Linux:</strong> Pressione <code>F12</code> ou <code>Ctrl + Shift + J</code></li>
+                <li><strong>Mac:</strong> Pressione <code>Cmd + Option + J</code></li>
+            </ul>
+
+            <p><strong>Passo 2:</strong> Cole este código no console e pressione Enter:</p>
+            <div class="code-block">
+                // Limpar todas as chaves de autenticação
+                Object.keys(localStorage)
+                .filter(k => k.startsWith('sb-'))
+                .forEach(k => localStorage.removeItem(k));
+
+                // Limpar session storage
+                sessionStorage.clear();
+
+                // Mensagem de confirmação
+                console.log('✅ Cache de autenticação limpo!');
+
+                // Recarregar página
+                location.reload();
+            </div>
+        </div>
+
+        <div class="info">
+            <strong>ℹ️ O que esse processo faz:</strong>
+            <ul>
+                <li>Remove todos os tokens de autenticação armazenados</li>
+                <li>Limpa sessões antigas ou expiradas</li>
+                <li>Remove qualquer estado inconsistente</li>
+                <li>Força um novo login limpo</li>
+            </ul>
+        </div>
+
+        <div class="step">
+            <h3>🔄 Limpar pelo DevTools (Alternativa)</h3>
+            <ol>
+                <li>Pressione <code>F12</code> para abrir DevTools</li>
+                <li>Vá na aba <strong>Application</strong> (ou <strong>Aplicação</strong>)</li>
+                <li>No menu lateral, expanda <strong>Storage</strong></li>
+                <li>Clique em <strong>"Clear site data"</strong></li>
+                <li>Marque todas as opções</li>
+                <li>Clique em <strong>"Clear data"</strong></li>
+                <li>Recarregue a página (Ctrl + Shift + R)</li>
+            </ol>
+        </div>
+
+        <div class="info">
+            <strong>🎯 Depois de limpar o cache:</strong>
+            <ol>
+                <li>A página será recarregada automaticamente</li>
+                <li>Você será redirecionado para a página de login</li>
+                <li>Faça login normalmente</li>
+                <li>Tudo deve funcionar perfeitamente!</li>
+            </ol>
+        </div>
+
+        <div class="step">
+            <h3>❓ Por que isso acontece?</h3>
+            <p>O navegador armazena tokens de autenticação no <code>localStorage</code>. Às vezes, esses tokens podem:
+            </p>
+            <ul>
+                <li>Expirar mas não serem removidos automaticamente</li>
+                <li>Ficar em estado inconsistente</li>
+                <li>Causar loops de redirecionamento</li>
+                <li>Impedir novo login</li>
+            </ul>
+            <p><strong>Solução:</strong> Limpar completamente o cache força um novo início limpo.</p>
+        </div>
+    </div>
+
+    <script>
+        // Função para verificar status de autenticação
+        function checkAuthStatus() {
+            const authKeys = Object.keys(localStorage).filter(k => k.startsWith('sb-'));
+            const statusDiv = document.getElementById('authStatus');
+
+            if (authKeys.length > 0) {
+                statusDiv.textContent = `🔑 ${authKeys.length} chave(s) de autenticação encontrada(s)`;
+                statusDiv.classList.remove('active');
+            } else {
+                statusDiv.textContent = '✅ Nenhuma chave de autenticação armazenada';
+                statusDiv.classList.add('active');
+            }
+        }
+
+        // Função para limpar tudo
+        function clearAll() {
+            try {
+                // Limpar localStorage
+                const keysToRemove = Object.keys(localStorage).filter(k => k.startsWith('sb-'));
+                keysToRemove.forEach(k => localStorage.removeItem(k));
+
+                // Limpar sessionStorage
+                sessionStorage.clear();
+
+                // Mostrar mensagem de sucesso
+                document.getElementById('success').style.display = 'block';
+
+                // Recarregar após 2 segundos
+                setTimeout(() => {
+                    location.reload();
+                }, 2000);
+
+                console.log('✅ Cache limpo com sucesso!');
+            } catch (error) {
+                alert('❌ Erro ao limpar cache: ' + error.message);
+            }
+        }
+
+        // Função para mostrar storage
+        function showStorage() {
+            const storageInfo = document.getElementById('storageInfo');
+            const authKeys = Object.keys(localStorage).filter(k => k.startsWith('sb-'));
+
+            if (authKeys.length === 0) {
+                storageInfo.innerHTML = '<div class="success" style="display:block;">✅ Nenhuma chave de autenticação encontrada!</div>';
+            } else {
+                let html = '<div class="code-block"><strong>Chaves encontradas:</strong><br><br>';
+                authKeys.forEach(key => {
+                    const value = localStorage.getItem(key);
+                    const preview = value ? value.substring(0, 100) + '...' : '';
+                    html += `<strong>${key}:</strong><br>${preview}<br><br>`;
+                });
+                html += '</div>';
+                storageInfo.innerHTML = html;
+            }
+        }
+
+        // Verificar status ao carregar
+        checkAuthStatus();
+
+        // Atualizar status a cada 2 segundos
+        setInterval(checkAuthStatus, 2000);
+    </script>
+</body>
+
+</html>

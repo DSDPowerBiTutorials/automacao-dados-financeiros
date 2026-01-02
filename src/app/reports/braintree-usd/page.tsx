@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import {
   Download,
   Edit2,
@@ -175,6 +175,22 @@ export default function BraintreeUSDPage() {
   useEffect(() => {
     loadData();
   }, []);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [
+    searchTerm,
+    statusFilter,
+    merchantFilter,
+    typeFilter,
+    currencyFilter,
+    paymentMethodFilter,
+    amountFilter,
+    dateFilters,
+    sortField,
+    sortDirection,
+  ]);
 
   // Função para carregar última data de sync
   const loadLastSyncDate = async () => {
@@ -609,133 +625,147 @@ export default function BraintreeUSDPage() {
   };
 
   // Processar dados com filtros e ordenação
-  const processedRows = rows
-    .filter((row) => {
-      // Filtro de busca
-      if (searchTerm) {
-        const search = searchTerm.toLowerCase();
-        const matchesSearch =
-          row.description.toLowerCase().includes(search) ||
-          row.id.toLowerCase().includes(search) ||
-          (row.destinationAccount &&
-            row.destinationAccount.toLowerCase().includes(search)) ||
-          (row.transaction_id &&
-            row.transaction_id.toLowerCase().includes(search)) ||
-          (row.customer_name &&
-            row.customer_name.toLowerCase().includes(search)) ||
-          (row.customer_email &&
-            row.customer_email.toLowerCase().includes(search));
-        if (!matchesSearch) return false;
-      }
-
-      // Filtro de status (padrão: settled)
-      if (statusFilter && statusFilter !== "all") {
-        if (statusFilter === "settled") {
-          // Match both "settled" and "settled_successfully"
-          if (!row.status || (!row.status.includes("settled") && row.status !== "settled_successfully")) return false;
-        } else if (row.status !== statusFilter) {
-          return false;
+  const processedRows = useMemo(() => {
+    return rows
+      .filter((row) => {
+        // Filtro de busca
+        if (searchTerm) {
+          const search = searchTerm.toLowerCase();
+          const matchesSearch =
+            row.description.toLowerCase().includes(search) ||
+            row.id.toLowerCase().includes(search) ||
+            (row.destinationAccount &&
+              row.destinationAccount.toLowerCase().includes(search)) ||
+            (row.transaction_id &&
+              row.transaction_id.toLowerCase().includes(search)) ||
+            (row.customer_name &&
+              row.customer_name.toLowerCase().includes(search)) ||
+            (row.customer_email &&
+              row.customer_email.toLowerCase().includes(search));
+          if (!matchesSearch) return false;
         }
-      }
 
-      // Filtro de merchant account
-      if (merchantFilter && merchantFilter !== "all") {
-        if (!row.merchant_account_id || row.merchant_account_id !== merchantFilter) return false;
-      }
-
-      // Filtro de tipo
-      if (typeFilter && typeFilter !== "all") {
-        if (!row.type || row.type !== typeFilter) return false;
-      }
-
-      // Filtro de currency
-      if (currencyFilter && currencyFilter !== "all") {
-        const rowCurrency = row.currency || "EUR";
-        if (rowCurrency !== currencyFilter) return false;
-      }
-
-      // Filtro de payment method
-      if (paymentMethodFilter && paymentMethodFilter !== "all") {
-        if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
-      }
-
-      // Filtro de valor
-      if (amountFilter) {
-        const { operator, value } = amountFilter;
-        switch (operator) {
-          case "eq":
-            if (Math.abs(row.amount - value) > 0.01) return false;
-            break;
-          case "gt":
-            if (row.amount <= value) return false;
-            break;
-          case "lt":
-            if (row.amount >= value) return false;
-            break;
-          case "gte":
-            if (row.amount < value) return false;
-            break;
-          case "lte":
-            if (row.amount > value) return false;
-            break;
+        // Filtro de status (padrão: settled)
+        if (statusFilter && statusFilter !== "all") {
+          if (statusFilter === "settled") {
+            // Match both "settled" and "settled_successfully"
+            if (!row.status || (!row.status.includes("settled") && row.status !== "settled_successfully")) return false;
+          } else if (row.status !== statusFilter) {
+            return false;
+          }
         }
-      }
 
-      // Filtro de data
-      if (dateFilters.date) {
-        const rowDate = new Date(row.date);
-        if (dateFilters.date.start) {
-          const startDate = new Date(dateFilters.date.start);
-          if (rowDate < startDate) return false;
+        // Filtro de merchant account
+        if (merchantFilter && merchantFilter !== "all") {
+          if (!row.merchant_account_id || row.merchant_account_id !== merchantFilter) return false;
         }
-        if (dateFilters.date.end) {
-          const endDate = new Date(dateFilters.date.end);
-          if (rowDate > endDate) return false;
+
+        // Filtro de tipo
+        if (typeFilter && typeFilter !== "all") {
+          if (!row.type || row.type !== typeFilter) return false;
         }
-      }
 
-      return true;
-    })
-    .sort((a, b) => {
-      let comparison = 0;
+        // Filtro de currency
+        if (currencyFilter && currencyFilter !== "all") {
+          const rowCurrency = row.currency || "EUR";
+          if (rowCurrency !== currencyFilter) return false;
+        }
 
-      switch (sortField) {
-        case "date":
-        case "disbursement_date":
-        case "created_at":
-          comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
-          break;
-        case "amount":
-        case "settlement_amount":
-          comparison = (a[sortField] || 0) - (b[sortField] || 0);
-          break;
-        case "description":
-        case "transaction_id":
-        case "status":
-        case "type":
-        case "currency":
-        case "customer_name":
-        case "customer_email":
-        case "payment_method":
-        case "merchant_account_id":
-        case "destinationAccount":
-          const aValue = (a[sortField] || "").toString();
-          const bValue = (b[sortField] || "").toString();
-          comparison = aValue.localeCompare(bValue);
-          break;
-        default:
-          comparison = 0;
-      }
+        // Filtro de payment method
+        if (paymentMethodFilter && paymentMethodFilter !== "all") {
+          if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
+        }
 
-      return sortDirection === "asc" ? comparison : -comparison;
-    });
+        // Filtro de valor
+        if (amountFilter) {
+          const { operator, value } = amountFilter;
+          switch (operator) {
+            case "eq":
+              if (Math.abs(row.amount - value) > 0.01) return false;
+              break;
+            case "gt":
+              if (row.amount <= value) return false;
+              break;
+            case "lt":
+              if (row.amount >= value) return false;
+              break;
+            case "gte":
+              if (row.amount < value) return false;
+              break;
+            case "lte":
+              if (row.amount > value) return false;
+              break;
+          }
+        }
+
+        // Filtro de data
+        if (dateFilters.date) {
+          const rowDate = new Date(row.date);
+          if (dateFilters.date.start) {
+            const startDate = new Date(dateFilters.date.start);
+            if (rowDate < startDate) return false;
+          }
+          if (dateFilters.date.end) {
+            const endDate = new Date(dateFilters.date.end);
+            if (rowDate > endDate) return false;
+          }
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        let comparison = 0;
+
+        switch (sortField) {
+          case "date":
+          case "disbursement_date":
+          case "created_at":
+            comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
+            break;
+          case "amount":
+          case "settlement_amount":
+            comparison = (a[sortField] || 0) - (b[sortField] || 0);
+            break;
+          case "description":
+          case "transaction_id":
+          case "status":
+          case "type":
+          case "currency":
+          case "customer_name":
+          case "customer_email":
+          case "payment_method":
+          case "merchant_account_id":
+          case "destinationAccount":
+            const aValue = (a[sortField] || "").toString();
+            const bValue = (b[sortField] || "").toString();
+            comparison = aValue.localeCompare(bValue);
+            break;
+          default:
+            comparison = 0;
+        }
+
+        return sortDirection === "asc" ? comparison : -comparison;
+      });
+  }, [rows, searchTerm, statusFilter, merchantFilter, typeFilter, currencyFilter, paymentMethodFilter, amountFilter, dateFilters, sortField, sortDirection]);
 
   // Paginação
-  const totalPages = Math.ceil(processedRows.length / rowsPerPage);
-  const adjustedCurrentPage = currentPage > totalPages && totalPages > 0 ? totalPages : (totalPages === 0 ? 1 : currentPage);
+  const { totalPages, adjustedCurrentPage, paginatedRows } = useMemo(() => {
+    const totalPages = Math.ceil(processedRows.length / rowsPerPage);
+    const adjustedCurrentPage =
+      currentPage > totalPages && totalPages > 0
+        ? totalPages
+        : totalPages === 0
+          ? 1
+          : currentPage;
+    const startIndex = (adjustedCurrentPage - 1) * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+    const paginatedRows = processedRows.slice(startIndex, endIndex);
+
+    return { totalPages, adjustedCurrentPage, paginatedRows };
+  }, [processedRows, currentPage, rowsPerPage]);
+
   const startIndex = (adjustedCurrentPage - 1) * rowsPerPage;
   const endIndex = startIndex + rowsPerPage;
-  const paginatedRows = processedRows.slice(startIndex, endIndex);
 
   const getDestinationAccountStyle = (account: string | null) => {
     if (!account)

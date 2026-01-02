@@ -155,23 +155,18 @@ export const NAV: NavGroup[] = [
         icon: Boxes,
         children: [
           {
-            title: "Chart of Accounts",
-            href: "/accounts-payable/master-data/chart-accounts",
-            icon: Layers
-          },
-          {
             title: "Cost Centers",
             href: "/accounts-payable/master-data/cost-centers",
             icon: Target
           },
           {
-            title: "DSD Courses",
-            href: "/accounts-payable/master-data/dsd-courses",
-            icon: FileCheck
-          },
-          {
             title: "Financial Accounts",
             href: "/accounts-payable/master-data/financial-accounts",
+            icon: Banknote
+          },
+          {
+            title: "Bank Accounts",
+            href: "/accounts-payable/master-data/bank-accounts",
             icon: Banknote
           },
           {
@@ -278,34 +273,14 @@ export const NAV: NavGroup[] = [
         icon: Boxes,
         children: [
           {
-            title: "Chart of Accounts",
-            href: "/accounts-receivable/master-data/chart-accounts",
-            icon: Layers
-          },
-          {
             title: "Customers",
             href: "/accounts-receivable/master-data/customers",
             icon: UserCircle
           },
           {
-            title: "Customer Groups",
-            href: "/accounts-receivable/master-data/customer-groups",
-            icon: Users
-          },
-          {
-            title: "DSD Courses",
-            href: "/accounts-receivable/master-data/dsd-courses",
-            icon: FileCheck
-          },
-          {
             title: "Financial Accounts",
             href: "/accounts-receivable/master-data/financial-accounts",
             icon: Banknote
-          },
-          {
-            title: "Revenue Centers",
-            href: "/accounts-receivable/master-data/revenue-centers",
-            icon: Target
           }
         ]
       },
