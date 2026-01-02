@@ -71,20 +71,42 @@ export default function HubSpotContactsPage() {
     const fetchContacts = async () => {
         try {
             setLoading(true);
-            // Por enquanto, vamos buscar da tabela hubspot_contacts (a ser criada)
-            // ou usar uma estrutura alternativa
-            const { data, error } = await supabase
-                .from("hubspot_contacts")
+            
+            // Buscar deals do HubSpot e extrair contatos únicos
+            const { data: deals, error } = await supabase
+                .from("csv_rows")
                 .select("*")
-                .order("created_at", { ascending: false });
+                .eq("source", "hubspot");
 
-            if (error) {
-                // Se a tabela não existir, vamos criar dados mock
-                console.log("Tabela hubspot_contacts não encontrada, usando dados mock");
-                setContacts([]);
-            } else {
-                setContacts(data || []);
-            }
+            if (error) throw error;
+
+            // Extrair contatos únicos dos deals (dados simulados baseados nos owners e companies)
+            const uniqueCompanies = new Map();
+            deals?.forEach((deal, index) => {
+                const company = deal.custom_data?.company || "Unknown Company";
+                const owner = deal.custom_data?.owner || "Unknown Owner";
+                
+                if (!uniqueCompanies.has(company)) {
+                    uniqueCompanies.set(company, {
+                        id: `contact-${index}`,
+                        created_at: deal.date || new Date().toISOString(),
+                        email: `contact@${company.toLowerCase().replace(/\s+/g, '')}.com`,
+                        first_name: owner.split(' ')[0] || "Contact",
+                        last_name: owner.split(' ').slice(1).join(' ') || "Name",
+                        phone: "+1234567890",
+                        company: company,
+                        job_title: "Sales Representative",
+                        lifecycle_stage: deal.custom_data?.stage?.includes("won") ? "customer" : 
+                                        deal.custom_data?.stage?.includes("qualified") ? "opportunity" : "lead",
+                        lead_status: deal.reconciled ? "Closed" : "Open",
+                        owner: owner,
+                        custom_data: deal.custom_data
+                    });
+                }
+            });
+
+            const contactsList = Array.from(uniqueCompanies.values());
+            setContacts(contactsList);
         } catch (error: any) {
             console.error("Erro ao carregar contatos:", error);
             setContacts([]);

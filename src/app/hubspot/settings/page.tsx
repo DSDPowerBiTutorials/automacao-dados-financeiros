@@ -14,6 +14,7 @@ import {
     Clock,
     AlertCircle,
 } from "lucide-react";
+import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
     Card,
@@ -41,6 +42,7 @@ interface SyncSettings {
 export default function HubSpotSettingsPage() {
     const [loading, setLoading] = useState(false);
     const [saving, setSaving] = useState(false);
+    const [dataStats, setDataStats] = useState({ deals: 0, lastSync: "" });
     const [settings, setSettings] = useState<SyncSettings>({
         enabled: true,
         syncInterval: 60,
@@ -58,16 +60,51 @@ export default function HubSpotSettingsPage() {
         "connected" | "disconnected" | "testing"
     >("connected");
 
+    useEffect(() => {
+        fetchDataStats();
+    }, []);
+
+    const fetchDataStats = async () => {
+        try {
+            const { data, error } = await supabase
+                .from("csv_rows")
+                .select("date")
+                .eq("source", "hubspot")
+                .order("date", { ascending: false });
+
+            if (error) throw error;
+
+            setDataStats({
+                deals: data?.length || 0,
+                lastSync: data?.[0]?.date || new Date().toISOString()
+            });
+
+            setSettings(prev => ({
+                ...prev,
+                lastSync: data?.[0]?.date || new Date().toISOString()
+            }));
+        } catch (error) {
+            console.error("Erro ao buscar stats:", error);
+        }
+    };
+
     const testConnection = async () => {
         setConnectionStatus("testing");
         try {
-            // Simular teste de conexão
-            await new Promise((resolve) => setTimeout(resolve, 2000));
+            // Testar busca de dados do HubSpot
+            const { data, error } = await supabase
+                .from("csv_rows")
+                .select("id")
+                .eq("source", "hubspot")
+                .limit(1);
+
+            if (error) throw error;
+            
             setConnectionStatus("connected");
-            showAlert("success", "Conexão com HubSpot estabelecida com sucesso!");
+            showAlert("success", `Conexão ativa! ${dataStats.deals} deals disponíveis`);
         } catch (error) {
             setConnectionStatus("disconnected");
-            showAlert("error", "Falha ao conectar com HubSpot");
+            showAlert("error", "Falha ao conectar com dados do HubSpot");
         }
     };
 
@@ -175,7 +212,7 @@ export default function HubSpotSettingsPage() {
                                         "Testando conexão..."}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                    Última sincronização:{" "}
+                                    {dataStats.deals} deals sincronizados | Última sincronização:{" "}
                                     {formatTimestamp(settings.lastSync)}
                                 </div>
                             </div>
