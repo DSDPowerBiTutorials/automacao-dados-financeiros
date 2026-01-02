@@ -406,6 +406,11 @@ export const NAV: NavGroup[] = [
                 icon: Split
               }
             ]
+          },
+          {
+            title: "HubSpot Deals",
+            href: "/reports/hubspot",
+            icon: TrendingUp
           }
         ]
       },
