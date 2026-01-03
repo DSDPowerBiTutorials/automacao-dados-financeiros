@@ -99,12 +99,56 @@ export default function HubSpotSettingsPage() {
                 .limit(1);
 
             if (error) throw error;
-            
+
             setConnectionStatus("connected");
             showAlert("success", `Conexão ativa! ${dataStats.deals} deals disponíveis`);
         } catch (error) {
             setConnectionStatus("disconnected");
             showAlert("error", "Falha ao conectar com dados do HubSpot");
+        }
+    };
+
+    const syncHubSpotData = async () => {
+        setLoading(true);
+        try {
+            showAlert("success", "Iniciando sincronização...");
+
+            const response = await fetch("/api/hubspot/sync", {
+                method: "POST",
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || "Erro ao sincronizar");
+            }
+
+            showAlert("success", result.message || "Sincronização concluída!");
+            await fetchDataStats();
+        } catch (error: any) {
+            console.error("Erro na sincronização:", error);
+            showAlert("error", `Erro ao sincronizar: ${error.message}`);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const checkAvailableTables = async () => {
+        try {
+            showAlert("success", "Verificando tabelas disponíveis...");
+
+            const response = await fetch("/api/hubspot/tables");
+            const result = await response.json();
+
+            if (!response.ok || !result.success) {
+                throw new Error(result.error || "Erro ao verificar tabelas");
+            }
+
+            console.log("Tabelas disponíveis:", result.tables);
+            showAlert("success", `Encontradas ${result.count} tabelas no SQL Server. Verifique o console para detalhes.`);
+        } catch (error: any) {
+            console.error("Erro ao verificar tabelas:", error);
+            showAlert("error", `Erro: ${error.message}`);
         }
     };
 
@@ -225,6 +269,34 @@ export default function HubSpotSettingsPage() {
                         >
                             <RefreshCw className="w-4 h-4" />
                             Testar Conexão
+                        </Button>
+                    </div>
+
+                    <div className="flex gap-2 pt-4 border-t">
+                        <Button
+                            onClick={syncHubSpotData}
+                            disabled={loading}
+                            className="gap-2 flex-1"
+                        >
+                            {loading ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                    Sincronizando...
+                                </>
+                            ) : (
+                                <>
+                                    <Database className="w-4 h-4" />
+                                    Sincronizar Dados
+                                </>
+                            )}
+                        </Button>
+                        <Button
+                            onClick={checkAvailableTables}
+                            variant="outline"
+                            className="gap-2"
+                        >
+                            <Database className="w-4 h-4" />
+                            Ver Tabelas
                         </Button>
                     </div>
                 </CardContent>

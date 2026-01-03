@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -246,13 +246,15 @@ export default function CustomersPage() {
         setIsDialogOpen(true);
     }
 
-    const filteredCustomers = customers.filter(
-        (c) =>
-            c.name.toLowerCase().includes(search.toLowerCase()) ||
-            c.code.toLowerCase().includes(search.toLowerCase()) ||
-            c.email?.toLowerCase().includes(search.toLowerCase()) ||
-            c.tax_id?.toLowerCase().includes(search.toLowerCase())
-    );
+    const filteredCustomers = useMemo(() => {
+        return customers.filter(
+            (c) =>
+                c.name.toLowerCase().includes(search.toLowerCase()) ||
+                c.code.toLowerCase().includes(search.toLowerCase()) ||
+                c.email?.toLowerCase().includes(search.toLowerCase()) ||
+                c.tax_id?.toLowerCase().includes(search.toLowerCase())
+        );
+    }, [customers, search]);
 
     return (
         <div className="p-6 space-y-6">

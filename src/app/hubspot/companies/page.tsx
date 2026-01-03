@@ -70,7 +70,7 @@ export default function HubSpotCompaniesPage() {
     const fetchCompanies = async () => {
         try {
             setLoading(true);
-            
+
             // Buscar deals do HubSpot e agregar por empresa
             const { data: deals, error } = await supabase
                 .from("csv_rows")
@@ -83,7 +83,7 @@ export default function HubSpotCompaniesPage() {
             const companyMap = new Map();
             deals?.forEach((deal, index) => {
                 const companyName = deal.custom_data?.company || "Unknown Company";
-                
+
                 if (!companyMap.has(companyName)) {
                     companyMap.set(companyName, {
                         id: `company-${index}`,
@@ -98,14 +98,14 @@ export default function HubSpotCompaniesPage() {
                         annual_revenue: 0,
                         number_of_employees: Math.floor(Math.random() * 500) + 50,
                         lifecycle_stage: deal.custom_data?.stage?.includes("won") ? "customer" : "prospect",
-                        type: deal.custom_data?.stage?.includes("won") ? "customer" : 
-                              deal.custom_data?.stage?.includes("qualified") ? "prospect" : "lead",
+                        type: deal.custom_data?.stage?.includes("won") ? "customer" :
+                            deal.custom_data?.stage?.includes("qualified") ? "prospect" : "lead",
                         owner: deal.custom_data?.owner || "Unknown",
                         custom_data: deal.custom_data,
                         deals: []
                     });
                 }
-                
+
                 const company = companyMap.get(companyName);
                 company.deals.push(deal);
                 company.annual_revenue += deal.amount || 0;

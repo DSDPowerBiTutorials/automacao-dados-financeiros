@@ -71,7 +71,7 @@ export default function HubSpotContactsPage() {
     const fetchContacts = async () => {
         try {
             setLoading(true);
-            
+
             // Buscar deals do HubSpot e extrair contatos únicos
             const { data: deals, error } = await supabase
                 .from("csv_rows")
@@ -85,7 +85,7 @@ export default function HubSpotContactsPage() {
             deals?.forEach((deal, index) => {
                 const company = deal.custom_data?.company || "Unknown Company";
                 const owner = deal.custom_data?.owner || "Unknown Owner";
-                
+
                 if (!uniqueCompanies.has(company)) {
                     uniqueCompanies.set(company, {
                         id: `contact-${index}`,
@@ -96,8 +96,8 @@ export default function HubSpotContactsPage() {
                         phone: "+1234567890",
                         company: company,
                         job_title: "Sales Representative",
-                        lifecycle_stage: deal.custom_data?.stage?.includes("won") ? "customer" : 
-                                        deal.custom_data?.stage?.includes("qualified") ? "opportunity" : "lead",
+                        lifecycle_stage: deal.custom_data?.stage?.includes("won") ? "customer" :
+                            deal.custom_data?.stage?.includes("qualified") ? "opportunity" : "lead",
                         lead_status: deal.reconciled ? "Closed" : "Open",
                         owner: owner,
                         custom_data: deal.custom_data
