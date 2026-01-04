@@ -113,7 +113,7 @@ export async function POST(request: Request) {
             const dealId = colId ? deal[colId] : null;
             const dealName = colName ? deal[colName] : 'Deal';
             const amount = colAmount ? parseFloat(deal[colAmount]) || 0 : 0;
-            const closeDate = colDate ? deal[colDate] : new Date();
+            const closeDate = colDate && deal[colDate] ? new Date(deal[colDate]) : new Date();
             const stage = colStage ? deal[colStage] : 'unknown';
             const pipeline = colPipeline ? deal[colPipeline] : null;
             const owner = colOwner ? deal[colOwner] : null;
@@ -121,10 +121,10 @@ export async function POST(request: Request) {
             const currency = colCurrency ? deal[colCurrency] : 'EUR';
 
             return {
-                id: crypto.randomUUID(), // Gerar UUID para cada linha
-                file_name: 'hubspot-sync', // Nome fixo para sincronização HubSpot
+                id: crypto.randomUUID(),
+                file_name: 'hubspot-sync',
                 source: 'hubspot',
-                date: closeDate,
+                date: closeDate.toISOString(), // Garantir formato ISO
                 description: `${dealName}${company ? ' - ' + company : ''}`,
                 amount: amount,
                 reconciled: false,
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
                     owner: owner,
                     company: company,
                     currency: currency,
-                    raw_data: deal, // Guardar dados originais para debug
+                    raw_data: deal,
                 },
             };
         });
