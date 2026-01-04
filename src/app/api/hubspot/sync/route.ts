@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSQLServerConnection, closeSQLServerConnection } from '@/lib/sqlserver';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import crypto from 'crypto';
 
 // Nome fixo da tabela (verificado via test-sqlserver.js)
 // Usar colchetes para evitar problemas de case sensitivity
@@ -120,6 +121,7 @@ export async function POST(request: Request) {
             const currency = colCurrency ? deal[colCurrency] : 'EUR';
 
             return {
+                id: crypto.randomUUID(), // Gerar UUID para cada linha
                 source: 'hubspot',
                 date: closeDate,
                 description: `${dealName}${company ? ' - ' + company : ''}`,
