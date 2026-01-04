@@ -91,11 +91,13 @@ export default function HubSpotCompaniesPage() {
         try {
             setLoading(true);
 
-            // Buscar deals do HubSpot e agregar por empresa
+            // Buscar deals do HubSpot desde 01/01/2024 e agregar por empresa
             const { data: deals, error } = await supabase
                 .from("csv_rows")
                 .select("*")
-                .eq("source", "hubspot");
+                .eq("source", "hubspot")
+                .gte("date", "2024-01-01")
+                .order("date", { ascending: false });
 
             if (error) throw error;
 

@@ -93,11 +93,13 @@ export default function HubSpotContactsPage() {
         try {
             setLoading(true);
 
-            // Buscar deals do HubSpot e extrair contatos únicos
+            // Buscar deals do HubSpot desde 01/01/2024 e extrair contatos
             const { data: deals, error } = await supabase
                 .from("csv_rows")
                 .select("*")
-                .eq("source", "hubspot");
+                .eq("source", "hubspot")
+                .gte("date", "2024-01-01")
+                .order("date", { ascending: false });
 
             if (error) throw error;
 

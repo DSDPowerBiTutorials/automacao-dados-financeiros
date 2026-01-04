@@ -70,6 +70,7 @@ export default function HubSpotSettingsPage() {
                 .from("csv_rows")
                 .select("date")
                 .eq("source", "hubspot")
+                .gte("date", "2024-01-01")
                 .order("date", { ascending: false });
 
             if (error) throw error;
@@ -91,11 +92,12 @@ export default function HubSpotSettingsPage() {
     const testConnection = async () => {
         setConnectionStatus("testing");
         try {
-            // Testar busca de dados do HubSpot
+            // Testar busca de dados do HubSpot desde 2024
             const { data, error } = await supabase
                 .from("csv_rows")
                 .select("id")
                 .eq("source", "hubspot")
+                .gte("date", "2024-01-01")
                 .limit(1);
 
             if (error) throw error;

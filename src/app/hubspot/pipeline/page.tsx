@@ -47,7 +47,9 @@ export default function HubSpotPipelinePage() {
             const { data, error } = await supabase
                 .from("csv_rows")
                 .select("*")
-                .eq("source", "hubspot");
+                .eq("source", "hubspot")
+                .gte("date", "2024-01-01")
+                .order("date", { ascending: false });
 
             if (error) throw error;
 
