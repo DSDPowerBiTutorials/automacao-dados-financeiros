@@ -40,8 +40,8 @@ export async function POST(request: Request) {
             throw new Error(`Erro ao verificar database: ${diagError.message}`);
         }
 
-        // Tentar diferentes formatos do nome da tabela
-        const tableVariations = ['Deals', '[Deals]', 'dbo.Deals', '[dbo].[Deals]'];
+        // Tentar diferentes formatos do nome da tabela (SINGULAR: Deal, não Deals!)
+        const tableVariations = ['Deal', '[Deal]', 'dbo.Deal', '[dbo].[Deal]'];
         let result: any = null;
         let usedTableName = '';
 
