@@ -2,49 +2,8 @@ import { NextResponse } from 'next/server';
 import { getSQLServerConnection, closeSQLServerConnection } from '@/lib/sqlserver';
 import { supabaseAdmin } from '@/lib/supabase';
 
-// Lista de possíveis nomes de tabelas do HubSpot
-const POSSIBLE_TABLE_NAMES = [
-    'deals',
-    'HubSpot_Deals',
-    'hubspot_deals',
-    'hs_deals',
-    'CRM_Deals',
-    'crm_deals',
-    'vw_hubspot_deals',
-    'dbo.deals',
-    'hubspot.deals',
-];
-
-// Função para encontrar a tabela correta do HubSpot
-async function findHubSpotTable(pool: any): Promise<string | null> {
-    try {
-        // Buscar todas as tabelas que contêm 'deal' no nome
-        const tablesResult = await pool.request().query(`
-            SELECT TABLE_SCHEMA, TABLE_NAME
-            FROM INFORMATION_SCHEMA.TABLES
-            WHERE TABLE_TYPE = 'BASE TABLE'
-            AND (
-                TABLE_NAME LIKE '%deal%'
-                OR TABLE_NAME LIKE '%hubspot%'
-            )
-        `);
-
-        if (tablesResult.recordset.length > 0) {
-            // Retornar a primeira tabela encontrada
-            const table = tablesResult.recordset[0];
-            const fullTableName = table.TABLE_SCHEMA === 'dbo'
-                ? table.TABLE_NAME
-                : `${table.TABLE_SCHEMA}.${table.TABLE_NAME}`;
-            console.log(`✓ Tabela HubSpot encontrada: ${fullTableName}`);
-            return fullTableName;
-        }
-
-        return null;
-    } catch (error) {
-        console.error('Erro ao buscar tabelas:', error);
-        return null;
-    }
-}
+// Nome fixo da tabela (verificado via test-sqlserver.js)
+const HUBSPOT_DEALS_TABLE = 'dbo.Deals';
 
 // Rota para sincronizar dados do HubSpot via SQL Server Data Warehouse
 export async function POST(request: Request) {
@@ -54,41 +13,8 @@ export async function POST(request: Request) {
         // Conectar no SQL Server
         const pool = await getSQLServerConnection();
 
-        // Tentar encontrar a tabela automaticamente
-        let tableName = await findHubSpotTable(pool);
-
-        if (!tableName) {
-            // Tentar nomes comuns
-            for (const name of POSSIBLE_TABLE_NAMES) {
-                try {
-                    await pool.request().query(`SELECT TOP 1 * FROM ${name}`);
-                    tableName = name;
-                    console.log(`✓ Tabela encontrada: ${tableName}`);
-                    break;
-                } catch (e) {
-                    continue;
-                }
-            }
-        }
-
-        if (!tableName) {
-            // Listar tabelas disponíveis para ajudar o usuário
-            const allTables = await pool.request().query(`
-                SELECT TABLE_SCHEMA, TABLE_NAME
-                FROM INFORMATION_SCHEMA.TABLES
-                WHERE TABLE_TYPE = 'BASE TABLE'
-                ORDER BY TABLE_NAME
-            `);
-
-            const tableList = allTables.recordset
-                .map((t: any) => `${t.TABLE_SCHEMA}.${t.TABLE_NAME}`)
-                .join(', ');
-
-            throw new Error(
-                `Tabela do HubSpot não encontrada. Tabelas disponíveis: ${tableList}`
-            );
-        }
-
+        // Usar tabela verificada
+        const tableName = HUBSPOT_DEALS_TABLE;
         console.log(`Usando tabela: ${tableName}`);
 
         // Query para buscar deals/vendas do HubSpot
