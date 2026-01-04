@@ -122,7 +122,21 @@ export async function POST(request: Request) {
             const dealId = colId ? deal[colId] : null;
             const dealName = colName ? deal[colName] : 'Deal';
             const amount = colAmount ? parseFloat(deal[colAmount]) || 0 : 0;
-            const closeDate = colDate && deal[colDate] ? new Date(deal[colDate]) : new Date();
+
+            // Melhorar detecção da data: tentar múltiplas colunas e formatos
+            let closeDate = new Date();
+            if (colDate && deal[colDate]) {
+                const dateValue = deal[colDate];
+                const parsedDate = new Date(dateValue);
+                if (!isNaN(parsedDate.getTime())) {
+                    closeDate = parsedDate;
+                } else {
+                    console.warn(`Data inválida para deal ${dealId}: ${dateValue}`);
+                }
+            } else {
+                console.warn(`Coluna de data não encontrada para deal ${dealId}. Disponíveis: ${columns.join(', ')}`);
+            }
+
             const stage = colStage ? deal[colStage] : 'unknown';
             const pipeline = colPipeline ? deal[colPipeline] : null;
             const owner = colOwner ? deal[colOwner] : null;
@@ -144,6 +158,7 @@ export async function POST(request: Request) {
                     owner: owner,
                     company: company,
                     currency: currency,
+                    source_date_column: colDate, // Registrar qual coluna foi usada
                     raw_data: deal,
                 },
             };

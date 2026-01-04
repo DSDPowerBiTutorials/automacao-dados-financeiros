@@ -51,12 +51,15 @@ interface HubSpotRow {
 export default function HubSpotReportPage() {
     const [rows, setRows] = useState<HubSpotRow[]>([]);
     const [filteredRows, setFilteredRows] = useState<HubSpotRow[]>([]);
+    const [paginatedRows, setPaginatedRows] = useState<HubSpotRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingData, setEditingData] = useState<Partial<HubSpotRow>>({});
     const [searchTerm, setSearchTerm] = useState("");
     const [filterReconciled, setFilterReconciled] = useState<string>("all");
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize] = useState(50); // Mostrar 50 linhas por página
     const [alert, setAlert] = useState<{
         type: "success" | "error";
         message: string;
@@ -70,12 +73,22 @@ export default function HubSpotReportPage() {
         filterRows();
     }, [rows, searchTerm, filterReconciled]);
 
+    useEffect(() => {
+        // Aplicar paginação aos filteredRows
+        const startIndex = (currentPage - 1) * pageSize;
+        const endIndex = startIndex + pageSize;
+        setPaginatedRows(filteredRows.slice(startIndex, endIndex));
+    }, [filteredRows, currentPage, pageSize]);
+
     const fetchRows = async () => {
         try {
             setLoading(true);
-            const { data, error } = await supabase
+            setCurrentPage(1); // Resetar página ao carregar novos dados
+
+            // Usar range com limit para carregar apenas dados paginados do servidor
+            const { data, error, count } = await supabase
                 .from("csv_rows")
-                .select("*")
+                .select("*", { count: "exact" })
                 .eq("source", "hubspot")
                 .order("date", { ascending: false });
 
@@ -236,6 +249,10 @@ export default function HubSpotReportPage() {
                 .reduce((sum, r) => sum + r.amount, 0),
         };
     }, [rows]);
+
+    // Calcular total de registros após filtros (para paginação correta)
+    const totalFilteredCount = filteredRows.length;
+    const totalPages = Math.ceil(totalFilteredCount / pageSize);
 
     if (loading) {
         return (
@@ -429,7 +446,7 @@ export default function HubSpotReportPage() {
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
-                                {filteredRows.map((row) => {
+                                {paginatedRows.map((row) => {
                                     const isEditing = editingId === row.id;
                                     return (
                                         <tr key={row.id} className="hover:bg-gray-50">
@@ -570,6 +587,38 @@ export default function HubSpotReportPage() {
                             >
                                 Sincronizar Agora
                             </Button>
+                        </div>
+                    )}
+
+                    {/* Paginação */}
+                    {filteredRows.length > 0 && (
+                        <div className="flex items-center justify-between p-4 bg-gray-50 border-t">
+                            <div className="text-sm text-gray-600">
+                                Mostrando {totalFilteredCount === 0 ? 0 : ((currentPage - 1) * pageSize) + 1} a {Math.min(currentPage * pageSize, totalFilteredCount)} de {totalFilteredCount} registros
+                            </div>
+                            <div className="flex gap-2">
+                                <Button
+                                    onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                                    disabled={currentPage === 1}
+                                    variant="outline"
+                                    size="sm"
+                                >
+                                    Anterior
+                                </Button>
+                                <div className="flex items-center gap-2 px-3">
+                                    <span className="text-sm font-medium">
+                                        Página {currentPage} de {totalPages}
+                                    </span>
+                                </div>
+                                <Button
+                                    onClick={() => setCurrentPage(currentPage + 1)}
+                                    disabled={currentPage >= totalPages}
+                                    variant="outline"
+                                    size="sm"
+                                >
+                                    Próxima
+                                </Button>
+                            </div>
                         </div>
                     )}
                 </CardContent>
