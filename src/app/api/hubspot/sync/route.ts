@@ -122,6 +122,7 @@ export async function POST(request: Request) {
 
             return {
                 id: crypto.randomUUID(), // Gerar UUID para cada linha
+                file_name: 'hubspot-sync', // Nome fixo para sincronização HubSpot
                 source: 'hubspot',
                 date: closeDate,
                 description: `${dealName}${company ? ' - ' + company : ''}`,
