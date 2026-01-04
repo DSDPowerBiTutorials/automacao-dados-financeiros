@@ -52,9 +52,9 @@ export async function POST(request: Request) {
         for (const tableName of tableVariations) {
             try {
                 console.log(`Tentando: ${tableName}`);
-                // Buscar deals desde 01/01/2024 até presente
+                // Buscar deals desde 01/01/2024 (limitado a 2000 para performance)
                 result = await pool.request().query(`
-                    SELECT TOP 10000 * 
+                    SELECT TOP 2000 * 
                     FROM ${tableName}
                     WHERE hs_lastmodifieddate >= '${startDate}'
                     ORDER BY hs_lastmodifieddate DESC
@@ -149,8 +149,11 @@ export async function POST(request: Request) {
             };
         });
 
+        console.log(`Transformados ${rows.length} deals para inserir no Supabase`);
+
         // Inserir no Supabase (substituir dados existentes do HubSpot)
         // Primeiro, deletar dados antigos
+        console.log('Deletando dados antigos do HubSpot...');
         const { error: deleteError } = await supabaseAdmin
             .from('csv_rows')
             .delete()
@@ -161,6 +164,7 @@ export async function POST(request: Request) {
             throw deleteError;
         }
 
+        console.log('Inserindo novos dados...');
         // Inserir novos dados
         const { data, error: insertError } = await supabaseAdmin
             .from('csv_rows')

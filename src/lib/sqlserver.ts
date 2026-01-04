@@ -9,8 +9,8 @@ const config: sql.config = {
         encrypt: true, // Para Azure SQL
         trustServerCertificate: false,
         enableArithAbort: true,
-        connectTimeout: 30000,
-        requestTimeout: 30000,
+        connectTimeout: 60000, // 60 segundos
+        requestTimeout: 120000, // 120 segundos para queries grandes
     },
     pool: {
         max: 10,
