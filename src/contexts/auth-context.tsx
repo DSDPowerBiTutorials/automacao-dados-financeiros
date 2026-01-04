@@ -45,53 +45,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
             const { data, error } = await supabase
                 .from('users')
-                .select(`
-          id,
-          email,
-          name,
-          role,
-          company_code,
-          department,
-          phone,
-          avatar_url,
-          is_active,
-          last_login_at
-        `)
+                .select('id, email, name, role, company_code, is_active')
                 .eq('id', userId)
-                .single();
+                .maybeSingle(); // Use maybeSingle para não dar erro se não existir
 
-            if (error) throw error;
-            return data as UserProfile;
+            if (error) {
+                console.error('Error fetching profile:', error);
+                return null;
+            }
+
+            return data as UserProfile | null;
         } catch (error) {
             console.error('Error fetching profile:', error);
             return null;
         }
     };
 
-    // Update last login timestamp
+    // Update last login timestamp (async, não bloqueia login)
     const updateLastLogin = async (userId: string) => {
         try {
-            await supabase
+            supabase
                 .from('users')
                 .update({ last_login_at: new Date().toISOString() })
-                .eq('id', userId);
+                .eq('id', userId)
+                .then(() => console.log('Last login updated'))
+                .catch(err => console.error('Error updating last login:', err));
         } catch (error) {
             console.error('Error updating last login:', error);
         }
     };
 
-    // Log audit action
+    // Log audit action (async, não bloqueia login)
     const logAudit = async (action: string, details?: any) => {
         if (!user) return;
 
         try {
-            await supabase
+            supabase
                 .from('audit_log')
                 .insert({
                     user_id: user.id,
                     action,
                     details: details || {},
-                });
+                })
+                .then(() => console.log('Audit logged'))
+                .catch(err => console.error('Error logging audit:', err));
         } catch (error) {
             console.error('Error logging audit:', error);
         }
@@ -226,20 +223,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (error) return { error };
 
             if (data.user) {
-                const userProfile = await fetchProfile(data.user.id);
+                // Buscar profile sem bloquear (usar timeout)
+                const profilePromise = fetchProfile(data.user.id);
+                const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));
 
-                if (!userProfile?.is_active) {
+                const userProfile = await Promise.race([profilePromise, timeoutPromise]);
+
+                if (userProfile && !userProfile.is_active) {
                     await supabase.auth.signOut();
                     return { error: { message: 'Account is inactive. Please contact administrator.' } };
                 }
 
-                await updateLastLogin(data.user.id);
-                await logAudit('login');
-                // Don't redirect here - AuthGuard will handle it
+                // Executar em background (não aguardar)
+                updateLastLogin(data.user.id);
+                logAudit('login');
             }
 
             return { error: null };
         } catch (error: any) {
+            console.error('Sign in error:', error);
             return { error };
         }
     };
