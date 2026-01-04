@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSQLServerConnection, closeSQLServerConnection } from '@/lib/sqlserver';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase-admin';
 
 // Nome fixo da tabela (verificado via test-sqlserver.js)
 // Usar colchetes para evitar problemas de case sensitivity
