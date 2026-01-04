@@ -1,5 +1,3 @@
-"use client";
-
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -29,6 +27,70 @@ function getSupabaseAdmin() {
   });
 }
 
+// GET - Buscar rows com paginação e filtros
+export async function GET(request: NextRequest) {
+  try {
+    const supabaseAdmin = getSupabaseAdmin();
+
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Supabase admin not configured",
+        },
+        { status: 500 },
+      );
+    }
+
+    const { searchParams } = new URL(request.url);
+    const source = searchParams.get("source") || "hubspot";
+    const limit = Math.min(parseInt(searchParams.get("limit") || "50"), 500);
+    const offset = parseInt(searchParams.get("offset") || "0");
+    const search = searchParams.get("search");
+
+    // Construir query base
+    let query = supabaseAdmin
+      .from("csv_rows")
+      .select("*", { count: "exact" })
+      .eq("source", source)
+      .order("date", { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    // Adicionar busca se fornecida
+    if (search) {
+      query = query.or(
+        `description.ilike.%${search}%,custom_data->deal_id.eq.${search}`,
+      );
+    }
+
+    const { data, error, count } = await query;
+
+    if (error) {
+      console.error("❌ Error fetching rows:", error);
+      return NextResponse.json(
+        { success: false, error: error.message },
+        { status: 500 },
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: data || [],
+      count: count || 0,
+      limit,
+      offset,
+      hasMore: (offset + limit) < (count || 0),
+    });
+  } catch (error: any) {
+    console.error("❌ API error:", error);
+    return NextResponse.json(
+      { success: false, error: error.message || "Internal server error" },
+      { status: 500 },
+    );
+  }
+}
+
+// POST - Inserir rows
 export async function POST(request: NextRequest) {
   try {
     const supabaseAdmin = getSupabaseAdmin();

@@ -866,6 +866,19 @@ export default function BraintreeEURPage() {
                 </div>
               </div>
               <div className="flex gap-2">
+                {/* Botão de Forçar Atualização */}
+                <Button
+                  onClick={loadData}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-white text-white hover:bg-white/10"
+                  title="Forçar atualização dos dados"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </Button>
+
                 {/* Sincronização direta via API */}
                 <BraintreeApiSync />
 

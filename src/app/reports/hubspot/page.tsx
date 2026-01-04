@@ -84,7 +84,7 @@ export default function HubSpotReportPage() {
         try {
             setLoading(true);
             setCurrentPage(1); // Resetar página ao carregar novos dados
-
+            
             // Usar range com limit para carregar apenas dados paginados do servidor
             const { data, error, count } = await supabase
                 .from("csv_rows")

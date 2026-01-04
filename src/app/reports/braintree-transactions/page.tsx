@@ -13,6 +13,7 @@ import {
   Loader2,
   CheckCircle,
   XCircle,
+  RefreshCw,
 } from "lucide-react";
 import {
   loadAllCSVFiles,
@@ -458,6 +459,18 @@ export default function BraintreeTransactionsPage() {
 
                 {/* Sincronização direta via API */}
                 <BraintreeApiSync />
+
+                <Button
+                  onClick={loadData}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-white text-white hover:bg-white/10"
+                  title="Forçar atualização dos dados"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </Button>
 
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />

@@ -802,6 +802,17 @@ export default function BraintreeEURPage() {
                     </span>
                   </Button>
                 </label>
+                <Button
+                  onClick={loadData}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-white text-white hover:bg-white/10"
+                  title="Forçar atualização dos dados"
+                >
+                  <Zap className={`h-4 w-4 ${isLoading ? 'animate-pulse' : ''}`} />
+                  Atualizar
+                </Button>
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download

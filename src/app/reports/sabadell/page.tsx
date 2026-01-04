@@ -916,6 +916,15 @@ export default function SabadellPage() {
                   </Button>
                 </label>
                 <Button
+                  onClick={loadData}
+                  disabled={isLoading}
+                  className="gap-2 bg-gray-600 hover:bg-gray-700 text-white"
+                  title="Forçar atualização dos dados"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Atualizar
+                </Button>
+                <Button
                   onClick={downloadCSV}
                   className="gap-2 bg-black hover:bg-gray-800 text-white"
                 >

@@ -14,6 +14,7 @@ import {
   XCircle,
   Settings,
   Database,
+  RefreshCw,
 } from "lucide-react";
 import {
   loadAllCSVFiles,
@@ -369,6 +370,17 @@ export default function StripePage() {
                     </span>
                   </Button>
                 </label>
+                <Button
+                  onClick={loadData}
+                  disabled={isLoading}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-white text-white hover:bg-white/10"
+                  title="Forçar atualização dos dados"
+                >
+                  <Download className="h-4 w-4" />
+                  Atualizar
+                </Button>
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { CreditCard, TrendingUp, DollarSign, Calendar, ArrowRight, Loader2 } from "lucide-react";
+import { CreditCard, TrendingUp, DollarSign, Calendar, ArrowRight, Loader2, RefreshCw } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -175,7 +175,20 @@ export default function BraintreeDashboard() {
             Consolidated view across all payment currencies
           </p>
         </div>
-        <BraintreeApiSync onSyncComplete={loadStats} />
+        <div className="flex gap-2">
+          <Button
+            onClick={loadStats}
+            disabled={isLoading}
+            variant="ghost"
+            size="sm"
+            className="gap-2"
+            title="Forçar atualização dos dados"
+          >
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Atualizar
+          </Button>
+          <BraintreeApiSync onSyncComplete={loadStats} />
+        </div>
       </div>
 
       {/* Total Overview */}

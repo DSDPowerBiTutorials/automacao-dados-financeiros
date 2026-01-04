@@ -95,11 +95,21 @@ export async function POST(request: Request) {
 
         console.log('Colunas detectadas:', columns);
 
-        // Função auxiliar para encontrar coluna por padrões
+        // Função auxiliar para encontrar coluna por padrões (case-insensitive)
         const findColumn = (patterns: string[]): string | null => {
-            for (const pattern of patterns) {
+            const lowerPatterns = patterns.map(p => p.toLowerCase());
+
+            // Primeiro tenta match exato (case-insensitive)
+            for (const col of columns) {
+                if (lowerPatterns.includes(col.toLowerCase())) {
+                    return col;
+                }
+            }
+
+            // Depois tenta partial match
+            for (const pattern of lowerPatterns) {
                 const col = columns.find(c =>
-                    c.toLowerCase().includes(pattern.toLowerCase())
+                    c.toLowerCase().includes(pattern)
                 );
                 if (col) return col;
             }
@@ -107,15 +117,15 @@ export async function POST(request: Request) {
         };
 
         // Detectar colunas importantes
-        const colId = findColumn(['deal_id', 'dealid', 'id']);
-        const colName = findColumn(['deal_name', 'dealname', 'name', 'title']);
-        const colAmount = findColumn(['amount', 'value', 'deal_amount']);
-        const colDate = findColumn(['close_date', 'closedate', 'date', 'created']);
-        const colStage = findColumn(['stage', 'dealstage']);
-        const colPipeline = findColumn(['pipeline']);
-        const colOwner = findColumn(['owner', 'owner_name', 'ownername']);
-        const colCompany = findColumn(['company', 'company_name', 'companyname']);
-        const colCurrency = findColumn(['currency', 'currency_code']);
+        const colId = findColumn(['DealId', 'deal_id', 'dealid', 'id']);
+        const colName = findColumn(['dealname', 'deal_name', 'name', 'title']);
+        const colAmount = findColumn(['amount', 'value', 'deal_amount', 'amount_in_home_currency']);
+        const colDate = findColumn(['closedate', 'close_date', 'hs_closed_won_date', 'hs_closed_deal_close_date', 'createdate', 'date', 'created']);
+        const colStage = findColumn(['dealstage', 'stage']);
+        const colPipeline = findColumn(['deal_pipeline', 'pipeline']);
+        const colOwner = findColumn(['hubspot_owner_id', 'owner', 'owner_name', 'ownername']);
+        const colCompany = findColumn(['hs_primary_associated_company', 'company', 'company_name', 'companyname']);
+        const colCurrency = findColumn(['deal_currency_code', 'currency', 'currency_code']);
 
         // Transformar dados para o formato csv_rows
         const rows = result.recordset.map((deal: any) => {
@@ -125,16 +135,51 @@ export async function POST(request: Request) {
 
             // Melhorar detecção da data: tentar múltiplas colunas e formatos
             let closeDate = new Date();
-            if (colDate && deal[colDate]) {
-                const dateValue = deal[colDate];
-                const parsedDate = new Date(dateValue);
-                if (!isNaN(parsedDate.getTime())) {
-                    closeDate = parsedDate;
-                } else {
-                    console.warn(`Data inválida para deal ${dealId}: ${dateValue}`);
+            let usedDateColumn = 'unknown';
+
+            // Tentar ordem de preferência: closedate > hs_closed_won_date > hs_closed_deal_close_date > createdate
+            const dateColumnsToTry = [
+                { col: 'closedate', name: 'closedate' },
+                { col: colDate, name: `${colDate || 'detected'}` },
+                { col: 'hs_closed_won_date', name: 'hs_closed_won_date' },
+                { col: 'hs_closed_deal_close_date', name: 'hs_closed_deal_close_date' },
+                { col: 'createdate', name: 'createdate' },
+            ];
+
+            for (const { col, name } of dateColumnsToTry) {
+                if (!col || !deal[col]) continue;
+
+                const dateValue = deal[col];
+                if (dateValue === null || dateValue === undefined || dateValue === '') continue;
+
+                // Tentar fazer parse de diferentes formatos
+                let parsedDate = new Date(dateValue);
+
+                // Se for timestamp (número em ms), converter
+                if (typeof dateValue === 'number') {
+                    parsedDate = new Date(dateValue);
+                } else if (typeof dateValue === 'string') {
+                    // Tentar múltiplos formatos
+                    parsedDate = new Date(dateValue);
+
+                    // Se falhar, tentar ISO ou timestamp em ms
+                    if (isNaN(parsedDate.getTime())) {
+                        const asMs = parseInt(dateValue);
+                        if (!isNaN(asMs)) {
+                            parsedDate = new Date(asMs);
+                        }
+                    }
                 }
-            } else {
-                console.warn(`Coluna de data não encontrada para deal ${dealId}. Disponíveis: ${columns.join(', ')}`);
+
+                if (!isNaN(parsedDate.getTime()) && parsedDate.getTime() !== 0) {
+                    closeDate = parsedDate;
+                    usedDateColumn = name;
+                    break;
+                }
+            }
+
+            if (usedDateColumn === 'unknown' || closeDate.getFullYear() === new Date().getFullYear() && closeDate.getMonth() === new Date().getMonth() && closeDate.getDate() === new Date().getDate()) {
+                console.warn(`Data possível com fallback para deal ${dealId}: coluna usada="${usedDateColumn}" | data="${closeDate.toISOString()}"`);
             }
 
             const stage = colStage ? deal[colStage] : 'unknown';
@@ -158,8 +203,10 @@ export async function POST(request: Request) {
                     owner: owner,
                     company: company,
                     currency: currency,
-                    source_date_column: colDate, // Registrar qual coluna foi usada
-                    raw_data: deal,
+                    closedate: deal['closedate'] || null,
+                    createdate: deal['createdate'] || null,
+                    source_date_column_used: usedDateColumn, // Registrar qual coluna foi usada
+                    raw_close_date: deal[colDate] || null,
                 },
             };
         });
