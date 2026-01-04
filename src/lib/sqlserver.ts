@@ -6,11 +6,11 @@ const config: sql.config = {
     user: process.env.SQLSERVER_USER || '',
     password: process.env.SQLSERVER_PASSWORD || '',
     options: {
-        encrypt: true, // Para Azure SQL
+        encrypt: true,
         trustServerCertificate: false,
         enableArithAbort: true,
-        connectTimeout: 60000, // 60 segundos
-        requestTimeout: 120000, // 120 segundos para queries grandes
+        connectTimeout: 30000,
+        requestTimeout: 90000, // 90 segundos - suficiente mas não excessivo
     },
     pool: {
         max: 10,
