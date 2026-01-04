@@ -30,6 +30,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { formatDate } from "@/lib/formatters";
+import HubSpotSyncStatus from "@/components/hubspot/sync-status";
 
 interface Contact {
     id: string;
@@ -220,31 +221,10 @@ export default function HubSpotContactsPage() {
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={syncFromHubSpot}
-                        disabled={syncing}
-                        variant="outline"
-                        className="gap-2"
-                    >
-                        {syncing ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Sincronizando...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="w-4 h-4" />
-                                Sincronizar
-                            </>
-                        )}
-                    </Button>
-                    <Button onClick={exportToCSV} variant="outline" className="gap-2">
-                        <Download className="w-4 h-4" />
-                        Exportar
-                    </Button>
-                </div>
             </div>
+
+            {/* Sync Status */}
+            <HubSpotSyncStatus />
 
             {/* Alert */}
             {alert && (

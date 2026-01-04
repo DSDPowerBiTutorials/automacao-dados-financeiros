@@ -49,7 +49,12 @@ export async function POST(request: Request) {
         for (const tableName of tableVariations) {
             try {
                 console.log(`Tentando: ${tableName}`);
-                result = await pool.request().query(`SELECT TOP 10 * FROM ${tableName}`);
+                result = await pool.request().query(`
+                    SELECT * 
+                    FROM ${tableName}
+                    WHERE hs_lastmodifieddate >= '2024-01-01'
+                    ORDER BY hs_lastmodifieddate DESC
+                `);
                 usedTableName = tableName;
                 diagnosticInfo.attempts.push({ table: tableName, success: true });
                 console.log(`✓ Sucesso com: ${tableName}`);
@@ -160,6 +165,20 @@ export async function POST(request: Request) {
         if (insertError) {
             console.error('Erro ao inserir dados:', insertError);
             throw insertError;
+        }
+
+        // Salvar metadados da sincronização
+        const { error: metaError } = await supabaseAdmin
+            .from('sync_metadata')
+            .upsert({
+                source: 'hubspot',
+                last_sync: new Date().toISOString(),
+                records_synced: rows.length,
+                status: 'success',
+            }, { onConflict: 'source' });
+
+        if (metaError) {
+            console.warn('Erro ao salvar metadados (não crítico):', metaError);
         }
 
         console.log(`✓ ${rows.length} deals sincronizados com sucesso`);

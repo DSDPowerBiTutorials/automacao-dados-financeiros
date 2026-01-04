@@ -27,6 +27,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/formatters";
+import HubSpotSyncStatus from "@/components/hubspot/sync-status";
 
 interface Company {
     id: string;
@@ -225,30 +226,29 @@ export default function HubSpotCompaniesPage() {
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2">
-                    <Button
-                        onClick={syncFromHubSpot}
-                        disabled={syncing}
-                        variant="outline"
-                        className="gap-2"
-                    >
-                        {syncing ? (
-                            <>
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                                Sincronizando...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="w-4 h-4" />
-                                Sincronizar
-                            </>
-                        )}
-                    </Button>
-                    <Button onClick={exportToCSV} variant="outline" className="gap-2">
-                        <Download className="w-4 h-4" />
-                        Exportar
-                    </Button>
-                </div>
+            </div>
+
+            {/* Sync Status */}
+            <HubSpotSyncStatus />
+
+            {/* Filters */}
+            <div className="flex gap-4">
+                <Input
+                    placeholder="Buscar por empresa..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="max-w-sm"
+                />
+                <select
+                    value={filterType}
+                    onChange={(e) => setFilterType(e.target.value)}
+                    className="px-4 py-2 border rounded-md"
+                >
+                    <option value="all">Todos os deals</option>
+                    <option value="won">Ganhos</option>
+                    <option value="lost">Perdidos</option>
+                    <option value="open">Abertos</option>
+                </select>
             </div>
 
             {/* Alert */}

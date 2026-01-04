@@ -3,6 +3,10 @@
         {
             "path": "/api/cron/braintree-sync",
             "schedule": "0 3 * * *"
+        },
+        {
+            "path": "/api/cron/hubspot-sync",
+            "schedule": "0 4 * * *"
         }
     ]
 }

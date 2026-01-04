@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/formatters";
+import HubSpotSyncStatus from "@/components/hubspot/sync-status";
 
 interface PipelineStage {
     stage: string;
@@ -131,6 +132,9 @@ export default function HubSpotPipelinePage() {
                     </div>
                 </div>
             </div>
+
+            {/* Sync Status */}
+            <HubSpotSyncStatus />
 
             {/* KPI Cards */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
