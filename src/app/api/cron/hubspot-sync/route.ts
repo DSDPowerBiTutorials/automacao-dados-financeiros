@@ -137,7 +137,7 @@ export async function GET(request: Request) {
 
     } catch (error: any) {
         console.error('Erro na sincronização automática:', error);
-        
+
         // Salvar erro nos metadados
         try {
             await supabaseAdmin

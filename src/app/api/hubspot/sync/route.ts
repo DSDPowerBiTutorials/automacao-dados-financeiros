@@ -46,18 +46,22 @@ export async function POST(request: Request) {
         let result: any = null;
         let usedTableName = '';
 
+        // Data de início: 01/01/2024
+        const startDate = '2024-01-01';
+
         for (const tableName of tableVariations) {
             try {
                 console.log(`Tentando: ${tableName}`);
+                // Buscar deals desde 01/01/2024 até presente
                 result = await pool.request().query(`
-                    SELECT * 
+                    SELECT TOP 10000 * 
                     FROM ${tableName}
-                    WHERE hs_lastmodifieddate >= '2024-01-01'
+                    WHERE hs_lastmodifieddate >= '${startDate}'
                     ORDER BY hs_lastmodifieddate DESC
                 `);
                 usedTableName = tableName;
                 diagnosticInfo.attempts.push({ table: tableName, success: true });
-                console.log(`✓ Sucesso com: ${tableName}`);
+                console.log(`✓ Sucesso com: ${tableName} (${result.recordset.length} deals desde ${startDate})`);
                 break;
             } catch (err: any) {
                 const errorMsg = err.message.split('\n')[0];
@@ -165,20 +169,6 @@ export async function POST(request: Request) {
         if (insertError) {
             console.error('Erro ao inserir dados:', insertError);
             throw insertError;
-        }
-
-        // Salvar metadados da sincronização
-        const { error: metaError } = await supabaseAdmin
-            .from('sync_metadata')
-            .upsert({
-                source: 'hubspot',
-                last_sync: new Date().toISOString(),
-                records_synced: rows.length,
-                status: 'success',
-            }, { onConflict: 'source' });
-
-        if (metaError) {
-            console.warn('Erro ao salvar metadados (não crítico):', metaError);
         }
 
         console.log(`✓ ${rows.length} deals sincronizados com sucesso`);
