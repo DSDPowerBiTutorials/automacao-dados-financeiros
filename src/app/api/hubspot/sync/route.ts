@@ -8,6 +8,12 @@ const HUBSPOT_DEALS_TABLE = '[dbo].[Deals]';
 
 // Rota para sincronizar dados do HubSpot via SQL Server Data Warehouse
 export async function POST(request: Request) {
+    let diagnosticInfo = {
+        currentDatabase: '',
+        availableTables: [] as string[],
+        attempts: [] as { table: string; success: boolean; error?: string }[],
+    };
+
     try {
         console.log('Iniciando sincronização HubSpot...');
 
@@ -18,16 +24,20 @@ export async function POST(request: Request) {
         // DIAGNÓSTICO: Verificar database e tabelas disponíveis
         try {
             const dbCheck = await pool.request().query('SELECT DB_NAME() AS current_db');
-            console.log(`Database atual: ${dbCheck.recordset[0].current_db}`);
+            diagnosticInfo.currentDatabase = dbCheck.recordset[0].current_db;
+            console.log(`Database atual: ${diagnosticInfo.currentDatabase}`);
 
             const tablesCheck = await pool.request().query(`
                 SELECT TABLE_SCHEMA, TABLE_NAME 
                 FROM INFORMATION_SCHEMA.TABLES 
                 WHERE TABLE_NAME LIKE '%Deal%'
+                ORDER BY TABLE_NAME
             `);
-            console.log(`Tabelas com "Deal": ${tablesCheck.recordset.map((t: any) => `${t.TABLE_SCHEMA}.${t.TABLE_NAME}`).join(', ')}`);
-        } catch (diagError) {
+            diagnosticInfo.availableTables = tablesCheck.recordset.map((t: any) => `${t.TABLE_SCHEMA}.${t.TABLE_NAME}`);
+            console.log(`Tabelas com "Deal": ${diagnosticInfo.availableTables.join(', ')}`);
+        } catch (diagError: any) {
             console.error('Erro no diagnóstico:', diagError);
+            throw new Error(`Erro ao verificar database: ${diagError.message}`);
         }
 
         // Tentar diferentes formatos do nome da tabela
@@ -40,15 +50,23 @@ export async function POST(request: Request) {
                 console.log(`Tentando: ${tableName}`);
                 result = await pool.request().query(`SELECT TOP 10 * FROM ${tableName}`);
                 usedTableName = tableName;
+                diagnosticInfo.attempts.push({ table: tableName, success: true });
                 console.log(`✓ Sucesso com: ${tableName}`);
                 break;
             } catch (err: any) {
-                console.log(`✗ Falhou ${tableName}: ${err.message.split('\n')[0]}`);
+                const errorMsg = err.message.split('\n')[0];
+                diagnosticInfo.attempts.push({ table: tableName, success: false, error: errorMsg });
+                console.log(`✗ Falhou ${tableName}: ${errorMsg}`);
             }
         }
 
         if (!result || result.recordset.length === 0) {
-            throw new Error('Nenhuma variação de nome de tabela funcionou');
+            throw new Error(
+                `Nenhuma variação de nome de tabela funcionou.\n\n` +
+                `Database conectado: ${diagnosticInfo.currentDatabase}\n` +
+                `Tabelas disponíveis com "Deal": ${diagnosticInfo.availableTables.length > 0 ? diagnosticInfo.availableTables.join(', ') : 'NENHUMA'}\n\n` +
+                `Tentativas:\n${diagnosticInfo.attempts.map(a => `  ${a.table}: ${a.success ? '✓' : '✗ ' + a.error}`).join('\n')}`
+            );
         }
 
         console.log(`Encontrados ${result.recordset.length} deals usando: ${usedTableName}`);
