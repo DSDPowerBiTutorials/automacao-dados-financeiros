@@ -174,6 +174,28 @@ export default function BraintreeUSDPage() {
 
   useEffect(() => {
     loadData();
+
+    // ✅ Escutar mudanças em tempo real do Supabase
+    const subscription = supabase
+      .channel('braintree_usd_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'csv_rows',
+          filter: 'source=in.(braintree-api-revenue,braintree-api-fees,braintree-api-disbursement)',
+        },
+        (payload) => {
+          console.log('[Realtime Braintree USD] Mudança detectada:', payload);
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Reset page when filters change

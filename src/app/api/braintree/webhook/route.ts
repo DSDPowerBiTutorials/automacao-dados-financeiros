@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Verifica assinatura do webhook (garante que é do Braintree)
-    const webhookNotification = braintreeGateway.webhookNotification.parse(
+    const webhookNotification = await braintreeGateway.webhookNotification.parse(
       btSignature,
       btPayload
     );
@@ -49,6 +49,16 @@ export async function POST(req: NextRequest) {
 
     // Eventos que vamos processar
     const handledEvents = [
+      // Transações diretas (NOVO - pagamentos únicos)
+      "transaction_authorized",
+      "transaction_settlement_pending",
+      "transaction_settled",
+      "transaction_settlement_declined",
+      "transaction_voided",
+      "transaction_submitted_for_settlement",
+      "transaction_failed",
+      "transaction_gateway_rejected",
+
       // Subscription
       "subscription_charged_successfully",
       "subscription_charged_unsuccessfully",
@@ -77,6 +87,94 @@ export async function POST(req: NextRequest) {
     // Roteamento por tipo de evento
     const eventKind = webhookNotification.kind;
 
+    // ✅ NOVO: EVENTOS DE TRANSAÇÃO DIRETA (pagamentos únicos)
+    if ([
+      "transaction_authorized",
+      "transaction_settlement_pending",
+      "transaction_settled",
+      "transaction_settlement_declined",
+      "transaction_voided",
+      "transaction_submitted_for_settlement",
+      "transaction_failed",
+      "transaction_gateway_rejected",
+    ].includes(eventKind)) {
+      const transaction = webhookNotification.transaction;
+
+      if (transaction) {
+        const isSuccessful = [
+          "transaction_authorized",
+          "transaction_settlement_pending",
+          "transaction_settled",
+          "transaction_submitted_for_settlement",
+        ].includes(eventKind);
+
+        // Cria registro de revenue
+        const revenueRow = {
+          source: "braintree-api-revenue",
+          date: transaction.createdAt.toISOString().split("T")[0],
+          description: `${getPaymentMethod(transaction)} - ${getCustomerName(transaction)}`,
+          amount: parseFloat(transaction.amount),
+          reconciled: false,
+          custom_data: {
+            transaction_id: transaction.id,
+            customer_name: getCustomerName(transaction),
+            customer_email: transaction.customer?.email,
+            currency: transaction.currencyIsoCode,
+            payment_method: getPaymentMethod(transaction),
+            status: eventKind.replace("transaction_", ""),
+            created_at: transaction.createdAt,
+            webhook_received_at: new Date().toISOString(),
+            webhook_kind: webhookNotification.kind,
+            is_successful: isSuccessful,
+          },
+        };
+
+        const { error: revenueError } = await supabaseAdmin
+          .from("csv_rows")
+          .insert(revenueRow);
+
+        if (revenueError) {
+          console.error("[Braintree Webhook] Erro ao salvar transação direta:", revenueError);
+        } else {
+          console.log(`[Braintree Webhook] Transação direta salva: ${transaction.id} (${eventKind})`);
+        }
+
+        // Se foi bem-sucedida, cria também a fee
+        if (isSuccessful) {
+          const feeAmount = calculateTransactionFee(transaction as BraintreeTransactionData);
+
+          const feeRow = {
+            source: "braintree-api-fees",
+            date: transaction.createdAt.toISOString().split("T")[0],
+            description: `Braintree Fee - ${transaction.id}`,
+            amount: -Math.abs(feeAmount),
+            reconciled: false,
+            custom_data: {
+              transaction_id: transaction.id,
+              currency: transaction.currencyIsoCode,
+              payment_method: getPaymentMethod(transaction),
+              webhook_received_at: new Date().toISOString(),
+            },
+          };
+
+          const { error: feeError } = await supabaseAdmin
+            .from("csv_rows")
+            .insert(feeRow);
+
+          if (feeError) {
+            console.error("[Braintree Webhook] Erro ao salvar fee:", feeError);
+          }
+
+          console.log(`[Braintree Webhook] Fee salva para: ${transaction.id}`);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Transaction processed",
+      });
+    }
+
     // EVENTOS DE CANCELAMENTO/EXPIRAÇÃO
     if (["subscription_canceled", "subscription_expired"].includes(eventKind)) {
       const subscription = webhookNotification.subscription;
@@ -88,12 +186,13 @@ export async function POST(req: NextRequest) {
         const { error } = await supabaseAdmin
           .from("csv_rows")
           .update({
-            custom_data: supabaseAdmin.raw(
-              `custom_data || '{"subscription_status": "${status}", "canceled_at": "${new Date().toISOString()}"}'::jsonb`
-            ),
+            custom_data: {
+              subscription_status: status,
+              canceled_at: new Date().toISOString(),
+            },
           })
           .eq("source", "braintree-api-revenue")
-          .eq("custom_data->>subscription_id", subscription.id);
+          .filter("custom_data->>subscription_id", "eq", subscription.id);
 
         console.log(`[Braintree Webhook] Subscription ${subscription.id} marcada como ${status}`);
       }
@@ -115,12 +214,15 @@ export async function POST(req: NextRequest) {
         const { error } = await supabaseAdmin
           .from("csv_rows")
           .update({
-            custom_data: supabaseAdmin.raw(
-              `custom_data || '{"dispute_status": "${disputeStatus}", "dispute_amount": ${dispute.amount}, "dispute_reason": "${dispute.reason}", "dispute_date": "${new Date().toISOString()}"}'::jsonb`
-            ),
+            custom_data: {
+              dispute_status: disputeStatus,
+              dispute_amount: dispute.amount,
+              dispute_reason: dispute.reason,
+              dispute_date: new Date().toISOString(),
+            },
           })
           .eq("source", "braintree-api-revenue")
-          .eq("custom_data->>transaction_id", dispute.transaction?.id);
+          .filter("custom_data->>transaction_id", "eq", dispute.transaction?.id);
 
         console.log(`[Braintree Webhook] Dispute ${disputeStatus} para transação ${dispute.transaction?.id}`);
       }
@@ -318,18 +420,37 @@ export async function GET() {
     message: "Braintree Webhook Endpoint",
     status: "active",
     events: [
+      // Transações diretas
+      "transaction_authorized",
+      "transaction_settlement_pending",
+      "transaction_settled",
+      "transaction_settlement_declined",
+      "transaction_voided",
+      "transaction_submitted_for_settlement",
+      "transaction_failed",
+      "transaction_gateway_rejected",
+
+      // Subscription
       "subscription_charged_successfully",
       "subscription_charged_unsuccessfully",
       "subscription_canceled",
       "subscription_expired",
       "subscription_went_active",
+
+      // Disbursement
       "disbursement",
+
+      // Disputes
       "dispute_opened",
       "dispute_won",
       "dispute_lost",
+
+      // Local Payments
       "local_payment_completed",
       "local_payment_reversed",
       "local_payment_funded",
+
+      // Refunds
       "refund_failed",
     ],
   });

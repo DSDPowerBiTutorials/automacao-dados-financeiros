@@ -174,6 +174,32 @@ export default function BraintreeEURPage() {
 
   useEffect(() => {
     loadData();
+
+    // ✅ Escutar mudanças em tempo real do Supabase
+    const subscription = supabase
+      .channel('braintree_eur_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Qualquer evento (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'csv_rows',
+          filter: 'source=in.(braintree-api-revenue,braintree-api-fees,braintree-api-disbursement)',
+        },
+        (payload) => {
+          console.log('[Realtime Braintree EUR] Mudança detectada:', payload);
+          // Recarregar dados quando houver mudança
+          loadData();
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[Realtime Braintree EUR] Status: ${status}`);
+      });
+
+    // Cleanup ao desmontar
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Reset para página 1 quando filtros mudam

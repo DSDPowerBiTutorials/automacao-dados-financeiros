@@ -73,6 +73,28 @@ export default function BraintreeTransactionsPage() {
 
   useEffect(() => {
     loadData();
+
+    // ✅ Escutar mudanças em tempo real do Supabase
+    const subscription = supabase
+      .channel('braintree_transactions_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'csv_rows',
+          filter: 'source=in.(braintree-api-revenue,braintree-api-fees,braintree-api-disbursement)',
+        },
+        (payload) => {
+          console.log('[Realtime Braintree Transactions] Mudança detectada:', payload);
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadData = async () => {

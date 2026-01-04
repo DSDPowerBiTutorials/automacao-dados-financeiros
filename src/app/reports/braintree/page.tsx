@@ -34,6 +34,32 @@ export default function BraintreeDashboard() {
 
   useEffect(() => {
     loadStats();
+
+    // ✅ Escutar mudanças em tempo real do Supabase
+    const subscription = supabase
+      .channel('braintree_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Qualquer evento (INSERT, UPDATE, DELETE)
+          schema: 'public',
+          table: 'csv_rows',
+          filter: 'source=in.(braintree-api-revenue,braintree-api-fees,braintree-api-disbursement)',
+        },
+        (payload) => {
+          console.log('[Realtime] Mudança detectada em Braintree:', payload);
+          // Recarregar stats quando houver mudança
+          loadStats();
+        }
+      )
+      .subscribe((status) => {
+        console.log(`[Realtime] Status da inscrição Braintree: ${status}`);
+      });
+
+    // Cleanup ao desmontar
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const loadStats = async () => {
