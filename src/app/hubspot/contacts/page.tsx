@@ -64,9 +64,29 @@ export default function HubSpotContactsPage() {
         fetchContacts();
     }, []);
 
-    useEffect(() => {
-        filterContacts();
+    const filteredContactsMemo = useMemo(() => {
+        let filtered = [...contacts];
+
+        if (searchTerm) {
+            filtered = filtered.filter(
+                (contact) =>
+                    contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    contact.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    contact.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    contact.company?.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        if (filterStage !== "all") {
+            filtered = filtered.filter((contact) => contact.lifecycle_stage === filterStage);
+        }
+
+        return filtered;
     }, [contacts, searchTerm, filterStage]);
+
+    useEffect(() => {
+        setFilteredContacts(filteredContactsMemo);
+    }, [filteredContactsMemo]);
 
     const fetchContacts = async () => {
         try {
@@ -113,26 +133,6 @@ export default function HubSpotContactsPage() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const filterContacts = () => {
-        let filtered = [...contacts];
-
-        if (searchTerm) {
-            filtered = filtered.filter(
-                (contact) =>
-                    contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    contact.first_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    contact.last_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    contact.company?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-
-        if (filterStage !== "all") {
-            filtered = filtered.filter((contact) => contact.lifecycle_stage === filterStage);
-        }
-
-        setFilteredContacts(filtered);
     };
 
     const syncFromHubSpot = async () => {

@@ -63,9 +63,28 @@ export default function HubSpotCompaniesPage() {
         fetchCompanies();
     }, []);
 
-    useEffect(() => {
-        filterCompanies();
+    const filteredCompaniesMemo = useMemo(() => {
+        let filtered = [...companies];
+
+        if (searchTerm) {
+            filtered = filtered.filter(
+                (company) =>
+                    company.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    company.domain?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                    company.industry?.toLowerCase().includes(searchTerm.toLowerCase())
+            );
+        }
+
+        if (filterType !== "all") {
+            filtered = filtered.filter((company) => company.type === filterType);
+        }
+
+        return filtered;
     }, [companies, searchTerm, filterType]);
+
+    useEffect(() => {
+        setFilteredCompanies(filteredCompaniesMemo);
+    }, [filteredCompaniesMemo]);
 
     const fetchCompanies = async () => {
         try {
@@ -119,25 +138,6 @@ export default function HubSpotCompaniesPage() {
         } finally {
             setLoading(false);
         }
-    };
-
-    const filterCompanies = () => {
-        let filtered = [...companies];
-
-        if (searchTerm) {
-            filtered = filtered.filter(
-                (company) =>
-                    company.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    company.domain?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                    company.industry?.toLowerCase().includes(searchTerm.toLowerCase())
-            );
-        }
-
-        if (filterType !== "all") {
-            filtered = filtered.filter((company) => company.type === filterType);
-        }
-
-        setFilteredCompanies(filtered);
     };
 
     const syncFromHubSpot = async () => {

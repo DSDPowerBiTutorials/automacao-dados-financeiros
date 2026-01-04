@@ -92,17 +92,10 @@ export async function POST(request: Request) {
         console.log(`Usando tabela: ${tableName}`);
 
         // Query para buscar deals/vendas do HubSpot
-        // Usar query mais genérica que funciona com diferentes schemas
+        // Usar query mais simples e robusta
         const result = await pool.request().query(`
       SELECT TOP 1000 *
       FROM ${tableName}
-      WHERE 1=1
-      ORDER BY (
-        SELECT TOP 1 COLUMN_NAME 
-        FROM INFORMATION_SCHEMA.COLUMNS 
-        WHERE TABLE_NAME = '${tableName.split('.').pop()}'
-        AND (COLUMN_NAME LIKE '%date%' OR COLUMN_NAME LIKE '%created%')
-      ) DESC
     `);
 
         console.log(`Encontrados ${result.recordset.length} deals no SQL Server`);
