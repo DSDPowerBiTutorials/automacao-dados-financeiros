@@ -13,19 +13,45 @@ export async function POST(request: Request) {
 
         // Conectar no SQL Server
         const pool = await getSQLServerConnection();
+        console.log('✓ Conectado ao SQL Server');
 
-        // Usar tabela verificada
-        const tableName = HUBSPOT_DEALS_TABLE;
-        console.log(`Usando tabela: ${tableName}`);
+        // DIAGNÓSTICO: Verificar database e tabelas disponíveis
+        try {
+            const dbCheck = await pool.request().query('SELECT DB_NAME() AS current_db');
+            console.log(`Database atual: ${dbCheck.recordset[0].current_db}`);
 
-        // Query para buscar deals/vendas do HubSpot
-        // Usar query mais simples e robusta
-        const result = await pool.request().query(`
-      SELECT TOP 1000 *
-      FROM ${tableName}
-    `);
+            const tablesCheck = await pool.request().query(`
+                SELECT TABLE_SCHEMA, TABLE_NAME 
+                FROM INFORMATION_SCHEMA.TABLES 
+                WHERE TABLE_NAME LIKE '%Deal%'
+            `);
+            console.log(`Tabelas com "Deal": ${tablesCheck.recordset.map((t: any) => `${t.TABLE_SCHEMA}.${t.TABLE_NAME}`).join(', ')}`);
+        } catch (diagError) {
+            console.error('Erro no diagnóstico:', diagError);
+        }
 
-        console.log(`Encontrados ${result.recordset.length} deals no SQL Server`);
+        // Tentar diferentes formatos do nome da tabela
+        const tableVariations = ['Deals', '[Deals]', 'dbo.Deals', '[dbo].[Deals]'];
+        let result: any = null;
+        let usedTableName = '';
+
+        for (const tableName of tableVariations) {
+            try {
+                console.log(`Tentando: ${tableName}`);
+                result = await pool.request().query(`SELECT TOP 10 * FROM ${tableName}`);
+                usedTableName = tableName;
+                console.log(`✓ Sucesso com: ${tableName}`);
+                break;
+            } catch (err: any) {
+                console.log(`✗ Falhou ${tableName}: ${err.message.split('\n')[0]}`);
+            }
+        }
+
+        if (!result || result.recordset.length === 0) {
+            throw new Error('Nenhuma variação de nome de tabela funcionou');
+        }
+
+        console.log(`Encontrados ${result.recordset.length} deals usando: ${usedTableName}`);
 
         if (result.recordset.length === 0) {
             return NextResponse.json({
