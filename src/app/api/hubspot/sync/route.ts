@@ -3,7 +3,8 @@ import { getSQLServerConnection, closeSQLServerConnection } from '@/lib/sqlserve
 import { supabaseAdmin } from '@/lib/supabase';
 
 // Nome fixo da tabela (verificado via test-sqlserver.js)
-const HUBSPOT_DEALS_TABLE = 'dbo.Deals';
+// Usar colchetes para evitar problemas de case sensitivity
+const HUBSPOT_DEALS_TABLE = '[dbo].[Deals]';
 
 // Rota para sincronizar dados do HubSpot via SQL Server Data Warehouse
 export async function POST(request: Request) {
