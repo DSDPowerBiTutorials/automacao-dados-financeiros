@@ -23,7 +23,7 @@ interface AuthContextType {
     profile: UserProfile | null;
     session: Session | null;
     loading: boolean;
-    signIn: (email: string, password: string) => Promise<{ error: any }>;
+    signIn: (email: string, password: string, rememberMe?: boolean) => Promise<{ error: any }>;
     signUp: (email: string, password: string, name: string, role?: string, company_code?: string) => Promise<{ error: any }>;
     signOut: () => Promise<void>;
     hasPermission: (permission: string) => boolean;
@@ -97,9 +97,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Initialize auth state
     useEffect(() => {
         let mounted = true;
+        let timeoutId: NodeJS.Timeout;
 
         const initializeAuth = async () => {
             try {
+                // Timeout de 10 segundos para prevenir loading infinito
+                timeoutId = setTimeout(() => {
+                    if (mounted && loading) {
+                        console.warn('Auth initialization timeout - forcing loading to false');
+                        setLoading(false);
+                    }
+                }, 10000);
+
                 const { data: { session: currentSession }, error } = await supabase.auth.getSession();
 
                 if (!mounted) return;
@@ -147,6 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 }
             } finally {
                 if (mounted) {
+                    clearTimeout(timeoutId);
                     setLoading(false);
                 }
             }
@@ -213,16 +223,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }, []);
 
     // Sign in
-    const signIn = async (email: string, password: string) => {
+    const signIn = async (email: string, password: string, rememberMe: boolean = false) => {
         try {
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password,
+                options: {
+                    // Se rememberMe for true, sessão persiste por 30 dias
+                    // Se false, sessão expira quando o navegador fecha
+                    data: {
+                        rememberMe
+                    }
+                }
             });
 
             if (error) return { error };
 
             if (data.user) {
+                // Se remember me, armazenar flag no localStorage
+                if (rememberMe) {
+                    localStorage.setItem('rememberMe', 'true');
+                } else {
+                    localStorage.removeItem('rememberMe');
+                }
+
                 // Buscar profile sem bloquear (usar timeout)
                 const profilePromise = fetchProfile(data.user.id);
                 const timeoutPromise = new Promise<null>((resolve) => setTimeout(() => resolve(null), 3000));

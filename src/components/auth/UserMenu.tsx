@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from '@/contexts/auth-context';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -16,6 +17,7 @@ import { LogOut, User, Settings, Shield } from 'lucide-react';
 
 export function UserMenu() {
     const { profile, signOut } = useAuth();
+    const router = useRouter();
 
     if (!profile) return null;
 
@@ -82,7 +84,7 @@ export function UserMenu() {
                     </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => router.push('/profile')}>
                     <User className="mr-2 h-4 w-4" />
                     <span>Profile</span>
                 </DropdownMenuItem>

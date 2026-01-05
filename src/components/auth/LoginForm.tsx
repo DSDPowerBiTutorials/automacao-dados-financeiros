@@ -16,6 +16,7 @@ export function LoginForm() {
     const router = useRouter();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [rememberMe, setRememberMe] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -25,7 +26,7 @@ export function LoginForm() {
         setLoading(true);
 
         try {
-            const { error: signInError } = await signIn(email, password);
+            const { error: signInError } = await signIn(email, password, rememberMe);
 
             if (signInError) {
                 setError(signInError.message || 'Invalid email or password');
@@ -98,6 +99,20 @@ export function LoginForm() {
                                     disabled={loading}
                                 />
                             </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                            <input
+                                id="remember"
+                                type="checkbox"
+                                checked={rememberMe}
+                                onChange={(e) => setRememberMe(e.target.checked)}
+                                className="h-4 w-4 text-[#243140] focus:ring-[#243140] border-gray-300 rounded"
+                                disabled={loading}
+                            />
+                            <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
+                                Keep me signed in
+                            </Label>
                         </div>
 
                         <Button
