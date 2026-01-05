@@ -56,15 +56,23 @@ interface HubSpotRow {
     matched_at?: string;
     custom_data?: {
         deal_id?: string;
+        dealname?: string;
         stage?: string;
-        pipmatching, setMatching] = useState(false);
-const [matchStats, setMatchStats] = useState<any>(null);
-const [eline?: string;
-owner ?: string;
-company ?: string;
-currency ?: string;
+        pipeline?: string;
+        owner?: string;
+        company?: string;
+        currency?: string;
+        closedate?: string;
+        amount?: number;
+        dealstage?: string;
+        hs_object_id?: string;
+        // Campos para "All Totals"
+        quantity?: number;
+        items_total?: number;
+        discount_amount?: number;
+        final_price?: number;
     };
-[key: string]: any;
+    [key: string]: any;
 }
 
 export default function HubSpotReportPage() {
@@ -73,12 +81,15 @@ export default function HubSpotReportPage() {
     const [paginatedRows, setPaginatedRows] = useState<HubSpotRow[]>([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
+    const [matching, setMatching] = useState(false);
+    const [matchStats, setMatchStats] = useState<any>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingData, setEditingData] = useState<Partial<HubSpotRow>>({});
     const [searchTerm, setSearchTerm] = useState("");
     const [filterReconciled, setFilterReconciled] = useState<string>("all");
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize] = useState(50); // Mostrar 50 linhas por página
+    const [pageSize] = useState(50);
+    const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [alert, setAlert] = useState<{
         type: "success" | "error";
         message: string;
@@ -147,49 +158,7 @@ export default function HubSpotReportPage() {
             showAlert("success", "Sincronizando dados do SQL Server...");
 
             const response = await fetch("/api/hubspot/sync", {
-
-
-                const runAutoMatch = async (dryRun: boolean = false) => {
-                    try {
-                        setMatching(true);
-                        showAlert("success", dryRun ? "Analisando matches possíveis..." : "Executando auto-match...");
-
-                        const response = await fetch("/api/hubspot/auto-match", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ dryRun }),
-                        });
-
-                        const result = await response.json();
-
-                        if (!result.success) {
-                            throw new Error(result.error || "Erro no auto-match");
-                        }
-
-                        setMatchStats(result.stats);
-                        showAlert("success", dryRun
-                            ? `Análise completa: ${result.stats.matched} matches encontrados (${result.stats.averageConfidence}% confiança média)`
-                            : `Auto-match completo: ${result.stats.matched} registros reconciliados`
-                        );
-
-                        if (!dryRun) {
-                            await fetchRows();
-                        }
-                    } catch (error: any) {
-                        showAlert("error", `Erro no auto-match: ${error.message}`);
-                    } finally {
-                        setMatching(false);
-                    }
-                };
-
-                const getMatchIndicator = (row: HubSpotRow) => {
-                    if (!row.matched_with) return null;
-
-                    const confidence = row.match_confidence || 0;
-                    if (confidence >= 85) return <Badge className="bg-green-500">🟢 {confidence}%</Badge>;
-                    if (confidence >= 70) return <Badge className="bg-yellow-500">🟡 {confidence}%</Badge>;
-                    return <Badge className="bg-red-500">🔴 {confidence}%</Badge>;
-                }; method: "POST",
+                method: "POST",
             });
 
             const result = await response.json();
@@ -205,6 +174,83 @@ export default function HubSpotReportPage() {
         } finally {
             setSyncing(false);
         }
+    };
+
+    const runAutoMatch = async (dryRun: boolean = false) => {
+        try {
+            setMatching(true);
+            showAlert("success", dryRun ? "Analisando matches possíveis..." : "Executando auto-match...");
+
+            const response = await fetch("/api/hubspot/auto-match", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ dryRun }),
+            });
+
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || "Erro no auto-match");
+            }
+
+            setMatchStats(result.stats);
+            showAlert("success", dryRun
+                ? `Análise completa: ${result.stats.matched} matches encontrados (${result.stats.averageConfidence}% confiança média)`
+                : `Auto-match completo: ${result.stats.matched} registros reconciliados`
+            );
+
+            if (!dryRun) {
+                await fetchRows();
+            }
+        } catch (error: any) {
+            showAlert("error", `Erro no auto-match: ${error.message}`);
+        } finally {
+            setMatching(false);
+        }
+    };
+
+    const getMatchIndicator = (row: HubSpotRow) => {
+        if (!row.matched_with) return null;
+
+        const confidence = row.match_confidence || 0;
+        if (confidence >= 85) return <Badge className="bg-green-500">🟢 {confidence}%</Badge>;
+        if (confidence >= 70) return <Badge className="bg-yellow-500">🟡 {confidence}%</Badge>;
+        return <Badge className="bg-red-500">🔴 {confidence}%</Badge>;
+    };
+
+    const getStatusIcon = (stage: string) => {
+        // Mapear status do HubSpot para ícones coloridos
+        const stageColors: Record<string, string> = {
+            'closedwon': 'text-green-500',
+            'closedlost': 'text-red-500',
+            'contractsent': 'text-blue-500',
+            'qualifiedtobuy': 'text-yellow-500',
+            'appointmentscheduled': 'text-orange-500',
+            'presentationscheduled': 'text-purple-500',
+        };
+
+        const normalizedStage = stage?.toLowerCase().replace(/[^a-z]/g, '') || '';
+        const color = stageColors[normalizedStage] || 'text-gray-500';
+
+        return <span className={`text-2xl ${color}`}>●</span>;
+    };
+
+    const getPaidStatusIcon = (reconciled: boolean) => {
+        return reconciled
+            ? <span className="text-red-500 text-xl">●</span>  // Unpaid
+            : <span className="text-green-500 text-xl">●</span>; // Paid
+    };
+
+    const toggleRowExpansion = (rowId: string) => {
+        setExpandedRows(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(rowId)) {
+                newSet.delete(rowId);
+            } else {
+                newSet.add(rowId);
+            }
+            return newSet;
+        });
     };
 
     const handleEdit = (row: HubSpotRow) => {
@@ -580,43 +626,44 @@ export default function HubSpotReportPage() {
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        ✓
+                                        
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Match
+                                        Order
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Data
+                                        Reference
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Deal ID
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Descrição
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Cliente
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Empresa
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Stage
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
-                                        Valor
-                                    </th>
-                                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
                                         Status
                                     </th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        Date Ordered
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        Date Paid
+                                    </th>
+                                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
+                                        Total Paid
+                                    </th>
                                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
-                                        Ações
+                                        Paid Status
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        All Totals
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        Customer
+                                    </th>
+                                    <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
+                                        Actions
                                     </th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">
                                 {paginatedRows.map((row) => {
                                     const isEditing = editingId === row.id;
+                                    const isExpanded = expandedRows.has(row.id);
                                     return (
                                         <tr key={row.id} className="hover:bg-gray-50">
                                             <td className="px-4 py-3">
