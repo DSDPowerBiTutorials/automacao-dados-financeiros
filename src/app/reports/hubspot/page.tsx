@@ -46,7 +46,6 @@ interface HubSpotDeal {
         deal_id?: string; // HubSpot Deal ID
         dealname?: string; // Short/long number
         ecomm_order_number?: string; // Order code (e437d54)
-        ecomm_order_id?: string;
         website_order_id?: string; // Web Order ID (2831851)
 
         // Status
@@ -59,7 +58,6 @@ interface HubSpotDeal {
         // Datas
         closedate?: string; // Date Ordered
         hs_closed_won_date?: string; // Date Paid
-        date_paid?: string;
         hs_lastmodifieddate?: string; // Last Updated
 
         // Customer
@@ -72,7 +70,6 @@ interface HubSpotDeal {
         // Valores
         currency?: string;
         total_payment?: number; // Paid Amount
-        paid_amount?: number;
 
         // Produtos (LineItems)
         quantity?: number;
@@ -81,30 +78,13 @@ interface HubSpotDeal {
         final_price?: number;
         product_name?: string;
         product_name_raw?: string;
-        product_sku?: string;
         product_quantity?: number;
         product_amount?: number;
         product_discount?: number;
-        product_unit_price?: number;
-        product_original_price?: number;
-
-        // Address fields
-        billing_address?: string;
-        shipping_address?: string;
-        billing_city?: string;
-        billing_state?: string;
-        billing_country?: string;
-        billing_zip?: string;
-        shipping_city?: string;
-        shipping_state?: string;
-        shipping_country?: string;
-        shipping_zip?: string;
 
         // Outros
         coupon_code?: string; // Campo do HubSpot!
         website_source?: string; // Origin
-        order_site?: string;
-        payment_method?: string;
     };
     [key: string]: any;
 }
@@ -254,11 +234,11 @@ export default function HubSpotReportPage() {
         if (row.custom_data?.ecomm_order_number) {
             return row.custom_data.ecomm_order_number.trim();
         }
-        
+
         // 2. Fallback: pegar primeiros 7 caracteres do dealname
         const dealname = row.custom_data?.dealname;
         if (!dealname) return "";
-        
+
         const cleaned = dealname.trim().toLowerCase();
         const match = cleaned.match(/^[a-z0-9]{7}/);
         return match ? match[0] : cleaned.substring(0, 7);
@@ -268,14 +248,14 @@ export default function HubSpotReportPage() {
     const getInvoiceNumber = (row: HubSpotDeal): string => {
         const orderCode = extractOrderCode(row);
         const webOrderId = row.custom_data?.website_order_id || "";
-        
+
         if (!orderCode) return "";
-        
+
         // Se tiver web order ID, usar formato completo: #DSDESE437D54-24819
         if (webOrderId) {
             return `#DSDES${orderCode.toUpperCase()}-${webOrderId}`;
         }
-        
+
         // Fallback: usar apenas order code: #DSDESE437D54
         return `#DSDES${orderCode.toUpperCase()}`;
     };
@@ -908,110 +888,20 @@ export default function HubSpotReportPage() {
                                                                                 <p className="text-xs text-gray-500">Original: {row.custom_data.product_name_raw}</p>
                                                                             )}
                                                                         </div>
-                                                                        <div className="grid grid-cols-2 gap-2 text-xs">
-                                                                            {row.custom_data.product_sku && (
-                                                                                <div>
-                                                                                    <span className="text-gray-600">SKU:</span>
-                                                                                    <p className="font-medium font-mono">{row.custom_data.product_sku}</p>
-                                                                                </div>
-                                                                            )}
-                                                                            {row.custom_data.product_quantity && (
-                                                                                <div>
-                                                                                    <span className="text-gray-600">Quantity:</span>
-                                                                                    <p className="font-medium">{row.custom_data.product_quantity}</p>
-                                                                                </div>
-                                                                            )}
-                                                                            {row.custom_data.product_unit_price && (
-                                                                                <div>
-                                                                                    <span className="text-gray-600">Unit Price:</span>
-                                                                                    <p className="font-medium">{formatCurrency(row.custom_data.product_unit_price)}</p>
-                                                                                </div>
-                                                                            )}
-                                                                            {row.custom_data.product_original_price && (
-                                                                                <div>
-                                                                                    <span className="text-gray-600">Original Price:</span>
-                                                                                    <p className="font-medium text-gray-500 line-through">{formatCurrency(row.custom_data.product_original_price)}</p>
-                                                                                </div>
-                                                                            )}
-                                                                            {row.custom_data.product_amount && (
-                                                                                <div>
-                                                                                    <span className="text-gray-600">Total:</span>
-                                                                                    <p className="font-medium text-green-600">{formatCurrency(row.custom_data.product_amount)}</p>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Billing & Shipping Address */}
-                                                            {(row.custom_data?.billing_address || row.custom_data?.shipping_address) && (
-                                                                <div className="border-t border-gray-200 pt-3 mt-3">
-                                                                    <h5 className="font-semibold text-xs text-gray-700 mb-2">Address Information</h5>
-                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                                                                        {row.custom_data.billing_address && (
-                                                                            <div>
-                                                                                <span className="text-gray-600 font-semibold block mb-1">Billing Address:</span>
-                                                                                <p className="font-medium">{row.custom_data.billing_address}</p>
-                                                                                {row.custom_data.billing_city && (
-                                                                                    <p className="text-gray-500">
-                                                                                        {row.custom_data.billing_city}
-                                                                                        {row.custom_data.billing_state && `, ${row.custom_data.billing_state}`}
-                                                                                        {row.custom_data.billing_zip && ` ${row.custom_data.billing_zip}`}
-                                                                                    </p>
+                                                                        {(row.custom_data.product_quantity || row.custom_data.product_amount) && (
+                                                                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                                                                {row.custom_data.product_quantity && (
+                                                                                    <div>
+                                                                                        <span className="text-gray-600">Quantity:</span>
+                                                                                        <p className="font-medium">{row.custom_data.product_quantity}</p>
+                                                                                    </div>
                                                                                 )}
-                                                                                {row.custom_data.billing_country && (
-                                                                                    <p className="text-gray-500">{row.custom_data.billing_country}</p>
+                                                                                {row.custom_data.product_amount && (
+                                                                                    <div>
+                                                                                        <span className="text-gray-600">Total:</span>
+                                                                                        <p className="font-medium text-green-600">{formatCurrency(row.custom_data.product_amount)}</p>
+                                                                                    </div>
                                                                                 )}
-                                                                            </div>
-                                                                        )}
-                                                                        {row.custom_data.shipping_address && (
-                                                                            <div>
-                                                                                <span className="text-gray-600 font-semibold block mb-1">Shipping Address:</span>
-                                                                                <p className="font-medium">{row.custom_data.shipping_address}</p>
-                                                                                {row.custom_data.shipping_city && (
-                                                                                    <p className="text-gray-500">
-                                                                                        {row.custom_data.shipping_city}
-                                                                                        {row.custom_data.shipping_state && `, ${row.custom_data.shipping_state}`}
-                                                                                        {row.custom_data.shipping_zip && ` ${row.custom_data.shipping_zip}`}
-                                                                                    </p>
-                                                                                )}
-                                                                                {row.custom_data.shipping_country && (
-                                                                                    <p className="text-gray-500">{row.custom_data.shipping_country}</p>
-                                                                                )}
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            )}
-
-                                                            {/* Payment Information */}
-                                                            {(row.custom_data?.payment_method || row.custom_data?.paid_amount || row.custom_data?.date_paid) && (
-                                                                <div className="border-t border-gray-200 pt-3 mt-3">
-                                                                    <h5 className="font-semibold text-xs text-gray-700 mb-2">Payment Information</h5>
-                                                                    <div className="grid grid-cols-2 gap-2 text-xs">
-                                                                        {row.custom_data.payment_method && (
-                                                                            <div>
-                                                                                <span className="text-gray-600">Method:</span>
-                                                                                <p className="font-medium">{row.custom_data.payment_method}</p>
-                                                                            </div>
-                                                                        )}
-                                                                        {row.custom_data.paid_amount && (
-                                                                            <div>
-                                                                                <span className="text-gray-600">Paid Amount:</span>
-                                                                                <p className="font-medium text-green-600">{formatCurrency(row.custom_data.paid_amount)}</p>
-                                                                            </div>
-                                                                        )}
-                                                                        {row.custom_data.date_paid && (
-                                                                            <div>
-                                                                                <span className="text-gray-600">Date Paid:</span>
-                                                                                <p className="font-medium">{formatDate(row.custom_data.date_paid)}</p>
-                                                                            </div>
-                                                                        )}
-                                                                        {row.custom_data.paid_status && (
-                                                                            <div>
-                                                                                <span className="text-gray-600">Status:</span>
-                                                                                <p className="font-medium">{row.custom_data.paid_status}</p>
                                                                             </div>
                                                                         )}
                                                                     </div>
