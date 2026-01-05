@@ -198,11 +198,11 @@ export default function ProfilePage() {
             });
         } catch (error: any) {
             console.error('Error uploading avatar:', error);
-            
+
             // Mostrar mensagem mais detalhada
             const errorMessage = error.message || 'Failed to upload avatar';
             const isConfigError = errorMessage.includes('bucket') || errorMessage.includes('policy');
-            
+
             toast({
                 title: isConfigError ? 'Configuration Error' : 'Error',
                 description: errorMessage,

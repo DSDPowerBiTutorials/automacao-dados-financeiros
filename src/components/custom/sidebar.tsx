@@ -196,19 +196,19 @@ export default function Sidebar() {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 flex items-center justify-center flex-shrink-0">
+              <div className="h-10 w-10 bg-gradient-to-br from-[#243140] to-[#1a2530] rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
                 <Image
                   src="/favicon-32x32.png"
                   alt="DSD Logo"
-                  width={32}
-                  height={32}
-                  className="w-8 h-8"
+                  width={24}
+                  height={24}
+                  className="w-6 h-6"
                 />
               </div>
               {!collapsed && (
                 <div>
-                  <h1 style={{ color: '#1e3a8a' }} className="text-gray-800 font-bold text-base">DSD Finance</h1>
-                  <p style={{ color: '#3b82f6' }} className="text-gray-500 text-xs">Proprietary Software</p>
+                  <h1 className="text-[#243140] font-bold text-base tracking-tight">DSD Finance Hub</h1>
+                  <p className="text-gray-500 text-[11px] font-medium">Financial Management</p>
                 </div>
               )}
             </div>

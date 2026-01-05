@@ -42,42 +42,59 @@ export function LoginForm() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4">
-            <Card className="w-full max-w-md shadow-lg">
-                <CardHeader className="space-y-4 text-center pb-8">
-                    <div className="mx-auto w-20 h-20 bg-[#243140] rounded-full flex items-center justify-center">
-                        <Lock className="w-10 h-10 text-white" />
+        <div className="min-h-screen relative flex items-center justify-center p-4">
+            {/* Background Image */}
+            <div className="absolute inset-0 z-0">
+                <Image
+                    src="/LoginBackgroundLogo.png"
+                    alt="DSD Background"
+                    fill
+                    className="object-cover"
+                    priority
+                />
+                {/* Overlay escuro para melhor legibilidade */}
+                <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-[#243140]/70" />
+            </div>
+
+            {/* Login Card */}
+            <Card className="relative z-10 w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
+                <CardHeader className="space-y-6 text-center pb-8 pt-10">
+                    {/* Logo Circle */}
+                    <div className="mx-auto w-24 h-24 bg-gradient-to-br from-[#243140] to-[#1a2530] rounded-2xl flex items-center justify-center shadow-xl transform hover:scale-105 transition-transform duration-300">
+                        <Lock className="w-12 h-12 text-white" />
                     </div>
                     <div>
-                        <CardTitle className="text-3xl font-bold text-[#243140]">
+                        <CardTitle className="text-4xl font-bold bg-gradient-to-r from-[#243140] to-[#1a2530] bg-clip-text text-transparent">
                             DSD Finance Hub
                         </CardTitle>
-                        <CardDescription className="text-base mt-2">
+                        <CardDescription className="text-base mt-3 text-gray-600 font-medium">
                             Integrated Financial Management Platform
                         </CardDescription>
                     </div>
                 </CardHeader>
 
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
+                <CardContent className="pb-10">
+                    <form onSubmit={handleSubmit} className="space-y-5">
                         {error && (
-                            <Alert variant="destructive">
+                            <Alert variant="destructive" className="border-red-200 bg-red-50">
                                 <AlertCircle className="h-4 w-4" />
-                                <AlertDescription>{error}</AlertDescription>
+                                <AlertDescription className="font-medium">{error}</AlertDescription>
                             </Alert>
                         )}
 
                         <div className="space-y-2">
-                            <Label htmlFor="email">Email</Label>
+                            <Label htmlFor="email" className="text-sm font-semibold text-gray-700">
+                                Email Address
+                            </Label>
                             <div className="relative">
-                                <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Mail className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="your.email@digitalsmiledesign.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="pl-10"
+                                    className="pl-12 h-12 border-gray-300 focus:border-[#243140] focus:ring-[#243140] rounded-lg text-base"
                                     required
                                     disabled={loading}
                                 />
@@ -85,63 +102,71 @@ export function LoginForm() {
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="password">Password</Label>
+                            <Label htmlFor="password" className="text-sm font-semibold text-gray-700">
+                                Password
+                            </Label>
                             <div className="relative">
-                                <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                                <Lock className="absolute left-4 top-3.5 h-5 w-5 text-gray-400" />
                                 <Input
                                     id="password"
                                     type="password"
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="pl-10"
+                                    className="pl-12 h-12 border-gray-300 focus:border-[#243140] focus:ring-[#243140] rounded-lg text-base"
                                     required
                                     disabled={loading}
                                 />
                             </div>
                         </div>
 
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-2 py-2">
                             <input
                                 id="remember"
                                 type="checkbox"
                                 checked={rememberMe}
                                 onChange={(e) => setRememberMe(e.target.checked)}
-                                className="h-4 w-4 text-[#243140] focus:ring-[#243140] border-gray-300 rounded"
+                                className="h-4 w-4 text-[#243140] focus:ring-[#243140] border-gray-300 rounded cursor-pointer"
                                 disabled={loading}
                             />
-                            <Label htmlFor="remember" className="text-sm font-normal cursor-pointer">
-                                Keep me signed in
+                            <Label htmlFor="remember" className="text-sm font-medium text-gray-700 cursor-pointer">
+                                Keep me signed in for 30 days
                             </Label>
                         </div>
 
                         <Button
                             type="submit"
-                            className="w-full bg-[#243140] hover:bg-[#1a2530]"
+                            className="w-full h-12 bg-gradient-to-r from-[#243140] to-[#1a2530] hover:from-[#1a2530] hover:to-[#0f1419] text-white font-semibold text-base rounded-lg shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all duration-200"
                             disabled={loading}
                         >
                             {loading ? (
                                 <>
-                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                                     Signing in...
                                 </>
                             ) : (
-                                'Sign In'
+                                <>
+                                    <Lock className="mr-2 h-5 w-5" />
+                                    Sign In
+                                </>
                             )}
                         </Button>
                     </form>
 
-                    <div className="mt-6 text-center text-sm text-gray-600">
-                        <p>Need access?</p>
-                        <p className="mt-1">
+                    <div className="mt-8 text-center text-sm text-gray-600 space-y-1">
+                        <p className="font-medium">Need access?</p>
+                        <p className="text-gray-500">
                             Contact your system administrator
                         </p>
                     </div>
                 </CardContent>
             </Card>
 
-            <div className="absolute bottom-4 text-center text-xs text-gray-500">
-                <p>© 2024 Digital Smile Design. All rights reserved.</p>
+            {/* Footer */}
+            <div className="absolute bottom-6 left-0 right-0 text-center z-10">
+                <p className="text-sm text-white/90 font-medium drop-shadow-lg">
+                    © 2025 Digital Smile Design. All rights reserved.
+                </p>
             </div>
         </div>
     );

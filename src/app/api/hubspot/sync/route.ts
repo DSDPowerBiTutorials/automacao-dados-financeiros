@@ -27,20 +27,26 @@ export async function POST(request: Request) {
 
         try {
             console.log('🔍 Tentando query enriquecida (Deal + Contact + Company + LineItem)...');
+            console.log('📋 Query:', ENRICHED_HUBSPOT_QUERY.substring(0, 200) + '...');
 
             const query = ENRICHED_HUBSPOT_QUERY.replace('@startDate', `'${startDateStr}'`);
             result = await pool.request().query(query);
 
             console.log(`✅ Query enriquecida funcionou! ${result.recordset.length} deals`);
         } catch (enrichedError: any) {
-            console.warn('⚠️ Query enriquecida falhou, tentando query simples...', enrichedError.message);
+            console.error('❌ Query enriquecida FALHOU com erro:', enrichedError.message);
+            console.error('📊 Código do erro:', enrichedError.code);
+            console.error('📊 Número do erro:', enrichedError.number);
+            console.warn('⚠️ Query enriquecida falhou, tentando query simples...');
 
             try {
+                console.log('🔍 Tentando query simples...');
                 const query = SIMPLE_HUBSPOT_QUERY.replace('@startDate', `'${startDateStr}'`);
                 result = await pool.request().query(query);
                 usedQuery = 'simple';
                 console.log(`✅ Query simples funcionou! ${result.recordset.length} deals`);
             } catch (simpleError: any) {
+                console.error('❌ Query simples também FALHOU:', simpleError.message);
                 throw new Error(`Ambas queries falharam. Enriquecida: ${enrichedError.message}. Simples: ${simpleError.message}`);
             }
         }
@@ -233,19 +239,8 @@ export async function POST(request: Request) {
                 withEmail: withEmail,
                 withName: withName,
                 withProduct: withProduct,
-                withEcommOrder: withEcommOrder,
-                withWebsiteOrder: withWebsiteOrder,
                 queryType: usedQuery,
             },
-            debug: {
-                firstDeal: result.recordset.length > 0 ? {
-                    dealId: result.recordset[0].DealId,
-                    dealname: result.recordset[0].dealname,
-                    ip__ecomm_bridge__order_number: result.recordset[0].ip__ecomm_bridge__order_number || 'NULL',
-                    website_order_id: result.recordset[0].website_order_id || 'NULL',
-                    product_quantity: result.recordset[0].product_quantity || 'NULL',
-                } : null
-            }
         });
 
     } catch (error: any) {

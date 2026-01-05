@@ -169,59 +169,29 @@ export default function HubSpotReportPage() {
 
     const syncFromSQLServer = async () => {
         try {
+            console.log('🔄 [HUBSPOT FRONTEND] Iniciando sincronização...');
             setSyncing(true);
-            console.log('🔄 Iniciando sync do HubSpot...');
             showAlert("success", "Sincronizando dados do SQL Server...");
 
+            console.log('📡 [HUBSPOT FRONTEND] Fazendo requisição para /api/hubspot/sync...');
             const response = await fetch("/api/hubspot/sync", {
                 method: "POST",
             });
 
+            console.log('📥 [HUBSPOT FRONTEND] Resposta recebida:', response.status);
             const result = await response.json();
-            console.log('📊 Resultado do sync:', result);
+            console.log('📋 [HUBSPOT FRONTEND] Resultado:', result);
 
             if (!result.success) {
-                console.error('❌ Erro no sync:', result.error);
                 throw new Error(result.error || "Erro na sincronização");
             }
 
-            console.log(`✅ Sync completo: ${result.count} deals sincronizados`);
-            
-            // Mostrar estatísticas detalhadas
-            if (result.stats) {
-                console.log('📊 ESTATÍSTICAS DO SYNC:');
-                console.log(`  Total: ${result.stats.total}`);
-                console.log(`  Com email: ${result.stats.withEmail} (${((result.stats.withEmail / result.stats.total) * 100).toFixed(1)}%)`);
-                console.log(`  Com produto: ${result.stats.withProduct} (${((result.stats.withProduct / result.stats.total) * 100).toFixed(1)}%)`);
-                console.log(`  🛒 Com ecomm_order_number: ${result.stats.withEcommOrder} (${((result.stats.withEcommOrder / result.stats.total) * 100).toFixed(1)}%)`);
-                console.log(`  🌐 Com website_order_id: ${result.stats.withWebsiteOrder} (${((result.stats.withWebsiteOrder / result.stats.total) * 100).toFixed(1)}%)`);
-                console.log(`  Query usada: ${result.stats.queryType}`);
-            }
-
-            // Mostrar dados do primeiro deal
-            if (result.debug?.firstDeal) {
-                console.log('🔍 PRIMEIRO DEAL (Ahmed Hamada):');
-                console.log('  Deal ID:', result.debug.firstDeal.dealId);
-                console.log('  Nome:', result.debug.firstDeal.dealname);
-                console.log('  ip__ecomm_bridge__order_number:', result.debug.firstDeal.ip__ecomm_bridge__order_number);
-                console.log('  website_order_id:', result.debug.firstDeal.website_order_id);
-                console.log('  product_quantity:', result.debug.firstDeal.product_quantity);
-                
-                if (result.debug.firstDeal.ip__ecomm_bridge__order_number === 'NULL') {
-                    console.warn('⚠️ ATENÇÃO: Campo ip__ecomm_bridge__order_number está NULL no HubSpot SQL Server!');
-                }
-                if (result.debug.firstDeal.website_order_id === 'NULL') {
-                    console.warn('⚠️ ATENÇÃO: Campo website_order_id está NULL no HubSpot SQL Server!');
-                }
-            }
-            
             showAlert("success", result.message);
+            console.log('🔄 [HUBSPOT FRONTEND] Recarregando dados...');
             await fetchRows();
-            
-            // Log dos dados após fetch
-            console.log('📋 Total de rows carregadas:', rows.length);
+            console.log('✅ [HUBSPOT FRONTEND] Sincronização completa!');
         } catch (error: any) {
-            console.error('❌ Erro ao sincronizar:', error);
+            console.error('❌ [HUBSPOT FRONTEND] Erro na sincronização:', error);
             showAlert("error", `Erro ao sincronizar: ${error.message}`);
         } finally {
             setSyncing(false);
