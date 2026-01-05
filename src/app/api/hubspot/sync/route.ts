@@ -120,9 +120,19 @@ export async function POST(request: Request) {
                     // Deal info
                     dealname: dealName,
                     stage: deal.dealstage || 'unknown',
+                    dealstage: deal.dealstage || 'unknown',
                     pipeline: deal.pipeline || null,
                     owner_id: deal.owner_id || null,
+                    owner: deal.owner_id || null,
                     currency: currency,
+
+                    // ✅ CAMPOS ADICIONAIS (para visualização no frontend)
+                    paid_status: deal.paid_status || null,
+                    coupon_code: deal.coupon_code || null,
+                    hs_closed_won_date: deal.hs_closed_won_date || null,
+                    total_payment: deal.total_payment ? parseFloat(deal.total_payment) : null,
+                    website_source: deal.website_source || 'Web',
+                    hs_lastmodifieddate: deal.hs_lastmodifieddate || null,
 
                     // Cliente
                     customer_firstname: customerFirstname,
@@ -132,6 +142,7 @@ export async function POST(request: Request) {
                     customer_clinic: deal.customer_clinic || null,
 
                     // Empresa
+                    company: companyName,
                     company_name: companyName,
                     company_industry: deal.company_industry || null,
                     company_website: deal.company_website || null,
@@ -143,6 +154,13 @@ export async function POST(request: Request) {
                     product_name_raw: rawProductName,
                     product_amount: productAmount,
                     product_quantity: productQuantity,
+                    product_discount: deal.product_discount ? parseFloat(deal.product_discount) : null,
+                    
+                    // Totais calculados
+                    quantity: productQuantity,
+                    items_total: productAmount,
+                    discount_amount: deal.product_discount ? parseFloat(deal.product_discount) : 0,
+                    final_price: amount, // amount já é o valor final
 
                     // E-commerce
                     ecomm_order_number: deal.ecomm_order_number || null,

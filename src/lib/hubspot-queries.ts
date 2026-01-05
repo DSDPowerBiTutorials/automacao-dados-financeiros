@@ -24,6 +24,14 @@ SELECT TOP 2000
   d.website_order_id,
   d.description as deal_description,
   
+  -- CAMPOS ADICIONAIS (descobertos)
+  d.hs_closed_won_date,
+  d.paid_status,
+  d.coupon_code,
+  d.total_payment,
+  d.website_source,
+  d.hs_lastmodifieddate,
+  
   -- CONTACT (Cliente)
   c.VId as contact_id,
   c.email as customer_email,
@@ -67,7 +75,17 @@ SELECT TOP 2000
     LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
-  ) as product_quantity
+  ) as product_quantity,
+  
+  -- LINEITEM - Desconto (se existir)
+  (
+    SELECT TOP 1 
+      li.discount
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_discount
 
 FROM Deal d
 
