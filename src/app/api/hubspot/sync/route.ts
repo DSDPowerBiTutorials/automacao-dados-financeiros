@@ -155,7 +155,7 @@ export async function POST(request: Request) {
                     product_amount: productAmount,
                     product_quantity: productQuantity,
                     product_discount: deal.product_discount ? parseFloat(deal.product_discount) : null,
-                    
+
                     // Totais calculados
                     quantity: productQuantity,
                     items_total: productAmount,

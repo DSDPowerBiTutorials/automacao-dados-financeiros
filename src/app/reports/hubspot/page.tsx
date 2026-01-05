@@ -45,30 +45,30 @@ interface HubSpotDeal {
         // IDs e Códigos
         deal_id?: string; // hs_object_id
         dealname?: string; // Short/long number
-        
+
         // Status
         dealstage?: string;
         stage?: string; // Alias for dealstage
         pipeline?: string;
         paid_status?: string; // Campo do HubSpot!
         owner?: string; // Owner ID or name
-        
+
         // Datas
         closedate?: string; // Date Ordered
         hs_closed_won_date?: string; // Date Paid
         hs_lastmodifieddate?: string; // Last Updated
-        
+
         // Customer
         customer_firstname?: string;
         customer_lastname?: string;
         customer_phone?: string;
         company?: string; // Company name
         company_name?: string; // Alias
-        
+
         // Valores
         currency?: string;
         total_payment?: number; // Paid Amount
-        
+
         // Produtos (LineItems)
         quantity?: number;
         items_total?: number;
@@ -76,7 +76,7 @@ interface HubSpotDeal {
         final_price?: number;
         product_name?: string;
         product_sku?: string;
-        
+
         // Outros
         coupon_code?: string; // Campo do HubSpot!
         website_source?: string; // Origin
@@ -841,16 +841,58 @@ export default function HubSpotReportPage() {
                                                             {/* Customer Info */}
                                                             {(row.customer_name || row.customer_email) && (
                                                                 <div className="border-t border-gray-200 pt-3">
-                                                                    <span className="text-gray-600 text-sm">Customer:</span>
+                                                                    <h5 className="font-semibold text-xs text-gray-700 mb-2">Customer</h5>
                                                                     {row.customer_name && <p className="font-medium">{row.customer_name}</p>}
                                                                     {row.customer_email && <p className="text-sm text-gray-500">{row.customer_email}</p>}
+                                                                    {row.custom_data?.customer_phone && (
+                                                                        <p className="text-sm text-gray-500">{row.custom_data.customer_phone}</p>
+                                                                    )}
                                                                 </div>
                                                             )}
 
-                                                            {row.custom_data?.company && (
-                                                                <div className="mt-2">
-                                                                    <span className="text-gray-600 text-sm">Company:</span>
-                                                                    <p className="font-medium">{row.custom_data.company}</p>
+                                                            {/* Product Info */}
+                                                            {row.custom_data?.product_name && (
+                                                                <div className="border-t border-gray-200 pt-3 mt-3">
+                                                                    <h5 className="font-semibold text-xs text-gray-700 mb-2">Product Details</h5>
+                                                                    <div className="space-y-1 text-sm">
+                                                                        <p className="font-medium">{row.custom_data.product_name}</p>
+                                                                        {row.custom_data.product_name_raw && row.custom_data.product_name_raw !== row.custom_data.product_name && (
+                                                                            <p className="text-xs text-gray-500">Original: {row.custom_data.product_name_raw}</p>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Additional Info */}
+                                                            {(row.custom_data?.company || row.custom_data?.coupon_code || row.custom_data?.website_source) && (
+                                                                <div className="border-t border-gray-200 pt-3 mt-3">
+                                                                    <h5 className="font-semibold text-xs text-gray-700 mb-2">Additional Info</h5>
+                                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                                        {row.custom_data?.company && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Company:</span>
+                                                                                <p className="font-medium">{row.custom_data.company}</p>
+                                                                            </div>
+                                                                        )}
+                                                                        {row.custom_data?.coupon_code && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Coupon:</span>
+                                                                                <p className="font-medium">{row.custom_data.coupon_code}</p>
+                                                                            </div>
+                                                                        )}
+                                                                        {row.custom_data?.website_source && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Origin:</span>
+                                                                                <p className="font-medium">{row.custom_data.website_source}</p>
+                                                                            </div>
+                                                                        )}
+                                                                        {row.custom_data?.hs_lastmodifieddate && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Last Updated:</span>
+                                                                                <p className="font-medium">{formatDate(row.custom_data.hs_lastmodifieddate)}</p>
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             )}
                                                         </div>
