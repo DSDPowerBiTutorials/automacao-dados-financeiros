@@ -202,205 +202,208 @@ function calculateAmountDiffPercent(amount1: number, amount2: number): number {
     const diff = Math.abs(amount1 - amount2);
     const avg = (amount1 + amount2) / 2;
     return (diff / avg) * 100;
+}
+
+/**
  * Tenta fazer match de um registro do HubSpot com candidatos de Payment Channels
-        */
-    export function findBestMatch(
-        hubspotRecord: MatchCandidate,
-        paymentCandidates: MatchCandidate[],
-        options: {
-            maxDateDiffDays?: number;
-            maxAmountDiff?: number;
-            minConfidence?: number;
-            emailRequired?: boolean;
-        } = {}
-    ): MatchResult {
-        const {
-            maxDateDiffDays = 3,
-            maxAmountDiff = 0.01,
-            minConfidence = 70,
-            emailRequired = false,
-        } = options;
+ */
+export function findBestMatch(
+    hubspotRecord: MatchCandidate,
+    paymentCandidates: MatchCandidate[],
+    options: {
+        maxDateDiffDays?: number;
+        maxAmountDiff?: number;
+        minConfidence?: number;
+        emailRequired?: boolean;
+    } = {}
+): MatchResult {
+    const {
+        maxDateDiffDays = 3,
+        maxAmountDiff = 0.01,
+        minConfidence = 70,
+        emailRequired = false,
+    } = options;
 
-        let bestMatch: MatchResult | null = null;
+    let bestMatch: MatchResult | null = null;
 
-        for (const candidate of paymentCandidates) {
-            const result: MatchResult = {
-                matched: false,
-                confidence: 0,
-                reasons: [],
-                details: {},
-            };
-
-            // 1. VERIFICAR EMAIL
-            const hubspotEmail = normalizeEmail(hubspotRecord.customer_email);
-            const candidateEmail = normalizeEmail(candidate.customer_email);
-
-            if (hubspotEmail && candidateEmail) {
-                if (hubspotEmail === candidateEmail) {
-                    result.details.emailMatch = 'exact';
-                    result.confidence += 40; // 40 pontos por email exato
-                    result.reasons.push('✅ Email exato');
-                } else {
-                    const hubspotDomain = getEmailDomain(hubspotRecord.customer_email);
-                    const candidateDomain = getEmailDomain(candidate.customer_email);
-
-                    if (hubspotDomain && candidateDomain && hubspotDomain === candidateDomain) {
-                        result.details.emailMatch = 'domain';
-                        result.confidence += 20; // 20 pontos por mesmo domínio
-                        result.reasons.push('⚠️ Mesmo domínio de email');
-                    } else {
-                        result.details.emailMatch = 'none';
-                    }
-                }
-            } else {
-                result.details.emailMatch = 'none';
-                if (emailRequired) {
-                    continue; // Pular se email é obrigatório e não tem
-                }
-            }
-
-            // 2. VERIFICAR NOME DO CLIENTE
-            const hubspotName = normalizeName(hubspotRecord.customer_name);
-            const candidateName = normalizeName(candidate.customer_name);
-
-            if (hubspotName && candidateName) {
-                const similarity = calculateSimilarity(hubspotName, candidateName);
-                result.details.nameSimilarity = similarity;
-
-                if (similarity >= 90) {
-                    result.details.nameMatch = 'exact';
-                    result.confidence += 25; // 25 pontos por nome exato/quase exato
-                    result.reasons.push(`✅ Nome muito similar (${similarity.toFixed(0)}%)`);
-                } else if (similarity >= 70) {
-                    result.details.nameMatch = 'similar';
-                    result.confidence += 15; // 15 pontos por nome similar
-                    result.reasons.push(`⚠️ Nome similar (${similarity.toFixed(0)}%)`);
-                } else {
-                    result.details.nameMatch = 'none';
-                }
-            }
-
-            // 3. VERIFICAR DATA (CRÍTICO)
-            const dateDiff = dateDiffInDays(hubspotRecord.date, candidate.date);
-            result.details.dateDiffDays = dateDiff;
-
-            if (dateDiff <= maxDateDiffDays) {
-                result.details.dateMatch = true;
-                const datePoints = Math.max(20 - (dateDiff * 5), 10); // 20 pontos se mesmo dia, 10+ se ±3 dias
-                result.confidence += datePoints;
-                result.reasons.push(`✅ Data próxima (±${dateDiff} dias)`);
-            } else {
-                result.details.dateMatch = false;
-                result.reasons.push(`❌ Data distante (±${dateDiff} dias)`);
-                continue; // Pular se data muito diferente
-            }
-
-            // 4. VERIFICAR VALOR (CRÍTICO)
-            const amountDiff = Math.abs(hubspotRecord.amount - candidate.amount);
-            result.details.amountDiff = amountDiff;
-
-            if (amountDiff <= maxAmountDiff) {
-                result.details.amountMatch = true;
-                result.confidence += 15; // 15 pontos por valor exato
-                result.reasons.push(`✅ Valor exato (±€${amountDiff.toFixed(2)})`);
-            } else {
-                result.details.amountMatch = false;
-                result.reasons.push(`❌ Valor diferente (±€${amountDiff.toFixed(2)})`);
-                continue; // Pular se valor muito diferente
-            }
-
-            // CALCULAR CONFIANÇA FINAL
-            // Bonus: se email + valor + data batem = +10 pontos
-            if (result.details.emailMatch === 'exact' &&
-                result.details.dateMatch &&
-                result.details.amountMatch) {
-                result.confidence += 10;
-                result.reasons.push('🎯 Match perfeito: Email + Valor + Data');
-            }
-
-            // Verificar se passou do threshold
-            if (result.confidence >= minConfidence) {
-                result.matched = true;
-                result.matchedId = candidate.id;
-                result.matchedSource = candidate.source;
-
-                // Guardar melhor match
-                if (!bestMatch || result.confidence > bestMatch.confidence) {
-                    bestMatch = result;
-                }
-            }
-        }
-
-        return bestMatch || {
+    for (const candidate of paymentCandidates) {
+        const result: MatchResult = {
             matched: false,
             confidence: 0,
-            reasons: ['❌ Nenhum match encontrado com confiança suficiente'],
+            reasons: [],
             details: {},
         };
-    }
 
-    /**
-     * Processa lote de matches entre HubSpot e Payment Channels
-     */
-    export async function batchMatch(
-        hubspotRecords: MatchCandidate[],
-        paymentRecords: MatchCandidate[]
-    ): Promise<Map<string, MatchResult>> {
-        const results = new Map<string, MatchResult>();
+        // 1. VERIFICAR EMAIL
+        const hubspotEmail = normalizeEmail(hubspotRecord.customer_email);
+        const candidateEmail = normalizeEmail(candidate.customer_email);
 
-        for (const hubspotRecord of hubspotRecords) {
-            const matchResult = findBestMatch(hubspotRecord, paymentRecords);
-            results.set(hubspotRecord.id, matchResult);
+        if (hubspotEmail && candidateEmail) {
+            if (hubspotEmail === candidateEmail) {
+                result.details.emailMatch = 'exact';
+                result.confidence += 40; // 40 pontos por email exato
+                result.reasons.push('✅ Email exato');
+            } else {
+                const hubspotDomain = getEmailDomain(hubspotRecord.customer_email);
+                const candidateDomain = getEmailDomain(candidate.customer_email);
+
+                if (hubspotDomain && candidateDomain && hubspotDomain === candidateDomain) {
+                    result.details.emailMatch = 'domain';
+                    result.confidence += 20; // 20 pontos por mesmo domínio
+                    result.reasons.push('⚠️ Mesmo domínio de email');
+                } else {
+                    result.details.emailMatch = 'none';
+                }
+            }
+        } else {
+            result.details.emailMatch = 'none';
+            if (emailRequired) {
+                continue; // Pular se email é obrigatório e não tem
+            }
         }
 
-        return results;
+        // 2. VERIFICAR NOME DO CLIENTE
+        const hubspotName = normalizeName(hubspotRecord.customer_name);
+        const candidateName = normalizeName(candidate.customer_name);
+
+        if (hubspotName && candidateName) {
+            const similarity = calculateNameSimilarity(hubspotName, candidateName);
+            result.details.nameSimilarity = similarity;
+
+            if (similarity >= 90) {
+                result.details.nameMatch = 'exact';
+                result.confidence += 25; // 25 pontos por nome exato/quase exato
+                result.reasons.push(`✅ Nome muito similar (${similarity.toFixed(0)}%)`);
+            } else if (similarity >= 70) {
+                result.details.nameMatch = 'similar';
+                result.confidence += 15; // 15 pontos por nome similar
+                result.reasons.push(`⚠️ Nome similar (${similarity.toFixed(0)}%)`);
+            } else {
+                result.details.nameMatch = 'none';
+            }
+        }
+
+        // 3. VERIFICAR DATA (CRÍTICO)
+        const dateDiff = dateDiffInDays(hubspotRecord.date, candidate.date);
+        result.details.dateDiffDays = dateDiff;
+
+        if (dateDiff <= maxDateDiffDays) {
+            result.details.dateMatch = true;
+            const datePoints = Math.max(20 - (dateDiff * 5), 10); // 20 pontos se mesmo dia, 10+ se ±3 dias
+            result.confidence += datePoints;
+            result.reasons.push(`✅ Data próxima (±${dateDiff} dias)`);
+        } else {
+            result.details.dateMatch = false;
+            result.reasons.push(`❌ Data distante (±${dateDiff} dias)`);
+            continue; // Pular se data muito diferente
+        }
+
+        // 4. VERIFICAR VALOR (CRÍTICO)
+        const amountDiff = Math.abs(hubspotRecord.amount - candidate.amount);
+        result.details.amountDiff = amountDiff;
+
+        if (amountDiff <= maxAmountDiff) {
+            result.details.amountMatch = true;
+            result.confidence += 15; // 15 pontos por valor exato
+            result.reasons.push(`✅ Valor exato (±€${amountDiff.toFixed(2)})`);
+        } else {
+            result.details.amountMatch = false;
+            result.reasons.push(`❌ Valor diferente (±€${amountDiff.toFixed(2)})`);
+            continue; // Pular se valor muito diferente
+        }
+
+        // CALCULAR CONFIANÇA FINAL
+        // Bonus: se email + valor + data batem = +10 pontos
+        if (result.details.emailMatch === 'exact' &&
+            result.details.dateMatch &&
+            result.details.amountMatch) {
+            result.confidence += 10;
+            result.reasons.push('🎯 Match perfeito: Email + Valor + Data');
+        }
+
+        // Verificar se passou do threshold
+        if (result.confidence >= minConfidence) {
+            result.matched = true;
+            result.matchedId = candidate.id;
+            result.matchedSource = candidate.source;
+
+            // Guardar melhor match
+            if (!bestMatch || result.confidence > bestMatch.confidence) {
+                bestMatch = result;
+            }
+        }
     }
 
-    /**
-     * Limpa e extrai nome do produto de descrições
-     * Remove prefixos, sufixos, códigos comuns
-     */
-    export function cleanProductName(description: string | null | undefined): string {
-        if (!description) return '';
+    return bestMatch || {
+        matched: false,
+        confidence: 0,
+        reasons: ['❌ Nenhum match encontrado com confiança suficiente'],
+        details: {},
+    };
+}
 
-        let cleaned = description.trim();
+/**
+ * Processa lote de matches entre HubSpot e Payment Channels
+ */
+export async function batchMatch(
+    hubspotRecords: MatchCandidate[],
+    paymentRecords: MatchCandidate[]
+): Promise<Map<string, MatchResult>> {
+    const results = new Map<string, MatchResult>();
 
-        // Remover padrões comuns no início
-        cleaned = cleaned.replace(/^(Product:|Item:|SKU:|Code:)\s*/gi, '');
-
-        // Remover códigos tipo "ABC-123", "XYZ123" no final
-        cleaned = cleaned.replace(/\s*[-_]\s*[A-Z0-9]{3,}$/gi, '');
-
-        // Remover quantidades/preços no final tipo " - 1x", " (€100)"
-        cleaned = cleaned.replace(/\s*[-–]\s*\d+x?$/gi, '');
-        cleaned = cleaned.replace(/\s*\([€$£]\d+.*?\)$/gi, '');
-
-        // Remover "DSD" prefixes comuns
-        cleaned = cleaned.replace(/^DSD\s+(Provider|Master|Planning|Residency|Workshop)\s+/gi, 'DSD $1 ');
-
-        // Remover datas/anos soltos tipo "2025", "2024"
-        cleaned = cleaned.replace(/\s+20\d{2}$/g, '');
-
-        // Remover regiões tipo "EUR", "USD", "ROW"
-        cleaned = cleaned.replace(/\s+(EUR|USD|GBP|ROW)$/gi, '');
-
-        // Normalizar espaços
-        cleaned = cleaned.replace(/\s+/g, ' ').trim();
-
-        return cleaned;
+    for (const hubspotRecord of hubspotRecords) {
+        const matchResult = findBestMatch(hubspotRecord, paymentRecords);
+        results.set(hubspotRecord.id, matchResult);
     }
 
-    /**
-     * Extrai moeda de descrição ou campo
-     */
-    export function extractCurrency(
-        description: string | null | undefined,
-        currencyField?: string | null
-    ): string {
-        if (currencyField) return currencyField.toUpperCase();
+    return results;
+}
 
-        if (!description) return 'EUR'; // Default
+/**
+ * Limpa e extrai nome do produto de descrições
+ * Remove prefixos, sufixos, códigos comuns
+ */
+export function cleanProductName(description: string | null | undefined): string {
+    if (!description) return '';
 
-        const matches = description.match(/\b(EUR|USD|GBP|BRL)\b/gi);
-        return matches ? matches[0].toUpperCase() : 'EUR';
-    }
+    let cleaned = description.trim();
+
+    // Remover padrões comuns no início
+    cleaned = cleaned.replace(/^(Product:|Item:|SKU:|Code:)\s*/gi, '');
+
+    // Remover códigos tipo "ABC-123", "XYZ123" no final
+    cleaned = cleaned.replace(/\s*[-_]\s*[A-Z0-9]{3,}$/gi, '');
+
+    // Remover quantidades/preços no final tipo " - 1x", " (€100)"
+    cleaned = cleaned.replace(/\s*[-–]\s*\d+x?$/gi, '');
+    cleaned = cleaned.replace(/\s*\([€$£]\d+.*?\)$/gi, '');
+
+    // Remover "DSD" prefixes comuns
+    cleaned = cleaned.replace(/^DSD\s+(Provider|Master|Planning|Residency|Workshop)\s+/gi, 'DSD $1 ');
+
+    // Remover datas/anos soltos tipo "2025", "2024"
+    cleaned = cleaned.replace(/\s+20\d{2}$/g, '');
+
+    // Remover regiões tipo "EUR", "USD", "ROW"
+    cleaned = cleaned.replace(/\s+(EUR|USD|GBP|ROW)$/gi, '');
+
+    // Normalizar espaços
+    cleaned = cleaned.replace(/\s+/g, ' ').trim();
+
+    return cleaned;
+}
+
+/**
+ * Extrai moeda de descrição ou campo
+ */
+export function extractCurrency(
+    description: string | null | undefined,
+    currencyField?: string | null
+): string {
+    if (currencyField) return currencyField.toUpperCase();
+
+    if (!description) return 'EUR'; // Default
+
+    const matches = description.match(/\b(EUR|USD|GBP|BRL)\b/gi);
+    return matches ? matches[0].toUpperCase() : 'EUR';
+}

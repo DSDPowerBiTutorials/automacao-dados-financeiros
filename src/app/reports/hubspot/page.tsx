@@ -14,6 +14,9 @@ import {
     RefreshCw,
     Database,
     Zap,
+    Link as LinkIcon,
+    AlertTriangle,
+    TrendingUp,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -37,15 +40,31 @@ interface HubSpotRow {
     description: string;
     amount: number;
     reconciled: boolean;
+    customer_email?: string;
+    customer_name?: string;
+    matched_with?: string;
+    matched_source?: string;
+    match_confidence?: number;
+    match_details?: {
+        emailScore?: number;
+        nameScore?: number;
+        dateScore?: number;
+        amountScore?: number;
+        totalScore?: number;
+        method?: string;
+    };
+    matched_at?: string;
     custom_data?: {
         deal_id?: string;
         stage?: string;
-        pipeline?: string;
-        owner?: string;
-        company?: string;
-        currency?: string;
+        pipmatching, setMatching] = useState(false);
+const [matchStats, setMatchStats] = useState<any>(null);
+const [eline?: string;
+owner ?: string;
+company ?: string;
+currency ?: string;
     };
-    [key: string]: any;
+[key: string]: any;
 }
 
 export default function HubSpotReportPage() {
@@ -84,7 +103,7 @@ export default function HubSpotReportPage() {
         try {
             setLoading(true);
             setCurrentPage(1); // Resetar página ao carregar novos dados
-            
+
             // Usar range com limit para carregar apenas dados paginados do servidor
             const { data, error, count } = await supabase
                 .from("csv_rows")
@@ -128,7 +147,49 @@ export default function HubSpotReportPage() {
             showAlert("success", "Sincronizando dados do SQL Server...");
 
             const response = await fetch("/api/hubspot/sync", {
-                method: "POST",
+
+
+                const runAutoMatch = async (dryRun: boolean = false) => {
+                    try {
+                        setMatching(true);
+                        showAlert("success", dryRun ? "Analisando matches possíveis..." : "Executando auto-match...");
+
+                        const response = await fetch("/api/hubspot/auto-match", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ dryRun }),
+                        });
+
+                        const result = await response.json();
+
+                        if (!result.success) {
+                            throw new Error(result.error || "Erro no auto-match");
+                        }
+
+                        setMatchStats(result.stats);
+                        showAlert("success", dryRun
+                            ? `Análise completa: ${result.stats.matched} matches encontrados (${result.stats.averageConfidence}% confiança média)`
+                            : `Auto-match completo: ${result.stats.matched} registros reconciliados`
+                        );
+
+                        if (!dryRun) {
+                            await fetchRows();
+                        }
+                    } catch (error: any) {
+                        showAlert("error", `Erro no auto-match: ${error.message}`);
+                    } finally {
+                        setMatching(false);
+                    }
+                };
+
+                const getMatchIndicator = (row: HubSpotRow) => {
+                    if (!row.matched_with) return null;
+
+                    const confidence = row.match_confidence || 0;
+                    if (confidence >= 85) return <Badge className="bg-green-500">🟢 {confidence}%</Badge>;
+                    if (confidence >= 70) return <Badge className="bg-yellow-500">🟡 {confidence}%</Badge>;
+                    return <Badge className="bg-red-500">🔴 {confidence}%</Badge>;
+                }; method: "POST",
             });
 
             const result = await response.json();
@@ -243,10 +304,20 @@ export default function HubSpotReportPage() {
             total: rows.length,
             reconciled: rows.filter((r) => r.reconciled).length,
             pending: rows.filter((r) => !r.reconciled).length,
+            matched: rows.filter((r) => r.matched_with).length,
+            unmatched: rows.filter((r) => !r.matched_with).length,
             totalAmount: rows.reduce((sum, r) => sum + r.amount, 0),
             reconciledAmount: rows
                 .filter((r) => r.reconciled)
                 .reduce((sum, r) => sum + r.amount, 0),
+            avgConfidence: rows.filter(r => r.match_confidence).length > 0
+                ? Math.round(
+                    rows
+                        .filter(r => r.match_confidence)
+                        .reduce((sum, r) => sum + (r.match_confidence || 0), 0) /
+                    rows.filter(r => r.match_confidence).length
+                )
+                : 0,
         };
     }, [rows]);
 
@@ -324,7 +395,7 @@ export default function HubSpotReportPage() {
             )}
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
@@ -359,6 +430,22 @@ export default function HubSpotReportPage() {
                         </div>
                     </CardContent>
                 </Card>
+                <Card className="border-purple-200 bg-purple-50">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-sm font-medium text-purple-700 flex items-center gap-1">
+                            <LinkIcon className="w-4 h-4" />
+                            Matched
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold text-purple-600">
+                            {stats.matched}
+                        </div>
+                        <p className="text-xs text-purple-600 mt-1">
+                            {stats.avgConfidence}% confiança média
+                        </p>
+                    </CardContent>
+                </Card>
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
@@ -384,6 +471,82 @@ export default function HubSpotReportPage() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Auto-Match Section */}
+            <Card className="border-purple-200">
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle className="flex items-center gap-2">
+                                <Zap className="w-5 h-5 text-purple-600" />
+                                Auto-Matching Inteligente
+                            </CardTitle>
+                            <CardDescription>
+                                Sistema de reconciliação automática com matching por email, nome, data e valor
+                            </CardDescription>
+                        </div>
+                        <div className="flex gap-2">
+                            <Button
+                                onClick={() => runAutoMatch(true)}
+                                disabled={matching}
+                                variant="outline"
+                                className="gap-2"
+                            >
+                                {matching ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Analisando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <TrendingUp className="w-4 h-4" />
+                                        Simular Matches
+                                    </>
+                                )}
+                            </Button>
+                            <Button
+                                onClick={() => runAutoMatch(false)}
+                                disabled={matching}
+                                className="gap-2 bg-purple-600 hover:bg-purple-700"
+                            >
+                                {matching ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Processando...
+                                    </>
+                                ) : (
+                                    <>
+                                        <LinkIcon className="w-4 h-4" />
+                                        Executar Auto-Match
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    </div>
+                </CardHeader>
+                {matchStats && (
+                    <CardContent className="bg-purple-50">
+                        <div className="grid grid-cols-4 gap-4 text-sm">
+                            <div>
+                                <p className="text-gray-600">Analisados</p>
+                                <p className="text-lg font-bold">{matchStats.analyzed}</p>
+                            </div>
+                            <div>
+                                <p className="text-gray-600">Matches Encontrados</p>
+                                <p className="text-lg font-bold text-green-600">{matchStats.matched}</p>
+                            </div>
+                            <div>
+                                <p className="text-gray-600">Sem Match</p>
+                                <p className="text-lg font-bold text-yellow-600">{matchStats.unmatched}</p>
+                            </div>
+                            <div>
+                                <p className="text-gray-600">Confiança Média</p>
+                                <p className="text-lg font-bold text-purple-600">{matchStats.averageConfidence}%</p>
+                            </div>
+                        </div>
+                    </CardContent>
+                )}
+            </Card>
 
             {/* Filters */}
             <Card>
@@ -420,6 +583,9 @@ export default function HubSpotReportPage() {
                                         ✓
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        Match
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Data
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
@@ -427,6 +593,9 @@ export default function HubSpotReportPage() {
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Descrição
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        Cliente
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Empresa
@@ -457,6 +626,11 @@ export default function HubSpotReportPage() {
                                                         toggleReconciled(row.id, row.reconciled)
                                                     }
                                                 />
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                {getMatchIndicator(row) || (
+                                                    <span className="text-gray-400 text-xs">-</span>
+                                                )}
                                             </td>
                                             <td className="px-4 py-3 text-sm">
                                                 {isEditing ? (
@@ -494,6 +668,16 @@ export default function HubSpotReportPage() {
                                                         {row.description}
                                                     </div>
                                                 )}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm">
+                                                <div className="max-w-xs">
+                                                    <div className="font-medium truncate" title={row.customer_name}>
+                                                        {row.customer_name || "-"}
+                                                    </div>
+                                                    <div className="text-xs text-gray-500 truncate" title={row.customer_email}>
+                                                        {row.customer_email || "-"}
+                                                    </div>
+                                                </div>
                                             </td>
                                             <td className="px-4 py-3 text-sm">
                                                 {row.custom_data?.company || "-"}
