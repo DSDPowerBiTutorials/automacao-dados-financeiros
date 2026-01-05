@@ -34,59 +34,68 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 
-interface HubSpotRow {
+interface HubSpotDeal {
     id: string;
-    date: string;
+    date: string; // closedate
     description: string;
     amount: number;
-    reconciled: boolean;
     customer_email?: string;
     customer_name?: string;
-    matched_with?: string;
-    matched_source?: string;
-    match_confidence?: number;
-    match_details?: {
-        emailScore?: number;
-        nameScore?: number;
-        dateScore?: number;
-        amountScore?: number;
-        totalScore?: number;
-        method?: string;
-    };
-    matched_at?: string;
     custom_data?: {
-        deal_id?: string;
-        dealname?: string;
-        stage?: string;
-        pipeline?: string;
-        owner?: string;
-        company?: string;
-        currency?: string;
-        closedate?: string;
-        amount?: number;
+        // IDs e Códigos
+        deal_id?: string; // hs_object_id
+        dealname?: string; // Short/long number
+        
+        // Status
         dealstage?: string;
-        hs_object_id?: string;
-        // Campos para "All Totals"
+        stage?: string; // Alias for dealstage
+        pipeline?: string;
+        paid_status?: string; // Campo do HubSpot!
+        owner?: string; // Owner ID or name
+        
+        // Datas
+        closedate?: string; // Date Ordered
+        hs_closed_won_date?: string; // Date Paid
+        hs_lastmodifieddate?: string; // Last Updated
+        
+        // Customer
+        customer_firstname?: string;
+        customer_lastname?: string;
+        customer_phone?: string;
+        company?: string; // Company name
+        company_name?: string; // Alias
+        
+        // Valores
+        currency?: string;
+        total_payment?: number; // Paid Amount
+        
+        // Produtos (LineItems)
         quantity?: number;
         items_total?: number;
         discount_amount?: number;
         final_price?: number;
+        product_name?: string;
+        product_sku?: string;
+        
+        // Outros
+        coupon_code?: string; // Campo do HubSpot!
+        website_source?: string; // Origin
+        order_site?: string;
+        ip_address?: string;
     };
     [key: string]: any;
 }
 
 export default function HubSpotReportPage() {
-    const [rows, setRows] = useState<HubSpotRow[]>([]);
-    const [filteredRows, setFilteredRows] = useState<HubSpotRow[]>([]);
-    const [paginatedRows, setPaginatedRows] = useState<HubSpotRow[]>([]);
+    const [rows, setRows] = useState<HubSpotDeal[]>([]);
+    const [filteredRows, setFilteredRows] = useState<HubSpotDeal[]>([]);
+    const [paginatedRows, setPaginatedRows] = useState<HubSpotDeal[]>([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
-    const [matching, setMatching] = useState(false);
-    const [matchStats, setMatchStats] = useState<any>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
-    const [editingData, setEditingData] = useState<Partial<HubSpotRow>>({});
+    const [editingData, setEditingData] = useState<Partial<HubSpotDeal>>({});
     const [searchTerm, setSearchTerm] = useState("");
-    const [filterReconciled, setFilterReconciled] = useState<string>("all");
+    const [filterStatus, setFilterStatus] = useState<string>("all"); // all, paid, unpaid
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize] = useState(50);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -101,7 +110,7 @@ export default function HubSpotReportPage() {
 
     useEffect(() => {
         filterRows();
-    }, [rows, searchTerm, filterReconciled]);
+    }, [rows, searchTerm, filterStatus]);
 
     useEffect(() => {
         // Aplicar paginação aos filteredRows
@@ -143,10 +152,13 @@ export default function HubSpotReportPage() {
             );
         }
 
-        if (filterReconciled !== "all") {
-            filtered = filtered.filter((row) =>
-                filterReconciled === "reconciled" ? row.reconciled : !row.reconciled
-            );
+        if (filterStatus !== "all") {
+            filtered = filtered.filter((row) => {
+                const paidStatus = row.custom_data?.paid_status?.toLowerCase();
+                if (filterStatus === "paid") return paidStatus === "paid";
+                if (filterStatus === "unpaid") return paidStatus !== "paid";
+                return true;
+            });
         }
 
         setFilteredRows(filtered);
@@ -176,6 +188,7 @@ export default function HubSpotReportPage() {
         }
     };
 
+    /* REMOVED: Auto-Match functionality - this is a view-only deals page
     const runAutoMatch = async (dryRun: boolean = false) => {
         try {
             setMatching(true);
@@ -208,15 +221,9 @@ export default function HubSpotReportPage() {
             setMatching(false);
         }
     };
+    */
 
-    const getMatchIndicator = (row: HubSpotRow) => {
-        if (!row.matched_with) return null;
-
-        const confidence = row.match_confidence || 0;
-        if (confidence >= 85) return <Badge className="bg-green-500">🟢 {confidence}%</Badge>;
-        if (confidence >= 70) return <Badge className="bg-yellow-500">🟡 {confidence}%</Badge>;
-        return <Badge className="bg-red-500">🔴 {confidence}%</Badge>;
-    };
+    // getMatchIndicator removed - not needed for deals view page
 
     // Extrair Short Number (primeiros 7 caracteres alfanuméricos do dealname)
     const extractShortNumber = (dealname: string | undefined): string => {
@@ -261,10 +268,11 @@ export default function HubSpotReportPage() {
         return <span className={`text-2xl ${color}`}>●</span>;
     };
 
-    const getPaidStatusIcon = (reconciled: boolean) => {
-        return reconciled
-            ? <span className="text-red-500 text-xl">●</span>  // Unpaid
-            : <span className="text-green-500 text-xl">●</span>; // Paid
+    const getPaidStatusIcon = (paidStatus: string | undefined) => {
+        const status = paidStatus?.toLowerCase();
+        return status === "paid"
+            ? <span className="text-green-500 text-xl">●</span>  // Paid
+            : <span className="text-red-500 text-xl">●</span>; // Unpaid
     };
 
     const toggleRowExpansion = (rowId: string) => {
@@ -279,7 +287,7 @@ export default function HubSpotReportPage() {
         });
     };
 
-    const handleEdit = (row: HubSpotRow) => {
+    const handleEdit = (row: HubSpotDeal) => {
         setEditingId(row.id);
         setEditingData({
             date: row.date,
@@ -544,81 +552,7 @@ export default function HubSpotReportPage() {
                 </Card>
             </div>
 
-            {/* Auto-Match Section */}
-            <Card className="border-purple-200">
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle className="flex items-center gap-2">
-                                <Zap className="w-5 h-5 text-purple-600" />
-                                Auto-Matching Inteligente
-                            </CardTitle>
-                            <CardDescription>
-                                Sistema de reconciliação automática com matching por email, nome, data e valor
-                            </CardDescription>
-                        </div>
-                        <div className="flex gap-2">
-                            <Button
-                                onClick={() => runAutoMatch(true)}
-                                disabled={matching}
-                                variant="outline"
-                                className="gap-2"
-                            >
-                                {matching ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Analisando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <TrendingUp className="w-4 h-4" />
-                                        Simular Matches
-                                    </>
-                                )}
-                            </Button>
-                            <Button
-                                onClick={() => runAutoMatch(false)}
-                                disabled={matching}
-                                className="gap-2 bg-purple-600 hover:bg-purple-700"
-                            >
-                                {matching ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Processando...
-                                    </>
-                                ) : (
-                                    <>
-                                        <LinkIcon className="w-4 h-4" />
-                                        Executar Auto-Match
-                                    </>
-                                )}
-                            </Button>
-                        </div>
-                    </div>
-                </CardHeader>
-                {matchStats && (
-                    <CardContent className="bg-purple-50">
-                        <div className="grid grid-cols-4 gap-4 text-sm">
-                            <div>
-                                <p className="text-gray-600">Analisados</p>
-                                <p className="text-lg font-bold">{matchStats.analyzed}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-600">Matches Encontrados</p>
-                                <p className="text-lg font-bold text-green-600">{matchStats.matched}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-600">Sem Match</p>
-                                <p className="text-lg font-bold text-yellow-600">{matchStats.unmatched}</p>
-                            </div>
-                            <div>
-                                <p className="text-gray-600">Confiança Média</p>
-                                <p className="text-lg font-bold text-purple-600">{matchStats.averageConfidence}%</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                )}
-            </Card>
+            {/* Auto-Match Section - REMOVED: This is a view-only deals page for HubSpot orders */}
 
             {/* Filters */}
             <Card>
@@ -633,13 +567,13 @@ export default function HubSpotReportPage() {
                         className="max-w-md"
                     />
                     <select
-                        value={filterReconciled}
-                        onChange={(e) => setFilterReconciled(e.target.value)}
+                        value={filterStatus}
+                        onChange={(e) => setFilterStatus(e.target.value)}
                         className="border rounded px-3 py-2"
                     >
-                        <option value="all">Todos</option>
-                        <option value="reconciled">Conciliados</option>
-                        <option value="pending">Pendentes</option>
+                        <option value="all">Todos Status</option>
+                        <option value="paid">Pagos</option>
+                        <option value="unpaid">Não Pagos</option>
                     </select>
                 </CardContent>
             </Card>
@@ -694,16 +628,6 @@ export default function HubSpotReportPage() {
                                     return (
                                         <>
                                             <tr key={row.id} className="hover:bg-gray-50">
-                                                {/* Checkbox */}
-                                                <td className="px-4 py-3">
-                                                    <Checkbox
-                                                        checked={row.reconciled}
-                                                        onCheckedChange={() =>
-                                                            toggleReconciled(row.id, row.reconciled)
-                                                        }
-                                                    />
-                                                </td>
-
                                                 {/* Order (Short Number - 7 chars) */}
                                                 <td className="px-4 py-3">
                                                     <a
@@ -745,9 +669,9 @@ export default function HubSpotReportPage() {
                                                     }) : "-"}
                                                 </td>
 
-                                                {/* Date Paid (matched_at) */}
+                                                {/* Date Paid (hs_closed_won_date from HubSpot) */}
                                                 <td className="px-4 py-3 text-sm">
-                                                    {row.matched_at ? formatDate(row.matched_at) : "-"}
+                                                    {row.custom_data?.hs_closed_won_date ? formatDate(row.custom_data.hs_closed_won_date) : "-"}
                                                 </td>
 
                                                 {/* Total Paid */}
@@ -755,12 +679,12 @@ export default function HubSpotReportPage() {
                                                     {formatCurrency(row.amount)}
                                                 </td>
 
-                                                {/* Paid Status (com ícone) */}
+                                                {/* Paid Status (from HubSpot paid_status field) */}
                                                 <td className="px-4 py-3 text-center">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        {getPaidStatusIcon(row.reconciled)}
+                                                        {getPaidStatusIcon(row.custom_data?.paid_status)}
                                                         <span className="text-sm">
-                                                            {row.reconciled ? "Paid" : "Unpaid"}
+                                                            {row.custom_data?.paid_status || "Unpaid"}
                                                         </span>
                                                     </div>
                                                 </td>
@@ -849,7 +773,7 @@ export default function HubSpotReportPage() {
                                             {/* Expanded Row - All Totals Details */}
                                             {isExpanded && (
                                                 <tr key={`${row.id}-expanded`} className="bg-gray-50">
-                                                    <td colSpan={11} className="px-4 py-4">
+                                                    <td colSpan={10} className="px-4 py-4">
                                                         <div className="ml-8 p-4 bg-white rounded border border-gray-200">
                                                             <h4 className="font-semibold text-sm mb-3 text-gray-700">
                                                                 Order Details
