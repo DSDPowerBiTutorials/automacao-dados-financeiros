@@ -23,7 +23,17 @@ let pool: sql.ConnectionPool | null = null;
 
 export async function getSQLServerConnection(): Promise<sql.ConnectionPool> {
     if (!pool) {
+        console.log('🔌 Conectando ao SQL Server...');
+        console.log('📊 Config:', {
+            server: config.server,
+            database: config.database,
+            user: config.user ? '***' : 'NOT SET',
+            timeout: config.options?.requestTimeout
+        });
         pool = await sql.connect(config);
+        console.log('✅ Conexão estabelecida com sucesso!');
+    } else {
+        console.log('♻️ Reutilizando conexão existente');
     }
     return pool;
 }

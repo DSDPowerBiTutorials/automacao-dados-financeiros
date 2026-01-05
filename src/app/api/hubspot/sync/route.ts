@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { getSQLServerConnection, closeSQLServerConnection } from '@/lib/sqlserver';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { cleanProductName, extractCurrency } from '@/lib/matching-engine';
-import { ENRICHED_HUBSPOT_QUERY, SIMPLE_HUBSPOT_QUERY } from '@/lib/hubspot-queries';
+import { ENRICHED_HUBSPOT_QUERY, INTERMEDIATE_HUBSPOT_QUERY, SIMPLE_HUBSPOT_QUERY } from '@/lib/hubspot-queries';
 import crypto from 'crypto';
 
 // Rota para sincronizar dados do HubSpot via SQL Server Data Warehouse
+// Configurar timeout maior para evitar erro de loading infinito
+export const maxDuration = 180; // 3 minutos
+
 export async function POST(request: Request) {
     try {
         console.log('🔄 Iniciando sincronização HubSpot...');
@@ -21,33 +24,47 @@ export async function POST(request: Request) {
 
         console.log(`📅 Buscando deals desde: ${startDateStr}`);
 
-        // Tentar query enriquecida primeiro
+        // Tentar queries em cascata: enriquecida → intermediária → simples
         let result: any = null;
         let usedQuery = 'enriched';
 
+        // Tentativa 1: Query enriquecida (Deal + Contact + Company + LineItem)
         try {
-            console.log('🔍 Tentando query enriquecida (Deal + Contact + Company + LineItem)...');
-            console.log('📋 Query:', ENRICHED_HUBSPOT_QUERY.substring(0, 200) + '...');
-
+            console.log('🔍 [1/3] Tentando query ENRIQUECIDA (Deal + Contact + Company + LineItem)...');
             const query = ENRICHED_HUBSPOT_QUERY.replace('@startDate', `'${startDateStr}'`);
             result = await pool.request().query(query);
-
             console.log(`✅ Query enriquecida funcionou! ${result.recordset.length} deals`);
         } catch (enrichedError: any) {
-            console.error('❌ Query enriquecida FALHOU com erro:', enrichedError.message);
-            console.error('📊 Código do erro:', enrichedError.code);
-            console.error('📊 Número do erro:', enrichedError.number);
-            console.warn('⚠️ Query enriquecida falhou, tentando query simples...');
+            console.error('❌ Query enriquecida FALHOU:', enrichedError.message);
+            console.error('   Código:', enrichedError.code, 'Número:', enrichedError.number);
 
+            // Tentativa 2: Query intermediária (Deal + Contact + Company, sem LineItem)
             try {
-                console.log('🔍 Tentando query simples...');
-                const query = SIMPLE_HUBSPOT_QUERY.replace('@startDate', `'${startDateStr}'`);
+                console.log('🔍 [2/3] Tentando query INTERMEDIÁRIA (Deal + Contact + Company)...');
+                const query = INTERMEDIATE_HUBSPOT_QUERY.replace('@startDate', `'${startDateStr}'`);
                 result = await pool.request().query(query);
-                usedQuery = 'simple';
-                console.log(`✅ Query simples funcionou! ${result.recordset.length} deals`);
-            } catch (simpleError: any) {
-                console.error('❌ Query simples também FALHOU:', simpleError.message);
-                throw new Error(`Ambas queries falharam. Enriquecida: ${enrichedError.message}. Simples: ${simpleError.message}`);
+                usedQuery = 'intermediate';
+                console.log(`✅ Query intermediária funcionou! ${result.recordset.length} deals`);
+            } catch (intermediateError: any) {
+                console.error('❌ Query intermediária FALHOU:', intermediateError.message);
+                console.error('   Código:', intermediateError.code, 'Número:', intermediateError.number);
+
+                // Tentativa 3: Query simples (apenas Deal + Contact básico)
+                try {
+                    console.log('🔍 [3/3] Tentando query SIMPLES (Deal + Contact básico)...');
+                    const query = SIMPLE_HUBSPOT_QUERY.replace('@startDate', `'${startDateStr}'`);
+                    result = await pool.request().query(query);
+                    usedQuery = 'simple';
+                    console.log(`✅ Query simples funcionou! ${result.recordset.length} deals`);
+                } catch (simpleError: any) {
+                    console.error('❌ TODAS as queries falharam!');
+                    throw new Error(
+                        `Nenhuma query funcionou.\n` +
+                        `Enriquecida: ${enrichedError.message}\n` +
+                        `Intermediária: ${intermediateError.message}\n` +
+                        `Simples: ${simpleError.message}`
+                    );
+                }
             }
         }
 

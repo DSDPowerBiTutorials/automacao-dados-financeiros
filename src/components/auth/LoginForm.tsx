@@ -56,26 +56,29 @@ export function LoginForm() {
                 <div className="absolute inset-0 bg-gradient-to-br from-black/60 via-black/50 to-[#243140]/70" />
             </div>
 
-            {/* Login Card */}
+            {/* Login Card - Centralizado */}
             <Card className="relative z-10 w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
-                <CardHeader className="space-y-6 text-center pb-8 pt-10">
-                    {/* Logo */}
-                    <div className="mx-auto transform hover:scale-105 transition-transform duration-300">
-                        <Image
-                            src="/Logo.png"
-                            alt="Digital Smile Design"
-                            width={180}
-                            height={60}
-                            className="w-auto h-16"
-                            priority
-                        />
-                    </div>
-                    <div className="space-y-3">
+                <CardHeader className="space-y-4 text-center pb-8 pt-10">
+                    {/* Logo e Título */}
+                    <div className="mx-auto space-y-4">
+                        <div className="flex items-center justify-center gap-3">
+                            <Image
+                                src="/favicon-32x32.png"
+                                alt="DSD Logo"
+                                width={40}
+                                height={40}
+                                className="w-10 h-10"
+                                priority
+                            />
+                            <h1 className="text-2xl font-bold text-[#243140]">
+                                DSD Finance Hub
+                            </h1>
+                        </div>
                         <CardDescription className="text-sm text-gray-600 font-medium tracking-wide">
-                            In-house code. Shaped by how we work
+                            In-house code. Shaped by how we work.
                         </CardDescription>
-                        <div className="h-px w-24 mx-auto bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                     </div>
+                    <div className="h-px w-24 mx-auto bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                 </CardHeader>
 
                 <CardContent className="pb-10">

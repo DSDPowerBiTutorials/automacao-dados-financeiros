@@ -95,6 +95,8 @@ export default function HubSpotReportPage() {
     const [paginatedRows, setPaginatedRows] = useState<HubSpotDeal[]>([]);
     const [loading, setLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
+    const [cleaning, setCleaning] = useState(false);
+    const [verifyingSchema, setVerifyingSchema] = useState(false);
     const [editingId, setEditingId] = useState<string | null>(null);
     const [editingData, setEditingData] = useState<Partial<HubSpotDeal>>({});
     const [searchTerm, setSearchTerm] = useState("");
@@ -171,14 +173,28 @@ export default function HubSpotReportPage() {
         try {
             console.log('🔄 [HUBSPOT FRONTEND] Iniciando sincronização...');
             setSyncing(true);
-            showAlert("success", "Sincronizando dados do SQL Server...");
+            showAlert("success", "Sincronizando dados do SQL Server... (pode levar até 2 minutos)");
 
             console.log('📡 [HUBSPOT FRONTEND] Fazendo requisição para /api/hubspot/sync...');
+
+            // Criar um controller para controlar timeout
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 180000); // 3 minutos
+
             const response = await fetch("/api/hubspot/sync", {
                 method: "POST",
+                signal: controller.signal,
             });
 
+            clearTimeout(timeoutId);
+
             console.log('📥 [HUBSPOT FRONTEND] Resposta recebida:', response.status);
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(`HTTP ${response.status}: ${errorText}`);
+            }
+
             const result = await response.json();
             console.log('📋 [HUBSPOT FRONTEND] Resultado:', result);
 
@@ -192,9 +208,88 @@ export default function HubSpotReportPage() {
             console.log('✅ [HUBSPOT FRONTEND] Sincronização completa!');
         } catch (error: any) {
             console.error('❌ [HUBSPOT FRONTEND] Erro na sincronização:', error);
-            showAlert("error", `Erro ao sincronizar: ${error.message}`);
+            if (error.name === 'AbortError') {
+                showAlert("error", "Sincronização cancelada: tempo limite excedido (3 min)");
+            } else {
+                showAlert("error", `Erro ao sincronizar: ${error.message}`);
+            }
         } finally {
             setSyncing(false);
+        }
+    };
+
+    const cleanAndResync = async () => {
+        if (!confirm('⚠️ Isso vai deletar TODOS os dados do HubSpot e re-sincronizar. Continuar?')) {
+            return;
+        }
+
+        try {
+            console.log('🗑️ Iniciando limpeza e re-sincronização...');
+            setCleaning(true);
+
+            // Passo 1: Deletar dados antigos
+            showAlert("success", "Deletando dados antigos do HubSpot...");
+            const cleanupResponse = await fetch("/api/hubspot/cleanup", {
+                method: "DELETE",
+            });
+            const cleanupResult = await cleanupResponse.json();
+
+            if (!cleanupResult.success) {
+                throw new Error(cleanupResult.error || "Erro ao deletar dados");
+            }
+
+            console.log(`✅ ${cleanupResult.deleted} registros deletados`);
+
+            // Passo 2: Sincronizar novamente
+            showAlert("success", "Re-sincronizando dados do SQL Server...");
+            await syncFromSQLServer();
+
+            showAlert("success", "Limpeza e re-sincronização concluídas!");
+        } catch (error: any) {
+            console.error('❌ Erro na limpeza:', error);
+            showAlert("error", `Erro: ${error.message}`);
+        } finally {
+            setCleaning(false);
+        }
+    };
+
+    const verifySchema = async () => {
+        try {
+            console.log('🔍 Verificando schema do HubSpot...');
+            setVerifyingSchema(true);
+            showAlert("success", "Verificando estrutura do banco de dados...");
+
+            const response = await fetch("/api/hubspot/schema");
+            const result = await response.json();
+
+            if (!result.success) {
+                throw new Error(result.error || "Erro ao verificar schema");
+            }
+
+            console.log('📊 Schema verificado:', result);
+
+            // Mostrar resumo
+            const message = `
+Schema verificado! 
+✓ ${result.totalColumns} colunas na tabela Deal
+✓ ${result.criticalFields.filter((f: any) => f.exists).length}/${result.criticalFields.length} campos críticos encontrados
+✓ ${result.relatedTables.filter((t: any) => t.exists).length}/${result.relatedTables.length} tabelas relacionadas disponíveis
+
+${result.recommendations.join('\n')}
+            `.trim();
+
+            showAlert("success", message);
+
+            // Abrir console para ver detalhes completos
+            console.table(result.criticalFields);
+            console.table(result.relatedTables);
+            console.log('💡 Recomendações:', result.recommendations);
+
+        } catch (error: any) {
+            console.error('❌ Erro ao verificar schema:', error);
+            showAlert("error", `Erro: ${error.message}`);
+        } finally {
+            setVerifyingSchema(false);
         }
     };
 
@@ -464,10 +559,10 @@ export default function HubSpotReportPage() {
                         </p>
                     </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 flex-wrap">
                     <Button
                         onClick={syncFromSQLServer}
-                        disabled={syncing}
+                        disabled={syncing || cleaning}
                         variant="outline"
                         className="gap-2"
                     >
@@ -480,6 +575,42 @@ export default function HubSpotReportPage() {
                             <>
                                 <RefreshCw className="w-4 h-4" />
                                 Sincronizar
+                            </>
+                        )}
+                    </Button>
+                    <Button 
+                        onClick={cleanAndResync} 
+                        disabled={syncing || cleaning}
+                        variant="outline" 
+                        className="gap-2 text-orange-600 hover:text-orange-700"
+                    >
+                        {cleaning ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Limpando...
+                            </>
+                        ) : (
+                            <>
+                                <Trash2 className="w-4 h-4" />
+                                Limpar & Re-Sincronizar
+                            </>
+                        )}
+                    </Button>
+                    <Button 
+                        onClick={verifySchema} 
+                        disabled={verifyingSchema}
+                        variant="outline" 
+                        className="gap-2 text-blue-600 hover:text-blue-700"
+                    >
+                        {verifyingSchema ? (
+                            <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                Verificando...
+                            </>
+                        ) : (
+                            <>
+                                <Database className="w-4 h-4" />
+                                Verificar Schema
                             </>
                         )}
                     </Button>
