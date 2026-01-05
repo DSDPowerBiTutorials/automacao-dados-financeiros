@@ -196,19 +196,25 @@ export default function Sidebar() {
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 bg-gradient-to-br from-[#243140] to-[#1a2530] rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
-                <Image
-                  src="/favicon-32x32.png"
-                  alt="DSD Logo"
-                  width={24}
-                  height={24}
-                  className="w-6 h-6"
-                />
-              </div>
-              {!collapsed && (
-                <div>
-                  <h1 className="text-[#243140] font-bold text-base tracking-tight">DSD Finance Hub</h1>
-                  <p className="text-gray-500 text-[11px] font-medium">Financial Management</p>
+              {collapsed ? (
+                <div className="h-10 w-10 bg-gradient-to-br from-[#243140] to-[#1a2530] rounded-xl flex items-center justify-center shadow-lg flex-shrink-0">
+                  <Image
+                    src="/favicon-32x32.png"
+                    alt="DSD Logo"
+                    width={24}
+                    height={24}
+                    className="w-6 h-6"
+                  />
+                </div>
+              ) : (
+                <div className="flex items-center pl-2">
+                  <Image
+                    src="/Logo.png"
+                    alt="Digital Smile Design"
+                    width={140}
+                    height={40}
+                    className="w-auto h-8"
+                  />
                 </div>
               )}
             </div>

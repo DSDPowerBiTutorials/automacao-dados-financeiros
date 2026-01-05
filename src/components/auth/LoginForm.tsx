@@ -59,17 +59,22 @@ export function LoginForm() {
             {/* Login Card */}
             <Card className="relative z-10 w-full max-w-md shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
                 <CardHeader className="space-y-6 text-center pb-8 pt-10">
-                    {/* Logo Circle */}
-                    <div className="mx-auto w-24 h-24 bg-gradient-to-br from-[#243140] to-[#1a2530] rounded-2xl flex items-center justify-center shadow-xl transform hover:scale-105 transition-transform duration-300">
-                        <Lock className="w-12 h-12 text-white" />
+                    {/* Logo */}
+                    <div className="mx-auto transform hover:scale-105 transition-transform duration-300">
+                        <Image
+                            src="/Logo.png"
+                            alt="Digital Smile Design"
+                            width={180}
+                            height={60}
+                            className="w-auto h-16"
+                            priority
+                        />
                     </div>
-                    <div>
-                        <CardTitle className="text-4xl font-bold bg-gradient-to-r from-[#243140] to-[#1a2530] bg-clip-text text-transparent">
-                            DSD Finance Hub
-                        </CardTitle>
-                        <CardDescription className="text-base mt-3 text-gray-600 font-medium">
-                            Integrated Financial Management Platform
+                    <div className="space-y-3">
+                        <CardDescription className="text-sm text-gray-600 font-medium tracking-wide">
+                            In-house code. Shaped by how we work
                         </CardDescription>
+                        <div className="h-px w-24 mx-auto bg-gradient-to-r from-transparent via-gray-300 to-transparent" />
                     </div>
                 </CardHeader>
 
