@@ -55,6 +55,18 @@ export async function POST(request: Request) {
 
         console.log(`📊 Processando ${result.recordset.length} deals (query: ${usedQuery})`);
 
+        // 🔍 DEBUG: Mostrar campos do primeiro deal
+        if (result.recordset.length > 0) {
+            const firstDeal = result.recordset[0];
+            console.log('🔍 DEBUG - Campos disponíveis no primeiro deal:');
+            console.log('  - DealId:', firstDeal.DealId);
+            console.log('  - dealname:', firstDeal.dealname);
+            console.log('  - ip__ecomm_bridge__order_number:', firstDeal.ip__ecomm_bridge__order_number);
+            console.log('  - website_order_id:', firstDeal.website_order_id);
+            console.log('  - product_quantity:', firstDeal.product_quantity);
+            console.log('  - product_amount:', firstDeal.product_amount);
+        }
+
         // Transformar dados para o formato csv_rows
         const rows = result.recordset.map((deal: any) => {
             // Dados básicos do deal
@@ -163,7 +175,7 @@ export async function POST(request: Request) {
                     final_price: amount, // amount já é o valor final
 
                     // E-commerce
-                    ecomm_order_number: deal.ecomm_order_number || null,
+                    ecomm_order_number: deal.ip__ecomm_bridge__order_number || deal.ecomm_order_number || null,
                     website_order_id: deal.website_order_id || null,
                     synced_at: new Date().toISOString(),
                     query_type: usedQuery,
@@ -172,6 +184,12 @@ export async function POST(request: Request) {
         });
 
         console.log(`🔄 Transformados ${rows.length} deals para inserir no Supabase`);
+
+        // 🔍 DEBUG: Verificar campos e-commerce
+        const withEcommOrder = rows.filter((r: any) => r.custom_data.ecomm_order_number).length;
+        const withWebsiteOrder = rows.filter((r: any) => r.custom_data.website_order_id).length;
+        console.log(`🛒 ${withEcommOrder} deals com ecomm_order_number (${((withEcommOrder / rows.length) * 100).toFixed(1)}%)`);
+        console.log(`🌐 ${withWebsiteOrder} deals com website_order_id (${((withWebsiteOrder / rows.length) * 100).toFixed(1)}%)`);
 
         // Contar quantos têm email para linkagem
         const withEmail = rows.filter((r: any) => r.customer_email).length;

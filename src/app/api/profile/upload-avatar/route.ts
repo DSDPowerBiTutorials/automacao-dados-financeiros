@@ -39,6 +39,31 @@ export async function POST(request: NextRequest) {
         const fileName = `${user.id}-${Date.now()}.${fileExt}`;
         const filePath = `avatars/${fileName}`;
 
+        console.log(`📤 Uploading avatar for user ${user.id}: ${filePath}`);
+
+        // Verificar se o bucket existe
+        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+        
+        if (bucketsError) {
+            console.error('Error listing buckets:', bucketsError);
+            return NextResponse.json({ 
+                error: 'Storage configuration error. Please contact administrator.',
+                details: bucketsError.message 
+            }, { status: 500 });
+        }
+
+        const bucketExists = buckets?.some(b => b.name === 'user-uploads');
+        
+        if (!bucketExists) {
+            console.error('❌ Bucket "user-uploads" does not exist!');
+            return NextResponse.json({ 
+                error: 'Storage bucket not configured. Please run PROFILE-SETUP.sql in Supabase.',
+                hint: 'Execute: INSERT INTO storage.buckets (id, name, public) VALUES (\'user-uploads\', \'user-uploads\', true);'
+            }, { status: 500 });
+        }
+
+        console.log('✅ Bucket exists, proceeding with upload');
+
         // Upload to Supabase Storage
         const { data: uploadData, error: uploadError } = await supabase.storage
             .from('user-uploads')
@@ -48,9 +73,17 @@ export async function POST(request: NextRequest) {
             });
 
         if (uploadError) {
-            console.error('Error uploading file:', uploadError);
-            return NextResponse.json({ error: 'Failed to upload file' }, { status: 500 });
+            console.error('❌ Error uploading file:', uploadError);
+            return NextResponse.json({ 
+                error: 'Failed to upload file',
+                details: uploadError.message,
+                hint: uploadError.message.includes('policy') 
+                    ? 'Storage policies not configured. Please run PROFILE-SETUP.sql in Supabase.'
+                    : uploadError.message
+            }, { status: 500 });
         }
+
+        console.log('✅ File uploaded successfully:', uploadData);
 
         // Get public URL
         const { data: { publicUrl } } = supabase.storage

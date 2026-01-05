@@ -182,6 +182,10 @@ export default function ProfilePage() {
             const data = await response.json();
 
             if (!response.ok) {
+                // Mostrar dica se for erro de configuração
+                if (data.hint) {
+                    throw new Error(`${data.error}\n\nDica: ${data.hint}`);
+                }
                 throw new Error(data.error || 'Failed to upload avatar');
             }
 
@@ -194,10 +198,16 @@ export default function ProfilePage() {
             });
         } catch (error: any) {
             console.error('Error uploading avatar:', error);
+            
+            // Mostrar mensagem mais detalhada
+            const errorMessage = error.message || 'Failed to upload avatar';
+            const isConfigError = errorMessage.includes('bucket') || errorMessage.includes('policy');
+            
             toast({
-                title: 'Error',
-                description: error.message || 'Failed to upload avatar',
+                title: isConfigError ? 'Configuration Error' : 'Error',
+                description: errorMessage,
                 variant: 'destructive',
+                duration: isConfigError ? 10000 : 5000, // Mostrar mais tempo se for erro de config
             });
         } finally {
             setIsUploadingAvatar(false);

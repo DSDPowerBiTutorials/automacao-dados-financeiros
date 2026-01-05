@@ -9,13 +9,40 @@
 -- 1. CRIAR BUCKET DE STORAGE (se não existir)
 -- =========================================
 
--- Criar bucket para uploads de usuários (avatares, etc)
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('user-uploads', 'user-uploads', true)
-ON CONFLICT (id) DO NOTHING;
+-- Verificar se bucket já existe
+DO $$ 
+BEGIN
+    -- Tentar criar o bucket
+    INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+    VALUES (
+        'user-uploads', 
+        'user-uploads', 
+        true,
+        2097152, -- 2MB em bytes
+        ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif']
+    )
+    ON CONFLICT (id) DO UPDATE SET
+        public = true,
+        file_size_limit = 2097152,
+        allowed_mime_types = ARRAY['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif'];
+    
+    RAISE NOTICE '✅ Bucket "user-uploads" criado/atualizado com sucesso';
+EXCEPTION 
+    WHEN OTHERS THEN
+        RAISE NOTICE '⚠️ Erro ao criar bucket: %', SQLERRM;
+END $$;
 
 -- =========================================
--- 2. POLÍTICAS DE STORAGE
+-- 2. REMOVER POLÍTICAS ANTIGAS (se existirem)
+-- =========================================
+
+DROP POLICY IF EXISTS "Authenticated users can upload avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can update their own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Users can delete their own avatars" ON storage.objects;
+DROP POLICY IF EXISTS "Anyone can view avatars" ON storage.objects;
+
+-- =========================================
+-- 3. CRIAR NOVAS POLÍTICAS DE STORAGE
 -- =========================================
 
 -- Permitir que usuários autenticados façam upload de avatares
@@ -34,7 +61,6 @@ TO authenticated
 USING (
     bucket_id = 'user-uploads' 
     AND (storage.foldername(name))[1] = 'avatars'
-    AND auth.uid()::text = (string_to_array(name, '-'))[1]
 );
 
 -- Permitir que usuários autenticados deletem seus próprios avatares
@@ -44,7 +70,6 @@ TO authenticated
 USING (
     bucket_id = 'user-uploads' 
     AND (storage.foldername(name))[1] = 'avatars'
-    AND auth.uid()::text = (string_to_array(name, '-'))[1]
 );
 
 -- Permitir que todos vejam avatares (leitura pública)
