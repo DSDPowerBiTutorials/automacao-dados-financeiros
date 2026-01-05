@@ -185,22 +185,34 @@ export default function HubSpotReportPage() {
 
     const fetchRows = async () => {
         try {
+            console.log('🔄 [FETCH] Iniciando fetchRows...');
             setLoading(true);
             setCurrentPage(1); // Resetar página ao carregar novos dados
 
+            console.log('📡 [FETCH] Fazendo query no Supabase...');
             // Usar range com limit para carregar apenas dados paginados do servidor
             const { data, error, count } = await supabase
                 .from("csv_rows")
                 .select("*", { count: "exact" })
                 .eq("source", "hubspot")
-                .order("date", { ascending: false });
+                .order("date", { ascending: false })
+                .limit(500); // LIMITAR para evitar travamento
 
-            if (error) throw error;
+            console.log(`✅ [FETCH] Query completou: ${data?.length} registros, total: ${count}`);
+
+            if (error) {
+                console.error('❌ [FETCH] Erro na query:', error);
+                throw error;
+            }
+
             setRows(data || []);
+            console.log('✅ [FETCH] Dados carregados com sucesso!');
         } catch (error: any) {
+            console.error('❌ [FETCH] Erro ao carregar dados:', error);
             showAlert("error", `Erro ao carregar dados: ${error.message}`);
         } finally {
             setLoading(false);
+            console.log('🏁 [FETCH] fetchRows finalizado');
         }
     };
 
