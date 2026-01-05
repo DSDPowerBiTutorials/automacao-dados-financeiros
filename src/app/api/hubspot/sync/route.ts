@@ -1,87 +1,51 @@
 import { NextResponse } from 'next/server';
 import { getSQLServerConnection, closeSQLServerConnection } from '@/lib/sqlserver';
 import { supabaseAdmin } from '@/lib/supabase-admin';
+import { cleanProductName, extractCurrency } from '@/lib/matching-engine';
+import { ENRICHED_HUBSPOT_QUERY, SIMPLE_HUBSPOT_QUERY } from '@/lib/hubspot-queries';
 import crypto from 'crypto';
-
-// Nome fixo da tabela (verificado via test-sqlserver.js)
-// Usar colchetes para evitar problemas de case sensitivity
-const HUBSPOT_DEALS_TABLE = '[dbo].[Deals]';
 
 // Rota para sincronizar dados do HubSpot via SQL Server Data Warehouse
 export async function POST(request: Request) {
-    let diagnosticInfo = {
-        currentDatabase: '',
-        availableTables: [] as string[],
-        attempts: [] as { table: string; success: boolean; error?: string }[],
-    };
-
     try {
-        console.log('Iniciando sincronização HubSpot...');
+        console.log('🔄 Iniciando sincronização HubSpot...');
 
         // Conectar no SQL Server
         const pool = await getSQLServerConnection();
-        console.log('✓ Conectado ao SQL Server');
+        console.log('✅ Conectado ao SQL Server');
 
-        // DIAGNÓSTICO: Verificar database e tabelas disponíveis
-        try {
-            const dbCheck = await pool.request().query('SELECT DB_NAME() AS current_db');
-            diagnosticInfo.currentDatabase = dbCheck.recordset[0].current_db;
-            console.log(`Database atual: ${diagnosticInfo.currentDatabase}`);
+        // Data de início: buscar deals dos últimos 2 anos
+        const startDate = new Date();
+        startDate.setFullYear(startDate.getFullYear() - 2);
+        const startDateStr = startDate.toISOString().split('T')[0];
 
-            const tablesCheck = await pool.request().query(`
-                SELECT TABLE_SCHEMA, TABLE_NAME 
-                FROM INFORMATION_SCHEMA.TABLES 
-                WHERE TABLE_NAME LIKE '%Deal%'
-                ORDER BY TABLE_NAME
-            `);
-            diagnosticInfo.availableTables = tablesCheck.recordset.map((t: any) => `${t.TABLE_SCHEMA}.${t.TABLE_NAME}`);
-            console.log(`Tabelas com "Deal": ${diagnosticInfo.availableTables.join(', ')}`);
-        } catch (diagError: any) {
-            console.error('Erro no diagnóstico:', diagError);
-            throw new Error(`Erro ao verificar database: ${diagError.message}`);
-        }
+        console.log(`📅 Buscando deals desde: ${startDateStr}`);
 
-        // Tentar diferentes formatos do nome da tabela (SINGULAR: Deal, não Deals!)
-        const tableVariations = ['Deal', '[Deal]', 'dbo.Deal', '[dbo].[Deal]'];
+        // Tentar query enriquecida primeiro
         let result: any = null;
-        let usedTableName = '';
+        let usedQuery = 'enriched';
 
-        // Data de início: 01/01/2024
-        const startDate = '2024-01-01';
+        try {
+            console.log('🔍 Tentando query enriquecida (Deal + Contact + Company + LineItem)...');
 
-        for (const tableName of tableVariations) {
+            const query = ENRICHED_HUBSPOT_QUERY.replace('@startDate', `'${startDateStr}'`);
+            result = await pool.request().query(query);
+
+            console.log(`✅ Query enriquecida funcionou! ${result.recordset.length} deals`);
+        } catch (enrichedError: any) {
+            console.warn('⚠️ Query enriquecida falhou, tentando query simples...', enrichedError.message);
+
             try {
-                console.log(`Tentando: ${tableName}`);
-                // Buscar deals desde 01/01/2024 (limitado a 2000 para performance)
-                result = await pool.request().query(`
-                    SELECT TOP 2000 * 
-                    FROM ${tableName}
-                    WHERE hs_lastmodifieddate >= '${startDate}'
-                    ORDER BY hs_lastmodifieddate DESC
-                `);
-                usedTableName = tableName;
-                diagnosticInfo.attempts.push({ table: tableName, success: true });
-                console.log(`✓ Sucesso com: ${tableName} (${result.recordset.length} deals desde ${startDate})`);
-                break;
-            } catch (err: any) {
-                const errorMsg = err.message.split('\n')[0];
-                diagnosticInfo.attempts.push({ table: tableName, success: false, error: errorMsg });
-                console.log(`✗ Falhou ${tableName}: ${errorMsg}`);
+                const query = SIMPLE_HUBSPOT_QUERY.replace('@startDate', `'${startDateStr}'`);
+                result = await pool.request().query(query);
+                usedQuery = 'simple';
+                console.log(`✅ Query simples funcionou! ${result.recordset.length} deals`);
+            } catch (simpleError: any) {
+                throw new Error(`Ambas queries falharam. Enriquecida: ${enrichedError.message}. Simples: ${simpleError.message}`);
             }
         }
 
         if (!result || result.recordset.length === 0) {
-            throw new Error(
-                `Nenhuma variação de nome de tabela funcionou.\n\n` +
-                `Database conectado: ${diagnosticInfo.currentDatabase}\n` +
-                `Tabelas disponíveis com "Deal": ${diagnosticInfo.availableTables.length > 0 ? diagnosticInfo.availableTables.join(', ') : 'NENHUMA'}\n\n` +
-                `Tentativas:\n${diagnosticInfo.attempts.map(a => `  ${a.table}: ${a.success ? '✓' : '✗ ' + a.error}`).join('\n')}`
-            );
-        }
-
-        console.log(`Encontrados ${result.recordset.length} deals usando: ${usedTableName}`);
-
-        if (result.recordset.length === 0) {
             return NextResponse.json({
                 success: true,
                 message: 'Nenhum deal encontrado no período',
@@ -89,164 +53,162 @@ export async function POST(request: Request) {
             });
         }
 
-        // Mapear colunas dinamicamente (detectar nomes de colunas automaticamente)
-        const firstRow = result.recordset[0];
-        const columns = Object.keys(firstRow);
-
-        console.log('Colunas detectadas:', columns);
-
-        // Função auxiliar para encontrar coluna por padrões (case-insensitive)
-        const findColumn = (patterns: string[]): string | null => {
-            const lowerPatterns = patterns.map(p => p.toLowerCase());
-
-            // Primeiro tenta match exato (case-insensitive)
-            for (const col of columns) {
-                if (lowerPatterns.includes(col.toLowerCase())) {
-                    return col;
-                }
-            }
-
-            // Depois tenta partial match
-            for (const pattern of lowerPatterns) {
-                const col = columns.find(c =>
-                    c.toLowerCase().includes(pattern)
-                );
-                if (col) return col;
-            }
-            return null;
-        };
-
-        // Detectar colunas importantes
-        const colId = findColumn(['DealId', 'deal_id', 'dealid', 'id']);
-        const colName = findColumn(['dealname', 'deal_name', 'name', 'title']);
-        const colAmount = findColumn(['amount', 'value', 'deal_amount', 'amount_in_home_currency']);
-        const colDate = findColumn(['closedate', 'close_date', 'hs_closed_won_date', 'hs_closed_deal_close_date', 'createdate', 'date', 'created']);
-        const colStage = findColumn(['dealstage', 'stage']);
-        const colPipeline = findColumn(['deal_pipeline', 'pipeline']);
-        const colOwner = findColumn(['hubspot_owner_id', 'owner', 'owner_name', 'ownername']);
-        const colCompany = findColumn(['hs_primary_associated_company', 'company', 'company_name', 'companyname']);
-        const colCurrency = findColumn(['deal_currency_code', 'currency', 'currency_code']);
+        console.log(`📊 Processando ${result.recordset.length} deals (query: ${usedQuery})`);
 
         // Transformar dados para o formato csv_rows
         const rows = result.recordset.map((deal: any) => {
-            const dealId = colId ? deal[colId] : null;
-            const dealName = colName ? deal[colName] : 'Deal';
-            const amount = colAmount ? parseFloat(deal[colAmount]) || 0 : 0;
+            // Dados básicos do deal
+            const dealId = deal.DealId;
+            const dealName = deal.dealname || 'Deal sem nome';
+            const amount = parseFloat(deal.amount) || 0;
 
-            // Melhorar detecção da data: tentar múltiplas colunas e formatos
+            // Data: priorizar closedate
             let closeDate = new Date();
-            let usedDateColumn = 'unknown';
-
-            // Tentar ordem de preferência: closedate > hs_closed_won_date > hs_closed_deal_close_date > createdate
-            const dateColumnsToTry = [
-                { col: 'closedate', name: 'closedate' },
-                { col: colDate, name: `${colDate || 'detected'}` },
-                { col: 'hs_closed_won_date', name: 'hs_closed_won_date' },
-                { col: 'hs_closed_deal_close_date', name: 'hs_closed_deal_close_date' },
-                { col: 'createdate', name: 'createdate' },
-            ];
-
-            for (const { col, name } of dateColumnsToTry) {
-                if (!col || !deal[col]) continue;
-
-                const dateValue = deal[col];
-                if (dateValue === null || dateValue === undefined || dateValue === '') continue;
-
-                // Tentar fazer parse de diferentes formatos
-                let parsedDate = new Date(dateValue);
-
-                // Se for timestamp (número em ms), converter
-                if (typeof dateValue === 'number') {
-                    parsedDate = new Date(dateValue);
-                } else if (typeof dateValue === 'string') {
-                    // Tentar múltiplos formatos
-                    parsedDate = new Date(dateValue);
-
-                    // Se falhar, tentar ISO ou timestamp em ms
-                    if (isNaN(parsedDate.getTime())) {
-                        const asMs = parseInt(dateValue);
-                        if (!isNaN(asMs)) {
-                            parsedDate = new Date(asMs);
-                        }
-                    }
-                }
-
-                if (!isNaN(parsedDate.getTime()) && parsedDate.getTime() !== 0) {
-                    closeDate = parsedDate;
-                    usedDateColumn = name;
-                    break;
-                }
+            if (deal.closedate) {
+                closeDate = new Date(deal.closedate);
+            } else if (deal.createdate) {
+                closeDate = new Date(deal.createdate);
             }
 
-            if (usedDateColumn === 'unknown' || closeDate.getFullYear() === new Date().getFullYear() && closeDate.getMonth() === new Date().getMonth() && closeDate.getDate() === new Date().getDate()) {
-                console.warn(`Data possível com fallback para deal ${dealId}: coluna usada="${usedDateColumn}" | data="${closeDate.toISOString()}"`);
-            }
+            // Cliente
+            const customerEmail = deal.customer_email || null;
+            const customerFirstname = deal.customer_firstname || '';
+            const customerLastname = deal.customer_lastname || '';
+            const customerName = `${customerFirstname} ${customerLastname}`.trim() || null;
+            const customerPhone = deal.customer_phone || null;
 
-            const stage = colStage ? deal[colStage] : 'unknown';
-            const pipeline = colPipeline ? deal[colPipeline] : null;
-            const owner = colOwner ? deal[colOwner] : null;
-            const company = colCompany ? deal[colCompany] : null;
-            const currency = colCurrency ? deal[colCurrency] : 'EUR';
+            // Empresa
+            const companyName = deal.company_name || null;
+
+            // Produto - limpar nome
+            const rawProductName = deal.product_name || deal.dealname;
+            const productName = cleanProductName(rawProductName);
+            const productAmount = deal.product_amount ? parseFloat(deal.product_amount) : null;
+            const productQuantity = deal.product_quantity ? parseInt(deal.product_quantity) : null;
+
+            // Moeda
+            const currency = deal.currency || extractCurrency(dealName) || 'EUR';
+
+            // Descrição para a tabela
+            let description = dealName;
+            if (companyName) {
+                description += ` - ${companyName}`;
+            }
+            if (customerName) {
+                description += ` (${customerName})`;
+            }
 
             return {
                 id: crypto.randomUUID(),
                 file_name: 'hubspot-sync',
                 source: 'hubspot',
-                date: closeDate.toISOString(), // Garantir formato ISO
-                description: `${dealName}${company ? ' - ' + company : ''}`,
+                date: closeDate.toISOString(),
+                description: description,
                 amount: amount,
                 reconciled: false,
+
+                // 🔑 CAMPOS CRÍTICOS PARA LINKAGEM
+                customer_email: customerEmail,
+                customer_name: customerName,
+
                 custom_data: {
+                    // IDs
                     deal_id: dealId,
-                    stage: stage,
-                    pipeline: pipeline,
-                    owner: owner,
-                    company: company,
+                    contact_id: deal.contact_id || null,
+                    company_id: deal.company_id || null,
+
+                    // Deal info
+                    dealname: dealName,
+                    stage: deal.dealstage || 'unknown',
+                    pipeline: deal.pipeline || null,
+                    owner_id: deal.owner_id || null,
                     currency: currency,
-                    closedate: deal['closedate'] || null,
-                    createdate: deal['createdate'] || null,
-                    source_date_column_used: usedDateColumn, // Registrar qual coluna foi usada
-                    raw_close_date: deal[colDate] || null,
+
+                    // Cliente
+                    customer_firstname: customerFirstname,
+                    customer_lastname: customerLastname,
+                    customer_phone: customerPhone,
+                    customer_jobtitle: deal.customer_jobtitle || null,
+                    customer_clinic: deal.customer_clinic || null,
+
+                    // Empresa
+                    company_name: companyName,
+                    company_industry: deal.company_industry || null,
+                    company_website: deal.company_website || null,
+                    company_city: deal.company_city || null,
+                    company_country: deal.company_country || null,
+
+                    // Produto
+                    product_name: productName,
+                    product_name_raw: rawProductName,
+                    product_amount: productAmount,
+                    product_quantity: productQuantity,
+
+                    // E-commerce
+                    ecomm_order_number: deal.ecomm_order_number || null,
+                    website_order_id: deal.website_order_id || null,
+
+                    // Datas
+                    closedate: deal.closedate || null,
+                    createdate: deal.createdate || null,
+
+                    // Metadata
+                    synced_at: new Date().toISOString(),
+                    query_type: usedQuery,
                 },
             };
         });
 
-        console.log(`Transformados ${rows.length} deals para inserir no Supabase`);
+        console.log(`🔄 Transformados ${rows.length} deals para inserir no Supabase`);
+
+        // Contar quantos têm email para linkagem
+        const withEmail = rows.filter((r: any) => r.customer_email).length;
+        const withName = rows.filter((r: any) => r.customer_name).length;
+        const withProduct = rows.filter((r: any) => r.custom_data.product_name).length;
+
+        console.log(`📧 ${withEmail} deals com email (${((withEmail / rows.length) * 100).toFixed(1)}%)`);
+        console.log(`👤 ${withName} deals com nome do cliente (${((withName / rows.length) * 100).toFixed(1)}%)`);
+        console.log(`📦 ${withProduct} deals com produto (${((withProduct / rows.length) * 100).toFixed(1)}%)`);
 
         // Inserir no Supabase (substituir dados existentes do HubSpot)
-        // Primeiro, deletar dados antigos
-        console.log('Deletando dados antigos do HubSpot...');
+        console.log('🗑️ Deletando dados antigos do HubSpot...');
         const { error: deleteError } = await supabaseAdmin
             .from('csv_rows')
             .delete()
             .eq('source', 'hubspot');
 
         if (deleteError) {
-            console.error('Erro ao deletar dados antigos:', deleteError);
+            console.error('❌ Erro ao deletar dados antigos:', deleteError);
             throw deleteError;
         }
 
-        console.log('Inserindo novos dados...');
-        // Inserir novos dados
-        const { data, error: insertError } = await supabaseAdmin
+        console.log('💾 Inserindo novos dados...');
+        const { error: insertError } = await supabaseAdmin
             .from('csv_rows')
             .insert(rows);
 
         if (insertError) {
-            console.error('Erro ao inserir dados:', insertError);
+            console.error('❌ Erro ao inserir dados:', insertError);
             throw insertError;
         }
 
-        console.log(`✓ ${rows.length} deals sincronizados com sucesso`);
+        console.log(`✅ ${rows.length} deals sincronizados com sucesso!`);
 
         return NextResponse.json({
             success: true,
             message: `${rows.length} deals sincronizados com sucesso`,
             count: rows.length,
+            stats: {
+                total: rows.length,
+                withEmail: withEmail,
+                withName: withName,
+                withProduct: withProduct,
+                queryType: usedQuery,
+            },
         });
 
     } catch (error: any) {
-        console.error('Erro na sincronização:', error);
+        console.error('❌ Erro na sincronização:', error);
         return NextResponse.json(
             {
                 success: false,
