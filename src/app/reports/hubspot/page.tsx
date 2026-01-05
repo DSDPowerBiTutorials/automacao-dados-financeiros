@@ -218,6 +218,32 @@ export default function HubSpotReportPage() {
         return <Badge className="bg-red-500">🔴 {confidence}%</Badge>;
     };
 
+    // Extrair Short Number (primeiros 7 caracteres alfanuméricos do dealname)
+    const extractShortNumber = (dealname: string | undefined): string => {
+        if (!dealname) return "";
+        // Remover espaços e pegar primeiros 7 caracteres alfanuméricos
+        const cleaned = dealname.trim().toLowerCase();
+        const match = cleaned.match(/^[a-z0-9]{7}/);
+        return match ? match[0] : cleaned.substring(0, 7);
+    };
+
+    // Gerar Invoice Number no padrão #DSDES{SHORT_NUMBER_UPPERCASE}
+    const getInvoiceNumber = (dealname: string | undefined): string => {
+        const shortNumber = extractShortNumber(dealname);
+        if (!shortNumber) return "";
+        return `#DSDES${shortNumber.toUpperCase()}`;
+    };
+
+    // Extrair Long Number (32 caracteres - hash MD5 completo)
+    const extractLongNumber = (dealname: string | undefined): string => {
+        if (!dealname) return "";
+        const cleaned = dealname.trim().toLowerCase();
+        // Se tem 32 caracteres, é o long number
+        if (cleaned.length === 32) return cleaned;
+        // Senão, pegar primeiros 32
+        return cleaned.substring(0, Math.min(32, cleaned.length));
+    };
+
     const getStatusIcon = (stage: string) => {
         // Mapear status do HubSpot para ícones coloridos
         const stageColors: Record<string, string> = {
@@ -678,19 +704,26 @@ export default function HubSpotReportPage() {
                                                     />
                                                 </td>
 
-                                                {/* Order (Deal ID) */}
+                                                {/* Order (Short Number - 7 chars) */}
                                                 <td className="px-4 py-3">
                                                     <a
-                                                        href={`#deal-${row.custom_data?.deal_id}`}
-                                                        className="text-blue-600 hover:underline font-mono text-sm"
+                                                        href={`#order-${extractShortNumber(row.custom_data?.dealname)}`}
+                                                        className="text-blue-600 hover:underline font-mono text-sm font-semibold"
+                                                        title={`ID: ${row.custom_data?.deal_id || 'N/A'}\nNumber: ${extractLongNumber(row.custom_data?.dealname) || 'N/A'}\nInvoice: ${getInvoiceNumber(row.custom_data?.dealname) || 'N/A'}`}
                                                     >
-                                                        {row.custom_data?.deal_id || "-"}
+                                                        {extractShortNumber(row.custom_data?.dealname) || row.custom_data?.deal_id || "-"}
                                                     </a>
                                                 </td>
 
-                                                {/* Reference (Deal Name) */}
+                                                {/* Reference (Invoice Pattern) */}
                                                 <td className="px-4 py-3 text-sm font-mono">
-                                                    {row.custom_data?.dealname || row.custom_data?.deal_id || "-"}
+                                                    <a
+                                                        href={`#invoice-${extractShortNumber(row.custom_data?.dealname)}`}
+                                                        className="text-blue-600 hover:underline font-semibold"
+                                                        title={`Full Number: ${extractLongNumber(row.custom_data?.dealname) || 'N/A'}`}
+                                                    >
+                                                        {getInvoiceNumber(row.custom_data?.dealname) || extractShortNumber(row.custom_data?.dealname) || row.custom_data?.dealname || "-"}
+                                                    </a>
                                                 </td>
 
                                                 {/* Status (com ícone colorido) */}
@@ -821,7 +854,9 @@ export default function HubSpotReportPage() {
                                                             <h4 className="font-semibold text-sm mb-3 text-gray-700">
                                                                 Order Details
                                                             </h4>
-                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+
+                                                            {/* Totals Grid */}
+                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mb-4">
                                                                 <div>
                                                                     <span className="text-gray-600">Qty:</span>
                                                                     <p className="font-medium">
@@ -848,11 +883,43 @@ export default function HubSpotReportPage() {
                                                                 </div>
                                                             </div>
 
-                                                            {row.customer_name && (
-                                                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                                            {/* Order Codes Section */}
+                                                            <div className="border-t border-gray-200 pt-3 mb-3">
+                                                                <h5 className="font-semibold text-xs text-gray-700 mb-2">Order Codes</h5>
+                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-gray-600 min-w-[80px]">Order:</span>
+                                                                        <code className="bg-blue-50 px-2 py-1 rounded font-mono text-blue-700">
+                                                                            {extractShortNumber(row.custom_data?.dealname) || "-"}
+                                                                        </code>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-gray-600 min-w-[80px]">ID:</span>
+                                                                        <code className="bg-gray-50 px-2 py-1 rounded font-mono text-gray-700">
+                                                                            {row.custom_data?.deal_id || "-"}
+                                                                        </code>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-gray-600 min-w-[80px]">Invoice:</span>
+                                                                        <code className="bg-green-50 px-2 py-1 rounded font-mono text-green-700">
+                                                                            {getInvoiceNumber(row.custom_data?.dealname) || "-"}
+                                                                        </code>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-gray-600 min-w-[80px]">Number:</span>
+                                                                        <code className="bg-gray-50 px-2 py-1 rounded font-mono text-gray-700 text-xs truncate" title={extractLongNumber(row.custom_data?.dealname)}>
+                                                                            {extractLongNumber(row.custom_data?.dealname) || "-"}
+                                                                        </code>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Customer Info */}
+                                                            {(row.customer_name || row.customer_email) && (
+                                                                <div className="border-t border-gray-200 pt-3">
                                                                     <span className="text-gray-600 text-sm">Customer:</span>
-                                                                    <p className="font-medium">{row.customer_name}</p>
-                                                                    <p className="text-sm text-gray-500">{row.customer_email}</p>
+                                                                    {row.customer_name && <p className="font-medium">{row.customer_name}</p>}
+                                                                    {row.customer_email && <p className="text-sm text-gray-500">{row.customer_email}</p>}
                                                                 </div>
                                                             )}
 
