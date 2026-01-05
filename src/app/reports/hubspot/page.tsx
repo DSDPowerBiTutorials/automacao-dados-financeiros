@@ -626,7 +626,7 @@ export default function HubSpotReportPage() {
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        
+
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Order
@@ -664,144 +664,209 @@ export default function HubSpotReportPage() {
                                 {paginatedRows.map((row) => {
                                     const isEditing = editingId === row.id;
                                     const isExpanded = expandedRows.has(row.id);
+
                                     return (
-                                        <tr key={row.id} className="hover:bg-gray-50">
-                                            <td className="px-4 py-3">
-                                                <Checkbox
-                                                    checked={row.reconciled}
-                                                    onCheckedChange={() =>
-                                                        toggleReconciled(row.id, row.reconciled)
-                                                    }
-                                                />
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                {getMatchIndicator(row) || (
-                                                    <span className="text-gray-400 text-xs">-</span>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {isEditing ? (
-                                                    <Input
-                                                        type="date"
-                                                        value={editingData.date}
-                                                        onChange={(e) =>
-                                                            setEditingData({
-                                                                ...editingData,
-                                                                date: e.target.value,
-                                                            })
-                                                        }
-                                                        className="w-32"
-                                                    />
-                                                ) : (
-                                                    formatDate(row.date)
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm font-mono text-xs">
-                                                {row.custom_data?.deal_id || "-"}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm max-w-xs">
-                                                {isEditing ? (
-                                                    <Input
-                                                        value={editingData.description}
-                                                        onChange={(e) =>
-                                                            setEditingData({
-                                                                ...editingData,
-                                                                description: e.target.value,
-                                                            })
+                                        <>
+                                            <tr key={row.id} className="hover:bg-gray-50">
+                                                {/* Checkbox */}
+                                                <td className="px-4 py-3">
+                                                    <Checkbox
+                                                        checked={row.reconciled}
+                                                        onCheckedChange={() =>
+                                                            toggleReconciled(row.id, row.reconciled)
                                                         }
                                                     />
-                                                ) : (
-                                                    <div className="truncate" title={row.description}>
-                                                        {row.description}
+                                                </td>
+
+                                                {/* Order (Deal ID) */}
+                                                <td className="px-4 py-3">
+                                                    <a
+                                                        href={`#deal-${row.custom_data?.deal_id}`}
+                                                        className="text-blue-600 hover:underline font-mono text-sm"
+                                                    >
+                                                        {row.custom_data?.deal_id || "-"}
+                                                    </a>
+                                                </td>
+
+                                                {/* Reference (Deal Name) */}
+                                                <td className="px-4 py-3 text-sm font-mono">
+                                                    {row.custom_data?.dealname || row.custom_data?.deal_id || "-"}
+                                                </td>
+
+                                                {/* Status (com ícone colorido) */}
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        {getStatusIcon(row.custom_data?.stage || "")}
+                                                        <span className="text-sm">
+                                                            {row.custom_data?.stage || "Unknown"}
+                                                        </span>
                                                     </div>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <div className="max-w-xs">
-                                                    <div className="font-medium truncate" title={row.customer_name}>
-                                                        {row.customer_name || "-"}
+                                                </td>
+
+                                                {/* Date Ordered (closedate) */}
+                                                <td className="px-4 py-3 text-sm">
+                                                    {row.date ? new Date(row.date).toLocaleString('en-US', {
+                                                        hour: 'numeric',
+                                                        minute: '2-digit',
+                                                        hour12: true
+                                                    }) : "-"}
+                                                </td>
+
+                                                {/* Date Paid (matched_at) */}
+                                                <td className="px-4 py-3 text-sm">
+                                                    {row.matched_at ? formatDate(row.matched_at) : "-"}
+                                                </td>
+
+                                                {/* Total Paid */}
+                                                <td className="px-4 py-3 text-right font-medium">
+                                                    {formatCurrency(row.amount)}
+                                                </td>
+
+                                                {/* Paid Status (com ícone) */}
+                                                <td className="px-4 py-3 text-center">
+                                                    <div className="flex items-center justify-center gap-2">
+                                                        {getPaidStatusIcon(row.reconciled)}
+                                                        <span className="text-sm">
+                                                            {row.reconciled ? "Paid" : "Unpaid"}
+                                                        </span>
                                                     </div>
-                                                    <div className="text-xs text-gray-500 truncate" title={row.customer_email}>
+                                                </td>
+
+                                                {/* All Totals (expandível) */}
+                                                <td className="px-4 py-3">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        onClick={() => toggleRowExpansion(row.id)}
+                                                        className="w-full justify-start"
+                                                    >
+                                                        <div className="flex flex-col items-start text-xs">
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="font-semibold">Qty</span>
+                                                                <span className="text-gray-600">
+                                                                    {row.custom_data?.quantity || 0}
+                                                                </span>
+                                                            </div>
+                                                            <div className="flex items-center gap-1">
+                                                                <span className="font-semibold">Price</span>
+                                                                <span className="text-gray-600">
+                                                                    {formatCurrency(row.custom_data?.final_price || row.amount)}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    </Button>
+                                                </td>
+
+                                                {/* Customer (email) */}
+                                                <td className="px-4 py-3">
+                                                    <a
+                                                        href={`mailto:${row.customer_email}`}
+                                                        className="text-blue-600 hover:underline text-sm truncate block max-w-[200px]"
+                                                        title={row.customer_email}
+                                                    >
                                                         {row.customer_email || "-"}
+                                                    </a>
+                                                </td>
+
+                                                {/* Actions */}
+                                                <td className="px-4 py-3">
+                                                    <div className="flex gap-1 justify-center">
+                                                        {isEditing ? (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={() => handleSave(row.id)}
+                                                                >
+                                                                    <Save className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={() => setEditingId(null)}
+                                                                >
+                                                                    <X className="w-4 h-4" />
+                                                                </Button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={() => handleEdit(row)}
+                                                                    title="Edit"
+                                                                >
+                                                                    <Edit2 className="w-4 h-4" />
+                                                                </Button>
+                                                                <Button
+                                                                    size="sm"
+                                                                    variant="ghost"
+                                                                    onClick={() => handleDelete(row.id)}
+                                                                    className="text-red-600"
+                                                                    title="Delete"
+                                                                >
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            </>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                {row.custom_data?.company || "-"}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm">
-                                                <Badge variant="outline">
-                                                    {row.custom_data?.stage || "-"}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-right font-medium">
-                                                {isEditing ? (
-                                                    <Input
-                                                        type="number"
-                                                        step="0.01"
-                                                        value={editingData.amount}
-                                                        onChange={(e) =>
-                                                            setEditingData({
-                                                                ...editingData,
-                                                                amount: parseFloat(e.target.value),
-                                                            })
-                                                        }
-                                                        className="w-28 text-right"
-                                                    />
-                                                ) : (
-                                                    formatCurrency(row.amount)
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3 text-center">
-                                                {row.reconciled ? (
-                                                    <Badge className="bg-green-100 text-green-700">
-                                                        Conciliado
-                                                    </Badge>
-                                                ) : (
-                                                    <Badge variant="secondary">Pendente</Badge>
-                                                )}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <div className="flex gap-2 justify-center">
-                                                    {isEditing ? (
-                                                        <>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => handleSave(row.id)}
-                                                            >
-                                                                <Save className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => setEditingId(null)}
-                                                            >
-                                                                <X className="w-4 h-4" />
-                                                            </Button>
-                                                        </>
-                                                    ) : (
-                                                        <>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => handleEdit(row)}
-                                                            >
-                                                                <Edit2 className="w-4 h-4" />
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                onClick={() => handleDelete(row.id)}
-                                                                className="text-red-600"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </Button>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                                </td>
+                                            </tr>
+
+                                            {/* Expanded Row - All Totals Details */}
+                                            {isExpanded && (
+                                                <tr key={`${row.id}-expanded`} className="bg-gray-50">
+                                                    <td colSpan={11} className="px-4 py-4">
+                                                        <div className="ml-8 p-4 bg-white rounded border border-gray-200">
+                                                            <h4 className="font-semibold text-sm mb-3 text-gray-700">
+                                                                Order Details
+                                                            </h4>
+                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                                                                <div>
+                                                                    <span className="text-gray-600">Qty:</span>
+                                                                    <p className="font-medium">
+                                                                        {row.custom_data?.quantity || 0}
+                                                                    </p>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-600">Items:</span>
+                                                                    <p className="font-medium text-green-600">
+                                                                        {formatCurrency(row.custom_data?.items_total || row.amount)}
+                                                                    </p>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-600">Discounts:</span>
+                                                                    <p className="font-medium text-red-600">
+                                                                        -{formatCurrency(row.custom_data?.discount_amount || 0)}
+                                                                    </p>
+                                                                </div>
+                                                                <div>
+                                                                    <span className="text-gray-600">Price:</span>
+                                                                    <p className="font-medium text-blue-600">
+                                                                        {formatCurrency(row.custom_data?.final_price || row.amount)}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+
+                                                            {row.customer_name && (
+                                                                <div className="mt-3 pt-3 border-t border-gray-200">
+                                                                    <span className="text-gray-600 text-sm">Customer:</span>
+                                                                    <p className="font-medium">{row.customer_name}</p>
+                                                                    <p className="text-sm text-gray-500">{row.customer_email}</p>
+                                                                </div>
+                                                            )}
+
+                                                            {row.custom_data?.company && (
+                                                                <div className="mt-2">
+                                                                    <span className="text-gray-600 text-sm">Company:</span>
+                                                                    <p className="font-medium">{row.custom_data.company}</p>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </>
                                     );
                                 })}
                             </tbody>
