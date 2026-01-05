@@ -6,10 +6,16 @@ Full integration with GoCardless API for Direct Debit and payment management. Au
 ## Configuration
 
 ### 1. Environment Variables
-Add to `.env.local`:
+Add to `.env.local` (NEVER commit this file):
 ```
-GOCARDLESS_ACCESS_TOKEN=***REMOVED***
+GOCARDLESS_ACCESS_TOKEN=your_token_here
 ```
+
+**⚠️ SECURITY WARNING:**
+- NEVER commit API tokens to Git
+- Use GitHub Secrets for deployment
+- Keep `.env.local` in `.gitignore`
+- Revoke immediately if exposed
 
 ### 2. Accessing the Integration
 - **Dashboard**: https://dsdfinancehub.com/reports/gocardless
