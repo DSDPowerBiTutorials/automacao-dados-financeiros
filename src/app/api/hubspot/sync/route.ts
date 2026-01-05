@@ -83,24 +83,29 @@ export async function POST(request: Request) {
             const firstDeal = result.recordset[0];
             console.log('🔍 DEBUG - Campos disponíveis no primeiro deal:');
             console.log('  - DealId:', firstDeal.DealId);
-            console.log('  - dealname:', firstDeal.dealname);
-            console.log('  - ip__ecomm_bridge__order_number:', firstDeal.ip__ecomm_bridge__order_number);
+            console.log('  - order_code:', firstDeal.order_code);
+            console.log('  - ecomm_order_number:', firstDeal.ecomm_order_number);
             console.log('  - website_order_id:', firstDeal.website_order_id);
             console.log('  - product_quantity:', firstDeal.product_quantity);
-            console.log('  - product_amount:', firstDeal.product_amount);
+            console.log('  - product_short_name:', firstDeal.product_short_name);
+            console.log('  - paid_status:', firstDeal.paid_status);
+            console.log('  - paid_amount:', firstDeal.paid_amount);
         }
 
         // Transformar dados para o formato csv_rows
         const rows = result.recordset.map((deal: any) => {
-            // Dados básicos do deal
+            // ==========================================
+            // MAPEAMENTO COMPLETO - Espelha Backend
+            // ==========================================
+            
             const dealId = deal.DealId;
-            const dealName = deal.dealname || 'Deal sem nome';
-            const amount = parseFloat(deal.amount) || 0;
+            const orderCode = deal.order_code || deal.dealname || 'N/A';  // order_code É o dealname
+            const totalAmount = parseFloat(deal.total_amount || deal.amount) || 0;
 
-            // Data: priorizar closedate
+            // Data: priorizar date_ordered (closedate)
             let closeDate = new Date();
-            if (deal.closedate) {
-                closeDate = new Date(deal.closedate);
+            if (deal.date_ordered) {
+                closeDate = new Date(deal.date_ordered);
             } else if (deal.createdate) {
                 closeDate = new Date(deal.createdate);
             }
@@ -115,17 +120,26 @@ export async function POST(request: Request) {
             // Empresa
             const companyName = deal.company_name || null;
 
-            // Produto - limpar nome
-            const rawProductName = deal.product_name || deal.dealname;
-            const productName = cleanProductName(rawProductName);
-            const productAmount = deal.product_amount ? parseFloat(deal.product_amount) : null;
+            // Produto
+            const productName = deal.product_short_name || deal.product_name || orderCode;
+            const productNameFull = deal.product_name || '';
             const productQuantity = deal.product_quantity ? parseInt(deal.product_quantity) : null;
+            const productAmount = deal.product_amount ? parseFloat(deal.product_amount) : null;
+            const productUnitPrice = deal.product_unit_price ? parseFloat(deal.product_unit_price) : null;
+            const productSku = deal.product_sku || null;
 
             // Moeda
-            const currency = deal.currency || extractCurrency(dealName) || 'EUR';
+            const currency = deal.currency || 'EUR';
 
-            // Descrição para a tabela
-            let description = dealName;
+            // Status de pagamento
+            const paidStatus = deal.paid_status || 'Unpaid';
+            const paidAmount = deal.paid_amount ? parseFloat(deal.paid_amount) : 0;
+
+            // Order Site (ex: "DSD (en-GB)")
+            const orderSite = deal.order_site || deal.website_source || 'Web';
+
+            // Descrição para a tabela (formato: Order e437d54 - Company (Customer))
+            let description = `Order ${orderCode}`;
             if (companyName) {
                 description += ` - ${companyName}`;
             }
@@ -139,7 +153,7 @@ export async function POST(request: Request) {
                 source: 'hubspot',
                 date: closeDate.toISOString(),
                 description: description,
-                amount: amount,
+                amount: totalAmount,
                 reconciled: false,
 
                 // 🔑 CAMPOS CRÍTICOS PARA LINKAGEM
@@ -147,59 +161,104 @@ export async function POST(request: Request) {
                 customer_name: customerName,
 
                 custom_data: {
-                    // IDs
+                    // ==========================================
+                    // IDs e Códigos (CRÍTICO para linkagem)
+                    // ==========================================
                     deal_id: dealId,
+                    order_code: orderCode,  // e437d54, a3d2c9a, etc
+                    ecomm_order_number: deal.ecomm_order_number || orderCode,
+                    website_order_id: deal.website_order_id || null,  // ID numérico (2831851)
+                    reference: orderCode,  // Alias para order_code
+                    
+                    // IDs de relacionamento
                     contact_id: deal.contact_id || null,
                     company_id: deal.company_id || null,
 
-                    // Deal info
-                    dealname: dealName,
-                    stage: deal.dealstage || 'unknown',
-                    dealstage: deal.dealstage || 'unknown',
+                    // ==========================================
+                    // Deal Info
+                    // ==========================================
+                    dealname: orderCode,
+                    stage: deal.status || 'unknown',
+                    dealstage: deal.status || 'unknown',
+                    status: deal.status || 'unknown',
                     pipeline: deal.pipeline || null,
                     owner_id: deal.owner_id || null,
-                    owner: deal.owner_id || null,
                     currency: currency,
 
-                    // ✅ CAMPOS ADICIONAIS (para visualização no frontend)
-                    paid_status: deal.paid_status || null,
+                    // ==========================================
+                    // Pagamento
+                    // ==========================================
+                    paid_status: paidStatus,
+                    paid_amount: paidAmount,
+                    total_payment: paidAmount,
+                    date_paid: deal.date_paid || null,
+                    hs_closed_won_date: deal.date_paid || null,
+                    failed_payment_timestamp: deal.failed_payment_timestamp || null,
+                    
+                    // ==========================================
+                    // E-commerce & Descontos
+                    // ==========================================
                     coupon_code: deal.coupon_code || null,
-                    hs_closed_won_date: deal.hs_closed_won_date || null,
-                    total_payment: deal.total_payment ? parseFloat(deal.total_payment) : null,
-                    website_source: deal.website_source || 'Web',
-                    hs_lastmodifieddate: deal.hs_lastmodifieddate || null,
+                    discount_amount: deal.discount_amount ? parseFloat(deal.discount_amount) : 0,
+                    tax_amount: deal.tax_amount ? parseFloat(deal.tax_amount) : 0,
+                    order_site: orderSite,
+                    website_source: orderSite,
+                    source_app_id: deal.source_app_id || null,
+                    source_store_id: deal.source_store_id || null,
 
-                    // Cliente
+                    // ==========================================
+                    // Cliente - Informações Completas
+                    // ==========================================
                     customer_firstname: customerFirstname,
                     customer_lastname: customerLastname,
+                    customer_email: customerEmail,
                     customer_phone: customerPhone,
                     customer_jobtitle: deal.customer_jobtitle || null,
                     customer_clinic: deal.customer_clinic || null,
+                    customer_address: deal.customer_address || null,
+                    customer_city: deal.customer_city || null,
+                    customer_state: deal.customer_state || null,
+                    customer_country: deal.customer_country || null,
+                    customer_zip: deal.customer_zip || null,
 
+                    // ==========================================
                     // Empresa
+                    // ==========================================
                     company: companyName,
                     company_name: companyName,
                     company_industry: deal.company_industry || null,
                     company_website: deal.company_website || null,
                     company_city: deal.company_city || null,
                     company_country: deal.company_country || null,
+                    company_phone: deal.company_phone || null,
 
-                    // Produto
-                    product_name: productName,
-                    product_name_raw: rawProductName,
-                    product_amount: productAmount,
+                    // ==========================================
+                    // Produto - Informações Completas
+                    // ==========================================
+                    product_name: productName,  // Nome curto
+                    product_name_full: productNameFull,  // Descrição completa
+                    product_name_raw: productNameFull,
+                    product_short_name: productName,
                     product_quantity: productQuantity,
+                    product_amount: productAmount,
+                    product_unit_price: productUnitPrice,
+                    product_sku: productSku,
+                    product_cost: deal.product_cost ? parseFloat(deal.product_cost) : null,
                     product_discount: deal.product_discount ? parseFloat(deal.product_discount) : null,
 
                     // Totais calculados
                     quantity: productQuantity,
                     items_total: productAmount,
-                    discount_amount: deal.product_discount ? parseFloat(deal.product_discount) : 0,
-                    final_price: amount, // amount já é o valor final
+                    final_price: totalAmount,
+                    total_price: totalAmount,
 
-                    // E-commerce
-                    ecomm_order_number: deal.ip__ecomm_bridge__order_number || deal.ecomm_order_number || null,
-                    website_order_id: deal.website_order_id || null,
+                    // ==========================================
+                    // Metadados
+                    // ==========================================
+                    date_ordered: deal.date_ordered || closeDate.toISOString(),
+                    createdate: deal.createdate || null,
+                    last_updated: deal.last_updated || null,
+                    hs_lastmodifieddate: deal.last_updated || null,
                     synced_at: new Date().toISOString(),
                     query_type: usedQuery,
                 },

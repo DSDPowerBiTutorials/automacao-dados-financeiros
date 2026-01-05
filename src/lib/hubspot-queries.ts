@@ -1,45 +1,56 @@
 /**
- * Query SQL enriquecida para HubSpot
+ * Query SQL DEFINITIVA para HubSpot - Espelha o backend exatamente
  * 
- * Busca dados de:
- * - Deal (venda)
- * - Contact (cliente) - email, nome, telefone
- * - Company (empresa)
- * - LineItem (produtos)
+ * Baseada na análise real do SQL Server:
+ * - dealname = Order Code (ex: e437d54, a3d2c9a)
+ * - ip__ecomm_bridge__order_number também guarda o Order Code
+ * - website_order_id = ID numérico do pedido web
+ * - LineItem = informações detalhadas do produto
  * 
- * IMPORTANTE: Esta query usa subqueries que podem falhar se as tabelas
- * LineItem ou DealLineItemAssociations não existirem. Se falhar, o sistema
- * usa automaticamente a SIMPLE_HUBSPOT_QUERY como fallback.
+ * Esta query pega TUDO que está disponível no backend do HubSpot.
  */
 
 export const ENRICHED_HUBSPOT_QUERY = `
 SELECT TOP 2000
-  -- DEAL (Venda)
+  -- ==========================================
+  -- DEAL - Informações Principais do Pedido
+  -- ==========================================
   d.DealId,
-  d.dealname,
-  d.amount,
-  d.closedate,
+  d.dealname as order_code,  -- Este É o Order Code! (e437d54, a3d2c9a, etc)
+  d.amount as total_amount,
+  d.amount_in_home_currency,
+  d.closedate as date_ordered,
   d.createdate,
-  d.dealstage,
+  d.dealstage as status,
   d.deal_pipeline as pipeline,
   d.deal_currency_code as currency,
   d.hubspot_owner_id as owner_id,
   d.description as deal_description,
   
-  -- CAMPOS DE E-COMMERCE (podem não existir em todos os schemas)
-  -- Se der erro, remova estas linhas e use apenas SIMPLE_HUBSPOT_QUERY
-  d.ip__ecomm_bridge__order_number as ecomm_order_number,
-  d.website_order_id,
+  -- ==========================================
+  -- E-COMMERCE - Códigos e Identificadores
+  -- ==========================================
+  d.ip__ecomm_bridge__order_number as ecomm_order_number,  -- Também guarda order code
+  d.website_order_id,  -- ID numérico do pedido (ex: 2831851)
+  d.ip__ecomm_bridge__discount_amount as discount_amount,
+  d.ip__ecomm_bridge__tax_amount as tax_amount,
+  d.ip__ecomm_bridge__source_app_id,
+  d.ip__ecomm_bridge__source_store_id,
+  d.website_source as order_site,  -- Ex: "DSD (en-GB)"
   
-  -- CAMPOS ADICIONAIS (descobertos)
-  d.hs_closed_won_date,
-  d.paid_status,
+  -- ==========================================
+  -- PAGAMENTO - Status e Valores
+  -- ==========================================
+  d.paid_status,  -- "Paid", "Unpaid", "Partial", etc
+  d.total_payment as paid_amount,
+  d.hs_closed_won_date as date_paid,
+  d.hs_lastmodifieddate as last_updated,
   d.coupon_code,
-  d.total_payment,
-  d.website_source,
-  d.hs_lastmodifieddate,
+  d.failed_payment_timestamp,
   
-  -- CONTACT (Cliente)
+  -- ==========================================
+  -- CONTACT - Informações do Cliente
+  -- ==========================================
   c.VId as contact_id,
   c.email as customer_email,
   c.firstname as customer_firstname,
@@ -47,20 +58,28 @@ SELECT TOP 2000
   c.phone as customer_phone,
   c.jobtitle as customer_jobtitle,
   c.clinic_name as customer_clinic,
+  c.address as customer_address,
+  c.city as customer_city,
+  c.state as customer_state,
+  c.country as customer_country,
+  c.zip as customer_zip,
   
-  -- COMPANY (Empresa)
+  -- ==========================================
+  -- COMPANY - Informações da Empresa
+  -- ==========================================
   co.CompanyId as company_id,
-  co.name as company_name,
+  co.CompanyName as company_name,
   co.industry as company_industry,
   co.website as company_website,
   co.city as company_city,
   co.country as company_country,
+  co.phone as company_phone,
   
-  -- LINEITEM (Produto) - pegar o primeiro associado
-  -- NOTA: Se DealLineItemAssociations não existir, esta query vai FALHAR
+  -- ==========================================
+  -- LINEITEM - Produto (primeiro item)
+  -- ==========================================
   (
-    SELECT TOP 1 
-      li.description
+    SELECT TOP 1 li.description
     FROM DealLineItemAssociations dlia
     LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
     WHERE dlia.DealId = d.DealId
@@ -68,8 +87,23 @@ SELECT TOP 2000
   ) as product_name,
   
   (
-    SELECT TOP 1 
-      li.amount
+    SELECT TOP 1 li.name
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_short_name,
+  
+  (
+    SELECT TOP 1 li.quantity
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_quantity,
+  
+  (
+    SELECT TOP 1 li.amount
     FROM DealLineItemAssociations dlia
     LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
     WHERE dlia.DealId = d.DealId
@@ -77,18 +111,31 @@ SELECT TOP 2000
   ) as product_amount,
   
   (
-    SELECT TOP 1 
-      li.quantity
+    SELECT TOP 1 li.price
     FROM DealLineItemAssociations dlia
     LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
-  ) as product_quantity,
+  ) as product_unit_price,
   
-  -- LINEITEM - Desconto (se existir)
   (
-    SELECT TOP 1 
-      li.discount
+    SELECT TOP 1 li.hs_sku
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_sku,
+  
+  (
+    SELECT TOP 1 li.cost_price
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_cost,
+  
+  (
+    SELECT TOP 1 li.ip__ecomm_bridge__discount_amount
     FROM DealLineItemAssociations dlia
     LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
     WHERE dlia.DealId = d.DealId
@@ -107,7 +154,7 @@ LEFT JOIN Company co ON co.CompanyId = dcoa.CompanyId
 
 WHERE 
   d.hs_lastmodifieddate >= @startDate
-  AND d.dealstage LIKE '%won%'  -- Apenas deals ganhos
+  AND (d.dealstage LIKE '%won%' OR d.dealstage LIKE '%completed%' OR d.dealstage LIKE '%paid%')
 
 ORDER BY d.closedate DESC
 `;

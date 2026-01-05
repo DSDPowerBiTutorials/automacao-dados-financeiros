@@ -42,49 +42,108 @@ interface HubSpotDeal {
     customer_email?: string;
     customer_name?: string;
     custom_data?: {
-        // IDs e Códigos
+        // ==========================================
+        // IDs e Códigos (CRÍTICO para linkagem)
+        // ==========================================
         deal_id?: string; // HubSpot Deal ID
-        dealname?: string; // Short/long number
-        ecomm_order_number?: string; // Order code (e437d54)
+        order_code?: string; // Order Code (e437d54, a3d2c9a) - NOVO!
+        dealname?: string; // Alias para order_code
+        ecomm_order_number?: string; // Também guarda Order Code
         website_order_id?: string; // Web Order ID (2831851)
+        reference?: string; // Alias para order_code
 
+        // ==========================================
         // Status
+        // ==========================================
+        status?: string; // Status do deal - NOVO!
         dealstage?: string;
         stage?: string; // Alias for dealstage
         pipeline?: string;
-        paid_status?: string; // Campo do HubSpot!
+        paid_status?: string; // "Paid", "Unpaid", etc
         owner?: string; // Owner ID or name
+        owner_id?: string;
 
+        // ==========================================
         // Datas
-        closedate?: string; // Date Ordered
-        hs_closed_won_date?: string; // Date Paid
+        // ==========================================
+        date_ordered?: string; // Date Ordered - NOVO!
+        date_paid?: string; // Date Paid - NOVO!
+        closedate?: string; // Alias para date_ordered
+        hs_closed_won_date?: string; // Alias para date_paid
         hs_lastmodifieddate?: string; // Last Updated
+        last_updated?: string;
+        createdate?: string;
 
-        // Customer
+        // ==========================================
+        // Customer - Informações Completas
+        // ==========================================
         customer_firstname?: string;
         customer_lastname?: string;
+        customer_email?: string;
         customer_phone?: string;
-        company?: string; // Company name
-        company_name?: string; // Alias
+        customer_jobtitle?: string;
+        customer_clinic?: string;
+        customer_address?: string;
+        customer_city?: string;
+        customer_state?: string;
+        customer_country?: string;
+        customer_zip?: string;
 
-        // Valores
+        // ==========================================
+        // Company
+        // ==========================================
+        company?: string; // Company name
+        company_name?: string;
+        company_id?: string;
+        company_industry?: string;
+        company_website?: string;
+        company_city?: string;
+        company_country?: string;
+        company_phone?: string;
+
+        // ==========================================
+        // Valores e Pagamento
+        // ==========================================
         currency?: string;
         total_payment?: number; // Paid Amount
-
-        // Produtos (LineItems)
-        quantity?: number;
-        items_total?: number;
+        paid_amount?: number; // Alias - NOVO!
         discount_amount?: number;
+        tax_amount?: number;
+        total_amount?: number;
+        total_price?: number;
         final_price?: number;
+
+        // ==========================================
+        // Produtos (LineItems)
+        // ==========================================
         product_name?: string;
+        product_short_name?: string; // Nome curto - NOVO!
+        product_name_full?: string; // Nome completo - NOVO!
         product_name_raw?: string;
         product_quantity?: number;
         product_amount?: number;
+        product_unit_price?: number; // NOVO!
+        product_sku?: string; // NOVO!
+        product_cost?: number; // NOVO!
         product_discount?: number;
+        quantity?: number;
+        items_total?: number;
 
-        // Outros
-        coupon_code?: string; // Campo do HubSpot!
+        // ==========================================
+        // E-commerce e Origem
+        // ==========================================
+        coupon_code?: string;
         website_source?: string; // Origin
+        order_site?: string; // Alias - NOVO!
+        source_app_id?: string;
+        source_store_id?: string;
+
+        // ==========================================
+        // Metadados
+        // ==========================================
+        synced_at?: string;
+        query_type?: string; // "enriched", "intermediate", "simple"
+        contact_id?: string;
     };
     [key: string]: any;
 }
@@ -578,10 +637,10 @@ ${result.recommendations.join('\n')}
                             </>
                         )}
                     </Button>
-                    <Button 
-                        onClick={cleanAndResync} 
+                    <Button
+                        onClick={cleanAndResync}
                         disabled={syncing || cleaning}
-                        variant="outline" 
+                        variant="outline"
                         className="gap-2 text-orange-600 hover:text-orange-700"
                     >
                         {cleaning ? (
@@ -596,10 +655,10 @@ ${result.recommendations.join('\n')}
                             </>
                         )}
                     </Button>
-                    <Button 
-                        onClick={verifySchema} 
+                    <Button
+                        onClick={verifySchema}
                         disabled={verifyingSchema}
-                        variant="outline" 
+                        variant="outline"
                         className="gap-2 text-blue-600 hover:text-blue-700"
                     >
                         {verifyingSchema ? (
@@ -751,13 +810,10 @@ ${result.recommendations.join('\n')}
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-
+                                        Order Code
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Order
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Reference
+                                        Reference / ID
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Status
@@ -769,13 +825,13 @@ ${result.recommendations.join('\n')}
                                         Date Paid
                                     </th>
                                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
-                                        Total Paid
+                                        Total / Paid
                                     </th>
                                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
                                         Paid Status
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        All Totals
+                                        Product (Qty)
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Customer
@@ -790,93 +846,106 @@ ${result.recommendations.join('\n')}
                                     const isEditing = editingId === row.id;
                                     const isExpanded = expandedRows.has(row.id);
 
+                                    // Extrair dados essenciais
+                                    const orderCode = row.custom_data?.order_code || extractOrderCode(row) || '-';
+                                    const websiteOrderId = row.custom_data?.website_order_id || '';
+                                    const status = row.custom_data?.status || row.custom_data?.stage || 'Unknown';
+                                    const paidStatus = row.custom_data?.paid_status || 'Unpaid';
+                                    const paidAmount = row.custom_data?.paid_amount || row.custom_data?.total_payment || 0;
+                                    const productName = row.custom_data?.product_short_name || row.custom_data?.product_name || 'N/A';
+                                    const productQty = row.custom_data?.product_quantity || row.custom_data?.quantity || 0;
+
                                     return (
                                         <>
                                             <tr key={row.id} className="hover:bg-gray-50">
-                                                {/* Order (Order Code - e437d54) */}
+                                                {/* Order Code (e437d54) */}
                                                 <td className="px-4 py-3">
-                                                    <a
-                                                        href={`#order-${extractOrderCode(row)}`}
-                                                        className="text-blue-600 hover:underline font-mono text-sm font-semibold"
-                                                        title={`Order: ${extractOrderCode(row)}\nHubSpot Deal ID: ${row.custom_data?.deal_id || 'N/A'}\nWeb Order ID: ${row.custom_data?.website_order_id || 'N/A'}`}
-                                                    >
-                                                        {extractOrderCode(row) || row.custom_data?.deal_id || "-"}
-                                                    </a>
+                                                    <div className="flex flex-col">
+                                                        <a
+                                                            href={`#order-${orderCode}`}
+                                                            className="text-blue-600 hover:underline font-mono text-sm font-semibold"
+                                                            title={`Order Code: ${orderCode}`}
+                                                        >
+                                                            {orderCode}
+                                                        </a>
+                                                        {websiteOrderId && (
+                                                            <span className="text-xs text-gray-500">ID: {websiteOrderId}</span>
+                                                        )}
+                                                    </div>
                                                 </td>
 
-                                                {/* Reference (Invoice Pattern with Web Order ID) */}
+                                                {/* Reference / Invoice Number */}
                                                 <td className="px-4 py-3 text-sm font-mono">
                                                     <a
-                                                        href={`#invoice-${extractOrderCode(row)}`}
+                                                        href={`#invoice-${orderCode}`}
                                                         className="text-blue-600 hover:underline font-semibold"
-                                                        title={`Invoice: ${getInvoiceNumber(row)}\nWeb Order ID: ${row.custom_data?.website_order_id || 'N/A'}`}
+                                                        title={`Invoice: ${getInvoiceNumber(row)}`}
                                                     >
-                                                        {getInvoiceNumber(row) || extractOrderCode(row) || row.custom_data?.dealname || "-"}
+                                                        {getInvoiceNumber(row) || orderCode || "-"}
                                                     </a>
                                                 </td>
 
-                                                {/* Status (com ícone colorido) */}
+                                                {/* Status */}
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
-                                                        {getStatusIcon(row.custom_data?.stage || "")}
+                                                        {getStatusIcon(status)}
                                                         <span className="text-sm">
-                                                            {row.custom_data?.stage || "Unknown"}
+                                                            {status}
                                                         </span>
                                                     </div>
                                                 </td>
 
-                                                {/* Date Ordered (closedate) */}
+                                                {/* Date Ordered */}
                                                 <td className="px-4 py-3 text-sm">
                                                     {row.date ? new Date(row.date).toLocaleString('en-US', {
+                                                        month: 'numeric',
+                                                        day: 'numeric',
+                                                        year: 'numeric',
                                                         hour: 'numeric',
                                                         minute: '2-digit',
                                                         hour12: true
                                                     }) : "-"}
                                                 </td>
 
-                                                {/* Date Paid (hs_closed_won_date from HubSpot) */}
+                                                {/* Date Paid */}
                                                 <td className="px-4 py-3 text-sm">
-                                                    {row.custom_data?.hs_closed_won_date ? formatDate(row.custom_data.hs_closed_won_date) : "-"}
+                                                    {(row.custom_data?.date_paid || row.custom_data?.hs_closed_won_date)
+                                                        ? formatDate(row.custom_data.date_paid || row.custom_data.hs_closed_won_date || '')
+                                                        : "-"}
                                                 </td>
 
-                                                {/* Total Paid */}
-                                                <td className="px-4 py-3 text-right font-medium">
-                                                    {formatCurrency(row.amount)}
+                                                {/* Total / Paid Amount */}
+                                                <td className="px-4 py-3 text-right">
+                                                    <div className="flex flex-col items-end">
+                                                        <span className="font-medium">{formatCurrency(row.amount)}</span>
+                                                        {paidAmount > 0 && paidAmount !== row.amount && (
+                                                            <span className="text-xs text-green-600">
+                                                                Paid: {formatCurrency(paidAmount)}
+                                                            </span>
+                                                        )}
+                                                    </div>
                                                 </td>
 
-                                                {/* Paid Status (from HubSpot paid_status field) */}
+                                                {/* Paid Status */}
                                                 <td className="px-4 py-3 text-center">
                                                     <div className="flex items-center justify-center gap-2">
-                                                        {getPaidStatusIcon(row.custom_data?.paid_status)}
+                                                        {getPaidStatusIcon(paidStatus)}
                                                         <span className="text-sm">
-                                                            {row.custom_data?.paid_status || "Unpaid"}
+                                                            {paidStatus}
                                                         </span>
                                                     </div>
                                                 </td>
 
-                                                {/* All Totals (expandível) */}
+                                                {/* Product (Qty) */}
                                                 <td className="px-4 py-3">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        onClick={() => toggleRowExpansion(row.id)}
-                                                        className="w-full justify-start"
-                                                    >
-                                                        <div className="flex flex-col items-start text-xs">
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="font-semibold">Qty</span>
-                                                                <span className="text-gray-600">
-                                                                    {row.custom_data?.quantity || 0}
-                                                                </span>
-                                                            </div>
-                                                            <div className="flex items-center gap-1">
-                                                                <span className="font-semibold">Price</span>
-                                                                <span className="text-gray-600">
-                                                                    {formatCurrency(row.custom_data?.final_price || row.amount)}
-                                                                </span>
-                                                            </div>
-                                                        </div>
-                                                    </Button>
+                                                    <div className="flex flex-col text-sm">
+                                                        <span className="font-medium truncate max-w-[200px]" title={productName}>
+                                                            {productName}
+                                                        </span>
+                                                        <span className="text-xs text-gray-500">
+                                                            Qty: {productQty}
+                                                        </span>
+                                                    </div>
                                                 </td>
 
                                                 {/* Customer (email) */}
