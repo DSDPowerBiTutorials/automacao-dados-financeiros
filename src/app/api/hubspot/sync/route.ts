@@ -233,8 +233,19 @@ export async function POST(request: Request) {
                 withEmail: withEmail,
                 withName: withName,
                 withProduct: withProduct,
+                withEcommOrder: withEcommOrder,
+                withWebsiteOrder: withWebsiteOrder,
                 queryType: usedQuery,
             },
+            debug: {
+                firstDeal: result.recordset.length > 0 ? {
+                    dealId: result.recordset[0].DealId,
+                    dealname: result.recordset[0].dealname,
+                    ip__ecomm_bridge__order_number: result.recordset[0].ip__ecomm_bridge__order_number || 'NULL',
+                    website_order_id: result.recordset[0].website_order_id || 'NULL',
+                    product_quantity: result.recordset[0].product_quantity || 'NULL',
+                } : null
+            }
         });
 
     } catch (error: any) {
