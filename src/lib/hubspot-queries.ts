@@ -21,6 +21,7 @@ SELECT TOP 2000
   d.deal_currency_code as currency,
   d.hubspot_owner_id as owner_id,
   d.ip__ecomm_bridge__order_number as ecomm_order_number,
+  d.ip__ecomm_bridge__order_id as ecomm_order_id,
   d.website_order_id,
   d.description as deal_description,
   
@@ -31,6 +32,24 @@ SELECT TOP 2000
   d.total_payment,
   d.website_source,
   d.hs_lastmodifieddate,
+  
+  -- ADDRESS FIELDS
+  d.billing_address as billing_address,
+  d.shipping_address as shipping_address,
+  d.billing_city as billing_city,
+  d.billing_state as billing_state,
+  d.billing_country as billing_country,
+  d.billing_zip as billing_zip,
+  d.shipping_city as shipping_city,
+  d.shipping_state as shipping_state,
+  d.shipping_country as shipping_country,
+  d.shipping_zip as shipping_zip,
+  
+  -- PAYMENT & ORDER DETAILS
+  d.payment_method as payment_method,
+  d.paid_amount as paid_amount,
+  d.date_paid as date_paid,
+  d.order_site as order_site,
   
   -- CONTACT (Cliente)
   c.VId as contact_id,
@@ -85,7 +104,37 @@ SELECT TOP 2000
     LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
-  ) as product_discount
+  ) as product_discount,
+  
+  -- LINEITEM - SKU
+  (
+    SELECT TOP 1 
+      li.hs_sku
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_sku,
+  
+  -- LINEITEM - Price (Unit Price)
+  (
+    SELECT TOP 1 
+      li.price
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_unit_price,
+  
+  -- LINEITEM - Original Price
+  (
+    SELECT TOP 1 
+      li.hs_cost_of_goods_sold
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_original_price
 
 FROM Deal d
 

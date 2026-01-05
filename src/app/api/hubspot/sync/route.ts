@@ -155,6 +155,9 @@ export async function POST(request: Request) {
                     product_amount: productAmount,
                     product_quantity: productQuantity,
                     product_discount: deal.product_discount ? parseFloat(deal.product_discount) : null,
+                    product_sku: deal.product_sku || null,
+                    product_unit_price: deal.product_unit_price ? parseFloat(deal.product_unit_price) : null,
+                    product_original_price: deal.product_original_price ? parseFloat(deal.product_original_price) : null,
 
                     // Totais calculados
                     quantity: productQuantity,
@@ -164,7 +167,26 @@ export async function POST(request: Request) {
 
                     // E-commerce
                     ecomm_order_number: deal.ecomm_order_number || null,
+                    ecomm_order_id: deal.ecomm_order_id || null,
                     website_order_id: deal.website_order_id || null,
+                    
+                    // Address fields
+                    billing_address: deal.billing_address || null,
+                    shipping_address: deal.shipping_address || null,
+                    billing_city: deal.billing_city || null,
+                    billing_state: deal.billing_state || null,
+                    billing_country: deal.billing_country || null,
+                    billing_zip: deal.billing_zip || null,
+                    shipping_city: deal.shipping_city || null,
+                    shipping_state: deal.shipping_state || null,
+                    shipping_country: deal.shipping_country || null,
+                    shipping_zip: deal.shipping_zip || null,
+                    
+                    // Payment & Order details
+                    payment_method: deal.payment_method || null,
+                    paid_amount: deal.paid_amount ? parseFloat(deal.paid_amount) : null,
+                    date_paid: deal.date_paid || null,
+                    order_site: deal.order_site || null,
 
                     // Datas
                     closedate: deal.closedate || null,

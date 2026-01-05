@@ -43,8 +43,11 @@ interface HubSpotDeal {
     customer_name?: string;
     custom_data?: {
         // IDs e Códigos
-        deal_id?: string; // hs_object_id
+        deal_id?: string; // HubSpot Deal ID
         dealname?: string; // Short/long number
+        ecomm_order_number?: string; // Order code (e437d54)
+        ecomm_order_id?: string;
+        website_order_id?: string; // Web Order ID (2831851)
 
         // Status
         dealstage?: string;
@@ -56,6 +59,7 @@ interface HubSpotDeal {
         // Datas
         closedate?: string; // Date Ordered
         hs_closed_won_date?: string; // Date Paid
+        date_paid?: string;
         hs_lastmodifieddate?: string; // Last Updated
 
         // Customer
@@ -68,6 +72,7 @@ interface HubSpotDeal {
         // Valores
         currency?: string;
         total_payment?: number; // Paid Amount
+        paid_amount?: number;
 
         // Produtos (LineItems)
         quantity?: number;
@@ -75,13 +80,31 @@ interface HubSpotDeal {
         discount_amount?: number;
         final_price?: number;
         product_name?: string;
+        product_name_raw?: string;
         product_sku?: string;
+        product_quantity?: number;
+        product_amount?: number;
+        product_discount?: number;
+        product_unit_price?: number;
+        product_original_price?: number;
+
+        // Address fields
+        billing_address?: string;
+        shipping_address?: string;
+        billing_city?: string;
+        billing_state?: string;
+        billing_country?: string;
+        billing_zip?: string;
+        shipping_city?: string;
+        shipping_state?: string;
+        shipping_country?: string;
+        shipping_zip?: string;
 
         // Outros
         coupon_code?: string; // Campo do HubSpot!
         website_source?: string; // Origin
         order_site?: string;
-        ip_address?: string;
+        payment_method?: string;
     };
     [key: string]: any;
 }
@@ -225,20 +248,44 @@ export default function HubSpotReportPage() {
 
     // getMatchIndicator removed - not needed for deals view page
 
-    // Extrair Short Number (primeiros 7 caracteres alfanuméricos do dealname)
-    const extractShortNumber = (dealname: string | undefined): string => {
+    // Extrair Order Code (e437d54) - priorizar ecomm_order_number
+    const extractOrderCode = (row: HubSpotDeal): string => {
+        // 1. Tentar ecomm_order_number primeiro
+        if (row.custom_data?.ecomm_order_number) {
+            return row.custom_data.ecomm_order_number.trim();
+        }
+        
+        // 2. Fallback: pegar primeiros 7 caracteres do dealname
+        const dealname = row.custom_data?.dealname;
         if (!dealname) return "";
-        // Remover espaços e pegar primeiros 7 caracteres alfanuméricos
+        
         const cleaned = dealname.trim().toLowerCase();
         const match = cleaned.match(/^[a-z0-9]{7}/);
         return match ? match[0] : cleaned.substring(0, 7);
     };
 
-    // Gerar Invoice Number no padrão #DSDES{SHORT_NUMBER_UPPERCASE}
-    const getInvoiceNumber = (dealname: string | undefined): string => {
-        const shortNumber = extractShortNumber(dealname);
-        if (!shortNumber) return "";
-        return `#DSDES${shortNumber.toUpperCase()}`;
+    // Gerar Invoice Number no padrão #DSDESE437D54-24819 (order_code + web_order_id)
+    const getInvoiceNumber = (row: HubSpotDeal): string => {
+        const orderCode = extractOrderCode(row);
+        const webOrderId = row.custom_data?.website_order_id || "";
+        
+        if (!orderCode) return "";
+        
+        // Se tiver web order ID, usar formato completo: #DSDESE437D54-24819
+        if (webOrderId) {
+            return `#DSDES${orderCode.toUpperCase()}-${webOrderId}`;
+        }
+        
+        // Fallback: usar apenas order code: #DSDESE437D54
+        return `#DSDES${orderCode.toUpperCase()}`;
+    };
+
+    // Extrair Short Number (LEGACY - manter para compatibilidade)
+    const extractShortNumber = (dealname: string | undefined): string => {
+        if (!dealname) return "";
+        const cleaned = dealname.trim().toLowerCase();
+        const match = cleaned.match(/^[a-z0-9]{7}/);
+        return match ? match[0] : cleaned.substring(0, 7);
     };
 
     // Extrair Long Number (32 caracteres - hash MD5 completo)
@@ -628,25 +675,25 @@ export default function HubSpotReportPage() {
                                     return (
                                         <>
                                             <tr key={row.id} className="hover:bg-gray-50">
-                                                {/* Order (Short Number - 7 chars) */}
+                                                {/* Order (Order Code - e437d54) */}
                                                 <td className="px-4 py-3">
                                                     <a
-                                                        href={`#order-${extractShortNumber(row.custom_data?.dealname)}`}
+                                                        href={`#order-${extractOrderCode(row)}`}
                                                         className="text-blue-600 hover:underline font-mono text-sm font-semibold"
-                                                        title={`ID: ${row.custom_data?.deal_id || 'N/A'}\nNumber: ${extractLongNumber(row.custom_data?.dealname) || 'N/A'}\nInvoice: ${getInvoiceNumber(row.custom_data?.dealname) || 'N/A'}`}
+                                                        title={`Order: ${extractOrderCode(row)}\nHubSpot Deal ID: ${row.custom_data?.deal_id || 'N/A'}\nWeb Order ID: ${row.custom_data?.website_order_id || 'N/A'}`}
                                                     >
-                                                        {extractShortNumber(row.custom_data?.dealname) || row.custom_data?.deal_id || "-"}
+                                                        {extractOrderCode(row) || row.custom_data?.deal_id || "-"}
                                                     </a>
                                                 </td>
 
-                                                {/* Reference (Invoice Pattern) */}
+                                                {/* Reference (Invoice Pattern with Web Order ID) */}
                                                 <td className="px-4 py-3 text-sm font-mono">
                                                     <a
-                                                        href={`#invoice-${extractShortNumber(row.custom_data?.dealname)}`}
+                                                        href={`#invoice-${extractOrderCode(row)}`}
                                                         className="text-blue-600 hover:underline font-semibold"
-                                                        title={`Full Number: ${extractLongNumber(row.custom_data?.dealname) || 'N/A'}`}
+                                                        title={`Invoice: ${getInvoiceNumber(row)}\nWeb Order ID: ${row.custom_data?.website_order_id || 'N/A'}`}
                                                     >
-                                                        {getInvoiceNumber(row.custom_data?.dealname) || extractShortNumber(row.custom_data?.dealname) || row.custom_data?.dealname || "-"}
+                                                        {getInvoiceNumber(row) || extractOrderCode(row) || row.custom_data?.dealname || "-"}
                                                     </a>
                                                 </td>
 
@@ -784,19 +831,19 @@ export default function HubSpotReportPage() {
                                                                 <div>
                                                                     <span className="text-gray-600">Qty:</span>
                                                                     <p className="font-medium">
-                                                                        {row.custom_data?.quantity || 0}
+                                                                        {row.custom_data?.product_quantity || row.custom_data?.quantity || 0}
                                                                     </p>
                                                                 </div>
                                                                 <div>
                                                                     <span className="text-gray-600">Items:</span>
                                                                     <p className="font-medium text-green-600">
-                                                                        {formatCurrency(row.custom_data?.items_total || row.amount)}
+                                                                        {formatCurrency(row.custom_data?.product_amount || row.custom_data?.items_total || row.amount)}
                                                                     </p>
                                                                 </div>
                                                                 <div>
                                                                     <span className="text-gray-600">Discounts:</span>
                                                                     <p className="font-medium text-red-600">
-                                                                        -{formatCurrency(row.custom_data?.discount_amount || 0)}
+                                                                        -{formatCurrency(row.custom_data?.product_discount || row.custom_data?.discount_amount || 0)}
                                                                     </p>
                                                                 </div>
                                                                 <div>
@@ -812,27 +859,27 @@ export default function HubSpotReportPage() {
                                                                 <h5 className="font-semibold text-xs text-gray-700 mb-2">Order Codes</h5>
                                                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-gray-600 min-w-[80px]">Order:</span>
+                                                                        <span className="text-gray-600 min-w-[100px]">Order:</span>
                                                                         <code className="bg-blue-50 px-2 py-1 rounded font-mono text-blue-700">
-                                                                            {extractShortNumber(row.custom_data?.dealname) || "-"}
+                                                                            {extractOrderCode(row) || "-"}
                                                                         </code>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-gray-600 min-w-[80px]">ID:</span>
+                                                                        <span className="text-gray-600 min-w-[100px]">Web Order ID:</span>
+                                                                        <code className="bg-purple-50 px-2 py-1 rounded font-mono text-purple-700">
+                                                                            {row.custom_data?.website_order_id || "-"}
+                                                                        </code>
+                                                                    </div>
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-gray-600 min-w-[100px]">HubSpot Deal ID:</span>
                                                                         <code className="bg-gray-50 px-2 py-1 rounded font-mono text-gray-700">
                                                                             {row.custom_data?.deal_id || "-"}
                                                                         </code>
                                                                     </div>
                                                                     <div className="flex items-center gap-2">
-                                                                        <span className="text-gray-600 min-w-[80px]">Invoice:</span>
+                                                                        <span className="text-gray-600 min-w-[100px]">Invoice:</span>
                                                                         <code className="bg-green-50 px-2 py-1 rounded font-mono text-green-700">
-                                                                            {getInvoiceNumber(row.custom_data?.dealname) || "-"}
-                                                                        </code>
-                                                                    </div>
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-gray-600 min-w-[80px]">Number:</span>
-                                                                        <code className="bg-gray-50 px-2 py-1 rounded font-mono text-gray-700 text-xs truncate" title={extractLongNumber(row.custom_data?.dealname)}>
-                                                                            {extractLongNumber(row.custom_data?.dealname) || "-"}
+                                                                            {getInvoiceNumber(row) || "-"}
                                                                         </code>
                                                                     </div>
                                                                 </div>
@@ -854,10 +901,118 @@ export default function HubSpotReportPage() {
                                                             {row.custom_data?.product_name && (
                                                                 <div className="border-t border-gray-200 pt-3 mt-3">
                                                                     <h5 className="font-semibold text-xs text-gray-700 mb-2">Product Details</h5>
-                                                                    <div className="space-y-1 text-sm">
-                                                                        <p className="font-medium">{row.custom_data.product_name}</p>
-                                                                        {row.custom_data.product_name_raw && row.custom_data.product_name_raw !== row.custom_data.product_name && (
-                                                                            <p className="text-xs text-gray-500">Original: {row.custom_data.product_name_raw}</p>
+                                                                    <div className="space-y-2 text-sm">
+                                                                        <div>
+                                                                            <p className="font-medium">{row.custom_data.product_name}</p>
+                                                                            {row.custom_data.product_name_raw && row.custom_data.product_name_raw !== row.custom_data.product_name && (
+                                                                                <p className="text-xs text-gray-500">Original: {row.custom_data.product_name_raw}</p>
+                                                                            )}
+                                                                        </div>
+                                                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                                                            {row.custom_data.product_sku && (
+                                                                                <div>
+                                                                                    <span className="text-gray-600">SKU:</span>
+                                                                                    <p className="font-medium font-mono">{row.custom_data.product_sku}</p>
+                                                                                </div>
+                                                                            )}
+                                                                            {row.custom_data.product_quantity && (
+                                                                                <div>
+                                                                                    <span className="text-gray-600">Quantity:</span>
+                                                                                    <p className="font-medium">{row.custom_data.product_quantity}</p>
+                                                                                </div>
+                                                                            )}
+                                                                            {row.custom_data.product_unit_price && (
+                                                                                <div>
+                                                                                    <span className="text-gray-600">Unit Price:</span>
+                                                                                    <p className="font-medium">{formatCurrency(row.custom_data.product_unit_price)}</p>
+                                                                                </div>
+                                                                            )}
+                                                                            {row.custom_data.product_original_price && (
+                                                                                <div>
+                                                                                    <span className="text-gray-600">Original Price:</span>
+                                                                                    <p className="font-medium text-gray-500 line-through">{formatCurrency(row.custom_data.product_original_price)}</p>
+                                                                                </div>
+                                                                            )}
+                                                                            {row.custom_data.product_amount && (
+                                                                                <div>
+                                                                                    <span className="text-gray-600">Total:</span>
+                                                                                    <p className="font-medium text-green-600">{formatCurrency(row.custom_data.product_amount)}</p>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Billing & Shipping Address */}
+                                                            {(row.custom_data?.billing_address || row.custom_data?.shipping_address) && (
+                                                                <div className="border-t border-gray-200 pt-3 mt-3">
+                                                                    <h5 className="font-semibold text-xs text-gray-700 mb-2">Address Information</h5>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                                                        {row.custom_data.billing_address && (
+                                                                            <div>
+                                                                                <span className="text-gray-600 font-semibold block mb-1">Billing Address:</span>
+                                                                                <p className="font-medium">{row.custom_data.billing_address}</p>
+                                                                                {row.custom_data.billing_city && (
+                                                                                    <p className="text-gray-500">
+                                                                                        {row.custom_data.billing_city}
+                                                                                        {row.custom_data.billing_state && `, ${row.custom_data.billing_state}`}
+                                                                                        {row.custom_data.billing_zip && ` ${row.custom_data.billing_zip}`}
+                                                                                    </p>
+                                                                                )}
+                                                                                {row.custom_data.billing_country && (
+                                                                                    <p className="text-gray-500">{row.custom_data.billing_country}</p>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                        {row.custom_data.shipping_address && (
+                                                                            <div>
+                                                                                <span className="text-gray-600 font-semibold block mb-1">Shipping Address:</span>
+                                                                                <p className="font-medium">{row.custom_data.shipping_address}</p>
+                                                                                {row.custom_data.shipping_city && (
+                                                                                    <p className="text-gray-500">
+                                                                                        {row.custom_data.shipping_city}
+                                                                                        {row.custom_data.shipping_state && `, ${row.custom_data.shipping_state}`}
+                                                                                        {row.custom_data.shipping_zip && ` ${row.custom_data.shipping_zip}`}
+                                                                                    </p>
+                                                                                )}
+                                                                                {row.custom_data.shipping_country && (
+                                                                                    <p className="text-gray-500">{row.custom_data.shipping_country}</p>
+                                                                                )}
+                                                                            </div>
+                                                                        )}
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            {/* Payment Information */}
+                                                            {(row.custom_data?.payment_method || row.custom_data?.paid_amount || row.custom_data?.date_paid) && (
+                                                                <div className="border-t border-gray-200 pt-3 mt-3">
+                                                                    <h5 className="font-semibold text-xs text-gray-700 mb-2">Payment Information</h5>
+                                                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                                                        {row.custom_data.payment_method && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Method:</span>
+                                                                                <p className="font-medium">{row.custom_data.payment_method}</p>
+                                                                            </div>
+                                                                        )}
+                                                                        {row.custom_data.paid_amount && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Paid Amount:</span>
+                                                                                <p className="font-medium text-green-600">{formatCurrency(row.custom_data.paid_amount)}</p>
+                                                                            </div>
+                                                                        )}
+                                                                        {row.custom_data.date_paid && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Date Paid:</span>
+                                                                                <p className="font-medium">{formatDate(row.custom_data.date_paid)}</p>
+                                                                            </div>
+                                                                        )}
+                                                                        {row.custom_data.paid_status && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Status:</span>
+                                                                                <p className="font-medium">{row.custom_data.paid_status}</p>
+                                                                            </div>
                                                                         )}
                                                                     </div>
                                                                 </div>
