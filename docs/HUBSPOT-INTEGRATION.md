@@ -16,15 +16,17 @@ HubSpot → Data Warehouse Connector (SQL Server) → API Next.js → Supabase �
 
 ### 1. Variáveis de Ambiente
 
-Adicione no arquivo `.env.local`:
+Adicione no arquivo `.env.local` (nunca fazer commit deste arquivo!):
 
 ```bash
 # SQL Server Data Warehouse (HubSpot Connector)
-SQLSERVER_HOST=datawarehouse-io-eur.database.windows.net
-SQLSERVER_DATABASE=Jorge9660
-SQLSERVER_USER=Jorge6368
-SQLSERVER_PASSWORD=***REMOVED***
+SQLSERVER_HOST=your_sqlserver_host.database.windows.net
+SQLSERVER_DATABASE=your_database_name
+SQLSERVER_USER=your_username
+SQLSERVER_PASSWORD=your_secure_password
 ```
+
+⚠️ **CRITICAL:** These credentials give access to your data warehouse. Keep them secure!
 
 ### 2. Configurar no Vercel
 

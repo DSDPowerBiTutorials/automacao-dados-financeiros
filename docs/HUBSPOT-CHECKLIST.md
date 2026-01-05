@@ -89,7 +89,7 @@
    - `SQLSERVER_HOST` = `datawarehouse-io-eur.database.windows.net`
    - `SQLSERVER_DATABASE` = `Jorge9660`
    - `SQLSERVER_USER` = `Jorge6368`
-   - `SQLSERVER_PASSWORD` = `***REMOVED***`
+   - `SQLSERVER_PASSWORD` = `[SQL_PASSWORD_REMOVIDO_POR_SEGURANCA]`
 
 3. Para cada variável, selecione **todos os ambientes** (Production, Preview, Development)
 

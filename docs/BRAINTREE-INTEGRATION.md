@@ -47,10 +47,10 @@ Endpoint: **`POST /api/braintree/sync`**
 ### 2️⃣ Configurar `.env.local`
 
 ```bash
-BRAINTREE_MERCHANT_ID=abc123def456
-BRAINTREE_PUBLIC_KEY=xyz789uvw012
-BRAINTREE_PRIVATE_KEY=secret_key_here
-BRAINTREE_ENVIRONMENT=sandbox
+BRAINTREE_MERCHANT_ID=[seu_merchant_id_aqui]
+BRAINTREE_PUBLIC_KEY=[sua_public_key_aqui]
+BRAINTREE_PRIVATE_KEY=[sua_private_key_aqui]
+BRAINTREE_ENVIRONMENT=sandbox  # ou 'production'
 ```
 
 ### 3️⃣ Sincronizar transações

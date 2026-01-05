@@ -24,10 +24,7 @@ No arquivo `.env.local`, adicione:
 GOCARDLESS_WEBHOOK_SECRET=your_secret_here
 ```
 
-**Exemplo** (com secret fictício):
-```env
-GOCARDLESS_WEBHOOK_SECRET=whsec_abcdef123456789
-```
+⚠️ **NOTA:** Substitua `your_secret_here` pelo secret fornecido pelo GoCardless ao criar o webhook.
 
 ### 3. Selecionar Eventos de Interesse
 

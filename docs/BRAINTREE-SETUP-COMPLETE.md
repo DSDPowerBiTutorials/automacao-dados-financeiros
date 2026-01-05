@@ -4,9 +4,11 @@
 
 ### 1. SDK e Configuração
 - ✅ SDK `braintree` instalado e configurado
-- ✅ Credenciais atualizadas em `.env.local`
+- ✅ Credenciais configuradas em `.env.local` (nunca commitadas)
 - ✅ Cliente Braintree em [src/lib/braintree.ts](../src/lib/braintree.ts)
 - ✅ Supabase Admin Client em [src/lib/supabase-admin.ts](../src/lib/supabase-admin.ts)
+
+⚠️ **SECURITY NOTE:** All API credentials must be stored in `.env.local` (local) or Vercel Environment Variables (production). Never commit credentials to Git.
 
 ### 2. API de Sincronização
 - ✅ `/api/braintree/sync` → POST para sincronizar transações
@@ -30,15 +32,22 @@
 
 ## 🔧 Configuração das Credenciais
 
-### Credenciais atuais (PRODUCTION):
+### ⚠️ Credenciais (REMOVIDAS POR SEGURANÇA)
+
+**As credenciais do Braintree foram removidas deste documento público.**
+
+Para configurar:
+1. Obtenha as credenciais no [Braintree Dashboard](https://www.braintreegateway.com/)
+2. Adicione no `.env.local` (local) ou Vercel Environment Variables (produção):
+
 ```bash
-BRAINTREE_MERCHANT_ID=***REMOVED***
-BRAINTREE_PUBLIC_KEY=***REMOVED***
-BRAINTREE_PRIVATE_KEY=***REMOVED***
+BRAINTREE_MERCHANT_ID=[seu_merchant_id]
+BRAINTREE_PUBLIC_KEY=[sua_public_key]
+BRAINTREE_PRIVATE_KEY=[sua_private_key]
 BRAINTREE_ENVIRONMENT=production
 ```
 
-✅ **Autenticação testada e funcionando!**
+✅ Para verificar se funcionou, use: `GET /api/braintree/test`
 
 ---
 
