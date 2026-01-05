@@ -86,9 +86,11 @@ export default function BraintreePage() {
       reader.onload = async (e) => {
         const text = e.target?.result as string;
         const lines = text.split("\n");
-        const headers = lines[0]
-          .split(",")
-          .map((h) => String(h ?? "").trim().replace(/^"|"$/g, ""));
+        const headers = lines[0].split(",").map((h) =>
+          String(h ?? "")
+            .trim()
+            .replace(/^"|"$/g, ""),
+        );
 
         const newRows: BraintreeRow[] = [];
         let idCounter = rows.length + 1;
@@ -96,9 +98,11 @@ export default function BraintreePage() {
         for (let i = 1; i < lines.length; i++) {
           if (!String(lines[i] ?? "").trim()) continue;
 
-          const values = lines[i]
-            .split(",")
-            .map((v) => String(v ?? "").trim().replace(/^"|"$/g, ""));
+          const values = lines[i].split(",").map((v) =>
+            String(v ?? "")
+              .trim()
+              .replace(/^"|"$/g, ""),
+          );
           const row: any = {};
 
           headers.forEach((header, index) => {
