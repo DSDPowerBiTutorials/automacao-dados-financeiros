@@ -1,71 +1,82 @@
 /**
  * Query SQL COMPLETA para HubSpot - Espelha o backend WEB EXATAMENTE
  * 
- * COLUNAS DO BACKEND (conforme prints do sistema):
- * 1. Order (dealname - ex: 371e321)
- * 2. HubSpot VID (hs_object_id - ex: 53360830866)
- * 3. Date Ordered (closedate)
- * 4. Billing Business Name (company_name ou billing_business_name)
- * 5. Customer (email do contact)
- * 6. Paid Status (paid_status)
- * 7. Date Paid (date_paid)
- * 8. Total Paid (total_paid)
- * 9. Total Discount (total_discount)
- * 10. Total (amount)
+ * COLUNAS DO BACKEND (conforme investigação do banco):
+ * 1. Order → dealname (formato: 371e321, a3d2c9a)
+ * 2. HubSpot VID → DealId (ID numérico do deal)
+ * 3. Date Ordered → closedate
+ * 4. Billing Business Name → billing_business_name ou Company.CompanyName
+ * 5. Customer → Contact.email
+ * 6. Paid Status → paid_status
+ * 7. Date Paid → hs_closed_won_date
+ * 8. Total Paid → total_payment
+ * 9. Total Discount → ip__ecomm_bridge__discount_amount
+ * 10. Total → amount (valor final com desconto já aplicado)
  */
 
 export const ENRICHED_HUBSPOT_QUERY = `
 SELECT TOP 2000
-  -- IDs e Order
-  d.DealId,
-  d.dealname,
-  d.hs_object_id as hubspot_vid,
-  d.website_order_id,
+  -- 1. Order (Order Number formato 371e321)
+  d.dealname AS [Order],
+  d.ip__ecomm_bridge__order_number AS order_number_backup,
   
-  -- Datas
+  -- 2. HubSpot VID (Deal ID)
+  d.DealId AS hubspot_vid,
+  
+  -- 3. Date Ordered
   d.closedate,
   d.createdate,
-  d.hs_lastmodifieddate as last_updated,
-  d.date_paid,
-  d.hs_closed_won_date,
+  d.hs_lastmodifieddate AS last_updated,
   
-  -- Billing Business Name
+  -- 4. Billing Business Name
   d.billing_business_name,
   
-  -- Status & Payment
+  -- 5. Paid Status
   d.paid_status,
-  d.dealstage as status,
-  d.pipeline,
   
-  -- Valores
-  d.amount,
-  d.total_paid,
-  d.total_discount,
-  d.total_shipping,
-  d.total_tax,
-  d.total_price,
-  d.deal_currency_code as currency,
+  -- 6. Date Paid
+  d.hs_closed_won_date AS date_paid,
+  
+  -- 7. Total Paid
+  d.total_payment AS total_paid,
+  
+  -- 8. Total Discount
+  d.ip__ecomm_bridge__discount_amount AS total_discount,
+  
+  -- 9. Total (valor final)
+  d.amount AS total_amount,
+  
+  -- Campos adicionais úteis
+  d.deal_currency_code AS currency,
+  d.dealstage AS status,
+  d.pipeline,
+  d.dealtype,
+  d.ecommerce_deal,
+  d.website_order_id,
+  d.hubspot_owner_id AS owner_id,
+  d.description AS deal_description,
+  d.ip__ecomm_bridge__tax_amount AS tax_amount,
+  d.discount_amount AS discount_amount_text,
   
   -- Customer (from Contact)
-  c.email as customer_email,
-  c.firstname as customer_firstname,
-  c.lastname as customer_lastname,
-  c.phone as customer_phone,
-  c.VId as contact_id,
+  c.VId AS contact_id,
+  c.email AS customer_email,
+  c.firstname AS customer_firstname,
+  c.lastname AS customer_lastname,
+  c.phone AS customer_phone,
   
-  -- Company
-  co.CompanyName as company_name,
-  co.CompanyId as company_id,
-  
-  -- Additional fields
-  d.hubspot_owner_id as owner_id,
-  d.description as deal_description
+  -- Company (Billing Business Name fallback)
+  co.CompanyId AS company_id,
+  co.CompanyName AS company_name,
+  co.name AS company_name_alt
 
 FROM Deal d
 
+-- JOIN com Contact (Customer Email)
 LEFT JOIN DealContactAssociations dca ON d.DealId = dca.DealId
 LEFT JOIN Contact c ON c.VId = dca.VId
 
+-- JOIN com Company (Billing Business Name)
 LEFT JOIN DealCompanyAssociations dcoa ON d.DealId = dcoa.DealId
 LEFT JOIN Company co ON co.CompanyId = dcoa.CompanyId
 

@@ -861,13 +861,13 @@ ${result.recommendations.join('\n')}
                                     const isEditing = editingId === row.id;
                                     const isExpanded = expandedRows.has(row.id);
 
-                                    // Extrair dados essenciais conforme backend
-                                    const orderCode = row.custom_data?.dealname || row.custom_data?.order_code || extractOrderCode(row) || '-';
-                                    const hubspotVid = row.custom_data?.hubspot_vid || row.custom_data?.hs_object_id || '-';
-                                    const billingBusinessName = row.custom_data?.billing_business_name || row.custom_data?.company_name || row.custom_data?.company || '-';
+                                    // Extrair dados essenciais conforme banco de dados investigado
+                                    const orderCode = row.custom_data?.Order || row.custom_data?.dealname || row.description || '-';
+                                    const hubspotVid = row.custom_data?.hubspot_vid || '-';
+                                    const billingBusinessName = row.custom_data?.billing_business_name || row.custom_data?.company_name || row.custom_data?.company_name_alt || '-';
                                     const paidStatus = row.custom_data?.paid_status || 'Unpaid';
-                                    const totalPaid = row.custom_data?.total_paid || row.custom_data?.paid_amount || row.custom_data?.total_payment || 0;
-                                    const totalDiscount = row.custom_data?.total_discount || row.custom_data?.discount_amount || 0;
+                                    const totalPaid = row.custom_data?.total_paid || 0;
+                                    const totalDiscount = row.custom_data?.total_discount || 0;
                                     const totalAmount = row.amount || 0;
 
                                     return (
