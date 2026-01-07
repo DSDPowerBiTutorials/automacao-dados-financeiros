@@ -1,8 +1,6 @@
-"use client";
-
 import { NextResponse } from "next/server";
 
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 /**
  * GET /api/schema - retorna o schema da tabela csv_rows via função RPC no Supabase.
