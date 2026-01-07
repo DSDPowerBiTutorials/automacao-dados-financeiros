@@ -145,9 +145,9 @@ ORDER BY
   d.closedate DESC,
   d.DealId DESC
 `;
-  
-  -- ==========================================
-  -- CONTACT - Informações do Cliente
+
+-- ==========================================
+  --CONTACT - Informações do Cliente
   -- ==========================================
   c.VId as contact_id,
   c.email as customer_email,
@@ -161,10 +161,10 @@ ORDER BY
   c.state as customer_state,
   c.country as customer_country,
   c.zip as customer_zip,
-  
+
   -- ==========================================
-  -- COMPANY - Informações da Empresa
-  -- ==========================================
+  --COMPANY - Informações da Empresa
+-- ==========================================
   co.CompanyId as company_id,
   co.CompanyName as company_name,
   co.industry as company_industry,
@@ -172,10 +172,10 @@ ORDER BY
   co.city as company_city,
   co.country as company_country,
   co.phone as company_phone,
-  
+
   -- ==========================================
-  -- LINEITEM - Produto (primeiro item)
-  -- ==========================================
+  --LINEITEM - Produto(primeiro item)
+-- ==========================================
   (
     SELECT TOP 1 li.description
     FROM DealLineItemAssociations dlia
@@ -183,7 +183,7 @@ ORDER BY
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
   ) as product_name,
-  
+
   (
     SELECT TOP 1 li.name
     FROM DealLineItemAssociations dlia
@@ -191,7 +191,7 @@ ORDER BY
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
   ) as product_short_name,
-  
+
   (
     SELECT TOP 1 li.quantity
     FROM DealLineItemAssociations dlia
@@ -199,7 +199,7 @@ ORDER BY
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
   ) as product_quantity,
-  
+
   (
     SELECT TOP 1 li.amount
     FROM DealLineItemAssociations dlia
@@ -207,7 +207,7 @@ ORDER BY
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
   ) as product_amount,
-  
+
   (
     SELECT TOP 1 li.price
     FROM DealLineItemAssociations dlia
@@ -215,7 +215,7 @@ ORDER BY
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
   ) as product_unit_price,
-  
+
   (
     SELECT TOP 1 li.hs_sku
     FROM DealLineItemAssociations dlia
@@ -223,7 +223,7 @@ ORDER BY
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
   ) as product_sku,
-  
+
   (
     SELECT TOP 1 li.cost_price
     FROM DealLineItemAssociations dlia
@@ -231,7 +231,7 @@ ORDER BY
     WHERE dlia.DealId = d.DealId
     ORDER BY li.hs_position_on_quote
   ) as product_cost,
-  
+
   (
     SELECT TOP 1 li.ip__ecomm_bridge__discount_amount
     FROM DealLineItemAssociations dlia
@@ -242,20 +242,20 @@ ORDER BY
 
 FROM Deal d
 
--- JOIN com Contact (Cliente)
+--JOIN com Contact(Cliente)
 LEFT JOIN DealContactAssociations dca ON d.DealId = dca.DealId
 LEFT JOIN Contact c ON c.VId = dca.VId
 
--- JOIN com Company (Empresa)
+--JOIN com Company(Empresa)
 LEFT JOIN DealCompanyAssociations dcoa ON d.DealId = dcoa.DealId
 LEFT JOIN Company co ON co.CompanyId = dcoa.CompanyId
 
-WHERE 
-  d.hs_lastmodifieddate >= @startDate
-  AND (d.dealstage LIKE '%won%' OR d.dealstage LIKE '%completed%' OR d.dealstage LIKE '%paid%')
+WHERE
+d.hs_lastmodifieddate >= @startDate
+AND(d.dealstage LIKE '%won%' OR d.dealstage LIKE '%completed%' OR d.dealstage LIKE '%paid%')
 
 ORDER BY d.closedate DESC
-`;
+  `;
 
 /**
  * Query simplificada (fallback se a enriquecida der erro)
@@ -268,7 +268,7 @@ ORDER BY d.closedate DESC
  */
 export const SIMPLE_HUBSPOT_QUERY = `
 SELECT TOP 2000
-  d.DealId,
+d.DealId,
   d.dealname,
   d.amount,
   d.closedate,
@@ -283,11 +283,11 @@ SELECT TOP 2000
 FROM Deal d
 LEFT JOIN DealContactAssociations dca ON d.DealId = dca.DealId
 LEFT JOIN Contact c ON c.VId = dca.VId
-WHERE 
-  d.hs_lastmodifieddate >= @startDate
+WHERE
+d.hs_lastmodifieddate >= @startDate
   AND d.dealstage LIKE '%won%'
 ORDER BY d.closedate DESC
-`;
+  `;
 
 /**
  * Query INTERMEDIÁRIA - Tenta buscar Company e alguns campos de e-commerce
@@ -298,8 +298,8 @@ ORDER BY d.closedate DESC
  */
 export const INTERMEDIATE_HUBSPOT_QUERY = `
 SELECT TOP 2000
-  -- DEAL (Venda)
-  d.DealId,
+--DEAL(Venda)
+d.DealId,
   d.dealname,
   d.amount,
   d.closedate,
@@ -311,16 +311,16 @@ SELECT TOP 2000
   d.description as deal_description,
   d.hs_closed_won_date,
   d.hs_lastmodifieddate,
-  
-  -- CONTACT (Cliente)
-  c.VId as contact_id,
+
+  --CONTACT(Cliente)
+c.VId as contact_id,
   c.email as customer_email,
   c.firstname as customer_firstname,
   c.lastname as customer_lastname,
   c.phone as customer_phone,
-  
-  -- COMPANY (Empresa)
-  co.CompanyId as company_id,
+
+  --COMPANY(Empresa)
+co.CompanyId as company_id,
   co.name as company_name,
   co.industry as company_industry,
   co.city as company_city,
@@ -328,17 +328,17 @@ SELECT TOP 2000
 
 FROM Deal d
 
--- JOIN com Contact (Cliente)
+--JOIN com Contact(Cliente)
 LEFT JOIN DealContactAssociations dca ON d.DealId = dca.DealId
 LEFT JOIN Contact c ON c.VId = dca.VId
 
--- JOIN com Company (Empresa)
+--JOIN com Company(Empresa)
 LEFT JOIN DealCompanyAssociations dcoa ON d.DealId = dcoa.DealId
 LEFT JOIN Company co ON co.CompanyId = dcoa.CompanyId
 
-WHERE 
-  d.hs_lastmodifieddate >= @startDate
+WHERE
+d.hs_lastmodifieddate >= @startDate
   AND d.dealstage LIKE '%won%'
 
 ORDER BY d.closedate DESC
-`;
+  `;
