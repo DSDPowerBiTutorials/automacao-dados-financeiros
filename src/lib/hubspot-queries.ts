@@ -1,13 +1,14 @@
 /**
- * Query SQL DEFINITIVA para HubSpot - Espelha o backend exatamente
+ * Query SQL COMPLETA para HubSpot - Espelha o backend WEB EXATAMENTE
  * 
- * Baseada na análise real do SQL Server:
- * - dealname = Order Code (ex: e437d54, a3d2c9a)
- * - ip__ecomm_bridge__order_number também guarda o Order Code
- * - website_order_id = ID numérico do pedido web
- * - LineItem = informações detalhadas do produto
+ * Baseada nas colunas disponíveis no backend:
+ * - HubSpot VID, Date Ordered, Billing Business Name, Customer
+ * - Paid Status, Date Paid, Total Paid, Total Discount, Total
+ * - Billing/Shipping Full Names, Email, Gateway, Item Subtotal/Total
+ * - Order Site/Type, Payment Subscription, Reference, Status
+ * - Total Included Tax/Price/Qty/Shipping/Tax
  * 
- * Esta query pega TUDO que está disponível no backend do HubSpot.
+ * Esta query replica EXATAMENTE a visualização do backend web.
  */
 
 export const ENRICHED_HUBSPOT_QUERY = `
