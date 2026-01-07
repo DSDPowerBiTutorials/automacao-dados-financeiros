@@ -416,6 +416,11 @@ export const NAV: NavGroup[] = [
         ]
       },
       {
+        title: "Expenses (Pleo)",
+        href: "/reports/pleo",
+        icon: Receipt
+      },
+      {
         title: "Reconciliation Center",
         href: "/actions/reconciliation-center",
         icon: CheckCircle2
