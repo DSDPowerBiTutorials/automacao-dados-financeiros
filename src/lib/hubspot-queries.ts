@@ -83,6 +83,12 @@ LEFT JOIN Company co ON co.CompanyId = dcoa.CompanyId
 WHERE 
   d.closedate IS NOT NULL
   AND d.closedate >= @startDate
+  AND (
+    -- FILTRAR APENAS DEALS DE E-COMMERCE (order number formato 371e321)
+    d.ip__ecomm_bridge__order_number IS NOT NULL
+    OR d.ecommerce_deal = 'true'
+    OR (d.dealname IS NOT NULL AND LEN(d.dealname) <= 10 AND d.dealname NOT LIKE '%provider%' AND d.dealname NOT LIKE '%DSD%')
+  )
 
 ORDER BY 
   d.closedate DESC,

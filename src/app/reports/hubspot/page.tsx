@@ -433,6 +433,19 @@ ${result.recommendations.join('\n')}
         return `#DSDES${orderCode.toUpperCase()}`;
     };
 
+    // Pegar ÚLTIMO status do paid_status (ex: "Unpaid;Paid;Partial" -> "Partial")
+    const getLastPaidStatus = (paidStatus: string | undefined): string => {
+        if (!paidStatus) return 'Unpaid';
+
+        // Se tiver ; significa histórico (ex: "Unpaid;Paid;Partial")
+        if (paidStatus.includes(';')) {
+            const statuses = paidStatus.split(';').map(s => s.trim());
+            return statuses[statuses.length - 1]; // Pegar o ÚLTIMO
+        }
+
+        return paidStatus;
+    };
+
     // Extrair Short Number (LEGACY - manter para compatibilidade)
     const extractShortNumber = (dealname: string | undefined): string => {
         if (!dealname) return "";
@@ -862,10 +875,20 @@ ${result.recommendations.join('\n')}
                                     const isExpanded = expandedRows.has(row.id);
 
                                     // Extrair dados essenciais conforme banco de dados investigado
-                                    const orderCode = row.custom_data?.Order || row.custom_data?.dealname || row.description || '-';
-                                    const hubspotVid = row.custom_data?.hubspot_vid || '-';
+                                    // Order: dealname OU ip__ecomm_bridge__order_number (formato 371e321, a3d2c9a)
+                                    const orderCode = row.custom_data?.Order || row.custom_data?.dealname || row.custom_data?.order_number_backup || '-';
+
+                                    // HubSpot VID: DealId (ID numérico)
+                                    const hubspotVid = row.custom_data?.hubspot_vid || row.id || '-';
+
+                                    // Billing Business Name
                                     const billingBusinessName = row.custom_data?.billing_business_name || row.custom_data?.company_name || row.custom_data?.company_name_alt || '-';
-                                    const paidStatus = row.custom_data?.paid_status || 'Unpaid';
+
+                                    // Paid Status: pegar ÚLTIMO status se tiver histórico (Unpaid;Paid;Partial -> Partial)
+                                    const paidStatusRaw = row.custom_data?.paid_status || 'Unpaid';
+                                    const paidStatus = getLastPaidStatus(paidStatusRaw);
+
+                                    // Valores numéricos
                                     const totalPaid = row.custom_data?.total_paid || 0;
                                     const totalDiscount = row.custom_data?.total_discount || 0;
                                     const totalAmount = row.amount || 0;
