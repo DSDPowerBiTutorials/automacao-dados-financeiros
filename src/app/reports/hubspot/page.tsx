@@ -822,31 +822,34 @@ ${result.recommendations.join('\n')}
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Order Number
+                                        Order
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Reference / ID
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Status
+                                        HubSpot VID
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Date Ordered
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Date Paid
+                                        Billing Business Name
                                     </th>
-                                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
-                                        Total / Paid
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        Customer
                                     </th>
                                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
                                         Paid Status
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Product (Qty)
+                                        Date Paid
                                     </th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Customer
+                                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
+                                        Total Paid
+                                    </th>
+                                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
+                                        Total Discount
+                                    </th>
+                                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
+                                        Total
                                     </th>
                                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
                                         Actions
@@ -858,111 +861,60 @@ ${result.recommendations.join('\n')}
                                     const isEditing = editingId === row.id;
                                     const isExpanded = expandedRows.has(row.id);
 
-                                    // Extrair dados essenciais
-                                    const orderCode = row.custom_data?.order_code || extractOrderCode(row) || '-';
-                                    const websiteOrderId = row.custom_data?.website_order_id || '';
-                                    const status = row.custom_data?.status || row.custom_data?.stage || 'Unknown';
+                                    // Extrair dados essenciais conforme backend
+                                    const orderCode = row.custom_data?.dealname || row.custom_data?.order_code || extractOrderCode(row) || '-';
+                                    const hubspotVid = row.custom_data?.hubspot_vid || row.custom_data?.hs_object_id || '-';
+                                    const billingBusinessName = row.custom_data?.billing_business_name || row.custom_data?.company_name || row.custom_data?.company || '-';
                                     const paidStatus = row.custom_data?.paid_status || 'Unpaid';
-                                    const paidAmount = row.custom_data?.paid_amount || row.custom_data?.total_payment || 0;
-                                    const productName = row.custom_data?.product_short_name || row.custom_data?.product_name || 'N/A';
-                                    const productQty = row.custom_data?.product_quantity || row.custom_data?.quantity || 0;
+                                    const totalPaid = row.custom_data?.total_paid || row.custom_data?.paid_amount || row.custom_data?.total_payment || 0;
+                                    const totalDiscount = row.custom_data?.total_discount || row.custom_data?.discount_amount || 0;
+                                    const totalAmount = row.amount || 0;
 
                                     return (
                                         <>
                                             <tr key={row.id} className="hover:bg-gray-50">
-                                                {/* Order Code / Order Number */}
+                                                {/* 1. Order */}
                                                 <td className="px-4 py-3">
-                                                    <div className="flex flex-col">
-                                                        {websiteOrderId ? (
-                                                            <>
-                                                                <a
-                                                                    href={`#order-${websiteOrderId}`}
-                                                                    className="text-blue-600 hover:underline font-semibold text-base"
-                                                                    title={`Order Number: ${websiteOrderId}`}
-                                                                >
-                                                                    {websiteOrderId}
-                                                                </a>
-                                                                <span className="text-xs text-gray-500 font-mono">Code: {orderCode}</span>
-                                                            </>
-                                                        ) : (
-                                                            <a
-                                                                href={`#order-${orderCode}`}
-                                                                className="text-blue-600 hover:underline font-mono text-sm font-semibold"
-                                                                title={`Order Code: ${orderCode}`}
-                                                            >
-                                                                {orderCode}
-                                                            </a>
-                                                        )}
-                                                    </div>
-                                                </td>
-
-                                                {/* Reference / Invoice Number */}
-                                                <td className="px-4 py-3 text-sm font-mono">
                                                     <a
-                                                        href={`#invoice-${orderCode}`}
+                                                        href={`#order-${orderCode}`}
                                                         className="text-blue-600 hover:underline font-semibold"
-                                                        title={`Invoice: ${getInvoiceNumber(row)}`}
+                                                        title={`Order: ${orderCode}`}
                                                     >
-                                                        {getInvoiceNumber(row) || orderCode || "-"}
+                                                        {orderCode}
                                                     </a>
                                                 </td>
 
-                                                {/* Status */}
-                                                <td className="px-4 py-3">
-                                                    <div className="flex items-center gap-2">
-                                                        {getStatusIcon(status)}
-                                                        <span className="text-sm">
-                                                            {status}
-                                                        </span>
-                                                    </div>
+                                                {/* 2. HubSpot VID */}
+                                                <td className="px-4 py-3 text-sm font-mono">
+                                                    {hubspotVid}
                                                 </td>
 
-                                                {/* Date Ordered */}
+                                                {/* 3. Date Ordered */}
                                                 <td className="px-4 py-3 text-sm">
                                                     {row.date ? new Date(row.date).toLocaleString('en-US', {
                                                         month: 'numeric',
                                                         day: 'numeric',
-                                                        year: 'numeric',
-                                                        hour: 'numeric',
-                                                        minute: '2-digit',
-                                                        hour12: true
+                                                        year: 'numeric'
                                                     }) : "-"}
                                                 </td>
 
-                                                {/* Date Paid */}
+                                                {/* 4. Billing Business Name */}
                                                 <td className="px-4 py-3 text-sm">
-                                                    {(() => {
-                                                        const datePaid = row.custom_data?.date_paid || row.custom_data?.hs_closed_won_date;
-                                                        if (!datePaid) return "-";
-
-                                                        try {
-                                                            return new Date(datePaid).toLocaleString('en-US', {
-                                                                month: 'numeric',
-                                                                day: 'numeric',
-                                                                year: 'numeric',
-                                                                hour: 'numeric',
-                                                                minute: '2-digit',
-                                                                hour12: true
-                                                            });
-                                                        } catch (e) {
-                                                            return formatDate(datePaid);
-                                                        }
-                                                    })()}
+                                                    {billingBusinessName}
                                                 </td>
 
-                                                {/* Total / Paid Amount */}
-                                                <td className="px-4 py-3 text-right">
-                                                    <div className="flex flex-col items-end">
-                                                        <span className="font-medium">{formatCurrency(row.amount)}</span>
-                                                        {paidAmount > 0 && paidAmount !== row.amount && (
-                                                            <span className="text-xs text-green-600">
-                                                                Paid: {formatCurrency(paidAmount)}
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                                {/* 5. Customer */}
+                                                <td className="px-4 py-3">
+                                                    <a
+                                                        href={`mailto:${row.customer_email}`}
+                                                        className="text-blue-600 hover:underline text-sm truncate block max-w-[200px]"
+                                                        title={row.customer_email}
+                                                    >
+                                                        {row.customer_email || "-"}
+                                                    </a>
                                                 </td>
 
-                                                {/* Paid Status */}
+                                                {/* 6. Paid Status */}
                                                 <td className="px-4 py-3 text-center">
                                                     <div className="flex items-center justify-center gap-2">
                                                         {getPaidStatusIcon(paidStatus)}
@@ -972,27 +924,39 @@ ${result.recommendations.join('\n')}
                                                     </div>
                                                 </td>
 
-                                                {/* Product (Qty) */}
-                                                <td className="px-4 py-3">
-                                                    <div className="flex flex-col text-sm">
-                                                        <span className="font-medium truncate max-w-[200px]" title={productName}>
-                                                            {productName}
-                                                        </span>
-                                                        <span className="text-xs text-gray-500">
-                                                            Qty: {productQty}
-                                                        </span>
-                                                    </div>
+                                                {/* 7. Date Paid */}
+                                                <td className="px-4 py-3 text-sm">
+                                                    {(() => {
+                                                        const datePaid = row.custom_data?.date_paid || row.custom_data?.hs_closed_won_date;
+                                                        if (!datePaid) return "-";
+
+                                                        try {
+                                                            return new Date(datePaid).toLocaleString('en-US', {
+                                                                month: 'numeric',
+                                                                day: 'numeric',
+                                                                year: 'numeric'
+                                                            });
+                                                        } catch (e) {
+                                                            return formatDate(datePaid);
+                                                        }
+                                                    })()}
                                                 </td>
 
-                                                {/* Customer (email) */}
-                                                <td className="px-4 py-3">
-                                                    <a
-                                                        href={`mailto:${row.customer_email}`}
-                                                        className="text-blue-600 hover:underline text-sm truncate block max-w-[200px]"
-                                                        title={row.customer_email}
-                                                    >
-                                                        {row.customer_email || "-"}
-                                                    </a>
+                                                {/* 8. Total Paid */}
+                                                <td className="px-4 py-3 text-right">
+                                                    <span className="font-medium">{formatCurrency(totalPaid)}</span>
+                                                </td>
+
+                                                {/* 9. Total Discount */}
+                                                <td className="px-4 py-3 text-right">
+                                                    <span className={`font-medium ${totalDiscount < 0 ? 'text-red-600' : 'text-gray-900'}`}>
+                                                        {formatCurrency(totalDiscount)}
+                                                    </span>
+                                                </td>
+
+                                                {/* 10. Total */}
+                                                <td className="px-4 py-3 text-right">
+                                                    <span className="font-medium">{formatCurrency(totalAmount)}</span>
                                                 </td>
 
                                                 {/* Actions */}
@@ -1043,7 +1007,7 @@ ${result.recommendations.join('\n')}
                                             {/* Expanded Row - All Totals Details */}
                                             {isExpanded && (
                                                 <tr key={`${row.id}-expanded`} className="bg-gray-50">
-                                                    <td colSpan={10} className="px-4 py-4">
+                                                    <td colSpan={11} className="px-4 py-4">
                                                         <div className="ml-8 p-4 bg-white rounded border border-gray-200">
                                                             <h4 className="font-semibold text-sm mb-3 text-gray-700">
                                                                 Order Details

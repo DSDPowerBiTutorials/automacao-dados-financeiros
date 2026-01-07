@@ -1,65 +1,58 @@
 /**
  * Query SQL COMPLETA para HubSpot - Espelha o backend WEB EXATAMENTE
  * 
- * COLUNAS DO BACKEND (conforme imagem):
- * 1. Order Number (dealname ou website_order_id)
- * 2. Reference / ID (referência com #)
- * 3. Status (dealstage)
- * 4. Date Ordered (closedate)
- * 5. Date Paid (date_paid)
- * 6. Total / Paid (amount e total_payment)
- * 7. Paid Status (paid_status)
- * 8. Product (Qty) (line item name + quantity)
- * 9. Customer (email do contact)
+ * COLUNAS DO BACKEND (conforme prints do sistema):
+ * 1. Order (dealname - ex: 371e321)
+ * 2. HubSpot VID (hs_object_id - ex: 53360830866)
+ * 3. Date Ordered (closedate)
+ * 4. Billing Business Name (company_name ou billing_business_name)
+ * 5. Customer (email do contact)
+ * 6. Paid Status (paid_status)
+ * 7. Date Paid (date_paid)
+ * 8. Total Paid (total_paid)
+ * 9. Total Discount (total_discount)
+ * 10. Total (amount)
  */
 
 export const ENRICHED_HUBSPOT_QUERY = `
 SELECT TOP 2000
   -- ==========================================
-  -- 1. ORDER NUMBER (Primary Key)
+  -- IDs e Order
   -- ==========================================
   d.DealId,
-  d.dealname as order_code,
-  d.hs_object_id as hubspot_vid,
+  d.dealname,  -- Order (371e321)
+  d.hs_object_id as hubspot_vid,  -- HubSpot VID
+  d.website_order_id,
+  Datas (Date Ordered & Date Paid)
+  -- ==========================================
+  d.closedate,  -- Date Ordered
+  d.createdate,
+  d.hs_lastmodifieddate as last_updated,
+  d.date_paid,  -- Date Paid
+  d.hs_closed_won_date,
   
   -- ==========================================
-  -- 2. REFERENCE / ID
+  -- Billing Business Name
   -- ==========================================
-  d.dealname as reference,  -- Será formatado como #DEALNAME no frontend
+  d.billing_business_name,
   
   -- ==========================================
-  -- 3. STATUS
+  -- Status & Payment
   -- ==========================================
+  d.paid_status,  -- Paid Status
   d.dealstage as status,
   d.pipeline,
   
   -- ==========================================
-  -- 4. DATE ORDERED
+  -- Valores (Total, Total Paid, Total Discount)
   -- ==========================================
-  d.closedate as date_ordered,
-  d.createdate,
-  d.hs_lastmodifieddate as last_updated,
-  
-  -- ==========================================
-  -- 5. DATE PAID
-  -- ==========================================
-  d.date_paid,
-  d.hs_closed_won_date,
-  
-  -- ==========================================
-  -- 6. TOTAL / PAID (Amounts)
-  -- ==========================================
-  d.amount as total_amount,
-  d.total_payment as paid_amount,
-  d.total_paid,
-  d.total_discount,
+  d.amount,  -- Total
+  d.total_paid,  -- Total Paid
+  d.total_discount,  -- Total Discount
   d.total_shipping,
   d.total_tax,
-  d.amount_in_home_currency,
-  d.deal_currency_code as currency,
-  
-  -- ==========================================
-  -- 7. PAID STATUS
+  d.total_price,
+  d.deal_currency_code as currencyATUS
   -- ==========================================
   d.paid_status,
   
@@ -69,52 +62,8 @@ SELECT TOP 2000
   (
     SELECT TOP 1 li.name
     FROM DealLineItemAssociations dlia
-    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
-    WHERE dlia.DealId = d.DealId
-    ORDER BY li.hs_position_on_quote
-  ) as product_name,
-  
-  (
-    SELECT TOP 1 li.description
-    FROM DealLineItemAssociations dlia
-    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
-    WHERE dlia.DealId = d.DealId
-    ORDER BY li.hs_position_on_quote
-  ) as product_description,
-  
-  (
-    SELECT TOP 1 li.quantity
-    FROM DealLineItemAssociations dlia
-    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
-    WHERE dlia.DealId = d.DealId
-    ORDER BY li.hs_position_on_quote
-  ) as product_quantity,
-  
-  (
-    SELECT TOP 1 li.hs_sku
-    FROM DealLineItemAssociations dlia
-    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
-    WHERE dlia.DealId = d.DealId
-    ORDER BY li.hs_position_on_quote
-  ) as product_sku,
-  
-  (
-    SELECT TOP 1 li.price
-    FROM DealLineItemAssociations dlia
-    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
-    WHERE dlia.DealId = d.DealId
-    ORDER BY li.hs_position_on_quote
-  ) as product_price,
-  
   -- ==========================================
-  -- 9. CUSTOMER (from Contact)
-  -- ==========================================
-  c.email as customer_email,
-  c.firstname as customer_firstname,
-  c.lastname as customer_lastname,
-  c.phone as customer_phone,
-  c.VId as contact_id,
-  
+  -- Customer (from Contact) - Email
   -- ==========================================
   -- EXTRAS (Company, etc)
   -- ==========================================
