@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { updateSyncMetadata } from "@/lib/sync-metadata";
 import {
   searchTransactions,
   calculateTransactionFee,
@@ -180,6 +181,19 @@ export async function POST(req: NextRequest) {
     const totalFees = Math.abs(
       feeRowsToInsert.reduce((sum, row) => sum + row.amount, 0)
     );
+
+    // Atualizar sync_metadata
+    const source = currency === 'EUR' ? 'braintree-eur' :
+      currency === 'USD' ? 'braintree-usd' :
+        'braintree-amex';
+
+    await updateSyncMetadata({
+      source,
+      lastSyncAt: new Date(),
+      mostRecentRecordDate: transactions.length > 0 ? new Date(transactions[0].createdAt) : new Date(),
+      totalRecords: revenueInserted,
+      lastSyncStatus: 'success',
+    });
 
     return NextResponse.json({
       success: true,

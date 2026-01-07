@@ -16,6 +16,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { updateSyncMetadata } from "@/lib/sync-metadata";
 import crypto from "crypto";
 
 // Tipos de eventos GoCardless que processaremos
@@ -128,14 +129,18 @@ async function handlePayoutEvent(event: GoCardlessPayload, action: string) {
             console.log(`[GoCardless Webhook] Payout ${payout.id} atualizado como ${action}`);
         }
     } else {
-        // Inserir novo
-        const { error } = await supabaseAdmin.from("csv_rows").insert({
+        // Inserir novo com upsert strategy
+        const { error } = await supabaseAdmin.from("csv_rows").upsert({
+            external_id: payout.id,
             source: "gocardless",
             date: payout.arrival_date || new Date().toISOString().split("T")[0],
             description: `GoCardless Payout - ${payout.id}`,
             amount: (payout.amount / 100).toString(), // Converter centavos
             reconciled: statusMap[action] === "paid",
             custom_data: customData,
+        }, {
+            onConflict: 'source,external_id',
+            ignoreDuplicates: false
         });
 
         if (error) {
@@ -144,6 +149,15 @@ async function handlePayoutEvent(event: GoCardlessPayload, action: string) {
             console.log(`[GoCardless Webhook] Novo payout ${payout.id} criado como ${action}`);
         }
     }
+
+    // Atualizar sync_metadata
+    await updateSyncMetadata({
+        source: 'gocardless',
+        syncType: 'webhook',
+        recordsAdded: existingData && existingData.length > 0 ? 0 : 1,
+        lastRecordDate: new Date(payout.arrival_date || new Date()),
+        status: 'success',
+    });
 }
 
 /**
@@ -196,14 +210,18 @@ async function handlePaymentEvent(event: GoCardlessPayload, action: string) {
             console.log(`[GoCardless Webhook] Payment ${payment.id} atualizado como ${action}`);
         }
     } else {
-        // Inserir novo
-        const { error } = await supabaseAdmin.from("csv_rows").insert({
+        // Inserir novo com upsert strategy
+        const { error } = await supabaseAdmin.from("csv_rows").upsert({
+            external_id: payment.id,
             source: "gocardless",
             date: payment.charge_date || new Date().toISOString().split("T")[0],
             description: payment.reference || `GoCardless Payment - ${payment.id}`,
             amount: (payment.amount / 100).toString(), // Converter centavos
             reconciled: shouldReconcile,
             custom_data: customData,
+        }, {
+            onConflict: 'source,external_id',
+            ignoreDuplicates: false
         });
 
         if (error) {
@@ -212,6 +230,15 @@ async function handlePaymentEvent(event: GoCardlessPayload, action: string) {
             console.log(`[GoCardless Webhook] Novo payment ${payment.id} criado como ${action}`);
         }
     }
+
+    // Atualizar sync_metadata
+    await updateSyncMetadata({
+        source: 'gocardless',
+        syncType: 'webhook',
+        recordsAdded: existingData && existingData.length > 0 ? 0 : 1,
+        lastRecordDate: new Date(payment.charge_date || new Date()),
+        status: 'success',
+    });
 }
 
 /**
@@ -236,14 +263,18 @@ async function handleRefundEvent(event: GoCardlessPayload, action: string) {
         webhook_received_at: new Date().toISOString(),
     };
 
-    // Inserir refund como novo registro (sempre negativo)
-    const { error } = await supabaseAdmin.from("csv_rows").insert({
+    // Inserir refund como novo registro (sempre negativo) com upsert
+    const { error } = await supabaseAdmin.from("csv_rows").upsert({
+        external_id: refund.id,
         source: "gocardless",
         date: new Date().toISOString().split("T")[0],
         description: refund.reference || `GoCardless Refund - ${refund.id}`,
         amount: (-(refund.amount / 100)).toString(), // Valor negativo para refund
         reconciled: action === "refund_refunded",
         custom_data: customData,
+    }, {
+        onConflict: 'source,external_id',
+        ignoreDuplicates: false
     });
 
     if (error) {

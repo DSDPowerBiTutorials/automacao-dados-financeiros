@@ -822,7 +822,7 @@ ${result.recommendations.join('\n')}
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Order Code
+                                        Order Number
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Reference / ID
@@ -870,18 +870,28 @@ ${result.recommendations.join('\n')}
                                     return (
                                         <>
                                             <tr key={row.id} className="hover:bg-gray-50">
-                                                {/* Order Code (e437d54) */}
+                                                {/* Order Code / Order Number */}
                                                 <td className="px-4 py-3">
                                                     <div className="flex flex-col">
-                                                        <a
-                                                            href={`#order-${orderCode}`}
-                                                            className="text-blue-600 hover:underline font-mono text-sm font-semibold"
-                                                            title={`Order Code: ${orderCode}`}
-                                                        >
-                                                            {orderCode}
-                                                        </a>
-                                                        {websiteOrderId && (
-                                                            <span className="text-xs text-gray-500">ID: {websiteOrderId}</span>
+                                                        {websiteOrderId ? (
+                                                            <>
+                                                                <a
+                                                                    href={`#order-${websiteOrderId}`}
+                                                                    className="text-blue-600 hover:underline font-semibold text-base"
+                                                                    title={`Order Number: ${websiteOrderId}`}
+                                                                >
+                                                                    {websiteOrderId}
+                                                                </a>
+                                                                <span className="text-xs text-gray-500 font-mono">Code: {orderCode}</span>
+                                                            </>
+                                                        ) : (
+                                                            <a
+                                                                href={`#order-${orderCode}`}
+                                                                className="text-blue-600 hover:underline font-mono text-sm font-semibold"
+                                                                title={`Order Code: ${orderCode}`}
+                                                            >
+                                                                {orderCode}
+                                                            </a>
                                                         )}
                                                     </div>
                                                 </td>
@@ -921,9 +931,23 @@ ${result.recommendations.join('\n')}
 
                                                 {/* Date Paid */}
                                                 <td className="px-4 py-3 text-sm">
-                                                    {(row.custom_data?.date_paid || row.custom_data?.hs_closed_won_date)
-                                                        ? formatDate(row.custom_data.date_paid || row.custom_data.hs_closed_won_date || '')
-                                                        : "-"}
+                                                    {(() => {
+                                                        const datePaid = row.custom_data?.date_paid || row.custom_data?.hs_closed_won_date;
+                                                        if (!datePaid) return "-";
+
+                                                        try {
+                                                            return new Date(datePaid).toLocaleString('en-US', {
+                                                                month: 'numeric',
+                                                                day: 'numeric',
+                                                                year: 'numeric',
+                                                                hour: 'numeric',
+                                                                minute: '2-digit',
+                                                                hour12: true
+                                                            });
+                                                        } catch (e) {
+                                                            return formatDate(datePaid);
+                                                        }
+                                                    })()}
                                                 </td>
 
                                                 {/* Total / Paid Amount */}
@@ -1128,7 +1152,7 @@ ${result.recommendations.join('\n')}
                                                             )}
 
                                                             {/* Additional Info */}
-                                                            {(row.custom_data?.company || row.custom_data?.coupon_code || row.custom_data?.website_source) && (
+                                                            {(row.custom_data?.company || row.custom_data?.coupon_code || row.custom_data?.website_source || row.custom_data?.date_paid || row.custom_data?.hs_closed_won_date) && (
                                                                 <div className="border-t border-gray-200 pt-3 mt-3">
                                                                     <h5 className="font-semibold text-xs text-gray-700 mb-2">Additional Info</h5>
                                                                     <div className="grid grid-cols-2 gap-2 text-xs">
@@ -1148,6 +1172,29 @@ ${result.recommendations.join('\n')}
                                                                             <div>
                                                                                 <span className="text-gray-600">Origin:</span>
                                                                                 <p className="font-medium">{row.custom_data.website_source}</p>
+                                                                            </div>
+                                                                        )}
+                                                                        {(row.custom_data?.date_paid || row.custom_data?.hs_closed_won_date) && (
+                                                                            <div>
+                                                                                <span className="text-gray-600">Date Paid:</span>
+                                                                                <p className="font-medium text-green-600">
+                                                                                    {(() => {
+                                                                                        const datePaid = row.custom_data.date_paid || row.custom_data.hs_closed_won_date;
+                                                                                        if (!datePaid) return '-';
+                                                                                        try {
+                                                                                            return new Date(datePaid).toLocaleString('en-US', {
+                                                                                                month: 'short',
+                                                                                                day: 'numeric',
+                                                                                                year: 'numeric',
+                                                                                                hour: 'numeric',
+                                                                                                minute: '2-digit',
+                                                                                                hour12: true
+                                                                                            });
+                                                                                        } catch (e) {
+                                                                                            return formatDate(datePaid);
+                                                                                        }
+                                                                                    })()}
+                                                                                </p>
                                                                             </div>
                                                                         )}
                                                                         {row.custom_data?.hs_lastmodifieddate && (

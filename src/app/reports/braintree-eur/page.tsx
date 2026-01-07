@@ -51,6 +51,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
+import { SyncStatusBadge } from "@/components/sync/SyncStatusBadge";
 
 interface BraintreeEURRow {
   id: string;
@@ -843,25 +844,12 @@ export default function BraintreeEURPage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">
+                  <h1 className="text-2xl font-bold text-white mb-2">
                     Braintree EUR - Payment Source
                   </h1>
-                  <div className="flex items-center gap-4 mt-1">
-                    <p className="text-sm text-gray-300">
-                      {rows.length} records ({processedRows.length} filtered) - Page {adjustedCurrentPage} of {Math.max(1, totalPages)}
-                    </p>
-                    {mostRecentWebhookTransaction && (
-                      <p className="text-sm text-green-300 flex items-center gap-1">
-                        <Zap className="h-3 w-3" />
-                        Most recent: {formatDate(mostRecentWebhookTransaction.date)}
-                      </p>
-                    )}
-                    {lastSyncDate && (
-                      <p className="text-sm text-gray-300 flex items-center gap-1">
-                        <Database className="h-3 w-3" />
-                        Last sync: {lastSyncDate}
-                      </p>
-                    )}
+                  <SyncStatusBadge source="braintree-eur" />
+                  <div className="text-sm text-white/80 mt-1">
+                    {processedRows.length} records {rows.length !== processedRows.length && `(${rows.length} total)`}
                   </div>
                 </div>
               </div>
