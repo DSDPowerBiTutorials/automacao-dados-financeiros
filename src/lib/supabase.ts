@@ -4,7 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
 // Validar se as variáveis estão configuradas
 if (!supabaseUrl || !supabaseAnonKey) {
@@ -28,17 +27,6 @@ export const supabase = createClient(
     },
   }
 );
-
-// Cliente admin (bypassa RLS) - usar apenas em operações server-side
-export const supabaseAdmin =
-  supabaseUrl && supabaseServiceKey
-    ? createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    })
-    : null;
 
 // Tipos para o banco de dados
 export interface CSVRowDB {
