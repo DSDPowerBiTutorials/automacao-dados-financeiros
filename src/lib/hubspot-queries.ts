@@ -1,53 +1,150 @@
 /**
  * Query SQL COMPLETA para HubSpot - Espelha o backend WEB EXATAMENTE
  * 
- * Baseada nas colunas disponíveis no backend:
- * - HubSpot VID, Date Ordered, Billing Business Name, Customer
- * - Paid Status, Date Paid, Total Paid, Total Discount, Total
- * - Billing/Shipping Full Names, Email, Gateway, Item Subtotal/Total
- * - Order Site/Type, Payment Subscription, Reference, Status
- * - Total Included Tax/Price/Qty/Shipping/Tax
- * 
- * Esta query replica EXATAMENTE a visualização do backend web.
+ * COLUNAS DO BACKEND (conforme imagem):
+ * 1. Order Number (dealname ou website_order_id)
+ * 2. Reference / ID (referência com #)
+ * 3. Status (dealstage)
+ * 4. Date Ordered (closedate)
+ * 5. Date Paid (date_paid)
+ * 6. Total / Paid (amount e total_payment)
+ * 7. Paid Status (paid_status)
+ * 8. Product (Qty) (line item name + quantity)
+ * 9. Customer (email do contact)
  */
 
 export const ENRICHED_HUBSPOT_QUERY = `
 SELECT TOP 2000
   -- ==========================================
-  -- DEAL - Informações Principais do Pedido
+  -- 1. ORDER NUMBER (Primary Key)
   -- ==========================================
   d.DealId,
-  d.dealname as order_code,  -- Este É o Order Code! (e437d54, a3d2c9a, etc)
-  d.amount as total_amount,
-  d.amount_in_home_currency,
+  d.dealname as order_code,
+  d.hs_object_id as hubspot_vid,
+  
+  -- ==========================================
+  -- 2. REFERENCE / ID
+  -- ==========================================
+  d.dealname as reference,  -- Será formatado como #DEALNAME no frontend
+  
+  -- ==========================================
+  -- 3. STATUS
+  -- ==========================================
+  d.dealstage as status,
+  d.pipeline,
+  
+  -- ==========================================
+  -- 4. DATE ORDERED
+  -- ==========================================
   d.closedate as date_ordered,
   d.createdate,
-  d.dealstage as status,
-  d.deal_pipeline as pipeline,
+  d.hs_lastmodifieddate as last_updated,
+  
+  -- ==========================================
+  -- 5. DATE PAID
+  -- ==========================================
+  d.date_paid,
+  d.hs_closed_won_date,
+  
+  -- ==========================================
+  -- 6. TOTAL / PAID (Amounts)
+  -- ==========================================
+  d.amount as total_amount,
+  d.total_payment as paid_amount,
+  d.total_paid,
+  d.total_discount,
+  d.total_shipping,
+  d.total_tax,
+  d.amount_in_home_currency,
   d.deal_currency_code as currency,
+  
+  -- ==========================================
+  -- 7. PAID STATUS
+  -- ==========================================
+  d.paid_status,
+  
+  -- ==========================================
+  -- 8. PRODUCT (from LineItem)
+  -- ==========================================
+  (
+    SELECT TOP 1 li.name
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_name,
+  
+  (
+    SELECT TOP 1 li.description
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_description,
+  
+  (
+    SELECT TOP 1 li.quantity
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_quantity,
+  
+  (
+    SELECT TOP 1 li.hs_sku
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_sku,
+  
+  (
+    SELECT TOP 1 li.price
+    FROM DealLineItemAssociations dlia
+    LEFT JOIN LineItem li ON li.LineItemId = dlia.LineItemId
+    WHERE dlia.DealId = d.DealId
+    ORDER BY li.hs_position_on_quote
+  ) as product_price,
+  
+  -- ==========================================
+  -- 9. CUSTOMER (from Contact)
+  -- ==========================================
+  c.email as customer_email,
+  c.firstname as customer_firstname,
+  c.lastname as customer_lastname,
+  c.phone as customer_phone,
+  c.VId as contact_id,
+  
+  -- ==========================================
+  -- EXTRAS (Company, etc)
+  -- ==========================================
+  co.CompanyName as company_name,
+  co.CompanyId as company_id,
+  
+  -- Additional fields
   d.hubspot_owner_id as owner_id,
   d.description as deal_description,
-  
-  -- ==========================================
-  -- E-COMMERCE - Códigos e Identificadores
-  -- ==========================================
-  d.ip__ecomm_bridge__order_number as ecomm_order_number,  -- Também guarda order code
-  d.website_order_id,  -- ID numérico do pedido (ex: 2831851)
-  d.ip__ecomm_bridge__discount_amount as discount_amount,
-  d.ip__ecomm_bridge__tax_amount as tax_amount,
-  d.ip__ecomm_bridge__source_app_id,
-  d.ip__ecomm_bridge__source_store_id,
-  d.website_source as order_site,  -- Ex: "DSD (en-GB)"
-  
-  -- ==========================================
-  -- PAGAMENTO - Status e Valores
-  -- ==========================================
-  d.paid_status,  -- "Paid", "Unpaid", "Partial", etc
-  d.total_payment as paid_amount,
-  d.hs_closed_won_date as date_paid,
-  d.hs_lastmodifieddate as last_updated,
-  d.coupon_code,
-  d.failed_payment_timestamp,
+  d.website_order_id,
+  d.website_source as order_site
+
+FROM Deal d
+
+-- JOIN com Contact (Cliente)
+LEFT JOIN DealContactAssociations dca ON d.DealId = dca.DealId
+LEFT JOIN Contact c ON c.VId = dca.VId
+
+-- JOIN com Company (Empresa)
+LEFT JOIN DealCompanyAssociations dcoa ON d.DealId = dcoa.DealId
+LEFT JOIN Company co ON co.CompanyId = dcoa.CompanyId
+
+WHERE 
+  d.closedate IS NOT NULL
+  AND d.closedate >= @startDate
+
+ORDER BY 
+  d.closedate DESC,
+  d.DealId DESC
+`;
   
   -- ==========================================
   -- CONTACT - Informações do Cliente
