@@ -16,73 +16,56 @@
 
 export const ENRICHED_HUBSPOT_QUERY = `
 SELECT TOP 2000
-  -- ==========================================
   -- IDs e Order
-  -- ==========================================
   d.DealId,
-  d.dealname,  -- Order (371e321)
-  d.hs_object_id as hubspot_vid,  -- HubSpot VID
+  d.dealname,
+  d.hs_object_id as hubspot_vid,
   d.website_order_id,
-  Datas (Date Ordered & Date Paid)
-  -- ==========================================
-  d.closedate,  -- Date Ordered
+  
+  -- Datas
+  d.closedate,
   d.createdate,
   d.hs_lastmodifieddate as last_updated,
-  d.date_paid,  -- Date Paid
+  d.date_paid,
   d.hs_closed_won_date,
   
-  -- ==========================================
   -- Billing Business Name
-  -- ==========================================
   d.billing_business_name,
   
-  -- ==========================================
   -- Status & Payment
-  -- ==========================================
-  d.paid_status,  -- Paid Status
+  d.paid_status,
   d.dealstage as status,
   d.pipeline,
   
-  -- ==========================================
-  -- Valores (Total, Total Paid, Total Discount)
-  -- ==========================================
-  d.amount,  -- Total
-  d.total_paid,  -- Total Paid
-  d.total_discount,  -- Total Discount
+  -- Valores
+  d.amount,
+  d.total_paid,
+  d.total_discount,
   d.total_shipping,
   d.total_tax,
   d.total_price,
-  d.deal_currency_code as currencyATUS
-  -- ==========================================
-  d.paid_status,
+  d.deal_currency_code as currency,
   
-  -- ==========================================
-  -- 8. PRODUCT (from LineItem)
-  -- ==========================================
-  (
-    SELECT TOP 1 li.name
-    FROM DealLineItemAssociations dlia
-  -- ==========================================
-  -- Customer (from Contact) - Email
-  -- ==========================================
-  -- EXTRAS (Company, etc)
-  -- ==========================================
+  -- Customer (from Contact)
+  c.email as customer_email,
+  c.firstname as customer_firstname,
+  c.lastname as customer_lastname,
+  c.phone as customer_phone,
+  c.VId as contact_id,
+  
+  -- Company
   co.CompanyName as company_name,
   co.CompanyId as company_id,
   
   -- Additional fields
   d.hubspot_owner_id as owner_id,
-  d.description as deal_description,
-  d.website_order_id,
-  d.website_source as order_site
+  d.description as deal_description
 
 FROM Deal d
 
--- JOIN com Contact (Cliente)
 LEFT JOIN DealContactAssociations dca ON d.DealId = dca.DealId
 LEFT JOIN Contact c ON c.VId = dca.VId
 
--- JOIN com Company (Empresa)
 LEFT JOIN DealCompanyAssociations dcoa ON d.DealId = dcoa.DealId
 LEFT JOIN Company co ON co.CompanyId = dcoa.CompanyId
 
