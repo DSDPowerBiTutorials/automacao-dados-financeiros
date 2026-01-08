@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Clock, Zap, Database, AlertCircle } from "lucide-react";
-import { getSyncMetadata } from "@/lib/sync-metadata";
 import { formatTimestamp } from "@/lib/formatters";
 
 interface SyncStatusBadgeProps {
@@ -23,7 +22,12 @@ export function SyncStatusBadge({ source }: SyncStatusBadgeProps) {
 
     async function loadMetadata() {
         try {
-            const data = await getSyncMetadata(source);
+            // Chamada para API route ao invés de função direta
+            const response = await fetch(`/api/sync-metadata/${encodeURIComponent(source)}`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch sync metadata');
+            }
+            const data = await response.json();
             setMetadata(data);
         } catch (error) {
             console.error("Error loading sync metadata:", error);
