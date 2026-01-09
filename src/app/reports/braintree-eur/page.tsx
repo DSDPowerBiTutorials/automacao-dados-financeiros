@@ -52,6 +52,11 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
@@ -187,7 +192,6 @@ export default function BraintreeEURPage() {
       "merchant_account_id",
       "disbursement_date",
       "settlement_amount",
-      "disbursement_id",
     ])
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -324,6 +328,74 @@ export default function BraintreeEURPage() {
       newSet.add(column);
     }
     setTempVisibleColumns(newSet);
+  };
+
+  // 🆕 Componente de filtro com popover (igual Invoices)
+  const ColumnFilter = ({
+    field,
+    label,
+    options
+  }: {
+    field: string;
+    label: string;
+    options: { value: string; label: string }[]
+  }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const currentValue =
+      field === "status" ? statusFilter :
+        field === "merchant_account_id" ? merchantFilter :
+          field === "type" ? typeFilter :
+            field === "currency" ? currencyFilter :
+              field === "payment_method" ? paymentMethodFilter :
+                settlementBatchFilter;
+
+    const hasFilter = currentValue && currentValue !== "all" && currentValue !== "settled";
+
+    const handleSelect = (value: string) => {
+      if (field === "status") setStatusFilter(value);
+      else if (field === "merchant_account_id") setMerchantFilter(value);
+      else if (field === "type") setTypeFilter(value);
+      else if (field === "currency") setCurrencyFilter(value);
+      else if (field === "payment_method") setPaymentMethodFilter(value);
+      else if (field === "settlement_batch_id") setSettlementBatchFilter(value);
+      setIsOpen(false);
+    };
+
+    return (
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={`h-6 w-6 p-0 hover:bg-gray-200 dark:hover:bg-slate-700 ${hasFilter ? "text-blue-600 dark:text-blue-400" : ""
+              }`}
+          >
+            <Filter className="h-3.5 w-3.5" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-2" align="start">
+          <div className="space-y-1">
+            <div className="px-2 py-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400">
+              {label}
+            </div>
+            {options.map((option) => (
+              <Button
+                key={option.value}
+                variant="ghost"
+                size="sm"
+                className={`w-full justify-start text-left font-normal ${currentValue === option.value
+                  ? "bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                  : ""
+                  }`}
+                onClick={() => handleSelect(option.value)}
+              >
+                {option.label}
+              </Button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+    );
   };
 
   // Função para alternar ordenação
@@ -1284,7 +1356,6 @@ export default function BraintreeEURPage() {
                           { id: "settlement_amount", label: "Settlement Amount" },
                           { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
                           { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
-                          { id: "disbursement_id", label: "Disbursement ID (Payout Group)" },
                         ].map((column) => (
                           <div
                             key={column.id}
@@ -1550,46 +1621,97 @@ export default function BraintreeEURPage() {
                       )}
                       {visibleColumns.has("status") && (
                         <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          <button
-                            onClick={() => toggleSort("status")}
-                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
-                          >
-                            Status
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => toggleSort("status")}
+                              className="flex items-center gap-1 hover:text-blue-600"
+                            >
+                              Status
+                              <ArrowUpDown className="h-3 w-3" />
+                            </button>
+                            <ColumnFilter
+                              field="status"
+                              label="Filter by Status"
+                              options={[
+                                { value: "all", label: "All Status" },
+                                { value: "settled", label: "Settled" },
+                                { value: "settling", label: "Settling" },
+                                { value: "submitted_for_settlement", label: "Submitted" },
+                                { value: "authorized", label: "Authorized" },
+                              ]}
+                            />
+                          </div>
                         </th>
                       )}
                       {visibleColumns.has("type") && (
                         <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          <button
-                            onClick={() => toggleSort("type")}
-                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
-                          >
-                            Type
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => toggleSort("type")}
+                              className="flex items-center gap-1 hover:text-blue-600"
+                            >
+                              Type
+                              <ArrowUpDown className="h-3 w-3" />
+                            </button>
+                            <ColumnFilter
+                              field="type"
+                              label="Filter by Type"
+                              options={[
+                                { value: "all", label: "All Types" },
+                                { value: "sale", label: "Sale" },
+                                { value: "credit", label: "Credit" },
+                              ]}
+                            />
+                          </div>
                         </th>
                       )}
                       {visibleColumns.has("currency") && (
                         <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          <button
-                            onClick={() => toggleSort("currency")}
-                            className="flex items-center gap-1 hover:text-blue-600 mx-auto"
-                          >
-                            Currency
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => toggleSort("currency")}
+                              className="flex items-center gap-1 hover:text-blue-600"
+                            >
+                              Currency
+                              <ArrowUpDown className="h-3 w-3" />
+                            </button>
+                            <ColumnFilter
+                              field="currency"
+                              label="Filter by Currency"
+                              options={[
+                                { value: "all", label: "All Currencies" },
+                                { value: "EUR", label: "EUR" },
+                                { value: "USD", label: "USD" },
+                                { value: "GBP", label: "GBP" },
+                              ]}
+                            />
+                          </div>
                         </th>
                       )}
                       {visibleColumns.has("settlement_batch_id") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          <button
-                            onClick={() => toggleSort("settlement_batch_id")}
-                            className="flex items-center gap-1 hover:text-blue-600"
-                          >
-                            🔑 Settlement Batch ID
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleSort("settlement_batch_id")}
+                              className="flex items-center gap-1 hover:text-blue-600"
+                            >
+                              🔑 Settlement Batch ID
+                              <ArrowUpDown className="h-3 w-3" />
+                            </button>
+                            <ColumnFilter
+                              field="settlement_batch_id"
+                              label="Filter by Settlement Batch"
+                              options={[
+                                { value: "all", label: "All Batches" },
+                                { value: "no-batch", label: "No Batch" },
+                                ...Array.from(settlementBatches.keys())
+                                  .filter(id => id !== 'no-batch')
+                                  .sort((a, b) => b.localeCompare(a))
+                                  .slice(0, 20)
+                                  .map(id => ({ value: id, label: id.substring(0, 20) + '...' }))
+                              ]}
+                            />
+                          </div>
                         </th>
                       )}
                       {visibleColumns.has("settlement_currency_iso_code") && (
@@ -1626,24 +1748,48 @@ export default function BraintreeEURPage() {
                       )}
                       {visibleColumns.has("payment_method") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          <button
-                            onClick={() => toggleSort("payment_method")}
-                            className="flex items-center gap-1 hover:text-blue-600"
-                          >
-                            Payment Method
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleSort("payment_method")}
+                              className="flex items-center gap-1 hover:text-blue-600"
+                            >
+                              Payment Method
+                              <ArrowUpDown className="h-3 w-3" />
+                            </button>
+                            <ColumnFilter
+                              field="payment_method"
+                              label="Filter by Payment Method"
+                              options={[
+                                { value: "all", label: "All Methods" },
+                                { value: "credit_card", label: "Credit Card" },
+                                { value: "paypal", label: "PayPal" },
+                              ]}
+                            />
+                          </div>
                         </th>
                       )}
                       {visibleColumns.has("merchant_account_id") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          <button
-                            onClick={() => toggleSort("merchant_account_id")}
-                            className="flex items-center gap-1 hover:text-blue-600"
-                          >
-                            Merchant Account
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => toggleSort("merchant_account_id")}
+                              className="flex items-center gap-1 hover:text-blue-600"
+                            >
+                              Merchant Account
+                              <ArrowUpDown className="h-3 w-3" />
+                            </button>
+                            <ColumnFilter
+                              field="merchant_account_id"
+                              label="Filter by Merchant"
+                              options={[
+                                { value: "all", label: "All Merchants" },
+                                { value: "digitalsmiledesignEUR", label: "digitalsmiledesignEUR" },
+                                { value: "digitalsmiledesignUSD", label: "digitalsmiledesignUSD" },
+                                { value: "digitalsmiledesignGBP", label: "digitalsmiledesignGBP" },
+                                { value: "digitalsmiledesign_instant", label: "digitalsmiledesign_instant" },
+                              ]}
+                            />
+                          </div>
                         </th>
                       )}
                       {visibleColumns.has("disbursement_date") && (
@@ -1664,17 +1810,6 @@ export default function BraintreeEURPage() {
                             className="flex items-center gap-1 hover:text-blue-600 ml-auto"
                           >
                             Settlement Amount
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
-                        </th>
-                      )}
-                      {visibleColumns.has("disbursement_id") && (
-                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                          <button
-                            onClick={() => toggleSort("disbursement_id")}
-                            className="flex items-center gap-1 hover:text-blue-600"
-                          >
-                            Disbursement ID
                             <ArrowUpDown className="h-3 w-3" />
                           </button>
                         </th>
@@ -2000,11 +2135,6 @@ export default function BraintreeEURPage() {
                             {visibleColumns.has("settlement_amount") && (
                               <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
                                 {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("disbursement_id") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.disbursement_id || "N/A"}
                               </td>
                             )}
                           </tr>
