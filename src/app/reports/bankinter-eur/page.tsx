@@ -128,16 +128,20 @@ export default function BankinterEURPage() {
     const file = event.target.files?.[0]
     if (!file) return
 
+    setIsLoading(true)
     const formData = new FormData()
     formData.append("file", file)
 
     try {
-      const response = await fetch("/api/upload-bankinter-eur", {
+      console.log('📤 Enviando arquivo:', file.name)
+
+      const response = await fetch("/api/csv/bankinter-eur", {
         method: "POST",
         body: formData
       })
 
       const result = await response.json()
+      console.log('📥 Resposta:', result)
 
       if (!response.ok || !result.success) {
         console.error("Erro ao enviar:", result.error)
@@ -145,11 +149,28 @@ export default function BankinterEURPage() {
         return
       }
 
-      alert(`✅ ${result.inserted} linhas enviadas com sucesso!`)
+      const summary = result.data?.summary
+      let message = `✅ ${result.data.rowCount} transações importadas!`
+
+      if (summary) {
+        message += `\n\n📊 Resumo:`
+        message += `\n• Total Crédito: €${summary.totalCredito.toFixed(2)}`
+        message += `\n• Total Débito: €${summary.totalDebito.toFixed(2)}`
+        message += `\n• Saldo Final: €${summary.saldoFinal.toFixed(2)}`
+        if (summary.totalSkipped > 0) {
+          message += `\n• Linhas ignoradas: ${summary.totalSkipped}`
+        }
+      }
+
+      alert(message)
       loadData()
     } catch (err) {
       console.error("Erro inesperado:", err)
       alert("❌ Falha ao enviar o arquivo. Verifique o formato e tente novamente.")
+    } finally {
+      setIsLoading(false)
+      // Reset input
+      event.target.value = ""
     }
   }
 
