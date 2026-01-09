@@ -20,6 +20,10 @@ import {
   Filter,
   ArrowUpDown,
   RefreshCw,
+  Calendar,
+  DollarSign,
+  FileText,
+  Key,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -1467,6 +1471,27 @@ export default function BraintreeEURPage() {
                           </button>
                         </th>
                       )}
+                      {visibleColumns.has("settlement_batch_id") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("settlement_batch_id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            🔑 Settlement Batch ID
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("settlement_currency_iso_code") && (
+                        <th className="py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          🌍 Settlement Currency
+                        </th>
+                      )}
+                      {visibleColumns.has("settlement_currency_exchange_rate") && (
+                        <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          💱 FX Rate
+                        </th>
+                      )}
                       {visibleColumns.has("customer_name") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
                           <button
@@ -1675,15 +1700,43 @@ export default function BraintreeEURPage() {
                                     {row.reconciliationType === "automatic" ? (
                                       <div className="relative group">
                                         <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                          Automatic reconciliation
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
+                                          <div className="font-bold mb-2 text-green-400">⚡ Auto-Reconciled</div>
+                                          {row.bank_match_date && (
+                                            <div className="flex items-center gap-1 mb-1">
+                                              <Calendar className="h-3 w-3" />
+                                              <span>Date: {formatDate(row.bank_match_date)}</span>
+                                            </div>
+                                          )}
+                                          {row.bank_match_amount !== undefined && (
+                                            <div className="flex items-center gap-1 mb-1">
+                                              <DollarSign className="h-3 w-3" />
+                                              <span>Amount: {formatCurrency(row.bank_match_amount)}</span>
+                                            </div>
+                                          )}
+                                          {row.bank_match_description && (
+                                            <div className="flex items-start gap-1 mb-1">
+                                              <FileText className="h-3 w-3 mt-0.5" />
+                                              <span className="text-[10px]">
+                                                {row.bank_match_description.substring(0, 40)}...
+                                              </span>
+                                            </div>
+                                          )}
+                                          {row.settlement_batch_id && (
+                                            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-700">
+                                              <Key className="h-3 w-3" />
+                                              <span className="text-[10px] font-mono">
+                                                {row.settlement_batch_id.substring(0, 20)}...
+                                              </span>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                     ) : (
                                       <div className="relative group">
                                         <User className="h-5 w-5 text-blue-600 mx-auto" />
                                         <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                          Manual reconciliation
+                                          👤 Manual reconciliation
                                         </div>
                                       </div>
                                     )}
@@ -1794,6 +1847,45 @@ export default function BraintreeEURPage() {
                             {visibleColumns.has("settlement_amount") && (
                               <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
                                 {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("settlement_batch_id") && (
+                              <td className="py-3 px-4 text-xs font-mono">
+                                {row.settlement_batch_id ? (
+                                  <span className="text-gray-700 dark:text-gray-300" title={row.settlement_batch_id}>
+                                    {row.settlement_batch_id.substring(0, 16)}...
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">N/A</span>
+                                )}
+                              </td>
+                            )}
+                            {visibleColumns.has("settlement_currency_iso_code") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.settlement_currency_iso_code && row.currency &&
+                                  row.settlement_currency_iso_code !== row.currency ? (
+                                  <Badge
+                                    variant="outline"
+                                    className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
+                                  >
+                                    {row.currency} → {row.settlement_currency_iso_code}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-600 dark:text-gray-400">
+                                    {row.settlement_currency_iso_code || row.currency || "N/A"}
+                                  </span>
+                                )}
+                              </td>
+                            )}
+                            {visibleColumns.has("settlement_currency_exchange_rate") && (
+                              <td className="py-3 px-4 text-right text-sm">
+                                {row.settlement_currency_exchange_rate && row.settlement_currency_exchange_rate !== 1.0 ? (
+                                  <span className="text-blue-600 dark:text-blue-400 font-mono">
+                                    {row.settlement_currency_exchange_rate.toFixed(5)}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">1.00000</span>
+                                )}
                               </td>
                             )}
                             {visibleColumns.has("disbursement_id") && (
