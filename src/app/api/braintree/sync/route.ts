@@ -166,8 +166,8 @@ export async function POST(req: NextRequest) {
           created_at: (() => {
             try {
               // ✅ Fix: Safe date parsing (createdAt pode ser string ou Date)
-              const createdAtDate = typeof transaction.createdAt === 'string' 
-                ? new Date(transaction.createdAt) 
+              const createdAtDate = typeof transaction.createdAt === 'string'
+                ? new Date(transaction.createdAt)
                 : transaction.createdAt;
               return createdAtDate.toISOString();
             } catch (err) {

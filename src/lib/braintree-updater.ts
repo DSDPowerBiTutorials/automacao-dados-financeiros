@@ -121,8 +121,7 @@ export async function upsertBraintreeTransaction(
         // Preservar dados de reconciliação se flag ativa e já conciliado
         if (preserveReconciliation && isConciliado) {
             updatedCustomData.reconciled = existingRow.reconciled; // ✅ Fix: 'reconciled'
-            updatedCustomData.destinationAccount = existingRow.destinationAccount;
-            updatedCustomData.reconciliationType = existingRow.reconciliationType;
+            // ⚠️ destinationAccount e reconciliationType não existem na tabela, removidos
         }
 
         const { error: updateError } = await supabaseAdmin
@@ -130,8 +129,7 @@ export async function upsertBraintreeTransaction(
             .update({
                 custom_data: updatedCustomData,
                 reconciled: preserveReconciliation && isConciliado ? existingRow.reconciled : false, // ✅ Fix
-                destinationAccount: preserveReconciliation && isConciliado ? existingRow.destinationAccount : null,
-                reconciliationType: preserveReconciliation && isConciliado ? existingRow.reconciliationType : null,
+                // ⚠️ Removido: destinationAccount e reconciliationType (não existem no schema)
                 date: transaction.disbursement_date || existingRow.date,
                 description: formatDescription(transaction),
                 amount: transaction.settlement_amount?.toString() || existingRow.amount,
@@ -262,7 +260,7 @@ export async function saveLastSyncTimestamp(
             .from("sync_metadata")
             .upsert({
                 source: `braintree-${type}-update`,
-                last_sync_date: new Date().toISOString(),
+                last_sync_at: new Date().toISOString(), // ✅ Fix: last_sync_at não last_sync_date
                 status: "completed",
             }, {
                 onConflict: "source",
@@ -288,7 +286,7 @@ export async function getLastSyncTimestamps(): Promise<{
         // ✅ Fix: usar supabaseAdmin para evitar erro 'd.supabase.from is not a function'
         const { data, error } = await supabaseAdmin
             .from("sync_metadata")
-            .select("source, last_sync_date")
+            .select("source, last_sync_at") // ✅ Fix: last_sync_at não last_sync_date
             .in("source", ["braintree-automatic-update", "braintree-safe-update", "braintree-force-update"]);
 
         if (error) {
@@ -304,11 +302,11 @@ export async function getLastSyncTimestamps(): Promise<{
 
         data?.forEach((row) => {
             if (row.source === "braintree-automatic-update") {
-                timestamps.automatic = row.last_sync_date;
+                timestamps.automatic = row.last_sync_at; // ✅ Fix
             } else if (row.source === "braintree-safe-update") {
-                timestamps.safe = row.last_sync_date;
+                timestamps.safe = row.last_sync_at; // ✅ Fix
             } else if (row.source === "braintree-force-update") {
-                timestamps.force = row.last_sync_date;
+                timestamps.force = row.last_sync_at; // ✅ Fix
             }
         });
 
