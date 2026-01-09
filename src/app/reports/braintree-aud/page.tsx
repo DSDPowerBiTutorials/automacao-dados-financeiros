@@ -172,6 +172,11 @@ export default function BraintreeAUDPage() {
   const [currencyFilter, setCurrencyFilter] = useState<string>("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("");
 
+  // 🆕 Settlement Batch grouping
+  const [settlementBatches, setSettlementBatches] = useState<Map<string, BraintreeAUDRow[]>>(new Map());
+  const [expandedSettlementBatches, setExpandedSettlementBatches] = useState<Set<string>>(new Set());
+  const [settlementBatchFilter, setSettlementBatchFilter] = useState<string>("");
+
   useEffect(() => {
     loadData();
 
@@ -488,7 +493,33 @@ export default function BraintreeAUDPage() {
           disbursement_date: row.custom_data?.disbursement_date,
           settlement_amount: row.custom_data?.settlement_amount,
           settlement_currency: row.custom_data?.settlement_currency,
+          settlement_batch_id: row.custom_data?.settlement_batch_id,
         }));
+
+      console.log(`[Braintree AUD] Mapped ${mappedRows.length} rows`);
+
+      // 🆕 Agrupar transações por Settlement Batch ID
+      const batchGroups = new Map<string, BraintreeAUDRow[]>();
+
+      mappedRows.forEach(row => {
+        const batchId = row.settlement_batch_id || 'no-batch';
+        if (!batchGroups.has(batchId)) {
+          batchGroups.set(batchId, []);
+        }
+        batchGroups.get(batchId)!.push(row);
+      });
+
+      console.log(`[Braintree AUD] Found ${batchGroups.size} settlement batches`);
+
+      // Log detalhes dos batches
+      batchGroups.forEach((rows, batchId) => {
+        if (batchId !== 'no-batch') {
+          const totalAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+          console.log(`[Batch ${batchId}] ${rows.length} transactions, Total: $${totalAmount.toFixed(2)}`);
+        }
+      });
+
+      setSettlementBatches(batchGroups);
 
       setRows(mappedRows);
 
