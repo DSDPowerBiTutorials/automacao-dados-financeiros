@@ -163,13 +163,27 @@ export async function POST(req: NextRequest) {
           customer_email: transaction.customer?.email,
           payment_method: getPaymentMethod(transaction),
           merchant_account_id: transaction.merchantAccountId,
-          created_at: transactionDate.toISOString(),
+          created_at: (() => {
+            try {
+              // ✅ Fix: Safe date parsing (createdAt pode ser string ou Date)
+              const createdAtDate = typeof transaction.createdAt === 'string' 
+                ? new Date(transaction.createdAt) 
+                : transaction.createdAt;
+              return createdAtDate.toISOString();
+            } catch (err) {
+              console.error(`[Created At] Error for transaction ${transaction.id}:`, err);
+              return new Date().toISOString(); // Fallback to now
+            }
+          })(),
           updated_at: (() => {
             try {
-              return new Date(transaction.updatedAt).toISOString();
+              const updatedAtDate = typeof transaction.updatedAt === 'string'
+                ? new Date(transaction.updatedAt)
+                : transaction.updatedAt;
+              return updatedAtDate.toISOString();
             } catch (err) {
               console.error(`[Updated At] Error for transaction ${transaction.id}:`, err);
-              return transactionDate.toISOString(); // Fallback to createdAt
+              return new Date().toISOString(); // Fallback to now
             }
           })(),
 

@@ -62,6 +62,7 @@ export async function upsertBraintreeTransaction(
         if (!existingRow) {
             const newRow = {
                 source,
+                file_name: "braintree-api-sync.csv", // ✅ Fix: file_name é NOT NULL
                 date: transaction.disbursement_date || transaction.created_at || new Date().toISOString().split('T')[0],
                 description: formatDescription(transaction),
                 amount: (transaction.settlement_amount || transaction.amount || 0).toString(),
@@ -85,7 +86,7 @@ export async function upsertBraintreeTransaction(
         }
 
         // 3. Verificar se já está conciliado
-        const isConciliado = existingRow.conciliado === true;
+        const isConciliado = existingRow.reconciled === true; // ✅ Fix: 'reconciled' não 'conciliado'
 
         if (isConciliado && skipIfConciliado) {
             console.log(`⚠️ [Braintree Updater] Skipped ${transaction.transaction_id}: Already reconciled`);
@@ -119,7 +120,7 @@ export async function upsertBraintreeTransaction(
 
         // Preservar dados de reconciliação se flag ativa e já conciliado
         if (preserveReconciliation && isConciliado) {
-            updatedCustomData.conciliado = existingRow.conciliado;
+            updatedCustomData.reconciled = existingRow.reconciled; // ✅ Fix: 'reconciled'
             updatedCustomData.destinationAccount = existingRow.destinationAccount;
             updatedCustomData.reconciliationType = existingRow.reconciliationType;
         }
@@ -128,7 +129,7 @@ export async function upsertBraintreeTransaction(
             .from("csv_rows")
             .update({
                 custom_data: updatedCustomData,
-                conciliado: preserveReconciliation && isConciliado ? existingRow.conciliado : false,
+                reconciled: preserveReconciliation && isConciliado ? existingRow.reconciled : false, // ✅ Fix
                 destinationAccount: preserveReconciliation && isConciliado ? existingRow.destinationAccount : null,
                 reconciliationType: preserveReconciliation && isConciliado ? existingRow.reconciliationType : null,
                 date: transaction.disbursement_date || existingRow.date,
@@ -284,7 +285,8 @@ export async function getLastSyncTimestamps(): Promise<{
     force: string | null;
 }> {
     try {
-        const { data, error } = await supabase
+        // ✅ Fix: usar supabaseAdmin para evitar erro 'd.supabase.from is not a function'
+        const { data, error } = await supabaseAdmin
             .from("sync_metadata")
             .select("source, last_sync_date")
             .in("source", ["braintree-automatic-update", "braintree-safe-update", "braintree-force-update"]);
