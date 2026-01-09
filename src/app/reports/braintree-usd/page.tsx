@@ -52,7 +52,6 @@ import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
 import BraintreeUpdatePendingButton from "@/components/braintree/update-pending-button";
-import { reconcileWithBank, getBankSourceForCurrency } from "@/lib/braintree-reconciliation";
 
 interface BraintreeUSDRow {
   id: string;
@@ -597,7 +596,7 @@ export default function BraintreeUSDPage() {
           reserve_amount: row.custom_data?.reserve_amount,
         }));
 
-      console.log(`[Braintree USD] Mapped ${mappedRows.length} rows, starting auto-reconciliation...`);
+      console.log(`[Braintree USD] Mapped ${mappedRows.length} rows`);
 
       // 🆕 Agrupar transações por Settlement Batch ID
       const batchGroups = new Map<string, BraintreeUSDRow[]>();
@@ -621,22 +620,12 @@ export default function BraintreeUSDPage() {
 
       setSettlementBatches(batchGroups);
 
-      // 🆕 RECONCILIAÇÃO AUTOMÁTICA
-      // USD geralmente deposita em Bankinter EUR (cross-currency via PayPal Europe)
-      const reconciliationResult = await reconcileWithBank(
-        mappedRows,
-        'bankinter-eur', // USD → EUR cross-currency
-        'Bankinter EUR'
-      );
-
-      console.log(`[Braintree USD] Reconciliation complete: ${reconciliationResult.autoReconciledCount} auto-reconciled, ${reconciliationResult.matchedGroups}/${reconciliationResult.totalGroups} groups matched`);
-
-      setRows(reconciliationResult.transactions);
+      setRows(mappedRows);
 
       // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
-      if (reconciliationResult.transactions.length > 0) {
-        setMostRecentWebhookTransaction(reconciliationResult.transactions[0]);
-        console.log("[Braintree USD] Most recent transaction:", reconciliationResult.transactions[0].date, reconciliationResult.transactions[0].description);
+      if (mappedRows.length > 0) {
+        setMostRecentWebhookTransaction(mappedRows[0]);
+        console.log("[Braintree USD] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
       }
 
       // Reset para página 1 quando dados são carregados
