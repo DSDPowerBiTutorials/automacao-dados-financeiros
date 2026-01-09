@@ -312,11 +312,43 @@ export async function POST(request: NextRequest) {
             return row
         })
 
-        // Salvar no Supabase
-        console.log(`\n💾 Salvando ${cleanRows.length} registros no Supabase...`)
+        // Deduplicação: Buscar transações existentes para evitar duplicatas
+        console.log(`\n🔍 Verificando duplicatas...`)
+        const { data: existingRows } = await supabaseAdmin
+            .from("csv_rows")
+            .select("date, description, amount")
+            .eq("source", "bankinter-eur")
+
+        // Criar Set com chaves únicas das transações existentes
+        const existingKeys = new Set(
+            (existingRows || []).map(r => `${r.date}|${r.description}|${r.amount}`)
+        )
+
+        // Filtrar apenas transações novas
+        const newRows = cleanRows.filter(row => {
+            const key = `${row.date}|${row.description}|${row.amount}`
+            return !existingKeys.has(key)
+        })
+
+        console.log(`📊 Total: ${cleanRows.length} | Duplicadas: ${cleanRows.length - newRows.length} | Novas: ${newRows.length}`)
+
+        if (newRows.length === 0) {
+            console.log("⚠️ Nenhuma transação nova para inserir (todas duplicadas)")
+            return NextResponse.json(
+                { 
+                    success: true, 
+                    message: "Upload concluído, mas nenhuma transação nova encontrada (todas já existiam)",
+                    summary: { inserted: 0, duplicates: cleanRows.length }
+                },
+                { status: 200 }
+            )
+        }
+
+        // Salvar no Supabase apenas as novas
+        console.log(`\n💾 Salvando ${newRows.length} registros novos no Supabase...`)
         const { data: insertedRows, error: dbError } = await supabaseAdmin
             .from("csv_rows")
-            .insert(cleanRows)
+            .insert(newRows)
             .select()
 
         if (dbError) {

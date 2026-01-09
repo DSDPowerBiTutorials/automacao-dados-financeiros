@@ -703,10 +703,10 @@ export default function BankinterEURPage() {
                               <div className="truncate" title={row.description}>{row.description}</div>
                             </td>
                             <td className="py-3 px-4 text-sm text-right text-red-600 font-mono">
-                              {(customData.debe && customData.debe > 0) ? formatEuropeanCurrency(customData.debe) : "-"}
+                              {(customData.debe && customData.debe !== 0) ? formatEuropeanCurrency(Math.abs(customData.debe)) : "-"}
                             </td>
                             <td className="py-3 px-4 text-sm text-right text-green-600 font-mono">
-                              {(customData.haber && customData.haber > 0) ? formatEuropeanCurrency(customData.haber) : "-"}
+                              {(customData.haber && customData.haber !== 0) ? formatEuropeanCurrency(Math.abs(customData.haber)) : "-"}
                             </td>
                             <td className="py-3 px-4 text-sm text-right font-bold text-[#FF7300] font-mono">
                               {formatEuropeanCurrency(
