@@ -329,6 +329,12 @@ export async function POST(request: NextRequest) {
 
         console.log("✅ Salvo:", insertedRows?.length, "registros")
 
+        // DEBUG: Verificar se custom_data foi salvo corretamente
+        if (insertedRows && insertedRows.length > 0) {
+            console.log("\n🔍 [DEBUG] Primeira row APÓS insert no Supabase:")
+            console.log("  custom_data:", JSON.stringify(insertedRows[0].custom_data, null, 2))
+        }
+
         // Salvar arquivo no storage
         const fileName = `bankinter-eur/${Date.now()}-${file.name}`
         const { error: storageError } = await supabaseAdmin
