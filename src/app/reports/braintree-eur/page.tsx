@@ -82,6 +82,23 @@ interface BraintreeEURRow {
   // 🔑 ID do payout agrupado (agrupa transações pagas juntas)
   disbursement_id?: string | null;
 
+  // 💰 FEES E DEDUÇÕES
+  service_fee_amount?: number | null;
+  discount_amount?: number | null;
+  tax_amount?: number | null;
+  refunded_transaction_id?: string | null;
+  merchant_account_fee?: number | null;
+  processing_fee?: number | null;
+  authorization_adjustment?: number | null;
+  dispute_amount?: number | null;
+  reserve_amount?: number | null;
+
+  // Propriedades de agrupamento calculadas
+  _groupSize?: number;
+  _groupTotal?: number;
+  _isGroupExpanded?: boolean;
+  _isFirstInGroup?: boolean;
+
   [key: string]: any;
 }
 
@@ -162,6 +179,10 @@ export default function BraintreeEURPage() {
   // Webhook tracking
   const [mostRecentWebhookTransaction, setMostRecentWebhookTransaction] = useState<BraintreeEURRow | null>(null);
 
+  // Disbursement grouping
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [disbursementFilter, setDisbursementFilter] = useState<string>("");
+
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [amountFilter, setAmountFilter] = useState<{
@@ -221,6 +242,7 @@ export default function BraintreeEURPage() {
     dateFilters,
     sortField,
     sortDirection,
+    disbursementFilter,
   ]);
 
   // Função para carregar última data de sync
@@ -278,6 +300,17 @@ export default function BraintreeEURPage() {
       setSortField(field);
       setSortDirection("desc");
     }
+  };
+
+  // Função para toggle de grupos de disbursement
+  const toggleGroup = (disbursementId: string) => {
+    const newExpanded = new Set(expandedGroups);
+    if (newExpanded.has(disbursementId)) {
+      newExpanded.delete(disbursementId);
+    } else {
+      newExpanded.add(disbursementId);
+    }
+    setExpandedGroups(newExpanded);
   };
 
   // Função para unconcile (limpar reconciliação)
@@ -500,6 +533,17 @@ export default function BraintreeEURPage() {
 
           // 🔑 ID do payout agrupado
           disbursement_id: row.custom_data?.disbursement_id,
+
+          // 💰 FEES E DEDUÇÕES
+          service_fee_amount: row.custom_data?.service_fee_amount,
+          discount_amount: row.custom_data?.discount_amount,
+          tax_amount: row.custom_data?.tax_amount,
+          refunded_transaction_id: row.custom_data?.refunded_transaction_id,
+          merchant_account_fee: row.custom_data?.merchant_account_fee,
+          processing_fee: row.custom_data?.processing_fee,
+          authorization_adjustment: row.custom_data?.authorization_adjustment,
+          dispute_amount: row.custom_data?.dispute_amount,
+          reserve_amount: row.custom_data?.reserve_amount,
         }));
 
       setRows(mappedRows);
@@ -675,8 +719,19 @@ export default function BraintreeEURPage() {
             (row.customer_name &&
               row.customer_name.toLowerCase().includes(search)) ||
             (row.customer_email &&
-              row.customer_email.toLowerCase().includes(search));
+              row.customer_email.toLowerCase().includes(search)) ||
+            (row.disbursement_id &&
+              row.disbursement_id.toLowerCase().includes(search));
           if (!matchesSearch) return false;
+        }
+
+        // Filtro específico de disbursement_id
+        if (disbursementFilter && disbursementFilter !== "all") {
+          if (disbursementFilter === "ungrouped") {
+            if (row.disbursement_id) return false;
+          } else if (row.disbursement_id !== disbursementFilter) {
+            return false;
+          }
         }
 
         // Filtro de status (padrão: settled)
@@ -746,8 +801,40 @@ export default function BraintreeEURPage() {
         }
 
         return true;
-      })
-      .sort((a, b) => {
+      });
+
+    // 🆕 Agrupar por disbursement_id e calcular totais
+    const grouped = filtered.reduce((acc, row) => {
+      const disbursementId = row.disbursement_id || 'ungrouped';
+      if (!acc[disbursementId]) {
+        acc[disbursementId] = [];
+      }
+      acc[disbursementId].push(row);
+      return acc;
+    }, {} as Record<string, BraintreeEURRow[]>);
+
+    // Adicionar informações de grupo a cada row
+    filtered = filtered.map((row, index, array) => {
+      const disbursementId = row.disbursement_id || 'ungrouped';
+      const groupRows = grouped[disbursementId];
+      const groupSize = groupRows?.length || 1;
+      const groupTotal = groupRows?.reduce((sum, r) => sum + r.amount, 0) || row.amount;
+      
+      // Verificar se é o primeiro da lista deste grupo
+      const isFirstInGroup = array.findIndex(r => 
+        (r.disbursement_id || 'ungrouped') === disbursementId
+      ) === index;
+
+      return {
+        ...row,
+        _groupSize: groupSize,
+        _groupTotal: groupTotal,
+        _isGroupExpanded: expandedGroups.has(disbursementId),
+        _isFirstInGroup: isFirstInGroup,
+      };
+    });
+
+    return filtered.sort((a, b) => {
         let comparison = 0;
 
         switch (sortField) {
