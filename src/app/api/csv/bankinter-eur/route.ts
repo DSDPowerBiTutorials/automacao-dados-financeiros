@@ -98,6 +98,9 @@ export async function POST(request: NextRequest) {
         console.log("  HABER:", colIndex.haber !== -1 ? `Coluna ${colIndex.haber}` : "❌")
         console.log("  IMPORTE:", colIndex.importe !== -1 ? `Coluna ${colIndex.importe}` : "⚠️")
         console.log("  SALDO:", colIndex.saldo !== -1 ? `Coluna ${colIndex.saldo}` : "⚠️")
+        console.log("  REFERENCIA:", colIndex.referencia !== -1 ? `Coluna ${colIndex.referencia}` : "⚠️")
+        console.log("  CLAVE:", colIndex.clave !== -1 ? `Coluna ${colIndex.clave}` : "⚠️")
+        console.log("  CATEGORIA:", colIndex.categoria !== -1 ? `Coluna ${colIndex.categoria}` : "⚠️")
 
         if (colIndex.fechaValor === -1 || colIndex.descripcion === -1) {
             return NextResponse.json(
@@ -121,6 +124,21 @@ export async function POST(request: NextRequest) {
                 const importeRaw = colIndex.importe !== -1 ? row[colIndex.importe] : null
                 const saldoRaw = colIndex.saldo !== -1 ? row[colIndex.saldo] : null
 
+                // DEBUG: Log primeira linha para ver valores brutos
+                if (index === 0) {
+                    console.log("\n🔍 [DEBUG] PRIMEIRA LINHA - Valores brutos:")
+                    console.log("  fechaValorRaw:", fechaValorRaw, typeof fechaValorRaw)
+                    console.log("  descripcion:", descripcion)
+                    console.log("  debeRaw:", debeRaw, typeof debeRaw)
+                    console.log("  haberRaw:", haberRaw, typeof haberRaw)
+                    console.log("  importeRaw:", importeRaw, typeof importeRaw)
+                    console.log("  saldoRaw:", saldoRaw, typeof saldoRaw)
+                    console.log("  referencia (col", colIndex.referencia, "):", row[colIndex.referencia])
+                    console.log("  clave (col", colIndex.clave, "):", row[colIndex.clave])
+                    console.log("  categoria (col", colIndex.categoria, "):", row[colIndex.categoria])
+                    console.log("  fechaContable (col", colIndex.fechaContable, "):", row[colIndex.fechaContable])
+                }
+
                 // Skip linhas vazias
                 if (!fechaValorRaw && !descripcion) {
                     skippedCount++
@@ -130,12 +148,23 @@ export async function POST(request: NextRequest) {
                 // Parse data (Excel serial number ou DD/MM/YYYY string)
                 let date: Date
                 if (typeof fechaValorRaw === "number") {
-                    // Excel serial date - usar UTC para evitar offset de timezone (-1 dia)
-                    const excelEpoch = Date.UTC(1899, 11, 30) // 30 dezembro 1899 em UTC
-                    const timestamp = excelEpoch + fechaValorRaw * 86400000
-                    date = new Date(timestamp)
+                    // Excel armazena datas como dias desde 30/12/1899
+                    // Converter sem usar timezone para evitar offset
+                    const daysOffset = fechaValorRaw
+                    const millisecondsPerDay = 86400000
+                    const excelEpochUTC = Date.UTC(1899, 11, 30)
+                    const targetUTC = excelEpochUTC + (daysOffset * millisecondsPerDay)
 
-                    console.log(`📅 [DEBUG] Excel serial ${fechaValorRaw} → ${date.toISOString().split('T')[0]}`)
+                    // Extrair componentes em UTC
+                    const tempDate = new Date(targetUTC)
+                    const year = tempDate.getUTCFullYear()
+                    const month = tempDate.getUTCMonth()
+                    const day = tempDate.getUTCDate()
+
+                    // Criar date object local com esses componentes (sem conversão)
+                    date = new Date(year, month, day)
+
+                    console.log(`📅 [DEBUG] Serial ${fechaValorRaw} → ${day}/${month + 1}/${year}`)
                 } else if (typeof fechaValorRaw === "string") {
                     // String DD/MM/YYYY ou similar
                     const trimmed = fechaValorRaw.trim()

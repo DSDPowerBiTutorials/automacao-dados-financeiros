@@ -691,7 +691,11 @@ export default function BankinterEURPage() {
                               {(customData.haber && customData.haber > 0) ? formatEuropeanCurrency(customData.haber) : "-"}
                             </td>
                             <td className="py-3 px-4 text-sm text-right font-bold text-[#FF7300] font-mono">
-                              {formatEuropeanCurrency(customData.importe || row.amount)}
+                              {formatEuropeanCurrency(
+                                customData.importe !== undefined
+                                  ? customData.importe
+                                  : (typeof row.amount === 'number' ? row.amount : parseFloat(row.amount))
+                              )}
                             </td>
                             <td className="py-3 px-4 text-sm text-right font-medium text-black font-mono">
                               {formatEuropeanCurrency(customData.saldo)}
