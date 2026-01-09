@@ -463,8 +463,18 @@ export default function BankinterEURPage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-black">Bankinter EUR - Bank Statement</h1>
-                  <p className="text-sm text-gray-600 mt-1">{filteredRows.length} records</p>
+                  <h1 className="text-2xl font-bold text-white">Bankinter EUR - Bank Statement</h1>
+                  <div className="flex items-center gap-4 mt-1">
+                    <p className="text-sm text-gray-300">
+                      {rows.length} records ({filteredRows.length} filtered)
+                    </p>
+                    {lastSaved && (
+                      <p className="text-sm text-blue-300 flex items-center gap-1">
+                        <Database className="h-3 w-3" />
+                        Last Saved: {lastSaved}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -564,6 +574,44 @@ export default function BankinterEURPage() {
             )}
           </div>
         </header>
+
+        {/* 🏦 Account Information Card */}
+        <div className="container mx-auto px-6 py-4">
+          <Card className="bg-gradient-to-r from-[#FF7300] to-[#FF9A3C] border-0 shadow-xl">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg">
+                    <Database className="h-8 w-8 text-white" />
+                  </div>
+                  <div className="text-white">
+                    <h3 className="text-lg font-bold">Bankinter Spain</h3>
+                    <div className="flex items-center gap-4 mt-1 text-sm">
+                      <span className="flex items-center gap-1">
+                        <span className="font-semibold">Account:</span> ES91 0128 0823 3901 0005 8256
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="font-semibold">Currency:</span> EUR (€)
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="font-semibold">Branch:</span> 0128
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-white">
+                  <p className="text-sm opacity-90">Current Balance</p>
+                  <p className="text-2xl font-bold">
+                    {rows.length > 0
+                      ? formatCurrency(rows.reduce((sum, r) => sum + r.amount, 0))
+                      : "€0.00"
+                    }
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="container mx-auto px-6 py-8">
           {/* Alerta de dados antigos com erros */}

@@ -952,17 +952,24 @@ export default function BraintreeUSDPage() {
         _groupTotal: groupTotal,
         _netDisbursement: netDisbursement,
         _groupNetDisbursement: groupNetDisbursement,
+        _isGroupExpanded: expandedGroups.has(disbursementId),
+        _isFirstInGroup: isFirstInGroup,
+      };
+    });
+
+    // Sorting
+    filtered.sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortField) {
         case "disbursement_date":
         case "created_at":
-        comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
-        break;
+          comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
+          break;
         case "amount":
         case "settlement_amount":
-        comparison = (a[sortField] || 0) - (b[sortField] || 0);
-        break;
-        case "description":
-        case "transaction_id":
-        case "status":
+          comparison = (a[sortField] || 0) - (b[sortField] || 0);
+          break;
         case "type":
         case "currency":
         case "customer_name":
@@ -970,16 +977,18 @@ export default function BraintreeUSDPage() {
         case "payment_method":
         case "merchant_account_id":
         case "destinationAccount":
-        const aValue = (a[sortField] || "").toString();
-        const bValue = (b[sortField] || "").toString();
-        comparison = aValue.localeCompare(bValue);
-        break;
+          const aValue = (a[sortField] || "").toString();
+          const bValue = (b[sortField] || "").toString();
+          comparison = aValue.localeCompare(bValue);
+          break;
         default:
           comparison = 0;
       }
 
       return sortDirection === "asc" ? comparison : -comparison;
     });
+
+    return filtered;
   }, [rows, searchTerm, statusFilter, merchantFilter, typeFilter, currencyFilter, paymentMethodFilter, amountFilter, dateFilters, sortField, sortDirection, disbursementFilter, expandedGroups]);
 
   // Paginação

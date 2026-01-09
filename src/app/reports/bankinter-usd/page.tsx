@@ -631,18 +631,26 @@ export default function BankinterUSDPage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-black">
+                  <h1 className="text-2xl font-bold text-white">
                     Bankinter USD - Bank Statement
                   </h1>
-                  <p className="text-sm text-gray-600 mt-1">
-                    {filteredRows.length} records
-                  </p>
+                  <div className="flex items-center gap-4 mt-1">
+                    <p className="text-sm text-gray-300">
+                      {rows.length} records ({filteredRows.length} filtered)
+                    </p>
+                    {lastSaved && (
+                      <p className="text-sm text-blue-300 flex items-center gap-1">
+                        <Database className="h-3 w-3" />
+                        Last Saved: {lastSaved}
+                      </p>
+                    )}
+                  </div>
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
-                  className="gap-2 border-black text-black hover:bg-gray-100"
+                  className="gap-2 border-white text-white hover:bg-white/10"
                 >
                   <Settings className="h-4 w-4" />
                   Settings
@@ -764,6 +772,44 @@ export default function BankinterUSDPage() {
             )}
           </div>
         </header>
+
+        {/* 🏦 Account Information Card */}
+        <div className="container mx-auto px-6 py-4">
+          <Card className="bg-gradient-to-r from-[#FF7300] to-[#FF9A3C] border-0 shadow-xl">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg">
+                    <Database className="h-8 w-8 text-white" />
+                  </div>
+                  <div className="text-white">
+                    <h3 className="text-lg font-bold">Bankinter Spain</h3>
+                    <div className="flex items-center gap-4 mt-1 text-sm">
+                      <span className="flex items-center gap-1">
+                        <span className="font-semibold">Account:</span> ES91 0128 0823 3901 0005 8256
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="font-semibold">Currency:</span> USD ($)
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <span className="font-semibold">Branch:</span> 0128
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="text-right text-white">
+                  <p className="text-sm opacity-90">Current Balance</p>
+                  <p className="text-2xl font-bold">
+                    {rows.length > 0
+                      ? formatCurrency(rows.reduce((sum, r) => sum + r.amount, 0))
+                      : "$0.00"
+                    }
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         <div className="container mx-auto px-6 py-8">
           {/* Estatísticas */}
