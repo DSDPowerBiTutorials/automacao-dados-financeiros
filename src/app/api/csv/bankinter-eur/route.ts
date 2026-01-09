@@ -37,8 +37,8 @@ export async function POST(request: NextRequest) {
 
         console.log("📊 Planilha:", sheetName, "| Range:", worksheet['!ref'])
 
-        // Ler como array de arrays (método mais confiável para Bankinter)
-        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false }) as any[][]
+        // Ler como array de arrays COM raw: true para preservar números e datas originais
+        const rawData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true, defval: null }) as any[][]
         console.log("📋 Total de linhas:", rawData.length)
 
         if (rawData.length === 0) {
@@ -130,11 +130,10 @@ export async function POST(request: NextRequest) {
                 // Parse data (Excel serial number ou DD/MM/YYYY string)
                 let date: Date
                 if (typeof fechaValorRaw === "number") {
-                    // Excel serial date (dias desde 1900-01-01, mas Excel tem bug do ano 1900)
-                    // Fórmula correta: (serial - 25569) * 86400 * 1000 = timestamp
-                    // Ou usar biblioteca: (serial - 25569) representa dias desde Unix epoch
-                    const excelEpoch = new Date(1899, 11, 30) // 30 de dezembro de 1899
-                    date = new Date(excelEpoch.getTime() + fechaValorRaw * 86400000)
+                    // Excel serial date - usar UTC para evitar offset de timezone (-1 dia)
+                    const excelEpoch = Date.UTC(1899, 11, 30) // 30 dezembro 1899 em UTC
+                    const timestamp = excelEpoch + fechaValorRaw * 86400000
+                    date = new Date(timestamp)
 
                     console.log(`📅 [DEBUG] Excel serial ${fechaValorRaw} → ${date.toISOString().split('T')[0]}`)
                 } else if (typeof fechaValorRaw === "string") {
@@ -215,12 +214,13 @@ export async function POST(request: NextRequest) {
                 let fechaContable: string | null = null
                 if (fechaContableRaw) {
                     if (typeof fechaContableRaw === "number") {
-                        // Usar mesmo método que fechaValor
-                        const excelEpoch = new Date(1899, 11, 30)
-                        const parsedDate = new Date(excelEpoch.getTime() + fechaContableRaw * 86400000)
-                        const day = parsedDate.getDate().toString().padStart(2, "0")
-                        const month = (parsedDate.getMonth() + 1).toString().padStart(2, "0")
-                        const year = parsedDate.getFullYear()
+                        // Usar UTC para evitar offset de timezone
+                        const excelEpoch = Date.UTC(1899, 11, 30)
+                        const timestamp = excelEpoch + fechaContableRaw * 86400000
+                        const parsedDate = new Date(timestamp)
+                        const day = parsedDate.getUTCDate().toString().padStart(2, "0")
+                        const month = (parsedDate.getUTCMonth() + 1).toString().padStart(2, "0")
+                        const year = parsedDate.getUTCFullYear()
                         fechaContable = `${day}/${month}/${year}`
                     } else if (typeof fechaContableRaw === "string") {
                         fechaContable = fechaContableRaw
