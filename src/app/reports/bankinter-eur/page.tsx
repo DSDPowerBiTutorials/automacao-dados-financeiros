@@ -152,7 +152,8 @@ export default function BankinterEURPage() {
           amount: parseFloat(row.amount) || 0,
           conciliado: row.custom_data?.conciliado || false,
           paymentSource: row.custom_data?.paymentSource || null,
-          reconciliationType: row.custom_data?.reconciliationType || null
+          reconciliationType: row.custom_data?.reconciliationType || null,
+          custom_data: row.custom_data || {}
         }))
         setRows(mappedRows)
       } else {
