@@ -145,56 +145,34 @@ export async function POST(request: NextRequest) {
                     return null
                 }
 
-                // Parse data (Excel serial number ou DD/MM/YYYY string)
-                let date: Date
+                // Parse data SIMPLES - converter serial Excel direto para DD/MM/YYYY string
+                let dateString: string
                 if (typeof fechaValorRaw === "number") {
-                    // Excel armazena datas como dias desde 30/12/1899
-                    // Converter sem usar timezone para evitar offset
-                    const daysOffset = fechaValorRaw
-                    const millisecondsPerDay = 86400000
-                    const excelEpochUTC = Date.UTC(1899, 11, 30)
-                    const targetUTC = excelEpochUTC + (daysOffset * millisecondsPerDay)
-
-                    // Extrair componentes em UTC
-                    const tempDate = new Date(targetUTC)
-                    const year = tempDate.getUTCFullYear()
-                    const month = tempDate.getUTCMonth()
-                    const day = tempDate.getUTCDate()
-
-                    // Criar date object local com esses componentes (sem conversão)
-                    date = new Date(year, month, day)
-
-                    console.log(`📅 [DEBUG] Serial ${fechaValorRaw} → ${day}/${month + 1}/${year}`)
+                    // XLSX.SSF.format converte serial Excel direto sem timezone bullshit
+                    dateString = XLSX.SSF.format("dd/mm/yyyy", fechaValorRaw)
+                    console.log(`📅 [DEBUG] Serial ${fechaValorRaw} → ${dateString}`)
                 } else if (typeof fechaValorRaw === "string") {
-                    // String DD/MM/YYYY ou similar
-                    const trimmed = fechaValorRaw.trim()
-                    const parts = trimmed.split(/[\/\-\.]/)
-
-                    if (parts.length === 3) {
-                        // Tentar DD/MM/YYYY primeiro
-                        const day = parseInt(parts[0])
-                        const month = parseInt(parts[1])
-                        const year = parseInt(parts[2])
-
-                        if (day > 0 && day <= 31 && month > 0 && month <= 12) {
-                            date = new Date(year, month - 1, day)
-                        } else {
-                            date = new Date(trimmed)
-                        }
-                    } else {
-                        date = new Date(trimmed)
-                    }
+                    // Já é string, usar diretamente
+                    dateString = fechaValorRaw.trim()
                 } else {
                     console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data inválida:`, fechaValorRaw)
                     skippedCount++
                     return null
                 }
 
-                if (isNaN(date.getTime())) {
-                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data não parseável:`, fechaValorRaw)
+                // Validar formato DD/MM/YYYY
+                const dateParts = dateString.split(/[\/\-\.]/)
+                if (dateParts.length !== 3) {
+                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data não parseável:`, dateString)
                     skippedCount++
                     return null
                 }
+
+                // Converter para ISO YYYY-MM-DD para Supabase (banco precisa desse formato)
+                const day = dateParts[0].padStart(2, "0")
+                const month = dateParts[1].padStart(2, "0")
+                const year = dateParts[2]
+                const isoDate = `${year}-${month}-${day}`
 
                 // Parse valores monetários - formato europeu: 1.234,56 ou -2.636,09
                 const parseAmount = (val: any): number => {
@@ -215,6 +193,8 @@ export async function POST(request: NextRequest) {
                 const haber = parseAmount(haberRaw)
                 const importe = parseAmount(importeRaw)
                 const saldo = parseAmount(saldoRaw)
+
+                console.log(`💰 [DEBUG Linha ${headerRowIndex + index + 2}] debe=${debe}, haber=${haber}, importe=${importe}, saldo=${saldo}`)
 
                 // Amount = HABER - DEBE (ou usar IMPORTE se disponível)
                 let amount: number
@@ -243,14 +223,8 @@ export async function POST(request: NextRequest) {
                 let fechaContable: string | null = null
                 if (fechaContableRaw) {
                     if (typeof fechaContableRaw === "number") {
-                        // Usar UTC para evitar offset de timezone
-                        const excelEpoch = Date.UTC(1899, 11, 30)
-                        const timestamp = excelEpoch + fechaContableRaw * 86400000
-                        const parsedDate = new Date(timestamp)
-                        const day = parsedDate.getUTCDate().toString().padStart(2, "0")
-                        const month = (parsedDate.getUTCMonth() + 1).toString().padStart(2, "0")
-                        const year = parsedDate.getUTCFullYear()
-                        fechaContable = `${day}/${month}/${year}`
+                        // Usar XLSX.SSF.format direto
+                        fechaContable = XLSX.SSF.format("dd/mm/yyyy", fechaContableRaw)
                     } else if (typeof fechaContableRaw === "string") {
                         fechaContable = fechaContableRaw
                     }
@@ -259,7 +233,7 @@ export async function POST(request: NextRequest) {
                 return {
                     source: "bankinter-eur",
                     file_name: file.name,
-                    date: date.toISOString().split("T")[0],
+                    date: isoDate,
                     description: descripcion || "Sin descripción",
                     amount: amount.toString(),
                     category: categoria || "Other",

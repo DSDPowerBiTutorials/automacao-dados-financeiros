@@ -663,6 +663,23 @@ export default function BankinterEURPage() {
                       filteredRows.map((row) => {
                         const sourceStyle = getPaymentSourceStyle(row.paymentSource)
                         const customData = row.custom_data || {}
+
+                        // DEBUG: Log first row to see structure
+                        if (row === filteredRows[0]) {
+                          console.log('🔍 [DEBUG] Primeira linha customData:', {
+                            debe: customData.debe,
+                            haber: customData.haber,
+                            importe: customData.importe,
+                            saldo: customData.saldo,
+                            types: {
+                              debe: typeof customData.debe,
+                              haber: typeof customData.haber,
+                              importe: typeof customData.importe,
+                              saldo: typeof customData.saldo
+                            }
+                          })
+                        }
+
                         return (
                           <tr key={row.id} className="border-b border-gray-200 hover:bg-gray-50">
                             <td className="py-3 px-4 text-sm font-bold text-black">{row.id.substring(0, 6)}...</td>
