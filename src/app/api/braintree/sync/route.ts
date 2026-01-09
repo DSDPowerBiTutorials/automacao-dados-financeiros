@@ -295,6 +295,9 @@ export async function POST(req: NextRequest) {
           // Diferente de disbursement_date (quando dinheiro chega na conta)
           // Esta é a data em que o dinheiro oficialmente se torna seu
           settlement_date: getSettlementDate(transaction),
+
+          // 📋 Status History (histórico completo de mudanças de status)
+          status_history: (transaction as any).statusHistory || [],
         },
       };
 

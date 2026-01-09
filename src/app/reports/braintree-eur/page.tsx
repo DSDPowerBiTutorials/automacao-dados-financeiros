@@ -26,6 +26,7 @@ import {
   Key,
   ChevronDown, // 🆕
   ChevronRight, // 🆕
+  Eye, // 🆕 Status history viewer
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -79,6 +80,7 @@ interface BraintreeEURRow {
   // Campos adicionais da Braintree API
   transaction_id?: string;
   status?: string;
+  status_history?: Array<{ status: string; timestamp: string }>; // 🆕 Histórico de status
   type?: string;
   currency?: string;
   customer_id?: string;
@@ -716,6 +718,7 @@ export default function BraintreeEURPage() {
             // Campos adicionais da Braintree
             transaction_id: row.custom_data?.transaction_id,
             status: row.custom_data?.status,
+            status_history: row.custom_data?.status_history || [],
             type: row.custom_data?.type,
             currency: row.custom_data?.currency,
             customer_id: row.custom_data?.customer_id,
@@ -2098,9 +2101,103 @@ export default function BraintreeEURPage() {
                             )}
                             {visibleColumns.has("status") && (
                               <td className="py-3 px-4 text-center">
-                                <Badge variant={row.status === "settled" || row.status === "settled_successfully" ? "default" : "secondary"}>
-                                  {row.status || "N/A"}
-                                </Badge>
+                                <div className="flex items-center justify-center gap-2">
+                                  <Badge variant={row.status === "settled" || row.status === "settled_successfully" ? "default" : "secondary"}>
+                                    {row.status || "N/A"}
+                                  </Badge>
+                                  
+                                  {/* 👁️ Ícone "Olho" com histórico de status */}
+                                  {row.status_history && row.status_history.length > 0 && (
+                                    <Popover>
+                                      <PopoverTrigger asChild>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0 hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                        >
+                                          <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                                        </Button>
+                                      </PopoverTrigger>
+                                      <PopoverContent className="w-80 p-0" align="end">
+                                        <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 py-3 rounded-t-lg">
+                                          <h4 className="font-bold flex items-center gap-2">
+                                            <Eye className="h-4 w-4" />
+                                            Status History
+                                          </h4>
+                                          <p className="text-xs text-blue-100 mt-1">
+                                            Transaction: {row.transaction_id}
+                                          </p>
+                                        </div>
+                                        <div className="p-4 max-h-[300px] overflow-y-auto">
+                                          <div className="space-y-3">
+                                            {row.status_history
+                                              .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                                              .map((historyEntry, index) => {
+                                                const isSettled = historyEntry.status === "settled" || historyEntry.status === "settled_successfully";
+                                                const isLatest = index === 0;
+                                                
+                                                return (
+                                                  <div 
+                                                    key={index}
+                                                    className={`flex items-start gap-3 pb-3 ${
+                                                      index < row.status_history!.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
+                                                    }`}
+                                                  >
+                                                    <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${
+                                                      isSettled ? 'bg-green-500' : 
+                                                      isLatest ? 'bg-blue-500' : 
+                                                      'bg-gray-400'
+                                                    }`} />
+                                                    <div className="flex-1 min-w-0">
+                                                      <div className="flex items-center justify-between gap-2">
+                                                        <Badge 
+                                                          variant={isSettled ? "default" : isLatest ? "secondary" : "outline"}
+                                                          className="text-xs"
+                                                        >
+                                                          {historyEntry.status}
+                                                        </Badge>
+                                                        {isLatest && (
+                                                          <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold">
+                                                            CURRENT
+                                                          </span>
+                                                        )}
+                                                      </div>
+                                                      <div className="flex items-center gap-1 mt-1 text-xs text-gray-600 dark:text-gray-400">
+                                                        <Calendar className="h-3 w-3" />
+                                                        <span className="font-mono">
+                                                          {formatTimestamp(new Date(historyEntry.timestamp))}
+                                                        </span>
+                                                      </div>
+                                                      {isSettled && (
+                                                        <div className="mt-1 text-[10px] text-green-600 dark:text-green-400 font-semibold">
+                                                          ✓ Settlement confirmed at this time
+                                                        </div>
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                          </div>
+                                        </div>
+                                        {row.settlement_batch_id && (
+                                          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-gray-800/50 rounded-b-lg">
+                                            <div className="flex items-start gap-2">
+                                              <Key className="h-3 w-3 text-gray-500 mt-0.5 flex-shrink-0" />
+                                              <div className="min-w-0 flex-1">
+                                                <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-1">
+                                                  Settlement Batch ID:
+                                                </div>
+                                                <div className="font-mono text-xs text-gray-700 dark:text-gray-300 break-all">
+                                                  {row.settlement_batch_id}
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </PopoverContent>
+                                    </Popover>
+                                  )}
+                                </div>
                               </td>
                             )}
                             {visibleColumns.has("type") && (
@@ -2127,21 +2224,11 @@ export default function BraintreeEURPage() {
                             {visibleColumns.has("settlement_date") && (
                               <td className="py-3 px-4 text-sm">
                                 {row.settlement_date ? (
-                                  <div className="flex flex-col">
-                                    <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">
-                                      {formatTimestamp(new Date(row.settlement_date))}
-                                    </span>
-                                    <span className="text-[10px] text-green-600">✓ Settled</span>
-                                  </div>
+                                  <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">
+                                    {formatDate(row.settlement_date)}
+                                  </span>
                                 ) : (
-                                  <div className="flex flex-col">
-                                    <span className="text-gray-400 text-xs">Not settled</span>
-                                    {row.status && (
-                                      <span className="text-[10px] text-gray-500">
-                                        Status: {row.status}
-                                      </span>
-                                    )}
-                                  </div>
+                                  <span className="text-gray-400 text-xs">Not settled</span>
                                 )}
                               </td>
                             )}
@@ -2185,7 +2272,46 @@ export default function BraintreeEURPage() {
                             )}
                             {visibleColumns.has("payment_method") && (
                               <td className="py-3 px-4 text-sm">
-                                {row.payment_method || "N/A"}
+                                {(() => {
+                                  const paymentMethod = row.payment_method;
+                                  if (!paymentMethod || paymentMethod === "N/A") return "N/A";
+                                  
+                                  // Extrair apenas a bandeira do cartão (antes do espaço/dígitos)
+                                  const cleanMethod = paymentMethod
+                                    .replace(/\s*(ending in|\*\*\*\*|\d{4}).*$/i, '')
+                                    .trim();
+                                  
+                                  // Se for PayPal, manter como está
+                                  if (cleanMethod.toLowerCase().includes('paypal')) {
+                                    return (
+                                      <Badge variant="outline" className="bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400">
+                                        PayPal
+                                      </Badge>
+                                    );
+                                  }
+                                  
+                                  // Para cartões, mostrar badge com cor específica
+                                  const cardBrandColors: { [key: string]: string } = {
+                                    'visa': 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
+                                    'mastercard': 'bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800',
+                                    'amex': 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
+                                    'discover': 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
+                                  };
+                                  
+                                  const brandLower = cleanMethod.toLowerCase();
+                                  const colorClass = Object.keys(cardBrandColors).find(brand => 
+                                    brandLower.includes(brand)
+                                  );
+                                  
+                                  return (
+                                    <Badge 
+                                      variant="outline" 
+                                      className={colorClass ? cardBrandColors[colorClass] : 'bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-400'}
+                                    >
+                                      {cleanMethod || "Card"}
+                                    </Badge>
+                                  );
+                                })()}
                               </td>
                             )}
                             {visibleColumns.has("merchant_account_id") && (
