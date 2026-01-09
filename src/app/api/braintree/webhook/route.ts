@@ -109,9 +109,13 @@ export async function POST(req: NextRequest) {
         ].includes(eventKind);
 
         // Cria registro de revenue
+        const transactionDate = typeof transaction.createdAt === 'string'
+          ? new Date(transaction.createdAt)
+          : transaction.createdAt;
+
         const revenueRow = {
           source: "braintree-api-revenue",
-          date: transaction.createdAt.toISOString().split("T")[0],
+          date: transactionDate.toISOString().split("T")[0],
           description: `${getPaymentMethod(transaction)} - ${getCustomerName(transaction)}`,
           amount: parseFloat(transaction.amount),
           reconciled: false,
@@ -122,7 +126,7 @@ export async function POST(req: NextRequest) {
             currency: transaction.currencyIsoCode,
             payment_method: getPaymentMethod(transaction),
             status: eventKind.replace("transaction_", ""),
-            created_at: transaction.createdAt,
+            created_at: transactionDate.toISOString(),
             webhook_received_at: new Date().toISOString(),
             webhook_kind: webhookNotification.kind,
             is_successful: isSuccessful,
@@ -146,7 +150,7 @@ export async function POST(req: NextRequest) {
           const feeRow = {
             source: "braintree-api-fees",
             file_name: `braintree-webhook-fee-${transaction.id}.json`,
-            date: transaction.createdAt.toISOString().split("T")[0],
+            date: transactionDate.toISOString().split("T")[0],
             description: `Braintree Fee - ${transaction.id}`,
             amount: -Math.abs(feeAmount),
             reconciled: false,
@@ -323,10 +327,15 @@ export async function POST(req: NextRequest) {
       if (subscription && subscription.transactions && subscription.transactions.length > 0) {
         const transaction = subscription.transactions[0];
 
+        // Safe date parsing
+        const transactionDate = typeof transaction.createdAt === 'string'
+          ? new Date(transaction.createdAt)
+          : transaction.createdAt;
+
         // Cria registro de revenue
         const revenueRow = {
           source: "braintree-api-revenue",
-          date: transaction.createdAt.toISOString().split("T")[0],
+          date: transactionDate.toISOString().split("T")[0],
           description: `${getPaymentMethod(transaction)} - ${getCustomerName(transaction)}`,
           amount: parseFloat(transaction.amount),
           reconciled: false,
@@ -337,7 +346,7 @@ export async function POST(req: NextRequest) {
             currency: transaction.currencyIsoCode,
             payment_method: getPaymentMethod(transaction),
             subscription_id: transaction.subscriptionId,
-            created_at: transaction.createdAt,
+            created_at: transactionDate.toISOString(),
             webhook_received_at: new Date().toISOString(),
             webhook_kind: webhookNotification.kind,
             is_successful: eventKind.includes("successfully"),
@@ -359,7 +368,7 @@ export async function POST(req: NextRequest) {
           const feeRow = {
             source: "braintree-api-fees",
             file_name: `braintree-webhook-subfee-${transaction.id}.json`,
-            date: transaction.createdAt.toISOString().split("T")[0],
+            date: transactionDate.toISOString().split("T")[0],
             description: `Braintree Fee - ${transaction.id}`,
             amount: -Math.abs(feeAmount),
             reconciled: false,

@@ -564,9 +564,31 @@ export default function BraintreeEURPage() {
 
       const mappedRows: BraintreeEURRow[] = rowsData
         .filter((row) => {
-          // Filtrar apenas merchant account EUR
-          const merchantAccount = row.custom_data?.merchant_account_id;
-          return !merchantAccount || merchantAccount === "digitalsmiledesignEUR" || row.source === "braintree-eur";
+          // Aceitar todas as linhas de braintree-api-revenue e braintree-api-fees
+          if (row.source === 'braintree-api-revenue' || row.source === 'braintree-api-fees') {
+            const merchantAccount = row.custom_data?.merchant_account_id;
+            const currency = row.custom_data?.currency;
+
+            // Aceitar se:
+            // 1. Currency é EUR
+            // 2. Merchant é digitalsmiledesignEUR
+            // 3. Não tem merchant definido (dados antigos)
+            const isEUR = currency === 'EUR' || merchantAccount === 'digitalsmiledesignEUR' || !merchantAccount;
+
+            if (!isEUR && rowsData.indexOf(row) < 5) {
+              console.log('[DEBUG Filter] Rejecting:', {
+                id: row.id,
+                source: row.source,
+                merchant: merchantAccount,
+                currency
+              });
+            }
+
+            return isEUR;
+          }
+
+          // Aceitar source antiga (braintree-eur)
+          return row.source === "braintree-eur";
         })
         .map((row) => {
           // 🔍 DEBUG: Log para verificar settlement_batch_id
