@@ -236,6 +236,21 @@ export async function POST(request: NextRequest) {
         console.log("\n📋 Primeiras 2 transações:")
         console.log(JSON.stringify(rows.slice(0, 2), null, 2))
 
+        // Validar que nenhum objeto tem campos undefined/null obrigatórios
+        const invalidRows = rows.filter((row: any) => 
+            !row.source || !row.file_name || !row.date || !row.description || 
+            !row.amount || !row.category || !row.classification
+        )
+        
+        if (invalidRows.length > 0) {
+            console.error("❌ Linhas inválidas encontradas:", invalidRows.length)
+            console.error("Exemplo de linha inválida:", JSON.stringify(invalidRows[0], null, 2))
+            return NextResponse.json(
+                { success: false, error: `${invalidRows.length} linhas com campos obrigatórios faltando` },
+                { status: 400 }
+            )
+        }
+
         // Salvar no Supabase
         console.log(`\n💾 Salvando ${rows.length} registros no Supabase...`)
         const { data: insertedRows, error: dbError } = await supabaseAdmin
