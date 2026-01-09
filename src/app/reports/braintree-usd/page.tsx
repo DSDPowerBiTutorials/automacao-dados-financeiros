@@ -372,36 +372,6 @@ export default function BraintreeUSDPage() {
     };
   };
 
-  // Função para calcular grupo completo de disbursement
-  const calculateDisbursementGroup = (rows: BraintreeUSDRow[]): DisbursementGroup | null => {
-    if (rows.length === 0 || !rows[0].disbursement_id) return null;
-
-    const grossAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
-
-    const feesBreakdown = {
-      service_fee: rows.reduce((sum, r) => sum + (r.service_fee_amount || 0), 0),
-      processing_fee: rows.reduce((sum, r) => sum + (r.processing_fee || 0), 0),
-      merchant_fee: rows.reduce((sum, r) => sum + (r.merchant_account_fee || 0), 0),
-      discount: rows.reduce((sum, r) => sum + (r.discount_amount || 0), 0),
-      tax: rows.reduce((sum, r) => sum + (r.tax_amount || 0), 0),
-      dispute: rows.reduce((sum, r) => sum + (r.dispute_amount || 0), 0),
-      reserve: rows.reduce((sum, r) => sum + (r.reserve_amount || 0), 0),
-    };
-
-    const totalFees = Object.values(feesBreakdown).reduce((sum, fee) => sum + fee, 0);
-    const adjustments = rows.reduce((sum, r) => sum + (r.authorization_adjustment || 0), 0);
-    const netDisbursement = grossAmount - totalFees + adjustments;
-
-    return {
-      disbursement_id: rows[0].disbursement_id!,
-      transactions: rows,
-      grossAmount,
-      totalFees,
-      netDisbursement,
-      feesBreakdown,
-    };
-  };
-
   // Função para unconcile (limpar reconciliação)
   const handleUnconcile = async (rowId: string) => {
     if (!confirm("Are you sure you want to clear the reconciliation for this transaction?")) return;
