@@ -101,7 +101,7 @@ export interface BraintreeTransactionData {
     settlementAmount?: string;
     settlementCurrencyIsoCode?: string;
     settlementCurrencyExchangeRate?: string;
-    fundsHeld?: boolean;
+    disbursementId?: string; // 🔑 Identifica o payout/transferência bancária
   };
 }
 

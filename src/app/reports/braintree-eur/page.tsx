@@ -79,6 +79,9 @@ interface BraintreeEURRow {
   settlement_amount?: number | null;
   settlement_currency?: string | null;
 
+  // 🔑 ID do payout agrupado (agrupa transações pagas juntas)
+  disbursement_id?: string | null;
+
   [key: string]: any;
 }
 
@@ -494,6 +497,9 @@ export default function BraintreeEURPage() {
           disbursement_date: row.custom_data?.disbursement_date,
           settlement_amount: row.custom_data?.settlement_amount,
           settlement_currency: row.custom_data?.settlement_currency,
+
+          // 🔑 ID do payout agrupado
+          disbursement_id: row.custom_data?.disbursement_id,
         }));
 
       setRows(mappedRows);
@@ -1362,6 +1368,13 @@ export default function BraintreeEURPage() {
                           </button>
                         </th>
                       )}
+                      {visibleColumns.has("disbursement_id") && (
+                        <th className="border px-2 py-2 bg-gray-100 text-xs font-medium text-gray-700">
+                          Disbursement ID
+                          <br />
+                          <span className="text-[10px] text-gray-500">(Payout Group)</span>
+                        </th>
+                      )}
                     </tr>
                   </thead>
                   <tbody>
@@ -1616,6 +1629,11 @@ export default function BraintreeEURPage() {
                             {visibleColumns.has("settlement_amount") && (
                               <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
                                 {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("disbursement_id") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.disbursement_id || "N/A"}
                               </td>
                             )}
                           </tr>

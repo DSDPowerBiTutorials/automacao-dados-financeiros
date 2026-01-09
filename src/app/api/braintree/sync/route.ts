@@ -112,6 +112,9 @@ export async function POST(req: NextRequest) {
             : null,
           settlement_amount: transaction.disbursementDetails?.settlementAmount || null,
           settlement_currency: transaction.disbursementDetails?.settlementCurrencyIsoCode || null,
+
+          // 🔑 ID do disbursement (agrupa transações pagas juntas no mesmo payout)
+          disbursement_id: transaction.disbursementDetails?.disbursementId || null,
         },
       };
 

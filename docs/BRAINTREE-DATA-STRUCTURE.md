@@ -333,25 +333,86 @@ ORDER BY month DESC;
 
 ---
 
-## 🚀 Melhorias Recomendadas
+## 🔑 Agrupamento de Payouts via `disbursement_id`
 
-### **Curto Prazo (Esta Semana):**
-1. ✅ Adicionar índices no Supabase
-2. ✅ Implementar paginação na interface
-3. ✅ Desabilitar reconciliação automática (fazer sob demanda)
-4. ✅ Separar páginas por moeda (EUR, USD, GBP, AUD)
+### Problema Resolvido
+O Braintree agrupa múltiplas transações em um único payout bancário. Por exemplo, 9 vendas podem ser pagas em 2-4 transferências diferentes para a conta bancária.
 
-### **Médio Prazo (Este Mês):**
-1. 📊 Implementar captura de disbursements
-2. 🔄 Reconciliação bancária automatizada
-3. 📈 Dashboard com métricas por moeda
-4. 🔍 Busca e filtros avançados
+### Solução: Campo `disbursement_id`
+Cada transação Braintree tem um `disbursementDetails.disbursementId` que identifica o payout ao qual pertence.
 
-### **Longo Prazo (Este Trimestre):**
-1. 📱 Virtual scrolling para milhares de registros
-2. 🤖 Machine learning para sugerir reconciliações
-3. 📧 Alertas automáticos para discrepâncias
-4. 🌐 Suporte multi-idioma
+### Implementação
+
+#### 1. Captura na API (`src/app/api/braintree/sync/route.ts`)
+```typescript
+custom_data: {
+  // ... outros campos
+  disbursement_id: transaction.disbursementDetails?.disbursementId || null,
+  disbursement_date: transaction.disbursementDetails?.disbursementDate?.toISOString() || null,
+  settlement_amount: transaction.disbursementDetails?.settlementAmount || null,
+}
+```
+
+#### 2. Visualização na UI (`src/app/reports/braintree-eur/page.tsx`)
+- Nova coluna "Disbursement ID (Payout Group)" na tabela
+- Exibe primeiros 12 caracteres com estilo `font-mono`
+- Badge azul para destacar agrupamento
+
+#### 3. Query SQL para Análise de Agrupamento
+```sql
+-- Ver todos os payouts agrupados
+SELECT 
+  custom_data->>'disbursement_id' as payout_id,
+  custom_data->>'disbursement_date' as payout_date,
+  COUNT(*) as num_transactions,
+  SUM(amount::numeric) as total_amount,
+  STRING_AGG(custom_data->>'transaction_id', ', ') as transaction_ids
+FROM csv_rows
+WHERE source = 'braintree-api-revenue'
+  AND custom_data->>'disbursement_id' IS NOT NULL
+GROUP BY 
+  custom_data->>'disbursement_id',
+  custom_data->>'disbursement_date'
+ORDER BY custom_data->>'disbursement_date' DESC;
+```
+
+#### 4. Reconciliação com Bankinter
+```sql
+-- Encontrar payouts Braintree que correspondem a transferências Bankinter
+SELECT 
+  b.custom_data->>'disbursement_id' as braintree_payout,
+  b.custom_data->>'disbursement_date' as braintree_date,
+  SUM(b.amount::numeric) as braintree_total,
+  k.date as bankinter_date,
+  k.amount as bankinter_amount,
+  k.description as bankinter_desc
+FROM csv_rows b
+LEFT JOIN csv_rows k ON 
+  k.source = 'bankinter-eur' 
+  AND ABS(EXTRACT(EPOCH FROM (k.date::date - (b.custom_data->>'disbursement_date')::date)) / 86400) <= 3
+  AND ABS(k.amount::numeric - SUM(b.amount::numeric)) < 1.00
+WHERE b.source = 'braintree-api-revenue'
+  AND b.custom_data->>'disbursement_id' IS NOT NULL
+GROUP BY 
+  b.custom_data->>'disbursement_id',
+  b.custom_data->>'disbursement_date',
+  k.date, k.amount, k.description
+ORDER BY b.custom_data->>'disbursement_date' DESC;
+```
+
+### Exemplo de Uso
+Se você vê 9 transações Braintree em 2024-01-15, mas apenas 3 transferências bancárias:
+1. Agrupe por `disbursement_id` na interface
+2. Some os valores de cada grupo
+3. Compare com as transferências Bankinter usando a data de disbursement ±3 dias
+4. Marque como reconciliado quando valores coincidirem
+
+### Moedas Suportadas
+- ✅ EUR (`/reports/braintree-eur`)
+- ✅ USD (`/reports/braintree-usd`)
+- ✅ GBP (`/reports/braintree-gbp`)
+
+Todas as páginas agora exibem a coluna `Disbursement ID`.
 
 ---
 
