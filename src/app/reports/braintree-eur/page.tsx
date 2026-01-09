@@ -214,8 +214,6 @@ export default function BraintreeEURPage() {
   const [settlementBatches, setSettlementBatches] = useState<Map<string, BraintreeEURRow[]>>(new Map());
   const [expandedSettlementBatches, setExpandedSettlementBatches] = useState<Set<string>>(new Set());
   const [settlementBatchFilter, setSettlementBatchFilter] = useState<string>("");
-  const [isClearingAndReloading, setIsClearingAndReloading] = useState(false);
-  const [isClearingAndReloading, setIsClearingAndReloading] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -525,65 +523,6 @@ export default function BraintreeEURPage() {
     } catch (error) {
       console.error("Error reconciling bank statements:", error);
       return braintreeRows;
-    }
-  };
-
-  // 🗑️ Clear & Reload - Deleta dados antigos e recarrega da API
-  const clearAndReload = async () => {
-    if (!confirm('⚠️ This will DELETE all Braintree EUR transactions and reload from API. Continue?')) {
-      return;
-    }
-
-    setIsClearingAndReloading(true);
-    try {
-      console.log('[Clear & Reload] Deleting old Braintree EUR data...');
-      
-      // Deletar apenas transações EUR (revenue e fees)
-      const { error: deleteError } = await supabase
-        .from('csv_rows')
-        .delete()
-        .in('source', ['braintree-api-revenue', 'braintree-api-fees'])
-        .or('custom_data->>merchant_account_id.eq.digitalsmiledesignEUR,custom_data->>currency.eq.EUR');
-
-      if (deleteError) {
-        console.error('[Clear & Reload] Error deleting:', deleteError);
-        alert('❌ Error deleting old data: ' + deleteError.message);
-        return;
-      }
-
-      console.log('[Clear & Reload] Old data deleted. Starting sync...');
-      setRows([]); // Limpar tabela
-
-      // Acionar sync via API (30 dias atrás)
-      const endDate = new Date();
-      const startDate = new Date();
-      startDate.setDate(startDate.getDate() - 30);
-
-      const response = await fetch('/api/braintree/sync', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          startDate: startDate.toISOString().split('T')[0],
-          endDate: endDate.toISOString().split('T')[0],
-          currency: 'EUR',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`Sync failed: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      console.log('[Clear & Reload] Sync completed:', result);
-
-      // Recarregar dados
-      await loadData();
-      alert('✅ Data cleared and reloaded successfully!');
-    } catch (error: any) {
-      console.error('[Clear & Reload] Error:', error);
-      alert('❌ Error during clear & reload: ' + error.message);
-    } finally {
-      setIsClearingAndReloading(false);
     }
   };
 
@@ -1172,27 +1111,6 @@ export default function BraintreeEURPage() {
 
                 {/* Controles de Sincronização */}
                 <BraintreeSyncControls />
-
-                {/* 🗑️ Clear & Reload Button */}
-                <Button
-                  onClick={clearAndReload}
-                  disabled={isClearingAndReloading}
-                  variant="destructive"
-                  size="sm"
-                  className="gap-2"
-                >
-                  {isClearingAndReloading ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Clearing...
-                    </>
-                  ) : (
-                    <>
-                      <Trash2 className="h-4 w-4" />
-                      Clear & Reload
-                    </>
-                  )}
-                </Button>
 
                 {/* Update Pending/Force Update com timestamps */}
                 <BraintreeUpdatePendingButton />
