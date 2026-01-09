@@ -196,9 +196,12 @@ export async function POST(request: NextRequest) {
 
                 return {
                     source: "bankinter-eur",
+                    file_name: file.name,
                     date: date.toISOString().split("T")[0],
                     description: descripcion || "Sin descripción",
-                    amount,
+                    amount: amount.toString(),
+                    category: categoria || "Other",
+                    classification: categoria || "Other",
                     reconciled: false,
                     custom_data: {
                         debe,
