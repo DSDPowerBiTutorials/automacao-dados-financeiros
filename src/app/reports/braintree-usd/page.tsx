@@ -203,6 +203,11 @@ export default function BraintreeUSDPage() {
   const [disbursementFilter, setDisbursementFilter] = useState<string>("");
   const [disbursementGroups, setDisbursementGroups] = useState<Map<string, DisbursementGroup>>(new Map());
 
+  // 🆕 Settlement Batch grouping
+  const [settlementBatches, setSettlementBatches] = useState<Map<string, BraintreeUSDRow[]>>(new Map());
+  const [expandedSettlementBatches, setExpandedSettlementBatches] = useState<Set<string>>(new Set());
+  const [settlementBatchFilter, setSettlementBatchFilter] = useState<string>("");
+
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [amountFilter, setAmountFilter] = useState<{
@@ -259,6 +264,7 @@ export default function BraintreeUSDPage() {
     sortField,
     sortDirection,
     disbursementFilter,
+    settlementBatchFilter, // 🆕
   ]);
 
   // Função para carregar última data de sync
@@ -592,6 +598,28 @@ export default function BraintreeUSDPage() {
         }));
 
       console.log(`[Braintree USD] Mapped ${mappedRows.length} rows, starting auto-reconciliation...`);
+
+      // 🆕 Agrupar transações por Settlement Batch ID
+      const batchGroups = new Map<string, BraintreeUSDRow[]>();
+      mappedRows.forEach((row) => {
+        const batchId = row.settlement_batch_id || 'no-batch';
+        if (!batchGroups.has(batchId)) {
+          batchGroups.set(batchId, []);
+        }
+        batchGroups.get(batchId)!.push(row);
+      });
+
+      console.log(`[Braintree USD] Found ${batchGroups.size} settlement batches`);
+
+      // Log detalhes dos batches
+      batchGroups.forEach((rows, batchId) => {
+        if (batchId !== 'no-batch') {
+          const totalAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+          console.log(`[Batch ${batchId}] ${rows.length} transactions, Total: $${totalAmount.toFixed(2)}`);
+        }
+      });
+
+      setSettlementBatches(batchGroups);
 
       // 🆕 RECONCILIAÇÃO AUTOMÁTICA
       // USD geralmente deposita em Bankinter EUR (cross-currency via PayPal Europe)
@@ -1349,8 +1377,29 @@ export default function BraintreeUSDPage() {
                     </SelectContent>
                   </Select>
 
+                  {/* 🆕 Settlement Batch Filter */}
+                  <Select
+                    value={settlementBatchFilter}
+                    onValueChange={setSettlementBatchFilter}
+                  >
+                    <SelectTrigger className="w-[240px]">
+                      <SelectValue placeholder="Settlement Batch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Batches</SelectItem>
+                      {Array.from(settlementBatches.keys())
+                        .filter(batch => batch !== 'no-batch')
+                        .sort((a, b) => b.localeCompare(a))
+                        .map(batch => (
+                          <SelectItem key={batch} value={batch}>
+                            {batch} ({settlementBatches.get(batch)?.length} tx)
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+
                   {/* Clear all filters button */}
-                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || Object.keys(dateFilters).length > 0) && (
+                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || settlementBatchFilter || Object.keys(dateFilters).length > 0) && (
                     <Badge
                       variant="secondary"
                       className="cursor-pointer hover:bg-destructive/20 px-3 h-9 flex items-center"
@@ -1363,6 +1412,7 @@ export default function BraintreeUSDPage() {
                         setCurrencyFilter("");
                         setPaymentMethodFilter("");
                         setDisbursementFilter("");
+                        setSettlementBatchFilter(""); // 🆕
                         setDateFilters({});
                       }}
                     >
