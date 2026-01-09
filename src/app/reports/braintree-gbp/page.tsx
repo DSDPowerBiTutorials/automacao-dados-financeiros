@@ -2246,8 +2246,7 @@ export default function BraintreeGBPPage() {
                           )}
                         </tr>
                       );
-                    })
-                    )}
+                    })}
                   </tbody>
                 </table>
               </div>

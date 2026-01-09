@@ -372,22 +372,6 @@ export default function BraintreeUSDPage() {
     };
   };
 
-  // Função para calcular o valor líquido do disbursement
-  const calculateNetDisbursement = (row: BraintreeUSDRow): number => {
-    const grossAmount = row.settlement_amount || row.amount;
-    const fees =
-      (row.service_fee_amount || 0) +
-      (row.processing_fee || 0) +
-      (row.merchant_account_fee || 0) +
-      (row.discount_amount || 0) +
-      (row.tax_amount || 0) +
-      (row.dispute_amount || 0) +
-      (row.reserve_amount || 0);
-    const adjustments = row.authorization_adjustment || 0;
-
-    return grossAmount - fees + adjustments;
-  };
-
   // Função para calcular grupo completo de disbursement
   const calculateDisbursementGroup = (rows: BraintreeUSDRow[]): DisbursementGroup | null => {
     if (rows.length === 0 || !rows[0].disbursement_id) return null;
