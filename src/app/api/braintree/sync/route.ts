@@ -97,17 +97,30 @@ export async function POST(req: NextRequest) {
       const txCurrency = transaction.currencyIsoCode || currency;
 
       // 1️⃣ RECEITA - Registro principal da transação (Contas a Receber)
-      const transactionDate = new Date(transaction.createdAt);
+      let transactionDate: Date;
+      try {
+        transactionDate = new Date(transaction.createdAt);
+        if (isNaN(transactionDate.getTime())) {
+          throw new Error('Invalid date');
+        }
+      } catch (err) {
+        console.error(`[Transaction Date] Error parsing createdAt for ${transaction.id}:`, err);
+        continue; // Skip this transaction
+      }
 
       // 🔑 GERAR SETTLEMENT BATCH ID
       // Formato: YYYY-MM-DD_merchantAccount_uniqueId
       let settlement_batch_id: string | null = null;
-      if (transaction.disbursementDetails?.disbursementDate) {
-        const disbDate = new Date(transaction.disbursementDetails.disbursementDate);
-        const dateStr = disbDate.toISOString().split('T')[0]; // YYYY-MM-DD
-        const merchantAccount = transaction.merchantAccountId || 'unknown';
-        const uniqueId = transaction.disbursementDetails.disbursementId || transaction.id;
-        settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
+      try {
+        if (transaction.disbursementDetails?.disbursementDate) {
+          const disbDate = new Date(transaction.disbursementDetails.disbursementDate);
+          const dateStr = disbDate.toISOString().split('T')[0]; // YYYY-MM-DD
+          const merchantAccount = transaction.merchantAccountId || 'unknown';
+          const uniqueId = transaction.disbursementDetails.disbursementId || transaction.id;
+          settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
+        }
+      } catch (err) {
+        console.error(`[Settlement Batch ID] Error generating for transaction ${transaction.id}:`, err);
       }
       const revenueRow = {
         // ✅ ID único com currency prefix para evitar colisões
@@ -131,18 +144,39 @@ export async function POST(req: NextRequest) {
           payment_method: getPaymentMethod(transaction),
           merchant_account_id: transaction.merchantAccountId,
           created_at: transactionDate.toISOString(),
-          updated_at: new Date(transaction.updatedAt).toISOString(),
+          updated_at: (() => {
+            try {
+              return new Date(transaction.updatedAt).toISOString();
+            } catch (err) {
+              console.error(`[Updated At] Error for transaction ${transaction.id}:`, err);
+              return transactionDate.toISOString(); // Fallback to createdAt
+            }
+          })(),
 
           // 💰 Campos de Disbursement (settlement/transferência bancária)
-          disbursement_date: transaction.disbursementDetails?.disbursementDate
-            ? new Date(transaction.disbursementDetails.disbursementDate).toISOString()
-            : null,
+          disbursement_date: (() => {
+            try {
+              return transaction.disbursementDetails?.disbursementDate
+                ? new Date(transaction.disbursementDetails.disbursementDate).toISOString()
+                : null;
+            } catch (err) {
+              console.error(`[Disbursement Date] Error for transaction ${transaction.id}:`, err);
+              return null;
+            }
+          })(),
           settlement_amount: transaction.disbursementDetails?.settlementAmount || null,
           settlement_currency: transaction.disbursementDetails?.settlementCurrencyIsoCode || null,
           settlement_currency_iso_code: transaction.disbursementDetails?.settlementCurrencyIsoCode || null,
-          settlement_currency_exchange_rate: transaction.disbursementDetails?.settlementCurrencyExchangeRate
-            ? parseFloat(transaction.disbursementDetails.settlementCurrencyExchangeRate)
-            : null,
+          settlement_currency_exchange_rate: (() => {
+            try {
+              return transaction.disbursementDetails?.settlementCurrencyExchangeRate
+                ? parseFloat(transaction.disbursementDetails.settlementCurrencyExchangeRate)
+                : null;
+            } catch (err) {
+              console.error(`[Exchange Rate] Error for transaction ${transaction.id}:`, err);
+              return null;
+            }
+          })(),
 
           // 🔑 ID do disbursement (agrupa transações pagas juntas no mesmo payout)
           disbursement_id: transaction.disbursementDetails?.disbursementId || null,
@@ -266,7 +300,15 @@ export async function POST(req: NextRequest) {
       source,
       syncType: 'api',
       recordsAdded: revenueInserted,
-      lastRecordDate: transactions.length > 0 ? new Date(transactions[0].createdAt) : new Date(),
+      lastRecordDate: transactions.length > 0 
+        ? (() => {
+            try {
+              return new Date(transactions[0].createdAt);
+            } catch {
+              return new Date();
+            }
+          })()
+        : new Date(),
       status: 'success',
     });
 
@@ -414,12 +456,16 @@ async function handleUpdateMode(params: {
     // 🔑 GERAR SETTLEMENT BATCH ID
     // Formato: YYYY-MM-DD_merchantAccount_uniqueId
     let settlement_batch_id: string | null = null;
-    if (tx.disbursementDetails?.disbursementDate) {
-      const disbDate = new Date(tx.disbursementDetails.disbursementDate);
-      const dateStr = disbDate.toISOString().split('T')[0]; // YYYY-MM-DD
-      const merchantAccount = tx.merchantAccountId || 'unknown';
-      const uniqueId = tx.disbursementDetails.disbursementId || tx.id;
-      settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
+    try {
+      if (tx.disbursementDetails?.disbursementDate) {
+        const disbDate = new Date(tx.disbursementDetails.disbursementDate);
+        const dateStr = disbDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        const merchantAccount = tx.merchantAccountId || 'unknown';
+        const uniqueId = tx.disbursementDetails.disbursementId || tx.id;
+        settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
+      }
+    } catch (err) {
+      console.error(`[Settlement Batch ID] Error generating for transaction ${tx.id}:`, err);
     }
 
     return {
@@ -432,17 +478,40 @@ async function handleUpdateMode(params: {
       customer_email: tx.customer?.email,
       payment_method: getPaymentMethod(tx),
       merchant_account_id: tx.merchantAccountId,
-      created_at: tx.createdAt.toISOString(),
+      created_at: (() => {
+        try {
+          return tx.createdAt.toISOString();
+        } catch (err) {
+          console.error(`[Created At] Error for transaction ${tx.id}:`, err);
+          return new Date().toISOString();
+        }
+      })(),
       settlement_amount: tx.disbursementDetails?.settlementAmount
         ? parseFloat(tx.disbursementDetails.settlementAmount)
         : null,
-      disbursement_id: tx.disbursementDetails?.disbursementDate
-        ? `${tx.merchantAccountId}-${tx.disbursementDetails.disbursementDate}`
-        : null,
-      disbursement_date: tx.disbursementDetails?.disbursementDate
-        ? new Date(tx.disbursementDetails.disbursementDate).toISOString()
-        : null,
+      disbursement_id: tx.disbursementDetails?.disbursementId || null,
+      disbursement_date: (() => {
+        try {
+          return tx.disbursementDetails?.disbursementDate
+            ? new Date(tx.disbursementDetails.disbursementDate).toISOString()
+            : null;
+        } catch (err) {
+          console.error(`[Disbursement Date] Error for transaction ${tx.id}:`, err);
+          return null;
+        }
+      })(),
       settlement_batch_id: settlement_batch_id, // 🆕 Settlement Batch ID
+      settlement_currency_iso_code: tx.disbursementDetails?.settlementCurrencyIsoCode || null,
+      settlement_currency_exchange_rate: (() => {
+        try {
+          return tx.disbursementDetails?.settlementCurrencyExchangeRate
+            ? parseFloat(tx.disbursementDetails.settlementCurrencyExchangeRate)
+            : null;
+        } catch (err) {
+          console.error(`[Exchange Rate] Error for transaction ${tx.id}:`, err);
+          return null;
+        }
+      })(),
       service_fee_amount: tx.serviceFeeAmount ? parseFloat(tx.serviceFeeAmount) : 0,
       processing_fee: 0, // Calcular se necessário
       merchant_account_fee: 0,
