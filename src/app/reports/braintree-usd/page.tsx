@@ -52,6 +52,7 @@ import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
 import BraintreeUpdatePendingButton from "@/components/braintree/update-pending-button";
+import { reconcileWithBank, getBankSourceForCurrency } from "@/lib/braintree-reconciliation";
 
 interface BraintreeUSDRow {
   id: string;
@@ -83,6 +84,12 @@ interface BraintreeUSDRow {
   // 🔑 ID do payout agrupado (agrupa transações pagas juntas)
   disbursement_id?: string | null;
   settlement_batch_id?: string | null; // Formato: YYYY-MM-DD_merchant_uniqueid
+
+  // 🏦 Informações do match bancário (reconciliação automática)
+  bank_match_id?: string | null;
+  bank_match_date?: string | null;
+  bank_match_amount?: number | null;
+  bank_match_description?: string | null;
 
   // 💰 FEES E DEDUÇÕES
   service_fee_amount?: number | null;
@@ -169,6 +176,7 @@ export default function BraintreeUSDPage() {
       "payment_method",
       "merchant_account_id",
       "disbursement_date",
+      "settlement_batch_id",
       "settlement_amount",
       "settlement_currency_iso_code",
       "settlement_currency_exchange_rate",
@@ -558,9 +566,18 @@ export default function BraintreeUSDPage() {
           disbursement_date: row.custom_data?.disbursement_date,
           settlement_amount: row.custom_data?.settlement_amount,
           settlement_currency: row.custom_data?.settlement_currency,
+          settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
+          settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
+          settlement_batch_id: row.custom_data?.settlement_batch_id,
 
           // 🔑 ID do payout agrupado
           disbursement_id: row.custom_data?.disbursement_id,
+
+          // 🏦 Informações do match bancário
+          bank_match_id: row.custom_data?.bank_match_id,
+          bank_match_date: row.custom_data?.bank_match_date,
+          bank_match_amount: row.custom_data?.bank_match_amount,
+          bank_match_description: row.custom_data?.bank_match_description,
 
           // 💰 FEES E DEDUÇÕES
           service_fee_amount: row.custom_data?.service_fee_amount,
@@ -574,12 +591,24 @@ export default function BraintreeUSDPage() {
           reserve_amount: row.custom_data?.reserve_amount,
         }));
 
-      setRows(mappedRows);
+      console.log(`[Braintree USD] Mapped ${mappedRows.length} rows, starting auto-reconciliation...`);
+
+      // 🆕 RECONCILIAÇÃO AUTOMÁTICA
+      // USD geralmente deposita em Bankinter EUR (cross-currency via PayPal Europe)
+      const reconciliationResult = await reconcileWithBank(
+        mappedRows,
+        'bankinter-eur', // USD → EUR cross-currency
+        'Bankinter EUR'
+      );
+
+      console.log(`[Braintree USD] Reconciliation complete: ${reconciliationResult.autoReconciledCount} auto-reconciled, ${reconciliationResult.matchedGroups}/${reconciliationResult.totalGroups} groups matched`);
+
+      setRows(reconciliationResult.transactions);
 
       // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
-      if (mappedRows.length > 0) {
-        setMostRecentWebhookTransaction(mappedRows[0]);
-        console.log("[Braintree USD] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
+      if (reconciliationResult.transactions.length > 0) {
+        setMostRecentWebhookTransaction(reconciliationResult.transactions[0]);
+        console.log("[Braintree USD] Most recent transaction:", reconciliationResult.transactions[0].date, reconciliationResult.transactions[0].description);
       }
 
       // Reset para página 1 quando dados são carregados
@@ -1137,6 +1166,7 @@ export default function BraintreeUSDPage() {
                           { id: "payment_method", label: "Payment Method" },
                           { id: "merchant_account_id", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
+                          { id: "settlement_batch_id", label: "🔑 Settlement Batch ID" },
                           { id: "settlement_amount", label: "Settlement Amount" },
                           { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
                           { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
@@ -1602,6 +1632,17 @@ export default function BraintreeUSDPage() {
                           </button>
                         </th>
                       )}
+                      {visibleColumns.has("settlement_batch_id") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("settlement_batch_id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            🔑 Batch ID
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
                       {visibleColumns.has("disbursement_id") && (
                         <th className="border px-2 py-2 bg-gray-100 text-xs font-medium text-gray-700">
                           Disbursement ID
@@ -1765,245 +1806,301 @@ export default function BraintreeUSDPage() {
                                     {row.reconciliationType === "automatic" ? (
                                       <div className="relative group">
                                         <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                          Automatic reconciliation
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50 max-w-xs">
+                                          <div className="font-bold mb-1">🤖 Auto-Reconciled</div>
+                                          {row.bank_match_date && (
+                                            <div>📅 Bank Date: {formatDate(row.bank_match_date)}</div>
+                                          )}
+                                          {row.bank_match_amount && (
+                                            <div>💰 Bank Amount: {formatCurrency(row.bank_match_amount)}</div>
+                                          )}
+                                          {row.bank_match_description && (
+                                            <div className="text-[10px] mt-1 opacity-80">
+                                              {row.bank_match_description.substring(0, 50)}...
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
-                                    ) : (
-                                      <div className="relative group">
-                                        <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
-                                          Manual reconciliation
-                                        </div>
                                       </div>
-                                    )}
-                                  </div>
                                 ) : (
-                                  <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                                  <div className="relative group">
+                                    <User className="h-5 w-5 text-blue-600 mx-auto" />
+                                    <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                      Manual reconciliation
+                                    </div>
+                                  </div>
                                 )}
-                              </td>
-                            )}
-                            {visibleColumns.has("actions") && (
-                              <td className="py-3 px-4 text-center">
-                                {editingRow === row.id ? (
-                                  <div className="flex items-center justify-center gap-2">
-                                    <Button
-                                      size="sm"
-                                      onClick={saveEdit}
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <Save className="h-4 w-4" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={cancelEdit}
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <X className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center justify-center gap-2">
+                              </div>
+                            ) : (
+                            <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                                )}
+                          </td>
+                        )
+                      }
+                            {
+                          visibleColumns.has("actions") && (
+                            <td className="py-3 px-4 text-center">
+                              {editingRow === row.id ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    onClick={saveEdit}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Save className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={cancelEdit}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <X className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              ) : (
+                                <div className="flex items-center justify-center gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => startEditing(row)}
+                                    className="h-8 w-8 p-0"
+                                    disabled={isDeleting}
+                                  >
+                                    <Edit2 className="h-4 w-4" />
+                                  </Button>
+                                  {row.conciliado && (
                                     <Button
                                       size="sm"
                                       variant="ghost"
-                                      onClick={() => startEditing(row)}
-                                      className="h-8 w-8 p-0"
+                                      onClick={() => handleUnconcile(row.id)}
+                                      className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
                                       disabled={isDeleting}
+                                      title="Clear reconciliation"
                                     >
-                                      <Edit2 className="h-4 w-4" />
+                                      {isDeleting ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                      ) : (
+                                        <RefreshCw className="h-4 w-4" />
+                                      )}
                                     </Button>
-                                    {row.conciliado && (
-                                      <Button
-                                        size="sm"
-                                        variant="ghost"
-                                        onClick={() => handleUnconcile(row.id)}
-                                        className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                                        disabled={isDeleting}
-                                        title="Clear reconciliation"
-                                      >
-                                        {isDeleting ? (
-                                          <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                          <RefreshCw className="h-4 w-4" />
-                                        )}
-                                      </Button>
-                                    )}
-                                  </div>
-                                )}
-                              </td>
-                            )}
-                            {visibleColumns.has("transaction_id") && (
-                              <td className="py-3 px-4 text-sm font-mono text-xs">
-                                {row.transaction_id || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("status") && (
-                              <td className="py-3 px-4 text-center">
-                                <Badge variant={row.status === "settled" || row.status === "settled_successfully" ? "default" : "secondary"}>
-                                  {row.status || "N/A"}
+                                  )}
+                                </div>
+                              )}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("transaction_id") && (
+                            <td className="py-3 px-4 text-sm font-mono text-xs">
+                              {row.transaction_id || "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("status") && (
+                            <td className="py-3 px-4 text-center">
+                              <Badge variant={row.status === "settled" || row.status === "settled_successfully" ? "default" : "secondary"}>
+                                {row.status || "N/A"}
+                              </Badge>
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("type") && (
+                            <td className="py-3 px-4 text-center text-sm">
+                              {row.type || "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("currency") && (
+                            <td className="py-3 px-4 text-center text-sm font-bold">
+                              {row.currency || "EUR"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("customer_name") && (
+                            <td className="py-3 px-4 text-sm">
+                              {row.customer_name || "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("customer_email") && (
+                            <td className="py-3 px-4 text-sm text-blue-600">
+                              {row.customer_email || "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("payment_method") && (
+                            <td className="py-3 px-4 text-sm">
+                              {row.payment_method || "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("merchant_account_id") && (
+                            <td className="py-3 px-4 text-sm font-mono text-xs">
+                              {row.merchant_account_id || "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("disbursement_date") && (
+                            <td className="py-3 px-4 text-sm">
+                              {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("settlement_batch_id") && (
+                            <td className="py-3 px-4 text-xs font-mono">
+                              {row.settlement_batch_id ? (
+                                <span className="text-gray-700 dark:text-gray-300" title={row.settlement_batch_id}>
+                                  {row.settlement_batch_id.substring(0, 16)}...
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">N/A</span>
+                              )}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("disbursement_id") && (
+                            <td className="py-3 px-4 text-sm">
+                              {row.disbursement_id || "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("settlement_amount") && (
+                            <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
+                              {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("settlement_currency_iso_code") && (
+                            <td className="py-3 px-4 text-sm">
+                              {row.settlement_currency_iso_code && row.currency &&
+                                row.settlement_currency_iso_code !== row.currency ? (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
+                                >
+                                  {row.currency} → {row.settlement_currency_iso_code}
                                 </Badge>
-                              </td>
-                            )}
-                            {visibleColumns.has("type") && (
-                              <td className="py-3 px-4 text-center text-sm">
-                                {row.type || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("currency") && (
-                              <td className="py-3 px-4 text-center text-sm font-bold">
-                                {row.currency || "EUR"}
-                              </td>
-                            )}
-                            {visibleColumns.has("customer_name") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.customer_name || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("customer_email") && (
-                              <td className="py-3 px-4 text-sm text-blue-600">
-                                {row.customer_email || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("payment_method") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.payment_method || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("merchant_account_id") && (
-                              <td className="py-3 px-4 text-sm font-mono text-xs">
-                                {row.merchant_account_id || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("disbursement_date") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("disbursement_id") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.disbursement_id || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_amount") && (
-                              <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
-                                {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_currency_iso_code") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.settlement_currency_iso_code && row.currency &&
-                                  row.settlement_currency_iso_code !== row.currency ? (
-                                  <Badge
-                                    variant="outline"
-                                    className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
-                                  >
-                                    {row.currency} → {row.settlement_currency_iso_code}
-                                  </Badge>
-                                ) : (
-                                  <span className="text-gray-600 dark:text-gray-400">
-                                    {row.settlement_currency_iso_code || row.currency || "N/A"}
-                                  </span>
-                                )}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_currency_exchange_rate") && (
-                              <td className="py-3 px-4 text-right text-sm">
-                                {row.settlement_currency_exchange_rate ? (
-                                  <span className="text-blue-600 dark:text-blue-400 font-mono">
-                                    {row.settlement_currency_exchange_rate.toFixed(5)}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400">1.00000</span>
-                                )}
-                              </td>
-                            )}
+                              ) : (
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  {row.settlement_currency_iso_code || row.currency || "N/A"}
+                                </span>
+                              )}
+                            </td>
+                          )
+                        }
+                            {
+                          visibleColumns.has("settlement_currency_exchange_rate") && (
+                            <td className="py-3 px-4 text-right text-sm">
+                              {row.settlement_currency_exchange_rate ? (
+                                <span className="text-blue-600 dark:text-blue-400 font-mono">
+                                  {row.settlement_currency_exchange_rate.toFixed(5)}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">1.00000</span>
+                              )}
+                            </td>
+                          )
+                        }
                           </tr>
-                        );
+                  );
                       })
                     )}
-                  </tbody>
-                </table>
-              </div>
+                </tbody>
+              </table>
+            </div>
 
-              {/* Pagination Controls */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
-                  <div className="text-sm text-gray-600 dark:text-gray-300">
-                    Showing {startIndex + 1} to {Math.min(endIndex, processedRows.length)} of {processedRows.length} results
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(1)}
-                      disabled={currentPage === 1}
-                    >
-                      First
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage - 1)}
-                      disabled={currentPage === 1}
-                    >
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-2 px-3">
-                      <span className="text-sm font-medium">
-                        Page {adjustedCurrentPage} of {totalPages}
-                      </span>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(currentPage + 1)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Next
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setCurrentPage(totalPages)}
-                      disabled={currentPage === totalPages}
-                    >
-                      Last
-                    </Button>
-                  </div>
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  Showing {startIndex + 1} to {Math.min(endIndex, processedRows.length)} of {processedRows.length} results
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(1)}
+                    disabled={currentPage === 1}
+                  >
+                    First
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    Previous
+                  </Button>
+                  <div className="flex items-center gap-2 px-3">
+                    <span className="text-sm font-medium">
+                      Page {adjustedCurrentPage} of {totalPages}
+                    </span>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Next
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(totalPages)}
+                    disabled={currentPage === totalPages}
+                  >
+                    Last
+                  </Button>
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+    </div>
 
-      {/* Split Screen Panel */}
-      {splitScreenUrl && (
-        <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-slate-900 shadow-2xl z-40 border-l-4 border-blue-500">
-          <div className="h-full flex flex-col">
-            <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
-              <h2 className="text-lg font-bold">Bank Statement Details</h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={closeSplitScreen}
-                className="text-white hover:bg-blue-800"
-              >
-                <XIcon className="h-5 w-5" />
-              </Button>
-            </div>
-            <div className="flex-1 overflow-hidden">
-              <iframe
-                src={splitScreenUrl}
-                className="w-full h-full border-0"
-                title="Bank Statement"
-              />
-            </div>
+      {/* Split Screen Panel */ }
+  {
+    splitScreenUrl && (
+      <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-slate-900 shadow-2xl z-40 border-l-4 border-blue-500">
+        <div className="h-full flex flex-col">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
+            <h2 className="text-lg font-bold">Bank Statement Details</h2>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={closeSplitScreen}
+              className="text-white hover:bg-blue-800"
+            >
+              <XIcon className="h-5 w-5" />
+            </Button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <iframe
+              src={splitScreenUrl}
+              className="w-full h-full border-0"
+              title="Bank Statement"
+            />
           </div>
         </div>
-      )}
-    </div>
+      </div>
+    )
+  }
+    </div >
   );
 }

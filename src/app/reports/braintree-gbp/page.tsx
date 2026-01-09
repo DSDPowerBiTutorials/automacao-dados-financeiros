@@ -55,6 +55,7 @@ import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
 import BraintreeUpdatePendingButton from "@/components/braintree/update-pending-button";
+import { reconcileWithBank } from "@/lib/braintree-reconciliation";
 
 interface BraintreeGBPRow {
   id: string;
@@ -86,6 +87,12 @@ interface BraintreeGBPRow {
   // 🔑 ID do payout agrupado (agrupa transações pagas juntas)
   disbursement_id?: string | null;
   settlement_batch_id?: string | null; // Formato: YYYY-MM-DD_merchant_uniqueid
+
+  // 🏦 Informações do match bancário (reconciliação automática)
+  bank_match_id?: string | null;
+  bank_match_date?: string | null;
+  bank_match_amount?: number | null;
+  bank_match_description?: string | null;
 
   // 💰 FEES E DEDUÇÕES
   service_fee_amount?: number | null;
@@ -172,6 +179,7 @@ export default function BraintreeGBPPage() {
       "payment_method",
       "merchant_account_id",
       "disbursement_date",
+      "settlement_batch_id",
       "settlement_amount",
       "settlement_currency_iso_code",
       "settlement_currency_exchange_rate",
@@ -562,9 +570,18 @@ export default function BraintreeGBPPage() {
           disbursement_date: row.custom_data?.disbursement_date,
           settlement_amount: row.custom_data?.settlement_amount,
           settlement_currency: row.custom_data?.settlement_currency,
+          settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
+          settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
+          settlement_batch_id: row.custom_data?.settlement_batch_id,
 
           // 🔑 ID do payout agrupado
           disbursement_id: row.custom_data?.disbursement_id,
+
+          // 🏦 Informações do match bancário
+          bank_match_id: row.custom_data?.bank_match_id,
+          bank_match_date: row.custom_data?.bank_match_date,
+          bank_match_amount: row.custom_data?.bank_match_amount,
+          bank_match_description: row.custom_data?.bank_match_description,
 
           // 💰 FEES E DEDUÇÕES
           service_fee_amount: row.custom_data?.service_fee_amount,
@@ -578,12 +595,24 @@ export default function BraintreeGBPPage() {
           reserve_amount: row.custom_data?.reserve_amount,
         }));
 
-      setRows(mappedRows);
+      console.log(`[Braintree GBP] Mapped ${mappedRows.length} rows, starting auto-reconciliation...`);
+
+      // 🆕 RECONCILIAÇÃO AUTOMÁTICA  
+      // GBP geralmente deposita em Bankinter EUR (cross-currency via PayPal Europe)
+      const reconciliationResult = await reconcileWithBank(
+        mappedRows,
+        'bankinter-eur', // GBP → EUR cross-currency
+        'Bankinter EUR'
+      );
+
+      console.log(`[Braintree GBP] Reconciliation complete: ${reconciliationResult.autoReconciledCount} auto-reconciled, ${reconciliationResult.matchedGroups}/${reconciliationResult.totalGroups} groups matched`);
+
+      setRows(reconciliationResult.transactions);
 
       // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
-      if (mappedRows.length > 0) {
-        setMostRecentWebhookTransaction(mappedRows[0]);
-        console.log("[Braintree GBP] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
+      if (reconciliationResult.transactions.length > 0) {
+        setMostRecentWebhookTransaction(reconciliationResult.transactions[0]);
+        console.log("[Braintree GBP] Most recent transaction:", reconciliationResult.transactions[0].date, reconciliationResult.transactions[0].description);
       }
 
       // Reset para página 1 quando dados são carregados
@@ -1141,6 +1170,7 @@ export default function BraintreeGBPPage() {
                           { id: "payment_method", label: "Payment Method" },
                           { id: "merchant_account_id", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
+                          { id: "settlement_batch_id", label: "🔑 Settlement Batch ID" },
                           { id: "settlement_amount", label: "Settlement Amount" },
                           { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
                           { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
