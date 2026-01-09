@@ -356,21 +356,34 @@ export default function PleoReportPage() {
                         <Download className="h-4 w-4 mr-2" />
                         Exportar CSV
                     </Button>
-                    <Button onClick={syncPleo} disabled={syncing}>
-                        {syncing ? (
-                            <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Sincronizando...
-                            </>
-                        ) : (
-                            <>
-                                <RefreshCw className="h-4 w-4 mr-2" />
-                                Sincronizar Pleo
-                            </>
-                        )}
+                    <Button 
+                        onClick={syncPleo} 
+                        disabled={true}
+                        variant="outline"
+                        className="opacity-50 cursor-not-allowed"
+                        title="API Pleo Legacy descontinuada. Use exportação manual."
+                    >
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        Sincronizar Pleo (Indisponível)
                     </Button>
                 </div>
             </div>
+
+            {/* API Legacy Warning */}
+            <Alert className="bg-yellow-50 border-yellow-200">
+                <AlertDescription className="text-yellow-800">
+                    <strong>⚠️ API Pleo Legacy Descontinuada:</strong> A sincronização automática não está disponível. 
+                    Por favor, exporte os dados manualmente do Pleo Dashboard e faça upload via CSV.
+                    <a 
+                        href="https://app.pleo.io/settings/export" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="ml-2 underline font-medium hover:text-yellow-900"
+                    >
+                        Acessar Pleo Dashboard →
+                    </a>
+                </AlertDescription>
+            </Alert>
 
             {/* Error Alert */}
             {error && (
