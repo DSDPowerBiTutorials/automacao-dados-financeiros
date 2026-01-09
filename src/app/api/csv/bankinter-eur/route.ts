@@ -150,7 +150,7 @@ export async function POST(request: NextRequest) {
                 if (typeof fechaValorRaw === "number") {
                     // XLSX.SSF.format converte serial Excel direto sem timezone bullshit
                     dateString = XLSX.SSF.format("dd/mm/yyyy", fechaValorRaw)
-                    console.log(`📅 [DEBUG] Serial ${fechaValorRaw} → ${dateString}`)
+                    // Log removido para evitar truncamento
                 } else if (typeof fechaValorRaw === "string") {
                     // Já é string, usar diretamente
                     dateString = fechaValorRaw.trim()
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
                 const importe = parseAmount(importeRaw)
                 const saldo = parseAmount(saldoRaw)
 
-                console.log(`💰 [DEBUG Linha ${headerRowIndex + index + 2}] debe=${debe}, haber=${haber}, importe=${importe}, saldo=${saldo}`)
+                // Log removido para evitar truncamento (200x logs)
 
                 // Amount = HABER - DEBE (ou usar IMPORTE se disponível)
                 let amount: number
