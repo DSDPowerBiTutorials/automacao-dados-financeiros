@@ -28,6 +28,36 @@ import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
 import { formatCurrency, formatTimestamp } from "@/lib/formatters"
 
+// Formatar números no padrão europeu: -19172.8 → -19.172,80
+const formatEuropeanCurrency = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) return "-"
+
+  const formatted = new Intl.NumberFormat('es-ES', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(value)
+
+  return formatted
+}
+
+// Formatar data: Date → "DD/MM/YYYY"
+const formatEuropeanDate = (dateString: string | null | undefined): string => {
+  if (!dateString) return "-"
+
+  try {
+    const date = new Date(dateString)
+    if (isNaN(date.getTime())) return dateString
+
+    const day = date.getDate().toString().padStart(2, "0")
+    const month = (date.getMonth() + 1).toString().padStart(2, "0")
+    const year = date.getFullYear()
+
+    return `${day}/${month}/${year}`
+  } catch {
+    return dateString
+  }
+}
+
 interface BankinterEURRow {
   id: string
   date: string
@@ -636,25 +666,35 @@ export default function BankinterEURPage() {
                         return (
                           <tr key={row.id} className="border-b border-gray-200 hover:bg-gray-50">
                             <td className="py-3 px-4 text-sm font-bold text-black">{row.id.substring(0, 6)}...</td>
-                            <td className="py-3 px-4 text-sm text-gray-700">{customData.fecha_contable || "-"}</td>
-                            <td className="py-3 px-4 text-sm text-black font-medium">{row.date}</td>
-                            <td className="py-3 px-4 text-sm text-gray-700">{customData.clave || "-"}</td>
-                            <td className="py-3 px-4 text-sm text-gray-700">{customData.referencia || "-"}</td>
-                            <td className="py-3 px-4 text-sm text-gray-700">{customData.categoria || "-"}</td>
+                            <td className="py-3 px-4 text-sm text-gray-700">
+                              {customData.fecha_contable || "-"}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-black font-medium">
+                              {formatEuropeanDate(row.date)}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-700">
+                              {customData.clave || "-"}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-700">
+                              {customData.referencia || "-"}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-gray-700">
+                              {customData.categoria || "-"}
+                            </td>
                             <td className="py-3 px-4 text-sm text-black max-w-xs">
                               <div className="truncate" title={row.description}>{row.description}</div>
                             </td>
-                            <td className="py-3 px-4 text-sm text-right text-red-600">
-                              {customData.debe ? formatCurrency(customData.debe) : "-"}
+                            <td className="py-3 px-4 text-sm text-right text-red-600 font-mono">
+                              {(customData.debe && customData.debe > 0) ? formatEuropeanCurrency(customData.debe) : "-"}
                             </td>
-                            <td className="py-3 px-4 text-sm text-right text-green-600">
-                              {customData.haber ? formatCurrency(customData.haber) : "-"}
+                            <td className="py-3 px-4 text-sm text-right text-green-600 font-mono">
+                              {(customData.haber && customData.haber > 0) ? formatEuropeanCurrency(customData.haber) : "-"}
                             </td>
-                            <td className="py-3 px-4 text-sm text-right font-bold text-[#FF7300]">
-                              {customData.importe ? formatCurrency(customData.importe) : formatCurrency(row.amount)}
+                            <td className="py-3 px-4 text-sm text-right font-bold text-[#FF7300] font-mono">
+                              {formatEuropeanCurrency(customData.importe || row.amount)}
                             </td>
-                            <td className="py-3 px-4 text-sm text-right font-medium text-black">
-                              {customData.saldo ? formatCurrency(customData.saldo) : "-"}
+                            <td className="py-3 px-4 text-sm text-right font-medium text-black font-mono">
+                              {formatEuropeanCurrency(customData.saldo)}
                             </td>
                             <td className="py-3 px-4 text-center text-sm">
                               {editingRow === row.id ? (
