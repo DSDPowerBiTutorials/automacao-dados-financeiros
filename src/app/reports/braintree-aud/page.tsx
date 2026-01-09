@@ -1241,7 +1241,7 @@ export default function BraintreeAUDPage() {
                             onClick={() => toggleSort("date")}
                             className="flex items-center gap-1 hover:text-blue-600"
                           >
-                            Date
+                            📅 Created Date
                             <ArrowUpDown className="h-3 w-3" />
                           </button>
                         </th>

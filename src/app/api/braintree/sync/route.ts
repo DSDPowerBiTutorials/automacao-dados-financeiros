@@ -35,6 +35,17 @@ import braintree from "braintree";
  */
 function getSettlementDate(transaction: any): string | null {
   try {
+    // 🔍 DEBUG: Log para investigação
+    const shouldLog = Math.random() < 0.05; // Log 5% das transações
+    if (shouldLog) {
+      console.log(`[Settlement Date] Checking ${transaction.id}:`, {
+        status: transaction.status,
+        hasStatusHistory: !!transaction.statusHistory,
+        statusHistoryLength: transaction.statusHistory?.length,
+        updatedAt: transaction.updatedAt,
+      });
+    }
+
     // ✅ Prioridade 1: Buscar timestamp preciso no statusHistory
     if (transaction.statusHistory && Array.isArray(transaction.statusHistory)) {
       const settledEntry = transaction.statusHistory.find((entry: any) =>
@@ -47,7 +58,11 @@ function getSettlementDate(transaction: any): string | null {
         const settlementDate = typeof settledEntry.timestamp === 'string'
           ? new Date(settledEntry.timestamp)
           : settledEntry.timestamp;
-        return settlementDate.toISOString();
+        const result = settlementDate.toISOString();
+        if (shouldLog) {
+          console.log(`[Settlement Date] ✅ Found in statusHistory: ${result}`);
+        }
+        return result;
       }
     }
 
@@ -56,10 +71,17 @@ function getSettlementDate(transaction: any): string | null {
       const updatedAtDate = typeof transaction.updatedAt === 'string'
         ? new Date(transaction.updatedAt)
         : transaction.updatedAt;
-      return updatedAtDate.toISOString();
+      const result = updatedAtDate.toISOString();
+      if (shouldLog) {
+        console.log(`[Settlement Date] ⚠️ Using updatedAt fallback: ${result}`);
+      }
+      return result;
     }
 
     // ✅ Prioridade 3: Ainda não settled
+    if (shouldLog) {
+      console.log(`[Settlement Date] ❌ Not settled yet`);
+    }
     return null;
   } catch (err) {
     console.error(`[Settlement Date] Error extracting for transaction ${transaction.id}:`, err);

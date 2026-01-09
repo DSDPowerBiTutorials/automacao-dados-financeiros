@@ -692,6 +692,18 @@ export default function BraintreeEURPage() {
             }
           }
 
+          // 🔍 DEBUG: Log settlement_date para investigação
+          if (Math.random() < 0.05) { // Log 5% aleatório
+            console.log('[DEBUG settlement_date mapping]', {
+              transaction_id: row.custom_data?.transaction_id,
+              status: row.custom_data?.status,
+              settlement_date: row.custom_data?.settlement_date,
+              updated_at: row.custom_data?.updated_at,
+              created_at: row.custom_data?.created_at,
+              has_settlement_date: !!row.custom_data?.settlement_date,
+            });
+          }
+
           return {
             id: row.id,
             date: row.date,
@@ -1338,7 +1350,7 @@ export default function BraintreeEURPage() {
                       <div className="grid gap-3 py-4 max-h-[60vh] overflow-y-auto">
                         {[
                           { id: "id", label: "ID" },
-                          { id: "date", label: "Date" },
+                          { id: "date", label: "📅 Created Date" },
                           { id: "description", label: "Description" },
                           { id: "amount", label: "Amount" },
                           {
@@ -1364,26 +1376,40 @@ export default function BraintreeEURPage() {
                           { id: "settlement_amount", label: "Settlement Amount" },
                           { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
                           { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
-                        ].map((column) => (
-                          <div
-                            key={column.id}
-                            className="flex items-center space-x-2"
-                          >
-                            <Checkbox
-                              id={column.id}
-                              checked={tempVisibleColumns.has(column.id)}
-                              onCheckedChange={() =>
-                                toggleTempColumn(column.id)
-                              }
-                            />
-                            <label
-                              htmlFor={column.id}
-                              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                        ].map((column) => {
+                          // Adicionar descrições explicativas para campos de data
+                          const descriptions: { [key: string]: string } = {
+                            date: "When customer paid",
+                            settlement_date: "When bank confirmed",
+                            disbursement_date: "When money arrived in account"
+                          };
+
+                          return (
+                            <div
+                              key={column.id}
+                              className="flex items-center space-x-2"
                             >
-                              {column.label}
-                            </label>
-                          </div>
-                        ))}
+                              <Checkbox
+                                id={column.id}
+                                checked={tempVisibleColumns.has(column.id)}
+                                onCheckedChange={() =>
+                                  toggleTempColumn(column.id)
+                                }
+                              />
+                              <label
+                                htmlFor={column.id}
+                                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                              >
+                                {column.label}
+                                {descriptions[column.id] && (
+                                  <span className="text-xs text-gray-500 block">
+                                    {descriptions[column.id]}
+                                  </span>
+                                )}
+                              </label>
+                            </div>
+                          )
+                        })}
                       </div>
                       <div className="flex justify-end gap-2">
                         <Button
@@ -2101,11 +2127,21 @@ export default function BraintreeEURPage() {
                             {visibleColumns.has("settlement_date") && (
                               <td className="py-3 px-4 text-sm">
                                 {row.settlement_date ? (
-                                  <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">
-                                    {formatTimestamp(new Date(row.settlement_date))}
-                                  </span>
+                                  <div className="flex flex-col">
+                                    <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">
+                                      {formatTimestamp(new Date(row.settlement_date))}
+                                    </span>
+                                    <span className="text-[10px] text-green-600">✓ Settled</span>
+                                  </div>
                                 ) : (
-                                  <span className="text-gray-400">Not settled</span>
+                                  <div className="flex flex-col">
+                                    <span className="text-gray-400 text-xs">Not settled</span>
+                                    {row.status && (
+                                      <span className="text-[10px] text-gray-500">
+                                        Status: {row.status}
+                                      </span>
+                                    )}
+                                  </div>
                                 )}
                               </td>
                             )}
