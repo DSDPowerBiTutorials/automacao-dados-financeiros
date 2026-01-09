@@ -329,10 +329,12 @@ export async function POST(request: NextRequest) {
 
         console.log("✅ Salvo:", insertedRows?.length, "registros")
 
-        // DEBUG: Verificar se custom_data foi salvo corretamente
+        // DEBUG FINAL: Verificar se custom_data foi salvo corretamente
         if (insertedRows && insertedRows.length > 0) {
-            console.log("\n🔍 [DEBUG] Primeira row APÓS insert no Supabase:")
-            console.log("  custom_data:", JSON.stringify(insertedRows[0].custom_data, null, 2))
+            console.log("\n🔍 [DEBUG FINAL] Primeira row APÓS insert no Supabase:")
+            console.log("custom_data completo:", JSON.stringify(insertedRows[0].custom_data, null, 2))
+            console.log("debe:", insertedRows[0].custom_data?.debe, "| haber:", insertedRows[0].custom_data?.haber)
+            console.log("importe:", insertedRows[0].custom_data?.importe, "| saldo:", insertedRows[0].custom_data?.saldo)
         }
 
         // Salvar arquivo no storage
