@@ -266,6 +266,7 @@ export default function BraintreeGBPPage() {
     typeFilter,
     currencyFilter,
     paymentMethodFilter,
+    settlementBatchFilter,
     amountFilter,
     dateFilters,
     sortField,
@@ -1384,8 +1385,29 @@ export default function BraintreeGBPPage() {
                     </SelectContent>
                   </Select>
 
+                  {/* 🆕 Settlement Batch Filter */}
+                  <Select
+                    value={settlementBatchFilter}
+                    onValueChange={setSettlementBatchFilter}
+                  >
+                    <SelectTrigger className="w-[240px]">
+                      <SelectValue placeholder="Settlement Batch" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Batches</SelectItem>
+                      {Array.from(settlementBatches.keys())
+                        .filter(batch => batch !== 'no-batch')
+                        .sort((a, b) => b.localeCompare(a))
+                        .map(batch => (
+                          <SelectItem key={batch} value={batch}>
+                            {batch} ({settlementBatches.get(batch)?.length} tx)
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+
                   {/* Clear All Filters */}
-                  {(searchTerm || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || Object.keys(dateFilters).length > 0) && (
+                  {(searchTerm || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || settlementBatchFilter || Object.keys(dateFilters).length > 0) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1397,6 +1419,7 @@ export default function BraintreeGBPPage() {
                         setCurrencyFilter("");
                         setPaymentMethodFilter("");
                         setDisbursementFilter("");
+                        setSettlementBatchFilter("");
                         setDateFilters({});
                         setAmountFilter(null);
                       }}
