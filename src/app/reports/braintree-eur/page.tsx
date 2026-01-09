@@ -233,21 +233,23 @@ export default function BraintreeEURPage() {
   useEffect(() => {
     loadData();
 
-    // ✅ Escutar mudanças em tempo real do Supabase
+    // ✅ Escutar mudanças em tempo real do Supabase (filter simplificado)
     const subscription = supabase
       .channel('braintree_eur_changes')
       .on(
         'postgres_changes',
         {
-          event: '*', // Qualquer evento (INSERT, UPDATE, DELETE)
+          event: '*',
           schema: 'public',
           table: 'csv_rows',
-          filter: 'source=in.(braintree-api-revenue,braintree-api-fees,braintree-api-disbursement)',
         },
         (payload) => {
-          console.log('[Realtime Braintree EUR] Mudança detectada:', payload);
-          // Recarregar dados quando houver mudança
-          loadData();
+          // Filtrar manualmente já que filter complexo causa CHANNEL_ERROR
+          const source = payload.new?.source || payload.old?.source;
+          if (source && (source.includes('braintree-api') || source === 'braintree-eur')) {
+            console.log('[Realtime Braintree EUR] ✅ Change detected:', payload.eventType, payload.new?.id);
+            loadData();
+          }
         }
       )
       .subscribe((status) => {
@@ -597,6 +599,19 @@ export default function BraintreeEURPage() {
             console.log('[DEBUG Frontend] settlement_batch_id:', row.custom_data?.settlement_batch_id);
             console.log('[DEBUG Frontend] disbursement_id:', row.custom_data?.disbursement_id);
             console.log('[DEBUG Frontend] disbursement_date:', row.custom_data?.disbursement_date);
+          }
+
+          // 🔍 DEBUG: Count missing settlement_batch_id
+          const settlementBatchId = row.custom_data?.settlement_batch_id;
+          if (!settlementBatchId && row.custom_data?.transaction_id) {
+            if (Math.random() < 0.05) { // Log 5% aleatório
+              console.log('[DEBUG Missing Batch] No settlement_batch_id:', {
+                transaction_id: row.custom_data.transaction_id,
+                disbursement_date: row.custom_data?.disbursement_date,
+                disbursement_id: row.custom_data?.disbursement_id,
+                merchant: row.custom_data?.merchant_account_id,
+              });
+            }
           }
 
           return {

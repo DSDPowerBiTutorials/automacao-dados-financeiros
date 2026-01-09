@@ -111,6 +111,7 @@ export async function POST(req: NextRequest) {
       // 🔑 GERAR SETTLEMENT BATCH ID
       // Formato: YYYY-MM-DD_merchantAccount_uniqueId
       let settlement_batch_id: string | null = null;
+      let hasGeneratedBatch = false;
       try {
         if (transaction.disbursementDetails?.disbursementDate) {
           const disbDate = new Date(transaction.disbursementDetails.disbursementDate);
@@ -118,14 +119,23 @@ export async function POST(req: NextRequest) {
           const merchantAccount = transaction.merchantAccountId || 'unknown';
           const uniqueId = transaction.disbursementDetails.disbursementId || transaction.id;
           settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
+          hasGeneratedBatch = true;
 
-          // 🔍 DEBUG: Log settlement_batch_id generation
-          if (transaction.id === 'ensq9tm6') {
-            console.log(`[DEBUG] Transaction ${transaction.id}:`, {
+          // 🔍 DEBUG: Log settlement_batch_id generation (primeiras 5 e ensq9tm6)
+          if (transactions.indexOf(transaction) < 5 || transaction.id === 'ensq9tm6') {
+            console.log(`[DEBUG Settlement Batch] ✅ Generated for ${transaction.id}:`, {
               disbursementDate: transaction.disbursementDetails.disbursementDate,
               disbursementId: transaction.disbursementDetails.disbursementId,
               merchantAccount,
-              generated_settlement_batch_id: settlement_batch_id
+              settlement_batch_id,
+            });
+          }
+        } else {
+          // Log quando NÃO consegue gerar
+          if (transactions.indexOf(transaction) < 5 || transaction.id === 'ensq9tm6') {
+            console.log(`[DEBUG Settlement Batch] ❌ No disbursementDate for ${transaction.id}:`, {
+              hasDisbursementDetails: !!transaction.disbursementDetails,
+              status: transaction.status,
             });
           }
         }
@@ -196,12 +206,15 @@ export async function POST(req: NextRequest) {
         },
       };
 
-      // 🔍 DEBUG: Log custom_data sendo salvo
-      if (transaction.id === 'ensq9tm6') {
-        console.log(`[DEBUG] Saving custom_data for ${transaction.id}:`, {
+      // 🔍 DEBUG: Log custom_data sendo salvo (primeiras 5 e ensq9tm6)
+      if (rowsToInsert.length < 5 || transaction.id === 'ensq9tm6') {
+        console.log(`[DEBUG Save] custom_data for ${transaction.id}:`, {
           settlement_batch_id: revenueRow.custom_data.settlement_batch_id,
           disbursement_id: revenueRow.custom_data.disbursement_id,
-          disbursement_date: revenueRow.custom_data.disbursement_date
+          disbursement_date: revenueRow.custom_data.disbursement_date,
+          merchant_account_id: revenueRow.custom_data.merchant_account_id,
+          currency: revenueRow.custom_data.currency,
+          hasGeneratedBatch,
         });
       }
 
