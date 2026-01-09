@@ -36,6 +36,18 @@ interface BankinterEURRow {
   conciliado: boolean
   paymentSource?: string | null
   reconciliationType?: "automatic" | "manual" | null
+  custom_data?: {
+    fecha_contable?: string | null
+    debe?: number
+    haber?: number
+    importe?: number
+    saldo?: number
+    referencia?: string
+    clave?: string
+    categoria?: string
+    row_index?: number
+    file_name?: string
+  }
   [key: string]: any
 }
 
@@ -572,62 +584,55 @@ export default function BankinterEURPage() {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b-2 border-gray-200 bg-gray-50">
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black w-24">ID</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Date</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Description</th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Amount</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-black w-20">ID</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Fecha Contable</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Fecha Valor</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Clave</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Referencia</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Categoría</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-black min-w-64">Descripción</th>
+                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Debe</th>
+                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Haber</th>
+                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Importe</th>
+                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Saldo</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-black">Payment Source</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">Payout Reconciliation</th>
+                      <th className="text-center py-4 px-4 font-bold text-sm text-black">Reconciliado</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-black">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredRows.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="py-8 text-center text-gray-500">
+                        <td colSpan={14} className="py-8 text-center text-gray-500">
                           No data available. Upload an XLSX file to get started.
                         </td>
                       </tr>
                     ) : (
                       filteredRows.map((row) => {
                         const sourceStyle = getPaymentSourceStyle(row.paymentSource)
+                        const customData = row.custom_data || {}
                         return (
                           <tr key={row.id} className="border-b border-gray-200 hover:bg-gray-50">
-                            <td className="py-3 px-4 text-sm font-bold text-black">{row.id.substring(0, 8)}...</td>
-                            <td className="py-3 px-4 text-sm text-black">
-                              {editingRow === row.id ? (
-                                <Input
-                                  value={editedData.date || ""}
-                                  onChange={(e) => setEditedData({ ...editedData, date: e.target.value })}
-                                  className="w-32"
-                                />
-                              ) : (
-                                row.date
-                              )}
+                            <td className="py-3 px-4 text-sm font-bold text-black">{row.id.substring(0, 6)}...</td>
+                            <td className="py-3 px-4 text-sm text-gray-700">{customData.fecha_contable || "-"}</td>
+                            <td className="py-3 px-4 text-sm text-black font-medium">{row.date}</td>
+                            <td className="py-3 px-4 text-sm text-gray-700">{customData.clave || "-"}</td>
+                            <td className="py-3 px-4 text-sm text-gray-700">{customData.referencia || "-"}</td>
+                            <td className="py-3 px-4 text-sm text-gray-700">{customData.categoria || "-"}</td>
+                            <td className="py-3 px-4 text-sm text-black max-w-xs">
+                              <div className="truncate" title={row.description}>{row.description}</div>
                             </td>
-                            <td className="py-3 px-4 text-sm max-w-xs truncate text-black">
-                              {editingRow === row.id ? (
-                                <Input
-                                  value={editedData.description || ""}
-                                  onChange={(e) => setEditedData({ ...editedData, description: e.target.value })}
-                                  className="w-full"
-                                />
-                              ) : (
-                                row.description
-                              )}
+                            <td className="py-3 px-4 text-sm text-right text-red-600">
+                              {customData.debe ? formatCurrency(customData.debe) : "-"}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-right text-green-600">
+                              {customData.haber ? formatCurrency(customData.haber) : "-"}
                             </td>
                             <td className="py-3 px-4 text-sm text-right font-bold text-[#FF7300]">
-                              {editingRow === row.id ? (
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={editedData.amount || 0}
-                                  onChange={(e) => setEditedData({ ...editedData, amount: parseFloat(e.target.value) })}
-                                  className="w-32"
-                                />
-                              ) : (
-                                formatCurrency(row.amount)
-                              )}
+                              {customData.importe ? formatCurrency(customData.importe) : formatCurrency(row.amount)}
+                            </td>
+                            <td className="py-3 px-4 text-sm text-right font-medium text-black">
+                              {customData.saldo ? formatCurrency(customData.saldo) : "-"}
                             </td>
                             <td className="py-3 px-4 text-center text-sm">
                               {editingRow === row.id ? (

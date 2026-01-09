@@ -238,7 +238,7 @@ export async function POST(request: NextRequest) {
 
         // Validar campos obrigatórios
         const invalidRows = rows.filter(row =>
-            !row || !row.source || !row.file_name || !row.date || 
+            !row || !row.source || !row.file_name || !row.date ||
             !row.description || !row.amount || !row.category || !row.classification
         )
 
