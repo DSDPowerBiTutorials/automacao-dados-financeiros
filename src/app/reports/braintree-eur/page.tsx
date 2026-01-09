@@ -694,15 +694,33 @@ export default function BraintreeEURPage() {
             }
           }
 
+          // 🆕 Extrair settlement_date do settlement_batch_id se não existir
+          let settlementDate = row.custom_data?.settlement_date;
+          
+          if (!settlementDate && row.custom_data?.settlement_batch_id) {
+            // settlement_batch_id formato: "2026-01-09_digitalsmiledesignEUR_gr150wce"
+            // Extrair a parte da data (primeiros 10 caracteres: YYYY-MM-DD)
+            const batchId = row.custom_data.settlement_batch_id;
+            const dateMatch = batchId.match(/^(\d{4}-\d{2}-\d{2})/);
+            if (dateMatch) {
+              settlementDate = dateMatch[1];
+              if (Math.random() < 0.05) { // Log 5% quando extrair
+                console.log(`[Settlement Date] ✅ Extracted from batch_id: ${settlementDate} (${batchId})`);
+              }
+            }
+          }
+
           // 🔍 DEBUG: Log settlement_date para investigação
           if (Math.random() < 0.05) { // Log 5% aleatório
             console.log('[DEBUG settlement_date mapping]', {
               transaction_id: row.custom_data?.transaction_id,
               status: row.custom_data?.status,
-              settlement_date: row.custom_data?.settlement_date,
+              settlement_date: settlementDate,
+              settlement_batch_id: row.custom_data?.settlement_batch_id,
               updated_at: row.custom_data?.updated_at,
               created_at: row.custom_data?.created_at,
-              has_settlement_date: !!row.custom_data?.settlement_date,
+              has_settlement_date: !!settlementDate,
+              extracted_from_batch_id: !row.custom_data?.settlement_date && !!settlementDate,
             });
           }
 
@@ -734,7 +752,7 @@ export default function BraintreeEURPage() {
             settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
             settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
             settlement_batch_id: row.custom_data?.settlement_batch_id,
-            settlement_date: row.custom_data?.settlement_date,
+            settlement_date: settlementDate, // 🆕 Agora usa a variável com extração do batch_id
 
             // 🔑 ID do payout agrupado
             disbursement_id: row.custom_data?.disbursement_id,
@@ -2105,7 +2123,7 @@ export default function BraintreeEURPage() {
                                   <Badge variant={row.status === "settled" || row.status === "settled_successfully" ? "default" : "secondary"}>
                                     {row.status || "N/A"}
                                   </Badge>
-                                  
+
                                   {/* 👁️ Ícone "Olho" com histórico de status */}
                                   {row.status_history && row.status_history.length > 0 && (
                                     <Popover>
@@ -2135,22 +2153,20 @@ export default function BraintreeEURPage() {
                                               .map((historyEntry, index) => {
                                                 const isSettled = historyEntry.status === "settled" || historyEntry.status === "settled_successfully";
                                                 const isLatest = index === 0;
-                                                
+
                                                 return (
-                                                  <div 
+                                                  <div
                                                     key={index}
-                                                    className={`flex items-start gap-3 pb-3 ${
-                                                      index < row.status_history!.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
-                                                    }`}
+                                                    className={`flex items-start gap-3 pb-3 ${index < row.status_history!.length - 1 ? 'border-b border-gray-200 dark:border-gray-700' : ''
+                                                      }`}
                                                   >
-                                                    <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${
-                                                      isSettled ? 'bg-green-500' : 
-                                                      isLatest ? 'bg-blue-500' : 
-                                                      'bg-gray-400'
-                                                    }`} />
+                                                    <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${isSettled ? 'bg-green-500' :
+                                                        isLatest ? 'bg-blue-500' :
+                                                          'bg-gray-400'
+                                                      }`} />
                                                     <div className="flex-1 min-w-0">
                                                       <div className="flex items-center justify-between gap-2">
-                                                        <Badge 
+                                                        <Badge
                                                           variant={isSettled ? "default" : isLatest ? "secondary" : "outline"}
                                                           className="text-xs"
                                                         >
@@ -2275,12 +2291,12 @@ export default function BraintreeEURPage() {
                                 {(() => {
                                   const paymentMethod = row.payment_method;
                                   if (!paymentMethod || paymentMethod === "N/A") return "N/A";
-                                  
+
                                   // Extrair apenas a bandeira do cartão (antes do espaço/dígitos)
                                   const cleanMethod = paymentMethod
                                     .replace(/\s*(ending in|\*\*\*\*|\d{4}).*$/i, '')
                                     .trim();
-                                  
+
                                   // Se for PayPal, manter como está
                                   if (cleanMethod.toLowerCase().includes('paypal')) {
                                     return (
@@ -2289,7 +2305,7 @@ export default function BraintreeEURPage() {
                                       </Badge>
                                     );
                                   }
-                                  
+
                                   // Para cartões, mostrar badge com cor específica
                                   const cardBrandColors: { [key: string]: string } = {
                                     'visa': 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-700 dark:text-indigo-400 border-indigo-200 dark:border-indigo-800',
@@ -2297,15 +2313,15 @@ export default function BraintreeEURPage() {
                                     'amex': 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800',
                                     'discover': 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800',
                                   };
-                                  
+
                                   const brandLower = cleanMethod.toLowerCase();
-                                  const colorClass = Object.keys(cardBrandColors).find(brand => 
+                                  const colorClass = Object.keys(cardBrandColors).find(brand =>
                                     brandLower.includes(brand)
                                   );
-                                  
+
                                   return (
-                                    <Badge 
-                                      variant="outline" 
+                                    <Badge
+                                      variant="outline"
                                       className={colorClass ? cardBrandColors[colorClass] : 'bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-400'}
                                     >
                                       {cleanMethod || "Card"}
