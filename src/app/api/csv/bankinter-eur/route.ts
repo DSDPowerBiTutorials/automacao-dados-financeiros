@@ -221,7 +221,7 @@ export async function POST(request: NextRequest) {
                 skippedCount++
                 return null
             }
-        }).filter(Boolean)
+        }).filter((row): row is NonNullable<typeof row> => row !== null)
 
         console.log(`\n✅ Processadas: ${processedCount} | ⚠️ Ignoradas: ${skippedCount}`)
 
@@ -236,12 +236,12 @@ export async function POST(request: NextRequest) {
         console.log("\n📋 Primeiras 2 transações:")
         console.log(JSON.stringify(rows.slice(0, 2), null, 2))
 
-        // Validar que nenhum objeto tem campos undefined/null obrigatórios
-        const invalidRows = rows.filter((row: any) => 
-            !row.source || !row.file_name || !row.date || !row.description || 
-            !row.amount || !row.category || !row.classification
+        // Validar campos obrigatórios
+        const invalidRows = rows.filter(row =>
+            !row || !row.source || !row.file_name || !row.date || 
+            !row.description || !row.amount || !row.category || !row.classification
         )
-        
+
         if (invalidRows.length > 0) {
             console.error("❌ Linhas inválidas encontradas:", invalidRows.length)
             console.error("Exemplo de linha inválida:", JSON.stringify(invalidRows[0], null, 2))
@@ -251,11 +251,18 @@ export async function POST(request: NextRequest) {
             )
         }
 
+        // Garantir que não há campos 'id' nos objetos (Supabase auto-gera)
+        const cleanRows = rows.map(({ ...row }) => {
+            // @ts-ignore
+            delete row.id
+            return row
+        })
+
         // Salvar no Supabase
-        console.log(`\n💾 Salvando ${rows.length} registros no Supabase...`)
+        console.log(`\n💾 Salvando ${cleanRows.length} registros no Supabase...`)
         const { data: insertedRows, error: dbError } = await supabaseAdmin
             .from("csv_rows")
-            .insert(rows)
+            .insert(cleanRows)
             .select()
 
         if (dbError) {
