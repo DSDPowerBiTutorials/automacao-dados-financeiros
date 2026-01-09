@@ -145,6 +145,7 @@ export async function POST(req: NextRequest) {
 
           const feeRow = {
             source: "braintree-api-fees",
+            file_name: `braintree-webhook-fee-${transaction.id}.json`,
             date: transaction.createdAt.toISOString().split("T")[0],
             description: `Braintree Fee - ${transaction.id}`,
             amount: -Math.abs(feeAmount),
@@ -241,6 +242,7 @@ export async function POST(req: NextRequest) {
         // Cria registro de disbursement (importante pra conciliação bancária)
         const disbursementRow = {
           source: "braintree-api-disbursement",
+          file_name: `braintree-webhook-disbursement-${disbursement.id}.json`,
           date: new Date(disbursement.disbursementDate).toISOString().split("T")[0],
           description: `Disbursement Braintree - ${disbursement.id}`,
           amount: parseFloat(disbursement.amount),
@@ -282,6 +284,7 @@ export async function POST(req: NextRequest) {
       if (localPayment) {
         const paymentRow = {
           source: "braintree-api-revenue",
+          file_name: `braintree-webhook-localpayment-${localPayment.paymentId}.json`,
           date: new Date().toISOString().split("T")[0],
           description: `Local Payment ${eventKind.split("_")[2]} - ${localPayment.paymentId}`,
           amount: parseFloat(localPayment.amount || "0"),
@@ -355,6 +358,7 @@ export async function POST(req: NextRequest) {
 
           const feeRow = {
             source: "braintree-api-fees",
+            file_name: `braintree-webhook-subfee-${transaction.id}.json`,
             date: transaction.createdAt.toISOString().split("T")[0],
             description: `Braintree Fee - ${transaction.id}`,
             amount: -Math.abs(feeAmount),

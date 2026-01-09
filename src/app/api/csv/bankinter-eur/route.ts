@@ -335,8 +335,8 @@ export async function POST(request: NextRequest) {
         if (newRows.length === 0) {
             console.log("⚠️ Nenhuma transação nova para inserir (todas duplicadas)")
             return NextResponse.json(
-                { 
-                    success: true, 
+                {
+                    success: true,
                     message: "Upload concluído, mas nenhuma transação nova encontrada (todas já existiam)",
                     summary: { inserted: 0, duplicates: cleanRows.length }
                 },
