@@ -144,14 +144,47 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Salva no Supabase
+    // Deduplicação: Buscar transações existentes
+    console.log(`\n🔍 Verificando duplicatas...`);
+
+    const { data: existingRevenue } = await supabaseAdmin
+      .from("csv_rows")
+      .select("custom_data")
+      .eq("source", "braintree-api-revenue");
+
+    const { data: existingFees } = await supabaseAdmin
+      .from("csv_rows")
+      .select("custom_data")
+      .eq("source", "braintree-api-fees");
+
+    // Criar Sets com transaction_ids existentes
+    const existingRevenueIds = new Set(
+      (existingRevenue || []).map(r => r.custom_data?.transaction_id).filter(Boolean)
+    );
+    const existingFeeIds = new Set(
+      (existingFees || []).map(r => r.custom_data?.transaction_id).filter(Boolean)
+    );
+
+    // Filtrar apenas transações novas
+    const newRevenue = rowsToInsert.filter(row =>
+      !existingRevenueIds.has(row.custom_data?.transaction_id)
+    );
+    const newFees = feeRowsToInsert.filter(row =>
+      !existingFeeIds.has(row.custom_data?.transaction_id)
+    );
+
+    console.log(`📊 Revenue: ${rowsToInsert.length} total | ${rowsToInsert.length - newRevenue.length} duplicadas | ${newRevenue.length} novas`);
+    console.log(`📊 Fees: ${feeRowsToInsert.length} total | ${feeRowsToInsert.length - newFees.length} duplicadas | ${newFees.length} novas`);
+
+    // Salva no Supabase apenas as novas
     let revenueInserted = 0;
     let feesInserted = 0;
+    const duplicatesSkipped = (rowsToInsert.length - newRevenue.length) + (feeRowsToInsert.length - newFees.length);
 
-    if (rowsToInsert.length > 0) {
+    if (newRevenue.length > 0) {
       const { error: revenueError, data: revenueData } = await supabaseAdmin
         .from("csv_rows")
-        .insert(rowsToInsert)
+        .insert(newRevenue)
         .select();
 
       if (revenueError) {
@@ -162,10 +195,10 @@ export async function POST(req: NextRequest) {
       revenueInserted = revenueData?.length || 0;
     }
 
-    if (feeRowsToInsert.length > 0) {
+    if (newFees.length > 0) {
       const { error: feesError, data: feesData } = await supabaseAdmin
         .from("csv_rows")
-        .insert(feeRowsToInsert)
+        .insert(newFees)
         .select();
 
       if (feesError) {
@@ -206,6 +239,7 @@ export async function POST(req: NextRequest) {
         transactions_processed: transactions.length,
         revenue_rows_inserted: revenueInserted,
         fee_rows_inserted: feesInserted,
+        duplicates_skipped: duplicatesSkipped,
         total_revenue: totalRevenue,
         total_fees: totalFees,
         net_amount: totalRevenue - totalFees,
