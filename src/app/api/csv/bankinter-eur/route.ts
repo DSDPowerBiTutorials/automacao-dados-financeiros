@@ -127,18 +127,34 @@ export async function POST(request: NextRequest) {
                     return null
                 }
 
-                // Parse data (Excel serial number ou DD/MM/YYYY)
+                // Parse data (Excel serial number ou DD/MM/YYYY string)
                 let date: Date
                 if (typeof fechaValorRaw === "number") {
-                    // Excel serial date
-                    const jsDate = XLSX.SSF.parse_date_code(fechaValorRaw)
-                    date = new Date(jsDate.y, jsDate.m - 1, jsDate.d)
+                    // Excel serial date (dias desde 1900-01-01, mas Excel tem bug do ano 1900)
+                    // Fórmula correta: (serial - 25569) * 86400 * 1000 = timestamp
+                    // Ou usar biblioteca: (serial - 25569) representa dias desde Unix epoch
+                    const excelEpoch = new Date(1899, 11, 30) // 30 de dezembro de 1899
+                    date = new Date(excelEpoch.getTime() + fechaValorRaw * 86400000)
+
+                    console.log(`📅 [DEBUG] Excel serial ${fechaValorRaw} → ${date.toISOString().split('T')[0]}`)
                 } else if (typeof fechaValorRaw === "string") {
-                    const parts = fechaValorRaw.split(/[\/\-]/)
+                    // String DD/MM/YYYY ou similar
+                    const trimmed = fechaValorRaw.trim()
+                    const parts = trimmed.split(/[\/\-\.]/)
+
                     if (parts.length === 3) {
-                        date = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]))
+                        // Tentar DD/MM/YYYY primeiro
+                        const day = parseInt(parts[0])
+                        const month = parseInt(parts[1])
+                        const year = parseInt(parts[2])
+
+                        if (day > 0 && day <= 31 && month > 0 && month <= 12) {
+                            date = new Date(year, month - 1, day)
+                        } else {
+                            date = new Date(trimmed)
+                        }
                     } else {
-                        date = new Date(fechaValorRaw)
+                        date = new Date(trimmed)
                     }
                 } else {
                     console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data inválida:`, fechaValorRaw)
@@ -199,8 +215,13 @@ export async function POST(request: NextRequest) {
                 let fechaContable: string | null = null
                 if (fechaContableRaw) {
                     if (typeof fechaContableRaw === "number") {
-                        const parsed = XLSX.SSF.parse_date_code(fechaContableRaw)
-                        fechaContable = `${parsed.d.toString().padStart(2, "0")}/${parsed.m.toString().padStart(2, "0")}/${parsed.y}`
+                        // Usar mesmo método que fechaValor
+                        const excelEpoch = new Date(1899, 11, 30)
+                        const parsedDate = new Date(excelEpoch.getTime() + fechaContableRaw * 86400000)
+                        const day = parsedDate.getDate().toString().padStart(2, "0")
+                        const month = (parsedDate.getMonth() + 1).toString().padStart(2, "0")
+                        const year = parsedDate.getFullYear()
+                        fechaContable = `${day}/${month}/${year}`
                     } else if (typeof fechaContableRaw === "string") {
                         fechaContable = fechaContableRaw
                     }
