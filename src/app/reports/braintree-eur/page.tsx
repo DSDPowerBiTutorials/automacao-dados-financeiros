@@ -51,6 +51,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
+import BraintreeUpdatePendingButton from "@/components/braintree/update-pending-button";
 import BraintreeSyncControls from "@/components/braintree/sync-controls";
 import { SyncStatusBadge } from "@/components/sync/SyncStatusBadge";
 
@@ -1025,6 +1026,9 @@ export default function BraintreeEURPage() {
 
                 {/* Controles de Sincronização */}
                 <BraintreeSyncControls />
+
+                {/* Update Pending/Force Update com timestamps */}
+                <BraintreeUpdatePendingButton />
 
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
