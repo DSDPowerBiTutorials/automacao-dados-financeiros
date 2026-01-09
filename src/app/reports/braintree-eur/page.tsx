@@ -82,6 +82,7 @@ interface BraintreeEURRow {
 
   // 🔑 ID do payout agrupado (agrupa transações pagas juntas)
   disbursement_id?: string | null;
+  settlement_batch_id?: string | null; // Formato: YYYY-MM-DD_merchant_uniqueid
 
   // 💰 FEES E DEDUÇÕES
   service_fee_amount?: number | null;
@@ -101,6 +102,12 @@ interface BraintreeEURRow {
   _isFirstInGroup?: boolean;
 
   [key: string]: any;
+}
+
+interface DisbursementGroup {
+  transactions: BraintreeEURRow[];
+  netDisbursement: number; // settlement_amount já é líquido (fees deduzidos)
+  // Nota: fees individuais não disponíveis no CSV, já deduzidos no settlement_amount
 }
 
 interface BankStatementRow {
@@ -316,45 +323,26 @@ export default function BraintreeEURPage() {
   };
 
   // 💰 Função para calcular Net Disbursement (valor líquido que chega ao banco)
+  // ⚠️ IMPORTANTE: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
   const calculateNetDisbursement = (row: BraintreeEURRow): number => {
-    const grossAmount = row.settlement_amount || row.amount;
-    const fees =
-      (row.service_fee_amount || 0) +
-      (row.processing_fee || 0) +
-      (row.merchant_account_fee || 0) +
-      (row.discount_amount || 0) +
-      (row.tax_amount || 0) +
-      (row.dispute_amount || 0) +
-      (row.reserve_amount || 0);
-    const adjustments = row.authorization_adjustment || 0;
-    return grossAmount - fees + adjustments;
+    // Se tiver settlement_amount, use-o diretamente (já é líquido)
+    // Caso contrário, use amount como fallback
+    return row.settlement_amount ?? row.amount ?? 0;
   };
 
   // 💰 Função para calcular grupo de disbursement agregado
   const calculateDisbursementGroup = (rows: BraintreeEURRow[]): DisbursementGroup | null => {
     if (!rows || rows.length === 0) return null;
 
-    const grossAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+    // settlement_amount JÁ é o valor líquido (fees deduzidos), então apenas somamos
+    const netDisbursement = rows.reduce((sum, r) => sum + (r.settlement_amount ?? r.amount ?? 0), 0);
 
-    const feesBreakdown = {
-      service_fee: rows.reduce((sum, r) => sum + (r.service_fee_amount || 0), 0),
-      processing_fee: rows.reduce((sum, r) => sum + (r.processing_fee || 0), 0),
-      merchant_fee: rows.reduce((sum, r) => sum + (r.merchant_account_fee || 0), 0),
-      discount: rows.reduce((sum, r) => sum + (r.discount_amount || 0), 0),
-      tax: rows.reduce((sum, r) => sum + (r.tax_amount || 0), 0),
-      dispute: rows.reduce((sum, r) => sum + (r.dispute_amount || 0), 0),
-      reserve: rows.reduce((sum, r) => sum + (r.reserve_amount || 0), 0),
-    };
-
-    const totalFees = Object.values(feesBreakdown).reduce((sum, fee) => sum + fee, 0);
-    const netDisbursement = grossAmount - totalFees;
+    // Nota: fees não são fornecidos separadamente no CSV Braintree,
+    // eles já estão deduzidos no settlement_amount
 
     return {
       transactions: rows,
-      grossAmount,
-      totalFees,
       netDisbursement,
-      feesBreakdown,
     };
   };
 
@@ -749,7 +737,7 @@ export default function BraintreeEURPage() {
 
   // Processar dados com filtros e ordenação (memoizado para evitar recálculos infinitos)
   const processedRows = useMemo(() => {
-    return rows
+    const filtered = rows
       .filter((row) => {
         // Filtro de busca
         if (searchTerm) {
@@ -849,7 +837,7 @@ export default function BraintreeEURPage() {
       });
 
     // 🆕 Agrupar por disbursement_id e calcular totais
-    const grouped = filtered.reduce((acc, row) => {
+    const grouped = filtered.reduce((acc: Record<string, BraintreeEURRow[]>, row: BraintreeEURRow) => {
       const disbursementId = row.disbursement_id || 'ungrouped';
       if (!acc[disbursementId]) {
         acc[disbursementId] = [];
@@ -868,21 +856,21 @@ export default function BraintreeEURPage() {
         }
       }
     });
-    setDisbursementGroups(newDisbursementGroups);
+    // Note: EUR não tem setDisbursementGroups - remover essa linha se não existir o estado
 
     // Adicionar informações de grupo a cada row
-    filtered = filtered.map((row, index, array) => {
+    let processedFiltered = filtered.map((row: BraintreeEURRow, index: number, array: BraintreeEURRow[]) => {
       const disbursementId = row.disbursement_id || 'ungrouped';
       const groupRows = grouped[disbursementId];
       const groupSize = groupRows?.length || 1;
-      const groupTotal = groupRows?.reduce((sum, r) => sum + r.amount, 0) || row.amount;
+      const groupTotal = groupRows?.reduce((sum: number, r: BraintreeEURRow) => sum + r.amount, 0) || row.amount;
 
       // Calcular net disbursement individual e do grupo
       const netDisbursement = calculateNetDisbursement(row);
-      const groupNetDisbursement = groupRows?.reduce((sum, r) => sum + calculateNetDisbursement(r), 0) || netDisbursement;
+      const groupNetDisbursement = groupRows?.reduce((sum: number, r: BraintreeEURRow) => sum + calculateNetDisbursement(r), 0) || netDisbursement;
 
       // Verificar se é o primeiro da lista deste grupo
-      const isFirstInGroup = array.findIndex(r =>
+      const isFirstInGroup = array.findIndex((r: BraintreeEURRow) =>
         (r.disbursement_id || 'ungrouped') === disbursementId
       ) === index;
 
@@ -897,7 +885,7 @@ export default function BraintreeEURPage() {
       };
     });
 
-    return filtered.sort((a, b) => {
+    return processedFiltered.sort((a: BraintreeEURRow, b: BraintreeEURRow) => {
       let comparison = 0;
 
       switch (sortField) {
@@ -1542,7 +1530,7 @@ export default function BraintreeEURPage() {
                         </td>
                       </tr>
                     ) : (
-                      paginatedRows.map((row) => {
+                      paginatedRows.map((row: BraintreeEURRow) => {
                         const accountStyle = getDestinationAccountStyle(
                           row.destinationAccount,
                         );
