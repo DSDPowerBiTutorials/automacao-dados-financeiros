@@ -16,7 +16,8 @@ import {
   Database,
   Zap,
   User,
-  Filter
+  Filter,
+  RefreshCw
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"

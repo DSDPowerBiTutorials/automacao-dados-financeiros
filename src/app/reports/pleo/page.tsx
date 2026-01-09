@@ -356,8 +356,8 @@ export default function PleoReportPage() {
                         <Download className="h-4 w-4 mr-2" />
                         Exportar CSV
                     </Button>
-                    <Button 
-                        onClick={syncPleo} 
+                    <Button
+                        onClick={syncPleo}
                         disabled={true}
                         variant="outline"
                         className="opacity-50 cursor-not-allowed"
@@ -372,11 +372,11 @@ export default function PleoReportPage() {
             {/* API Legacy Warning */}
             <Alert className="bg-yellow-50 border-yellow-200">
                 <AlertDescription className="text-yellow-800">
-                    <strong>⚠️ API Pleo Legacy Descontinuada:</strong> A sincronização automática não está disponível. 
+                    <strong>⚠️ API Pleo Legacy Descontinuada:</strong> A sincronização automática não está disponível.
                     Por favor, exporte os dados manualmente do Pleo Dashboard e faça upload via CSV.
-                    <a 
-                        href="https://app.pleo.io/settings/export" 
-                        target="_blank" 
+                    <a
+                        href="https://app.pleo.io/settings/export"
+                        target="_blank"
                         rel="noopener noreferrer"
                         className="ml-2 underline font-medium hover:text-yellow-900"
                     >
