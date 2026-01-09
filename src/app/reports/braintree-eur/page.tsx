@@ -176,15 +176,16 @@ export default function BraintreeEURPage() {
       "status",
       "type",
       "currency",
+      "settlement_batch_id",
+      "settlement_currency_iso_code",
+      "settlement_currency_exchange_rate",
       "customer_name",
       "customer_email",
       "payment_method",
       "merchant_account_id",
       "disbursement_date",
-      "settlement_batch_id",
       "settlement_amount",
-      "settlement_currency_iso_code",
-      "settlement_currency_exchange_rate",
+      "disbursement_id",
     ])
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -598,24 +599,18 @@ export default function BraintreeEURPage() {
           reserve_amount: row.custom_data?.reserve_amount,
         }));
 
-      console.log(`[Braintree EUR] Mapped ${mappedRows.length} rows, starting auto-reconciliation...`);
+      console.log(`[Braintree EUR] Mapped ${mappedRows.length} rows`);
 
-      // 🆕 RECONCILIAÇÃO AUTOMÁTICA
+      // 🆕 RECONCILIAÇÃO AUTOMÁTICA (DESABILITADA)
       // EUR geralmente deposita em Bankinter EUR (same currency)
-      const reconciliationResult = await reconcileWithBank(
-        mappedRows,
-        'bankinter-eur',
-        'Bankinter EUR'
-      );
+      // Quando habilitado, use: reconcileWithBank(mappedRows, 'bankinter-eur', 'Bankinter EUR')
 
-      console.log(`[Braintree EUR] Reconciliation complete: ${reconciliationResult.autoReconciledCount} auto-reconciled, ${reconciliationResult.matchedGroups}/${reconciliationResult.totalGroups} groups matched`);
-
-      setRows(reconciliationResult.transactions);
+      setRows(mappedRows);
 
       // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
-      if (reconciliationResult.transactions.length > 0) {
-        setMostRecentWebhookTransaction(reconciliationResult.transactions[0]);
-        console.log("[Braintree EUR] Most recent transaction:", reconciliationResult.transactions[0].date, reconciliationResult.transactions[0].description);
+      if (mappedRows.length > 0) {
+        setMostRecentWebhookTransaction(mappedRows[0]);
+        console.log("[Braintree EUR] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
       }
 
       // Reset para página 1 quando dados são carregados
@@ -1175,6 +1170,7 @@ export default function BraintreeEURPage() {
                           { id: "settlement_amount", label: "Settlement Amount" },
                           { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
                           { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
+                          { id: "disbursement_id", label: "Disbursement ID (Payout Group)" },
                         ].map((column) => (
                           <div
                             key={column.id}
@@ -1559,10 +1555,14 @@ export default function BraintreeEURPage() {
                         </th>
                       )}
                       {visibleColumns.has("disbursement_id") && (
-                        <th className="border px-2 py-2 bg-gray-100 text-xs font-medium text-gray-700">
-                          Disbursement ID
-                          <br />
-                          <span className="text-[10px] text-gray-500">(Payout Group)</span>
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("disbursement_id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            Disbursement ID
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
                         </th>
                       )}
                     </tr>
@@ -1708,7 +1708,7 @@ export default function BraintreeEURPage() {
                                               <span>Date: {formatDate(row.bank_match_date)}</span>
                                             </div>
                                           )}
-                                          {row.bank_match_amount !== undefined && (
+                                          {row.bank_match_amount !== null && row.bank_match_amount !== undefined && (
                                             <div className="flex items-center gap-1 mb-1">
                                               <DollarSign className="h-3 w-3" />
                                               <span>Amount: {formatCurrency(row.bank_match_amount)}</span>
@@ -1819,36 +1819,6 @@ export default function BraintreeEURPage() {
                                 {row.currency || "EUR"}
                               </td>
                             )}
-                            {visibleColumns.has("customer_name") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.customer_name || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("customer_email") && (
-                              <td className="py-3 px-4 text-sm text-blue-600">
-                                {row.customer_email || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("payment_method") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.payment_method || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("merchant_account_id") && (
-                              <td className="py-3 px-4 text-sm font-mono text-xs">
-                                {row.merchant_account_id || "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("disbursement_date") && (
-                              <td className="py-3 px-4 text-sm">
-                                {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
-                              </td>
-                            )}
-                            {visibleColumns.has("settlement_amount") && (
-                              <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
-                                {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
-                              </td>
-                            )}
                             {visibleColumns.has("settlement_batch_id") && (
                               <td className="py-3 px-4 text-xs font-mono">
                                 {row.settlement_batch_id ? (
@@ -1886,6 +1856,36 @@ export default function BraintreeEURPage() {
                                 ) : (
                                   <span className="text-gray-400">1.00000</span>
                                 )}
+                              </td>
+                            )}
+                            {visibleColumns.has("customer_name") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.customer_name || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("customer_email") && (
+                              <td className="py-3 px-4 text-sm text-blue-600">
+                                {row.customer_email || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("payment_method") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.payment_method || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("merchant_account_id") && (
+                              <td className="py-3 px-4 text-sm font-mono text-xs">
+                                {row.merchant_account_id || "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("disbursement_date") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("settlement_amount") && (
+                              <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
+                                {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
                               </td>
                             )}
                             {visibleColumns.has("disbursement_id") && (
