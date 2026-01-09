@@ -535,6 +535,28 @@ export default function BankinterEURPage() {
         </header>
 
         <div className="container mx-auto px-6 py-8">
+          {/* Alerta de dados antigos com erros */}
+          {rows.length > 0 && rows.some(row => {
+            const customData = row.custom_data || {}
+            // Detectar dados com erro: fecha_valor em 1927 ou campos vazios
+            return row.date?.includes('1927') || (!customData.debe && !customData.haber && !customData.saldo)
+          }) && (
+              <Alert className="mb-6 border-2 border-red-500 bg-red-50">
+                <XCircle className="h-5 w-5 text-red-600" />
+                <AlertDescription className="text-red-800">
+                  <div className="font-bold mb-2">⚠️ ATENÇÃO: Dados com formato incorreto detectados!</div>
+                  <div className="text-sm space-y-1">
+                    <p>• Datas aparecendo como "1927-07-12" (Excel serial date não convertido)</p>
+                    <p>• Valores monetários incorretos (ex: 8.121.793,00 ao invés de negativo)</p>
+                    <p>• Colunas vazias (Fecha Contable, Clave, Referencia, etc.)</p>
+                  </div>
+                  <div className="mt-3 font-bold">
+                    ✅ Solução: Clique em "Delete All" acima e faça novo upload do arquivo XLSX
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card>
               <CardHeader className="pb-2">
