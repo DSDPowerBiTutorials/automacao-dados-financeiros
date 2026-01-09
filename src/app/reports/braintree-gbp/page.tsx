@@ -495,17 +495,20 @@ export default function BraintreeGBPPage() {
 
           // 🔑 ID do payout agrupado
           disbursement_id: row.custom_data?.disbursement_id,
+        }));
 
-          // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
-          if(mappedRows.length > 0) {
-          setMostRecentWebhookTransaction(mappedRows[0]);
-      console.log("[Braintree GBP] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
-    }
+      setRows(mappedRows);
+
+      // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
+      if(mappedRows.length > 0) {
+        setMostRecentWebhookTransaction(mappedRows[0]);
+        console.log("[Braintree GBP] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
+      }
 
       // Reset para página 1 quando dados são carregados
       setCurrentPage(1);
 
-    console.log("[Braintree GBP] Data loaded successfully");
+      console.log("[Braintree GBP] Data loaded successfully");
 
     // Carregar última data de sync (sem bloquear)
     loadLastSyncDate().catch(err => console.error("[Braintree GBP] Error loading sync date:", err));
