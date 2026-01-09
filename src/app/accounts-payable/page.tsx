@@ -86,23 +86,17 @@ export default function AccountsPayableOverviewPage() {
           <CardDescription>Common accounts payable tasks</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <Link href="/accounts-payable/invoices">
               <Button variant="outline" className="w-full h-24 flex-col gap-2">
                 <FileText className="h-6 w-6" />
                 <span>New Invoice</span>
               </Button>
             </Link>
-            <Link href="/accounts-payable/transactions/payments">
+            <Link href="/accounts-payable/master-data/providers">
               <Button variant="outline" className="w-full h-24 flex-col gap-2">
-                <DollarSign className="h-6 w-6" />
-                <span>Process Payment</span>
-              </Button>
-            </Link>
-            <Link href="/accounts-payable/transactions/bank-reconciliation">
-              <Button variant="outline" className="w-full h-24 flex-col gap-2">
-                <FileText className="h-6 w-6" />
-                <span>Bank Reconciliation</span>
+                <Users className="h-6 w-6" />
+                <span>Manage Providers</span>
               </Button>
             </Link>
           </div>
@@ -173,7 +167,7 @@ export default function AccountsPayableOverviewPage() {
                     <p className="text-sm text-gray-600">Supplier {i}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">€{[2450.50, 3820.75, 1950.30, 4200.90][i-1]}</p>
+                    <p className="font-bold">€{[2450.50, 3820.75, 1950.30, 4200.90][i - 1]}</p>
                     <p className="text-xs text-gray-500">Due: Dec {20 + i}</p>
                   </div>
                 </div>
@@ -196,7 +190,7 @@ export default function AccountsPayableOverviewPage() {
                     <p className="text-sm text-gray-600">Vendor {i}</p>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold">€{[1850.25, 2650.80, 890.50, 3100.75][i-1]}</p>
+                    <p className="font-bold">€{[1850.25, 2650.80, 890.50, 3100.75][i - 1]}</p>
                     <p className="text-xs text-orange-600">Due: Dec {22 + i}</p>
                   </div>
                 </div>

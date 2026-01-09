@@ -23,11 +23,7 @@ import {
   AlertCircle,
   Building,
   UserCircle,
-  Settings,
-  Shield,
-  FileCheck,
   Boxes,
-  Layers,
   Split,
   Users2,
   Briefcase,
@@ -107,26 +103,9 @@ export const NAV: NavGroup[] = [
         icon: FileSpreadsheet
       },
       {
-        title: "Transactions",
-        href: "/accounts-payable/transactions",
-        icon: Receipt,
-        children: [
-          {
-            title: "Bank Reconciliation",
-            href: "/accounts-payable/transactions/bank-reconciliation",
-            icon: CheckCircle2
-          },
-          {
-            title: "Invoices",
-            href: "/accounts-payable/invoices",
-            icon: FileText
-          },
-          {
-            title: "Payments",
-            href: "/accounts-payable/invoices/payments",
-            icon: DollarSign
-          }
-        ]
+        title: "Invoices",
+        href: "/accounts-payable/invoices",
+        icon: FileText
       },
       {
         title: "Insights",
@@ -179,33 +158,6 @@ export const NAV: NavGroup[] = [
             title: "Providers",
             href: "/accounts-payable/master-data/providers",
             icon: Users
-          }
-        ]
-      },
-      {
-        title: "Setup",
-        href: "/accounts-payable/setup",
-        icon: Settings,
-        children: [
-          {
-            title: "Approval Rules",
-            href: "/accounts-payable/setup/approval-rules",
-            icon: Shield
-          },
-          {
-            title: "Payment Terms",
-            href: "/accounts-payable/setup/payment-terms",
-            icon: Calendar
-          },
-          {
-            title: "Posting Profiles",
-            href: "/accounts-payable/setup/posting-profiles",
-            icon: FileCheck
-          },
-          {
-            title: "Tax Configurations",
-            href: "/accounts-payable/setup/tax-config",
-            icon: FileText
           }
         ]
       }
@@ -287,33 +239,6 @@ export const NAV: NavGroup[] = [
             title: "Financial Accounts",
             href: "/accounts-receivable/master-data/financial-accounts",
             icon: Banknote
-          }
-        ]
-      },
-      {
-        title: "Setup",
-        href: "/accounts-receivable/setup",
-        icon: Settings,
-        children: [
-          {
-            title: "Credit Policies",
-            href: "/accounts-receivable/setup/credit-policies",
-            icon: Shield
-          },
-          {
-            title: "Payment Terms",
-            href: "/accounts-receivable/setup/payment-terms",
-            icon: Calendar
-          },
-          {
-            title: "Posting Profiles",
-            href: "/accounts-receivable/setup/posting-profiles",
-            icon: FileCheck
-          },
-          {
-            title: "Tax Configurations",
-            href: "/accounts-receivable/setup/tax-config",
-            icon: FileText
           }
         ]
       }

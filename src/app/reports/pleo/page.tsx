@@ -118,6 +118,8 @@ export default function PleoReportPage() {
         setError(null);
 
         try {
+            console.log('[Pleo Report] Iniciando sincronização com API...');
+
             const response = await fetch('/api/pleo/sync', {
                 method: 'POST',
                 headers: {
@@ -126,17 +128,21 @@ export default function PleoReportPage() {
             });
 
             const result = await response.json();
+            console.log('[Pleo Report] Resposta da API:', result);
 
             if (!response.ok || !result.success) {
-                throw new Error(result.error || 'Erro ao sincronizar');
+                const errorMsg = result.error || `Erro HTTP ${response.status}`;
+                throw new Error(errorMsg);
             }
 
-            alert(`✅ ${result.imported} despesas importadas do Pleo`);
+            const count = result.imported || 0;
+            alert(`✅ ${count} despesa(s) importada(s) do Pleo`);
             await loadExpenses();
         } catch (err: any) {
             console.error('[Pleo Report] Sync error:', err);
-            setError(err.message);
-            alert(`❌ Erro: ${err.message}`);
+            const errorMsg = err.message || 'Erro desconhecido ao sincronizar';
+            setError(errorMsg);
+            alert(`❌ Erro ao sincronizar Pleo:\n\n${errorMsg}`);
         } finally {
             setSyncing(false);
         }

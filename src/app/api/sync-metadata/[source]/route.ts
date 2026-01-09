@@ -3,10 +3,10 @@ import { getSyncMetadataBySource } from '@/lib/sync-metadata';
 
 export async function GET(
     request: NextRequest,
-    { params }: { params: { source: string } }
+    { params }: { params: Promise<{ source: string }> }
 ) {
     try {
-        const source = params.source;
+        const { source } = await params;
 
         if (!source) {
             return NextResponse.json(
@@ -33,3 +33,4 @@ export async function GET(
         );
     }
 }
+
