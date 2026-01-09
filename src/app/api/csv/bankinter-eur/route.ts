@@ -271,7 +271,7 @@ export async function POST(request: NextRequest) {
         // Amostra
         console.log("\n📋 Primeiras 2 transações:")
         console.log(JSON.stringify(rows.slice(0, 2), null, 2))
-        
+
         // DEBUG: Log específico do custom_data da primeira linha
         if (rows.length > 0) {
             console.log("\n🔍 [DEBUG] custom_data da primeira linha:")
