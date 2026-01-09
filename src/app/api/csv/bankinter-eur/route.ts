@@ -230,6 +230,15 @@ export async function POST(request: NextRequest) {
                     }
                 }
 
+                // DEBUG CRÍTICO: Log do objeto custom_data ANTES de construir
+                if (index === 0) {
+                    console.log("\n🚨 [DEBUG CRÍTICO] Valores ANTES de construir custom_data:")
+                    console.log("  debe:", debe, typeof debe)
+                    console.log("  haber:", haber, typeof haber)
+                    console.log("  importe:", importe, typeof importe)
+                    console.log("  saldo:", saldo, typeof saldo)
+                }
+
                 return {
                     source: "bankinter-eur",
                     file_name: file.name,
