@@ -271,6 +271,15 @@ export async function POST(request: NextRequest) {
         // Amostra
         console.log("\n📋 Primeiras 2 transações:")
         console.log(JSON.stringify(rows.slice(0, 2), null, 2))
+        
+        // DEBUG: Log específico do custom_data da primeira linha
+        if (rows.length > 0) {
+            console.log("\n🔍 [DEBUG] custom_data da primeira linha:")
+            console.log("  debe:", rows[0].custom_data.debe, typeof rows[0].custom_data.debe)
+            console.log("  haber:", rows[0].custom_data.haber, typeof rows[0].custom_data.haber)
+            console.log("  importe:", rows[0].custom_data.importe, typeof rows[0].custom_data.importe)
+            console.log("  saldo:", rows[0].custom_data.saldo, typeof rows[0].custom_data.saldo)
+        }
 
         // Validar campos obrigatórios
         const invalidRows = rows.filter(row =>
