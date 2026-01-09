@@ -205,7 +205,7 @@ export default function BraintreeUSDPage() {
   // 🆕 Settlement Batch grouping
   const [settlementBatches, setSettlementBatches] = useState<Map<string, BraintreeUSDRow[]>>(new Map());
   const [expandedSettlementBatches, setExpandedSettlementBatches] = useState<Set<string>>(new Set());
-  const [settlementBatchFilter, setSettlementBatchFilter] = useState<string>("");
+  const [settlementBatchFilter, setSettlementBatchFilter] = useState<string>("all");
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -874,6 +874,15 @@ export default function BraintreeUSDPage() {
           }
         }
 
+        // 🆕 Filtro de settlement batch
+        if (settlementBatchFilter && settlementBatchFilter !== "all") {
+          if (settlementBatchFilter === "no-batch") {
+            if (row.settlement_batch_id) return false;
+          } else if (row.settlement_batch_id !== settlementBatchFilter) {
+            return false;
+          }
+        }
+
         return true;
       });
 
@@ -1375,7 +1384,7 @@ export default function BraintreeUSDPage() {
                       <SelectValue placeholder="Settlement Batch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Batches</SelectItem>
+                      <SelectItem value="all">All Batches</SelectItem>
                       {Array.from(settlementBatches.keys())
                         .filter(batch => batch !== 'no-batch')
                         .sort((a, b) => b.localeCompare(a))
@@ -1388,7 +1397,7 @@ export default function BraintreeUSDPage() {
                   </Select>
 
                   {/* Clear all filters button */}
-                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || settlementBatchFilter || Object.keys(dateFilters).length > 0) && (
+                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || (settlementBatchFilter && settlementBatchFilter !== "all") || Object.keys(dateFilters).length > 0) && (
                     <Badge
                       variant="secondary"
                       className="cursor-pointer hover:bg-destructive/20 px-3 h-9 flex items-center"
@@ -1401,7 +1410,7 @@ export default function BraintreeUSDPage() {
                         setCurrencyFilter("");
                         setPaymentMethodFilter("");
                         setDisbursementFilter("");
-                        setSettlementBatchFilter(""); // 🆕
+                        setSettlementBatchFilter("all");
                         setDateFilters({});
                       }}
                     >

@@ -213,7 +213,7 @@ export default function BraintreeGBPPage() {
   // 🆕 Settlement Batch grouping
   const [settlementBatches, setSettlementBatches] = useState<Map<string, BraintreeGBPRow[]>>(new Map());
   const [expandedSettlementBatches, setExpandedSettlementBatches] = useState<Set<string>>(new Set());
-  const [settlementBatchFilter, setSettlementBatchFilter] = useState<string>("");
+  const [settlementBatchFilter, setSettlementBatchFilter] = useState<string>("all");
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -1394,7 +1394,7 @@ export default function BraintreeGBPPage() {
                       <SelectValue placeholder="Settlement Batch" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Batches</SelectItem>
+                      <SelectItem value="all">All Batches</SelectItem>
                       {Array.from(settlementBatches.keys())
                         .filter(batch => batch !== 'no-batch')
                         .sort((a, b) => b.localeCompare(a))
@@ -1407,7 +1407,7 @@ export default function BraintreeGBPPage() {
                   </Select>
 
                   {/* Clear All Filters */}
-                  {(searchTerm || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || settlementBatchFilter || Object.keys(dateFilters).length > 0) && (
+                  {(searchTerm || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || (settlementBatchFilter && settlementBatchFilter !== "all") || Object.keys(dateFilters).length > 0) && (
                     <Button
                       variant="ghost"
                       size="sm"
@@ -1419,7 +1419,7 @@ export default function BraintreeGBPPage() {
                         setCurrencyFilter("");
                         setPaymentMethodFilter("");
                         setDisbursementFilter("");
-                        setSettlementBatchFilter("");
+                        setSettlementBatchFilter("all");
                         setDateFilters({});
                         setAmountFilter(null);
                       }}
