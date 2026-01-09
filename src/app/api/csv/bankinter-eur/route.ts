@@ -152,16 +152,16 @@ export async function POST(request: NextRequest) {
                     return null
                 }
 
-                // Parse valores monetários (suporta 1234.56 e -1234)
+                // Parse valores monetários - formato europeu: 1.234,56 ou -2.636,09
                 const parseAmount = (val: any): number => {
                     if (val === null || val === undefined || val === "") return 0
                     if (typeof val === "number") return val
 
                     const str = String(val)
                         .trim()
-                        .replace(/\s/g, "")
-                        .replace(/\./g, "")
-                        .replace(",", ".")
+                        .replace(/\s/g, "")           // Remove espaços
+                        .replace(/\./g, "")           // Remove pontos (separador de milhares)
+                        .replace(",", ".")            // Substitui vírgula por ponto (decimal)
 
                     const num = parseFloat(str)
                     return isNaN(num) ? 0 : num
@@ -194,6 +194,18 @@ export async function POST(request: NextRequest) {
                 const clave = colIndex.clave !== -1 ? String(row[colIndex.clave] || "") : ""
                 const categoria = colIndex.categoria !== -1 ? String(row[colIndex.categoria] || "") : ""
 
+                // Parse fecha_contable
+                const fechaContableRaw = colIndex.fechaContable !== -1 ? row[colIndex.fechaContable] : null
+                let fechaContable: string | null = null
+                if (fechaContableRaw) {
+                    if (typeof fechaContableRaw === "number") {
+                        const parsed = XLSX.SSF.parse_date_code(fechaContableRaw)
+                        fechaContable = `${parsed.d.toString().padStart(2, "0")}/${parsed.m.toString().padStart(2, "0")}/${parsed.y}`
+                    } else if (typeof fechaContableRaw === "string") {
+                        fechaContable = fechaContableRaw
+                    }
+                }
+
                 return {
                     source: "bankinter-eur",
                     file_name: file.name,
@@ -204,6 +216,7 @@ export async function POST(request: NextRequest) {
                     classification: categoria || "Other",
                     reconciled: false,
                     custom_data: {
+                        fecha_contable: fechaContable,
                         debe,
                         haber,
                         importe,
@@ -212,8 +225,7 @@ export async function POST(request: NextRequest) {
                         clave,
                         categoria,
                         row_index: headerRowIndex + index + 2,
-                        file_name: file.name,
-                        fecha_contable: colIndex.fechaContable !== -1 ? row[colIndex.fechaContable] : null
+                        file_name: file.name
                     }
                 }
             } catch (error) {
