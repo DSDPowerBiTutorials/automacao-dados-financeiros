@@ -80,6 +80,8 @@ interface BraintreeGBPRow {
   disbursement_date?: string | null;
   settlement_amount?: number | null;
   settlement_currency?: string | null;
+  settlement_currency_iso_code?: string | null; // 🌍 Moeda real do depósito (pode diferir de currency)
+  settlement_currency_exchange_rate?: number | null; // 💱 Taxa FX aplicada
 
   // 🔑 ID do payout agrupado (agrupa transações pagas juntas)
   disbursement_id?: string | null;
@@ -171,7 +173,8 @@ export default function BraintreeGBPPage() {
       "merchant_account_id",
       "disbursement_date",
       "settlement_amount",
-      "net_disbursement",
+      "settlement_currency_iso_code",
+      "settlement_currency_exchange_rate",
       "disbursement_id",
     ])
   );
@@ -322,13 +325,8 @@ export default function BraintreeGBPPage() {
     setExpandedGroups(newExpanded);
   };
 
-  // Função para calcular o valor líquido do disbursement
-  // ⚠️ IMPORTANTE: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
-  const calculateNetDisbursement = (row: BraintreeGBPRow): number => {
-    // Se tiver settlement_amount, use-o diretamente (já é líquido)
-    // Caso contrário, use amount como fallback
-    return row.settlement_amount ?? row.amount ?? 0;
-  };
+  // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
+  // Não é necessário cálculo adicional - usar settlement_amount diretamente
 
   // Função para calcular grupo completo de disbursement
   const calculateDisbursementGroup = (rows: BraintreeGBPRow[]): DisbursementGroup | null => {
@@ -866,10 +864,6 @@ export default function BraintreeGBPPage() {
       const groupSize = groupRows?.length || 1;
       const groupTotal = groupRows?.reduce((sum, r) => sum + r.amount, 0) || row.amount;
 
-      // Calcular net disbursement individual e do grupo
-      const netDisbursement = calculateNetDisbursement(row);
-      const groupNetDisbursement = groupRows?.reduce((sum, r) => sum + calculateNetDisbursement(r), 0) || netDisbursement;
-
       // Verificar se é o primeiro da lista deste grupo
       const isFirstInGroup = array.findIndex(r =>
         (r.disbursement_id || 'ungrouped') === disbursementId
@@ -879,8 +873,6 @@ export default function BraintreeGBPPage() {
         ...row,
         _groupSize: groupSize,
         _groupTotal: groupTotal,
-        _netDisbursement: netDisbursement,
-        _groupNetDisbursement: groupNetDisbursement,
         _isGroupExpanded: expandedGroups.has(disbursementId),
         _isFirstInGroup: isFirstInGroup,
       };
@@ -1150,7 +1142,8 @@ export default function BraintreeGBPPage() {
                           { id: "merchant_account_id", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
                           { id: "settlement_amount", label: "Settlement Amount" },
-                          { id: "net_disbursement", label: "💰 Net to Bank (after fees)" },
+                          { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
+                          { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
                           { id: "disbursement_id", label: "Disbursement ID" },
                           { id: "service_fee_amount", label: "💰 Service Fee" },
                           { id: "discount_amount", label: "💰 Discount" },
@@ -1654,15 +1647,14 @@ export default function BraintreeGBPPage() {
                           </button>
                         </th>
                       )}
-                      {visibleColumns.has("net_disbursement") && (
-                        <th className="text-right py-4 px-4 font-bold text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20">
-                          <button
-                            onClick={() => toggleSort("_netDisbursement")}
-                            className="flex items-center gap-1 hover:text-green-800 ml-auto"
-                          >
-                            💰 Net to Bank
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
+                      {visibleColumns.has("settlement_currency_iso_code") && (
+                        <th className="py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          🌍 Settlement Currency
+                        </th>
+                      )}
+                      {visibleColumns.has("settlement_currency_exchange_rate") && (
+                        <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          💱 FX Rate
                         </th>
                       )}
                       {visibleColumns.has("service_fee_amount") && (
@@ -2075,18 +2067,32 @@ export default function BraintreeGBPPage() {
                               {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
                             </td>
                           )}
-                          {visibleColumns.has("net_disbursement") && (
-                            <td className="py-3 px-4 text-right bg-green-50 dark:bg-green-900/20">
-                              <div className="flex flex-col items-end gap-1">
-                                <span className="text-sm font-bold text-green-700 dark:text-green-400">
-                                  £{(row._netDisbursement || 0).toFixed(2)}
+                          {visibleColumns.has("settlement_currency_iso_code") && (
+                            <td className="py-3 px-4 text-sm">
+                              {row.settlement_currency_iso_code && row.currency &&
+                                row.settlement_currency_iso_code !== row.currency ? (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-orange-50 dark:bg-orange-900/20 text-orange-700 dark:text-orange-400 border-orange-200 dark:border-orange-800"
+                                >
+                                  {row.currency} → {row.settlement_currency_iso_code}
+                                </Badge>
+                              ) : (
+                                <span className="text-gray-600 dark:text-gray-400">
+                                  {row.settlement_currency_iso_code || row.currency || "N/A"}
                                 </span>
-                                {row._isFirstInGroup && row._groupSize && row._groupSize > 1 && (
-                                  <span className="text-xs text-green-600 dark:text-green-500 bg-green-100 dark:bg-green-900/40 px-2 py-0.5 rounded">
-                                    Group: £{(row._groupNetDisbursement || 0).toFixed(2)}
-                                  </span>
-                                )}
-                              </div>
+                              )}
+                            </td>
+                          )}
+                          {visibleColumns.has("settlement_currency_exchange_rate") && (
+                            <td className="py-3 px-4 text-right text-sm">
+                              {row.settlement_currency_exchange_rate ? (
+                                <span className="text-blue-600 dark:text-blue-400 font-mono">
+                                  {row.settlement_currency_exchange_rate.toFixed(5)}
+                                </span>
+                              ) : (
+                                <span className="text-gray-400">1.00000</span>
+                              )}
                             </td>
                           )}
                           {visibleColumns.has("service_fee_amount") && (

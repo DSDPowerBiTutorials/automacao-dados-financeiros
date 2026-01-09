@@ -128,6 +128,10 @@ export async function POST(req: NextRequest) {
             : null,
           settlement_amount: transaction.disbursementDetails?.settlementAmount || null,
           settlement_currency: transaction.disbursementDetails?.settlementCurrencyIsoCode || null,
+          settlement_currency_iso_code: transaction.disbursementDetails?.settlementCurrencyIsoCode || null,
+          settlement_currency_exchange_rate: transaction.disbursementDetails?.settlementCurrencyExchangeRate
+            ? parseFloat(transaction.disbursementDetails.settlementCurrencyExchangeRate)
+            : null,
 
           // 🔑 ID do disbursement (agrupa transações pagas juntas no mesmo payout)
           disbursement_id: transaction.disbursementDetails?.disbursementId || null,

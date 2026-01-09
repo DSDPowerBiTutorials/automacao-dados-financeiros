@@ -79,6 +79,8 @@ interface BraintreeEURRow {
   disbursement_date?: string | null;
   settlement_amount?: number | null;
   settlement_currency?: string | null;
+  settlement_currency_iso_code?: string | null; // 🌍 Moeda real do depósito (pode diferir de currency)
+  settlement_currency_exchange_rate?: number | null; // 💱 Taxa FX aplicada
 
   // 🔑 ID do payout agrupado (agrupa transações pagas juntas)
   disbursement_id?: string | null;
@@ -169,7 +171,8 @@ export default function BraintreeEURPage() {
       "merchant_account_id",
       "disbursement_date",
       "settlement_amount",
-      "net_disbursement",
+      "settlement_currency_iso_code",
+      "settlement_currency_exchange_rate",
     ])
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -322,13 +325,8 @@ export default function BraintreeEURPage() {
     setExpandedGroups(newExpanded);
   };
 
-  // 💰 Função para calcular Net Disbursement (valor líquido que chega ao banco)
-  // ⚠️ IMPORTANTE: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
-  const calculateNetDisbursement = (row: BraintreeEURRow): number => {
-    // Se tiver settlement_amount, use-o diretamente (já é líquido)
-    // Caso contrário, use amount como fallback
-    return row.settlement_amount ?? row.amount ?? 0;
-  };
+  // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
+  // Não é necessário cálculo adicional - usar settlement_amount diretamente
 
   // 💰 Função para calcular grupo de disbursement agregado
   const calculateDisbursementGroup = (rows: BraintreeEURRow[]): DisbursementGroup | null => {
@@ -865,10 +863,6 @@ export default function BraintreeEURPage() {
       const groupSize = groupRows?.length || 1;
       const groupTotal = groupRows?.reduce((sum: number, r: BraintreeEURRow) => sum + r.amount, 0) || row.amount;
 
-      // Calcular net disbursement individual e do grupo
-      const netDisbursement = calculateNetDisbursement(row);
-      const groupNetDisbursement = groupRows?.reduce((sum: number, r: BraintreeEURRow) => sum + calculateNetDisbursement(r), 0) || netDisbursement;
-
       // Verificar se é o primeiro da lista deste grupo
       const isFirstInGroup = array.findIndex((r: BraintreeEURRow) =>
         (r.disbursement_id || 'ungrouped') === disbursementId
@@ -878,8 +872,6 @@ export default function BraintreeEURPage() {
         ...row,
         _groupSize: groupSize,
         _groupTotal: groupTotal,
-        _netDisbursement: netDisbursement,
-        _groupNetDisbursement: groupNetDisbursement,
         _isGroupExpanded: expandedGroups.has(disbursementId),
         _isFirstInGroup: isFirstInGroup,
       };
@@ -1147,7 +1139,8 @@ export default function BraintreeEURPage() {
                           { id: "merchant_account_id", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
                           { id: "settlement_amount", label: "Settlement Amount" },
-                          { id: "net_disbursement", label: "💰 Net to Bank (after fees)" },
+                          { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
+                          { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
                         ].map((column) => (
                           <div
                             key={column.id}
