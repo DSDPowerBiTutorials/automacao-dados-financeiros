@@ -176,6 +176,7 @@ export default function BraintreeUSDPage() {
       "merchant_account_id",
       "disbursement_date",
       "settlement_amount",
+      "net_disbursement",
     ])
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -323,6 +324,98 @@ export default function BraintreeUSDPage() {
       newExpanded.add(disbursementId);
     }
     setExpandedGroups(newExpanded);
+  };
+
+  // Função para calcular o valor líquido do disbursement
+  const calculateNetDisbursement = (row: BraintreeUSDRow): number => {
+    const grossAmount = row.settlement_amount || row.amount;
+    const fees =
+      (row.service_fee_amount || 0) +
+      (row.processing_fee || 0) +
+      (row.merchant_account_fee || 0) +
+      (row.discount_amount || 0) +
+      (row.tax_amount || 0) +
+      (row.dispute_amount || 0) +
+      (row.reserve_amount || 0);
+    const adjustments = row.authorization_adjustment || 0;
+
+    return grossAmount - fees + adjustments;
+  };
+
+  // Função para calcular grupo completo de disbursement
+  const calculateDisbursementGroup = (rows: BraintreeUSDRow[]): DisbursementGroup | null => {
+    if (rows.length === 0 || !rows[0].disbursement_id) return null;
+
+    const grossAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+
+    const feesBreakdown = {
+      service_fee: rows.reduce((sum, r) => sum + (r.service_fee_amount || 0), 0),
+      processing_fee: rows.reduce((sum, r) => sum + (r.processing_fee || 0), 0),
+      merchant_fee: rows.reduce((sum, r) => sum + (r.merchant_account_fee || 0), 0),
+      discount: rows.reduce((sum, r) => sum + (r.discount_amount || 0), 0),
+      tax: rows.reduce((sum, r) => sum + (r.tax_amount || 0), 0),
+      dispute: rows.reduce((sum, r) => sum + (r.dispute_amount || 0), 0),
+      reserve: rows.reduce((sum, r) => sum + (r.reserve_amount || 0), 0),
+    };
+
+    const totalFees = Object.values(feesBreakdown).reduce((sum, fee) => sum + fee, 0);
+    const adjustments = rows.reduce((sum, r) => sum + (r.authorization_adjustment || 0), 0);
+    const netDisbursement = grossAmount - totalFees + adjustments;
+
+    return {
+      disbursement_id: rows[0].disbursement_id!,
+      transactions: rows,
+      grossAmount,
+      totalFees,
+      netDisbursement,
+      feesBreakdown,
+    };
+  };
+
+  // Função para calcular o valor líquido do disbursement
+  const calculateNetDisbursement = (row: BraintreeUSDRow): number => {
+    const grossAmount = row.settlement_amount || row.amount;
+    const fees =
+      (row.service_fee_amount || 0) +
+      (row.processing_fee || 0) +
+      (row.merchant_account_fee || 0) +
+      (row.discount_amount || 0) +
+      (row.tax_amount || 0) +
+      (row.dispute_amount || 0) +
+      (row.reserve_amount || 0);
+    const adjustments = row.authorization_adjustment || 0;
+
+    return grossAmount - fees + adjustments;
+  };
+
+  // Função para calcular grupo completo de disbursement
+  const calculateDisbursementGroup = (rows: BraintreeUSDRow[]): DisbursementGroup | null => {
+    if (rows.length === 0 || !rows[0].disbursement_id) return null;
+
+    const grossAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+
+    const feesBreakdown = {
+      service_fee: rows.reduce((sum, r) => sum + (r.service_fee_amount || 0), 0),
+      processing_fee: rows.reduce((sum, r) => sum + (r.processing_fee || 0), 0),
+      merchant_fee: rows.reduce((sum, r) => sum + (r.merchant_account_fee || 0), 0),
+      discount: rows.reduce((sum, r) => sum + (r.discount_amount || 0), 0),
+      tax: rows.reduce((sum, r) => sum + (r.tax_amount || 0), 0),
+      dispute: rows.reduce((sum, r) => sum + (r.dispute_amount || 0), 0),
+      reserve: rows.reduce((sum, r) => sum + (r.reserve_amount || 0), 0),
+    };
+
+    const totalFees = Object.values(feesBreakdown).reduce((sum, fee) => sum + fee, 0);
+    const adjustments = rows.reduce((sum, r) => sum + (r.authorization_adjustment || 0), 0);
+    const netDisbursement = grossAmount - totalFees + adjustments;
+
+    return {
+      disbursement_id: rows[0].disbursement_id!,
+      transactions: rows,
+      grossAmount,
+      totalFees,
+      netDisbursement,
+      feesBreakdown,
+    };
   };
 
   // Função para unconcile (limpar reconciliação)
@@ -825,12 +918,28 @@ export default function BraintreeUSDPage() {
       return acc;
     }, {} as Record<string, BraintreeUSDRow[]>);
 
+    // Calcular grupos de disbursement com fees
+    const newDisbursementGroups = new Map<string, DisbursementGroup>();
+    Object.entries(grouped).forEach(([id, groupRows]) => {
+      if (id !== 'ungrouped') {
+        const group = calculateDisbursementGroup(groupRows);
+        if (group) {
+          newDisbursementGroups.set(id, group);
+        }
+      }
+    });
+    setDisbursementGroups(newDisbursementGroups);
+
     // Adicionar informações de grupo a cada row
     filtered = filtered.map((row, index, array) => {
       const disbursementId = row.disbursement_id || 'ungrouped';
       const groupRows = grouped[disbursementId];
       const groupSize = groupRows?.length || 1;
       const groupTotal = groupRows?.reduce((sum, r) => sum + r.amount, 0) || row.amount;
+
+      // Calcular net disbursement individual e do grupo
+      const netDisbursement = calculateNetDisbursement(row);
+      const groupNetDisbursement = groupRows?.reduce((sum, r) => sum + calculateNetDisbursement(r), 0) || netDisbursement;
 
       // Verificar se é o primeiro da lista deste grupo
       const isFirstInGroup = array.findIndex(r =>
@@ -841,24 +950,16 @@ export default function BraintreeUSDPage() {
         ...row,
         _groupSize: groupSize,
         _groupTotal: groupTotal,
-        _isGroupExpanded: expandedGroups.has(disbursementId),
-        _isFirstInGroup: isFirstInGroup,
-      };
-    });
-
-    return filtered.sort((a, b) => {
-      let comparison = 0;
-
-      switch (sortField) {
-        case "date":
+        _netDisbursement: netDisbursement,
+        _groupNetDisbursement: groupNetDisbursement,
         case "disbursement_date":
         case "created_at":
-          comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
-          break;
+        comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
+        break;
         case "amount":
         case "settlement_amount":
-          comparison = (a[sortField] || 0) - (b[sortField] || 0);
-          break;
+        comparison = (a[sortField] || 0) - (b[sortField] || 0);
+        break;
         case "description":
         case "transaction_id":
         case "status":
@@ -869,10 +970,10 @@ export default function BraintreeUSDPage() {
         case "payment_method":
         case "merchant_account_id":
         case "destinationAccount":
-          const aValue = (a[sortField] || "").toString();
-          const bValue = (b[sortField] || "").toString();
-          comparison = aValue.localeCompare(bValue);
-          break;
+        const aValue = (a[sortField] || "").toString();
+        const bValue = (b[sortField] || "").toString();
+        comparison = aValue.localeCompare(bValue);
+        break;
         default:
           comparison = 0;
       }
@@ -1109,6 +1210,7 @@ export default function BraintreeUSDPage() {
                           { id: "merchant_account_id", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
                           { id: "settlement_amount", label: "Settlement Amount" },
+                          { id: "net_disbursement", label: "💰 Net to Bank (after fees)" },
                         ].map((column) => (
                           <div
                             key={column.id}
@@ -1269,8 +1371,27 @@ export default function BraintreeUSDPage() {
                     </Select>
                   </div>
 
+                  {/* Disbursement Filter */}
+                  <Select
+                    value={disbursementFilter}
+                    onValueChange={setDisbursementFilter}
+                  >
+                    <SelectTrigger className="w-[200px]">
+                      <SelectValue placeholder="Payout Group" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Payouts</SelectItem>
+                      <SelectItem value="ungrouped">Ungrouped Only</SelectItem>
+                      {Array.from(new Set(rows.map(r => r.disbursement_id).filter(Boolean))).map(id => (
+                        <SelectItem key={id} value={id!}>
+                          {id!.substring(0, 16)}...
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
                   {/* Clear all filters button */}
-                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || Object.keys(dateFilters).length > 0) && (
+                  {(searchTerm || amountFilter || statusFilter !== "settled" || merchantFilter || typeFilter || currencyFilter || paymentMethodFilter || disbursementFilter || Object.keys(dateFilters).length > 0) && (
                     <Badge
                       variant="secondary"
                       className="cursor-pointer hover:bg-destructive/20 px-3 h-9 flex items-center"
@@ -1282,6 +1403,7 @@ export default function BraintreeUSDPage() {
                         setTypeFilter("");
                         setCurrencyFilter("");
                         setPaymentMethodFilter("");
+                        setDisbursementFilter("");
                         setDateFilters({});
                       }}
                     >
@@ -1291,6 +1413,172 @@ export default function BraintreeUSDPage() {
                   )}
                 </div>
               </div>
+
+              {/* Disbursement Summary */}
+              {disbursementFilter && disbursementFilter !== "all" && disbursementFilter !== "ungrouped" && (
+                <div className="mb-4 p-6 bg-gradient-to-br from-green-50 to-blue-50 dark:from-green-900/20 dark:to-blue-900/20 border-2 border-green-300 dark:border-green-700 rounded-xl shadow-lg">
+                  <div className="flex items-start justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="bg-green-600 text-white p-2 rounded-lg">
+                          <Database className="h-6 w-6" />
+                        </div>
+                        <div>
+                          <h3 className="font-bold text-lg text-green-900 dark:text-green-100">
+                            Payout Group Details
+                          </h3>
+                          <p className="text-sm text-green-700 dark:text-green-300 font-mono">
+                            {disbursementFilter.substring(0, 32)}...
+                          </p>
+                        </div>
+                      </div>
+
+                      {(() => {
+                        const group = disbursementGroups.get(disbursementFilter);
+                        if (!group) {
+                          return (
+                            <p className="text-sm text-gray-600">
+                              {processedRows.length} transactions • Total: ${processedRows.reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
+                            </p>
+                          );
+                        }
+
+                        return (
+                          <div className="grid grid-cols-2 gap-6">
+                            {/* Coluna Esquerda: Valores */}
+                            <div className="space-y-3">
+                              <div className="flex justify-between items-center p-3 bg-white dark:bg-slate-800 rounded-lg">
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  Transactions:
+                                </span>
+                                <span className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                                  {group.transactions.length}
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center p-3 bg-white dark:bg-slate-800 rounded-lg">
+                                <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                                  Gross Amount:
+                                </span>
+                                <span className="text-lg font-bold text-gray-900 dark:text-white">
+                                  ${group.grossAmount.toFixed(2)}
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center p-3 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                                <span className="text-sm font-medium text-red-600 dark:text-red-400">
+                                  Total Fees:
+                                </span>
+                                <span className="text-lg font-bold text-red-600 dark:text-red-400">
+                                  -${group.totalFees.toFixed(2)}
+                                </span>
+                              </div>
+
+                              <div className="flex justify-between items-center p-4 bg-gradient-to-r from-green-500 to-green-600 rounded-lg shadow-md">
+                                <span className="text-sm font-bold text-white uppercase tracking-wide">
+                                  💰 Net to Bank:
+                                </span>
+                                <span className="text-2xl font-black text-white">
+                                  ${group.netDisbursement.toFixed(2)}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Coluna Direita: Breakdown de Fees */}
+                            <div className="space-y-2">
+                              <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                                Fees Breakdown:
+                              </h4>
+
+                              {group.feesBreakdown.service_fee > 0 && (
+                                <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-800 rounded text-sm">
+                                  <span className="text-gray-600 dark:text-gray-400">Service Fee</span>
+                                  <span className="font-semibold text-red-600">-${group.feesBreakdown.service_fee.toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              {group.feesBreakdown.processing_fee > 0 && (
+                                <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-800 rounded text-sm">
+                                  <span className="text-gray-600 dark:text-gray-400">Processing Fee</span>
+                                  <span className="font-semibold text-red-600">-${group.feesBreakdown.processing_fee.toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              {group.feesBreakdown.merchant_fee > 0 && (
+                                <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-800 rounded text-sm">
+                                  <span className="text-gray-600 dark:text-gray-400">Merchant Fee</span>
+                                  <span className="font-semibold text-red-600">-${group.feesBreakdown.merchant_fee.toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              {group.feesBreakdown.discount > 0 && (
+                                <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-800 rounded text-sm">
+                                  <span className="text-gray-600 dark:text-gray-400">Discount</span>
+                                  <span className="font-semibold text-orange-600">-${group.feesBreakdown.discount.toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              {group.feesBreakdown.tax > 0 && (
+                                <div className="flex justify-between items-center p-2 bg-white dark:bg-slate-800 rounded text-sm">
+                                  <span className="text-gray-600 dark:text-gray-400">Tax</span>
+                                  <span className="font-semibold text-purple-600">-${group.feesBreakdown.tax.toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              {group.feesBreakdown.dispute > 0 && (
+                                <div className="flex justify-between items-center p-2 bg-red-100 dark:bg-red-900/30 rounded text-sm border border-red-300">
+                                  <span className="text-red-700 dark:text-red-400">⚠️ Disputes</span>
+                                  <span className="font-bold text-red-700 dark:text-red-400">-${group.feesBreakdown.dispute.toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              {group.feesBreakdown.reserve > 0 && (
+                                <div className="flex justify-between items-center p-2 bg-blue-100 dark:bg-blue-900/30 rounded text-sm border border-blue-300">
+                                  <span className="text-blue-700 dark:text-blue-400">🔒 Reserve</span>
+                                  <span className="font-bold text-blue-700 dark:text-blue-400">-${group.feesBreakdown.reserve.toFixed(2)}</span>
+                                </div>
+                              )}
+
+                              {Object.values(group.feesBreakdown).every(v => v === 0) && (
+                                <p className="text-sm text-gray-500 italic">No fees recorded</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })()}
+
+                      {/* Botão para buscar match no Bankinter */}
+                      {disbursementGroups.get(disbursementFilter) && (
+                        <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
+                          <Button
+                            onClick={() => {
+                              const group = disbursementGroups.get(disbursementFilter);
+                              if (group) {
+                                const bankUrl = `/reports/bankinter-usd?amount=${group.netDisbursement.toFixed(2)}`;
+                                window.open(bankUrl, '_blank');
+                              }
+                            }}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white gap-2"
+                          >
+                            <Database className="h-4 w-4" />
+                            Find Match in Bankinter USD (${disbursementGroups.get(disbursementFilter)!.netDisbursement.toFixed(2)})
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDisbursementFilter("")}
+                      className="gap-2 ml-4"
+                    >
+                      <XIcon className="h-4 w-4" />
+                      Clear
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               <div className="overflow-x-auto">{/* Tabela aqui */}
                 <table className="w-full">
@@ -1474,6 +1762,17 @@ export default function BraintreeUSDPage() {
                             className="flex items-center gap-1 hover:text-blue-600 ml-auto"
                           >
                             Settlement Amount
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("net_disbursement") && (
+                        <th className="text-right py-4 px-4 font-bold text-sm text-green-700 dark:text-green-400 bg-green-50 dark:bg-green-900/20">
+                          <button
+                            onClick={() => toggleSort("_netDisbursement")}
+                            className="flex items-center gap-1 hover:text-green-800 ml-auto"
+                          >
+                            💰 Net to Bank
                             <ArrowUpDown className="h-3 w-3" />
                           </button>
                         </th>
@@ -1737,6 +2036,20 @@ export default function BraintreeUSDPage() {
                             {visibleColumns.has("settlement_amount") && (
                               <td className="py-3 px-4 text-right text-sm font-bold text-green-600">
                                 {row.settlement_amount ? formatCurrency(row.settlement_amount) : "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("net_disbursement") && (
+                              <td className="py-3 px-4 text-right bg-green-50 dark:bg-green-900/20">
+                                <div className="flex flex-col items-end gap-1">
+                                  <span className="text-sm font-bold text-green-700 dark:text-green-400">
+                                    ${(row._netDisbursement || 0).toFixed(2)}
+                                  </span>
+                                  {row._isFirstInGroup && row._groupSize && row._groupSize > 1 && (
+                                    <span className="text-xs text-green-600 dark:text-green-500 bg-green-100 dark:bg-green-900/40 px-2 py-0.5 rounded">
+                                      Group: ${(row._groupNetDisbursement || 0).toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
                               </td>
                             )}
                           </tr>

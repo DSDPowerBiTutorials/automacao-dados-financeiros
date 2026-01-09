@@ -161,6 +161,7 @@ export default function BraintreeEURPage() {
       "merchant_account_id",
       "disbursement_date",
       "settlement_amount",
+      "net_disbursement",
     ])
   );
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -311,6 +312,49 @@ export default function BraintreeEURPage() {
       newExpanded.add(disbursementId);
     }
     setExpandedGroups(newExpanded);
+  };
+
+  // 💰 Função para calcular Net Disbursement (valor líquido que chega ao banco)
+  const calculateNetDisbursement = (row: BraintreeEURRow): number => {
+    const grossAmount = row.settlement_amount || row.amount;
+    const fees =
+      (row.service_fee_amount || 0) +
+      (row.processing_fee || 0) +
+      (row.merchant_account_fee || 0) +
+      (row.discount_amount || 0) +
+      (row.tax_amount || 0) +
+      (row.dispute_amount || 0) +
+      (row.reserve_amount || 0);
+    const adjustments = row.authorization_adjustment || 0;
+    return grossAmount - fees + adjustments;
+  };
+
+  // 💰 Função para calcular grupo de disbursement agregado
+  const calculateDisbursementGroup = (rows: BraintreeEURRow[]): DisbursementGroup | null => {
+    if (!rows || rows.length === 0) return null;
+
+    const grossAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+
+    const feesBreakdown = {
+      service_fee: rows.reduce((sum, r) => sum + (r.service_fee_amount || 0), 0),
+      processing_fee: rows.reduce((sum, r) => sum + (r.processing_fee || 0), 0),
+      merchant_fee: rows.reduce((sum, r) => sum + (r.merchant_account_fee || 0), 0),
+      discount: rows.reduce((sum, r) => sum + (r.discount_amount || 0), 0),
+      tax: rows.reduce((sum, r) => sum + (r.tax_amount || 0), 0),
+      dispute: rows.reduce((sum, r) => sum + (r.dispute_amount || 0), 0),
+      reserve: rows.reduce((sum, r) => sum + (r.reserve_amount || 0), 0),
+    };
+
+    const totalFees = Object.values(feesBreakdown).reduce((sum, fee) => sum + fee, 0);
+    const netDisbursement = grossAmount - totalFees;
+
+    return {
+      transactions: rows,
+      grossAmount,
+      totalFees,
+      netDisbursement,
+      feesBreakdown,
+    };
   };
 
   // Função para unconcile (limpar reconciliação)
@@ -813,15 +857,31 @@ export default function BraintreeEURPage() {
       return acc;
     }, {} as Record<string, BraintreeEURRow[]>);
 
+    // Calcular grupos de disbursement com fees
+    const newDisbursementGroups = new Map<string, DisbursementGroup>();
+    Object.entries(grouped).forEach(([id, groupRows]) => {
+      if (id !== 'ungrouped') {
+        const group = calculateDisbursementGroup(groupRows);
+        if (group) {
+          newDisbursementGroups.set(id, group);
+        }
+      }
+    });
+    setDisbursementGroups(newDisbursementGroups);
+
     // Adicionar informações de grupo a cada row
     filtered = filtered.map((row, index, array) => {
       const disbursementId = row.disbursement_id || 'ungrouped';
       const groupRows = grouped[disbursementId];
       const groupSize = groupRows?.length || 1;
       const groupTotal = groupRows?.reduce((sum, r) => sum + r.amount, 0) || row.amount;
-      
+
+      // Calcular net disbursement individual e do grupo
+      const netDisbursement = calculateNetDisbursement(row);
+      const groupNetDisbursement = groupRows?.reduce((sum, r) => sum + calculateNetDisbursement(r), 0) || netDisbursement;
+
       // Verificar se é o primeiro da lista deste grupo
-      const isFirstInGroup = array.findIndex(r => 
+      const isFirstInGroup = array.findIndex(r =>
         (r.disbursement_id || 'ungrouped') === disbursementId
       ) === index;
 
@@ -829,44 +889,46 @@ export default function BraintreeEURPage() {
         ...row,
         _groupSize: groupSize,
         _groupTotal: groupTotal,
+        _netDisbursement: netDisbursement,
+        _groupNetDisbursement: groupNetDisbursement,
         _isGroupExpanded: expandedGroups.has(disbursementId),
         _isFirstInGroup: isFirstInGroup,
       };
     });
 
     return filtered.sort((a, b) => {
-        let comparison = 0;
+      let comparison = 0;
 
-        switch (sortField) {
-          case "date":
-          case "disbursement_date":
-          case "created_at":
-            comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
-            break;
-          case "amount":
-          case "settlement_amount":
-            comparison = (a[sortField] || 0) - (b[sortField] || 0);
-            break;
-          case "description":
-          case "transaction_id":
-          case "status":
-          case "type":
-          case "currency":
-          case "customer_name":
-          case "customer_email":
-          case "payment_method":
-          case "merchant_account_id":
-          case "destinationAccount":
-            const aValue = (a[sortField] || "").toString();
-            const bValue = (b[sortField] || "").toString();
-            comparison = aValue.localeCompare(bValue);
-            break;
-          default:
-            comparison = 0;
-        }
+      switch (sortField) {
+        case "date":
+        case "disbursement_date":
+        case "created_at":
+          comparison = new Date(a[sortField] || 0).getTime() - new Date(b[sortField] || 0).getTime();
+          break;
+        case "amount":
+        case "settlement_amount":
+          comparison = (a[sortField] || 0) - (b[sortField] || 0);
+          break;
+        case "description":
+        case "transaction_id":
+        case "status":
+        case "type":
+        case "currency":
+        case "customer_name":
+        case "customer_email":
+        case "payment_method":
+        case "merchant_account_id":
+        case "destinationAccount":
+          const aValue = (a[sortField] || "").toString();
+          const bValue = (b[sortField] || "").toString();
+          comparison = aValue.localeCompare(bValue);
+          break;
+        default:
+          comparison = 0;
+      }
 
-        return sortDirection === "asc" ? comparison : -comparison;
-      });
+      return sortDirection === "asc" ? comparison : -comparison;
+    });
   }, [
     rows,
     searchTerm,
@@ -1093,6 +1155,7 @@ export default function BraintreeEURPage() {
                           { id: "merchant_account_id", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
                           { id: "settlement_amount", label: "Settlement Amount" },
+                          { id: "net_disbursement", label: "💰 Net to Bank (after fees)" },
                         ].map((column) => (
                           <div
                             key={column.id}
