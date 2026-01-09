@@ -568,54 +568,64 @@ export default function BraintreeEURPage() {
           const merchantAccount = row.custom_data?.merchant_account_id;
           return !merchantAccount || merchantAccount === "digitalsmiledesignEUR" || row.source === "braintree-eur";
         })
-        .map((row) => ({
-          id: row.id,
-          date: row.date,
-          description: row.description || "",
-          amount: parseFloat(row.amount) || 0,
-          conciliado: row.custom_data?.conciliado || false,
-          destinationAccount: row.custom_data?.destinationAccount || null,
-          reconciliationType: row.custom_data?.reconciliationType || null,
+        .map((row) => {
+          // 🔍 DEBUG: Log para verificar settlement_batch_id
+          if (row.custom_data?.transaction_id === 'ensq9tm6') {
+            console.log('[DEBUG Frontend] Transaction ensq9tm6 custom_data:', row.custom_data);
+            console.log('[DEBUG Frontend] settlement_batch_id:', row.custom_data?.settlement_batch_id);
+            console.log('[DEBUG Frontend] disbursement_id:', row.custom_data?.disbursement_id);
+            console.log('[DEBUG Frontend] disbursement_date:', row.custom_data?.disbursement_date);
+          }
 
-          // Campos adicionais da Braintree
-          transaction_id: row.custom_data?.transaction_id,
-          status: row.custom_data?.status,
-          type: row.custom_data?.type,
-          currency: row.custom_data?.currency,
-          customer_id: row.custom_data?.customer_id,
-          customer_name: row.custom_data?.customer_name,
-          customer_email: row.custom_data?.customer_email,
-          payment_method: row.custom_data?.payment_method,
-          merchant_account_id: row.custom_data?.merchant_account_id,
-          created_at: row.custom_data?.created_at,
-          updated_at: row.custom_data?.updated_at,
-          disbursement_date: row.custom_data?.disbursement_date,
-          settlement_amount: row.custom_data?.settlement_amount,
-          settlement_currency: row.custom_data?.settlement_currency,
-          settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
-          settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
-          settlement_batch_id: row.custom_data?.settlement_batch_id,
+          return {
+            id: row.id,
+            date: row.date,
+            description: row.description || "",
+            amount: parseFloat(row.amount) || 0,
+            conciliado: row.custom_data?.conciliado || false,
+            destinationAccount: row.custom_data?.destinationAccount || null,
+            reconciliationType: row.custom_data?.reconciliationType || null,
 
-          // 🔑 ID do payout agrupado
-          disbursement_id: row.custom_data?.disbursement_id,
+            // Campos adicionais da Braintree
+            transaction_id: row.custom_data?.transaction_id,
+            status: row.custom_data?.status,
+            type: row.custom_data?.type,
+            currency: row.custom_data?.currency,
+            customer_id: row.custom_data?.customer_id,
+            customer_name: row.custom_data?.customer_name,
+            customer_email: row.custom_data?.customer_email,
+            payment_method: row.custom_data?.payment_method,
+            merchant_account_id: row.custom_data?.merchant_account_id,
+            created_at: row.custom_data?.created_at,
+            updated_at: row.custom_data?.updated_at,
+            disbursement_date: row.custom_data?.disbursement_date,
+            settlement_amount: row.custom_data?.settlement_amount,
+            settlement_currency: row.custom_data?.settlement_currency,
+            settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
+            settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
+            settlement_batch_id: row.custom_data?.settlement_batch_id,
 
-          // 🏦 Informações do match bancário
-          bank_match_id: row.custom_data?.bank_match_id,
-          bank_match_date: row.custom_data?.bank_match_date,
-          bank_match_amount: row.custom_data?.bank_match_amount,
-          bank_match_description: row.custom_data?.bank_match_description,
+            // 🔑 ID do payout agrupado
+            disbursement_id: row.custom_data?.disbursement_id,
 
-          // 💰 FEES E DEDUÇÕES
-          service_fee_amount: row.custom_data?.service_fee_amount,
-          discount_amount: row.custom_data?.discount_amount,
-          tax_amount: row.custom_data?.tax_amount,
-          refunded_transaction_id: row.custom_data?.refunded_transaction_id,
-          merchant_account_fee: row.custom_data?.merchant_account_fee,
-          processing_fee: row.custom_data?.processing_fee,
-          authorization_adjustment: row.custom_data?.authorization_adjustment,
-          dispute_amount: row.custom_data?.dispute_amount,
-          reserve_amount: row.custom_data?.reserve_amount,
-        }));
+            // 🏦 Informações do match bancário
+            bank_match_id: row.custom_data?.bank_match_id,
+            bank_match_date: row.custom_data?.bank_match_date,
+            bank_match_amount: row.custom_data?.bank_match_amount,
+            bank_match_description: row.custom_data?.bank_match_description,
+
+            // 💰 FEES E DEDUÇÕES
+            service_fee_amount: row.custom_data?.service_fee_amount,
+            discount_amount: row.custom_data?.discount_amount,
+            tax_amount: row.custom_data?.tax_amount,
+            refunded_transaction_id: row.custom_data?.refunded_transaction_id,
+            merchant_account_fee: row.custom_data?.merchant_account_fee,
+            processing_fee: row.custom_data?.processing_fee,
+            authorization_adjustment: row.custom_data?.authorization_adjustment,
+            dispute_amount: row.custom_data?.dispute_amount,
+            reserve_amount: row.custom_data?.reserve_amount,
+          };
+        });
 
       console.log(`[Braintree EUR] Mapped ${mappedRows.length} rows`);
 

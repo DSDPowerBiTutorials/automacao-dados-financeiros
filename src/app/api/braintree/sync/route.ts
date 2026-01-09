@@ -118,6 +118,16 @@ export async function POST(req: NextRequest) {
           const merchantAccount = transaction.merchantAccountId || 'unknown';
           const uniqueId = transaction.disbursementDetails.disbursementId || transaction.id;
           settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
+
+          // 🔍 DEBUG: Log settlement_batch_id generation
+          if (transaction.id === 'ensq9tm6') {
+            console.log(`[DEBUG] Transaction ${transaction.id}:`, {
+              disbursementDate: transaction.disbursementDetails.disbursementDate,
+              disbursementId: transaction.disbursementDetails.disbursementId,
+              merchantAccount,
+              generated_settlement_batch_id: settlement_batch_id
+            });
+          }
         }
       } catch (err) {
         console.error(`[Settlement Batch ID] Error generating for transaction ${transaction.id}:`, err);
@@ -185,6 +195,15 @@ export async function POST(req: NextRequest) {
           settlement_batch_id: settlement_batch_id,
         },
       };
+
+      // 🔍 DEBUG: Log custom_data sendo salvo
+      if (transaction.id === 'ensq9tm6') {
+        console.log(`[DEBUG] Saving custom_data for ${transaction.id}:`, {
+          settlement_batch_id: revenueRow.custom_data.settlement_batch_id,
+          disbursement_id: revenueRow.custom_data.disbursement_id,
+          disbursement_date: revenueRow.custom_data.disbursement_date
+        });
+      }
 
       rowsToInsert.push(revenueRow);
 
@@ -300,14 +319,14 @@ export async function POST(req: NextRequest) {
       source,
       syncType: 'api',
       recordsAdded: revenueInserted,
-      lastRecordDate: transactions.length > 0 
+      lastRecordDate: transactions.length > 0
         ? (() => {
-            try {
-              return new Date(transactions[0].createdAt);
-            } catch {
-              return new Date();
-            }
-          })()
+          try {
+            return new Date(transactions[0].createdAt);
+          } catch {
+            return new Date();
+          }
+        })()
         : new Date(),
       status: 'success',
     });
