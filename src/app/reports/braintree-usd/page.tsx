@@ -100,6 +100,23 @@ interface BraintreeUSDRow {
   [key: string]: any;
 }
 
+interface DisbursementGroup {
+  disbursement_id: string;
+  transactions: BraintreeUSDRow[];
+  grossAmount: number;
+  totalFees: number;
+  netDisbursement: number;
+  feesBreakdown: {
+    service_fee: number;
+    processing_fee: number;
+    merchant_fee: number;
+    discount: number;
+    tax: number;
+    dispute: number;
+    reserve: number;
+  };
+}
+
 interface BankStatementRow {
   date: string;
   amount: number;
@@ -180,6 +197,7 @@ export default function BraintreeUSDPage() {
   // Disbursement grouping
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [disbursementFilter, setDisbursementFilter] = useState<string>("");
+  const [disbursementGroups, setDisbursementGroups] = useState<Map<string, DisbursementGroup>>(new Map());
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
