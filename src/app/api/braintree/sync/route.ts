@@ -19,6 +19,54 @@ import {
 import { batchUpsertTransactions, saveLastSyncTimestamp } from "@/lib/braintree-updater";
 import braintree from "braintree";
 
+/**
+ * 🏦 SETTLEMENT DATE EXTRACTOR
+ * 
+ * Extrai a data precisa de quando o banco confirmou a transação (settlement).
+ * Esta é a data em que o dinheiro oficialmente se torna seu (reduz risco de chargeback).
+ * 
+ * Prioridades:
+ * 1. statusHistory - Busca entrada "settled" ou "settled_successfully" com timestamp
+ * 2. updatedAt - Fallback se status é "settled" mas sem statusHistory
+ * 3. null - Se transação ainda não está settled
+ * 
+ * @param transaction - Objeto da transação do Braintree
+ * @returns ISO timestamp do settlement ou null
+ */
+function getSettlementDate(transaction: any): string | null {
+  try {
+    // ✅ Prioridade 1: Buscar timestamp preciso no statusHistory
+    if (transaction.statusHistory && Array.isArray(transaction.statusHistory)) {
+      const settledEntry = transaction.statusHistory.find((entry: any) =>
+        entry.status === "settled" ||
+        entry.status === "settled_successfully" ||
+        entry.status === "settling"
+      );
+
+      if (settledEntry && settledEntry.timestamp) {
+        const settlementDate = typeof settledEntry.timestamp === 'string'
+          ? new Date(settledEntry.timestamp)
+          : settledEntry.timestamp;
+        return settlementDate.toISOString();
+      }
+    }
+
+    // ✅ Prioridade 2: Fallback para updatedAt se status é settled
+    if (transaction.status === "settled" || transaction.status === "settling") {
+      const updatedAtDate = typeof transaction.updatedAt === 'string'
+        ? new Date(transaction.updatedAt)
+        : transaction.updatedAt;
+      return updatedAtDate.toISOString();
+    }
+
+    // ✅ Prioridade 3: Ainda não settled
+    return null;
+  } catch (err) {
+    console.error(`[Settlement Date] Error extracting for transaction ${transaction.id}:`, err);
+    return null;
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -113,19 +161,20 @@ export async function POST(req: NextRequest) {
       let settlement_batch_id: string | null = null;
       let hasGeneratedBatch = false;
       try {
-        if (transaction.disbursementDetails?.disbursementDate) {
-          const disbDate = new Date(transaction.disbursementDetails.disbursementDate);
+        const disbDetails = transaction.disbursementDetails;
+        if (disbDetails?.disbursementDate) {
+          const disbDate = new Date(disbDetails!.disbursementDate!);
           const dateStr = disbDate.toISOString().split('T')[0]; // YYYY-MM-DD
           const merchantAccount = transaction.merchantAccountId || 'unknown';
-          const uniqueId = transaction.disbursementDetails.disbursementId || transaction.id;
+          const uniqueId = disbDetails!.disbursementId || transaction.id;
           settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
           hasGeneratedBatch = true;
 
           // 🔍 DEBUG: Log settlement_batch_id generation (primeiras 5 e ensq9tm6)
           if (transactions.indexOf(transaction) < 5 || transaction.id === 'ensq9tm6') {
             console.log(`[DEBUG Settlement Batch] ✅ Generated for ${transaction.id}:`, {
-              disbursementDate: transaction.disbursementDetails.disbursementDate,
-              disbursementId: transaction.disbursementDetails.disbursementId,
+              disbursementDate: disbDetails!.disbursementDate,
+              disbursementId: disbDetails!.disbursementId,
               merchantAccount,
               settlement_batch_id,
             });
@@ -190,8 +239,9 @@ export async function POST(req: NextRequest) {
           // 💰 Campos de Disbursement (settlement/transferência bancária)
           disbursement_date: (() => {
             try {
-              return transaction.disbursementDetails?.disbursementDate
-                ? new Date(transaction.disbursementDetails.disbursementDate).toISOString()
+              const disbDetails = transaction.disbursementDetails;
+              return disbDetails?.disbursementDate
+                ? new Date(disbDetails!.disbursementDate!).toISOString()
                 : null;
             } catch (err) {
               console.error(`[Disbursement Date] Error for transaction ${transaction.id}:`, err);
@@ -203,8 +253,9 @@ export async function POST(req: NextRequest) {
           settlement_currency_iso_code: transaction.disbursementDetails?.settlementCurrencyIsoCode || null,
           settlement_currency_exchange_rate: (() => {
             try {
-              return transaction.disbursementDetails?.settlementCurrencyExchangeRate
-                ? parseFloat(transaction.disbursementDetails.settlementCurrencyExchangeRate)
+              const disbDetails = transaction.disbursementDetails;
+              return disbDetails?.settlementCurrencyExchangeRate
+                ? parseFloat(disbDetails!.settlementCurrencyExchangeRate!)
                 : null;
             } catch (err) {
               console.error(`[Exchange Rate] Error for transaction ${transaction.id}:`, err);
@@ -217,6 +268,11 @@ export async function POST(req: NextRequest) {
 
           // 🔑 Settlement Batch ID (formato: YYYY-MM-DD_merchantAccount_uniqueId)
           settlement_batch_id: settlement_batch_id,
+
+          // 🏦 Settlement Date (data precisa de confirmação do banco)
+          // Diferente de disbursement_date (quando dinheiro chega na conta)
+          // Esta é a data em que o dinheiro oficialmente se torna seu
+          settlement_date: getSettlementDate(transaction),
         },
       };
 

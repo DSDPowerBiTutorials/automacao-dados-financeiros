@@ -77,6 +77,13 @@ interface BraintreeAUDRow {
   settlement_amount?: number | null;
   settlement_currency?: string | null;
 
+  // 🏦 Settlement Date (data precisa de confirmação do banco)
+  settlement_date?: string | null;
+
+  // 🔑 Settlement Batch ID
+  settlement_batch_id?: string | null;
+  disbursement_id?: string | null;
+
   [key: string]: any;
 }
 
@@ -138,6 +145,8 @@ export default function BraintreeAUDPage() {
       "payment_method",
       "merchant_account_id",
       "disbursement_date",
+      "settlement_batch_id",
+      "settlement_date",
       "settlement_amount",
     ])
   );
@@ -494,6 +503,8 @@ export default function BraintreeAUDPage() {
           settlement_amount: row.custom_data?.settlement_amount,
           settlement_currency: row.custom_data?.settlement_currency,
           settlement_batch_id: row.custom_data?.settlement_batch_id,
+          settlement_date: row.custom_data?.settlement_date,
+          disbursement_id: row.custom_data?.disbursement_id,
         }));
 
       console.log(`[Braintree AUD] Mapped ${mappedRows.length} rows`);
@@ -1023,6 +1034,8 @@ export default function BraintreeAUDPage() {
                           { id: "payment_method", label: "Payment Method" },
                           { id: "merchant_account_id", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
+                          { id: "settlement_batch_id", label: "🔑 Settlement Batch ID" },
+                          { id: "settlement_date", label: "🏦 Settlement Date" },
                           { id: "settlement_amount", label: "Settlement Amount" },
                         ].map((column) => (
                           <div
@@ -1375,6 +1388,28 @@ export default function BraintreeAUDPage() {
                           </button>
                         </th>
                       )}
+                      {visibleColumns.has("settlement_batch_id") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("settlement_batch_id")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            🔑 Batch ID
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
+                      {visibleColumns.has("settlement_date") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("settlement_date")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            🏦 Settlement Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
                       {visibleColumns.has("settlement_amount") && (
                         <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
                           <button
@@ -1635,6 +1670,28 @@ export default function BraintreeAUDPage() {
                             {visibleColumns.has("disbursement_date") && (
                               <td className="py-3 px-4 text-sm">
                                 {row.disbursement_date ? formatDate(row.disbursement_date) : "N/A"}
+                              </td>
+                            )}
+                            {visibleColumns.has("settlement_batch_id") && (
+                              <td className="py-3 px-4 text-xs font-mono">
+                                {row.settlement_batch_id ? (
+                                  <span className="text-gray-700 dark:text-gray-300" title={row.settlement_batch_id}>
+                                    {row.settlement_batch_id.substring(0, 16)}...
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">N/A</span>
+                                )}
+                              </td>
+                            )}
+                            {visibleColumns.has("settlement_date") && (
+                              <td className="py-3 px-4 text-sm">
+                                {row.settlement_date ? (
+                                  <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">
+                                    {formatTimestamp(new Date(row.settlement_date))}
+                                  </span>
+                                ) : (
+                                  <span className="text-gray-400">Not settled</span>
+                                )}
                               </td>
                             )}
                             {visibleColumns.has("settlement_amount") && (

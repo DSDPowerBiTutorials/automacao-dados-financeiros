@@ -84,6 +84,11 @@ interface BraintreeUSDRow {
   disbursement_id?: string | null;
   settlement_batch_id?: string | null; // Formato: YYYY-MM-DD_merchant_uniqueid
 
+  // 🏦 Settlement Date (data precisa de confirmação do banco)
+  // Esta é a data em que o dinheiro oficialmente se torna seu (reduz risco de chargeback)
+  // Diferente de disbursement_date (quando dinheiro chega na conta)
+  settlement_date?: string | null;
+
   // 🏦 Informações do match bancário (reconciliação automática)
   bank_match_id?: string | null;
   bank_match_date?: string | null;
@@ -176,6 +181,7 @@ export default function BraintreeUSDPage() {
       "merchant_account_id",
       "disbursement_date",
       "settlement_batch_id",
+      "settlement_date",
       "settlement_amount",
       "settlement_currency_iso_code",
       "settlement_currency_exchange_rate",
@@ -574,6 +580,7 @@ export default function BraintreeUSDPage() {
           settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
           settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
           settlement_batch_id: row.custom_data?.settlement_batch_id,
+          settlement_date: row.custom_data?.settlement_date,
 
           // 🔑 ID do payout agrupado
           disbursement_id: row.custom_data?.disbursement_id,
@@ -1193,6 +1200,7 @@ export default function BraintreeUSDPage() {
                           { id: "merchant_account_id", label: "Merchant Account" },
                           { id: "disbursement_date", label: "Disbursement Date" },
                           { id: "settlement_batch_id", label: "🔑 Settlement Batch ID" },
+                          { id: "settlement_date", label: "🏦 Settlement Date" },
                           { id: "settlement_amount", label: "Settlement Amount" },
                           { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
                           { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
@@ -1691,6 +1699,17 @@ export default function BraintreeUSDPage() {
                           </button>
                         </th>
                       )}
+                      {visibleColumns.has("settlement_date") && (
+                        <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
+                          <button
+                            onClick={() => toggleSort("settlement_date")}
+                            className="flex items-center gap-1 hover:text-blue-600"
+                          >
+                            🏦 Settlement Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                        </th>
+                      )}
                       {visibleColumns.has("disbursement_id") && (
                         <th className="border px-2 py-2 bg-gray-100 text-xs font-medium text-gray-700">
                           Disbursement ID
@@ -2011,6 +2030,19 @@ export default function BraintreeUSDPage() {
                                     </span>
                                   ) : (
                                     <span className="text-gray-400">N/A</span>
+                                  )}
+                                </td>
+                              )
+                            }
+                            {
+                              visibleColumns.has("settlement_date") && (
+                                <td className="py-3 px-4 text-sm">
+                                  {row.settlement_date ? (
+                                    <span className="text-gray-700 dark:text-gray-300 font-mono text-xs">
+                                      {formatTimestamp(new Date(row.settlement_date))}
+                                    </span>
+                                  ) : (
+                                    <span className="text-gray-400">Not settled</span>
                                   )}
                                 </td>
                               )
