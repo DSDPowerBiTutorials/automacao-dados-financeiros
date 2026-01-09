@@ -24,6 +24,8 @@ import {
   DollarSign,
   FileText,
   Key,
+  ChevronDown, // 🆕
+  ChevronRight, // 🆕
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -208,6 +210,11 @@ export default function BraintreeEURPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
   const [disbursementFilter, setDisbursementFilter] = useState<string>("");
 
+  // 🆕 Settlement Batch grouping
+  const [settlementBatches, setSettlementBatches] = useState<Map<string, BraintreeEURRow[]>>(new Map());
+  const [expandedSettlementBatches, setExpandedSettlementBatches] = useState<Set<string>>(new Set());
+  const [settlementBatchFilter, setSettlementBatchFilter] = useState<string>("");
+
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [amountFilter, setAmountFilter] = useState<{
@@ -336,6 +343,17 @@ export default function BraintreeEURPage() {
       newExpanded.add(disbursementId);
     }
     setExpandedGroups(newExpanded);
+  };
+
+  // 🆕 Função para toggle de settlement batch
+  const toggleSettlementBatch = (batchId: string) => {
+    const newExpanded = new Set(expandedSettlementBatches);
+    if (newExpanded.has(batchId)) {
+      newExpanded.delete(batchId);
+    } else {
+      newExpanded.add(batchId);
+    }
+    setExpandedSettlementBatches(newExpanded);
   };
 
   // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
@@ -601,6 +619,29 @@ export default function BraintreeEURPage() {
 
       console.log(`[Braintree EUR] Mapped ${mappedRows.length} rows`);
 
+      // 🆕 AGRUPAR POR SETTLEMENT BATCH ID
+      const batchGroups = new Map<string, BraintreeEURRow[]>();
+
+      mappedRows.forEach(row => {
+        const batchId = row.settlement_batch_id || 'no-batch';
+        if (!batchGroups.has(batchId)) {
+          batchGroups.set(batchId, []);
+        }
+        batchGroups.get(batchId)!.push(row);
+      });
+
+      console.log(`[Braintree EUR] Found ${batchGroups.size} settlement batches`);
+
+      // Log detalhes dos batches
+      batchGroups.forEach((rows, batchId) => {
+        if (batchId !== 'no-batch') {
+          const totalAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+          console.log(`[Batch ${batchId}] ${rows.length} transactions, Total: €${totalAmount.toFixed(2)}`);
+        }
+      });
+
+      setSettlementBatches(batchGroups);
+
       // 🆕 RECONCILIAÇÃO AUTOMÁTICA (DESABILITADA)
       // EUR geralmente deposita em Bankinter EUR (same currency)
       // Quando habilitado, use: reconcileWithBank(mappedRows, 'bankinter-eur', 'Bankinter EUR')
@@ -859,6 +900,15 @@ export default function BraintreeEURPage() {
           }
         }
 
+        // 🆕 Filtro de settlement batch
+        if (settlementBatchFilter && settlementBatchFilter !== "all") {
+          if (settlementBatchFilter === "no-batch") {
+            if (row.settlement_batch_id) return false;
+          } else if (row.settlement_batch_id !== settlementBatchFilter) {
+            return false;
+          }
+        }
+
         return true;
       });
 
@@ -896,12 +946,23 @@ export default function BraintreeEURPage() {
         (r.disbursement_id || 'ungrouped') === disbursementId
       ) === index;
 
+      // 🆕 Informações de Settlement Batch
+      const batchId = row.settlement_batch_id || 'no-batch';
+      const batchRows = settlementBatches.get(batchId) || [];
+      const batchSize = batchRows.length;
+      const batchTotal = batchRows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+      const isFirstInBatch = array.findIndex((r) => (r.settlement_batch_id || 'no-batch') === batchId) === index;
+
       return {
         ...row,
         _groupSize: groupSize,
         _groupTotal: groupTotal,
         _isGroupExpanded: expandedGroups.has(disbursementId),
         _isFirstInGroup: isFirstInGroup,
+        _batchSize: batchSize,
+        _batchTotal: batchTotal,
+        _isBatchExpanded: expandedSettlementBatches.has(batchId),
+        _isFirstInBatch: isFirstInBatch,
       };
     });
 
@@ -928,6 +989,7 @@ export default function BraintreeEURPage() {
         case "payment_method":
         case "merchant_account_id":
         case "destinationAccount":
+        case "settlement_batch_id":
           const aValue = (a[sortField] || "").toString();
           const bValue = (b[sortField] || "").toString();
           comparison = aValue.localeCompare(bValue);
@@ -950,6 +1012,11 @@ export default function BraintreeEURPage() {
     dateFilters,
     sortField,
     sortDirection,
+    disbursementFilter,
+    settlementBatchFilter,
+    settlementBatches,
+    expandedSettlementBatches,
+    expandedGroups,
   ]);
 
   // Paginação (memoizada para evitar recálculos)

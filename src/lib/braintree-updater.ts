@@ -1,4 +1,5 @@
-import { supabase, supabaseAdmin } from "@/lib/supabase";
+import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 interface BraintreeTransaction {
     transaction_id: string;
@@ -6,6 +7,7 @@ interface BraintreeTransaction {
     disbursement_id?: string | null;
     disbursement_date?: string | null;
     settlement_amount?: number | null;
+    settlement_batch_id?: string | null; // 🆕 Settlement Batch ID
     created_at?: string;
     amount?: number;
     customer_name?: string;
@@ -100,7 +102,8 @@ export async function upsertBraintreeTransaction(
             existingRow.custom_data?.status !== transaction.status ||
             existingRow.custom_data?.disbursement_id !== transaction.disbursement_id ||
             existingRow.custom_data?.disbursement_date !== transaction.disbursement_date ||
-            existingRow.custom_data?.settlement_amount !== transaction.settlement_amount;
+            existingRow.custom_data?.settlement_amount !== transaction.settlement_amount ||
+            existingRow.custom_data?.settlement_batch_id !== transaction.settlement_batch_id; // 🆕
 
         if (!hasChanges) {
             return { success: true, action: "skipped", reason: "No changes detected" };

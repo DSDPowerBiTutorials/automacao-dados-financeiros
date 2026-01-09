@@ -98,6 +98,17 @@ export async function POST(req: NextRequest) {
 
       // 1️⃣ RECEITA - Registro principal da transação (Contas a Receber)
       const transactionDate = new Date(transaction.createdAt);
+
+      // 🔑 GERAR SETTLEMENT BATCH ID
+      // Formato: YYYY-MM-DD_merchantAccount_uniqueId
+      let settlement_batch_id: string | null = null;
+      if (transaction.disbursementDetails?.disbursementDate) {
+        const disbDate = new Date(transaction.disbursementDetails.disbursementDate);
+        const dateStr = disbDate.toISOString().split('T')[0]; // YYYY-MM-DD
+        const merchantAccount = transaction.merchantAccountId || 'unknown';
+        const uniqueId = transaction.disbursementDetails.disbursementId || transaction.id;
+        settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
+      }
       const revenueRow = {
         // ✅ ID único com currency prefix para evitar colisões
         id: `braintree-rev-${txCurrency}-${transaction.id}`,
@@ -135,10 +146,18 @@ export async function POST(req: NextRequest) {
 
           // 🔑 ID do disbursement (agrupa transações pagas juntas no mesmo payout)
           disbursement_id: transaction.disbursementDetails?.disbursementId || null,
+
+          // 🔑 Settlement Batch ID (formato: YYYY-MM-DD_merchantAccount_uniqueId)
+          settlement_batch_id: settlement_batch_id,
         },
       };
 
       rowsToInsert.push(revenueRow);
+
+      // Log para debug
+      if (settlement_batch_id) {
+        console.log(`[Transaction ${transaction.id}] Settlement Batch ID: ${settlement_batch_id}`);
+      }
 
       // 2️⃣ FEE - Registro do fee do Braintree (Contas a Pagar)
       const fee = calculateTransactionFee(transaction);
@@ -245,10 +264,10 @@ export async function POST(req: NextRequest) {
 
     await updateSyncMetadata({
       source,
-      lastSyncAt: new Date(),
-      mostRecentRecordDate: transactions.length > 0 ? new Date(transactions[0].createdAt) : new Date(),
-      totalRecords: revenueInserted,
-      lastSyncStatus: 'success',
+      syncType: 'api',
+      recordsAdded: revenueInserted,
+      lastRecordDate: transactions.length > 0 ? new Date(transactions[0].createdAt) : new Date(),
+      status: 'success',
     });
 
     return NextResponse.json({
@@ -391,30 +410,46 @@ async function handleUpdateMode(params: {
   }
 
   // Converter para formato de upsert
-  const transactionsData = transactions.map((tx) => ({
-    transaction_id: tx.id,
-    status: tx.status,
-    type: tx.type,
-    amount: parseFloat(tx.amount),
-    currency: tx.currencyIsoCode,
-    customer_name: getCustomerName(tx),
-    customer_email: tx.customer?.email,
-    payment_method: getPaymentMethod(tx),
-    merchant_account_id: tx.merchantAccountId,
-    created_at: tx.createdAt.toISOString(),
-    settlement_amount: tx.disbursementDetails?.settlementAmount
-      ? parseFloat(tx.disbursementDetails.settlementAmount)
-      : null,
-    disbursement_id: tx.disbursementDetails?.disbursementDate
-      ? `${tx.merchantAccountId}-${tx.disbursementDetails.disbursementDate}`
-      : null,
-    disbursement_date: tx.disbursementDetails?.disbursementDate || null,
-    service_fee_amount: tx.serviceFeeAmount ? parseFloat(tx.serviceFeeAmount) : 0,
-    processing_fee: 0, // Calcular se necessário
-    merchant_account_fee: 0,
-    discount_amount: tx.discountAmount ? parseFloat(tx.discountAmount) : 0,
-    tax_amount: tx.taxAmount ? parseFloat(tx.taxAmount) : 0,
-  }));
+  const transactionsData = transactions.map((tx) => {
+    // 🔑 GERAR SETTLEMENT BATCH ID
+    // Formato: YYYY-MM-DD_merchantAccount_uniqueId
+    let settlement_batch_id: string | null = null;
+    if (tx.disbursementDetails?.disbursementDate) {
+      const disbDate = new Date(tx.disbursementDetails.disbursementDate);
+      const dateStr = disbDate.toISOString().split('T')[0]; // YYYY-MM-DD
+      const merchantAccount = tx.merchantAccountId || 'unknown';
+      const uniqueId = tx.disbursementDetails.disbursementId || tx.id;
+      settlement_batch_id = `${dateStr}_${merchantAccount}_${uniqueId}`;
+    }
+
+    return {
+      transaction_id: tx.id,
+      status: tx.status,
+      type: tx.type,
+      amount: parseFloat(tx.amount),
+      currency: tx.currencyIsoCode,
+      customer_name: getCustomerName(tx),
+      customer_email: tx.customer?.email,
+      payment_method: getPaymentMethod(tx),
+      merchant_account_id: tx.merchantAccountId,
+      created_at: tx.createdAt.toISOString(),
+      settlement_amount: tx.disbursementDetails?.settlementAmount
+        ? parseFloat(tx.disbursementDetails.settlementAmount)
+        : null,
+      disbursement_id: tx.disbursementDetails?.disbursementDate
+        ? `${tx.merchantAccountId}-${tx.disbursementDetails.disbursementDate}`
+        : null,
+      disbursement_date: tx.disbursementDetails?.disbursementDate
+        ? new Date(tx.disbursementDetails.disbursementDate).toISOString()
+        : null,
+      settlement_batch_id: settlement_batch_id, // 🆕 Settlement Batch ID
+      service_fee_amount: tx.serviceFeeAmount ? parseFloat(tx.serviceFeeAmount) : 0,
+      processing_fee: 0, // Calcular se necessário
+      merchant_account_fee: 0,
+      discount_amount: 0, // Não disponível na API
+      tax_amount: 0, // Não disponível na API
+    };
+  });
 
   // Processar em lotes
   const batchSize = 50;
