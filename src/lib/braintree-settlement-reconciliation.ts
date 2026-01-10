@@ -105,7 +105,7 @@ async function findBankMatch(
             .from('csv_rows')
             .select('*')
             .eq('source', bankSource)
-            .eq('reconciled', false) // Apenas não conciliados
+            .or('reconciled.is.null,reconciled.eq.false') // inclui null como não conciliado
             .gte('date', startDate)
             .lte('date', endDate);
 
