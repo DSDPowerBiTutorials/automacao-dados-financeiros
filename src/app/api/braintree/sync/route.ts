@@ -115,9 +115,6 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Caso contrário, usar modo legacy
-    return handleLegacySync({ startDate, endDate, currency });
-
     // Validações
     if (!startDate || !endDate) {
       return NextResponse.json(
@@ -683,47 +680,5 @@ async function handleUpdateMode(params: {
     success: true,
     message: `${updateType === "force" ? "Force" : "Safe"} update completed: ${totalResults.created} new, ${totalResults.updated} updated${totalResults.reconciled_preserved > 0 ? `, ${totalResults.reconciled_preserved} reconciliations preserved` : ""}`,
     stats: totalResults,
-  });
-}
-
-/**
- * Modo Legacy: Sync tradicional por intervalo de datas
- */
-async function handleLegacySync(params: {
-  startDate: string;
-  endDate: string;
-  currency: string;
-}): Promise<NextResponse> {
-  const { startDate, endDate, currency } = params;
-
-  // Validações
-  if (!startDate || !endDate) {
-    return NextResponse.json(
-      { error: "startDate e endDate são obrigatórios" },
-      { status: 400 }
-    );
-  }
-
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-
-  if (isNaN(start.getTime()) || isNaN(end.getTime())) {
-    return NextResponse.json(
-      { error: "Datas inválidas. Use formato YYYY-MM-DD" },
-      { status: 400 }
-    );
-  }
-
-  console.log(`[Braintree Sync] Legacy mode: ${startDate} to ${endDate}`);
-
-  const transactions = await searchTransactions(start, end);
-
-  // Continuar com lógica existente...
-  // (o resto do código legacy permanece inalterado)
-
-  return NextResponse.json({
-    success: true,
-    message: "Legacy sync completed",
-    count: transactions.length,
   });
 }
