@@ -123,8 +123,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const start = new Date(`${startDate}T00:00:00Z`);
+    const end = new Date(`${endDate}T23:59:59Z`);
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return NextResponse.json(

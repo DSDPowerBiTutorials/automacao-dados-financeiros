@@ -5,26 +5,43 @@
  */
 export function formatDate(dateString: string): string {
   if (!dateString) return "";
+  // Datas YYYY-MM-DD não devem sofrer deslocamento de fuso
+  const simpleMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (simpleMatch) {
+    const [, y, m, d] = simpleMatch;
+    return `${d}/${m}/${y}`;
+  }
 
-  // Tenta parsear a data
-  const date = new Date(dateString);
+  // Tenta parsear preservando UTC para evitar shift de timezone
+  const parsed = parseDateUTC(dateString);
 
-  // Verifica se é uma data válida
-  if (isNaN(date.getTime())) {
-    // Se não conseguir parsear, tenta extrair DD/MM/YYYY do próprio string
+  if (Number.isNaN(parsed.getTime())) {
     const match = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
     if (match) {
       const [, day, month, year] = match;
       return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
     }
-    return dateString; // Retorna original se não conseguir formatar
+    return dateString;
   }
 
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
+  const day = String(parsed.getUTCDate()).padStart(2, "0");
+  const month = String(parsed.getUTCMonth() + 1).padStart(2, "0");
+  const year = parsed.getUTCFullYear();
 
   return `${day}/${month}/${year}`;
+}
+
+/**
+ * Parseia uma data como UTC, evitando deslocamentos por fuso horário local.
+ */
+export function parseDateUTC(dateString: string): Date {
+  const simple = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (simple) {
+    const [, y, m, d] = simple;
+    return new Date(Date.UTC(Number(y), Number(m) - 1, Number(d)));
+  }
+
+  return new Date(dateString);
 }
 
 /**

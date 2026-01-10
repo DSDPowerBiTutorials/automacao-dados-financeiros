@@ -13,6 +13,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { parseDateUTC } from "@/lib/formatters";
 import { SupabaseClient } from "@supabase/supabase-js";
 
 interface SettlementBatch {
@@ -74,8 +75,8 @@ function resolveDisbursementDate(t: any): string | undefined {
  * Adicionar/subtrair dias de uma data
  */
 function addDays(dateStr: string, days: number): string {
-    const date = new Date(dateStr);
-    date.setDate(date.getDate() + days);
+    const date = parseDateUTC(dateStr);
+    date.setUTCDate(date.getUTCDate() + days);
     return date.toISOString().split('T')[0];
 }
 
