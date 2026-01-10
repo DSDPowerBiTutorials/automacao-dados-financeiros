@@ -163,6 +163,12 @@ const destinationAccountColors: {
   },
 };
 
+// Safely coerce values to numbers to avoid toFixed on non-numeric inputs
+const toNumber = (value: any, fallback = 0) => {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 export default function BraintreeEURPage() {
   const [rows, setRows] = useState<BraintreeEURRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -735,7 +741,7 @@ export default function BraintreeEURPage() {
             id: row.id,
             date: row.date,
             description: row.description || "",
-            amount: parseFloat(row.amount) || 0,
+            amount: toNumber(row.amount, 0),
             conciliado: (row as any).reconciled ?? row.custom_data?.conciliado ?? false,
             destinationAccount: row.custom_data?.destinationAccount || null,
             reconciliationType: row.custom_data?.reconciliationType || ((row as any).reconciled ? "automatic" : null),
@@ -754,10 +760,16 @@ export default function BraintreeEURPage() {
             created_at: row.custom_data?.created_at,
             updated_at: row.custom_data?.updated_at,
             disbursement_date: row.custom_data?.disbursement_date || (row as any).disbursement_date,
-            settlement_amount: row.custom_data?.settlement_amount || (row as any).settlement_amount || row.amount,
+            settlement_amount: toNumber(
+              row.custom_data?.settlement_amount ?? (row as any).settlement_amount ?? row.amount,
+              0
+            ),
             settlement_currency: row.custom_data?.settlement_currency,
             settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
-            settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
+            settlement_currency_exchange_rate:
+              row.custom_data?.settlement_currency_exchange_rate != null
+                ? toNumber(row.custom_data?.settlement_currency_exchange_rate, 1)
+                : null,
             settlement_batch_id: row.custom_data?.settlement_batch_id || (row as any).settlement_batch_id,
             settlement_date: settlementDate, // 🆕 Agora usa a variável com extração do batch_id
 
@@ -767,19 +779,46 @@ export default function BraintreeEURPage() {
             // 🏦 Informações do match bancário
             bank_match_id: row.custom_data?.bank_match_id,
             bank_match_date: row.custom_data?.bank_match_date,
-            bank_match_amount: row.custom_data?.bank_match_amount,
+            bank_match_amount:
+              row.custom_data?.bank_match_amount != null
+                ? toNumber(row.custom_data?.bank_match_amount, 0)
+                : null,
             bank_match_description: row.custom_data?.bank_match_description,
 
             // 💰 FEES E DEDUÇÕES
-            service_fee_amount: row.custom_data?.service_fee_amount,
-            discount_amount: row.custom_data?.discount_amount,
-            tax_amount: row.custom_data?.tax_amount,
+            service_fee_amount:
+              row.custom_data?.service_fee_amount != null
+                ? toNumber(row.custom_data?.service_fee_amount, 0)
+                : null,
+            discount_amount:
+              row.custom_data?.discount_amount != null
+                ? toNumber(row.custom_data?.discount_amount, 0)
+                : null,
+            tax_amount:
+              row.custom_data?.tax_amount != null
+                ? toNumber(row.custom_data?.tax_amount, 0)
+                : null,
             refunded_transaction_id: row.custom_data?.refunded_transaction_id,
-            merchant_account_fee: row.custom_data?.merchant_account_fee,
-            processing_fee: row.custom_data?.processing_fee,
-            authorization_adjustment: row.custom_data?.authorization_adjustment,
-            dispute_amount: row.custom_data?.dispute_amount,
-            reserve_amount: row.custom_data?.reserve_amount,
+            merchant_account_fee:
+              row.custom_data?.merchant_account_fee != null
+                ? toNumber(row.custom_data?.merchant_account_fee, 0)
+                : null,
+            processing_fee:
+              row.custom_data?.processing_fee != null
+                ? toNumber(row.custom_data?.processing_fee, 0)
+                : null,
+            authorization_adjustment:
+              row.custom_data?.authorization_adjustment != null
+                ? toNumber(row.custom_data?.authorization_adjustment, 0)
+                : null,
+            dispute_amount:
+              row.custom_data?.dispute_amount != null
+                ? toNumber(row.custom_data?.dispute_amount, 0)
+                : null,
+            reserve_amount:
+              row.custom_data?.reserve_amount != null
+                ? toNumber(row.custom_data?.reserve_amount, 0)
+                : null,
           };
         });
 
@@ -801,7 +840,10 @@ export default function BraintreeEURPage() {
       // Log detalhes dos batches
       batchGroups.forEach((rows, batchId) => {
         if (batchId !== 'no-batch') {
-          const totalAmount = rows.reduce((sum, r) => sum + (r.settlement_amount || r.amount), 0);
+          const totalAmount = rows.reduce(
+            (sum, r) => sum + toNumber(r.settlement_amount ?? r.amount, 0),
+            0
+          );
           console.log(`[Batch ${batchId}] ${rows.length} transactions, Total: €${totalAmount.toFixed(2)}`);
         }
       });
@@ -978,7 +1020,7 @@ export default function BraintreeEURPage() {
             row.id.substring(0, 8) + "...",
             formatDate(row.date),
             `"${row.description.replace(/"/g, '""')}"`,
-            row.amount.toFixed(2),
+            toNumber(row.amount, 0).toFixed(2),
             row.destinationAccount || "",
             row.conciliado ? "Yes" : "No",
           ].join(","),
@@ -2325,13 +2367,21 @@ export default function BraintreeEURPage() {
                             )}
                             {visibleColumns.has("settlement_currency_exchange_rate") && (
                               <td className="py-3 px-4 text-right text-sm">
-                                {row.settlement_currency_exchange_rate && row.settlement_currency_exchange_rate !== 1.0 ? (
-                                  <span className="text-blue-600 dark:text-blue-400 font-mono">
-                                    {row.settlement_currency_exchange_rate.toFixed(5)}
-                                  </span>
-                                ) : (
-                                  <span className="text-gray-400">1.00000</span>
-                                )}
+                                {(() => {
+                                  const rate = row.settlement_currency_exchange_rate != null
+                                    ? toNumber(row.settlement_currency_exchange_rate, 1)
+                                    : null;
+
+                                  if (rate && rate !== 1) {
+                                    return (
+                                      <span className="text-blue-600 dark:text-blue-400 font-mono">
+                                        {rate.toFixed(5)}
+                                      </span>
+                                    );
+                                  }
+
+                                  return <span className="text-gray-400">1.00000</span>;
+                                })()}
                               </td>
                             )}
                             {visibleColumns.has("customer_name") && (

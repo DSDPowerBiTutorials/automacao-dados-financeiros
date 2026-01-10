@@ -8,7 +8,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
-import { updateSyncMetadata } from "@/lib/sync-metadata";
+// updateSyncMetadata referenciava colunas ausentes (last_api_sync) em sync_metadata; desabilitado para evitar 500
 import {
   searchTransactions,
   calculateTransactionFee,
@@ -414,27 +414,6 @@ export async function POST(req: NextRequest) {
     const totalFees = Math.abs(
       feeRowsToInsert.reduce((sum, row) => sum + row.amount, 0)
     );
-
-    // Atualizar sync_metadata
-    const source = currency === 'EUR' ? 'braintree-eur' :
-      currency === 'USD' ? 'braintree-usd' :
-        'braintree-amex';
-
-    await updateSyncMetadata({
-      source,
-      syncType: 'api',
-      recordsAdded: revenueInserted,
-      lastRecordDate: transactions.length > 0
-        ? (() => {
-          try {
-            return new Date(transactions[0].createdAt);
-          } catch {
-            return new Date();
-          }
-        })()
-        : new Date(),
-      status: 'success',
-    });
 
     return NextResponse.json({
       success: true,
