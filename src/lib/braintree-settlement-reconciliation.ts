@@ -34,6 +34,43 @@ interface BankMatch {
 }
 
 /**
+ * Resolve o valor líquido que realmente liquida no banco (disbursement/net)
+ */
+function resolvePayoutAmount(t: any): number {
+    const cd = t.custom_data || {};
+    const candidates = [
+        cd.settlement_disbursement_amount,
+        cd.settlement_disbursement_total,
+        cd.disbursement_settlement_amount,
+        cd.disbursement_total_amount,
+        cd.disbursement_amount,
+        cd.settlement_amount,
+        t.settlement_amount,
+        t.amount,
+    ];
+
+    const found = candidates
+        .map((v) => (typeof v === 'string' ? parseFloat(v) : v))
+        .find((v) => typeof v === 'number' && !Number.isNaN(v));
+
+    return Math.abs(found ?? 0);
+}
+
+/**
+ * Resolve a data de liquidação/disbursement
+ */
+function resolveDisbursementDate(t: any): string | undefined {
+    const cd = t.custom_data || {};
+    const dateStr =
+        cd.disbursement_date ||
+        cd.settlement_date ||
+        t.disbursement_date ||
+        t.settlement_date;
+
+    return dateStr ? dateStr.split('T')[0] : undefined;
+}
+
+/**
  * Adicionar/subtrair dias de uma data
  */
 function addDays(dateStr: string, days: number): string {
@@ -273,11 +310,12 @@ export function prepareSettlementBatches(
     const batches: SettlementBatch[] = [];
 
     batchMap.forEach((txs, batchId) => {
-        const totalAmount = txs.reduce((sum, t) =>
-            sum + (t.settlement_amount || parseFloat(t.amount) || 0), 0
-        );
+        // Usa valor líquido que realmente cai no banco
+        const totalAmount = txs.reduce((sum, t) => sum + resolvePayoutAmount(t), 0);
 
-        const disbursementDate = txs[0]?.disbursement_date || txs[0]?.custom_data?.disbursement_date;
+        const disbursementDate =
+            resolveDisbursementDate(txs[0]) ||
+            batchId.split('_')[0]; // fallback: data no próprio batch_id
         const merchantAccount = txs[0]?.merchant_account_id || txs[0]?.custom_data?.merchant_account_id;
 
         if (!disbursementDate) {
