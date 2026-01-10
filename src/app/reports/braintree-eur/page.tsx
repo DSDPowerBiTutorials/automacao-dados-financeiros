@@ -821,42 +821,50 @@ export default function BraintreeEURPage() {
 
       console.log("[Braintree EUR] Data loaded successfully");
 
+      // Libera o spinner principal antes da conciliação automática
+      isLoadingRef.current = false;
+      setIsLoading(false);
+
       // Carregar última data de sync (sem bloquear)
       loadLastSyncDate().catch(err => console.error("[Braintree EUR] Error loading sync date:", err));
 
       // Disparar conciliação automática por settlement_batch_id (Bankinter EUR) via API server-side
       if (runReconcile && ENABLE_AUTO_RECONCILIATION && !isReconciling) {
-        try {
-          setIsReconciling(true);
-          const response = await fetch("/api/reconciliation/braintree-eur", {
-            method: "POST",
-          });
+        (async () => {
+          try {
+            setIsReconciling(true);
+            const response = await fetch("/api/reconciliation/braintree-eur", {
+              method: "POST",
+            });
 
-          const payload = await response.json();
+            const payload = await response.json();
 
-          if (!response.ok || !payload?.success) {
-            const errorMessage = payload?.error || response.statusText || "Unknown error";
-            setAutoReconcileSummary(`Auto-reconcile failed: ${errorMessage}`);
-          } else {
-            const { reconciled, total, failed } = payload.data || { reconciled: 0, total: 0, failed: 0 };
-            setAutoReconcileSummary(`Auto conciliated ${reconciled}/${total} batches (failures: ${failed})`);
-            // Recarrega dados para refletir reconciled/bank_match_* mesmo se já houver carregamento em andamento
-            await loadData({ runReconcile: false, force: true });
+            if (!response.ok || !payload?.success) {
+              const errorMessage = payload?.error || response.statusText || "Unknown error";
+              setAutoReconcileSummary(`Auto-reconcile failed: ${errorMessage}`);
+            } else {
+              const { reconciled, total, failed } = payload.data || { reconciled: 0, total: 0, failed: 0 };
+              setAutoReconcileSummary(`Auto conciliated ${reconciled}/${total} batches (failures: ${failed})`);
+              // Recarrega dados para refletir reconciled/bank_match_* mesmo se já houver carregamento em andamento
+              await loadData({ runReconcile: false, force: true });
+            }
+          } catch (reconcileError) {
+            console.error("[Braintree EUR] Auto-reconcile error:", reconcileError);
+            setAutoReconcileSummary("Auto-reconcile failed. See console.");
+          } finally {
+            setIsReconciling(false);
           }
-        } catch (reconcileError) {
-          console.error("[Braintree EUR] Auto-reconcile error:", reconcileError);
-          setAutoReconcileSummary("Auto-reconcile failed. See console.");
-        } finally {
-          setIsReconciling(false);
-        }
+        })();
       }
     } catch (error) {
       console.error("[Braintree EUR] Unexpected error:", error);
       setRows([]);
     } finally {
-      console.log("[Braintree EUR] Setting isLoading to false");
-      isLoadingRef.current = false;
-      setIsLoading(false);
+      if (isLoadingRef.current) {
+        console.log("[Braintree EUR] Forcing isLoading to false in finally");
+        isLoadingRef.current = false;
+        setIsLoading(false);
+      }
     }
   };
 
