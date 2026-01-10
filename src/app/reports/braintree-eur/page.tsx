@@ -261,7 +261,8 @@ export default function BraintreeEURPage() {
           const source = payload.new?.source || payload.old?.source;
           if (source && (source.includes('braintree-api') || source === 'braintree-eur')) {
             console.log('[Realtime Braintree EUR] ✅ Change detected:', payload.eventType, payload.new?.id);
-            loadData();
+            // Evitar loop de reconciliação a cada evento: não reexecuta auto reconcile aqui
+            loadData({ runReconcile: false });
           }
         }
       )
