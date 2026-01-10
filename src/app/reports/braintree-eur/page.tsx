@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   Download,
   Edit2,
@@ -610,8 +610,17 @@ export default function BraintreeEURPage() {
     }
   };
 
-  const loadData = async (options: { runReconcile?: boolean } = {}) => {
-    const { runReconcile = true } = options;
+  const isLoadingRef = useRef(false);
+
+  const loadData = async (options: { runReconcile?: boolean; force?: boolean } = {}) => {
+    const { runReconcile = true, force = false } = options;
+
+    if (isLoadingRef.current && !force) {
+      console.log("[Braintree EUR] loadData skipped: already running");
+      return;
+    }
+
+    isLoadingRef.current = true;
     console.log("[Braintree EUR] Starting loadData...");
     setIsLoading(true);
 
@@ -836,8 +845,8 @@ export default function BraintreeEURPage() {
           } else {
             const { reconciled, total, failed } = payload.data || { reconciled: 0, total: 0, failed: 0 };
             setAutoReconcileSummary(`Auto conciliated ${reconciled}/${total} batches (failures: ${failed})`);
-            // Recarrega dados para refletir reconciled/bank_match_*
-            await loadData({ runReconcile: false });
+            // Recarrega dados para refletir reconciled/bank_match_* mesmo se já houver carregamento em andamento
+            await loadData({ runReconcile: false, force: true });
           }
         } catch (reconcileError) {
           console.error("[Braintree EUR] Auto-reconcile error:", reconcileError);
@@ -851,6 +860,7 @@ export default function BraintreeEURPage() {
       setRows([]);
     } finally {
       console.log("[Braintree EUR] Setting isLoading to false");
+      isLoadingRef.current = false;
       setIsLoading(false);
     }
   };
