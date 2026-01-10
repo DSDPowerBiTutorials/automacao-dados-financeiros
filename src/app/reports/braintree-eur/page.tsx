@@ -639,6 +639,10 @@ export default function BraintreeEURPage() {
         .from("csv_rows")
         .select("*")
         .or("source.eq.braintree-api-revenue,source.eq.braintree-eur")
+        // Garantir apenas EUR: currencyIsoCode ou merchant com sufixo EUR
+        .or(
+          "custom_data->>currencyIsoCode.eq.EUR,custom_data->>currency_iso_code.eq.EUR,custom_data->>merchant_account_id.ilike.%EUR%"
+        )
         .gte("date", "2024-01-01")
         .order("date", { ascending: false });
 
@@ -658,31 +662,22 @@ export default function BraintreeEURPage() {
 
       const mappedRows: BraintreeEURRow[] = rowsData
         .filter((row) => {
-          // Aceitar todas as linhas de braintree-api-revenue e braintree-api-fees
-          if (row.source === 'braintree-api-revenue' || row.source === 'braintree-api-fees') {
-            const merchantAccount = row.custom_data?.merchant_account_id;
-            const currency = row.custom_data?.currency;
+          const merchantAccount = row.custom_data?.merchant_account_id;
+          const currencyIsoCode = row.custom_data?.currencyIsoCode || row.custom_data?.currency_iso_code;
+          const currency = currencyIsoCode || row.custom_data?.currency || row.currency;
 
-            // Aceitar se:
-            // 1. Currency é EUR
-            // 2. Merchant é digitalsmiledesignEUR
-            // 3. Não tem merchant definido (dados antigos)
-            const isEUR = currency === 'EUR' || merchantAccount === 'digitalsmiledesignEUR' || !merchantAccount;
+          const isEUR = currency === 'EUR' || (merchantAccount && merchantAccount.toLowerCase().includes('eur'));
 
-            if (!isEUR && rowsData.indexOf(row) < 5) {
-              console.log('[DEBUG Filter] Rejecting:', {
-                id: row.id,
-                source: row.source,
-                merchant: merchantAccount,
-                currency
-              });
-            }
-
-            return isEUR;
+          if (!isEUR && rowsData.indexOf(row) < 5) {
+            console.log('[DEBUG Filter] Rejecting:', {
+              id: row.id,
+              source: row.source,
+              merchant: merchantAccount,
+              currency,
+            });
           }
 
-          // Aceitar source antiga (braintree-eur)
-          return row.source === "braintree-eur";
+          return isEUR;
         })
         .map((row) => {
           // 🔍 DEBUG: Log para verificar settlement_batch_id
@@ -750,7 +745,7 @@ export default function BraintreeEURPage() {
             status: row.custom_data?.status,
             status_history: row.custom_data?.status_history || [],
             type: row.custom_data?.type,
-            currency: row.custom_data?.currency,
+            currency: row.custom_data?.currencyIsoCode || row.custom_data?.currency_iso_code || row.custom_data?.currency || row.currency || "EUR",
             customer_id: row.custom_data?.customer_id,
             customer_name: row.custom_data?.customer_name,
             customer_email: row.custom_data?.customer_email,
@@ -758,12 +753,12 @@ export default function BraintreeEURPage() {
             merchant_account_id: row.custom_data?.merchant_account_id,
             created_at: row.custom_data?.created_at,
             updated_at: row.custom_data?.updated_at,
-            disbursement_date: row.custom_data?.disbursement_date,
-            settlement_amount: row.custom_data?.settlement_amount,
+            disbursement_date: row.custom_data?.disbursement_date || (row as any).disbursement_date,
+            settlement_amount: row.custom_data?.settlement_amount || (row as any).settlement_amount || row.amount,
             settlement_currency: row.custom_data?.settlement_currency,
             settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
             settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
-            settlement_batch_id: row.custom_data?.settlement_batch_id,
+            settlement_batch_id: row.custom_data?.settlement_batch_id || (row as any).settlement_batch_id,
             settlement_date: settlementDate, // 🆕 Agora usa a variável com extração do batch_id
 
             // 🔑 ID do payout agrupado
