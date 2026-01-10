@@ -205,7 +205,7 @@ export default function BraintreeUpdatePendingButton() {
                                     </AlertDescription>
                                 </Alert>
                                 <p className="text-sm text-gray-600">
-                                    <strong>Recommendation:</strong> Use regular "Update Pending" instead.
+                                    <strong>Recommendation:</strong> Use regular &quot;Update Pending&quot; instead.
                                 </p>
                             </DialogDescription>
                         </DialogHeader>
@@ -287,8 +287,8 @@ export default function BraintreeUpdatePendingButton() {
                             <div className="bg-blue-50 p-3 rounded-lg border border-blue-200">
                                 <h4 className="font-semibold text-blue-800 mb-1">💡 Best Practice</h4>
                                 <p className="text-sm text-blue-700">
-                                    Use <strong>"Update Pending"</strong> when you notice missing disbursement_id or status updates.
-                                    Only use <strong>"Force Update"</strong> if you absolutely need to correct wrong data and understand
+                                    Use <strong>&quot;Update Pending&quot;</strong> when you notice missing disbursement_id or status updates.
+                                    Only use <strong>&quot;Force Update&quot;</strong> if you absolutely need to correct wrong data and understand
                                     that manual reconciliations will be lost.
                                 </p>
                             </div>

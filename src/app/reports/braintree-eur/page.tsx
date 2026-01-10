@@ -66,7 +66,6 @@ import BraintreeApiSync from "@/components/braintree/api-sync-button";
 import BraintreeUpdatePendingButton from "@/components/braintree/update-pending-button";
 import BraintreeSyncControls from "@/components/braintree/sync-controls";
 import { SyncStatusBadge } from "@/components/sync/SyncStatusBadge";
-import { reconcileWithBank } from "@/lib/braintree-reconciliation";
 
 interface BraintreeEURRow {
   id: string;
@@ -241,6 +240,8 @@ export default function BraintreeEURPage() {
   const [typeFilter, setTypeFilter] = useState<string>("");
   const [currencyFilter, setCurrencyFilter] = useState<string>("");
   const [paymentMethodFilter, setPaymentMethodFilter] = useState<string>("");
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [autoReconcileSummary, setAutoReconcileSummary] = useState<string | null>(null);
 
   useEffect(() => {
     loadData();
@@ -501,7 +502,7 @@ export default function BraintreeEURPage() {
   // ==========================================
   // DESABILITADO TEMPORARIAMENTE - Aguardando dados de bank statements
   // Quando houver dados do Bankinter, altere ENABLE_AUTO_RECONCILIATION para true
-  const ENABLE_AUTO_RECONCILIATION = false;
+  const ENABLE_AUTO_RECONCILIATION = true;
 
   // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
@@ -608,7 +609,8 @@ export default function BraintreeEURPage() {
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (options: { runReconcile?: boolean } = {}) => {
+    const { runReconcile = true } = options;
     console.log("[Braintree EUR] Starting loadData...");
     setIsLoading(true);
 
@@ -696,7 +698,7 @@ export default function BraintreeEURPage() {
 
           // 🆕 Extrair settlement_date do settlement_batch_id se não existir
           let settlementDate = row.custom_data?.settlement_date;
-          
+
           if (!settlementDate && row.custom_data?.settlement_batch_id) {
             // settlement_batch_id formato: "2026-01-09_digitalsmiledesignEUR_gr150wce"
             // Extrair a parte da data (primeiros 10 caracteres: YYYY-MM-DD)
@@ -729,9 +731,9 @@ export default function BraintreeEURPage() {
             date: row.date,
             description: row.description || "",
             amount: parseFloat(row.amount) || 0,
-            conciliado: row.custom_data?.conciliado || false,
+            conciliado: (row as any).reconciled ?? row.custom_data?.conciliado ?? false,
             destinationAccount: row.custom_data?.destinationAccount || null,
-            reconciliationType: row.custom_data?.reconciliationType || null,
+            reconciliationType: row.custom_data?.reconciliationType || ((row as any).reconciled ? "automatic" : null),
 
             // Campos adicionais da Braintree
             transaction_id: row.custom_data?.transaction_id,
@@ -801,10 +803,6 @@ export default function BraintreeEURPage() {
 
       setSettlementBatches(batchGroups);
 
-      // 🆕 RECONCILIAÇÃO AUTOMÁTICA (DESABILITADA)
-      // EUR geralmente deposita em Bankinter EUR (same currency)
-      // Quando habilitado, use: reconcileWithBank(mappedRows, 'bankinter-eur', 'Bankinter EUR')
-
       setRows(mappedRows);
 
       // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
@@ -820,6 +818,33 @@ export default function BraintreeEURPage() {
 
       // Carregar última data de sync (sem bloquear)
       loadLastSyncDate().catch(err => console.error("[Braintree EUR] Error loading sync date:", err));
+
+      // Disparar conciliação automática por settlement_batch_id (Bankinter EUR) via API server-side
+      if (runReconcile && ENABLE_AUTO_RECONCILIATION && !isReconciling) {
+        try {
+          setIsReconciling(true);
+          const response = await fetch("/api/reconciliation/braintree-eur", {
+            method: "POST",
+          });
+
+          const payload = await response.json();
+
+          if (!response.ok || !payload?.success) {
+            const errorMessage = payload?.error || response.statusText || "Unknown error";
+            setAutoReconcileSummary(`Auto-reconcile failed: ${errorMessage}`);
+          } else {
+            const { reconciled, total, failed } = payload.data || { reconciled: 0, total: 0, failed: 0 };
+            setAutoReconcileSummary(`Auto conciliated ${reconciled}/${total} batches (failures: ${failed})`);
+            // Recarrega dados para refletir reconciled/bank_match_*
+            await loadData({ runReconcile: false });
+          }
+        } catch (reconcileError) {
+          console.error("[Braintree EUR] Auto-reconcile error:", reconcileError);
+          setAutoReconcileSummary("Auto-reconcile failed. See console.");
+        } finally {
+          setIsReconciling(false);
+        }
+      }
     } catch (error) {
       console.error("[Braintree EUR] Unexpected error:", error);
       setRows([]);
@@ -1270,6 +1295,25 @@ export default function BraintreeEURPage() {
                 </Button>
               </div>
             </div>
+
+            {/* Status da conciliação automática */}
+            {ENABLE_AUTO_RECONCILIATION && (
+              <div className="mt-3 flex items-center gap-3 text-sm text-white/80">
+                <Badge variant="outline" className="border-emerald-300 text-emerald-50 bg-emerald-500/20">
+                  ⚡ Auto conciliação ativa
+                </Badge>
+                {isReconciling ? (
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Reconciling settlement batches with Bankinter EUR...</span>
+                  </div>
+                ) : autoReconcileSummary ? (
+                  <span>{autoReconcileSummary}</span>
+                ) : (
+                  <span>Será executada ao carregar os dados.</span>
+                )}
+              </div>
+            )}
 
             {saveSuccess && (
               <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
@@ -2161,8 +2205,8 @@ export default function BraintreeEURPage() {
                                                       }`}
                                                   >
                                                     <div className={`mt-1 h-2 w-2 rounded-full flex-shrink-0 ${isSettled ? 'bg-green-500' :
-                                                        isLatest ? 'bg-blue-500' :
-                                                          'bg-gray-400'
+                                                      isLatest ? 'bg-blue-500' :
+                                                        'bg-gray-400'
                                                       }`} />
                                                     <div className="flex-1 min-w-0">
                                                       <div className="flex items-center justify-between gap-2">

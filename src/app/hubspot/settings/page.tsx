@@ -467,7 +467,7 @@ export default function HubSpotSettingsPage() {
                 <AlertDescription className="text-blue-900">
                     <strong>Nota:</strong> As alterações nas configurações de sincronização
                     afetarão a próxima execução automática. Para sincronizar imediatamente,
-                    use o botão "Sincronizar" nas páginas específicas.
+                    use o botão &quot;Sincronizar&quot; nas páginas específicas.
                 </AlertDescription>
             </Alert>
         </div>

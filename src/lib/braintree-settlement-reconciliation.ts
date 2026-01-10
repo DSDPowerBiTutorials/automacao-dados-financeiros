@@ -13,6 +13,7 @@
 
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabase-admin";
+import { SupabaseClient } from "@supabase/supabase-js";
 
 interface SettlementBatch {
     batchId: string;
@@ -29,6 +30,7 @@ interface BankMatch {
     amount: number;
     description: string;
     source: string;
+    custom_data?: Record<string, any> | null;
 }
 
 /**
@@ -51,7 +53,8 @@ function isAmountMatch(amount1: number, amount2: number, tolerance = 0.10): bool
  * Busca transação correspondente no Bankinter
  */
 async function findBankMatch(
-    batch: SettlementBatch
+    batch: SettlementBatch,
+    client: SupabaseClient = supabaseAdmin || supabase
 ): Promise<BankMatch | null> {
     const bankSource = `bankinter-${batch.currency.toLowerCase()}`;
 
@@ -61,7 +64,7 @@ async function findBankMatch(
     console.log(`[Auto-Reconcile] Searching ${bankSource} between ${startDate} and ${endDate} for amount ${batch.totalAmount}`);
 
     try {
-        const { data: bankRows, error } = await supabase
+        const { data: bankRows, error } = await client
             .from('csv_rows')
             .select('*')
             .eq('source', bankSource)
@@ -93,6 +96,7 @@ async function findBankMatch(
                     amount: bankAmount,
                     description: row.description || '',
                     source: row.source,
+                    custom_data: row.custom_data || {},
                 };
             }
         }
@@ -109,11 +113,12 @@ async function findBankMatch(
  * Reconcilia um settlement batch com entrada bancária
  */
 export async function reconcileSettlementBatch(
-    batch: SettlementBatch
+    batch: SettlementBatch,
+    client: SupabaseClient = supabaseAdmin || supabase
 ): Promise<{ success: boolean; matchId?: string; error?: string }> {
     try {
         // 1. Buscar match no Bankinter
-        const bankMatch = await findBankMatch(batch);
+        const bankMatch = await findBankMatch(batch, client);
 
         if (!bankMatch) {
             return {
@@ -136,6 +141,8 @@ export async function reconcileSettlementBatch(
                         bank_match_date: bankMatch.date,
                         bank_match_amount: bankMatch.amount,
                         bank_match_description: bankMatch.description,
+                        settlement_batch_id: transaction.custom_data?.settlement_batch_id || batch.batchId,
+                        disbursement_date: transaction.custom_data?.disbursement_date || batch.disbursementDate,
                         reconciled_at: new Date().toISOString(),
                     }
                 })
@@ -164,11 +171,15 @@ export async function reconcileSettlementBatch(
             .update({
                 reconciled: true,
                 custom_data: {
-                    ...(bankMatch as any).custom_data || {},
+                    ...(bankMatch.custom_data || {}),
                     destinationAccount: `Braintree ${batch.currency}`,
+                    paymentSource: `Braintree ${batch.currency}`,
                     reconciliationType: 'automatic',
                     braintree_settlement_batch_id: batch.batchId,
                     braintree_transaction_count: batch.transactions.length,
+                    bank_match_amount: batch.totalAmount,
+                    bank_match_date: batch.disbursementDate,
+                    bank_match_description: `Settlement batch ${batch.batchId}`,
                     reconciled_at: new Date().toISOString(),
                 }
             })
@@ -202,7 +213,8 @@ export async function reconcileSettlementBatch(
  * Reconcilia múltiplos batches de uma vez
  */
 export async function reconcileAllSettlementBatches(
-    batches: SettlementBatch[]
+    batches: SettlementBatch[],
+    client: SupabaseClient = supabaseAdmin || supabase
 ): Promise<{
     total: number;
     reconciled: number;
@@ -214,7 +226,7 @@ export async function reconcileAllSettlementBatches(
     let failed = 0;
 
     for (const batch of batches) {
-        const result = await reconcileSettlementBatch(batch);
+        const result = await reconcileSettlementBatch(batch, client);
 
         results.push({
             batchId: batch.batchId,

@@ -708,7 +708,7 @@ export default function PleoReportPage() {
                                 <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-50" />
                                 <p>Nenhuma despesa encontrada</p>
                                 <p className="text-sm mt-2">
-                                    Clique em "Sincronizar Pleo" para importar despesas
+                                    Clique em &quot;Sincronizar Pleo&quot; para importar despesas
                                 </p>
                             </div>
                         )}

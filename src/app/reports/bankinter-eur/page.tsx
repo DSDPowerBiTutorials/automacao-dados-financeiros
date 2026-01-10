@@ -17,7 +17,11 @@ import {
   Zap,
   User,
   Filter,
-  RefreshCw
+  RefreshCw,
+  Calendar,
+  DollarSign,
+  FileText,
+  Key
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -66,6 +70,13 @@ interface BankinterEURRow {
   conciliado: boolean
   paymentSource?: string | null
   reconciliationType?: "automatic" | "manual" | null
+  destinationAccount?: string | null
+  braintreeSettlementBatchId?: string | null
+  braintreeTransactionCount?: number | null
+  reconciledAt?: string | null
+  bankMatchAmount?: number | null
+  bankMatchDate?: string | null
+  bankMatchDescription?: string | null
   custom_data?: {
     fecha_contable?: string | null
     debe?: number
@@ -150,9 +161,16 @@ export default function BankinterEURPage() {
           date: row.date,
           description: row.description || "",
           amount: parseFloat(row.amount) || 0,
-          conciliado: row.custom_data?.conciliado || false,
-          paymentSource: row.custom_data?.paymentSource || null,
-          reconciliationType: row.custom_data?.reconciliationType || null,
+          conciliado: (row as any).reconciled ?? row.custom_data?.conciliado ?? false,
+          paymentSource: row.custom_data?.paymentSource || row.custom_data?.destinationAccount || null,
+          reconciliationType: row.custom_data?.reconciliationType || ((row as any).reconciled ? "automatic" : null),
+          destinationAccount: row.custom_data?.destinationAccount || null,
+          braintreeSettlementBatchId: row.custom_data?.braintree_settlement_batch_id || null,
+          braintreeTransactionCount: row.custom_data?.braintree_transaction_count || null,
+          reconciledAt: row.custom_data?.reconciled_at || null,
+          bankMatchAmount: row.custom_data?.bank_match_amount || null,
+          bankMatchDate: row.custom_data?.bank_match_date || null,
+          bankMatchDescription: row.custom_data?.bank_match_description || null,
           custom_data: row.custom_data || {}
         }))
         setRows(mappedRows)
@@ -231,15 +249,23 @@ export default function BankinterEURPage() {
         amount: row.amount.toString(),
         category: "Other",
         classification: "Other",
-        reconciled: false,
+        reconciled: row.conciliado,
         custom_data: {
+          ...row.custom_data,
           id: row.id,
           date: row.date,
           description: row.description,
           amount: row.amount,
           conciliado: row.conciliado,
           paymentSource: row.paymentSource,
-          reconciliationType: row.reconciliationType
+          reconciliationType: row.reconciliationType,
+          destinationAccount: row.destinationAccount,
+          braintree_settlement_batch_id: row.braintreeSettlementBatchId,
+          braintree_transaction_count: row.braintreeTransactionCount,
+          reconciled_at: row.reconciledAt,
+          bank_match_amount: row.bankMatchAmount,
+          bank_match_date: row.bankMatchDate,
+          bank_match_description: row.bankMatchDescription
         }
       }))
 
@@ -292,14 +318,23 @@ export default function BankinterEURPage() {
             date: rowToUpdate.date,
             description: rowToUpdate.description,
             amount: rowToUpdate.amount.toString(),
+            reconciled: rowToUpdate.conciliado,
             custom_data: {
+              ...rowToUpdate.custom_data,
               id: rowToUpdate.id,
               date: rowToUpdate.date,
               description: rowToUpdate.description,
               amount: rowToUpdate.amount,
               conciliado: rowToUpdate.conciliado,
               paymentSource: rowToUpdate.paymentSource,
-              reconciliationType: rowToUpdate.reconciliationType
+              reconciliationType: rowToUpdate.reconciliationType,
+              destinationAccount: rowToUpdate.destinationAccount,
+              braintree_settlement_batch_id: rowToUpdate.braintreeSettlementBatchId,
+              braintree_transaction_count: rowToUpdate.braintreeTransactionCount,
+              reconciled_at: rowToUpdate.reconciledAt,
+              bank_match_amount: rowToUpdate.bankMatchAmount,
+              bank_match_date: rowToUpdate.bankMatchDate,
+              bank_match_description: rowToUpdate.bankMatchDescription
             }
           })
           .eq("id", rowToUpdate.id)
@@ -625,12 +660,12 @@ export default function BankinterEURPage() {
                 <AlertDescription className="text-red-800">
                   <div className="font-bold mb-2">⚠️ ATENÇÃO: Dados com formato incorreto detectados!</div>
                   <div className="text-sm space-y-1">
-                    <p>• Datas aparecendo como "1927-07-12" (Excel serial date não convertido)</p>
+                    <p>• Datas aparecendo como &quot;1927-07-12&quot; (Excel serial date não convertido)</p>
                     <p>• Valores monetários incorretos (ex: 8.121.793,00 ao invés de negativo)</p>
                     <p>• Colunas vazias (Fecha Contable, Clave, Referencia, etc.)</p>
                   </div>
                   <div className="mt-3 font-bold">
-                    ✅ Solução: Clique em "Delete All" acima e faça novo upload do arquivo XLSX
+                    ✅ Solução: Clique em &quot;Delete All&quot; acima e faça novo upload do arquivo XLSX
                   </div>
                 </AlertDescription>
               </Alert>
@@ -697,6 +732,7 @@ export default function BankinterEURPage() {
                       <th className="text-right py-4 px-4 font-bold text-sm text-black">Importe</th>
                       <th className="text-right py-4 px-4 font-bold text-sm text-black">Saldo</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-black">Payment Source</th>
+                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Braintree Batch</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-black">Reconciliado</th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-black">Actions</th>
                     </tr>
@@ -704,7 +740,7 @@ export default function BankinterEURPage() {
                   <tbody>
                     {filteredRows.length === 0 ? (
                       <tr>
-                        <td colSpan={14} className="py-8 text-center text-gray-500">
+                        <td colSpan={15} className="py-8 text-center text-gray-500">
                           No data available. Upload an XLSX file to get started.
                         </td>
                       </tr>
@@ -793,14 +829,58 @@ export default function BankinterEURPage() {
                                 <span className="text-gray-400 text-xs">N/A</span>
                               )}
                             </td>
+                            <td className="py-3 px-4 text-sm text-left font-mono">
+                              {row.braintreeSettlementBatchId ? (
+                                <div className="space-y-1">
+                                  <div className="truncate" title={row.braintreeSettlementBatchId}>{row.braintreeSettlementBatchId}</div>
+                                  {row.braintreeTransactionCount ? (
+                                    <span className="text-xs text-gray-600">{row.braintreeTransactionCount} tx</span>
+                                  ) : null}
+                                </div>
+                              ) : (
+                                <span className="text-gray-400 text-xs">-</span>
+                              )}
+                            </td>
                             <td className="py-3 px-4 text-center">
                               {row.conciliado ? (
                                 <div className="flex items-center justify-center gap-2">
                                   {row.reconciliationType === "automatic" ? (
                                     <div className="relative group">
                                       <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                        Automatic reconciliation
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none min-w-[220px] text-left">
+                                        <div className="font-bold text-emerald-300 mb-1">⚡ Automatic reconciliation</div>
+                                        {row.bankMatchDate && (
+                                          <div className="flex items-center gap-1 text-white/90">
+                                            <Calendar className="h-3 w-3" />
+                                            <span>{formatEuropeanDate(row.bankMatchDate)}</span>
+                                          </div>
+                                        )}
+                                        {row.bankMatchAmount !== null && row.bankMatchAmount !== undefined && (
+                                          <div className="flex items-center gap-1 text-white/90">
+                                            <DollarSign className="h-3 w-3" />
+                                            <span>{formatEuropeanCurrency(row.bankMatchAmount)}</span>
+                                          </div>
+                                        )}
+                                        {row.bankMatchDescription && (
+                                          <div className="flex items-start gap-1 text-white/90 mt-1">
+                                            <FileText className="h-3 w-3 mt-0.5" />
+                                            <span className="text-[10px] leading-snug">{row.bankMatchDescription.substring(0, 80)}{row.bankMatchDescription.length > 80 ? "..." : ""}</span>
+                                          </div>
+                                        )}
+                                        {row.braintreeSettlementBatchId && (
+                                          <div className="mt-2 pt-2 border-t border-white/20 text-white/80">
+                                            <div className="flex items-center gap-1">
+                                              <Key className="h-3 w-3" />
+                                              <span className="text-[10px] font-mono">{row.braintreeSettlementBatchId.substring(0, 32)}...</span>
+                                            </div>
+                                            {row.braintreeTransactionCount ? (
+                                              <div className="text-[10px] text-white/70 mt-1">{row.braintreeTransactionCount} transações</div>
+                                            ) : null}
+                                          </div>
+                                        )}
+                                        {row.reconciledAt && (
+                                          <div className="text-[10px] text-white/60 mt-2">Reconciled at: {formatTimestamp(new Date(row.reconciledAt))}</div>
+                                        )}
                                       </div>
                                     </div>
                                   ) : (

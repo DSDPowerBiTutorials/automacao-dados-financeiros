@@ -318,7 +318,7 @@ export default function BraintreeSyncControls() {
                         <AlertDialogDescription>
                             Esta ação irá <strong>deletar permanentemente</strong> todas as transações do Braintree EUR (revenue + fees).
                             <br /><br />
-                            Você poderá recarregar os dados usando a "Carga Inicial" depois.
+                            Você poderá recarregar os dados usando a &quot;Carga Inicial&quot; depois.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
