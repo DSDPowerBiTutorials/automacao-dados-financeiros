@@ -384,7 +384,7 @@ export async function POST(req: NextRequest) {
     if (newRevenue.length > 0) {
       const { error: revenueError, data: revenueData } = await supabaseAdmin
         .from("csv_rows")
-        .insert(newRevenue)
+        .upsert(newRevenue, { onConflict: "id", ignoreDuplicates: true })
         .select();
 
       if (revenueError) {
@@ -398,7 +398,7 @@ export async function POST(req: NextRequest) {
     if (newFees.length > 0) {
       const { error: feesError, data: feesData } = await supabaseAdmin
         .from("csv_rows")
-        .insert(newFees)
+        .upsert(newFees, { onConflict: "id", ignoreDuplicates: true })
         .select();
 
       if (feesError) {
