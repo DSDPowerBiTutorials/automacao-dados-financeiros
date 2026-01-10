@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Zap, Loader2, CheckCircle2, AlertCircle, Database, Trash2, RefreshCw } from "lucide-react";
 import {
@@ -49,11 +49,14 @@ export default function BraintreeSyncControls() {
     const [result, setResult] = useState<SyncResult | null>(null);
 
     const [initialDates, setInitialDates] = useState({
-        startDate: "2024-01-01",
+        startDate: "2025-01-01",
         endDate: new Date().toISOString().split("T")[0],
     });
+    const isInitialLoadingRef = useRef(false);
 
     const handleInitialSync = async () => {
+        if (isInitialLoadingRef.current) return;
+        isInitialLoadingRef.current = true;
         setIsLoading(true);
         setResult(null);
 
@@ -84,6 +87,7 @@ export default function BraintreeSyncControls() {
             });
         } finally {
             setIsLoading(false);
+            isInitialLoadingRef.current = false;
         }
     };
 
