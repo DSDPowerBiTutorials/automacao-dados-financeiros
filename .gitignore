@@ -46,6 +46,10 @@ tsconfig.tsbuildinfo
 logs/
 scripts/tmp/
 
+# Local backups / debug artefacts
+backups/
+*.eq
+
 # Next.js
 .next/
 out/
