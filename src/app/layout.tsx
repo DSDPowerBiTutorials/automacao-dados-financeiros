@@ -1,3 +1,4 @@
+import "@tabler/core/dist/css/tabler.min.css"
 import "./globals.css"
 import { Toaster } from "@/components/ui/toaster"
 import { CompanyViewProvider } from "@/contexts/company-view-context"
@@ -21,8 +22,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body className="flex bg-gradient-to-br from-gray-50 to-gray-100 text-neutral-900">
+    <html lang="pt-BR">
+      <body className="text-neutral-900">
         <AuthProvider>
           <CompanyViewProvider>
             <GlobalScopeProvider>
