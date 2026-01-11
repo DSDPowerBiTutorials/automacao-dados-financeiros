@@ -3,6 +3,16 @@
 ## Project Overview
 Financial reconciliation system built with **Next.js (App Router) + TypeScript** and **Supabase (Postgres)**. Processes CSV uploads from multiple banks (Bankinter EUR/USD, Sabadell) and payment sources (Braintree, Stripe, GoCardless), performs automated reconciliation matching transactions within ±3 days and approximate amounts.
 
+---
+
+## Comunicação (obrigatório)
+- Sempre responder em **português**.
+- Ser **direto e resumido**; não colar blocos de código longos na conversa.
+- Só explicar mais quando houver problema e for necessária ação do usuário.
+- Formato padrão de resposta (usar sempre):
+
+"Problema : <texto>\nPossível causa : <texto>\nSolução : <texto>\nTipo : Agente ou Usuário"
+
 **Key insight:** System handles multi-currency, multi-source reconciliation where data flows from CSV uploads → Supabase `csv_rows` table → report pages (`/reports/{source}`).
 
 ---
