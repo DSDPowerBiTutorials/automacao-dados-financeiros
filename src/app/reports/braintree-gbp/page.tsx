@@ -59,6 +59,7 @@ import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
 import BraintreeUpdatePendingButton from "@/components/braintree/update-pending-button";
+import { reconcileWithBank } from "@/lib/braintree-reconciliation";
 
 interface BraintreeGBPRow {
   id: string;
@@ -156,6 +157,12 @@ const destinationAccountColors: {
   },
 };
 
+// Safely coerce values to numbers to avoid NaN in reconciliation
+const toNumber = (value: any, fallback = 0) => {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 export default function BraintreeGBPPage() {
   const [rows, setRows] = useState<BraintreeGBPRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -167,6 +174,8 @@ export default function BraintreeGBPPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [splitScreenUrl, setSplitScreenUrl] = useState<string | null>(null);
   const [lastSyncDate, setLastSyncDate] = useState<string | null>(null);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [autoReconcileSummary, setAutoReconcileSummary] = useState<string | null>(null);
 
   // Column visibility
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
@@ -412,7 +421,7 @@ export default function BraintreeGBPPage() {
   // ==========================================
   // DESABILITADO TEMPORARIAMENTE - Aguardando dados de bank statements
   // Quando houver dados do Bankinter, altere ENABLE_AUTO_RECONCILIATION para true
-  const ENABLE_AUTO_RECONCILIATION = false;
+  const ENABLE_AUTO_RECONCILIATION = true;
 
   // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
@@ -519,9 +528,11 @@ export default function BraintreeGBPPage() {
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (options: { runReconcile?: boolean } = {}) => {
+    const { runReconcile = true } = options;
     console.log("[Braintree GBP] Starting loadData...");
     setIsLoading(true);
+    setAutoReconcileSummary(null);
 
     try {
       if (!supabase) {
@@ -565,7 +576,7 @@ export default function BraintreeGBPPage() {
           id: row.id,
           date: row.date,
           description: row.description || "",
-          amount: parseFloat(row.amount) || 0,
+          amount: toNumber(row.amount, 0),
           conciliado: row.custom_data?.conciliado || false,
           destinationAccount: row.custom_data?.destinationAccount || null,
           reconciliationType: row.custom_data?.reconciliationType || null,
@@ -583,10 +594,13 @@ export default function BraintreeGBPPage() {
           created_at: row.custom_data?.created_at,
           updated_at: row.custom_data?.updated_at,
           disbursement_date: row.custom_data?.disbursement_date,
-          settlement_amount: row.custom_data?.settlement_amount,
+          settlement_amount: toNumber(row.custom_data?.settlement_amount ?? row.amount, 0),
           settlement_currency: row.custom_data?.settlement_currency,
           settlement_currency_iso_code: row.custom_data?.settlement_currency_iso_code,
-          settlement_currency_exchange_rate: row.custom_data?.settlement_currency_exchange_rate,
+          settlement_currency_exchange_rate:
+            row.custom_data?.settlement_currency_exchange_rate != null
+              ? toNumber(row.custom_data?.settlement_currency_exchange_rate, 1)
+              : null,
           settlement_batch_id: row.custom_data?.settlement_batch_id,
           settlement_date: row.custom_data?.settlement_date,
 
@@ -596,19 +610,46 @@ export default function BraintreeGBPPage() {
           // 🏦 Informações do match bancário
           bank_match_id: row.custom_data?.bank_match_id,
           bank_match_date: row.custom_data?.bank_match_date,
-          bank_match_amount: row.custom_data?.bank_match_amount,
+          bank_match_amount:
+            row.custom_data?.bank_match_amount != null
+              ? toNumber(row.custom_data?.bank_match_amount, 0)
+              : null,
           bank_match_description: row.custom_data?.bank_match_description,
 
           // 💰 FEES E DEDUÇÕES
-          service_fee_amount: row.custom_data?.service_fee_amount,
-          discount_amount: row.custom_data?.discount_amount,
-          tax_amount: row.custom_data?.tax_amount,
+          service_fee_amount:
+            row.custom_data?.service_fee_amount != null
+              ? toNumber(row.custom_data?.service_fee_amount, 0)
+              : null,
+          discount_amount:
+            row.custom_data?.discount_amount != null
+              ? toNumber(row.custom_data?.discount_amount, 0)
+              : null,
+          tax_amount:
+            row.custom_data?.tax_amount != null
+              ? toNumber(row.custom_data?.tax_amount, 0)
+              : null,
           refunded_transaction_id: row.custom_data?.refunded_transaction_id,
-          merchant_account_fee: row.custom_data?.merchant_account_fee,
-          processing_fee: row.custom_data?.processing_fee,
-          authorization_adjustment: row.custom_data?.authorization_adjustment,
-          dispute_amount: row.custom_data?.dispute_amount,
-          reserve_amount: row.custom_data?.reserve_amount,
+          merchant_account_fee:
+            row.custom_data?.merchant_account_fee != null
+              ? toNumber(row.custom_data?.merchant_account_fee, 0)
+              : null,
+          processing_fee:
+            row.custom_data?.processing_fee != null
+              ? toNumber(row.custom_data?.processing_fee, 0)
+              : null,
+          authorization_adjustment:
+            row.custom_data?.authorization_adjustment != null
+              ? toNumber(row.custom_data?.authorization_adjustment, 0)
+              : null,
+          dispute_amount:
+            row.custom_data?.dispute_amount != null
+              ? toNumber(row.custom_data?.dispute_amount, 0)
+              : null,
+          reserve_amount:
+            row.custom_data?.reserve_amount != null
+              ? toNumber(row.custom_data?.reserve_amount, 0)
+              : null,
         }));
 
       console.log(`[Braintree GBP] Mapped ${mappedRows.length} rows`);
@@ -636,12 +677,36 @@ export default function BraintreeGBPPage() {
 
       setSettlementBatches(batchGroups);
 
-      setRows(mappedRows);
+      let finalRows = mappedRows;
+
+      if (runReconcile && ENABLE_AUTO_RECONCILIATION && !isReconciling) {
+        try {
+          setIsReconciling(true);
+          console.log("[Braintree GBP] Mapped rows, starting auto-reconciliation...");
+          const reconciliationResult = await reconcileWithBank(
+            mappedRows,
+            "bankinter-eur", // GBP normalmente liquida em Bankinter EUR
+            "Bankinter EUR",
+          );
+
+          setAutoReconcileSummary(
+            `Auto conciliated ${reconciliationResult.autoReconciledCount} transactions in ${reconciliationResult.matchedGroups}/${reconciliationResult.totalGroups} batches`,
+          );
+          finalRows = reconciliationResult.transactions;
+        } catch (reconcileError) {
+          console.error("[Braintree GBP] Auto-reconcile error:", reconcileError);
+          setAutoReconcileSummary("Auto-reconcile failed. See console.");
+        } finally {
+          setIsReconciling(false);
+        }
+      }
+
+      setRows(finalRows);
 
       // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
-      if (mappedRows.length > 0) {
-        setMostRecentWebhookTransaction(mappedRows[0]);
-        console.log("[Braintree GBP] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
+      if (finalRows.length > 0) {
+        setMostRecentWebhookTransaction(finalRows[0]);
+        console.log("[Braintree GBP] Most recent transaction:", finalRows[0].date, finalRows[0].description);
       }
 
       // Reset para página 1 quando dados são carregados
@@ -1083,6 +1148,14 @@ export default function BraintreeGBPPage() {
                 <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
                   ✅ All changes saved successfully to database! Last saved:{" "}
                   {lastSaved}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {autoReconcileSummary && (
+              <Alert className="mt-4 border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                <AlertDescription className="text-blue-800 dark:text-blue-200 font-medium">
+                  {autoReconcileSummary}
                 </AlertDescription>
               </Alert>
             )}

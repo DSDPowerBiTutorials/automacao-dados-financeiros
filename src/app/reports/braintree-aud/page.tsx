@@ -51,6 +51,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
+import { reconcileWithBank } from "@/lib/braintree-reconciliation";
 
 interface BraintreeAUDRow {
   id: string;
@@ -114,6 +115,12 @@ const destinationAccountColors: {
   },
 };
 
+// Safely coerce values to numbers to avoid NaN during reconciliation
+const toNumber = (value: any, fallback = 0) => {
+  const n = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+};
+
 export default function BraintreeAUDPage() {
   const [rows, setRows] = useState<BraintreeAUDRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -125,6 +132,8 @@ export default function BraintreeAUDPage() {
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [splitScreenUrl, setSplitScreenUrl] = useState<string | null>(null);
   const [lastSyncDate, setLastSyncDate] = useState<string | null>(null);
+  const [isReconciling, setIsReconciling] = useState(false);
+  const [autoReconcileSummary, setAutoReconcileSummary] = useState<string | null>(null);
 
   // Column visibility
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(
@@ -329,7 +338,7 @@ export default function BraintreeAUDPage() {
   // ==========================================
   // DESABILITADO TEMPORARIAMENTE - Aguardando dados de bank statements
   // Quando houver dados do Bankinter, altere ENABLE_AUTO_RECONCILIATION para true
-  const ENABLE_AUTO_RECONCILIATION = false;
+  const ENABLE_AUTO_RECONCILIATION = true;
 
   // Função para verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
@@ -436,9 +445,11 @@ export default function BraintreeAUDPage() {
     }
   };
 
-  const loadData = async () => {
+  const loadData = async (options: { runReconcile?: boolean } = {}) => {
+    const { runReconcile = true } = options;
     console.log("[Braintree AUD] Starting loadData...");
     setIsLoading(true);
+    setAutoReconcileSummary(null);
 
     try {
       if (!supabase) {
@@ -482,7 +493,7 @@ export default function BraintreeAUDPage() {
           id: row.id,
           date: row.date,
           description: row.description || "",
-          amount: parseFloat(row.amount) || 0,
+          amount: toNumber(row.amount, 0),
           conciliado: row.custom_data?.conciliado || false,
           destinationAccount: row.custom_data?.destinationAccount || null,
           reconciliationType: row.custom_data?.reconciliationType || null,
@@ -500,7 +511,7 @@ export default function BraintreeAUDPage() {
           created_at: row.custom_data?.created_at,
           updated_at: row.custom_data?.updated_at,
           disbursement_date: row.custom_data?.disbursement_date,
-          settlement_amount: row.custom_data?.settlement_amount,
+          settlement_amount: toNumber(row.custom_data?.settlement_amount ?? row.amount, 0),
           settlement_currency: row.custom_data?.settlement_currency,
           settlement_batch_id: row.custom_data?.settlement_batch_id,
           settlement_date: row.custom_data?.settlement_date,
@@ -532,12 +543,36 @@ export default function BraintreeAUDPage() {
 
       setSettlementBatches(batchGroups);
 
-      setRows(mappedRows);
+      let finalRows = mappedRows;
+
+      if (runReconcile && ENABLE_AUTO_RECONCILIATION && !isReconciling) {
+        try {
+          setIsReconciling(true);
+          console.log("[Braintree AUD] Mapped rows, starting auto-reconciliation...");
+          const reconciliationResult = await reconcileWithBank(
+            mappedRows,
+            "bankinter-eur", // AUD liquida atualmente em EUR (conta principal)
+            "Bankinter EUR",
+          );
+
+          setAutoReconcileSummary(
+            `Auto conciliated ${reconciliationResult.autoReconciledCount} transactions in ${reconciliationResult.matchedGroups}/${reconciliationResult.totalGroups} batches`,
+          );
+          finalRows = reconciliationResult.transactions;
+        } catch (reconcileError) {
+          console.error("[Braintree AUD] Auto-reconcile error:", reconcileError);
+          setAutoReconcileSummary("Auto-reconcile failed. See console.");
+        } finally {
+          setIsReconciling(false);
+        }
+      }
+
+      setRows(finalRows);
 
       // Identificar transação mais recente (primeira da lista, já que está ordenada por data DESC)
-      if (mappedRows.length > 0) {
-        setMostRecentWebhookTransaction(mappedRows[0]);
-        console.log("[Braintree AUD] Most recent transaction:", mappedRows[0].date, mappedRows[0].description);
+      if (finalRows.length > 0) {
+        setMostRecentWebhookTransaction(finalRows[0]);
+        console.log("[Braintree AUD] Most recent transaction:", finalRows[0].date, finalRows[0].description);
       }
 
       // Reset para página 1 quando dados são carregados
@@ -893,13 +928,13 @@ export default function BraintreeAUDPage() {
                 {/* Botão de Forçar Atualização */}
                 <Button
                   onClick={loadData}
-                  disabled={isLoading}
+                  disabled={isLoading || isReconciling}
                   variant="outline"
                   size="sm"
                   className="gap-2 border-white text-white hover:bg-white/10"
                   title="Forçar atualização dos dados"
                 >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  <RefreshCw className={`h-4 w-4 ${(isLoading || isReconciling) ? 'animate-spin' : ''}`} />
                   Atualizar
                 </Button>
 
@@ -919,6 +954,14 @@ export default function BraintreeAUDPage() {
                 <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
                   ✅ All changes saved successfully to database! Last saved:{" "}
                   {lastSaved}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            {autoReconcileSummary && (
+              <Alert className="mt-4 border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20">
+                <AlertDescription className="text-blue-800 dark:text-blue-200 font-medium">
+                  {autoReconcileSummary}
                 </AlertDescription>
               </Alert>
             )}

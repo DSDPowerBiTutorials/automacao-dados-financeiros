@@ -118,6 +118,7 @@ export async function POST(request: NextRequest) {
             try {
                 // Pegar valores
                 const fechaValorRaw = colIndex.fechaValor !== -1 ? row[colIndex.fechaValor] : null
+                const fechaContableRaw = colIndex.fechaContable !== -1 ? row[colIndex.fechaContable] : null
                 const descripcion = colIndex.descripcion !== -1 ? String(row[colIndex.descripcion] || "").trim() : ""
                 const debeRaw = colIndex.debe !== -1 ? row[colIndex.debe] : null
                 const haberRaw = colIndex.haber !== -1 ? row[colIndex.haber] : null
@@ -145,17 +146,16 @@ export async function POST(request: NextRequest) {
                     return null
                 }
 
-                // Parse data SIMPLES - converter serial Excel direto para DD/MM/YYYY string
+                // Preferir FECHA CONTABLE; se não vier, cair para FECHA VALOR
+                const rawDate = fechaContableRaw ?? fechaValorRaw
+
                 let dateString: string
-                if (typeof fechaValorRaw === "number") {
-                    // XLSX.SSF.format converte serial Excel direto sem timezone bullshit
-                    dateString = XLSX.SSF.format("dd/mm/yyyy", fechaValorRaw)
-                    // Log removido para evitar truncamento
-                } else if (typeof fechaValorRaw === "string") {
-                    // Já é string, usar diretamente
-                    dateString = fechaValorRaw.trim()
+                if (typeof rawDate === "number") {
+                    dateString = XLSX.SSF.format("dd/mm/yyyy", rawDate)
+                } else if (typeof rawDate === "string") {
+                    dateString = rawDate.trim()
                 } else {
-                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data inválida:`, fechaValorRaw)
+                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data inválida (contable/valor):`, rawDate)
                     skippedCount++
                     return null
                 }
@@ -218,8 +218,7 @@ export async function POST(request: NextRequest) {
                 const clave = colIndex.clave !== -1 ? String(row[colIndex.clave] || "") : ""
                 const categoria = colIndex.categoria !== -1 ? String(row[colIndex.categoria] || "") : ""
 
-                // Parse fecha_contable
-                const fechaContableRaw = colIndex.fechaContable !== -1 ? row[colIndex.fechaContable] : null
+                // Parse fecha_contable usando o valor já capturado
                 let fechaContable: string | null = null
                 if (fechaContableRaw) {
                     if (typeof fechaContableRaw === "number") {
@@ -242,14 +241,16 @@ export async function POST(request: NextRequest) {
                 return {
                     source: "bankinter-eur",
                     file_name: file.name,
-                    date: isoDate,
+                    date: isoDate, // salvar como FECHA CONTABLE (prioritário) em formato ISO
                     description: descripcion || "Sin descripción",
                     amount: amount.toString(),
                     category: categoria || "Other",
                     classification: categoria || "Other",
                     reconciled: false,
                     custom_data: {
-                        fecha_contable: fechaContable,
+                        fecha_contable: fechaContable, // original (string ou serial)
+                        fecha_contable_iso: isoDate,   // ISO normalizado, usado na conciliação
+                        fecha_valor: fechaValorRaw,    // referência bruta
                         debe,
                         haber,
                         importe,

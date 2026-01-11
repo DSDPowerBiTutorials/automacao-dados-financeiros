@@ -158,7 +158,7 @@ export default function BankinterEURPage() {
       } else if (rowsData) {
         const mappedRows: BankinterEURRow[] = rowsData.map((row) => ({
           id: row.id,
-          date: row.date,
+          date: row.custom_data?.fecha_contable_iso || row.date, // usar fecha contable como base
           description: row.description || "",
           amount: parseFloat(row.amount) || 0,
           conciliado: (row as any).reconciled ?? row.custom_data?.conciliado ?? false,

@@ -102,13 +102,18 @@ async function findBankMatch(
     console.log(`[Auto-Reconcile] Searching ${bankSource} between ${startDate} and ${endDate} for amount ${batch.totalAmount}`);
 
     try {
+        // Usar FECHA CONTABLE (custom_data.fecha_contable_iso) como base; fallback para date
         const { data: bankRows, error } = await client
             .from('csv_rows')
             .select('*')
             .eq('source', bankSource)
             .or('reconciled.is.null,reconciled.eq.false') // inclui null como não conciliado
-            .gte('date', startDate)
-            .lte('date', endDate);
+            .or(
+                [
+                    `custom_data->>fecha_contable_iso.gte.${startDate},custom_data->>fecha_contable_iso.lte.${endDate}`,
+                    `date.gte.${startDate},date.lte.${endDate}`
+                ].join(',')
+            );
 
         if (error) {
             console.error('[Auto-Reconcile] Error querying bank:', error);
@@ -126,11 +131,14 @@ async function findBankMatch(
         for (const row of bankRows) {
             const bankAmount = Math.abs(parseFloat(row.amount) || 0);
 
+            // Usar fecha contable, se existir, para data de match
+            const bankDate = row.custom_data?.fecha_contable_iso || row.custom_data?.fecha_contable || row.date;
+
             if (isAmountMatch(bankAmount, batch.totalAmount)) {
                 console.log(`[Auto-Reconcile] ✅ Match found! Bank: ${bankAmount}, Batch: ${batch.totalAmount}`);
                 return {
                     id: row.id,
-                    date: row.date,
+                    date: bankDate,
                     amount: bankAmount,
                     description: row.description || '',
                     source: row.source,

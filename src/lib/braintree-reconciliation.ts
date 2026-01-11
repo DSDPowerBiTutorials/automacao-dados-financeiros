@@ -100,7 +100,8 @@ export async function reconcileWithBank(
 
             // Buscar match no banco (mesmo dia ou ±2 dias)
             const match = bankStatements.find(stmt => {
-                const stmtDate = new Date(stmt.date);
+                const stmtBankDate = stmt.custom_data?.fecha_contable_iso || stmt.custom_data?.fecha_contable || stmt.date;
+                const stmtDate = new Date(stmtBankDate);
                 const txDate = new Date(disbursementDate || firstTx.date);
                 const dayDiff = Math.abs(
                     (stmtDate.getTime() - txDate.getTime()) / (1000 * 60 * 60 * 24)
@@ -117,10 +118,11 @@ export async function reconcileWithBank(
                     descLower.includes('pp.') ||
                     descLower.includes('trans/paypal');
 
-                const dateMatch = dayDiff <= 2;
+                // Permitir uma janela um pouco maior (±3 dias) para compensar fuso e liquidação cruzada
+                const dateMatch = dayDiff <= 3;
 
                 if (dateMatch && amountMatch && descMatch) {
-                    console.log(`[Reconciliation] ✅ Match found! Bank: ${stmt.date} ${stmt.amount} "${stmt.description}"`);
+                    console.log(`[Reconciliation] ✅ Match found! Bank: ${stmtBankDate} ${stmt.amount} "${stmt.description}"`);
                     return true;
                 }
 

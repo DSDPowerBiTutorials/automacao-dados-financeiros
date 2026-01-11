@@ -1,41 +1,26 @@
 # IMPLEMENTAÇÃO COMPLETA - Reconciliação Automática Braintree
 
-## ✅ JÁ IMPLEMENTADO:
+## ✅ JÁ IMPLEMENTADO (USD / GBP / AUD):
 
-1. ✅ Biblioteca de reconciliação criada: `/src/lib/braintree-reconciliation.ts`
-2. ✅ Página USD atualizada com:
-   - Import da biblioteca
-   - Campos bank_match no interface
-   - settlement_batch_id em visibleColumns
-   - Reconciliação automática no loadData
-   - settlement_batch_id no column selector
-   - settlement_batch_id na tabela (header + body)
-   - Tooltip melhorado mostrando info do banco
+- Biblioteca de reconciliação: `/src/lib/braintree-reconciliation.ts`
+- USD/GBP/AUD
+  - Import da biblioteca + `ENABLE_AUTO_RECONCILIATION = true`
+  - Campos `bank_match_*`, `settlement_batch_id`, FX fields mapeados no `mappedRows`
+  - Reconciliação automática no `loadData` apontando para Bankinter EUR (cross-currency)
+  - Safe number parsing (`toNumber`) para evitar `NaN`
+  - settlement_batch_id no column selector, header e body
+  - Tooltip de reconciliação com detalhes do banco
+  - Alert de resumo do auto-reconcile e spinner desabilitando o refresh
 
-## 🔄 EM ANDAMENTO - Atualizar EUR e GBP:
+## ✅ EUR (server-side):
 
-### Passos restantes para EUR (`/src/app/reports/braintree-eur/page.tsx`):
+- `braintree-eur/page.tsx` já chama `/api/reconciliation/braintree-eur` (server-side batches) e possui `bank_match_*`, `settlement_batch_id`, tooltip e column selector.
+- `mappedRows` inclui todos os campos novos e tolerância FX via `toNumber`.
 
-1. ✅ Import adicionado
-2. ✅ bank_match fields adicionados ao interface
-3. ✅ settlement_batch_id adicionado ao visibleColumns
+## 🚩 Observações atuais
 
-**FALTAM:**
-4. Atualizar mappedRows no loadData para incluir campos novos
-5. Adicionar reconciliação automática no loadData (após mappedRows)
-6. Adicionar settlement_batch_id ao column selector dialog
-7. Adicionar settlement_batch_id ao table header
-8. Adicionar settlement_batch_id ao table body
-9. Atualizar tooltip de reconciliação com info do banco
-
-### Passos restantes para GBP (`/src/app/reports/braintree-gbp/page.tsx`):
-
-1. ✅ Import adicionado
-2. ✅ bank_match fields adicionados ao interface
-3. ✅ settlement_batch_id adicionado ao visibleColumns
-
-**FALTAM:**
-4-9. Mesmos passos do EUR
+- Todas as páginas Braintree (USD/GBP/AUD/EUR) com auto-reconciliação ligada.
+- Reconciliador (`reconcileWithBank`) usa data do banco priorizando `custom_data.fecha_contable_iso`, janela ±3 dias e tolerância de valor para FX.
 
 ## 📝 CÓDIGO PARA ADICIONAR:
 
@@ -140,14 +125,9 @@ if (reconciliationResult.transactions.length > 0) {
 ```
 
 ## 🎯 RESULTADO ESPERADO:
-
-- ✅ Reconciliação automática funcional nas 3 páginas (USD, EUR, GBP)
+- ✅ Reconciliação automática funcional em USD, GBP, AUD (client-side) e EUR (server API)
 - ✅ Settlement Batch ID visível e funcional
 - ✅ Tooltip mostrando detalhes do match bancário
-- ✅ Cross-currency tracking (USD/GBP → EUR)
+- ✅ Cross-currency tracking (USD/GBP/AUD → EUR)
 - ✅ User-friendly: hover mostra data, valor e descrição do banco
 - ✅ Commit e deploy funcional
-
-## 🚀 PRÓXIMO PASSO:
-
-Aplicar mudanças restantes nas páginas EUR e GBP, testar, commitar e deployar.
