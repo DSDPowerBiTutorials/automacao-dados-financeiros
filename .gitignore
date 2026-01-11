@@ -49,6 +49,8 @@ scripts/tmp/
 # Local backups / debug artefacts
 backups/
 *.eq
+*.eq.
+scripts/find-braintree-settlement.ts
 
 # Next.js
 .next/
