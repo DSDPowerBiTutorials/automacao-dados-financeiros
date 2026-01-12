@@ -144,92 +144,99 @@ export function TablerTopbar({
       {navVisible && (
         <header className="navbar navbar-expand-md navbar-light d-print-none">
           <div className={"container-xl"}>
-            <div className={"collapse navbar-collapse" + (mobileOpen ? " show" : "")} id="navbar-menu">
-                <div className="d-md-none py-2">
-                  <div className="row g-2 align-items-center">
-                    <div className="col-12">
-                      <input
-                        type="text"
-                        value={menuQuery}
-                        onChange={(e) => setMenuQuery(e.target.value)}
-                        className="form-control"
-                        placeholder="Buscar no menu…"
-                        aria-label="Buscar no menu"
-                      />
-                    </div>
-                    <div className="col-12">
-                      <div className="btn-list">
-                        <button
-                          type="button"
-                          className={
-                            "btn btn-sm " +
-                            (selectedScope === "ES" ? "btn-primary" : "btn-outline-primary")
-                          }
-                          onClick={() => setSelectedScope("ES")}
-                        >
-                          ES
-                        </button>
-                        <button
-                          type="button"
-                          className={
-                            "btn btn-sm " +
-                            (selectedScope === "US" ? "btn-primary" : "btn-outline-primary")
-                          }
-                          onClick={() => setSelectedScope("US")}
-                        >
-                          US
-                        </button>
-                        <button
-                          type="button"
-                          className={
-                            "btn btn-sm " +
-                            (selectedScope === "GLOBAL" ? "btn-primary" : "btn-outline-primary")
-                          }
-                          onClick={() => setSelectedScope("GLOBAL")}
-                        >
-                          GLOBAL
-                        </button>
-                        <span className="text-muted small ms-2">{SCOPE_CONFIG[selectedScope].label}</span>
-                      </div>
+            <div
+              id="navbar-menu"
+              className={
+                "navbar-collapse " +
+                (mobileOpen ? "d-block " : "d-none ") +
+                "d-md-flex"
+              }
+            >
+              <div className="d-md-none py-2">
+                <div className="row g-2 align-items-center">
+                  <div className="col-12">
+                    <input
+                      type="text"
+                      value={menuQuery}
+                      onChange={(e) => setMenuQuery(e.target.value)}
+                      className="form-control"
+                      placeholder="Buscar no menu…"
+                      aria-label="Buscar no menu"
+                    />
+                  </div>
+                  <div className="col-12">
+                    <div className="btn-list">
+                      <button
+                        type="button"
+                        className={
+                          "btn btn-sm " +
+                          (selectedScope === "ES" ? "btn-primary" : "btn-outline-primary")
+                        }
+                        onClick={() => setSelectedScope("ES")}
+                      >
+                        ES
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          "btn btn-sm " +
+                          (selectedScope === "US" ? "btn-primary" : "btn-outline-primary")
+                        }
+                        onClick={() => setSelectedScope("US")}
+                      >
+                        US
+                      </button>
+                      <button
+                        type="button"
+                        className={
+                          "btn btn-sm " +
+                          (selectedScope === "GLOBAL" ? "btn-primary" : "btn-outline-primary")
+                        }
+                        onClick={() => setSelectedScope("GLOBAL")}
+                      >
+                        GLOBAL
+                      </button>
+                      <span className="text-muted small ms-2">{SCOPE_CONFIG[selectedScope].label}</span>
                     </div>
                   </div>
                 </div>
+              </div>
 
-                <ul className="navbar-nav">
-                  {filterGroups(groups, menuQuery).map((group) => {
-                    const isOpen = openGroup === group.label;
-                    const columns = toColumns(group.items);
-                    return (
-                      <li
-                        key={group.label}
-                        className={"nav-item dropdown" + (isOpen ? " show" : "")}
+              <ul className="navbar-nav">
+                {filterGroups(groups, menuQuery).map((group) => {
+                  const isOpen = openGroup === group.label;
+                  const columns = toColumns(group.items);
+                  return (
+                    <li
+                      key={group.label}
+                      className={"nav-item dropdown" + (isOpen ? " show" : "")}
+                    >
+                      <button
+                        type="button"
+                        className={"nav-link dropdown-toggle" + (isOpen ? " show" : "")}
+                        aria-expanded={isOpen}
+                        onClick={() => setOpenGroup((prev) => (prev === group.label ? null : group.label))}
                       >
-                        <button
-                          type="button"
-                          className={"nav-link dropdown-toggle" + (isOpen ? " show" : "")}
-                          aria-expanded={isOpen}
-                          onClick={() => setOpenGroup((prev) => (prev === group.label ? null : group.label))}
-                        >
-                          <span className="nav-link-title">{group.label}</span>
-                        </button>
-                        <div
-                          className={
-                            "dropdown-menu dropdown-menu-columns dropdown-menu-arrow" +
-                            (isOpen ? " show" : "")
-                          }
-                        >
-                          {columns.map((col, idx) => (
-                            <div key={idx} className="dropdown-menu-column">
-                              {col.map((item) => (
-                                <DropdownItem key={item.href} item={item} pathname={pathname || "/"} />
-                              ))}
-                            </div>
-                          ))}
-                        </div>
-                      </li>
-                    );
-                  })}
-                </ul>
+                        <span className="nav-link-title">{group.label}</span>
+                      </button>
+                      <div
+                        className={
+                          "dropdown-menu dropdown-menu-columns dropdown-menu-arrow" +
+                          (isOpen ? " show" : "")
+                        }
+                      >
+                        {columns.map((col, idx) => (
+                          <div key={idx} className="dropdown-menu-column">
+                            {col.map((item) => (
+                              <DropdownItem key={item.href} item={item} pathname={pathname || "/"} />
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
             </div>
           </div>
         </header>
