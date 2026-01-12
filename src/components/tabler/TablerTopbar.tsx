@@ -68,7 +68,7 @@ export function TablerTopbar({
           </h1>
 
           <div className="navbar-nav flex-row order-md-last align-items-center">
-            <div className="nav-item me-2 d-none d-md-flex">
+            <div className="nav-item me-2">
               <button
                 type="button"
                 className="btn btn-sm btn-outline-secondary"
