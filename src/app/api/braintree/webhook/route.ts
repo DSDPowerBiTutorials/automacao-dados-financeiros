@@ -98,7 +98,7 @@ export async function POST(req: NextRequest) {
       "transaction_failed",
       "transaction_gateway_rejected",
     ].includes(eventKind)) {
-      const transaction = webhookNotification.transaction;
+      const transaction = (webhookNotification as any).transaction;
 
       if (transaction) {
         const isSuccessful = [
@@ -121,15 +121,43 @@ export async function POST(req: NextRequest) {
           reconciled: false,
           custom_data: {
             transaction_id: transaction.id,
+            order_id: (transaction as any).orderId || null,
             customer_name: getCustomerName(transaction),
             customer_email: transaction.customer?.email,
             currency: transaction.currencyIsoCode,
             payment_method: getPaymentMethod(transaction),
+            merchant_account_id: (transaction as any).merchantAccountId || null,
             status: eventKind.replace("transaction_", ""),
             created_at: transactionDate.toISOString(),
             webhook_received_at: new Date().toISOString(),
             webhook_kind: webhookNotification.kind,
             is_successful: isSuccessful,
+
+            // 💰 Campos de Disbursement (quando já disponíveis no evento)
+            disbursement_id: (transaction as any).disbursementDetails?.disbursementId || null,
+            disbursement_date: (() => {
+              try {
+                const disbDetails = (transaction as any).disbursementDetails;
+                return disbDetails?.disbursementDate
+                  ? new Date(disbDetails.disbursementDate).toISOString()
+                  : null;
+              } catch {
+                return null;
+              }
+            })(),
+            settlement_batch_id: (() => {
+              try {
+                const disbDetails = (transaction as any).disbursementDetails;
+                if (!disbDetails?.disbursementDate) return null;
+                const disbDate = new Date(disbDetails.disbursementDate);
+                const dateStr = disbDate.toISOString().split('T')[0];
+                const merchantAccount = (transaction as any).merchantAccountId || 'unknown';
+                const uniqueId = disbDetails.disbursementId || (transaction as any).id;
+                return `${dateStr}_${merchantAccount}_${uniqueId}`;
+              } catch {
+                return null;
+              }
+            })(),
           },
         };
 
@@ -156,9 +184,24 @@ export async function POST(req: NextRequest) {
             reconciled: false,
             custom_data: {
               transaction_id: transaction.id,
+              order_id: (transaction as any).orderId || null,
               currency: transaction.currencyIsoCode,
               payment_method: getPaymentMethod(transaction),
+              merchant_account_id: (transaction as any).merchantAccountId || null,
               webhook_received_at: new Date().toISOString(),
+
+              // 💰 Campos de Disbursement (para explicar payout)
+              disbursement_id: (transaction as any).disbursementDetails?.disbursementId || null,
+              disbursement_date: (() => {
+                try {
+                  const disbDetails = (transaction as any).disbursementDetails;
+                  return disbDetails?.disbursementDate
+                    ? new Date(disbDetails.disbursementDate).toISOString()
+                    : null;
+                } catch {
+                  return null;
+                }
+              })(),
             },
           };
 
@@ -182,7 +225,7 @@ export async function POST(req: NextRequest) {
 
     // EVENTOS DE CANCELAMENTO/EXPIRAÇÃO
     if (["subscription_canceled", "subscription_expired"].includes(eventKind)) {
-      const subscription = webhookNotification.subscription;
+      const subscription = (webhookNotification as any).subscription;
 
       if (subscription) {
         const status = eventKind === "subscription_canceled" ? "canceled" : "expired";
@@ -210,7 +253,7 @@ export async function POST(req: NextRequest) {
 
     // EVENTOS DE DISPUTE (Chargeback)
     if (["dispute_opened", "dispute_won", "dispute_lost"].includes(eventKind)) {
-      const dispute = webhookNotification.dispute;
+      const dispute = (webhookNotification as any).dispute;
 
       if (dispute) {
         const disputeStatus = eventKind.replace("dispute_", "");
@@ -240,7 +283,7 @@ export async function POST(req: NextRequest) {
 
     // EVENTO DE DISBURSEMENT (Transferência bancária)
     if (eventKind === "disbursement") {
-      const disbursement = webhookNotification.disbursement;
+      const disbursement = (webhookNotification as any).disbursement;
 
       if (disbursement) {
         // Cria registro de disbursement (importante pra conciliação bancária)
@@ -254,7 +297,7 @@ export async function POST(req: NextRequest) {
           custom_data: {
             disbursement_id: disbursement.id,
             merchant_account_id: disbursement.merchantAccount?.id,
-            currency: disbursement.merchantAccount?.currencyIsoCode || "EUR",
+            currency: ((disbursement.merchantAccount as any)?.currencyIsoCode as string) || "EUR",
             webhook_received_at: new Date().toISOString(),
             transaction_ids: disbursement.transactionIds,
           },
@@ -283,7 +326,7 @@ export async function POST(req: NextRequest) {
 
     // EVENTOS DE LOCAL PAYMENT
     if (["local_payment_completed", "local_payment_reversed", "local_payment_funded"].includes(eventKind)) {
-      const localPayment = webhookNotification.localPayment;
+      const localPayment = (webhookNotification as any).localPayment;
 
       if (localPayment) {
         const paymentRow = {
@@ -322,7 +365,7 @@ export async function POST(req: NextRequest) {
 
     // EVENTOS DE SUBSCRIPTION (charged_successfully/unsuccessfully)
     if (["subscription_charged_successfully", "subscription_charged_unsuccessfully"].includes(eventKind)) {
-      const subscription = webhookNotification.subscription;
+      const subscription = (webhookNotification as any).subscription;
 
       if (subscription && subscription.transactions && subscription.transactions.length > 0) {
         const transaction = subscription.transactions[0];
@@ -341,15 +384,30 @@ export async function POST(req: NextRequest) {
           reconciled: false,
           custom_data: {
             transaction_id: transaction.id,
+            order_id: (transaction as any).orderId || null,
             customer_name: getCustomerName(transaction),
             customer_email: transaction.customer?.email,
             currency: transaction.currencyIsoCode,
             payment_method: getPaymentMethod(transaction),
+            merchant_account_id: (transaction as any).merchantAccountId || null,
             subscription_id: transaction.subscriptionId,
             created_at: transactionDate.toISOString(),
             webhook_received_at: new Date().toISOString(),
             webhook_kind: webhookNotification.kind,
             is_successful: eventKind.includes("successfully"),
+
+            // 💰 Campos de Disbursement (quando já disponíveis)
+            disbursement_id: (transaction as any).disbursementDetails?.disbursementId || null,
+            disbursement_date: (() => {
+              try {
+                const disbDetails = (transaction as any).disbursementDetails;
+                return disbDetails?.disbursementDate
+                  ? new Date(disbDetails.disbursementDate).toISOString()
+                  : null;
+              } catch {
+                return null;
+              }
+            })(),
           },
         };
 
@@ -374,9 +432,24 @@ export async function POST(req: NextRequest) {
             reconciled: false,
             custom_data: {
               transaction_id: transaction.id,
+              order_id: (transaction as any).orderId || null,
               currency: transaction.currencyIsoCode,
               payment_method: getPaymentMethod(transaction),
+              merchant_account_id: (transaction as any).merchantAccountId || null,
               webhook_received_at: new Date().toISOString(),
+
+              // 💰 Campos de Disbursement (para explicar payout)
+              disbursement_id: (transaction as any).disbursementDetails?.disbursementId || null,
+              disbursement_date: (() => {
+                try {
+                  const disbDetails = (transaction as any).disbursementDetails;
+                  return disbDetails?.disbursementDate
+                    ? new Date(disbDetails.disbursementDate).toISOString()
+                    : null;
+                } catch {
+                  return null;
+                }
+              })(),
             },
           };
 
@@ -401,7 +474,7 @@ export async function POST(req: NextRequest) {
     }
 
     // EVENTO DE REFUND_FAILED
-    if (eventKind === "refund_failed") {
+    if ((eventKind as unknown as string) === "refund_failed") {
       console.log(`[Braintree Webhook] Refund failed detectado - verificar manualmente`);
 
       return NextResponse.json({

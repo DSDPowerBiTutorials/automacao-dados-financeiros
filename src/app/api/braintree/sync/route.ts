@@ -223,6 +223,7 @@ export async function POST(req: NextRequest) {
         // Dados customizados do Braintree (armazenados em custom_data JSONB)
         custom_data: {
           transaction_id: transaction.id,
+          order_id: (transaction as any).orderId || null,
           status: transaction.status,
           type: transaction.type,
           currency: txCurrency,
@@ -333,10 +334,25 @@ export async function POST(req: NextRequest) {
 
           custom_data: {
             transaction_id: transaction.id,
+            order_id: (transaction as any).orderId || null,
             related_revenue_amount: parseFloat(transaction.amount),
             currency: txCurrency,
             fee_type: "braintree_processing_fee",
             merchant_account_id: transaction.merchantAccountId,
+            // 💰 Campos de Disbursement (para explicar payout = gross - fees)
+            disbursement_id: transaction.disbursementDetails?.disbursementId || null,
+            disbursement_date: (() => {
+              try {
+                const disbDetails = transaction.disbursementDetails;
+                return disbDetails?.disbursementDate
+                  ? new Date(disbDetails!.disbursementDate!).toISOString()
+                  : null;
+              } catch (err) {
+                console.error(`[Disbursement Date] Error for transaction ${transaction.id}:`, err);
+                return null;
+              }
+            })(),
+            settlement_batch_id: settlement_batch_id,
           },
         };
 

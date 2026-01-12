@@ -40,6 +40,11 @@ export interface MatchResult {
     };
 }
 
+function normalizeOrderId(orderId: string | null | undefined): string {
+    if (!orderId) return '';
+    return String(orderId).trim().toLowerCase();
+}
+
 /**
  * Normaliza email para comparação
  * Remove espaços, converte para minúsculo, remove + aliases, trim
@@ -233,6 +238,25 @@ export function findBestMatch(
             reasons: [],
             details: {},
         };
+
+        // 0. MATCH DETERMINÍSTICO POR ORDER ID (quando disponível)
+        // HubSpot: custom_data.order_code (ex: 5ebe90b)
+        // Payments (Braintree API): custom_data.order_id
+        const hubspotOrderId = normalizeOrderId(hubspotRecord.custom_data?.order_code || hubspotRecord.custom_data?.ecomm_order_number);
+        const candidateOrderId = normalizeOrderId(candidate.custom_data?.order_id);
+        if (hubspotOrderId && candidateOrderId && hubspotOrderId === candidateOrderId) {
+            result.matched = true;
+            result.confidence = 100;
+            result.matchedId = candidate.id;
+            result.matchedSource = candidate.source;
+            result.reasons.push('✅ Order ID exato (HubSpot ↔ Payment)');
+
+            // Guardar melhor match imediatamente
+            if (!bestMatch || result.confidence > bestMatch.confidence) {
+                bestMatch = result;
+            }
+            continue;
+        }
 
         // 1. VERIFICAR EMAIL
         const hubspotEmail = normalizeEmail(hubspotRecord.customer_email);

@@ -53,7 +53,21 @@ export async function POST(request: Request) {
         const { data: paymentRecords, error: paymentError } = await supabaseAdmin
             .from('csv_rows')
             .select('*')
-            .in('source', ['braintree-eur', 'braintree-usd', 'gocardless-eur', 'gocardless-gbp', 'stripe-eur'])
+            .in('source', [
+                // ✅ Fontes atuais
+                'braintree-api-revenue',
+                // ✅ Compatibilidade com fontes antigas
+                'braintree-eur',
+                'braintree-usd',
+                'braintree-amex',
+                'gocardless',
+                'gocardless-eur',
+                'gocardless-gbp',
+                'stripe',
+                'stripe-eur',
+                'paypal',
+                'pleo',
+            ])
             .eq('reconciled', false);
 
         if (paymentError) throw paymentError;
@@ -218,12 +232,36 @@ export async function GET() {
         const { count: totalPayments } = await supabaseAdmin
             .from('csv_rows')
             .select('*', { count: 'exact', head: true })
-            .in('source', ['braintree-eur', 'braintree-usd', 'gocardless-eur', 'gocardless-gbp', 'stripe-eur']);
+            .in('source', [
+                'braintree-api-revenue',
+                'braintree-eur',
+                'braintree-usd',
+                'braintree-amex',
+                'gocardless',
+                'gocardless-eur',
+                'gocardless-gbp',
+                'stripe',
+                'stripe-eur',
+                'paypal',
+                'pleo',
+            ]);
 
         const { count: matchedPayments } = await supabaseAdmin
             .from('csv_rows')
             .select('*', { count: 'exact', head: true })
-            .in('source', ['braintree-eur', 'braintree-usd', 'gocardless-eur', 'gocardless-gbp', 'stripe-eur'])
+            .in('source', [
+                'braintree-api-revenue',
+                'braintree-eur',
+                'braintree-usd',
+                'braintree-amex',
+                'gocardless',
+                'gocardless-eur',
+                'gocardless-gbp',
+                'stripe',
+                'stripe-eur',
+                'paypal',
+                'pleo',
+            ])
             .eq('reconciled', true);
 
         return NextResponse.json({
