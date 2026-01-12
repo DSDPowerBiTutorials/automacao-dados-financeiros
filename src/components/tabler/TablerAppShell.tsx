@@ -51,7 +51,7 @@ export function TablerAppShell({ children }: { children: React.ReactNode }) {
           onToggleNavVisible={toggleNavVisible}
         />
         <div className="page-body">
-          <div className="container-xl">{children}</div>
+          <div className="app-container">{children}</div>
         </div>
       </div>
     </div>

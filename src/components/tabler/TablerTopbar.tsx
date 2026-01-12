@@ -28,6 +28,8 @@ export function TablerTopbar({
   const [menuQuery, setMenuQuery] = useState("");
   const dropdownRootRef = useRef<HTMLDivElement | null>(null);
 
+  const closeMenu = () => setOpenGroup(null);
+
   useEffect(() => {
     setOpenGroup(null);
   }, [pathname]);
@@ -46,7 +48,7 @@ export function TablerTopbar({
   return (
     <div ref={dropdownRootRef}>
       <header className="navbar navbar-expand-md d-print-none sticky-top" style={{ zIndex: 1030 }}>
-        <div className="container-xl">
+        <div className="app-container">
           <button
             className="navbar-toggler"
             type="button"
@@ -143,7 +145,7 @@ export function TablerTopbar({
 
       {navVisible && (
         <header className="navbar navbar-expand-md navbar-light d-print-none">
-          <div className={"container-xl"}>
+          <div className={"app-container"}>
             <div
               id="navbar-menu"
               className={
@@ -228,13 +230,20 @@ export function TablerTopbar({
                           }
                           style={{
                             maxWidth: "min(960px, calc(100vw - 2rem))",
+                            maxHeight: "calc(100vh - 160px)",
                             overflowX: "auto",
+                            overflowY: "auto",
                           }}
                         >
                           {columns.map((col, idx) => (
                             <div key={idx} className="dropdown-menu-column">
                               {col.map((item) => (
-                                <DropdownItem key={item.href} item={item} pathname={pathname || "/"} />
+                                <DropdownItem
+                                  key={item.href}
+                                  item={item}
+                                  pathname={pathname || "/"}
+                                  onNavigate={closeMenu}
+                                />
                               ))}
                             </div>
                           ))}
@@ -313,14 +322,26 @@ function toColumns(items: NavItem[]): NavItem[][] {
   return [items.slice(0, mid), items.slice(mid)];
 }
 
-function DropdownItem({ item, pathname }: { item: NavItem; pathname: string }) {
+function DropdownItem({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate: () => void;
+}) {
   const Icon = item.icon;
   const active = pathname === item.href || pathname.startsWith(item.href + "/");
   const hasChildren = !!item.children?.length;
 
   if (!hasChildren) {
     return (
-      <Link className={"dropdown-item" + (active ? " active" : "")} href={item.href}>
+      <Link
+        className={"dropdown-item" + (active ? " active" : "")}
+        href={item.href}
+        onClick={onNavigate}
+      >
         <span className="dropdown-item-icon">
           <Icon size={18} />
         </span>
@@ -334,21 +355,33 @@ function DropdownItem({ item, pathname }: { item: NavItem; pathname: string }) {
       <div className="text-uppercase text-muted fw-bold small mb-2">{item.title}</div>
       <div className="d-grid gap-1">
         {item.children!.map((child) => (
-          <DropdownChild key={child.href} child={child} pathname={pathname} />
+          <DropdownChild key={child.href} child={child} pathname={pathname} onNavigate={onNavigate} />
         ))}
       </div>
     </div>
   );
 }
 
-function DropdownChild({ child, pathname }: { child: NavItem; pathname: string }) {
+function DropdownChild({
+  child,
+  pathname,
+  onNavigate,
+}: {
+  child: NavItem;
+  pathname: string;
+  onNavigate: () => void;
+}) {
   const ChildIcon = child.icon;
   const childActive = pathname === child.href || pathname.startsWith(child.href + "/");
   const hasGrandChildren = !!child.children?.length;
 
   if (!hasGrandChildren) {
     return (
-      <Link className={"dropdown-item" + (childActive ? " active" : "")} href={child.href}>
+      <Link
+        className={"dropdown-item" + (childActive ? " active" : "")}
+        href={child.href}
+        onClick={onNavigate}
+      >
         <span className="dropdown-item-icon">
           <ChildIcon size={18} />
         </span>
@@ -365,7 +398,12 @@ function DropdownChild({ child, pathname }: { child: NavItem; pathname: string }
           const SubIcon = sub.icon;
           const subActive = pathname === sub.href || pathname.startsWith(sub.href + "/");
           return (
-            <Link key={sub.href} className={"dropdown-item" + (subActive ? " active" : "")} href={sub.href}>
+            <Link
+              key={sub.href}
+              className={"dropdown-item" + (subActive ? " active" : "")}
+              href={sub.href}
+              onClick={onNavigate}
+            >
               <span className="dropdown-item-icon">
                 <SubIcon size={18} />
               </span>
