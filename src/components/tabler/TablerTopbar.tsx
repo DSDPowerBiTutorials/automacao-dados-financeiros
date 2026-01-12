@@ -219,20 +219,17 @@ export function TablerTopbar({
                       >
                         <span className="nav-link-title">{group.label}</span>
                       </button>
-                      <div
-                        className={
-                          "dropdown-menu dropdown-menu-columns dropdown-menu-arrow" +
-                          (isOpen ? " show" : "")
-                        }
-                      >
-                        {columns.map((col, idx) => (
-                          <div key={idx} className="dropdown-menu-column">
-                            {col.map((item) => (
-                              <DropdownItem key={item.href} item={item} pathname={pathname || "/"} />
-                            ))}
-                          </div>
-                        ))}
-                      </div>
+                      {isOpen && (
+                        <div className="dropdown-menu dropdown-menu-columns dropdown-menu-arrow show">
+                          {columns.map((col, idx) => (
+                            <div key={idx} className="dropdown-menu-column">
+                              {col.map((item) => (
+                                <DropdownItem key={item.href} item={item} pathname={pathname || "/"} />
+                              ))}
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </li>
                   );
                 })}
