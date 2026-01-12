@@ -72,3 +72,13 @@ aside nav::-webkit-scrollbar-thumb {
 .navbar .navbar-nav {
   overflow: visible;
 }
+
+/* Dropdown do menu superior: tamanho proporcional ao conteúdo */
+.app-topnav-dropdown {
+  width: fit-content;
+  max-width: calc(100vw - 2rem);
+}
+
+.app-topnav-dropdown .dropdown-menu-column {
+  min-width: 14rem;
+}

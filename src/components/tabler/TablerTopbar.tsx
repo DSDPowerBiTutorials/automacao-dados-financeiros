@@ -27,12 +27,40 @@ export function TablerTopbar({
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [menuQuery, setMenuQuery] = useState("");
   const dropdownRootRef = useRef<HTMLDivElement | null>(null);
+  const dropdownRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  const [alignOverride, setAlignOverride] = useState<Record<string, boolean>>({});
 
   const closeMenu = () => setOpenGroup(null);
 
   useEffect(() => {
     setOpenGroup(null);
   }, [pathname]);
+
+  useEffect(() => {
+    if (!openGroup) return;
+
+    const el = dropdownRefs.current[openGroup];
+    if (!el) return;
+
+    const raf = window.requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect();
+      const padding = 12;
+      const shouldAlignEnd = rect.right > window.innerWidth - padding;
+      const shouldAlignStart = rect.left < padding;
+
+      setAlignOverride((prev) => {
+        const current = prev[openGroup];
+        let next = current;
+        if (shouldAlignEnd) next = true;
+        else if (shouldAlignStart) next = false;
+        else return prev;
+        if (current === next) return prev;
+        return { ...prev, [openGroup]: next };
+      });
+    });
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [openGroup]);
 
   useEffect(() => {
     const onDocClick = (e: MouseEvent) => {
@@ -208,7 +236,8 @@ export function TablerTopbar({
                 {filterGroups(groups, menuQuery).map((group, groupIdx, filtered) => {
                   const isOpen = openGroup === group.label;
                   const columns = toColumns(group.items);
-                  const alignEnd = groupIdx >= Math.max(0, filtered.length - 2);
+                  const alignEndHeuristic = groupIdx >= Math.max(0, filtered.length - 2);
+                  const alignEnd = alignOverride[group.label] ?? alignEndHeuristic;
                   return (
                     <li
                       key={group.label}
@@ -225,29 +254,32 @@ export function TablerTopbar({
                       {isOpen && (
                         <div
                           className={
-                            "dropdown-menu dropdown-menu-columns dropdown-menu-arrow show" +
+                            "dropdown-menu dropdown-menu-columns dropdown-menu-arrow show app-topnav-dropdown" +
                             (alignEnd ? " dropdown-menu-end" : "")
                           }
                           data-bs-popper="static"
+                          ref={(el) => {
+                            dropdownRefs.current[group.label] = el;
+                          }}
                           style={{
                             top: "100%",
                             bottom: "auto",
-                            width: "min(1100px, calc(100vw - 2rem))",
-                            maxWidth: "calc(100vw - 2rem)",
                           }}
                         >
-                          {columns.map((col, idx) => (
-                            <div key={idx} className="dropdown-menu-column">
-                              {col.map((item) => (
-                                <DropdownItem
-                                  key={item.href}
-                                  item={item}
-                                  pathname={pathname || "/"}
-                                  onNavigate={closeMenu}
-                                />
-                              ))}
-                            </div>
-                          ))}
+                          <div className="dropdown-menu-columns">
+                            {columns.map((col, idx) => (
+                              <div key={idx} className="dropdown-menu-column">
+                                {col.map((item) => (
+                                  <DropdownItem
+                                    key={item.href}
+                                    item={item}
+                                    pathname={pathname || "/"}
+                                    onNavigate={closeMenu}
+                                  />
+                                ))}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       )}
                     </li>
@@ -319,8 +351,8 @@ function filterGroups(groups: NavGroup[], q: string): NavGroup[] {
 
 function toColumns(items: NavItem[]): NavItem[][] {
   // Mais colunas = menos altura => evita scrollbar no dropdown.
-  const maxPerCol = 8;
-  const cols = Math.min(4, Math.max(1, Math.ceil(items.length / maxPerCol)));
+  const maxPerCol = 6;
+  const cols = Math.min(5, Math.max(1, Math.ceil(items.length / maxPerCol)));
   if (cols === 1) return [items];
 
   const per = Math.ceil(items.length / cols);
