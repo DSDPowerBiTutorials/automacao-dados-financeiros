@@ -203,9 +203,10 @@ export function TablerTopbar({
               </div>
 
               <ul className="navbar-nav">
-                {filterGroups(groups, menuQuery).map((group) => {
+                {filterGroups(groups, menuQuery).map((group, groupIdx, filtered) => {
                   const isOpen = openGroup === group.label;
                   const columns = toColumns(group.items);
+                  const alignEnd = groupIdx >= Math.max(0, filtered.length - 2);
                   return (
                     <li
                       key={group.label}
@@ -220,7 +221,16 @@ export function TablerTopbar({
                         <span className="nav-link-title">{group.label}</span>
                       </button>
                       {isOpen && (
-                        <div className="dropdown-menu dropdown-menu-columns dropdown-menu-arrow show">
+                        <div
+                          className={
+                            "dropdown-menu dropdown-menu-columns dropdown-menu-arrow show" +
+                            (alignEnd ? " dropdown-menu-end" : "")
+                          }
+                          style={{
+                            maxWidth: "min(960px, calc(100vw - 2rem))",
+                            overflowX: "auto",
+                          }}
+                        >
                           {columns.map((col, idx) => (
                             <div key={idx} className="dropdown-menu-column">
                               {col.map((item) => (
