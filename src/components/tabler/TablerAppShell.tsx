@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { TablerSidebar } from "@/components/tabler/TablerSidebar";
 import { TablerTopbar } from "@/components/tabler/TablerTopbar";
 
 export function TablerAppShell({ children }: { children: React.ReactNode }) {
@@ -19,9 +18,8 @@ export function TablerAppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="page">
-      <TablerSidebar mobileOpen={mobileOpen} onNavigate={() => setMobileOpen(false)} />
       <div className="page-wrapper">
-        <TablerTopbar onToggleSidebar={() => setMobileOpen((v) => !v)} />
+        <TablerTopbar mobileOpen={mobileOpen} onToggleMobileMenu={() => setMobileOpen((v) => !v)} />
         <div className="page-body">
           <div className="container-xl">{children}</div>
         </div>
