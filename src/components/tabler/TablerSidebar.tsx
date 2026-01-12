@@ -14,7 +14,13 @@ function flattenFirstHref(item: NavItem): string {
   return item.href;
 }
 
-export function TablerSidebar() {
+export function TablerSidebar({
+  mobileOpen,
+  onNavigate,
+}: {
+  mobileOpen: boolean;
+  onNavigate: () => void;
+}) {
   const pathname = usePathname() || "/";
   const [open, setOpen] = useState<Record<string, boolean>>({});
 
@@ -23,7 +29,10 @@ export function TablerSidebar() {
   return (
     <aside className="navbar navbar-vertical navbar-expand-lg" data-bs-theme="light">
       <div className="container-fluid">
-        <div className="collapse navbar-collapse" id="tabler-navbar-menu">
+        <div
+          className={"collapse navbar-collapse" + (mobileOpen ? " show" : "")}
+          id="tabler-navbar-menu"
+        >
           <ul className="navbar-nav pt-lg-3">
             {groups.map((group) => (
               <li key={group.label} className="nav-item">
@@ -37,6 +46,7 @@ export function TablerSidebar() {
                       item={item}
                       pathname={pathname}
                       open={open[item.href] ?? false}
+                      onNavigate={onNavigate}
                       onToggle={() =>
                         setOpen((prev) => ({ ...prev, [item.href]: !(prev[item.href] ?? false) }))
                       }
@@ -56,11 +66,13 @@ function SidebarItem({
   item,
   pathname,
   open,
+  onNavigate,
   onToggle,
 }: {
   item: NavItem;
   pathname: string;
   open: boolean;
+  onNavigate: () => void;
   onToggle: () => void;
 }) {
   const active = isActive(pathname, flattenFirstHref(item));
@@ -70,7 +82,11 @@ function SidebarItem({
     const Icon = item.icon;
     return (
       <li className="nav-item">
-        <Link className={"nav-link" + (active ? " active" : "")} href={item.href}>
+        <Link
+          className={"nav-link" + (active ? " active" : "")}
+          href={item.href}
+          onClick={onNavigate}
+        >
           <span className="nav-link-icon d-md-none d-lg-inline-block">
             <Icon size={18} />
           </span>
@@ -85,7 +101,7 @@ function SidebarItem({
 
   return (
     <li className={"nav-item" + (expanded ? " active" : "")}
-        >
+    >
       <button
         type="button"
         className={"nav-link w-100 text-start" + (expanded ? " active" : "")}
@@ -101,7 +117,12 @@ function SidebarItem({
       {expanded && (
         <ul className="nav flex-column">
           {item.children!.map((child) => (
-            <SidebarLeaf key={child.href} item={child} pathname={pathname} />
+            <SidebarLeaf
+              key={child.href}
+              item={child}
+              pathname={pathname}
+              onNavigate={onNavigate}
+            />
           ))}
         </ul>
       )}
@@ -109,7 +130,15 @@ function SidebarItem({
   );
 }
 
-function SidebarLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
+function SidebarLeaf({
+  item,
+  pathname,
+  onNavigate,
+}: {
+  item: NavItem;
+  pathname: string;
+  onNavigate: () => void;
+}) {
   const active = isActive(pathname, item.href);
   const Icon = item.icon;
   const hasChildren = !!item.children?.length;
@@ -117,7 +146,11 @@ function SidebarLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
   if (!hasChildren) {
     return (
       <li className="nav-item">
-        <Link className={"nav-link" + (active ? " active" : "")} href={item.href}>
+        <Link
+          className={"nav-link" + (active ? " active" : "")}
+          href={item.href}
+          onClick={onNavigate}
+        >
           <span className="nav-link-icon d-md-none d-lg-inline-block">
             <Icon size={16} />
           </span>
@@ -134,7 +167,12 @@ function SidebarLeaf({ item, pathname }: { item: NavItem; pathname: string }) {
       </div>
       <ul className="nav flex-column">
         {item.children!.map((sub) => (
-          <SidebarLeaf key={sub.href} item={sub} pathname={pathname} />
+          <SidebarLeaf
+            key={sub.href}
+            item={sub}
+            pathname={pathname}
+            onNavigate={onNavigate}
+          />
         ))}
       </ul>
     </li>

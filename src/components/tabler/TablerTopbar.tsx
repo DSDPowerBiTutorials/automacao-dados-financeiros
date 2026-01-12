@@ -4,7 +4,11 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 
-export function TablerTopbar() {
+export function TablerTopbar({
+  onToggleSidebar,
+}: {
+  onToggleSidebar: () => void;
+}) {
   const pathname = usePathname();
   const isDashboard = pathname === "/dashboard";
 
@@ -12,10 +16,9 @@ export function TablerTopbar() {
     <header className="navbar navbar-expand-md d-print-none">
       <div className="container-xl">
         <button
-          className="navbar-toggler"
+          className="navbar-toggler d-lg-none"
           type="button"
-          data-bs-toggle="collapse"
-          data-bs-target="#tabler-navbar-menu"
+          onClick={onToggleSidebar}
           aria-controls="tabler-navbar-menu"
           aria-expanded="false"
           aria-label="Toggle navigation"
