@@ -142,10 +142,9 @@ export function TablerTopbar({
       </header>
 
       {navVisible && (
-        <header className="navbar-expand-md">
-          <div className={"collapse navbar-collapse" + (mobileOpen ? " show" : "")} id="navbar-menu">
-            <div className="navbar navbar-light">
-              <div className="container-xl">
+        <header className="navbar navbar-expand-md navbar-light d-print-none">
+          <div className={"container-xl"}>
+            <div className={"collapse navbar-collapse" + (mobileOpen ? " show" : "")} id="navbar-menu">
                 <div className="d-md-none py-2">
                   <div className="row g-2 align-items-center">
                     <div className="col-12">
@@ -231,7 +230,6 @@ export function TablerTopbar({
                     );
                   })}
                 </ul>
-              </div>
             </div>
           </div>
         </header>
