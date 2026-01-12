@@ -232,10 +232,8 @@ export function TablerTopbar({
                           style={{
                             top: "100%",
                             bottom: "auto",
-                            maxWidth: "min(960px, calc(100vw - 2rem))",
-                            maxHeight: "calc(100vh - 160px)",
-                            overflowX: "auto",
-                            overflowY: "auto",
+                            width: "min(1100px, calc(100vw - 2rem))",
+                            maxWidth: "calc(100vw - 2rem)",
                           }}
                         >
                           {columns.map((col, idx) => (
@@ -320,9 +318,20 @@ function filterGroups(groups: NavGroup[], q: string): NavGroup[] {
 }
 
 function toColumns(items: NavItem[]): NavItem[][] {
-  if (items.length <= 10) return [items];
-  const mid = Math.ceil(items.length / 2);
-  return [items.slice(0, mid), items.slice(mid)];
+  // Mais colunas = menos altura => evita scrollbar no dropdown.
+  const maxPerCol = 8;
+  const cols = Math.min(4, Math.max(1, Math.ceil(items.length / maxPerCol)));
+  if (cols === 1) return [items];
+
+  const per = Math.ceil(items.length / cols);
+  const result: NavItem[][] = [];
+  for (let i = 0; i < cols; i++) {
+    const start = i * per;
+    const end = start + per;
+    const chunk = items.slice(start, end);
+    if (chunk.length) result.push(chunk);
+  }
+  return result.length ? result : [items];
 }
 
 function DropdownItem({
