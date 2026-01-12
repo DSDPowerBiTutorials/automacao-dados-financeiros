@@ -212,7 +212,7 @@ export function TablerTopbar({
                   return (
                     <li
                       key={group.label}
-                      className={"nav-item dropdown" + (isOpen ? " show" : "")}
+                      className={"nav-item dropdown position-relative" + (isOpen ? " show" : "")}
                     >
                       <button
                         type="button"
@@ -228,7 +228,10 @@ export function TablerTopbar({
                             "dropdown-menu dropdown-menu-columns dropdown-menu-arrow show" +
                             (alignEnd ? " dropdown-menu-end" : "")
                           }
+                          data-bs-popper="static"
                           style={{
+                            top: "100%",
+                            bottom: "auto",
                             maxWidth: "min(960px, calc(100vw - 2rem))",
                             maxHeight: "calc(100vh - 160px)",
                             overflowX: "auto",

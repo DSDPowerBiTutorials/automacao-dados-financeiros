@@ -65,3 +65,10 @@ aside nav::-webkit-scrollbar-thumb {
   padding-left: 1rem;
   padding-right: 1rem;
 }
+
+/* Dropdowns do Tabler: não cortar e sempre abrir para baixo */
+.navbar,
+.navbar .navbar-collapse,
+.navbar .navbar-nav {
+  overflow: visible;
+}
