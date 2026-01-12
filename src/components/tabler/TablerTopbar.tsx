@@ -3,7 +3,11 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NAV, type NavGroup, type NavItem } from "@/config/navigation";
+import { UserMenu } from "@/components/auth/UserMenu";
+import { useGlobalScope } from "@/contexts/global-scope-context";
+import { SCOPE_CONFIG } from "@/lib/scope-utils";
 
 export function TablerTopbar({
   mobileOpen,
@@ -13,57 +17,125 @@ export function TablerTopbar({
   onToggleMobileMenu: () => void;
 }) {
   const pathname = usePathname();
-  const groups: NavGroup[] = NAV;
+  const groups: NavGroup[] = useMemo(() => NAV, []);
+  const { selectedScope, setSelectedScope } = useGlobalScope();
+  const [openGroup, setOpenGroup] = useState<string | null>(null);
+  const dropdownRootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    setOpenGroup(null);
+  }, [pathname]);
+
+  useEffect(() => {
+    const onDocClick = (e: MouseEvent) => {
+      const el = dropdownRootRef.current;
+      if (!el) return;
+      if (e.target instanceof Node && el.contains(e.target)) return;
+      setOpenGroup(null);
+    };
+    document.addEventListener("click", onDocClick);
+    return () => document.removeEventListener("click", onDocClick);
+  }, []);
 
   return (
-    <header className="navbar navbar-expand-md d-print-none">
-      <div className="container-xl">
-        <button
-          className="navbar-toggler"
-          type="button"
-          onClick={onToggleMobileMenu}
-          aria-controls="tabler-topnav"
-          aria-expanded={mobileOpen}
-          aria-label="Toggle navigation"
-        >
-          <span className="navbar-toggler-icon" />
-        </button>
+    <div ref={dropdownRootRef}>
+      <header className="navbar navbar-expand-md d-print-none">
+        <div className="container-xl">
+          <button
+            className="navbar-toggler"
+            type="button"
+            onClick={onToggleMobileMenu}
+            aria-controls="navbar-menu"
+            aria-expanded={mobileOpen}
+            aria-label="Toggle navigation"
+          >
+            <span className="navbar-toggler-icon" />
+          </button>
 
-        <h1 className="navbar-brand navbar-brand-autodark pe-0 pe-md-3">
-          <Link href="/dashboard" className="text-decoration-none">
-            <span className="d-inline-flex align-items-center gap-2">
-              <Image src="/favicon-32x32.png" alt="DSD" width={24} height={24} />
-              <span className="d-none d-sm-inline">DSD Finance Hub</span>
-            </span>
-          </Link>
-        </h1>
+          <h1 className="navbar-brand navbar-brand-autodark pe-0 pe-md-3">
+            <Link href="/dashboard" className="text-decoration-none">
+              <span className="d-inline-flex align-items-center gap-2">
+                <Image src="/favicon-32x32.png" alt="DSD" width={24} height={24} />
+                <span className="d-none d-sm-inline">DSD Finance Hub</span>
+              </span>
+            </Link>
+          </h1>
 
-        <div className={"collapse navbar-collapse" + (mobileOpen ? " show" : "")} id="tabler-topnav">
-          <ul className="navbar-nav">
-            {groups.map((group) => (
-              <li key={group.label} className="nav-item dropdown">
-                <a
-                  className="nav-link dropdown-toggle"
-                  href="#"
-                  role="button"
-                  data-bs-toggle="dropdown"
-                  data-bs-auto-close="outside"
-                  aria-expanded="false"
-                  onClick={(e) => e.preventDefault()}
+          <div className="navbar-nav flex-row order-md-last align-items-center">
+            <div className="nav-item me-2 d-none d-md-flex">
+              <div className="btn-list">
+                <button
+                  type="button"
+                  className={"btn btn-sm " + (selectedScope === "ES" ? "btn-primary" : "btn-outline-primary")}
+                  onClick={() => setSelectedScope("ES")}
                 >
-                  <span className="nav-link-title">{group.label}</span>
-                </a>
-                <div className="dropdown-menu">
-                  {group.items.map((item) => (
-                    <DropdownItem key={item.href} item={item} pathname={pathname || "/"} />
-                  ))}
-                </div>
-              </li>
-            ))}
-          </ul>
+                  ES
+                </button>
+                <button
+                  type="button"
+                  className={"btn btn-sm " + (selectedScope === "US" ? "btn-primary" : "btn-outline-primary")}
+                  onClick={() => setSelectedScope("US")}
+                >
+                  US
+                </button>
+                <button
+                  type="button"
+                  className={
+                    "btn btn-sm " +
+                    (selectedScope === "GLOBAL" ? "btn-primary" : "btn-outline-primary")
+                  }
+                  onClick={() => setSelectedScope("GLOBAL")}
+                >
+                  GLOBAL
+                </button>
+              </div>
+            </div>
+
+            <div className="nav-item d-none d-md-flex">
+              <span className="nav-link text-muted small">{SCOPE_CONFIG[selectedScope].label}</span>
+            </div>
+
+            <div className="nav-item ms-2">
+              <UserMenu />
+            </div>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+
+      <header className="navbar-expand-md">
+        <div className={"collapse navbar-collapse" + (mobileOpen ? " show" : "")} id="navbar-menu">
+          <div className="navbar navbar-light">
+            <div className="container-xl">
+              <ul className="navbar-nav">
+                {groups.map((group) => {
+                  const isOpen = openGroup === group.label;
+                  return (
+                    <li
+                      key={group.label}
+                      className={"nav-item dropdown" + (isOpen ? " show" : "")}
+                    >
+                      <button
+                        type="button"
+                        className={"nav-link dropdown-toggle" + (isOpen ? " show" : "")}
+                        aria-expanded={isOpen}
+                        onClick={() => setOpenGroup((prev) => (prev === group.label ? null : group.label))}
+                      >
+                        <span className="nav-link-title">{group.label}</span>
+                      </button>
+                      <div className={"dropdown-menu" + (isOpen ? " show" : "")}>
+                        {group.items.map((item) => (
+                          <DropdownItem key={item.href} item={item} pathname={pathname || "/"} />
+                        ))}
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </header>
+    </div>
   );
 }
 
