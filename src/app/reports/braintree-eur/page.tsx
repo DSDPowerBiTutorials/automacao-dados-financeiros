@@ -839,8 +839,8 @@ export default function BraintreeEURPage() {
       let query = supabase
         .from("csv_rows")
         .select("id,date,description,amount,source,custom_data,reconciled,currency,created_at")
-        // Evita OR: melhora uso de índice (source/date)
-        .in("source", ["braintree-api-revenue", "braintree-eur"])
+        // Usar apenas braintree-api-revenue (otimiza índice)
+        .eq("source", "braintree-api-revenue")
         .gte("date", dateStart)
         .order("date", { ascending: false })
         .range(from, to);
@@ -851,7 +851,7 @@ export default function BraintreeEURPage() {
 
       const { data: rowsData, error } = await withTimeout(
         query,
-        20000,
+        60000,
         "Supabase load csv_rows (Braintree EUR)"
       );
 
