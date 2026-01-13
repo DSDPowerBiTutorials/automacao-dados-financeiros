@@ -1566,3 +1566,4 @@ function getLastPaidStatus(statusString: string): string {
     if (!statusString) return 'Unpaid';
     const statuses = statusString.split(';').map(s => s.trim()).filter(Boolean);
     return statuses[statuses.length - 1] || 'Unpaid';
+}
