@@ -233,7 +233,7 @@ export default function HubSpotReportPage() {
                 .from("csv_rows")
                 .select("*", { count: "exact" })
                 .eq("source", "hubspot")
-                .gte("custom_data->>date_ordered", "2025-12-01")
+                .gte("custom_data->>date_ordered", "2024-12-01")
                 .order("date", { ascending: false })
                 .limit(500);
 
