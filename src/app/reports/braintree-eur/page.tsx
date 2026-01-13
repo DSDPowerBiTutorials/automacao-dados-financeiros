@@ -838,7 +838,7 @@ export default function BraintreeEURPage() {
       // Filtrar apenas EUR e dentro da janela de datas
       let query = supabase
         .from("csv_rows")
-        .select("id,date,description,amount,source,custom_data,reconciled,currency,created_at")
+        .select("id,date,description,amount,source,custom_data,reconciled,created_at")
         // Usar apenas braintree-api-revenue (otimiza índice)
         .eq("source", "braintree-api-revenue")
         .gte("date", dateStart)
