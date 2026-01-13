@@ -229,10 +229,12 @@ export default function HubSpotReportPage() {
 
             console.log('📡 [FETCH] Fazendo query no Supabase...');
             // Usar range com limit para carregar apenas dados paginados do servidor
+            // Filtrar apenas deals de dezembro/2025 em diante
             const { data, error, count } = await supabase
                 .from("csv_rows")
                 .select("*", { count: "exact" })
                 .eq("source", "hubspot")
+                .gte("date", "2025-12-01")
                 .order("date", { ascending: false })
                 .limit(500); // LIMITAR para evitar travamento
 
