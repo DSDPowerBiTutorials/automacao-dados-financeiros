@@ -228,15 +228,14 @@ export default function HubSpotReportPage() {
             setCurrentPage(1); // Resetar página ao carregar novos dados
 
             console.log('📡 [FETCH] Fazendo query no Supabase...');
-            // Usar range com limit para carregar apenas dados paginados do servidor
-            // Filtrar apenas deals de dezembro/2025 em diante
+            // Filtrar por Date_Ordered (custom_data) ao invés de date (que é sync timestamp)
             const { data, error, count } = await supabase
                 .from("csv_rows")
                 .select("*", { count: "exact" })
                 .eq("source", "hubspot")
-                .gte("date", "2025-12-01")
+                .gte("custom_data->>date_ordered", "2025-12-01")
                 .order("date", { ascending: false })
-                .limit(500); // LIMITAR para evitar travamento
+                .limit(500);
 
             console.log(`✅ [FETCH] Query completou: ${data?.length} registros, total: ${count}`);
 
