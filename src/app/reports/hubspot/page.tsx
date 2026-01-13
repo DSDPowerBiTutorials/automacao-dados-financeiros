@@ -228,14 +228,13 @@ export default function HubSpotReportPage() {
             setCurrentPage(1); // Resetar página ao carregar novos dados
 
             console.log('📡 [FETCH] Fazendo query no Supabase...');
-            // Filtrar por Date_Ordered (custom_data) ao invés de date (que é sync timestamp)
+            // Buscar todas as orders e filtrar no cliente para evitar problemas com JSONB
             const { data, error, count } = await supabase
                 .from("csv_rows")
                 .select("*", { count: "exact" })
                 .eq("source", "hubspot")
-                .gte("custom_data->>date_ordered", "2024-12-01")
                 .order("date", { ascending: false })
-                .limit(500);
+                .limit(2000);
 
             console.log(`✅ [FETCH] Query completou: ${data?.length} registros, total: ${count}`);
 
@@ -244,7 +243,17 @@ export default function HubSpotReportPage() {
                 throw error;
             }
 
-            setRows(data || []);
+            // Filtrar por date_ordered >= 2024-12-01 (últimos 13 meses)
+            const cutoffDate = "2024-12-01";
+            const filteredData = (data || []).filter((row: any) => {
+                const dateOrdered = row.custom_data?.date_ordered || row.custom_data?.Date_Ordered || row.date;
+                if (!dateOrdered) return false;
+                return dateOrdered >= cutoffDate;
+            });
+
+            console.log(`📊 [FILTER] ${filteredData.length} orders desde ${cutoffDate}`);
+
+            setRows(filteredData);
             console.log('✅ [FETCH] Dados carregados com sucesso!');
         } catch (error: any) {
             console.error('❌ [FETCH] Erro ao carregar dados:', error);
