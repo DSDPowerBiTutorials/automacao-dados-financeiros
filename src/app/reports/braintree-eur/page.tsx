@@ -877,6 +877,29 @@ export default function BraintreeEURPage() {
 
       console.log(`[Braintree EUR] Found ${rowsData.length} rows`);
 
+      // 🆕 Buscar mapeamentos order_id ↔ transaction_id (batch)
+      const txIdsForMapping = rowsData
+        .map((r) => r.custom_data?.transaction_id)
+        .filter(Boolean);
+
+      let orderMappings = new Map<string, string>();
+      if (txIdsForMapping.length > 0) {
+        try {
+          const mappingRes = await fetch("/api/order-mapping", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transaction_ids: txIdsForMapping }),
+          });
+          const mappingData = await mappingRes.json();
+          if (mappingData.success && mappingData.data) {
+            orderMappings = new Map(Object.entries(mappingData.data));
+            console.log(`[Order Mapping] ✅ Loaded ${orderMappings.size} mappings`);
+          }
+        } catch (err) {
+          console.error("[Order Mapping] Failed to load mappings:", err);
+        }
+      }
+
       // Filtrar por EUR e mapear para interface
       const mappedRows: BraintreeEURRow[] = rowsData
         .filter((row) => {
@@ -926,7 +949,7 @@ export default function BraintreeEURPage() {
 
             // Campos adicionais da Braintree
             transaction_id: row.custom_data?.transaction_id,
-            order_id: row.custom_data?.order_id || null,
+            order_id: row.custom_data?.order_id || orderMappings.get(row.custom_data?.transaction_id || "") || null,
             hubspot_order_code: row.custom_data?.hubspot_order_code || null,
             hubspot_deal_id: row.custom_data?.hubspot_deal_id || null,
             hubspot_row_id: row.custom_data?.hubspot_row_id || null,
