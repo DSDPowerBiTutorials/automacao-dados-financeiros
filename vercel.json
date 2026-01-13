@@ -7,10 +7,6 @@
         {
             "path": "/api/cron/hubspot-sync",
             "schedule": "0 4 * * *"
-        },
-        {
-            "path": "/api/order-mapping/auto-link",
-            "schedule": "0 * * * *"
         }
     ]
 }
