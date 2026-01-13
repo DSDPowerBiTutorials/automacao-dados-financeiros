@@ -144,6 +144,24 @@ interface HubSpotDeal {
         synced_at?: string;
         query_type?: string; // "enriched", "intermediate", "simple"
         contact_id?: string;
+
+        // ==========================================
+        // 🔗 Linkagem Braintree (preenchido pela app)
+        // ==========================================
+        braintree_order_id?: string;
+        braintree_transaction_id?: string;
+        braintree_transaction_ids?: string[];
+        braintree_status?: string;
+        braintree_status_history?: Array<{ status: string; timestamp: string }>;
+        braintree_settlement_batch_id?: string;
+        braintree_settlement_date?: string;
+        braintree_disbursement_date?: string;
+        braintree_settlement_amount?: number;
+        braintree_settlement_currency_iso_code?: string;
+        braintree_settlement_currency_exchange_rate?: number;
+        braintree_merchant_account_id?: string;
+        bank_destination_account?: string;
+        linked_at?: string;
     };
     [key: string]: any;
 }
@@ -1094,6 +1112,75 @@ ${result.recommendations.join('\n')}
                                                                     </div>
                                                                 </div>
                                                             </div>
+
+                                                            {/* Braintree Link (preenchido automaticamente pela app) */}
+                                                            {(row.custom_data?.braintree_transaction_id || (row.custom_data?.braintree_status_history || []).length > 0) && (
+                                                                <div className="border-t border-gray-200 pt-3 mb-3">
+                                                                    <h5 className="font-semibold text-xs text-gray-700 mb-2">Braintree Link</h5>
+                                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs">
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-gray-600 min-w-[140px]">Transaction ID:</span>
+                                                                            <code className="bg-blue-50 px-2 py-1 rounded font-mono text-blue-700 break-all">
+                                                                                {row.custom_data?.braintree_transaction_id || "-"}
+                                                                            </code>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-gray-600 min-w-[140px]">Conta destino:</span>
+                                                                            <code className="bg-orange-50 px-2 py-1 rounded font-mono text-orange-700 break-all">
+                                                                                {row.custom_data?.bank_destination_account || "-"}
+                                                                            </code>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-gray-600 min-w-[140px]">Settlement Date:</span>
+                                                                            <code className="bg-gray-50 px-2 py-1 rounded font-mono text-gray-700">
+                                                                                {row.custom_data?.braintree_settlement_date || "-"}
+                                                                            </code>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-gray-600 min-w-[140px]">Disbursement Date:</span>
+                                                                            <code className="bg-gray-50 px-2 py-1 rounded font-mono text-gray-700">
+                                                                                {row.custom_data?.braintree_disbursement_date || "-"}
+                                                                            </code>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-gray-600 min-w-[140px]">Settlement Amount:</span>
+                                                                            <code className="bg-emerald-50 px-2 py-1 rounded font-mono text-emerald-700">
+                                                                                {row.custom_data?.braintree_settlement_amount != null
+                                                                                    ? formatCurrency(row.custom_data.braintree_settlement_amount)
+                                                                                    : "-"}
+                                                                            </code>
+                                                                        </div>
+                                                                        <div className="flex items-center gap-2">
+                                                                            <span className="text-gray-600 min-w-[140px]">Moeda/FX:</span>
+                                                                            <code className="bg-purple-50 px-2 py-1 rounded font-mono text-purple-700">
+                                                                                {row.custom_data?.braintree_settlement_currency_iso_code || "-"}
+                                                                                {row.custom_data?.braintree_settlement_currency_exchange_rate != null
+                                                                                    ? ` @ ${row.custom_data.braintree_settlement_currency_exchange_rate}`
+                                                                                    : ""}
+                                                                            </code>
+                                                                        </div>
+                                                                    </div>
+
+                                                                    {Array.isArray(row.custom_data?.braintree_status_history) && row.custom_data!.braintree_status_history!.length > 0 && (
+                                                                        <div className="mt-3">
+                                                                            <div className="text-[11px] text-gray-600 mb-1">Status history</div>
+                                                                            <div className="max-h-[180px] overflow-y-auto border border-gray-200 rounded">
+                                                                                <div className="divide-y">
+                                                                                    {[...row.custom_data!.braintree_status_history!]
+                                                                                        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+                                                                                        .slice(0, 20)
+                                                                                        .map((h, idx) => (
+                                                                                            <div key={idx} className="px-3 py-2 flex items-center justify-between gap-2 text-xs">
+                                                                                                <span className="font-mono">{h.status}</span>
+                                                                                                <span className="text-gray-500 font-mono">{new Date(h.timestamp).toLocaleString("pt-BR")}</span>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            )}
 
                                                             {/* Customer Info */}
                                                             {(row.customer_name || row.customer_email) && (

@@ -164,6 +164,41 @@ const toNumber = (value: any, fallback = 0) => {
 };
 
 export default function BraintreeGBPPage() {
+  const ALL_COLUMN_IDS = [
+    "id",
+    "date",
+    "description",
+    "amount",
+    "destinationAccount",
+    "reconciliation",
+    "actions",
+    "transaction_id",
+    "status",
+    "type",
+    "currency",
+    "customer_name",
+    "customer_email",
+    "payment_method",
+    "merchant_account_id",
+    "disbursement_date",
+    "settlement_batch_id",
+    "settlement_date",
+    "settlement_amount",
+    "settlement_currency_iso_code",
+    "settlement_currency_exchange_rate",
+    "disbursement_id",
+    "service_fee_amount",
+    "discount_amount",
+    "tax_amount",
+    "processing_fee",
+    "merchant_account_fee",
+    "authorization_adjustment",
+    "dispute_amount",
+    "reserve_amount",
+    "refunded_transaction_id",
+  ] as const;
+  const TOTAL_COLUMNS = ALL_COLUMN_IDS.length;
+
   const [rows, setRows] = useState<BraintreeGBPRow[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [editingRow, setEditingRow] = useState<string | null>(null);
@@ -1204,33 +1239,13 @@ export default function BraintreeGBPPage() {
                       >
                         <Columns3 className="h-4 w-4 mr-2" />
                         Select Columns
-                        {visibleColumns.size < 17 && (
+                        {visibleColumns.size < TOTAL_COLUMNS && (
                           <>
                             <span
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
-                                const allColumns = new Set([
-                                  "id",
-                                  "date",
-                                  "description",
-                                  "amount",
-                                  "destinationAccount",
-                                  "reconciliation",
-                                  "actions",
-                                  "transaction_id",
-                                  "status",
-                                  "type",
-                                  "currency",
-                                  "customer_name",
-                                  "customer_email",
-                                  "payment_method",
-                                  "merchant_account_id",
-                                  "disbursement_date",
-                                  "settlement_amount",
-                                  "disbursement_id",
-                                ]);
-                                setVisibleColumns(allColumns);
+                                setVisibleColumns(new Set(ALL_COLUMN_IDS));
                               }}
                               className="absolute -top-2 -left-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white z-10 cursor-pointer"
                               title="Clear column filter (show all)"
@@ -1238,13 +1253,13 @@ export default function BraintreeGBPPage() {
                               <X className="h-3 w-3" />
                             </span>
                             <span className="absolute -top-2 -right-2 bg-[#243140] text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
-                              {visibleColumns.size}/17
+                              {visibleColumns.size}/{TOTAL_COLUMNS}
                             </span>
                           </>
                         )}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="bg-white dark:bg-slate-900">
                       <DialogHeader>
                         <DialogTitle>Select Visible Columns</DialogTitle>
                       </DialogHeader>
@@ -1605,7 +1620,7 @@ export default function BraintreeGBPPage() {
               )}
 
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="w-full min-w-max table-auto">
                   <thead>
                     <tr className="border-b-2 border-[#1a2b4a] bg-gray-50 dark:bg-slate-800">
                       {/* Coluna de Grupo de Payout */}
