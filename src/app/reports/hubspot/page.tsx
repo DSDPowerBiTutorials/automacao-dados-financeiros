@@ -17,6 +17,13 @@ import {
     Link as LinkIcon,
     AlertTriangle,
     TrendingUp,
+    Eye,
+    Package,
+    ShoppingCart,
+    Key,
+    Calendar,
+    DollarSign,
+    User,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -31,6 +38,18 @@ import { Input } from "@/components/ui/input";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/formatters";
 
@@ -181,6 +200,7 @@ export default function HubSpotReportPage() {
     const [currentPage, setCurrentPage] = useState(1);
     const [pageSize] = useState(50);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [orderDetailsDialog, setOrderDetailsDialog] = useState<HubSpotDeal | null>(null);
     const [alert, setAlert] = useState<{
         type: "success" | "error";
         message: string;
@@ -655,9 +675,9 @@ ${result.recommendations.join('\n')}
                         </Button>
                     </Link>
                     <div>
-                        <h1 className="text-3xl font-bold">HubSpot Deals</h1>
+                        <h1 className="text-3xl font-bold">Web Orders</h1>
                         <p className="text-gray-500">
-                            Dados sincronizados via SQL Server Data Warehouse
+                            Pedidos do backend sincronizados via HubSpot SQL Server
                         </p>
                     </div>
                 </div>
@@ -853,16 +873,13 @@ ${result.recommendations.join('\n')}
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Order
+                                        Order ID
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        HubSpot VID
+                                        Status
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Date Ordered
-                                    </th>
-                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Billing Business Name
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Customer
@@ -877,9 +894,6 @@ ${result.recommendations.join('\n')}
                                         Total Paid
                                     </th>
                                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
-                                        Total Discount
-                                    </th>
-                                    <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
                                         Total
                                     </th>
                                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
@@ -892,42 +906,51 @@ ${result.recommendations.join('\n')}
                                     const isEditing = editingId === row.id;
                                     const isExpanded = expandedRows.has(row.id);
 
-                                    // Extrair dados essenciais conforme banco de dados investigado
-                                    // Order: dealname OU ip__ecomm_bridge__order_number (formato 371e321, a3d2c9a)
-                                    const orderCode = row.custom_data?.Order || row.custom_data?.dealname || row.custom_data?.order_number_backup || '-';
+                                    // Extrair dados essenciais
+                                    // Order ID: Reference (short number like "1d309d4")
+                                    const orderReference = row.custom_data?.reference || row.custom_data?.Reference || '-';
+                                    const orderNumber = row.custom_data?.Number || row.custom_data?.number || '-';
 
-                                    // HubSpot VID: DealId (ID numérico)
-                                    const hubspotVid = row.custom_data?.hubspot_vid || row.id || '-';
-
-                                    // Billing Business Name
-                                    const billingBusinessName = row.custom_data?.billing_business_name || row.custom_data?.company_name || row.custom_data?.company_name_alt || '-';
+                                    // Status da order
+                                    const orderStatus = row.custom_data?.Status || row.custom_data?.status || row.custom_data?.dealstage || 'Unknown';
 
                                     // Paid Status: pegar ÚLTIMO status se tiver histórico (Unpaid;Paid;Partial -> Partial)
-                                    const paidStatusRaw = row.custom_data?.paid_status || 'Unpaid';
+                                    const paidStatusRaw = row.custom_data?.paid_status || row.custom_data?.Paid_Status || 'Unpaid';
                                     const paidStatus = getLastPaidStatus(paidStatusRaw);
 
                                     // Valores numéricos
-                                    const totalPaid = row.custom_data?.total_paid || 0;
-                                    const totalDiscount = row.custom_data?.total_discount || 0;
-                                    const totalAmount = row.amount || 0;
+                                    const totalPaid = row.custom_data?.total_paid || row.custom_data?.Total_Paid || 0;
+                                    const totalAmount = row.amount || row.custom_data?.Total || 0;
 
                                     return (
                                         <>
                                             <tr key={row.id} className="hover:bg-gray-50">
-                                                {/* 1. Order */}
+                                                {/* 1. Order ID com ícone de olho */}
                                                 <td className="px-4 py-3">
-                                                    <a
-                                                        href={`#order-${orderCode}`}
-                                                        className="text-blue-600 hover:underline font-semibold"
-                                                        title={`Order: ${orderCode}`}
-                                                    >
-                                                        {orderCode}
-                                                    </a>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-blue-600 font-semibold font-mono">
+                                                            {orderReference}
+                                                        </span>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            onClick={() => setOrderDetailsDialog(row)}
+                                                            className="h-6 w-6 p-0 hover:bg-blue-50"
+                                                            title="Ver detalhes da order"
+                                                        >
+                                                            <Eye className="w-4 h-4 text-blue-600" />
+                                                        </Button>
+                                                    </div>
                                                 </td>
 
-                                                {/* 2. HubSpot VID */}
-                                                <td className="px-4 py-3 text-sm font-mono">
-                                                    {hubspotVid}
+                                                {/* 2. Status */}
+                                                <td className="px-4 py-3">
+                                                    <Badge
+                                                        variant={orderStatus === 'Cancelled' ? 'destructive' : 'default'}
+                                                        className="text-xs"
+                                                    >
+                                                        {orderStatus}
+                                                    </Badge>
                                                 </td>
 
                                                 {/* 3. Date Ordered */}
@@ -939,12 +962,7 @@ ${result.recommendations.join('\n')}
                                                     }) : "-"}
                                                 </td>
 
-                                                {/* 4. Billing Business Name */}
-                                                <td className="px-4 py-3 text-sm">
-                                                    {billingBusinessName}
-                                                </td>
-
-                                                {/* 5. Customer */}
+                                                {/* 4. Customer */}
                                                 <td className="px-4 py-3">
                                                     <a
                                                         href={`mailto:${row.customer_email}`}
@@ -955,20 +973,20 @@ ${result.recommendations.join('\n')}
                                                     </a>
                                                 </td>
 
-                                                {/* 6. Paid Status */}
+                                                {/* 5. Paid Status */}
                                                 <td className="px-4 py-3 text-center">
                                                     <div className="flex items-center justify-center gap-2">
                                                         {getPaidStatusIcon(paidStatus)}
-                                                        <span className="text-sm">
+                                                        <span className="text-sm font-medium">
                                                             {paidStatus}
                                                         </span>
                                                     </div>
                                                 </td>
 
-                                                {/* 7. Date Paid */}
+                                                {/* 6. Date Paid */}
                                                 <td className="px-4 py-3 text-sm">
                                                     {(() => {
-                                                        const datePaid = row.custom_data?.date_paid || row.custom_data?.hs_closed_won_date;
+                                                        const datePaid = row.custom_data?.date_paid || row.custom_data?.Date_Paid || row.custom_data?.hs_closed_won_date;
                                                         if (!datePaid) return "-";
 
                                                         try {
@@ -983,19 +1001,12 @@ ${result.recommendations.join('\n')}
                                                     })()}
                                                 </td>
 
-                                                {/* 8. Total Paid */}
+                                                {/* 7. Total Paid */}
                                                 <td className="px-4 py-3 text-right">
                                                     <span className="font-medium">{formatCurrency(totalPaid)}</span>
                                                 </td>
 
-                                                {/* 9. Total Discount */}
-                                                <td className="px-4 py-3 text-right">
-                                                    <span className={`font-medium ${totalDiscount < 0 ? 'text-red-600' : 'text-gray-900'}`}>
-                                                        {formatCurrency(totalDiscount)}
-                                                    </span>
-                                                </td>
-
-                                                {/* 10. Total */}
+                                                {/* 8. Total */}
                                                 <td className="px-4 py-3 text-right">
                                                     <span className="font-medium">{formatCurrency(totalAmount)}</span>
                                                 </td>
@@ -1337,6 +1348,219 @@ ${result.recommendations.join('\n')}
                     )}
                 </CardContent>
             </Card>
+
+            {/* Order Details Dialog */}
+            <Dialog open={!!orderDetailsDialog} onOpenChange={(open) => !open && setOrderDetailsDialog(null)}>
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto !bg-white dark:!bg-slate-900">
+                    <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-t-lg -mt-6 -mx-6 mb-4">
+                        <DialogTitle className="text-xl font-bold text-blue-900 dark:text-blue-100">
+                            Order Details
+                        </DialogTitle>
+                        <DialogDescription className="text-blue-700 dark:text-blue-300">
+                            Reference: <span className="font-mono font-bold">{orderDetailsDialog?.custom_data?.reference || orderDetailsDialog?.custom_data?.Reference}</span>
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {orderDetailsDialog && (
+                        <div className="space-y-6 bg-white dark:bg-slate-900">
+                            {/* Order IDs Section */}
+                            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                    <Key className="w-4 h-4" />
+                                    Order Identification
+                                </h3>
+                                <div className="grid grid-cols-2 gap-3 text-sm">
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Short Number (Reference):</span>
+                                        <code className="bg-blue-100 dark:bg-blue-900 px-3 py-1 rounded font-mono text-blue-800 dark:text-blue-200 font-bold">
+                                            {orderDetailsDialog.custom_data?.reference || orderDetailsDialog.custom_data?.Reference || '-'}
+                                        </code>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Long Number:</span>
+                                        <code className="bg-purple-100 dark:bg-purple-900 px-3 py-1 rounded font-mono text-purple-800 dark:text-purple-200 text-xs">
+                                            {orderDetailsDialog.custom_data?.Number || orderDetailsDialog.custom_data?.number || '-'}
+                                        </code>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400 block mb-1">HubSpot Deal ID:</span>
+                                        <code className="bg-green-100 dark:bg-green-900 px-3 py-1 rounded font-mono text-green-800 dark:text-green-200">
+                                            {orderDetailsDialog.custom_data?.ID || orderDetailsDialog.id || '-'}
+                                        </code>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Order Site:</span>
+                                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                                            {orderDetailsDialog.custom_data?.Order_Site || orderDetailsDialog.custom_data?.order_site || 'DSD (en-GB)'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Status & Dates Section */}
+                            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                    <Calendar className="w-4 h-4" />
+                                    Status & Timeline
+                                </h3>
+                                <div className="grid grid-cols-2 gap-4 text-sm">
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Order Status:</span>
+                                        <Badge variant={orderDetailsDialog.custom_data?.Status === 'Cancelled' ? 'destructive' : 'default'}>
+                                            {orderDetailsDialog.custom_data?.Status || orderDetailsDialog.custom_data?.status || 'Unknown'}
+                                        </Badge>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Paid Status:</span>
+                                        <div className="flex items-center gap-2">
+                                            {getPaidStatusIcon(orderDetailsDialog.custom_data?.Paid_Status || orderDetailsDialog.custom_data?.paid_status || 'Unpaid')}
+                                            <span className="font-medium text-gray-900 dark:text-gray-100">
+                                                {orderDetailsDialog.custom_data?.Paid_Status || orderDetailsDialog.custom_data?.paid_status || 'Unpaid'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Date Ordered:</span>
+                                        <span className="font-medium text-gray-900 dark:text-gray-100">
+                                            {orderDetailsDialog.custom_data?.Date_Ordered || orderDetailsDialog.date || '-'}
+                                        </span>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400 block mb-1">Date Paid:</span>
+                                        <span className="font-medium text-green-600 dark:text-green-400">
+                                            {orderDetailsDialog.custom_data?.Date_Paid || orderDetailsDialog.custom_data?.date_paid || '-'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Customer Section */}
+                            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                    <User className="w-4 h-4" />
+                                    Customer Information
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400">Email:</span>
+                                        <a href={`mailto:${orderDetailsDialog.customer_email}`} className="ml-2 text-blue-600 hover:underline font-medium">
+                                            {orderDetailsDialog.customer_email || '-'}
+                                        </a>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-600 dark:text-gray-400">Billing Business Name:</span>
+                                        <span className="ml-2 font-medium text-gray-900 dark:text-gray-100">
+                                            {orderDetailsDialog.custom_data?.Billing_Business_Name || orderDetailsDialog.custom_data?.billing_business_name || '-'}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Financial Summary */}
+                            <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 p-4 rounded-lg border border-green-200 dark:border-green-700">
+                                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4" />
+                                    Financial Summary
+                                </h3>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="text-center">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Total Paid</span>
+                                        <span className="text-xl font-bold text-green-600 dark:text-green-400">
+                                            {formatCurrency(orderDetailsDialog.custom_data?.Total_Paid || orderDetailsDialog.custom_data?.total_paid || 0)}
+                                        </span>
+                                    </div>
+                                    <div className="text-center">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Total Discount</span>
+                                        <span className="text-xl font-bold text-red-600 dark:text-red-400">
+                                            {formatCurrency(orderDetailsDialog.custom_data?.Total_Discount || orderDetailsDialog.custom_data?.total_discount || 0)}
+                                        </span>
+                                    </div>
+                                    <div className="text-center">
+                                        <span className="text-xs text-gray-600 dark:text-gray-400 block mb-1">Total Amount</span>
+                                        <span className="text-xl font-bold text-blue-600 dark:text-blue-400">
+                                            {formatCurrency(orderDetailsDialog.amount || 0)}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Products Section (if available) */}
+                            {(orderDetailsDialog.custom_data?.product_name || orderDetailsDialog.description) && (
+                                <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                    <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                                        <Package className="w-4 h-4" />
+                                        Products
+                                    </h3>
+                                    <div className="space-y-3">
+                                        <div className="bg-white dark:bg-slate-700 p-3 rounded border border-gray-200 dark:border-slate-600">
+                                            <p className="font-medium text-gray-900 dark:text-gray-100 mb-2">
+                                                {orderDetailsDialog.custom_data?.product_name || orderDetailsDialog.description || 'N/A'}
+                                            </p>
+                                            <div className="grid grid-cols-3 gap-3 text-sm mt-2">
+                                                {orderDetailsDialog.custom_data?.product_quantity && (
+                                                    <div>
+                                                        <span className="text-gray-600 dark:text-gray-400 block">Quantity:</span>
+                                                        <span className="font-bold text-gray-900 dark:text-gray-100">
+                                                            {orderDetailsDialog.custom_data.product_quantity}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {orderDetailsDialog.custom_data?.product_unit_price && (
+                                                    <div>
+                                                        <span className="text-gray-600 dark:text-gray-400 block">Unit Price:</span>
+                                                        <span className="font-bold text-blue-600 dark:text-blue-400">
+                                                            {formatCurrency(orderDetailsDialog.custom_data.product_unit_price)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                                {orderDetailsDialog.custom_data?.product_discount && (
+                                                    <div>
+                                                        <span className="text-gray-600 dark:text-gray-400 block">Discount:</span>
+                                                        <span className="font-bold text-red-600 dark:text-red-400">
+                                                            -{formatCurrency(orderDetailsDialog.custom_data.product_discount)}
+                                                        </span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Coupon Code (if available) */}
+                            {orderDetailsDialog.custom_data?.Coupon_Code && (
+                                <div className="bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded-lg border border-yellow-200 dark:border-yellow-700">
+                                    <span className="text-sm text-gray-600 dark:text-gray-400">Coupon Code:</span>
+                                    <code className="ml-2 bg-yellow-100 dark:bg-yellow-800 px-2 py-1 rounded font-mono text-yellow-800 dark:text-yellow-200 font-bold">
+                                        {orderDetailsDialog.custom_data.Coupon_Code}
+                                    </code>
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
+
+// Helper: Extrair ícone de Paid Status
+function getPaidStatusIcon(status: string) {
+    const normalizedStatus = status.toLowerCase();
+    if (normalizedStatus.includes('paid') && !normalizedStatus.includes('unpaid')) {
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+    }
+    if (normalizedStatus.includes('unpaid')) {
+        return <XCircle className="w-4 h-4 text-red-600" />;
+    }
+    if (normalizedStatus.includes('partial')) {
+        return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
+    }
+    return <XCircle className="w-4 h-4 text-gray-400" />;
+}
+
+// Helper: Pegar último status de histórico (ex: "Unpaid;Paid" -> "Paid")
+function getLastPaidStatus(statusString: string): string {
+    if (!statusString) return 'Unpaid';
+    const statuses = statusString.split(';').map(s => s.trim()).filter(Boolean);
+    return statuses[statuses.length - 1] || 'Unpaid';

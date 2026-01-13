@@ -361,7 +361,7 @@ export const NAV: NavGroup[] = [
         icon: Users2,
         children: [
           {
-            title: "Deals",
+            title: "Web Orders",
             href: "/reports/hubspot",
             icon: Briefcase
           },
