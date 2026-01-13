@@ -169,6 +169,7 @@ export async function reconcileWithBank(
                 const { error: updateError } = await supabase
                     .from("csv_rows")
                     .update({
+                        reconciled: true,  // ✅ Marcar como reconciliado no campo da tabela
                         custom_data: {
                             ...tx,
                             conciliado: true,

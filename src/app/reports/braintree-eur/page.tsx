@@ -877,6 +877,7 @@ export default function BraintreeEURPage() {
 
       console.log(`[Braintree EUR] Found ${rowsData.length} rows`);
 
+      // Filtrar por EUR e mapear para interface
       const mappedRows: BraintreeEURRow[] = rowsData
         .filter((row) => {
           const merchantAccount = row.custom_data?.merchant_account_id;
