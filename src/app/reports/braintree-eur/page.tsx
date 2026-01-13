@@ -883,6 +883,8 @@ export default function BraintreeEURPage() {
         .filter(Boolean);
 
       let orderMappings = new Map<string, string>();
+      let unmappedCount = 0;
+
       if (txIdsForMapping.length > 0) {
         try {
           const mappingRes = await fetch("/api/order-mapping", {
@@ -898,6 +900,49 @@ export default function BraintreeEURPage() {
         } catch (err) {
           console.error("[Order Mapping] Failed to load mappings:", err);
         }
+      }
+
+      // 🆕 Buscar order_id do HubSpot via hubspot_vid
+      const hubspotVids = rowsData
+        .map((r) => r.custom_data?.hubspot_vid)
+        .filter(Boolean);
+
+      let hubspotReferences = new Map<string, string>();
+
+      if (hubspotVids.length > 0) {
+        try {
+          const { data: hsDeals } = await supabase
+            .from("csv_rows")
+            .select("id, custom_data")
+            .eq("source", "hubspot-deals")
+            .in("custom_data->ID", hubspotVids);
+
+          if (hsDeals) {
+            hsDeals.forEach((deal) => {
+              const vid = deal.custom_data?.ID;
+              const ref = deal.custom_data?.reference || deal.custom_data?.Reference;
+              if (vid && ref) {
+                hubspotReferences.set(String(vid), ref);
+              }
+            });
+            console.log(`[HubSpot References] ✅ Loaded ${hubspotReferences.size} references`);
+          }
+        } catch (err) {
+          console.error("[HubSpot References] Failed to load:", err);
+        }
+      }
+
+      // 🆕 Contar transações sem hubspot_vid para disparar auto-link
+      unmappedCount = rowsData.filter(
+        (r) => !r.custom_data?.hubspot_vid && !r.custom_data?.order_id
+      ).length;
+
+      if (unmappedCount > 0 && !append) {
+        console.log(`[Auto-Link] Detected ${unmappedCount} unmapped transactions, triggering background linking...`);
+        // Disparar auto-link em background (não esperar resposta)
+        fetch("/api/order-mapping/auto-link", {
+          method: "POST",
+        }).catch((err) => console.error("[Auto-Link] Failed to trigger:", err));
       }
 
       // Filtrar por EUR e mapear para interface
@@ -949,7 +994,19 @@ export default function BraintreeEURPage() {
 
             // Campos adicionais da Braintree
             transaction_id: row.custom_data?.transaction_id,
-            order_id: row.custom_data?.order_id || orderMappings.get(row.custom_data?.transaction_id || "") || null,
+            order_id: (() => {
+              const txId = row.custom_data?.transaction_id || "";
+              const vid = row.custom_data?.hubspot_vid;
+              
+              // Prioridade: 1) HubSpot reference, 2) order_transaction_mapping, 3) custom_data->order_id
+              if (vid && hubspotReferences.has(String(vid))) {
+                return hubspotReferences.get(String(vid)) || null;
+              }
+              if (orderMappings.has(txId)) {
+                return orderMappings.get(txId) || null;
+              }
+              return row.custom_data?.order_id || null;
+            })(),
             hubspot_order_code: row.custom_data?.hubspot_order_code || null,
             hubspot_deal_id: row.custom_data?.hubspot_deal_id || null,
             hubspot_row_id: row.custom_data?.hubspot_row_id || null,
@@ -2362,7 +2419,9 @@ export default function BraintreeEURPage() {
                                     {(() => {
                                       const link = hubspotLinksByOrderId.get(row.order_id || "");
                                       const dealId = row.hubspot_deal_id || link?.hubspot_deal_id;
-                                      if (link?.linked || dealId) {
+                                      const hasHubspotVid = row.custom_data?.hubspot_vid;
+                                      
+                                      if (link?.linked || dealId || hasHubspotVid) {
                                         return (
                                           <Badge
                                             variant="secondary"
@@ -2373,15 +2432,9 @@ export default function BraintreeEURPage() {
                                           </Badge>
                                         );
                                       }
-                                      return (
-                                        <Badge
-                                          variant="outline"
-                                          className="text-gray-500"
-                                          title="Sem vínculo HubSpot (order_code não encontrado)"
-                                        >
-                                          sem HS
-                                        </Badge>
-                                      );
+                                      
+                                      // Não mostrar "sem HS" - auto-link vai resolver em background
+                                      return null;
                                     })()}
                                   </div>
                                 ) : (
