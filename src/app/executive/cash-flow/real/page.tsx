@@ -83,10 +83,10 @@ function formatDateBR(dateStr: string | null | undefined): string {
 }
 
 // Simplificar método de pagamento ("visa ***0888" -> "Visa")
-function simplifyPaymentMethod(method: string | null | undefined): string {
-    if (!method) return "Desconhecido";
+function simplifyPaymentMethod(method: unknown): string {
+    if (!method || typeof method !== "string") return "Desconhecido";
     const m = method.toLowerCase();
-    
+
     if (m.includes("visa")) return "Visa";
     if (m.includes("mastercard") || m.includes("master card")) return "Mastercard";
     if (m.includes("amex") || m.includes("american express")) return "Amex";
@@ -96,7 +96,7 @@ function simplifyPaymentMethod(method: string | null | undefined): string {
     if (m.includes("sepa") || m.includes("direct debit")) return "SEPA";
     if (m.includes("bank") || m.includes("transfer")) return "Transferência";
     if (m.includes("credit") || m.includes("card")) return "Cartão";
-    
+
     // Capitalizar primeira letra
     return method.charAt(0).toUpperCase() + method.slice(1).split(" ")[0].split("(")[0].trim();
 }
@@ -105,7 +105,7 @@ function simplifyPaymentMethod(method: string | null | undefined): string {
 function detectProductName(description: string, amount: number): string {
     const descLower = description?.toLowerCase() || "";
     const absAmount = Math.abs(amount);
-    
+
     // Detectar por descrição específica
     if (descLower.includes("masterclass") || descLower.includes("master class")) return "DSD Masterclass";
     if (descLower.includes("residency")) return "DSD Residency";
@@ -116,7 +116,7 @@ function detectProductName(description: string, amount: number): string {
     if (descLower.includes("workshop")) return "DSD Workshop";
     if (descLower.includes("concept")) return "DSD Concept";
     if (descLower.includes("certification")) return "DSD Certification";
-    
+
     // Detectar por faixas de valor típicas
     if (absAmount >= 6500 && absAmount <= 7500) return "DSD Masterclass";
     if (absAmount >= 5500 && absAmount < 6500) return "DSD Residency";
@@ -124,7 +124,7 @@ function detectProductName(description: string, amount: number): string {
     if (absAmount >= 2000 && absAmount < 4000) return "DSD Course";
     if (absAmount >= 500 && absAmount < 2000) return "DSD Workshop";
     if (absAmount >= 100 && absAmount < 500) return "DSD Subscription";
-    
+
     return "Produto DSD";
 }
 
@@ -163,7 +163,7 @@ export default function RealCashFlowPage() {
     const [sourceFilter, setSourceFilter] = useState<string>("all");
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
     const [searchQuery, setSearchQuery] = useState("");
-    
+
     // Debounce timer ref
     const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -174,16 +174,16 @@ export default function RealCashFlowPage() {
     // Debounce para filtro de data (só carrega após 800ms sem alteração)
     const handleDateChange = useCallback((field: 'start' | 'end', value: string) => {
         setPendingDateRange(prev => ({ ...prev, [field]: value }));
-        
+
         if (debounceTimerRef.current) {
             clearTimeout(debounceTimerRef.current);
         }
-        
+
         debounceTimerRef.current = setTimeout(() => {
             setDateRange(prev => ({ ...prev, [field]: value }));
         }, 800);
     }, []);
-    
+
     // Aplicar filtro de data imediatamente (botão)
     const applyDateFilter = useCallback(() => {
         if (debounceTimerRef.current) {
