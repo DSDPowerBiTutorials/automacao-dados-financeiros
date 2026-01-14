@@ -379,9 +379,13 @@ export default function BraintreeEURPage() {
         },
         (payload) => {
           // Filtrar manualmente já que filter complexo causa CHANNEL_ERROR
-          const source = payload.new?.source || payload.old?.source;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const newRecord = payload.new as any;
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const oldRecord = payload.old as any;
+          const source = newRecord?.source || oldRecord?.source;
           if (source && (source.includes('braintree-api') || source === 'braintree-eur')) {
-            console.log('[Realtime Braintree EUR] ✅ Change detected:', payload.eventType, payload.new?.id);
+            console.log('[Realtime Braintree EUR] ✅ Change detected:', payload.eventType, newRecord?.id);
             // Evitar loop e rajada de reloads: debounce + não reexecuta auto reconcile aqui
             if (realtimeRefreshTimerRef.current) {
               clearTimeout(realtimeRefreshTimerRef.current);
@@ -836,24 +840,54 @@ export default function BraintreeEURPage() {
 
       // Carregar dados da API Braintree (source: braintree-api-revenue)
       // Filtrar apenas EUR e dentro da janela de datas
-      let query = supabase
-        .from("csv_rows")
-        .select("id,date,description,amount,source,custom_data,reconciled,created_at")
-        // Usar apenas braintree-api-revenue (otimiza índice)
-        .eq("source", "braintree-api-revenue")
-        .gte("date", dateStart)
-        .order("date", { ascending: false })
-        .range(from, to);
+      const buildQuery = () => {
+        let q = supabase
+          .from("csv_rows")
+          .select("id,date,description,amount,source,custom_data,reconciled,created_at")
+          // Usar apenas braintree-api-revenue (otimiza índice)
+          .eq("source", "braintree-api-revenue")
+          .gte("date", dateStart)
+          .order("date", { ascending: false })
+          .range(from, to);
 
-      if (dateEnd) {
-        query = query.lte("date", dateEnd);
+        if (dateEnd) {
+          q = q.lte("date", dateEnd);
+        }
+        return q;
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let rowsData: any[] | null = null;
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let error: any = null;
+
+      // Tentar com retry automático
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`[Braintree EUR] Retry ${attempt}/2...`);
+            await new Promise(r => setTimeout(r, 1000 * attempt)); // Backoff
+          }
+
+          const q = buildQuery();
+          const result = await Promise.race([
+            q,
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Timeout após 30s")), 30000)
+            )
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          ]) as any;
+
+          rowsData = result.data;
+          error = result.error;
+          break; // Sucesso, sair do loop
+        } catch (err) {
+          console.error(`[Braintree EUR] Attempt ${attempt + 1} failed:`, err);
+          if (attempt === 2) {
+            error = { message: err instanceof Error ? err.message : "Erro de conexão" };
+          }
+        }
       }
-
-      const { data: rowsData, error } = await withTimeout(
-        query,
-        60000,
-        "Supabase load csv_rows (Braintree EUR)"
-      );
 
       if (error) {
         console.error("[Braintree EUR] Error loading data:", error);
@@ -997,7 +1031,7 @@ export default function BraintreeEURPage() {
             order_id: (() => {
               const txId = row.custom_data?.transaction_id || "";
               const vid = row.custom_data?.hubspot_vid;
-              
+
               // Prioridade: 1) HubSpot reference, 2) order_transaction_mapping, 3) custom_data->order_id
               if (vid && hubspotReferences.has(String(vid))) {
                 return hubspotReferences.get(String(vid)) || null;
@@ -1672,7 +1706,7 @@ export default function BraintreeEURPage() {
               <div className="flex gap-2">
                 {/* Botão de Forçar Atualização */}
                 <Button
-                  onClick={loadData}
+                  onClick={() => loadData()}
                   disabled={isLoading || isLoadingMore}
                   variant="outline"
                   size="sm"
@@ -1885,7 +1919,7 @@ export default function BraintreeEURPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={loadData}
+                    onClick={() => loadData()}
                     className="gap-2"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -2420,7 +2454,7 @@ export default function BraintreeEURPage() {
                                       const link = hubspotLinksByOrderId.get(row.order_id || "");
                                       const dealId = row.hubspot_deal_id || link?.hubspot_deal_id;
                                       const hasHubspotVid = row.custom_data?.hubspot_vid;
-                                      
+
                                       if (link?.linked || dealId || hasHubspotVid) {
                                         return (
                                           <Badge
@@ -2432,7 +2466,7 @@ export default function BraintreeEURPage() {
                                           </Badge>
                                         );
                                       }
-                                      
+
                                       // Não mostrar "sem HS" - auto-link vai resolver em background
                                       return null;
                                     })()}

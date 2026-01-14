@@ -76,6 +76,16 @@ export const NAV: NavGroup[] = [
             icon: TrendingDown
           },
           {
+            title: "💰 Cash Flow Real",
+            href: "/executive/cash-flow/real",
+            icon: DollarSign
+          },
+          {
+            title: "🏦 Cash Flow Bancário",
+            href: "/executive/cash-flow/bank",
+            icon: Building
+          },
+          {
             title: "KPIs & Ratios",
             href: "/executive/kpis",
             icon: Target
