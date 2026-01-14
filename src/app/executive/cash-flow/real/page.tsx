@@ -66,6 +66,7 @@ interface Summary {
     byPaymentMethod: Record<string, number>;
     byProductCategory: Record<string, number>;
     byMonth: Array<{ month: string; inflow: number; outflow: number; net: number }>;
+    byDayOfMonth: Array<{ day: number; total: number; count: number }>;
 }
 
 // Formatar data para dd/mm/yyyy
@@ -303,6 +304,29 @@ export default function RealCashFlowPage() {
                 net: data.inflow - data.outflow,
             }));
 
+        // By day of month (1-31) - para ver padrões de recebimento
+        const byDayMap: Record<number, { total: number; count: number }> = {};
+        // Inicializar todos os dias (1-31)
+        for (let d = 1; d <= 31; d++) {
+            byDayMap[d] = { total: 0, count: 0 };
+        }
+        inflows.forEach((t) => {
+            try {
+                const day = parseInt(t.date.split("-")[2]?.split("T")[0] || "0", 10);
+                if (day >= 1 && day <= 31) {
+                    byDayMap[day].total += t.amount;
+                    byDayMap[day].count += 1;
+                }
+            } catch { /* ignore */ }
+        });
+        const byDayOfMonth = Object.entries(byDayMap)
+            .map(([day, data]) => ({
+                day: parseInt(day, 10),
+                total: data.total,
+                count: data.count,
+            }))
+            .sort((a, b) => a.day - b.day);
+
         return {
             totalInflow,
             totalOutflow,
@@ -312,6 +336,7 @@ export default function RealCashFlowPage() {
             byPaymentMethod,
             byProductCategory,
             byMonth,
+            byDayOfMonth,
         };
     }, [filteredTransactions]);
 
@@ -707,6 +732,158 @@ export default function RealCashFlowPage() {
                                 <p className={`text-xl font-bold ${summary.netCashFlow >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
                                     {formatCurrency(summary.netCashFlow)}
                                 </p>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Gráfico de Barras Verticais - Distribuição por Dia do Mês */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Calendar className="h-5 w-5" />
+                        Recebimentos por Dia do Mês
+                    </CardTitle>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Visualize em quais dias do mês os pagamentos mais acontecem
+                    </p>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {/* Gráfico de barras verticais */}
+                        <div className="flex items-end justify-between gap-1 h-48 px-2">
+                            {(() => {
+                                const maxTotal = Math.max(...summary.byDayOfMonth.map(d => d.total), 1);
+                                const maxCount = Math.max(...summary.byDayOfMonth.map(d => d.count), 1);
+                                return summary.byDayOfMonth.map((dayData) => {
+                                    const heightPercent = (dayData.total / maxTotal) * 100;
+                                    const hasData = dayData.total > 0;
+                                    // Intensidade da cor baseada na quantidade de transações
+                                    const intensity = Math.min(100, Math.round((dayData.count / maxCount) * 100));
+                                    return (
+                                        <div
+                                            key={dayData.day}
+                                            className="flex-1 flex flex-col items-center group relative"
+                                        >
+                                            {/* Tooltip on hover */}
+                                            <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
+                                                <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                                                    <div className="font-semibold">Dia {dayData.day}</div>
+                                                    <div>{formatCurrency(dayData.total)}</div>
+                                                    <div>{dayData.count} transação(ões)</div>
+                                                </div>
+                                            </div>
+                                            {/* Barra vertical */}
+                                            <div
+                                                className={`w-full rounded-t transition-all duration-300 ${hasData
+                                                        ? `bg-gradient-to-t from-blue-${Math.max(400, Math.min(700, 400 + Math.round(intensity / 20) * 100))} to-blue-${Math.max(500, Math.min(800, 500 + Math.round(intensity / 20) * 100))} hover:from-blue-500 hover:to-blue-700`
+                                                        : 'bg-gray-100'
+                                                    }`}
+                                                style={{
+                                                    height: `${hasData ? Math.max(heightPercent, 4) : 4}%`,
+                                                    opacity: hasData ? Math.max(0.4, intensity / 100) : 0.3
+                                                }}
+                                            />
+                                            {/* Label do dia */}
+                                            <span className={`text-xs mt-1 ${dayData.day % 5 === 0 || dayData.day === 1 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                                                {dayData.day % 5 === 0 || dayData.day === 1 ? dayData.day : ''}
+                                            </span>
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+
+                        {/* Eixo X label */}
+                        <div className="text-center text-xs text-gray-500 border-t pt-2">
+                            Dia do Mês (1-31)
+                        </div>
+
+                        {/* Insights */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
+                            {(() => {
+                                // Top 5 dias com mais recebimentos
+                                const topDays = [...summary.byDayOfMonth]
+                                    .filter(d => d.total > 0)
+                                    .sort((a, b) => b.total - a.total)
+                                    .slice(0, 5);
+
+                                const totalWithData = summary.byDayOfMonth.filter(d => d.total > 0).length;
+                                const avgPerActiveDay = totalWithData > 0
+                                    ? summary.totalInflow / totalWithData
+                                    : 0;
+
+                                // Detectar padrão (início, meio ou fim do mês)
+                                const earlyMonth = summary.byDayOfMonth.filter(d => d.day <= 10).reduce((s, d) => s + d.total, 0);
+                                const midMonth = summary.byDayOfMonth.filter(d => d.day > 10 && d.day <= 20).reduce((s, d) => s + d.total, 0);
+                                const lateMonth = summary.byDayOfMonth.filter(d => d.day > 20).reduce((s, d) => s + d.total, 0);
+
+                                let pattern = 'Distribuído';
+                                let patternColor = 'text-gray-600';
+                                if (earlyMonth > midMonth && earlyMonth > lateMonth) {
+                                    pattern = 'Início do mês';
+                                    patternColor = 'text-blue-600';
+                                } else if (midMonth > earlyMonth && midMonth > lateMonth) {
+                                    pattern = 'Meio do mês';
+                                    patternColor = 'text-purple-600';
+                                } else if (lateMonth > earlyMonth && lateMonth > midMonth) {
+                                    pattern = 'Fim do mês';
+                                    patternColor = 'text-orange-600';
+                                }
+
+                                return (
+                                    <>
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase">Melhor Dia</p>
+                                            <p className="text-lg font-bold text-blue-600">
+                                                Dia {topDays[0]?.day || '-'}
+                                            </p>
+                                            <p className="text-xs text-gray-500">
+                                                {topDays[0] ? formatCurrency(topDays[0].total) : '—'}
+                                            </p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase">Dias Ativos</p>
+                                            <p className="text-lg font-bold text-green-600">{totalWithData}</p>
+                                            <p className="text-xs text-gray-500">de 31 dias</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase">Média/Dia</p>
+                                            <p className="text-lg font-bold text-purple-600">
+                                                {formatCurrency(avgPerActiveDay)}
+                                            </p>
+                                            <p className="text-xs text-gray-500">dias com movimento</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-xs text-gray-500 uppercase">Padrão</p>
+                                            <p className={`text-lg font-bold ${patternColor}`}>{pattern}</p>
+                                            <p className="text-xs text-gray-500">concentração</p>
+                                        </div>
+                                    </>
+                                );
+                            })()}
+                        </div>
+
+                        {/* Top 5 Dias */}
+                        <div className="pt-4 border-t">
+                            <p className="text-sm font-medium text-gray-700 mb-2">🏆 Top 5 Dias com Mais Recebimentos:</p>
+                            <div className="flex flex-wrap gap-2">
+                                {(() => {
+                                    const topDays = [...summary.byDayOfMonth]
+                                        .filter(d => d.total > 0)
+                                        .sort((a, b) => b.total - a.total)
+                                        .slice(0, 5);
+                                    return topDays.map((d, i) => (
+                                        <Badge
+                                            key={d.day}
+                                            variant={i === 0 ? "default" : "secondary"}
+                                            className={i === 0 ? "bg-blue-600" : ""}
+                                        >
+                                            Dia {d.day}: {formatCurrency(d.total)} ({d.count}x)
+                                        </Badge>
+                                    ));
+                                })()}
                             </div>
                         </div>
                     </div>
