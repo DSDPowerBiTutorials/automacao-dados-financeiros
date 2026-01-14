@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,8 +48,10 @@ interface Transaction {
     customer_name: string;
     customer_email: string;
     payment_method: string;
+    payment_method_display: string;
     order_id: string | null;
     product_category: string;
+    product_name: string;
     settlement_date: string | null;
 }
 
@@ -62,6 +64,68 @@ interface Summary {
     byPaymentMethod: Record<string, number>;
     byProductCategory: Record<string, number>;
     byMonth: Array<{ month: string; inflow: number; outflow: number; net: number }>;
+}
+
+// Formatar data para dd/mm/yyyy
+function formatDateBR(dateStr: string | null | undefined): string {
+    if (!dateStr) return "—";
+    try {
+        // Remove timezone e pega só a parte da data
+        const cleanDate = dateStr.split("T")[0];
+        const [year, month, day] = cleanDate.split("-");
+        if (year && month && day) {
+            return `${day}/${month}/${year}`;
+        }
+        return dateStr;
+    } catch {
+        return dateStr;
+    }
+}
+
+// Simplificar método de pagamento ("visa ***0888" -> "Visa")
+function simplifyPaymentMethod(method: string | null | undefined): string {
+    if (!method) return "Desconhecido";
+    const m = method.toLowerCase();
+    
+    if (m.includes("visa")) return "Visa";
+    if (m.includes("mastercard") || m.includes("master card")) return "Mastercard";
+    if (m.includes("amex") || m.includes("american express")) return "Amex";
+    if (m.includes("paypal")) return "PayPal";
+    if (m.includes("apple pay") || m.includes("apple_pay")) return "Apple Pay";
+    if (m.includes("google pay") || m.includes("google_pay")) return "Google Pay";
+    if (m.includes("sepa") || m.includes("direct debit")) return "SEPA";
+    if (m.includes("bank") || m.includes("transfer")) return "Transferência";
+    if (m.includes("credit") || m.includes("card")) return "Cartão";
+    
+    // Capitalizar primeira letra
+    return method.charAt(0).toUpperCase() + method.slice(1).split(" ")[0].split("(")[0].trim();
+}
+
+// Detectar nome do produto baseado na descrição e valor
+function detectProductName(description: string, amount: number): string {
+    const descLower = description?.toLowerCase() || "";
+    const absAmount = Math.abs(amount);
+    
+    // Detectar por descrição específica
+    if (descLower.includes("masterclass") || descLower.includes("master class")) return "DSD Masterclass";
+    if (descLower.includes("residency")) return "DSD Residency";
+    if (descLower.includes("clinic fee") || descLower.includes("monthly fee")) return "DSD Clinic Fee";
+    if (descLower.includes("coaching")) return "DSD Coaching";
+    if (descLower.includes("planning") || descLower.includes("plan")) return "DSD Planning";
+    if (descLower.includes("app") || descLower.includes("software")) return "DSD App";
+    if (descLower.includes("workshop")) return "DSD Workshop";
+    if (descLower.includes("concept")) return "DSD Concept";
+    if (descLower.includes("certification")) return "DSD Certification";
+    
+    // Detectar por faixas de valor típicas
+    if (absAmount >= 6500 && absAmount <= 7500) return "DSD Masterclass";
+    if (absAmount >= 5500 && absAmount < 6500) return "DSD Residency";
+    if (absAmount >= 4000 && absAmount <= 5500) return "DSD Clinic Fee";
+    if (absAmount >= 2000 && absAmount < 4000) return "DSD Course";
+    if (absAmount >= 500 && absAmount < 2000) return "DSD Workshop";
+    if (absAmount >= 100 && absAmount < 500) return "DSD Subscription";
+    
+    return "Produto DSD";
 }
 
 // Categorizar produto baseado no valor
@@ -90,18 +154,43 @@ export default function RealCashFlowPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Filters
+    // Filters com debounce
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
         start: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         end: new Date().toISOString().split("T")[0],
     });
+    const [pendingDateRange, setPendingDateRange] = useState(dateRange);
     const [sourceFilter, setSourceFilter] = useState<string>("all");
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
     const [searchQuery, setSearchQuery] = useState("");
+    
+    // Debounce timer ref
+    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 50;
+
+    // Debounce para filtro de data (só carrega após 800ms sem alteração)
+    const handleDateChange = useCallback((field: 'start' | 'end', value: string) => {
+        setPendingDateRange(prev => ({ ...prev, [field]: value }));
+        
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+        
+        debounceTimerRef.current = setTimeout(() => {
+            setDateRange(prev => ({ ...prev, [field]: value }));
+        }, 800);
+    }, []);
+    
+    // Aplicar filtro de data imediatamente (botão)
+    const applyDateFilter = useCallback(() => {
+        if (debounceTimerRef.current) {
+            clearTimeout(debounceTimerRef.current);
+        }
+        setDateRange(pendingDateRange);
+    }, [pendingDateRange]);
 
     useEffect(() => {
         loadData();
@@ -132,10 +221,11 @@ export default function RealCashFlowPage() {
                 const cd = row.custom_data || {};
                 const amount = parseFloat(row.amount) || 0;
 
+                const desc = cd.description || row.description || "";
                 return {
                     id: row.id,
                     date: row.date,
-                    description: row.description || "",
+                    description: desc,
                     amount,
                     source: row.source,
                     type: cd.type || (amount >= 0 ? "sale" : "refund"),
@@ -144,8 +234,10 @@ export default function RealCashFlowPage() {
                     customer_name: cd.customer_name || cd.billing_name || "",
                     customer_email: cd.customer_email || "",
                     payment_method: cd.payment_method || "unknown",
+                    payment_method_display: simplifyPaymentMethod(cd.payment_method),
                     order_id: cd.order_id || null,
-                    product_category: categorizeProduct(amount, cd.description || row.description || ""),
+                    product_category: categorizeProduct(amount, desc),
+                    product_name: detectProductName(desc, amount),
                     settlement_date: cd.settlement_date || cd.disbursement_date || null,
                 };
             });
@@ -413,8 +505,8 @@ export default function RealCashFlowPage() {
                             </label>
                             <Input
                                 type="date"
-                                value={dateRange.start}
-                                onChange={(e) => setDateRange((prev) => ({ ...prev, start: e.target.value }))}
+                                value={pendingDateRange.start}
+                                onChange={(e) => handleDateChange('start', e.target.value)}
                             />
                         </div>
                         <div>
@@ -423,8 +515,8 @@ export default function RealCashFlowPage() {
                             </label>
                             <Input
                                 type="date"
-                                value={dateRange.end}
-                                onChange={(e) => setDateRange((prev) => ({ ...prev, end: e.target.value }))}
+                                value={pendingDateRange.end}
+                                onChange={(e) => handleDateChange('end', e.target.value)}
                             />
                         </div>
                         <div>
@@ -590,6 +682,7 @@ export default function RealCashFlowPage() {
                                 <TableRow>
                                     <TableHead>Data</TableHead>
                                     <TableHead>Cliente</TableHead>
+                                    <TableHead>Produto</TableHead>
                                     <TableHead>Categoria</TableHead>
                                     <TableHead>Método</TableHead>
                                     <TableHead>Order ID</TableHead>
@@ -600,7 +693,7 @@ export default function RealCashFlowPage() {
                             <TableBody>
                                 {paginatedData.map((tx) => (
                                     <TableRow key={tx.id}>
-                                        <TableCell className="whitespace-nowrap">{tx.date}</TableCell>
+                                        <TableCell className="whitespace-nowrap">{formatDateBR(tx.date)}</TableCell>
                                         <TableCell>
                                             <div>
                                                 <div className="font-medium">{tx.customer_name || "—"}</div>
@@ -608,10 +701,13 @@ export default function RealCashFlowPage() {
                                             </div>
                                         </TableCell>
                                         <TableCell>
+                                            <span className="text-sm font-medium">{tx.product_name}</span>
+                                        </TableCell>
+                                        <TableCell>
                                             <Badge variant="outline">{tx.product_category}</Badge>
                                         </TableCell>
                                         <TableCell>
-                                            <Badge variant="secondary">{tx.payment_method}</Badge>
+                                            <Badge variant="secondary">{tx.payment_method_display}</Badge>
                                         </TableCell>
                                         <TableCell>
                                             {tx.order_id ? (
