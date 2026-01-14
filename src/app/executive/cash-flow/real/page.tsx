@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +33,8 @@ import {
     Users,
     Package,
     Filter,
+    BarChart3,
+    Play,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
@@ -164,33 +166,23 @@ export default function RealCashFlowPage() {
     const [categoryFilter, setCategoryFilter] = useState<string>("all");
     const [searchQuery, setSearchQuery] = useState("");
 
-    // Debounce timer ref
-    const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
     const pageSize = 50;
 
-    // Debounce para filtro de data (só carrega após 800ms sem alteração)
+    // Handler simples para datas - só atualiza estado local
     const handleDateChange = useCallback((field: 'start' | 'end', value: string) => {
         setPendingDateRange(prev => ({ ...prev, [field]: value }));
-
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
-
-        debounceTimerRef.current = setTimeout(() => {
-            setDateRange(prev => ({ ...prev, [field]: value }));
-        }, 800);
     }, []);
 
-    // Aplicar filtro de data imediatamente (botão)
+    // Aplicar filtro de data quando usuário clicar no botão
     const applyDateFilter = useCallback(() => {
-        if (debounceTimerRef.current) {
-            clearTimeout(debounceTimerRef.current);
-        }
         setDateRange(pendingDateRange);
+        setCurrentPage(1); // Reset página ao aplicar filtro
     }, [pendingDateRange]);
+
+    // Verificar se há mudanças pendentes
+    const hasPendingChanges = pendingDateRange.start !== dateRange.start || pendingDateRange.end !== dateRange.end;
 
     useEffect(() => {
         loadData();
@@ -521,6 +513,19 @@ export default function RealCashFlowPage() {
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
+                                &nbsp;
+                            </label>
+                            <Button
+                                onClick={applyDateFilter}
+                                disabled={!hasPendingChanges}
+                                className={`w-full gap-2 ${hasPendingChanges ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
+                            >
+                                <Play className="h-4 w-4" />
+                                Aplicar Datas
+                            </Button>
+                        </div>
+                        <div>
+                            <label className="text-sm font-medium text-gray-700 mb-1 block">
                                 Fonte
                             </label>
                             <Select value={sourceFilter} onValueChange={setSourceFilter}>
@@ -627,12 +632,93 @@ export default function RealCashFlowPage() {
                 </Card>
             </div>
 
-            {/* Monthly Trend */}
+            {/* Gráfico de Barras - Recebimentos Mensais */}
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <BarChart3 className="h-5 w-5" />
+                        Recebimentos por Mês
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        {/* Gráfico de barras visual */}
+                        <div className="space-y-3">
+                            {(() => {
+                                const maxValue = Math.max(...summary.byMonth.map(m => m.inflow), 1);
+                                return summary.byMonth.map((month) => {
+                                    const inflowWidth = (month.inflow / maxValue) * 100;
+                                    const outflowWidth = (month.outflow / maxValue) * 100;
+                                    const monthName = new Date(month.month + '-01').toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' });
+                                    return (
+                                        <div key={month.month} className="space-y-1">
+                                            <div className="flex items-center justify-between text-sm">
+                                                <span className="font-medium w-20">{monthName}</span>
+                                                <div className="flex gap-4 text-xs">
+                                                    <span className="text-green-600">+{formatCurrency(month.inflow)}</span>
+                                                    <span className="text-red-600">-{formatCurrency(month.outflow)}</span>
+                                                    <span className={`font-semibold ${month.net >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                                        ={formatCurrency(month.net)}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <div className="relative h-8 bg-gray-100 rounded-lg overflow-hidden">
+                                                {/* Barra de entrada (verde) */}
+                                                <div
+                                                    className="absolute top-0 left-0 h-4 bg-gradient-to-r from-green-400 to-green-500 rounded-t transition-all duration-500"
+                                                    style={{ width: `${inflowWidth}%` }}
+                                                />
+                                                {/* Barra de saída (vermelho) */}
+                                                <div
+                                                    className="absolute bottom-0 left-0 h-4 bg-gradient-to-r from-red-400 to-red-500 rounded-b transition-all duration-500"
+                                                    style={{ width: `${outflowWidth}%` }}
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                });
+                            })()}
+                        </div>
+
+                        {/* Legenda */}
+                        <div className="flex items-center justify-center gap-6 pt-4 border-t">
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-gradient-to-r from-green-400 to-green-500 rounded" />
+                                <span className="text-sm text-gray-600">Entradas</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-gradient-to-r from-red-400 to-red-500 rounded" />
+                                <span className="text-sm text-gray-600">Saídas (Refunds)</span>
+                            </div>
+                        </div>
+
+                        {/* Totais do período */}
+                        <div className="grid grid-cols-3 gap-4 pt-4 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
+                            <div className="text-center">
+                                <p className="text-xs text-gray-500 uppercase">Total Entradas</p>
+                                <p className="text-xl font-bold text-green-600">{formatCurrency(summary.totalInflow)}</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-xs text-gray-500 uppercase">Total Saídas</p>
+                                <p className="text-xl font-bold text-red-600">{formatCurrency(summary.totalOutflow)}</p>
+                            </div>
+                            <div className="text-center">
+                                <p className="text-xs text-gray-500 uppercase">Líquido Período</p>
+                                <p className={`text-xl font-bold ${summary.netCashFlow >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
+                                    {formatCurrency(summary.netCashFlow)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+
+            {/* Monthly Trend Table */}
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Calendar className="h-5 w-5" />
-                        Fluxo Mensal
+                        Detalhamento Mensal
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
