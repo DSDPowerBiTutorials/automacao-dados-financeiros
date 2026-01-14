@@ -87,9 +87,12 @@ export async function POST(request: Request) {
             console.log('  - ecomm_order_number:', firstDeal.ecomm_order_number);
             console.log('  - website_order_id:', firstDeal.website_order_id);
             console.log('  - product_quantity:', firstDeal.product_quantity);
-            console.log('  - product_short_name:', firstDeal.product_short_name);
+            console.log('  - product_name:', firstDeal.product_name);
             console.log('  - paid_status:', firstDeal.paid_status);
-            console.log('  - paid_amount:', firstDeal.paid_amount);
+            console.log('  - total_payment:', firstDeal.total_payment);
+            console.log('  - customer_email:', firstDeal.customer_email);
+            console.log('  - customer_firstname:', firstDeal.customer_firstname);
+            console.log('  - company_name:', firstDeal.company_name);
         }
 
         // Transformar dados para o formato csv_rows
@@ -97,10 +100,10 @@ export async function POST(request: Request) {
             // ==========================================
             // MAPEAMENTO COMPLETO - Espelha Backend
             // ==========================================
-            
+
             const dealId = deal.DealId;
             const orderCode = deal.order_code || deal.dealname || 'N/A';  // order_code É o dealname
-            const totalAmount = parseFloat(deal.total_amount || deal.amount) || 0;
+            const totalAmount = parseFloat(deal.amount) || 0;
 
             // Data: priorizar date_ordered (closedate)
             let closeDate = new Date();
@@ -119,24 +122,27 @@ export async function POST(request: Request) {
 
             // Empresa
             const companyName = deal.company_name || null;
+            const companyDomain = deal.company_domain || null;
 
-            // Produto
-            const productName = deal.product_short_name || deal.product_name || orderCode;
-            const productNameFull = deal.product_name || '';
+            // Produto (agora vindo do LineItem)
+            const productName = deal.product_name || orderCode;
+            const productDescription = deal.product_description || '';
             const productQuantity = deal.product_quantity ? parseInt(deal.product_quantity) : null;
             const productAmount = deal.product_amount ? parseFloat(deal.product_amount) : null;
             const productUnitPrice = deal.product_unit_price ? parseFloat(deal.product_unit_price) : null;
             const productSku = deal.product_sku || null;
+            const productCost = deal.product_cost ? parseFloat(deal.product_cost) : null;
+            const productDiscount = deal.product_discount ? parseFloat(deal.product_discount) : null;
 
             // Moeda
             const currency = deal.currency || 'EUR';
 
             // Status de pagamento
             const paidStatus = deal.paid_status || 'Unpaid';
-            const paidAmount = deal.paid_amount ? parseFloat(deal.paid_amount) : 0;
+            const totalPayment = deal.total_payment ? parseFloat(deal.total_payment) : 0;
 
             // Order Site (ex: "DSD (en-GB)")
-            const orderSite = deal.order_site || deal.website_source || 'Web';
+            const orderSite = deal.order_site || 'Web';
 
             // Descrição para a tabela (formato: Order e437d54 - Company (Customer))
             let description = `Order ${orderCode}`;
@@ -165,11 +171,11 @@ export async function POST(request: Request) {
                     // IDs e Códigos (CRÍTICO para linkagem)
                     // ==========================================
                     deal_id: dealId,
-                    order_code: orderCode,  // e437d54, a3d2c9a, etc
+                    order_code: orderCode,  // e437d54, a3d2c9a, 8305674, etc
                     ecomm_order_number: deal.ecomm_order_number || orderCode,
-                    website_order_id: deal.website_order_id || null,  // ID numérico (2831851)
-                    reference: orderCode,  // Alias para order_code
-                    
+                    website_order_id: deal.website_order_id || null,
+                    reference: orderCode,
+
                     // IDs de relacionamento
                     contact_id: deal.contact_id || null,
                     company_id: deal.company_id || null,
@@ -182,19 +188,23 @@ export async function POST(request: Request) {
                     dealstage: deal.status || 'unknown',
                     status: deal.status || 'unknown',
                     pipeline: deal.pipeline || null,
+                    dealtype: deal.dealtype || null,
                     owner_id: deal.owner_id || null,
                     currency: currency,
+                    amount_in_home_currency: deal.amount_in_home_currency ? parseFloat(deal.amount_in_home_currency) : totalAmount,
+                    ecommerce_deal: deal.ecommerce_deal === 'true',
+                    hs_is_closed: deal.hs_is_closed || false,
+                    hs_is_closed_won: deal.hs_is_closed_won || false,
 
                     // ==========================================
                     // Pagamento
                     // ==========================================
                     paid_status: paidStatus,
-                    paid_amount: paidAmount,
-                    total_payment: paidAmount,
+                    total_payment: totalPayment,
                     date_paid: deal.date_paid || null,
                     hs_closed_won_date: deal.date_paid || null,
                     failed_payment_timestamp: deal.failed_payment_timestamp || null,
-                    
+
                     // ==========================================
                     // E-commerce & Descontos
                     // ==========================================
@@ -202,9 +212,6 @@ export async function POST(request: Request) {
                     discount_amount: deal.discount_amount ? parseFloat(deal.discount_amount) : 0,
                     tax_amount: deal.tax_amount ? parseFloat(deal.tax_amount) : 0,
                     order_site: orderSite,
-                    website_source: orderSite,
-                    source_app_id: deal.source_app_id || null,
-                    source_store_id: deal.source_store_id || null,
 
                     // ==========================================
                     // Cliente - Informações Completas
@@ -214,7 +221,6 @@ export async function POST(request: Request) {
                     customer_email: customerEmail,
                     customer_phone: customerPhone,
                     customer_jobtitle: deal.customer_jobtitle || null,
-                    customer_clinic: deal.customer_clinic || null,
                     customer_address: deal.customer_address || null,
                     customer_city: deal.customer_city || null,
                     customer_state: deal.customer_state || null,
@@ -226,6 +232,7 @@ export async function POST(request: Request) {
                     // ==========================================
                     company: companyName,
                     company_name: companyName,
+                    company_domain: companyDomain,
                     company_industry: deal.company_industry || null,
                     company_website: deal.company_website || null,
                     company_city: deal.company_city || null,
@@ -233,18 +240,17 @@ export async function POST(request: Request) {
                     company_phone: deal.company_phone || null,
 
                     // ==========================================
-                    // Produto - Informações Completas
+                    // Produto - Informações Completas (do LineItem)
                     // ==========================================
-                    product_name: productName,  // Nome curto
-                    product_name_full: productNameFull,  // Descrição completa
-                    product_name_raw: productNameFull,
-                    product_short_name: productName,
+                    product_id: deal.product_id || null,
+                    product_name: productName,
+                    product_description: productDescription,
                     product_quantity: productQuantity,
                     product_amount: productAmount,
                     product_unit_price: productUnitPrice,
                     product_sku: productSku,
-                    product_cost: deal.product_cost ? parseFloat(deal.product_cost) : null,
-                    product_discount: deal.product_discount ? parseFloat(deal.product_discount) : null,
+                    product_cost: productCost,
+                    product_discount: productDiscount,
 
                     // Totais calculados
                     quantity: productQuantity,
@@ -294,14 +300,24 @@ export async function POST(request: Request) {
             throw deleteError;
         }
 
-        console.log('💾 Inserindo novos dados...');
-        const { error: insertError } = await supabaseAdmin
-            .from('csv_rows')
-            .insert(rows);
+        // Inserir em lotes de 500 para evitar timeout
+        const BATCH_SIZE = 500;
+        console.log(`💾 Inserindo ${rows.length} registros em lotes de ${BATCH_SIZE}...`);
 
-        if (insertError) {
-            console.error('❌ Erro ao inserir dados:', insertError);
-            throw insertError;
+        let insertedCount = 0;
+        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
+            const batch = rows.slice(i, i + BATCH_SIZE);
+            const { error: insertError } = await supabaseAdmin
+                .from('csv_rows')
+                .insert(batch);
+
+            if (insertError) {
+                console.error(`❌ Erro ao inserir lote ${Math.floor(i / BATCH_SIZE) + 1}:`, insertError);
+                throw insertError;
+            }
+
+            insertedCount += batch.length;
+            console.log(`  ✓ Lote ${Math.floor(i / BATCH_SIZE) + 1}: ${insertedCount}/${rows.length} inseridos`);
         }
 
         console.log(`✅ ${rows.length} deals sincronizados com sucesso!`);

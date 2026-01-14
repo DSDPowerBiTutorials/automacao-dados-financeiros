@@ -5,8 +5,11 @@ import { supabase } from "./supabase";
 export interface CSVRow {
   id: string;
   date: string;
+  date_ts?: string; // Data normalizada em TIMESTAMPTZ (usar para queries)
   description: string;
   amount: number;
+  amount_cents?: number; // Valor em centavos para cálculos precisos
+  currency?: string; // Código ISO 4217 (EUR, USD, GBP)
   category?: string;
   classification?: string;
   source?: string;
@@ -15,6 +18,11 @@ export interface CSVRow {
   orderNumbers?: string[];
   reconciled?: boolean;
   matchedWith?: string;
+  matched_source?: string;
+  match_confidence?: number;
+  match_details?: Record<string, unknown>;
+  matched_at?: string;
+  external_id?: string; // ID único do sistema origem
 
   // Colunas específicas do Bankinter EUR
   fecha_contable?: string;
@@ -53,18 +61,18 @@ export interface CSVFile {
   rows: CSVRow[];
   totalAmount: number;
   source:
-    | "bankinter"
-    | "bankinter-eur"
-    | "bankinter-usd"
-    | "sabadell"
-    | "braintree-eur"
-    | "braintree-usd"
-    | "braintree-transactions"
-    | "braintree-amex"
-    | "braintree-amex-transactions"
-    | "stripe"
-    | "gocardless"
-    | "paypal";
+  | "bankinter"
+  | "bankinter-eur"
+  | "bankinter-usd"
+  | "sabadell"
+  | "braintree-eur"
+  | "braintree-usd"
+  | "braintree-transactions"
+  | "braintree-amex"
+  | "braintree-amex-transactions"
+  | "stripe"
+  | "gocardless"
+  | "paypal";
 }
 
 // Salvar arquivo CSV no banco via API route

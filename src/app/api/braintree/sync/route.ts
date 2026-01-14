@@ -210,26 +210,54 @@ export async function POST(req: NextRequest) {
       } catch (err) {
         console.error(`[Settlement Batch ID] Error generating for transaction ${transaction.id}:`, err);
       }
+
+      // 🔑 Extrair Order ID de múltiplas fontes possíveis
+      const orderId = transaction.orderId
+        || transaction.customFields?.order_id
+        || transaction.customFields?.orderId
+        || null;
+
+      // 📧 Extrair email de múltiplas fontes
+      const customerEmail = transaction.customer?.email
+        || transaction.paypalAccount?.payerEmail
+        || null;
+
+      // 👤 Extrair nome do cliente (para match alternativo)
+      const customerName = getCustomerName(transaction);
+      const billingName = transaction.billing
+        ? `${transaction.billing.firstName || ''} ${transaction.billing.lastName || ''}`.trim()
+        : null;
+      const companyName = transaction.billing?.company
+        || transaction.customer?.company
+        || null;
+
       const revenueRow = {
         // ✅ ID único com currency prefix para evitar colisões
         id: `braintree-rev-${txCurrency}-${transaction.id}`,
         file_name: "braintree-api-sync.csv",
         source: "braintree-api-revenue",
         date: transactionDate.toISOString().split("T")[0],
-        description: `${getCustomerName(transaction)} - ${getPaymentMethod(transaction)}`,
+        description: `${customerName} - ${getPaymentMethod(transaction)}`,
         amount: parseFloat(transaction.amount),
         reconciled: false,
+        // 🆕 Campos de nível superior para facilitar reconciliação
+        customer_email: customerEmail,
+        customer_name: customerName,
 
         // Dados customizados do Braintree (armazenados em custom_data JSONB)
         custom_data: {
           transaction_id: transaction.id,
-          order_id: (transaction as any).orderId || null,
+          // 🔑 Order ID - Campo CRÍTICO para reconciliação
+          order_id: orderId,
           status: transaction.status,
           type: transaction.type,
           currency: txCurrency,
           customer_id: transaction.customer?.id,
-          customer_name: getCustomerName(transaction),
-          customer_email: transaction.customer?.email,
+          customer_name: customerName,
+          customer_email: customerEmail,
+          // 🆕 Campos adicionais para reconciliação alternativa
+          billing_name: billingName,
+          company_name: companyName,
           payment_method: getPaymentMethod(transaction),
           merchant_account_id: transaction.merchantAccountId,
           created_at: (() => {

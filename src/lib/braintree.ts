@@ -66,12 +66,31 @@ export interface BraintreeTransactionData {
   updatedAt: Date;
   merchantAccountId: string;
 
+  // 🔑 Order ID - Campo CRÍTICO para reconciliação com HubSpot
+  orderId?: string;
+
+  // Custom Fields (podem conter order_id alternativo)
+  customFields?: Record<string, string>;
+
   // Dados do cliente
   customer?: {
     id: string;
     firstName?: string;
     lastName?: string;
     email?: string;
+    company?: string;
+  };
+
+  // Billing Address (para match por nome/empresa)
+  billing?: {
+    firstName?: string;
+    lastName?: string;
+    company?: string;
+    streetAddress?: string;
+    locality?: string;
+    region?: string;
+    postalCode?: string;
+    countryCodeAlpha2?: string;
   };
 
   // Método de pagamento
