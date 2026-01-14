@@ -31,6 +31,7 @@ import {
   Building2 as Company,
   BarChart4,
   Settings2,
+  Package,
   type LucideIcon
 } from "lucide-react"
 
@@ -244,6 +245,11 @@ export const NAV: NavGroup[] = [
             title: "Customers",
             href: "/accounts-receivable/master-data/customers",
             icon: UserCircle
+          },
+          {
+            title: "Products",
+            href: "/accounts-receivable/master-data/products",
+            icon: Package
           },
           {
             title: "Financial Accounts",
