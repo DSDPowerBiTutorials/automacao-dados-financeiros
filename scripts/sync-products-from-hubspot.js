@@ -37,6 +37,7 @@ async function syncProducts() {
         console.log('✅ Conectado ao SQL Server\n');
 
         // Query para buscar produtos únicos do LineItem
+        // Filtra apenas produtos de deals fechados a partir de 01/01/2025
         const query = `
             SELECT DISTINCT
                 li.name AS product_name,
@@ -44,10 +45,13 @@ async function syncProducts() {
                 li.hs_sku AS product_sku,
                 li.price AS default_price,
                 COUNT(*) as usage_count,
-                SUM(CAST(li.amount AS DECIMAL(12,2))) as total_revenue
+                SUM(CAST(ISNULL(li.amount, 0) AS DECIMAL(12,2))) as total_revenue
             FROM LineItem li
+            INNER JOIN DealLineItemAssociations dlia ON li.LineItemId = dlia.LineItemId
+            INNER JOIN Deal d ON d.DealId = dlia.DealId
             WHERE li.name IS NOT NULL 
               AND LEN(TRIM(li.name)) > 0
+              AND d.closedate >= '2025-01-01'
             GROUP BY 
                 li.name,
                 li.description,
