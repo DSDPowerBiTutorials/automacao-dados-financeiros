@@ -145,6 +145,7 @@ export default function ProductsPage() {
     const [selectedForMerge, setSelectedForMerge] = useState<Product[]>([]);
     const [mergeTarget, setMergeTarget] = useState<string>("");
     const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
+    const [syncing, setSyncing] = useState(false);
 
     // Form state
     const [formData, setFormData] = useState({
@@ -514,6 +515,38 @@ export default function ProductsPage() {
                     </p>
                 </div>
                 <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={async () => {
+                            setSyncing(true);
+                            try {
+                                const res = await fetch("/api/products/sync");
+                                const data = await res.json();
+                                if (data.success) {
+                                    toast({
+                                        title: "Sincronização concluída",
+                                        description: `${data.stats.inserted} novos produtos importados do HubSpot`,
+                                    });
+                                    if (data.stats.inserted > 0) loadData();
+                                } else {
+                                    throw new Error(data.error);
+                                }
+                            } catch (error: any) {
+                                toast({
+                                    title: "Erro na sincronização",
+                                    description: error.message,
+                                    variant: "destructive",
+                                });
+                            } finally {
+                                setSyncing(false);
+                            }
+                        }}
+                        disabled={syncing}
+                        className="gap-2"
+                    >
+                        <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
+                        {syncing ? "Sincronizando..." : "Sync HubSpot"}
+                    </Button>
                     <Button
                         variant="outline"
                         onClick={() => {
