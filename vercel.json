@@ -1,11 +1,7 @@
 {
     "crons": [
         {
-            "path": "/api/cron/braintree-sync",
-            "schedule": "0 3 * * *"
-        },
-        {
-            "path": "/api/cron/hubspot-sync",
+            "path": "/api/cron/daily-sync",
             "schedule": "0 4 * * *"
         }
     ]

@@ -1,0 +1,302 @@
+/**
+ * Cron Job Unificado: Sincronização Diária de Todos os Sistemas
+ * 
+ * Executa: Todos os dias às 4h da manhã (UTC)
+ * 
+ * Sincroniza em ordem:
+ * 1. Braintree (EUR + USD) - Últimos 7 dias
+ * 2. GoCardless - Últimos 30 dias
+ * 3. HubSpot - Deals desde 2024
+ * 4. Products - Novos produtos do HubSpot
+ * 
+ * Endpoint: GET /api/cron/daily-sync
+ * Autorização: Bearer ${CRON_SECRET} ou x-vercel-cron header
+ */
+
+import { NextRequest, NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+import { getSQLServerConnection } from "@/lib/sqlserver";
+import { syncGoCardlessTransactions } from "@/lib/gocardless";
+import crypto from "crypto";
+
+interface SyncResult {
+    name: string;
+    success: boolean;
+    message: string;
+    count?: number;
+    duration_ms: number;
+    error?: string;
+}
+
+export const maxDuration = 300; // 5 minutos máximo
+
+export async function GET(req: NextRequest) {
+    const startTime = Date.now();
+    const results: SyncResult[] = [];
+
+    // Verificar autorização
+    const authHeader = req.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+    const isVercelCron = req.headers.get("x-vercel-cron") !== null;
+
+    if (!isVercelCron && authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    console.log("🚀 [Daily Sync] Iniciando sincronização unificada...");
+    console.log(`📅 Data: ${new Date().toISOString()}`);
+
+    // ============================================
+    // 1. BRAINTREE EUR
+    // ============================================
+    try {
+        const braintreeStart = Date.now();
+        console.log("\n📦 [1/5] Sincronizando Braintree EUR...");
+
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
+
+        const syncUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/braintree/sync`;
+
+        const response = await fetch(syncUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                startDate: startDate.toISOString().split("T")[0],
+                endDate: endDate.toISOString().split("T")[0],
+                currency: "EUR",
+            }),
+        });
+
+        const result = await response.json();
+
+        results.push({
+            name: "Braintree EUR",
+            success: result.success === true,
+            message: result.message || "Sync completed",
+            count: result.inserted || 0,
+            duration_ms: Date.now() - braintreeStart,
+            error: result.error,
+        });
+    } catch (error: any) {
+        results.push({
+            name: "Braintree EUR",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // 2. BRAINTREE USD
+    // ============================================
+    try {
+        const braintreeUsdStart = Date.now();
+        console.log("\n💵 [2/5] Sincronizando Braintree USD...");
+
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 7);
+
+        const syncUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/braintree/sync`;
+
+        const response = await fetch(syncUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                startDate: startDate.toISOString().split("T")[0],
+                endDate: endDate.toISOString().split("T")[0],
+                currency: "USD",
+            }),
+        });
+
+        const result = await response.json();
+
+        results.push({
+            name: "Braintree USD",
+            success: result.success === true,
+            message: result.message || "Sync completed",
+            count: result.inserted || 0,
+            duration_ms: Date.now() - braintreeUsdStart,
+            error: result.error,
+        });
+    } catch (error: any) {
+        results.push({
+            name: "Braintree USD",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // 3. GOCARDLESS
+    // ============================================
+    try {
+        const gcStart = Date.now();
+        console.log("\n🏦 [3/5] Sincronizando GoCardless...");
+
+        const result = await syncGoCardlessTransactions();
+
+        results.push({
+            name: "GoCardless",
+            success: result.success === true,
+            message: `${result.payoutsCount || 0} payouts, ${result.paymentsCount || 0} payments`,
+            count: (result.payoutsCount || 0) + (result.paymentsCount || 0),
+            duration_ms: Date.now() - gcStart,
+            error: result.error,
+        });
+    } catch (error: any) {
+        results.push({
+            name: "GoCardless",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // 4. HUBSPOT DEALS
+    // ============================================
+    try {
+        const hubspotStart = Date.now();
+        console.log("\n📊 [4/5] Sincronizando HubSpot Deals...");
+
+        const pool = await getSQLServerConnection();
+
+        const result = await pool.request().query(`
+            SELECT TOP 5000 *
+            FROM [dbo].[Deal]
+            WHERE hs_lastmodifieddate >= DATEADD(DAY, -30, GETDATE())
+            ORDER BY hs_lastmodifieddate DESC
+        `);
+
+        if (result.recordset.length > 0) {
+            const rows = result.recordset.map((row: any) => {
+                const customData: Record<string, any> = {};
+                Object.keys(row).forEach((key) => {
+                    if (row[key] !== null && row[key] !== undefined) {
+                        customData[key] = row[key];
+                    }
+                });
+
+                return {
+                    id: crypto.randomUUID(),
+                    source: "hubspot",
+                    date: row.closedate || row.createdate || new Date().toISOString(),
+                    description: row.dealname || "HubSpot Deal",
+                    amount: parseFloat(row.amount) || 0,
+                    currency: row.deal_currency_code || "EUR",
+                    reconciled: false,
+                    file_name: "hubspot-sync",
+                    custom_data: customData,
+                };
+            });
+
+            const { error } = await supabaseAdmin.from("csv_rows").upsert(rows, {
+                onConflict: "id",
+                ignoreDuplicates: false,
+            });
+
+            results.push({
+                name: "HubSpot Deals",
+                success: !error,
+                message: error ? error.message : `${rows.length} deals synced`,
+                count: rows.length,
+                duration_ms: Date.now() - hubspotStart,
+                error: error?.message,
+            });
+        } else {
+            results.push({
+                name: "HubSpot Deals",
+                success: true,
+                message: "No new deals",
+                count: 0,
+                duration_ms: Date.now() - hubspotStart,
+            });
+        }
+    } catch (error: any) {
+        results.push({
+            name: "HubSpot Deals",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // 5. PRODUCTS (do HubSpot LineItem)
+    // ============================================
+    try {
+        const productsStart = Date.now();
+        console.log("\n📦 [5/5] Sincronizando Products...");
+
+        const syncUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/products/sync`;
+        const response = await fetch(syncUrl);
+        const result = await response.json();
+
+        results.push({
+            name: "Products",
+            success: result.success === true,
+            message: result.message || "Sync completed",
+            count: result.stats?.inserted || 0,
+            duration_ms: Date.now() - productsStart,
+            error: result.error,
+        });
+    } catch (error: any) {
+        results.push({
+            name: "Products",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // SALVAR METADATA DA SINCRONIZAÇÃO
+    // ============================================
+    const totalDuration = Date.now() - startTime;
+    const successCount = results.filter((r) => r.success).length;
+    const failCount = results.filter((r) => !r.success).length;
+
+    try {
+        await supabaseAdmin.from("sync_metadata").upsert(
+            {
+                source: "daily-sync",
+                last_sync: new Date().toISOString(),
+                records_synced: results.reduce((sum, r) => sum + (r.count || 0), 0),
+                metadata: {
+                    results,
+                    duration_ms: totalDuration,
+                    success_count: successCount,
+                    fail_count: failCount,
+                },
+            },
+            { onConflict: "source" }
+        );
+    } catch (e) {
+        console.error("Failed to save sync metadata:", e);
+    }
+
+    // ============================================
+    // RESPOSTA FINAL
+    // ============================================
+    console.log("\n✅ [Daily Sync] Sincronização concluída!");
+    console.log(`   ⏱️ Duração total: ${(totalDuration / 1000).toFixed(1)}s`);
+    console.log(`   ✓ Sucesso: ${successCount}/5`);
+    console.log(`   ✗ Falhas: ${failCount}/5`);
+
+    return NextResponse.json({
+        success: failCount === 0,
+        message: `Daily sync completed: ${successCount}/5 successful`,
+        duration_ms: totalDuration,
+        timestamp: new Date().toISOString(),
+        results,
+    });
+}

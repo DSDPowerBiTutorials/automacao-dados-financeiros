@@ -1147,8 +1147,8 @@ export default function ProductsPage() {
                                     <div
                                         key={p.id}
                                         className={`flex items-center justify-between p-2 rounded border ${mergeTarget === p.id
-                                                ? "border-blue-500 bg-blue-50"
-                                                : "border-gray-200"
+                                            ? "border-blue-500 bg-blue-50"
+                                            : "border-gray-200"
                                             }`}
                                     >
                                         <div>
