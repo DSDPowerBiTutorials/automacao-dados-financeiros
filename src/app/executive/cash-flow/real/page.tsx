@@ -159,9 +159,9 @@ export default function RealCashFlowPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
-    // Filters com debounce
+    // Filters - default últimos 30 dias (reduzido de 90 para performance)
     const [dateRange, setDateRange] = useState<{ start: string; end: string }>({
-        start: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+        start: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
         end: new Date().toISOString().split("T")[0],
     });
     const [pendingDateRange, setPendingDateRange] = useState(dateRange);
@@ -200,25 +200,23 @@ export default function RealCashFlowPage() {
         setError(null);
 
         try {
-            // Buscar transações com filtro aproximado por date (criação)
-            // Expandimos o range em 30 dias para pegar transações cujo disbursement_date
-            // pode cair dentro do range solicitado
+            // Query otimizada: buscar apenas campos necessários e filtrar por date
+            // O disbursement_date geralmente é até 5 dias após a date de criação
             const expandedStart = new Date(dateRange.start);
-            expandedStart.setDate(expandedStart.getDate() - 30);
+            expandedStart.setDate(expandedStart.getDate() - 7); // Reduzido para 7 dias
             const expandedStartStr = expandedStart.toISOString().split("T")[0];
 
             const { data, error: supabaseError } = await supabase
                 .from("csv_rows")
-                .select("*")
+                .select("id, date, description, amount, source, custom_data")
                 .in("source", [
                     "braintree-api-revenue",
-                    "braintree-eur",
-                    "braintree-usd",
                     "gocardless",
                 ])
                 .gte("date", expandedStartStr)
                 .lte("date", dateRange.end)
-                .limit(5000);  // Limitar para evitar travamento
+                .order("date", { ascending: false })
+                .limit(2000);  // Reduzido para 2000
 
             if (supabaseError) throw supabaseError;
 
