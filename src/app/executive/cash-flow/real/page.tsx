@@ -40,7 +40,8 @@ import { supabase } from "@/lib/supabase";
 
 interface Transaction {
     id: string;
-    date: string;
+    date: string;  // Data da transação (created_at)
+    cash_flow_date: string;  // Data do cash flow real (disbursement_date)
     description: string;
     amount: number;
     source: string;
@@ -55,6 +56,7 @@ interface Transaction {
     product_category: string;
     product_name: string;
     settlement_date: string | null;
+    disbursement_date: string | null;
 }
 
 interface Summary {
@@ -195,6 +197,7 @@ export default function RealCashFlowPage() {
 
         try {
             // Buscar todas as transações de receita (Braintree + GoCardless)
+            // Filtramos por date inicialmente, depois filtramos por disbursement_date no JS
             const { data, error: supabaseError } = await supabase
                 .from("csv_rows")
                 .select("*")
@@ -203,37 +206,58 @@ export default function RealCashFlowPage() {
                     "braintree-eur",
                     "braintree-usd",
                     "gocardless",
-                ])
-                .gte("date", dateRange.start)
-                .lte("date", dateRange.end)
-                .order("date", { ascending: false });
+                ]);
 
             if (supabaseError) throw supabaseError;
 
-            const mapped: Transaction[] = (data || []).map((row) => {
-                const cd = row.custom_data || {};
-                const amount = parseFloat(row.amount) || 0;
-
-                const desc = cd.description || row.description || "";
-                return {
-                    id: row.id,
-                    date: row.date,
-                    description: desc,
-                    amount,
-                    source: row.source,
-                    type: cd.type || (amount >= 0 ? "sale" : "refund"),
-                    status: cd.status || "settled",
-                    currency: cd.currency || cd.currencyIsoCode || "EUR",
-                    customer_name: cd.customer_name || cd.billing_name || "",
-                    customer_email: cd.customer_email || "",
-                    payment_method: cd.payment_method || "unknown",
-                    payment_method_display: simplifyPaymentMethod(cd.payment_method),
-                    order_id: cd.order_id || null,
-                    product_category: categorizeProduct(amount, desc),
-                    product_name: detectProductName(desc, amount),
-                    settlement_date: cd.settlement_date || cd.disbursement_date || null,
-                };
-            });
+            // Mapear e filtrar por disbursement_date (data real do cash flow)
+            const mapped: Transaction[] = (data || [])
+                .map((row) => {
+                    const cd = row.custom_data || {};
+                    const amount = parseFloat(row.amount) || 0;
+                    const desc = cd.description || row.description || "";
+                    
+                    // disbursement_date é quando o dinheiro realmente entra no banco
+                    // settlement_date é quando a transação é liquidada no gateway
+                    const disbursementDate = cd.disbursement_date 
+                        ? cd.disbursement_date.split("T")[0] 
+                        : null;
+                    const settlementDate = cd.settlement_date 
+                        ? cd.settlement_date.split("T")[0] 
+                        : null;
+                    
+                    // Para Cash Flow Real, usamos disbursement_date como data principal
+                    // Se não tiver, usamos settlement_date, depois date
+                    const cashFlowDate = disbursementDate || settlementDate || row.date;
+                    
+                    return {
+                        id: row.id,
+                        date: row.date,
+                        cash_flow_date: cashFlowDate,
+                        description: desc,
+                        amount,
+                        source: row.source,
+                        type: cd.type || (amount >= 0 ? "sale" : "refund"),
+                        status: cd.status || "settled",
+                        currency: cd.currency || cd.currencyIsoCode || "EUR",
+                        customer_name: cd.customer_name || cd.billing_name || "",
+                        customer_email: cd.customer_email || "",
+                        payment_method: cd.payment_method || "unknown",
+                        payment_method_display: simplifyPaymentMethod(cd.payment_method),
+                        order_id: cd.order_id || null,
+                        product_category: categorizeProduct(amount, desc),
+                        product_name: detectProductName(desc, amount),
+                        settlement_date: settlementDate,
+                        disbursement_date: disbursementDate,
+                    };
+                })
+                // Filtrar por disbursement_date (cash_flow_date) dentro do range
+                .filter((tx) => {
+                    if (!tx.cash_flow_date) return false;
+                    return tx.cash_flow_date >= dateRange.start && tx.cash_flow_date <= dateRange.end;
+                })
+                // Ordenar por cash_flow_date (disbursement) decrescente
+                .sort((a, b) => b.cash_flow_date.localeCompare(a.cash_flow_date));
 
             setTransactions(mapped);
         } catch (err) {
@@ -283,10 +307,10 @@ export default function RealCashFlowPage() {
             byProductCategory[t.product_category] = (byProductCategory[t.product_category] || 0) + t.amount;
         });
 
-        // By month
+        // By month - usando cash_flow_date (disbursement_date)
         const byMonthMap: Record<string, { inflow: number; outflow: number }> = {};
         filteredTransactions.forEach((t) => {
-            const month = t.date.substring(0, 7);
+            const month = t.cash_flow_date.substring(0, 7);
             if (!byMonthMap[month]) byMonthMap[month] = { inflow: 0, outflow: 0 };
             if (t.amount > 0) {
                 byMonthMap[month].inflow += t.amount;
@@ -304,7 +328,7 @@ export default function RealCashFlowPage() {
                 net: data.inflow - data.outflow,
             }));
 
-        // By day of month (1-31) - para ver padrões de recebimento
+        // By day of month (1-31) - usando cash_flow_date para padrões de recebimento
         const byDayMap: Record<number, { total: number; count: number }> = {};
         // Inicializar todos os dias (1-31)
         for (let d = 1; d <= 31; d++) {
@@ -312,7 +336,7 @@ export default function RealCashFlowPage() {
         }
         inflows.forEach((t) => {
             try {
-                const day = parseInt(t.date.split("-")[2]?.split("T")[0] || "0", 10);
+                const day = parseInt(t.cash_flow_date.split("-")[2]?.split("T")[0] || "0", 10);
                 if (day >= 1 && day <= 31) {
                     byDayMap[day].total += t.amount;
                     byDayMap[day].count += 1;
@@ -943,7 +967,7 @@ export default function RealCashFlowPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Data</TableHead>
+                                    <TableHead>Data Recebimento</TableHead>
                                     <TableHead>Cliente</TableHead>
                                     <TableHead>Produto</TableHead>
                                     <TableHead>Categoria</TableHead>
@@ -956,7 +980,14 @@ export default function RealCashFlowPage() {
                             <TableBody>
                                 {paginatedData.map((tx) => (
                                     <TableRow key={tx.id}>
-                                        <TableCell className="whitespace-nowrap">{formatDateBR(tx.date)}</TableCell>
+                                        <TableCell className="whitespace-nowrap">
+                                            <div>
+                                                <div className="font-medium">{formatDateBR(tx.cash_flow_date)}</div>
+                                                {tx.date !== tx.cash_flow_date && (
+                                                    <div className="text-xs text-gray-400">Criado: {formatDateBR(tx.date)}</div>
+                                                )}
+                                            </div>
+                                        </TableCell>
                                         <TableCell>
                                             <div>
                                                 <div className="font-medium">{tx.customer_name || "—"}</div>
