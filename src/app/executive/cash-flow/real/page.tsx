@@ -189,6 +189,10 @@ export default function RealCashFlowPage() {
 
     useEffect(() => {
         loadData();
+        // Cleanup ao desmontar componente
+        return () => {
+            setTransactions([]);
+        };
     }, [dateRange]);
 
     const loadData = async () => {
@@ -196,8 +200,13 @@ export default function RealCashFlowPage() {
         setError(null);
 
         try {
-            // Buscar todas as transações de receita (Braintree + GoCardless)
-            // Filtramos por date inicialmente, depois filtramos por disbursement_date no JS
+            // Buscar transações com filtro aproximado por date (criação)
+            // Expandimos o range em 30 dias para pegar transações cujo disbursement_date
+            // pode cair dentro do range solicitado
+            const expandedStart = new Date(dateRange.start);
+            expandedStart.setDate(expandedStart.getDate() - 30);
+            const expandedStartStr = expandedStart.toISOString().split("T")[0];
+
             const { data, error: supabaseError } = await supabase
                 .from("csv_rows")
                 .select("*")
@@ -206,7 +215,10 @@ export default function RealCashFlowPage() {
                     "braintree-eur",
                     "braintree-usd",
                     "gocardless",
-                ]);
+                ])
+                .gte("date", expandedStartStr)
+                .lte("date", dateRange.end)
+                .limit(5000);  // Limitar para evitar travamento
 
             if (supabaseError) throw supabaseError;
 
@@ -216,20 +228,20 @@ export default function RealCashFlowPage() {
                     const cd = row.custom_data || {};
                     const amount = parseFloat(row.amount) || 0;
                     const desc = cd.description || row.description || "";
-                    
+
                     // disbursement_date é quando o dinheiro realmente entra no banco
                     // settlement_date é quando a transação é liquidada no gateway
-                    const disbursementDate = cd.disbursement_date 
-                        ? cd.disbursement_date.split("T")[0] 
+                    const disbursementDate = cd.disbursement_date
+                        ? cd.disbursement_date.split("T")[0]
                         : null;
-                    const settlementDate = cd.settlement_date 
-                        ? cd.settlement_date.split("T")[0] 
+                    const settlementDate = cd.settlement_date
+                        ? cd.settlement_date.split("T")[0]
                         : null;
-                    
+
                     // Para Cash Flow Real, usamos disbursement_date como data principal
                     // Se não tiver, usamos settlement_date, depois date
                     const cashFlowDate = disbursementDate || settlementDate || row.date;
-                    
+
                     return {
                         id: row.id,
                         date: row.date,
@@ -801,8 +813,8 @@ export default function RealCashFlowPage() {
                                             {/* Barra vertical */}
                                             <div
                                                 className={`w-full rounded-t transition-all duration-300 ${hasData
-                                                        ? `bg-gradient-to-t from-blue-${Math.max(400, Math.min(700, 400 + Math.round(intensity / 20) * 100))} to-blue-${Math.max(500, Math.min(800, 500 + Math.round(intensity / 20) * 100))} hover:from-blue-500 hover:to-blue-700`
-                                                        : 'bg-gray-100'
+                                                    ? `bg-gradient-to-t from-blue-${Math.max(400, Math.min(700, 400 + Math.round(intensity / 20) * 100))} to-blue-${Math.max(500, Math.min(800, 500 + Math.round(intensity / 20) * 100))} hover:from-blue-500 hover:to-blue-700`
+                                                    : 'bg-gray-100'
                                                     }`}
                                                 style={{
                                                     height: `${hasData ? Math.max(heightPercent, 4) : 4}%`,
