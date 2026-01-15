@@ -98,16 +98,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useEffect(() => {
         let mounted = true;
         let timeoutId: NodeJS.Timeout;
+        let initComplete = false;
 
         const initializeAuth = async () => {
             try {
-                // Timeout de 10 segundos para prevenir loading infinito
+                // Timeout de 5 segundos para prevenir loading infinito (reduzido de 10s)
                 timeoutId = setTimeout(() => {
-                    if (mounted && loading) {
+                    if (mounted && loading && !initComplete) {
                         console.warn('Auth initialization timeout - forcing loading to false');
                         setLoading(false);
+                        initComplete = true;
                     }
-                }, 10000);
+                }, 5000);
 
                 const { data: { session: currentSession }, error } = await supabase.auth.getSession();
 
@@ -158,66 +160,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 if (mounted) {
                     clearTimeout(timeoutId);
                     setLoading(false);
+                    initComplete = true;
                 }
             }
         };
 
         initializeAuth();
 
-        // Listen for auth changes
+        // Listen for auth changes - com debounce para evitar race conditions entre abas
+        let authChangeTimeout: NodeJS.Timeout;
         const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, currentSession) => {
             console.log('Auth event:', event);
 
             if (!mounted) return;
 
-            // Handle token refresh silently
-            if (event === 'TOKEN_REFRESHED') {
-                if (currentSession) {
-                    setSession(currentSession);
-                }
-                return;
-            }
-
-            // Handle sign out event
-            if (event === 'SIGNED_OUT') {
-                setSession(null);
-                setUser(null);
-                setProfile(null);
-                return;
-            }
-
-            setSession(currentSession);
-            setUser(currentSession?.user ?? null);
-
-            if (currentSession?.user) {
-                const userProfile = await fetchProfile(currentSession.user.id);
-
+            // Debounce para evitar múltiplas execuções simultâneas
+            clearTimeout(authChangeTimeout);
+            authChangeTimeout = setTimeout(async () => {
                 if (!mounted) return;
 
-                if (!userProfile) {
-                    console.warn('Profile not found');
-                    setProfile(null);
-                } else if (!userProfile.is_active) {
-                    console.warn('User inactive, signing out');
-                    await supabase.auth.signOut();
+                // Handle token refresh silently
+                if (event === 'TOKEN_REFRESHED') {
+                    if (currentSession) {
+                        setSession(currentSession);
+                    }
+                    return;
+                }
+
+                // Handle sign out event
+                if (event === 'SIGNED_OUT') {
                     setSession(null);
                     setUser(null);
                     setProfile(null);
-                } else {
-                    setProfile(userProfile);
-
-                    if (event === 'SIGNED_IN') {
-                        await updateLastLogin(currentSession.user.id);
-                        await logAudit('login');
-                    }
+                    return;
                 }
-            } else {
-                setProfile(null);
-            }
+
+                setSession(currentSession);
+                setUser(currentSession?.user ?? null);
+
+                if (currentSession?.user) {
+                    const userProfile = await fetchProfile(currentSession.user.id);
+
+                    if (!mounted) return;
+
+                    if (!userProfile) {
+                        console.warn('Profile not found');
+                        setProfile(null);
+                    } else if (!userProfile.is_active) {
+                        console.warn('User inactive, signing out');
+                        await supabase.auth.signOut();
+                        setSession(null);
+                        setUser(null);
+                        setProfile(null);
+                    } else {
+                        setProfile(userProfile);
+
+                        if (event === 'SIGNED_IN') {
+                            await updateLastLogin(currentSession.user.id);
+                            await logAudit('login');
+                        }
+                    }
+                } else {
+                    setProfile(null);
+                }
+            }, 100); // 100ms debounce
         });
 
         return () => {
             mounted = false;
+            clearTimeout(authChangeTimeout);
+            clearTimeout(timeoutId);
             subscription.unsubscribe();
         };
     }, []);
