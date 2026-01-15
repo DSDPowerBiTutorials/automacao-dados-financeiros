@@ -8,7 +8,7 @@
  * - customer name: Para match por nome
  */
 
-import { supabase } from "./supabase";
+import { supabaseAdmin } from "./supabase-admin";
 
 const STRIPE_API_URL = "https://api.stripe.com/v1";
 const STRIPE_SECRET_KEY = process.env.STRIPE_SECRET_KEY;
@@ -202,7 +202,7 @@ export async function syncStripeTransactions(options?: {
             c => c.currency.toLowerCase() === currency && c.status === "succeeded"
         );
 
-        if (!supabase) {
+        if (!supabaseAdmin) {
             throw new Error("Supabase client não configurado");
         }
 
