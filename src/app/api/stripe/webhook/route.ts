@@ -2,8 +2,9 @@
  * API Route: Webhook do Stripe
  * 
  * Recebe notificações em tempo real do Stripe quando:
+ * - Checkout é completado (checkout.session.completed) ⭐ PRINCIPAL
+ * - Invoice é paga (invoice.paid)
  * - Pagamento é criado/confirmado (charge.succeeded)
- * - Pagamento falha (charge.failed)
  * - Reembolso é processado (charge.refunded)
  * - Payout é enviado (payout.paid)
  * - Disputa é aberta (charge.dispute.created)
@@ -11,14 +12,15 @@
  * URL para configurar no Stripe Dashboard:
  * https://dsdfinancehub.com/api/stripe/webhook
  * 
- * Eventos a habilitar no Stripe:
- * - charge.succeeded
- * - charge.failed
- * - charge.refunded
- * - charge.dispute.created
- * - payout.paid
- * - payment_intent.succeeded
- * - payment_intent.payment_failed
+ * ==========================================
+ * EVENTOS A SELECIONAR NO STRIPE DASHBOARD:
+ * ==========================================
+ * 1. checkout.session.completed  ⭐ (nomes de produtos, cliente, order_id)
+ * 2. invoice.paid                ⭐ (subscriptions, produtos detalhados)
+ * 3. charge.succeeded            (pagamentos diretos)
+ * 4. charge.refunded             (reembolsos)
+ * 5. payout.paid                 (transferências bancárias)
+ * 6. charge.dispute.created      (disputas/chargebacks)
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -71,6 +73,83 @@ interface StripePayout {
     created: number;
     currency: string;
     status: string;
+}
+
+interface StripeCheckoutSession {
+    id: string;
+    amount_total: number;
+    currency: string;
+    created: number;
+    status: string;
+    payment_status: string;
+    customer_details?: {
+        name?: string;
+        email?: string;
+    };
+    customer?: string;
+    client_reference_id?: string;
+    metadata?: Record<string, string>;
+    line_items?: {
+        data: Array<{
+            description?: string;
+            quantity?: number;
+            amount_total: number;
+            price?: {
+                product?: string;
+            };
+        }>;
+    };
+}
+
+interface StripeInvoice {
+    id: string;
+    amount_paid: number;
+    currency: string;
+    created: number;
+    status: string;
+    customer_name?: string;
+    customer_email?: string;
+    customer?: string;
+    metadata?: Record<string, string>;
+    lines?: {
+        data: Array<{
+            description?: string;
+            amount: number;
+            quantity?: number;
+        }>;
+    };
+}
+
+/**
+ * Busca dados expandidos do Stripe (line_items, customer, etc)
+ */
+async function fetchStripeExpanded(sessionId: string): Promise<StripeCheckoutSession | null> {
+    if (!STRIPE_SECRET_KEY) {
+        console.warn("[Stripe Webhook] STRIPE_SECRET_KEY não configurado");
+        return null;
+    }
+
+    try {
+        // Buscar session com line_items expandidos
+        const response = await fetch(
+            `https://api.stripe.com/v1/checkout/sessions/${sessionId}?expand[]=line_items`,
+            {
+                headers: {
+                    Authorization: `Bearer ${STRIPE_SECRET_KEY}`,
+                },
+            }
+        );
+
+        if (!response.ok) {
+            console.error("[Stripe Webhook] Erro ao buscar session:", response.status);
+            return null;
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error("[Stripe Webhook] Erro na API:", error);
+        return null;
+    }
 }
 
 /**
@@ -284,6 +363,155 @@ async function handlePayoutEvent(payout: StripePayout) {
     console.log(`[Stripe Webhook] ✅ Payout ${payout.id} processado`);
 }
 
+/**
+ * Processa evento de checkout.session.completed ⭐ PRINCIPAL
+ * Contém: nome do cliente, email, order_id (client_reference_id), produtos
+ */
+async function handleCheckoutSessionCompleted(session: StripeCheckoutSession) {
+    // Buscar dados expandidos com line_items
+    const expandedSession = await fetchStripeExpanded(session.id);
+    const sessionData = expandedSession || session;
+
+    const amount = (sessionData.amount_total || 0) / 100;
+    const currency = sessionData.currency?.toUpperCase() || "EUR";
+    const source = `stripe-${currency.toLowerCase()}`;
+
+    // Extrair nomes dos produtos
+    const productNames: string[] = [];
+    if (sessionData.line_items?.data) {
+        for (const item of sessionData.line_items.data) {
+            if (item.description) {
+                productNames.push(item.description);
+            }
+        }
+    }
+
+    const customerName = sessionData.customer_details?.name || "";
+    const customerEmail = sessionData.customer_details?.email || "";
+    const orderId = sessionData.client_reference_id || sessionData.metadata?.order_id || null;
+
+    // Descrição rica com produtos
+    let description = customerName || customerEmail || "Stripe Checkout";
+    if (productNames.length > 0) {
+        description += ` - ${productNames.slice(0, 3).join(", ")}`;
+        if (productNames.length > 3) {
+            description += ` +${productNames.length - 3} more`;
+        }
+    }
+
+    const rowData = {
+        source,
+        date: unixToDate(sessionData.created),
+        description,
+        amount,
+        reconciled: false,
+        custom_data: {
+            session_id: sessionData.id,
+            order_id: orderId,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            customer_id: sessionData.customer,
+            currency,
+            products: productNames,
+            product_count: productNames.length,
+            status: sessionData.status,
+            payment_status: sessionData.payment_status,
+            type: "sale",
+            created_at: new Date(sessionData.created * 1000).toISOString(),
+            webhook_received_at: new Date().toISOString(),
+            webhook_event: "checkout.session.completed",
+        },
+    };
+
+    // Upsert no Supabase
+    const { error } = await supabaseAdmin
+        .from("csv_rows")
+        .upsert(rowData, {
+            onConflict: "source,custom_data->>'session_id'",
+        });
+
+    if (error) {
+        const { error: insertError } = await supabaseAdmin
+            .from("csv_rows")
+            .insert(rowData);
+
+        if (insertError) {
+            console.error("[Stripe Webhook] Erro ao salvar checkout session:", insertError);
+            throw insertError;
+        }
+    }
+
+    console.log(`[Stripe Webhook] ✅ Checkout ${sessionData.id} processado - ${productNames.length} produto(s)`);
+}
+
+/**
+ * Processa evento de invoice.paid (subscriptions e pagamentos recorrentes)
+ */
+async function handleInvoicePaid(invoice: StripeInvoice) {
+    const amount = (invoice.amount_paid || 0) / 100;
+    const currency = invoice.currency?.toUpperCase() || "EUR";
+    const source = `stripe-${currency.toLowerCase()}`;
+
+    // Extrair produtos da invoice
+    const productNames: string[] = [];
+    if (invoice.lines?.data) {
+        for (const line of invoice.lines.data) {
+            if (line.description) {
+                productNames.push(line.description);
+            }
+        }
+    }
+
+    const customerName = invoice.customer_name || "";
+    const customerEmail = invoice.customer_email || "";
+
+    let description = customerName || customerEmail || "Stripe Invoice";
+    if (productNames.length > 0) {
+        description += ` - ${productNames.slice(0, 2).join(", ")}`;
+    }
+
+    const rowData = {
+        source,
+        date: unixToDate(invoice.created),
+        description,
+        amount,
+        reconciled: false,
+        custom_data: {
+            invoice_id: invoice.id,
+            order_id: invoice.metadata?.order_id || null,
+            customer_name: customerName,
+            customer_email: customerEmail,
+            customer_id: invoice.customer,
+            currency,
+            products: productNames,
+            status: invoice.status,
+            type: "invoice",
+            created_at: new Date(invoice.created * 1000).toISOString(),
+            webhook_received_at: new Date().toISOString(),
+            webhook_event: "invoice.paid",
+        },
+    };
+
+    const { error } = await supabaseAdmin
+        .from("csv_rows")
+        .upsert(rowData, {
+            onConflict: "source,custom_data->>'invoice_id'",
+        });
+
+    if (error) {
+        const { error: insertError } = await supabaseAdmin
+            .from("csv_rows")
+            .insert(rowData);
+
+        if (insertError) {
+            console.error("[Stripe Webhook] Erro ao salvar invoice:", insertError);
+            throw insertError;
+        }
+    }
+
+    console.log(`[Stripe Webhook] ✅ Invoice ${invoice.id} processado`);
+}
+
 export async function POST(req: NextRequest) {
     try {
         const payload = await req.text();
@@ -302,25 +530,31 @@ export async function POST(req: NextRequest) {
 
         // Processar eventos
         switch (event.type) {
+            // ⭐ Eventos principais (com dados completos)
+            case "checkout.session.completed":
+                await handleCheckoutSessionCompleted(event.data.object as StripeCheckoutSession);
+                break;
+
+            case "invoice.paid":
+                await handleInvoicePaid(event.data.object as StripeInvoice);
+                break;
+
+            // Eventos de charge (backup/fallback)
             case "charge.succeeded":
             case "charge.failed":
             case "charge.refunded":
                 await handleChargeEvent(event.data.object as StripeCharge, event.type);
                 break;
 
+            // Payouts (transferências bancárias)
             case "payout.paid":
                 await handlePayoutEvent(event.data.object as StripePayout);
                 break;
 
+            // Disputas (chargebacks)
             case "charge.dispute.created":
                 console.log(`[Stripe Webhook] ⚠️ Disputa aberta: ${event.data.object.id}`);
                 // TODO: Implementar notificação de disputa
-                break;
-
-            case "payment_intent.succeeded":
-            case "payment_intent.payment_failed":
-                // Payment intents são processados via charge events
-                console.log(`[Stripe Webhook] Payment Intent: ${event.type}`);
                 break;
 
             default:
@@ -344,13 +578,12 @@ export async function GET() {
         endpoint: "/api/stripe/webhook",
         configured: !!STRIPE_WEBHOOK_SECRET,
         events: [
+            "checkout.session.completed ⭐",
+            "invoice.paid ⭐",
             "charge.succeeded",
-            "charge.failed",
             "charge.refunded",
-            "charge.dispute.created",
             "payout.paid",
-            "payment_intent.succeeded",
-            "payment_intent.payment_failed",
+            "charge.dispute.created",
         ],
     });
 }
