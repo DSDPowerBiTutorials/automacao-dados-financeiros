@@ -212,6 +212,8 @@ export default function RealCashFlowPage() {
                 .in("source", [
                     "braintree-api-revenue",
                     "gocardless",
+                    "stripe-eur",
+                    "stripe-usd",
                 ])
                 .gte("date", expandedStartStr)
                 .lte("date", dateRange.end)

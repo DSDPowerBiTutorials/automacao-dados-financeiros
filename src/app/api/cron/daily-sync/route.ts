@@ -8,6 +8,7 @@
  * 2. GoCardless - Últimos 30 dias
  * 3. HubSpot - Deals desde 2024
  * 4. Products - Novos produtos do HubSpot
+ * 5. Stripe (EUR + USD) - Últimos 7 dias
  * 
  * Endpoint: GET /api/cron/daily-sync
  * Autorização: Bearer ${CRON_SECRET} ou x-vercel-cron header
@@ -259,6 +260,58 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================
+    // 6. STRIPE (EUR + USD)
+    // ============================================
+    try {
+        const stripeStart = Date.now();
+        console.log("\n💳 [6/6] Sincronizando Stripe...");
+
+        const syncUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/stripe/sync`;
+
+        // Sync EUR
+        const eurResponse = await fetch(syncUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                currency: "EUR",
+                sinceDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            }),
+        });
+        const eurResult = await eurResponse.json();
+
+        // Sync USD
+        const usdResponse = await fetch(syncUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                currency: "USD",
+                sinceDate: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString(),
+            }),
+        });
+        const usdResult = await usdResponse.json();
+
+        const totalCharges = (eurResult.summary?.charges_synced || 0) + (usdResult.summary?.charges_synced || 0);
+        const success = eurResult.success !== false && usdResult.success !== false;
+
+        results.push({
+            name: "Stripe",
+            success,
+            message: `EUR: ${eurResult.summary?.charges_synced || 0}, USD: ${usdResult.summary?.charges_synced || 0}`,
+            count: totalCharges,
+            duration_ms: Date.now() - stripeStart,
+            error: eurResult.error || usdResult.error,
+        });
+    } catch (error: any) {
+        results.push({
+            name: "Stripe",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
     // SALVAR METADATA DA SINCRONIZAÇÃO
     // ============================================
     const totalDuration = Date.now() - startTime;
@@ -289,12 +342,12 @@ export async function GET(req: NextRequest) {
     // ============================================
     console.log("\n✅ [Daily Sync] Sincronização concluída!");
     console.log(`   ⏱️ Duração total: ${(totalDuration / 1000).toFixed(1)}s`);
-    console.log(`   ✓ Sucesso: ${successCount}/5`);
-    console.log(`   ✗ Falhas: ${failCount}/5`);
+    console.log(`   ✓ Sucesso: ${successCount}/6`);
+    console.log(`   ✗ Falhas: ${failCount}/6`);
 
     return NextResponse.json({
         success: failCount === 0,
-        message: `Daily sync completed: ${successCount}/5 successful`,
+        message: `Daily sync completed: ${successCount}/6 successful`,
         duration_ms: totalDuration,
         timestamp: new Date().toISOString(),
         results,
