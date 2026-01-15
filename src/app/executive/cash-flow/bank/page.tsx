@@ -260,7 +260,14 @@ export default function BankCashFlowPage() {
             const { data: gatewayData, error: gatewayError } = await supabase
                 .from("csv_rows")
                 .select("id, date, amount, source, custom_data")
-                .in("source", ["braintree-api-revenue", "braintree-api-disbursement", "gocardless", "stripe"])
+                .in("source", [
+                    "braintree-api-revenue",
+                    "braintree-api-disbursement",
+                    "gocardless",
+                    "stripe",
+                    "stripe-eur",
+                    "stripe-usd"
+                ])
                 .gte("date", new Date(new Date(dateRange.start).getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0])
                 .lte("date", dateRange.end);
 

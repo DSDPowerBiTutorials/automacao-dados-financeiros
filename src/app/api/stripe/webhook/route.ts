@@ -262,6 +262,11 @@ async function handleChargeEvent(charge: StripeCharge, eventType: string) {
     // Determinar source baseado na moeda
     const source = `stripe-${currency.toLowerCase()}`;
 
+    // Stripe normalmente deposita em 2 dias úteis
+    const createdDate = new Date(charge.created * 1000);
+    const disbursementDate = new Date(createdDate);
+    disbursementDate.setDate(disbursementDate.getDate() + 2);
+
     const rowData = {
         source,
         date: unixToDate(charge.created),
@@ -278,6 +283,8 @@ async function handleChargeEvent(charge: StripeCharge, eventType: string) {
             status: charge.status,
             type: isRefund ? "refund" : "sale",
             created_at: new Date(charge.created * 1000).toISOString(),
+            settlement_date: unixToDate(charge.created),
+            disbursement_date: disbursementDate.toISOString().split("T")[0],
             webhook_received_at: new Date().toISOString(),
             webhook_event: eventType,
             is_successful: isSuccessful,
@@ -399,6 +406,11 @@ async function handleCheckoutSessionCompleted(session: StripeCheckoutSession) {
         }
     }
 
+    // Stripe normalmente deposita em 2 dias úteis
+    const createdDate = new Date(sessionData.created * 1000);
+    const disbursementDate = new Date(createdDate);
+    disbursementDate.setDate(disbursementDate.getDate() + 2);
+
     const rowData = {
         source,
         date: unixToDate(sessionData.created),
@@ -418,6 +430,8 @@ async function handleCheckoutSessionCompleted(session: StripeCheckoutSession) {
             payment_status: sessionData.payment_status,
             type: "sale",
             created_at: new Date(sessionData.created * 1000).toISOString(),
+            settlement_date: unixToDate(sessionData.created),
+            disbursement_date: disbursementDate.toISOString().split("T")[0],
             webhook_received_at: new Date().toISOString(),
             webhook_event: "checkout.session.completed",
         },
@@ -470,6 +484,11 @@ async function handleInvoicePaid(invoice: StripeInvoice) {
         description += ` - ${productNames.slice(0, 2).join(", ")}`;
     }
 
+    // Stripe normalmente deposita em 2 dias úteis
+    const createdDate = new Date(invoice.created * 1000);
+    const disbursementDate = new Date(createdDate);
+    disbursementDate.setDate(disbursementDate.getDate() + 2);
+
     const rowData = {
         source,
         date: unixToDate(invoice.created),
@@ -487,6 +506,8 @@ async function handleInvoicePaid(invoice: StripeInvoice) {
             status: invoice.status,
             type: "invoice",
             created_at: new Date(invoice.created * 1000).toISOString(),
+            settlement_date: unixToDate(invoice.created),
+            disbursement_date: disbursementDate.toISOString().split("T")[0],
             webhook_received_at: new Date().toISOString(),
             webhook_event: "invoice.paid",
         },

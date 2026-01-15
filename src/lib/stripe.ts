@@ -215,6 +215,11 @@ export async function syncStripeTransactions(options?: {
                 ? `${charge.payment_method_details.card.brand} ****${charge.payment_method_details.card.last4}`
                 : charge.payment_method_details?.type || "unknown";
 
+            // Para Stripe, o dinheiro normalmente é depositado 2 dias úteis após a cobrança
+            const createdDate = new Date(charge.created * 1000);
+            const disbursementDate = new Date(createdDate);
+            disbursementDate.setDate(disbursementDate.getDate() + 2); // +2 dias para disbursement estimado
+
             return {
                 id: `stripe-${currency}-${charge.id}`,
                 file_name: "stripe-api-sync.csv",
@@ -229,12 +234,15 @@ export async function syncStripeTransactions(options?: {
                     transaction_id: charge.id,
                     order_id: orderId,
                     status: charge.status,
+                    type: "sale",
                     currency: charge.currency.toUpperCase(),
                     customer_email: customerEmail,
                     customer_name: customerName,
                     payment_method: paymentMethod,
                     payment_intent: charge.payment_intent,
                     created_at: new Date(charge.created * 1000).toISOString(),
+                    settlement_date: unixToDate(charge.created), // mesmo dia
+                    disbursement_date: disbursementDate.toISOString().split("T")[0], // +2 dias
                     // Metadados originais (podem conter order_id)
                     metadata: charge.metadata,
                 },

@@ -305,7 +305,19 @@ export const NAV: NavGroup[] = [
           {
             title: "Stripe",
             href: "/reports/stripe",
-            icon: CreditCard
+            icon: CreditCard,
+            children: [
+              {
+                title: "Stripe (EUR)",
+                href: "/reports/stripe-eur",
+                icon: CreditCard
+              },
+              {
+                title: "Stripe (USD)",
+                href: "/reports/stripe-usd",
+                icon: CreditCard
+              }
+            ]
           },
           {
             title: "PayPal",
