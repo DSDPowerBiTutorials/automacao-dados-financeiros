@@ -122,7 +122,7 @@ export async function fetchStripeCharges(sinceDate?: Date): Promise<StripeCharge
     };
 
     if (sinceDate) {
-        params.created = JSON.stringify({ gte: Math.floor(sinceDate.getTime() / 1000) });
+        params["created[gte]"] = Math.floor(sinceDate.getTime() / 1000).toString();
     }
 
     const response = await stripeRequest<{ data: StripeCharge[] }>("/charges", params);
@@ -138,7 +138,7 @@ export async function fetchStripePayouts(sinceDate?: Date): Promise<StripePayout
     };
 
     if (sinceDate) {
-        params.created = JSON.stringify({ gte: Math.floor(sinceDate.getTime() / 1000) });
+        params["created[gte]"] = Math.floor(sinceDate.getTime() / 1000).toString();
     }
 
     const response = await stripeRequest<{ data: StripePayout[] }>("/payouts", params);
