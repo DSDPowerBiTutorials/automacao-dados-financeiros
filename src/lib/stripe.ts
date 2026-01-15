@@ -243,7 +243,7 @@ export async function syncStripeTransactions(options?: {
 
         // Inserir no Supabase
         if (rows.length > 0) {
-            const { error } = await supabase
+            const { error } = await supabaseAdmin
                 .from("csv_rows")
                 .upsert(rows, { onConflict: "id" });
 
