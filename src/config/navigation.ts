@@ -291,6 +291,18 @@ export const NAV: NavGroup[] = [
             ]
           },
           {
+            title: "Chase",
+            href: "/reports/chase",
+            icon: Building,
+            children: [
+              {
+                title: "Chase (USD)",
+                href: "/reports/chase-usd",
+                icon: Banknote
+              }
+            ]
+          },
+          {
             title: "Sabadell",
             href: "/reports/sabadell",
             icon: Building
