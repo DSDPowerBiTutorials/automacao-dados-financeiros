@@ -979,6 +979,182 @@ export async function syncAccountsToDatabase(): Promise<{ count: number }> {
 }
 
 // =====================================================
+// BANK TRANSACTIONS (Extratos Bancários)
+// =====================================================
+
+export interface QuickBooksBankTransaction {
+    Id: string
+    TxnDate: string
+    Amount: number
+    PrivateNote?: string
+    PayeeEntityRef?: {
+        value: string
+        name: string
+    }
+    BankAccountRef?: {
+        value: string
+        name: string
+    }
+    DepositToAccountRef?: {
+        value: string
+        name: string
+    }
+    // Deposit specific
+    Line?: Array<{
+        Amount: number
+        LinkedTxn?: Array<{
+            TxnId: string
+            TxnType: string
+        }>
+        DepositLineDetail?: {
+            AccountRef?: { value: string; name: string }
+            PaymentMethodRef?: { value: string; name: string }
+        }
+    }>
+    TotalAmt?: number
+    CurrencyRef?: {
+        value: string
+    }
+}
+
+/**
+ * Get all deposits (bank deposits)
+ */
+export async function getDeposits(startDate?: string, endDate?: string): Promise<QuickBooksBankTransaction[]> {
+    let query = "SELECT * FROM Deposit"
+
+    if (startDate && endDate) {
+        query += ` WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`
+    } else if (startDate) {
+        query += ` WHERE TxnDate >= '${startDate}'`
+    }
+
+    query += " ORDERBY TxnDate DESC MAXRESULTS 1000"
+
+    const response = await makeApiRequest<{ QueryResponse: { Deposit?: QuickBooksBankTransaction[] } }>(
+        `query?query=${encodeURIComponent(query)}`
+    )
+
+    return response.QueryResponse.Deposit || []
+}
+
+/**
+ * Get all transfers between accounts
+ */
+export async function getTransfers(startDate?: string, endDate?: string): Promise<QuickBooksBankTransaction[]> {
+    let query = "SELECT * FROM Transfer"
+
+    if (startDate && endDate) {
+        query += ` WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`
+    } else if (startDate) {
+        query += ` WHERE TxnDate >= '${startDate}'`
+    }
+
+    query += " ORDERBY TxnDate DESC MAXRESULTS 1000"
+
+    const response = await makeApiRequest<{ QueryResponse: { Transfer?: QuickBooksBankTransaction[] } }>(
+        `query?query=${encodeURIComponent(query)}`
+    )
+
+    return response.QueryResponse.Transfer || []
+}
+
+/**
+ * Sync QuickBooks deposits to csv_rows table
+ */
+export async function syncDepositsToDatabase(startDate?: string): Promise<{ count: number }> {
+    const deposits = await getDeposits(startDate)
+
+    if (!supabaseAdmin) {
+        throw new Error("Supabase not configured")
+    }
+
+    const rows = deposits.map((deposit) => ({
+        id: `qb-deposit-${deposit.Id}`,
+        file_name: "quickbooks-sync",
+        source: "quickbooks-deposits",
+        date: deposit.TxnDate,
+        description: `Deposit to ${deposit.DepositToAccountRef?.name || "Bank Account"}`,
+        amount: (deposit.TotalAmt || deposit.Amount || 0).toString(),
+        category: "Bank",
+        classification: "Deposit",
+        reconciled: true,
+        custom_data: {
+            quickbooks_id: deposit.Id,
+            deposit_account: deposit.DepositToAccountRef?.name,
+            deposit_account_id: deposit.DepositToAccountRef?.value,
+            total_amount: deposit.TotalAmt || deposit.Amount,
+            currency: deposit.CurrencyRef?.value || "USD",
+            private_note: deposit.PrivateNote,
+            line_count: deposit.Line?.length || 0,
+            synced_at: new Date().toISOString()
+        }
+    }))
+
+    if (rows.length > 0) {
+        const { error } = await supabaseAdmin
+            .from("csv_rows")
+            .upsert(rows, { onConflict: "id" })
+
+        if (error) {
+            console.error("❌ Error syncing deposits:", error)
+            throw error
+        }
+    }
+
+    console.log(`✅ Synced ${rows.length} deposits from QuickBooks`)
+    return { count: rows.length }
+}
+
+/**
+ * Sync QuickBooks transfers to csv_rows table
+ */
+export async function syncTransfersToDatabase(startDate?: string): Promise<{ count: number }> {
+    const transfers = await getTransfers(startDate)
+
+    if (!supabaseAdmin) {
+        throw new Error("Supabase not configured")
+    }
+
+    const rows = transfers.map((transfer: any) => ({
+        id: `qb-transfer-${transfer.Id}`,
+        file_name: "quickbooks-sync",
+        source: "quickbooks-transfers",
+        date: transfer.TxnDate,
+        description: `Transfer: ${transfer.FromAccountRef?.name || "Account"} → ${transfer.ToAccountRef?.name || "Account"}`,
+        amount: (transfer.Amount || 0).toString(),
+        category: "Bank",
+        classification: "Transfer",
+        reconciled: true,
+        custom_data: {
+            quickbooks_id: transfer.Id,
+            from_account: transfer.FromAccountRef?.name,
+            from_account_id: transfer.FromAccountRef?.value,
+            to_account: transfer.ToAccountRef?.name,
+            to_account_id: transfer.ToAccountRef?.value,
+            amount: transfer.Amount,
+            currency: transfer.CurrencyRef?.value || "USD",
+            private_note: transfer.PrivateNote,
+            synced_at: new Date().toISOString()
+        }
+    }))
+
+    if (rows.length > 0) {
+        const { error } = await supabaseAdmin
+            .from("csv_rows")
+            .upsert(rows, { onConflict: "id" })
+
+        if (error) {
+            console.error("❌ Error syncing transfers:", error)
+            throw error
+        }
+    }
+
+    console.log(`✅ Synced ${rows.length} transfers from QuickBooks`)
+    return { count: rows.length }
+}
+
+// =====================================================
 // FULL SYNC (Sincronização Completa)
 // =====================================================
 
@@ -989,6 +1165,8 @@ export interface QuickBooksSyncResult {
     payments?: { count: number }
     bills?: { count: number }
     expenses?: { count: number }
+    deposits?: { count: number }
+    transfers?: { count: number }
     customers?: { count: number }
     vendors?: { count: number }
     accounts?: { count: number }
@@ -1040,6 +1218,13 @@ export async function syncAllQuickBooksData(startDate?: string): Promise<QuickBo
         console.log("💸 Syncing expenses...")
         results.expenses = await syncExpensesToDatabase(startDate)
 
+        // Sync bank transactions (deposits and transfers)
+        console.log("🏦 Syncing deposits...")
+        results.deposits = await syncDepositsToDatabase(startDate)
+
+        console.log("🔄 Syncing transfers...")
+        results.transfers = await syncTransfersToDatabase(startDate)
+
         // Sync master data (sem filtro de data)
         console.log("👥 Syncing customers...")
         results.customers = await syncCustomersToDatabase()
@@ -1057,6 +1242,8 @@ export async function syncAllQuickBooksData(startDate?: string): Promise<QuickBo
         console.log(`   Payments: ${results.payments?.count || 0}`)
         console.log(`   Bills: ${results.bills?.count || 0}`)
         console.log(`   Expenses: ${results.expenses?.count || 0}`)
+        console.log(`   Deposits: ${results.deposits?.count || 0}`)
+        console.log(`   Transfers: ${results.transfers?.count || 0}`)
         console.log(`   Customers: ${results.customers?.count || 0}`)
         console.log(`   Vendors: ${results.vendors?.count || 0}`)
         console.log(`   Accounts: ${results.accounts?.count || 0}`)

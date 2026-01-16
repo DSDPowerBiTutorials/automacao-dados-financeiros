@@ -112,6 +112,16 @@ const sourceColors: Record<string, { bg: string; text: string; icon: any }> = {
         text: "text-red-700",
         icon: TrendingDown,
     },
+    "quickbooks-deposits": {
+        bg: "bg-emerald-100",
+        text: "text-emerald-700",
+        icon: TrendingUp,
+    },
+    "quickbooks-transfers": {
+        bg: "bg-purple-100",
+        text: "text-purple-700",
+        icon: ArrowUpDown,
+    },
 };
 
 export default function QuickBooksUSDPage() {
@@ -261,11 +271,15 @@ export default function QuickBooksUSDPage() {
         const payments = rows.filter((r) => r.source === "quickbooks-payments");
         const bills = rows.filter((r) => r.source === "quickbooks-bills");
         const expenses = rows.filter((r) => r.source === "quickbooks-expenses");
+        const deposits = rows.filter((r) => r.source === "quickbooks-deposits");
+        const transfers = rows.filter((r) => r.source === "quickbooks-transfers");
 
         const totalInvoices = invoices.reduce((sum, r) => sum + parseFloat(String(r.amount)) || 0, 0);
         const totalPayments = payments.reduce((sum, r) => sum + parseFloat(String(r.amount)) || 0, 0);
         const totalBills = bills.reduce((sum, r) => sum + parseFloat(String(r.amount)) || 0, 0);
         const totalExpenses = expenses.reduce((sum, r) => sum + parseFloat(String(r.amount)) || 0, 0);
+        const totalDeposits = deposits.reduce((sum, r) => sum + parseFloat(String(r.amount)) || 0, 0);
+        const totalTransfers = transfers.reduce((sum, r) => sum + parseFloat(String(r.amount)) || 0, 0);
 
         const openInvoices = invoices.filter((r) => r.custom_data?.balance && r.custom_data.balance > 0);
         const openBills = bills.filter((r) => r.custom_data?.balance && r.custom_data.balance > 0);
@@ -275,6 +289,8 @@ export default function QuickBooksUSDPage() {
             payments: { count: payments.length, total: totalPayments },
             bills: { count: bills.length, total: totalBills, open: openBills.length },
             expenses: { count: expenses.length, total: totalExpenses },
+            deposits: { count: deposits.length, total: totalDeposits },
+            transfers: { count: transfers.length, total: totalTransfers },
         };
     }, [rows]);
 
@@ -387,7 +403,7 @@ export default function QuickBooksUSDPage() {
             )}
 
             {/* Cards de Estatísticas */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
@@ -396,7 +412,7 @@ export default function QuickBooksUSDPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-green-600">
+                        <div className="text-xl font-bold text-green-600">
                             {formatCurrency(stats.invoices.total, "USD")}
                         </div>
                         <p className="text-xs text-gray-500">
@@ -409,15 +425,15 @@ export default function QuickBooksUSDPage() {
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <DollarSign className="w-4 h-4 text-blue-600" />
-                            Payments Received
+                            Payments
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-blue-600">
+                        <div className="text-xl font-bold text-blue-600">
                             {formatCurrency(stats.payments.total, "USD")}
                         </div>
                         <p className="text-xs text-gray-500">
-                            {stats.payments.count} pagamentos recebidos
+                            {stats.payments.count} recebidos
                         </p>
                     </CardContent>
                 </Card>
@@ -430,7 +446,7 @@ export default function QuickBooksUSDPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-orange-600">
+                        <div className="text-xl font-bold text-orange-600">
                             {formatCurrency(Math.abs(stats.bills.total), "USD")}
                         </div>
                         <p className="text-xs text-gray-500">
@@ -447,11 +463,45 @@ export default function QuickBooksUSDPage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold text-red-600">
+                        <div className="text-xl font-bold text-red-600">
                             {formatCurrency(Math.abs(stats.expenses.total), "USD")}
                         </div>
                         <p className="text-xs text-gray-500">
-                            {stats.expenses.count} despesas registradas
+                            {stats.expenses.count} despesas
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                            <TrendingUp className="w-4 h-4 text-emerald-600" />
+                            Deposits
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-xl font-bold text-emerald-600">
+                            {formatCurrency(stats.deposits.total, "USD")}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            {stats.deposits.count} depósitos
+                        </p>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                            <ArrowUpDown className="w-4 h-4 text-purple-600" />
+                            Transfers
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-xl font-bold text-purple-600">
+                            {formatCurrency(stats.transfers.total, "USD")}
+                        </div>
+                        <p className="text-xs text-gray-500">
+                            {stats.transfers.count} transferências
                         </p>
                     </CardContent>
                 </Card>
@@ -511,7 +561,7 @@ export default function QuickBooksUSDPage() {
                 </CardHeader>
                 <CardContent>
                     <Tabs value={activeTab} onValueChange={setActiveTab}>
-                        <TabsList className="mb-4">
+                        <TabsList className="mb-4 flex-wrap">
                             <TabsTrigger value="all">
                                 Todos ({rows.length})
                             </TabsTrigger>
@@ -530,6 +580,14 @@ export default function QuickBooksUSDPage() {
                             <TabsTrigger value="expenses">
                                 <TrendingDown className="w-4 h-4 mr-1" />
                                 Expenses ({stats.expenses.count})
+                            </TabsTrigger>
+                            <TabsTrigger value="deposits">
+                                <TrendingUp className="w-4 h-4 mr-1" />
+                                Deposits ({stats.deposits.count})
+                            </TabsTrigger>
+                            <TabsTrigger value="transfers">
+                                <ArrowUpDown className="w-4 h-4 mr-1" />
+                                Transfers ({stats.transfers.count})
                             </TabsTrigger>
                         </TabsList>
 
