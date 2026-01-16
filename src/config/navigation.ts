@@ -393,7 +393,44 @@ export const NAV: NavGroup[] = [
     ]
   },
   {
-    label: "CRM & Sales",
+    label: "DSD US QuickBooks",
+    items: [
+      {
+        title: "QuickBooks Dashboard",
+        href: "/reports/quickbooks-usd",
+        icon: DollarSign,
+        children: [
+          {
+            title: "📊 All Transactions",
+            href: "/reports/quickbooks-usd",
+            icon: FileText
+          },
+          {
+            title: "📄 Invoices (A/R)",
+            href: "/reports/quickbooks-usd?tab=invoices",
+            icon: FileText
+          },
+          {
+            title: "💰 Payments Received",
+            href: "/reports/quickbooks-usd?tab=payments",
+            icon: DollarSign
+          },
+          {
+            title: "📋 Bills (A/P)",
+            href: "/reports/quickbooks-usd?tab=bills",
+            icon: CreditCard
+          },
+          {
+            title: "💸 Expenses",
+            href: "/reports/quickbooks-usd?tab=expenses",
+            icon: TrendingDown
+          }
+        ]
+      }
+    ]
+  },
+  {
+    label: "DSD ESP Web Sales",
     items: [
       {
         title: "HubSpot",

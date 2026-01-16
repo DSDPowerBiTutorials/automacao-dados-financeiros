@@ -514,3 +514,559 @@ export async function testConnection(): Promise<{ connected: boolean; company?: 
         }
     }
 }
+
+// =====================================================
+// BILLS (Contas a Pagar)
+// =====================================================
+
+export interface QuickBooksBill {
+    Id: string
+    DocNumber?: string
+    TxnDate: string
+    DueDate?: string
+    TotalAmt: number
+    Balance: number
+    VendorRef?: {
+        value: string
+        name: string
+    }
+    APAccountRef?: {
+        value: string
+        name: string
+    }
+    Line?: Array<{
+        Description?: string
+        Amount: number
+        DetailType: string
+        AccountBasedExpenseLineDetail?: {
+            AccountRef: { value: string; name: string }
+        }
+    }>
+    CurrencyRef?: {
+        value: string
+    }
+    PrivateNote?: string
+}
+
+/**
+ * Get all bills (Accounts Payable)
+ */
+export async function getBills(startDate?: string, endDate?: string): Promise<QuickBooksBill[]> {
+    let query = "SELECT * FROM Bill"
+
+    if (startDate && endDate) {
+        query += ` WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`
+    } else if (startDate) {
+        query += ` WHERE TxnDate >= '${startDate}'`
+    }
+
+    query += " ORDERBY TxnDate DESC MAXRESULTS 1000"
+
+    const response = await makeApiRequest<{ QueryResponse: { Bill?: QuickBooksBill[] } }>(
+        `query?query=${encodeURIComponent(query)}`
+    )
+
+    return response.QueryResponse.Bill || []
+}
+
+/**
+ * Sync QuickBooks bills to csv_rows table
+ */
+export async function syncBillsToDatabase(startDate?: string): Promise<{ count: number }> {
+    const bills = await getBills(startDate)
+
+    if (!supabaseAdmin) {
+        throw new Error("Supabase not configured")
+    }
+
+    const rows = bills.map((bill) => ({
+        id: `qb-bill-${bill.Id}`,
+        file_name: "quickbooks-sync",
+        source: "quickbooks-bills",
+        date: bill.TxnDate,
+        description: `Bill ${bill.DocNumber ? `#${bill.DocNumber}` : ''} - ${bill.VendorRef?.name || "Unknown Vendor"}`.trim(),
+        amount: (-bill.TotalAmt).toString(), // Negativo pois é conta a pagar
+        category: "Expense",
+        classification: "Bill",
+        reconciled: bill.Balance === 0,
+        custom_data: {
+            quickbooks_id: bill.Id,
+            doc_number: bill.DocNumber,
+            vendor_name: bill.VendorRef?.name,
+            vendor_id: bill.VendorRef?.value,
+            due_date: bill.DueDate,
+            balance: bill.Balance,
+            total_amount: bill.TotalAmt,
+            ap_account: bill.APAccountRef?.name,
+            currency: bill.CurrencyRef?.value || "USD",
+            private_note: bill.PrivateNote,
+            line_items: bill.Line?.map(line => ({
+                description: line.Description,
+                amount: line.Amount,
+                account: line.AccountBasedExpenseLineDetail?.AccountRef?.name
+            })),
+            synced_at: new Date().toISOString()
+        }
+    }))
+
+    if (rows.length > 0) {
+        const { error } = await supabaseAdmin
+            .from("csv_rows")
+            .upsert(rows, { onConflict: "id" })
+
+        if (error) {
+            console.error("❌ Error syncing bills:", error)
+            throw error
+        }
+    }
+
+    console.log(`✅ Synced ${rows.length} bills from QuickBooks`)
+    return { count: rows.length }
+}
+
+// =====================================================
+// EXPENSES (Despesas - incluindo Purchases/Checks)
+// =====================================================
+
+export interface QuickBooksExpense {
+    Id: string
+    TxnDate: string
+    TotalAmt: number
+    PaymentType?: string
+    AccountRef?: {
+        value: string
+        name: string
+    }
+    EntityRef?: {
+        value: string
+        name: string
+        type: string
+    }
+    Line?: Array<{
+        Description?: string
+        Amount: number
+        DetailType: string
+        AccountBasedExpenseLineDetail?: {
+            AccountRef: { value: string; name: string }
+            ClassRef?: { value: string; name: string }
+        }
+    }>
+    CurrencyRef?: {
+        value: string
+    }
+    PrivateNote?: string
+    DocNumber?: string
+}
+
+/**
+ * Get all expenses (Purchase transactions)
+ */
+export async function getExpenses(startDate?: string, endDate?: string): Promise<QuickBooksExpense[]> {
+    let query = "SELECT * FROM Purchase"
+
+    if (startDate && endDate) {
+        query += ` WHERE TxnDate >= '${startDate}' AND TxnDate <= '${endDate}'`
+    } else if (startDate) {
+        query += ` WHERE TxnDate >= '${startDate}'`
+    }
+
+    query += " ORDERBY TxnDate DESC MAXRESULTS 1000"
+
+    const response = await makeApiRequest<{ QueryResponse: { Purchase?: QuickBooksExpense[] } }>(
+        `query?query=${encodeURIComponent(query)}`
+    )
+
+    return response.QueryResponse.Purchase || []
+}
+
+/**
+ * Sync QuickBooks expenses to csv_rows table
+ */
+export async function syncExpensesToDatabase(startDate?: string): Promise<{ count: number }> {
+    const expenses = await getExpenses(startDate)
+
+    if (!supabaseAdmin) {
+        throw new Error("Supabase not configured")
+    }
+
+    const rows = expenses.map((expense) => ({
+        id: `qb-expense-${expense.Id}`,
+        file_name: "quickbooks-sync",
+        source: "quickbooks-expenses",
+        date: expense.TxnDate,
+        description: `${expense.PaymentType || 'Expense'} - ${expense.EntityRef?.name || expense.AccountRef?.name || "Unknown"}`,
+        amount: (-expense.TotalAmt).toString(), // Negativo pois é despesa
+        category: "Expense",
+        classification: expense.PaymentType || "Expense",
+        reconciled: true, // Expenses são geralmente já pagos
+        custom_data: {
+            quickbooks_id: expense.Id,
+            doc_number: expense.DocNumber,
+            payment_type: expense.PaymentType,
+            entity_name: expense.EntityRef?.name,
+            entity_type: expense.EntityRef?.type,
+            account_name: expense.AccountRef?.name,
+            total_amount: expense.TotalAmt,
+            currency: expense.CurrencyRef?.value || "USD",
+            private_note: expense.PrivateNote,
+            line_items: expense.Line?.map(line => ({
+                description: line.Description,
+                amount: line.Amount,
+                account: line.AccountBasedExpenseLineDetail?.AccountRef?.name,
+                class: line.AccountBasedExpenseLineDetail?.ClassRef?.name
+            })),
+            synced_at: new Date().toISOString()
+        }
+    }))
+
+    if (rows.length > 0) {
+        const { error } = await supabaseAdmin
+            .from("csv_rows")
+            .upsert(rows, { onConflict: "id" })
+
+        if (error) {
+            console.error("❌ Error syncing expenses:", error)
+            throw error
+        }
+    }
+
+    console.log(`✅ Synced ${rows.length} expenses from QuickBooks`)
+    return { count: rows.length }
+}
+
+// =====================================================
+// CUSTOMERS (Clientes)
+// =====================================================
+
+export interface QuickBooksCustomer {
+    Id: string
+    DisplayName: string
+    CompanyName?: string
+    GivenName?: string
+    FamilyName?: string
+    PrimaryEmailAddr?: { Address: string }
+    PrimaryPhone?: { FreeFormNumber: string }
+    BillAddr?: {
+        Line1?: string
+        City?: string
+        CountrySubDivisionCode?: string
+        PostalCode?: string
+        Country?: string
+    }
+    ShipAddr?: {
+        Line1?: string
+        City?: string
+        CountrySubDivisionCode?: string
+        PostalCode?: string
+        Country?: string
+    }
+    Balance: number
+    Active: boolean
+    CurrencyRef?: { value: string }
+    Notes?: string
+    MetaData?: {
+        CreateTime: string
+        LastUpdatedTime: string
+    }
+}
+
+/**
+ * Get all customers
+ */
+export async function getCustomers(): Promise<QuickBooksCustomer[]> {
+    const query = "SELECT * FROM Customer WHERE Active = true MAXRESULTS 1000"
+
+    const response = await makeApiRequest<{ QueryResponse: { Customer?: QuickBooksCustomer[] } }>(
+        `query?query=${encodeURIComponent(query)}`
+    )
+
+    return response.QueryResponse.Customer || []
+}
+
+/**
+ * Sync QuickBooks customers to quickbooks_customers table
+ */
+export async function syncCustomersToDatabase(): Promise<{ count: number }> {
+    const customers = await getCustomers()
+
+    if (!supabaseAdmin) {
+        throw new Error("Supabase not configured")
+    }
+
+    const rows = customers.map((customer) => ({
+        id: customer.Id,
+        display_name: customer.DisplayName,
+        company_name: customer.CompanyName,
+        given_name: customer.GivenName,
+        family_name: customer.FamilyName,
+        email: customer.PrimaryEmailAddr?.Address,
+        phone: customer.PrimaryPhone?.FreeFormNumber,
+        billing_address: customer.BillAddr ? {
+            line1: customer.BillAddr.Line1,
+            city: customer.BillAddr.City,
+            state: customer.BillAddr.CountrySubDivisionCode,
+            postal_code: customer.BillAddr.PostalCode,
+            country: customer.BillAddr.Country
+        } : null,
+        shipping_address: customer.ShipAddr ? {
+            line1: customer.ShipAddr.Line1,
+            city: customer.ShipAddr.City,
+            state: customer.ShipAddr.CountrySubDivisionCode,
+            postal_code: customer.ShipAddr.PostalCode,
+            country: customer.ShipAddr.Country
+        } : null,
+        active: customer.Active,
+        balance: customer.Balance,
+        currency_ref: customer.CurrencyRef?.value || "USD",
+        notes: customer.Notes,
+        quickbooks_created_at: customer.MetaData?.CreateTime,
+        quickbooks_updated_at: customer.MetaData?.LastUpdatedTime,
+        synced_at: new Date().toISOString()
+    }))
+
+    if (rows.length > 0) {
+        const { error } = await supabaseAdmin
+            .from("quickbooks_customers")
+            .upsert(rows, { onConflict: "id" })
+
+        if (error) {
+            console.error("❌ Error syncing customers:", error)
+            throw error
+        }
+    }
+
+    console.log(`✅ Synced ${rows.length} customers from QuickBooks`)
+    return { count: rows.length }
+}
+
+// =====================================================
+// VENDORS (Fornecedores)
+// =====================================================
+
+export interface QuickBooksVendor {
+    Id: string
+    DisplayName: string
+    CompanyName?: string
+    GivenName?: string
+    FamilyName?: string
+    PrimaryEmailAddr?: { Address: string }
+    PrimaryPhone?: { FreeFormNumber: string }
+    BillAddr?: {
+        Line1?: string
+        City?: string
+        CountrySubDivisionCode?: string
+        PostalCode?: string
+        Country?: string
+    }
+    Balance: number
+    Active: boolean
+    Vendor1099: boolean
+    TaxIdentifier?: string
+    AcctNum?: string
+    TermRef?: { value: string; name: string }
+    CurrencyRef?: { value: string }
+    MetaData?: {
+        CreateTime: string
+        LastUpdatedTime: string
+    }
+}
+
+/**
+ * Get all vendors
+ */
+export async function getVendors(): Promise<QuickBooksVendor[]> {
+    const query = "SELECT * FROM Vendor WHERE Active = true MAXRESULTS 1000"
+
+    const response = await makeApiRequest<{ QueryResponse: { Vendor?: QuickBooksVendor[] } }>(
+        `query?query=${encodeURIComponent(query)}`
+    )
+
+    return response.QueryResponse.Vendor || []
+}
+
+/**
+ * Sync QuickBooks vendors to quickbooks_vendors table
+ */
+export async function syncVendorsToDatabase(): Promise<{ count: number }> {
+    const vendors = await getVendors()
+
+    if (!supabaseAdmin) {
+        throw new Error("Supabase not configured")
+    }
+
+    const rows = vendors.map((vendor) => ({
+        id: vendor.Id,
+        display_name: vendor.DisplayName,
+        company_name: vendor.CompanyName,
+        given_name: vendor.GivenName,
+        family_name: vendor.FamilyName,
+        email: vendor.PrimaryEmailAddr?.Address,
+        phone: vendor.PrimaryPhone?.FreeFormNumber,
+        billing_address: vendor.BillAddr ? {
+            line1: vendor.BillAddr.Line1,
+            city: vendor.BillAddr.City,
+            state: vendor.BillAddr.CountrySubDivisionCode,
+            postal_code: vendor.BillAddr.PostalCode,
+            country: vendor.BillAddr.Country
+        } : null,
+        tax_identifier: vendor.TaxIdentifier,
+        vendor_1099: vendor.Vendor1099,
+        active: vendor.Active,
+        balance: vendor.Balance,
+        currency_ref: vendor.CurrencyRef?.value || "USD",
+        account_number: vendor.AcctNum,
+        terms_ref: vendor.TermRef?.name,
+        quickbooks_created_at: vendor.MetaData?.CreateTime,
+        quickbooks_updated_at: vendor.MetaData?.LastUpdatedTime,
+        synced_at: new Date().toISOString()
+    }))
+
+    if (rows.length > 0) {
+        const { error } = await supabaseAdmin
+            .from("quickbooks_vendors")
+            .upsert(rows, { onConflict: "id" })
+
+        if (error) {
+            console.error("❌ Error syncing vendors:", error)
+            throw error
+        }
+    }
+
+    console.log(`✅ Synced ${rows.length} vendors from QuickBooks`)
+    return { count: rows.length }
+}
+
+// =====================================================
+// ACCOUNTS (Plano de Contas)
+// =====================================================
+
+/**
+ * Sync QuickBooks accounts to quickbooks_accounts table
+ */
+export async function syncAccountsToDatabase(): Promise<{ count: number }> {
+    const accounts = await getAllAccounts()
+
+    if (!supabaseAdmin) {
+        throw new Error("Supabase not configured")
+    }
+
+    const rows = accounts.map((account) => ({
+        id: account.Id,
+        name: account.Name,
+        account_type: account.AccountType,
+        account_sub_type: account.AccountSubType,
+        current_balance: account.CurrentBalance || 0,
+        active: account.Active,
+        currency_ref: account.CurrencyRef?.value || "USD",
+        synced_at: new Date().toISOString()
+    }))
+
+    if (rows.length > 0) {
+        const { error } = await supabaseAdmin
+            .from("quickbooks_accounts")
+            .upsert(rows, { onConflict: "id" })
+
+        if (error) {
+            console.error("❌ Error syncing accounts:", error)
+            throw error
+        }
+    }
+
+    console.log(`✅ Synced ${rows.length} accounts from QuickBooks`)
+    return { count: rows.length }
+}
+
+// =====================================================
+// FULL SYNC (Sincronização Completa)
+// =====================================================
+
+export interface QuickBooksSyncResult {
+    success: boolean
+    company?: QuickBooksCompanyInfo
+    invoices?: { count: number }
+    payments?: { count: number }
+    bills?: { count: number }
+    expenses?: { count: number }
+    customers?: { count: number }
+    vendors?: { count: number }
+    accounts?: { count: number }
+    error?: string
+    duration_ms?: number
+}
+
+/**
+ * Full sync of all QuickBooks data
+ */
+export async function syncAllQuickBooksData(startDate?: string): Promise<QuickBooksSyncResult> {
+    const startTime = Date.now()
+
+    try {
+        // Test connection first
+        const connectionTest = await testConnection()
+        if (!connectionTest.connected) {
+            return {
+                success: false,
+                error: connectionTest.error || "Not connected to QuickBooks"
+            }
+        }
+
+        console.log("🚀 Starting full QuickBooks sync...")
+        console.log(`   Company: ${connectionTest.company?.CompanyName}`)
+
+        // Default to last 30 days if no start date
+        if (!startDate) {
+            const thirtyDaysAgo = new Date()
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+            startDate = thirtyDaysAgo.toISOString().split("T")[0]
+        }
+
+        const results: QuickBooksSyncResult = {
+            success: true,
+            company: connectionTest.company
+        }
+
+        // Sync transactions
+        console.log("📄 Syncing invoices...")
+        results.invoices = await syncInvoicesToDatabase(startDate)
+
+        console.log("💰 Syncing payments...")
+        results.payments = await syncPaymentsToDatabase(startDate)
+
+        console.log("📋 Syncing bills...")
+        results.bills = await syncBillsToDatabase(startDate)
+
+        console.log("💸 Syncing expenses...")
+        results.expenses = await syncExpensesToDatabase(startDate)
+
+        // Sync master data (sem filtro de data)
+        console.log("👥 Syncing customers...")
+        results.customers = await syncCustomersToDatabase()
+
+        console.log("🏢 Syncing vendors...")
+        results.vendors = await syncVendorsToDatabase()
+
+        console.log("📊 Syncing accounts...")
+        results.accounts = await syncAccountsToDatabase()
+
+        results.duration_ms = Date.now() - startTime
+
+        console.log(`✅ QuickBooks full sync completed in ${results.duration_ms}ms`)
+        console.log(`   Invoices: ${results.invoices?.count || 0}`)
+        console.log(`   Payments: ${results.payments?.count || 0}`)
+        console.log(`   Bills: ${results.bills?.count || 0}`)
+        console.log(`   Expenses: ${results.expenses?.count || 0}`)
+        console.log(`   Customers: ${results.customers?.count || 0}`)
+        console.log(`   Vendors: ${results.vendors?.count || 0}`)
+        console.log(`   Accounts: ${results.accounts?.count || 0}`)
+
+        return results
+
+    } catch (error) {
+        console.error("❌ QuickBooks full sync failed:", error)
+        return {
+            success: false,
+            error: error instanceof Error ? error.message : "Unknown error",
+            duration_ms: Date.now() - startTime
+        }
+    }
+}

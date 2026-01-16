@@ -9,6 +9,7 @@
  * 3. HubSpot - Deals desde 2024
  * 4. Products - Novos produtos do HubSpot
  * 5. Stripe (EUR + USD) - Últimos 7 dias
+ * 6. QuickBooks (USD) - Últimos 30 dias (Escopo EUA)
  * 
  * Endpoint: GET /api/cron/daily-sync
  * Autorização: Bearer ${CRON_SECRET} ou x-vercel-cron header
@@ -18,6 +19,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSQLServerConnection } from "@/lib/sqlserver";
 import { syncGoCardlessTransactions } from "@/lib/gocardless";
+import { syncAllQuickBooksData, testConnection as testQuickBooksConnection } from "@/lib/quickbooks";
 import crypto from "crypto";
 
 interface SyncResult {
@@ -312,6 +314,75 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================
+    // 7. QUICKBOOKS (USD - Escopo EUA)
+    // ============================================
+    try {
+        const quickbooksStart = Date.now();
+        console.log("\n🇺🇸 [7/7] Sincronizando QuickBooks USD (EUA)...");
+
+        // Verificar se QuickBooks está conectado
+        const connectionTest = await testQuickBooksConnection();
+
+        if (!connectionTest.connected) {
+            console.log("⚠️ QuickBooks não conectado, pulando sincronização");
+            results.push({
+                name: "QuickBooks USD",
+                success: true,
+                message: "Skipped - Not connected",
+                count: 0,
+                duration_ms: Date.now() - quickbooksStart,
+            });
+        } else {
+            // Sincronizar últimos 30 dias
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            const startDate = thirtyDaysAgo.toISOString().split("T")[0];
+
+            const qbResult = await syncAllQuickBooksData(startDate);
+
+            const totalCount = (qbResult.invoices?.count || 0) +
+                (qbResult.payments?.count || 0) +
+                (qbResult.bills?.count || 0) +
+                (qbResult.expenses?.count || 0);
+
+            results.push({
+                name: "QuickBooks USD",
+                success: qbResult.success,
+                message: qbResult.success
+                    ? `Inv: ${qbResult.invoices?.count || 0}, Pay: ${qbResult.payments?.count || 0}, Bills: ${qbResult.bills?.count || 0}, Exp: ${qbResult.expenses?.count || 0}`
+                    : qbResult.error || "Failed",
+                count: totalCount,
+                duration_ms: Date.now() - quickbooksStart,
+                error: qbResult.error,
+            });
+
+            // Atualizar sync_metadata específico do QuickBooks
+            if (qbResult.success && supabaseAdmin) {
+                await supabaseAdmin.from("sync_metadata").upsert(
+                    {
+                        source: "quickbooks-usd",
+                        last_sync_at: new Date().toISOString(),
+                        last_incremental_sync_at: new Date().toISOString(),
+                        sync_status: "success",
+                        records_added_last_sync: totalCount,
+                        last_sync_duration_ms: Date.now() - quickbooksStart,
+                    },
+                    { onConflict: "source" }
+                );
+            }
+        }
+    } catch (error: any) {
+        console.error("[QuickBooks] Sync error:", error);
+        results.push({
+            name: "QuickBooks USD",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
     // SALVAR METADATA DA SINCRONIZAÇÃO
     // ============================================
     const totalDuration = Date.now() - startTime;
@@ -342,12 +413,12 @@ export async function GET(req: NextRequest) {
     // ============================================
     console.log("\n✅ [Daily Sync] Sincronização concluída!");
     console.log(`   ⏱️ Duração total: ${(totalDuration / 1000).toFixed(1)}s`);
-    console.log(`   ✓ Sucesso: ${successCount}/6`);
-    console.log(`   ✗ Falhas: ${failCount}/6`);
+    console.log(`   ✓ Sucesso: ${successCount}/7`);
+    console.log(`   ✗ Falhas: ${failCount}/7`);
 
     return NextResponse.json({
         success: failCount === 0,
-        message: `Daily sync completed: ${successCount}/6 successful`,
+        message: `Daily sync completed: ${successCount}/7 successful`,
         duration_ms: totalDuration,
         timestamp: new Date().toISOString(),
         results,
