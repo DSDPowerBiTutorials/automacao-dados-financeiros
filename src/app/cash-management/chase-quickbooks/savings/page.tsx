@@ -129,7 +129,7 @@ export default function ChaseSavingsPage() {
             transfers?.forEach((row) => {
                 const fromAccount = row.custom_data?.from_account?.toLowerCase() || ""
                 const toAccount = row.custom_data?.to_account?.toLowerCase() || ""
-                
+
                 if (fromAccount.includes("chase") && fromAccount.includes("savings")) {
                     // Saída da conta
                     allTransactions.push({
@@ -140,7 +140,7 @@ export default function ChaseSavingsPage() {
                         classification: "Transfer Out"
                     })
                 }
-                
+
                 if (toAccount.includes("chase") && toAccount.includes("savings")) {
                     // Entrada na conta
                     allTransactions.push({
@@ -233,7 +233,7 @@ export default function ChaseSavingsPage() {
     // Estatísticas
     const stats = useMemo(() => {
         const deposits = transactions.filter((t) => t.source === "quickbooks-deposits")
-        
+
         const totalDeposits = deposits.reduce((sum, t) => sum + t.amount, 0)
         const totalTransfersIn = transactions
             .filter((t) => t.source === "quickbooks-transfers" && t.amount > 0)
@@ -517,19 +517,18 @@ export default function ChaseSavingsPage() {
                                                     <td className="py-3 px-4">
                                                         <Badge
                                                             variant="outline"
-                                                            className={`${
-                                                                tx.source === "quickbooks-deposits"
+                                                            className={`${tx.source === "quickbooks-deposits"
                                                                     ? "bg-emerald-100 text-emerald-700 border-emerald-200"
                                                                     : tx.amount > 0
-                                                                    ? "bg-blue-100 text-blue-700 border-blue-200"
-                                                                    : "bg-orange-100 text-orange-700 border-orange-200"
-                                                            }`}
+                                                                        ? "bg-blue-100 text-blue-700 border-blue-200"
+                                                                        : "bg-orange-100 text-orange-700 border-orange-200"
+                                                                }`}
                                                         >
                                                             {tx.source === "quickbooks-deposits"
                                                                 ? "Deposit"
                                                                 : tx.amount > 0
-                                                                ? "Transfer In"
-                                                                : "Transfer Out"}
+                                                                    ? "Transfer In"
+                                                                    : "Transfer Out"}
                                                         </Badge>
                                                     </td>
                                                     <td className="py-3 px-4 text-sm max-w-md truncate">
@@ -541,9 +540,8 @@ export default function ChaseSavingsPage() {
                                                         )}
                                                     </td>
                                                     <td
-                                                        className={`py-3 px-4 text-sm text-right font-bold ${
-                                                            tx.amount >= 0 ? "text-emerald-600" : "text-red-600"
-                                                        }`}
+                                                        className={`py-3 px-4 text-sm text-right font-bold ${tx.amount >= 0 ? "text-emerald-600" : "text-red-600"
+                                                            }`}
                                                     >
                                                         {tx.amount >= 0 ? "+" : ""}
                                                         {formatUSD(tx.amount)}

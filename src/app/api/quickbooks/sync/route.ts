@@ -10,9 +10,17 @@ import {
     getCompanyInfo,
     syncInvoicesToDatabase,
     syncPaymentsToDatabase,
+    syncBillsToDatabase,
+    syncExpensesToDatabase,
+    syncDepositsToDatabase,
+    syncTransfersToDatabase,
+    syncCustomersToDatabase,
+    syncVendorsToDatabase,
+    syncAccountsToDatabase,
     getBankAccounts,
     getInvoices,
-    getPayments
+    getPayments,
+    syncAllQuickBooksData
 } from "@/lib/quickbooks"
 
 export async function GET(request: NextRequest) {
@@ -86,25 +94,73 @@ export async function POST(request: NextRequest) {
             company: any
             invoices?: { count: number }
             payments?: { count: number }
+            bills?: { count: number }
+            expenses?: { count: number }
+            deposits?: { count: number }
+            transfers?: { count: number }
+            customers?: { count: number }
+            vendors?: { count: number }
+            accounts?: { count: number }
             bankAccounts?: any[]
         } = {
             company: connectionTest.company
         }
 
         // Sync based on type
-        if (syncType === "all" || syncType === "invoices") {
+        if (syncType === "all") {
+            console.log("🔄 Running full sync...")
+            const fullSync = await syncAllQuickBooksData(startDate)
+            return NextResponse.json({
+                success: fullSync.success,
+                syncedFrom: startDate,
+                ...fullSync
+            })
+        }
+
+        if (syncType === "invoices") {
             console.log("📄 Syncing invoices...")
             results.invoices = await syncInvoicesToDatabase(startDate)
         }
 
-        if (syncType === "all" || syncType === "payments") {
+        if (syncType === "payments") {
             console.log("💰 Syncing payments...")
             results.payments = await syncPaymentsToDatabase(startDate)
         }
 
-        if (syncType === "all" || syncType === "accounts") {
-            console.log("🏦 Getting bank accounts...")
+        if (syncType === "bills") {
+            console.log("📋 Syncing bills...")
+            results.bills = await syncBillsToDatabase(startDate)
+        }
+
+        if (syncType === "expenses") {
+            console.log("💸 Syncing expenses...")
+            results.expenses = await syncExpensesToDatabase(startDate)
+        }
+
+        if (syncType === "bank" || syncType === "deposits") {
+            console.log("🏦 Syncing deposits...")
+            results.deposits = await syncDepositsToDatabase(startDate)
+        }
+
+        if (syncType === "bank" || syncType === "transfers") {
+            console.log("🔄 Syncing transfers...")
+            results.transfers = await syncTransfersToDatabase(startDate)
+        }
+
+        if (syncType === "accounts") {
+            console.log("📊 Syncing accounts...")
+            results.accounts = await syncAccountsToDatabase()
             results.bankAccounts = await getBankAccounts()
+        }
+
+        if (syncType === "customers") {
+            console.log("👥 Syncing customers...")
+            results.customers = await syncCustomersToDatabase()
+        }
+
+        if (syncType === "vendors") {
+            console.log("🏢 Syncing vendors...")
+            results.vendors = await syncVendorsToDatabase()
         }
 
         console.log("✅ QuickBooks sync completed!")
