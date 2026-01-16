@@ -36,13 +36,18 @@ const formatUSD = (value: number | null | undefined): string => {
     }).format(value)
 }
 
-// Formatar data US
+// Formatar data US - SEM conversão de timezone
+// A data vem do QuickBooks como "YYYY-MM-DD" e deve ser exibida exatamente assim
 const formatUSDate = (dateString: string | null | undefined): string => {
     if (!dateString) return "-"
     try {
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return dateString
-        return date.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" })
+        // Se a data está no formato YYYY-MM-DD, formatar diretamente
+        if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+            const [year, month, day] = dateString.split("T")[0].split("-")
+            return `${month}/${day}/${year}`
+        }
+        // Fallback para outros formatos
+        return dateString
     } catch {
         return dateString
     }
