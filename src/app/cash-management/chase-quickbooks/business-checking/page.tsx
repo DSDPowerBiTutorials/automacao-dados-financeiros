@@ -72,6 +72,16 @@ interface ChaseTransaction {
         private_note?: string
         line_count?: number
         synced_at?: string
+        // QuickBooks Expenses/Payments fields
+        account_name?: string
+        account_id?: string
+        entity_name?: string
+        entity_id?: string
+        payment_type?: string
+        doc_number?: string
+        vendor_name?: string
+        vendor_id?: string
+        bill_id?: string
     }
 }
 
@@ -104,43 +114,48 @@ export default function ChaseBusinessCheckingPage() {
                 return
             }
 
-            // Buscar deposits e transfers que envolvem a conta Chase Business Checking
-            const { data: deposits, error: depositsError } = await supabase
-                .from("csv_rows")
-                .select("*")
-                .eq("source", "quickbooks-deposits")
-                .order("date", { ascending: false })
+            // Buscar TODAS as fontes de dados do QuickBooks
+            const [depositsRes, transfersRes, expensesRes, paymentsRes, billsRes] = await Promise.all([
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-deposits").order("date", { ascending: false }),
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-transfers").order("date", { ascending: false }),
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-expenses").order("date", { ascending: false }),
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-payments").order("date", { ascending: false }),
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-bills").order("date", { ascending: false })
+            ])
 
-            const { data: transfers, error: transfersError } = await supabase
-                .from("csv_rows")
-                .select("*")
-                .eq("source", "quickbooks-transfers")
-                .order("date", { ascending: false })
-
-            if (depositsError) console.error("Error loading deposits:", depositsError)
-            if (transfersError) console.error("Error loading transfers:", transfersError)
+            const deposits = depositsRes.data || []
+            const transfers = transfersRes.data || []
+            const expenses = expensesRes.data || []
+            const payments = paymentsRes.data || []
+            const bills = billsRes.data || []
 
             const allTransactions: ChaseTransaction[] = []
 
-            // Filtrar deposits que envolvem Chase Business Checking
-            deposits?.forEach((row) => {
-                const depositAccount = row.custom_data?.deposit_account?.toLowerCase() || ""
-                if (depositAccount.includes("chase") && depositAccount.includes("checking")) {
+            // Helper para verificar se é conta Chase Checking
+            const isChaseChecking = (accountName: string | undefined | null): boolean => {
+                if (!accountName) return false
+                const lower = accountName.toLowerCase()
+                return lower.includes("chase") && (lower.includes("checking") || lower.includes("business"))
+            }
+
+            // Deposits que entram na Chase Checking
+            deposits.forEach((row) => {
+                if (isChaseChecking(row.custom_data?.deposit_account)) {
                     allTransactions.push({
                         ...row,
                         amount: parseFloat(row.amount) || 0,
-                        reconciled: row.reconciled || false
+                        reconciled: row.reconciled || false,
+                        classification: "Deposit"
                     })
                 }
             })
 
-            // Filtrar transfers que envolvem Chase Business Checking
-            transfers?.forEach((row) => {
-                const fromAccount = row.custom_data?.from_account?.toLowerCase() || ""
-                const toAccount = row.custom_data?.to_account?.toLowerCase() || ""
+            // Transfers - entrada e saída
+            transfers.forEach((row) => {
+                const fromAccount = row.custom_data?.from_account
+                const toAccount = row.custom_data?.to_account
 
-                if (fromAccount.includes("chase") && fromAccount.includes("checking")) {
-                    // Saída da conta
+                if (isChaseChecking(fromAccount)) {
                     allTransactions.push({
                         ...row,
                         id: row.id + "-out",
@@ -150,8 +165,7 @@ export default function ChaseBusinessCheckingPage() {
                     })
                 }
 
-                if (toAccount.includes("chase") && toAccount.includes("checking")) {
-                    // Entrada na conta
+                if (isChaseChecking(toAccount)) {
                     allTransactions.push({
                         ...row,
                         id: row.id + "-in",
@@ -162,21 +176,55 @@ export default function ChaseBusinessCheckingPage() {
                 }
             })
 
-            // Ordenar por data
+            // Expenses (Purchase) - saídas da conta
+            expenses.forEach((row) => {
+                if (isChaseChecking(row.custom_data?.account_name)) {
+                    allTransactions.push({
+                        ...row,
+                        amount: parseFloat(row.amount) || 0, // Já é negativo
+                        reconciled: row.reconciled || false,
+                        classification: "Expense"
+                    })
+                }
+            })
+
+            // Payments received - entradas
+            payments.forEach((row) => {
+                if (isChaseChecking(row.custom_data?.deposit_account)) {
+                    allTransactions.push({
+                        ...row,
+                        amount: parseFloat(row.amount) || 0,
+                        reconciled: row.reconciled || false,
+                        classification: "Payment Received"
+                    })
+                }
+            })
+
+            // Bills paid - saídas
+            bills.forEach((row) => {
+                if (isChaseChecking(row.custom_data?.ap_account)) {
+                    allTransactions.push({
+                        ...row,
+                        amount: parseFloat(row.amount) || 0, // Já é negativo
+                        reconciled: row.reconciled || false,
+                        classification: "Bill Payment"
+                    })
+                }
+            })
+
+            // Ordenar por data (mais recente primeiro)
             allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
             setTransactions(allTransactions)
 
             // Pegar última sincronização
-            if (allTransactions.length > 0) {
-                const syncDates = allTransactions
-                    .map((t) => t.custom_data?.synced_at)
-                    .filter(Boolean)
-                    .sort()
-                    .reverse()
-                if (syncDates.length > 0) {
-                    setLastSync(syncDates[0] || null)
-                }
+            const syncDates = allTransactions
+                .map((t) => t.custom_data?.synced_at)
+                .filter(Boolean)
+                .sort()
+                .reverse()
+            if (syncDates.length > 0) {
+                setLastSync(syncDates[0] || null)
             }
         } catch (error) {
             console.error("Error loading data:", error)
@@ -192,12 +240,13 @@ export default function ChaseBusinessCheckingPage() {
             const response = await fetch("/api/quickbooks/sync", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ syncType: "bank" })
+                body: JSON.stringify({ syncType: "all" }) // Sync completo para pegar tudo
             })
             const result = await response.json()
 
             if (result.success) {
                 await loadData()
+                alert(`✅ Sync completo!\n• Invoices: ${result.invoices?.count || 0}\n• Payments: ${result.payments?.count || 0}\n• Bills: ${result.bills?.count || 0}\n• Expenses: ${result.expenses?.count || 0}\n• Deposits: ${result.deposits?.count || 0}\n• Transfers: ${result.transfers?.count || 0}`)
             } else {
                 console.error("Sync failed:", result.error)
                 alert(`Sync failed: ${result.error}`)
@@ -216,9 +265,11 @@ export default function ChaseBusinessCheckingPage() {
 
         // Filtro por tab/tipo
         if (activeTab === "deposits") {
-            filtered = filtered.filter((t) => t.source === "quickbooks-deposits")
+            filtered = filtered.filter((t) => t.classification === "Deposit" || t.classification === "Payment Received")
+        } else if (activeTab === "expenses") {
+            filtered = filtered.filter((t) => t.classification === "Expense" || t.classification === "Bill Payment")
         } else if (activeTab === "transfers") {
-            filtered = filtered.filter((t) => t.source === "quickbooks-transfers")
+            filtered = filtered.filter((t) => t.classification?.includes("Transfer"))
         }
 
         // Filtro por busca
@@ -227,7 +278,8 @@ export default function ChaseBusinessCheckingPage() {
             filtered = filtered.filter(
                 (t) =>
                     t.description.toLowerCase().includes(term) ||
-                    t.custom_data?.private_note?.toLowerCase().includes(term)
+                    t.custom_data?.private_note?.toLowerCase().includes(term) ||
+                    t.custom_data?.entity_name?.toLowerCase().includes(term)
             )
         }
 
@@ -244,23 +296,27 @@ export default function ChaseBusinessCheckingPage() {
 
     // Estatísticas
     const stats = useMemo(() => {
-        const deposits = transactions.filter((t) => t.source === "quickbooks-deposits")
-        const transfers = transactions.filter((t) => t.source === "quickbooks-transfers")
+        // Entradas (positivo)
+        const inflows = transactions.filter((t) => t.amount > 0)
+        const totalInflows = inflows.reduce((sum, t) => sum + t.amount, 0)
 
-        const totalDeposits = deposits.reduce((sum, t) => sum + t.amount, 0)
-        const totalTransfersIn = transactions
-            .filter((t) => t.source === "quickbooks-transfers" && t.amount > 0)
-            .reduce((sum, t) => sum + t.amount, 0)
-        const totalTransfersOut = transactions
-            .filter((t) => t.source === "quickbooks-transfers" && t.amount < 0)
-            .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+        // Saídas (negativo)
+        const outflows = transactions.filter((t) => t.amount < 0)
+        const totalOutflows = outflows.reduce((sum, t) => sum + Math.abs(t.amount), 0)
 
-        const netBalance = totalDeposits + totalTransfersIn - totalTransfersOut
+        // Por tipo
+        const deposits = transactions.filter((t) => t.classification === "Deposit" || t.classification === "Payment Received")
+        const expenses = transactions.filter((t) => t.classification === "Expense" || t.classification === "Bill Payment")
+        const transfers = transactions.filter((t) => t.classification?.includes("Transfer"))
+
+        const netBalance = totalInflows - totalOutflows
 
         return {
-            deposits: { count: deposits.length, total: totalDeposits },
-            transfersIn: { count: transactions.filter((t) => t.amount > 0 && t.source === "quickbooks-transfers").length, total: totalTransfersIn },
-            transfersOut: { count: transactions.filter((t) => t.amount < 0).length, total: totalTransfersOut },
+            inflows: { count: inflows.length, total: totalInflows },
+            outflows: { count: outflows.length, total: totalOutflows },
+            deposits: { count: deposits.length, total: deposits.reduce((sum, t) => sum + t.amount, 0) },
+            expenses: { count: expenses.length, total: expenses.reduce((sum, t) => sum + Math.abs(t.amount), 0) },
+            transfers: { count: transfers.length },
             netBalance
         }
     }, [transactions])
@@ -390,15 +446,15 @@ export default function ChaseBusinessCheckingPage() {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                                Deposits
+                                Entradas
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-emerald-600">
-                                {formatUSD(stats.deposits.total)}
+                                {formatUSD(stats.inflows.total)}
                             </div>
                             <p className="text-xs text-gray-500">
-                                {stats.deposits.count} depósitos
+                                {stats.inflows.count} transações
                             </p>
                         </CardContent>
                     </Card>
@@ -406,16 +462,16 @@ export default function ChaseBusinessCheckingPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                                <ArrowUpDown className="w-4 h-4 text-blue-600" />
-                                Transfers In
+                                <TrendingDown className="w-4 h-4 text-red-600" />
+                                Saídas
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">
-                                {formatUSD(stats.transfersIn.total)}
+                            <div className="text-2xl font-bold text-red-600">
+                                {formatUSD(stats.outflows.total)}
                             </div>
                             <p className="text-xs text-gray-500">
-                                {stats.transfersIn.count} entradas
+                                {stats.outflows.count} transações
                             </p>
                         </CardContent>
                     </Card>
@@ -423,16 +479,16 @@ export default function ChaseBusinessCheckingPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                                <TrendingDown className="w-4 h-4 text-orange-600" />
-                                Transfers Out
+                                <ArrowUpDown className="w-4 h-4 text-purple-600" />
+                                Transfers
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-orange-600">
-                                {formatUSD(stats.transfersOut.total)}
+                            <div className="text-2xl font-bold text-purple-600">
+                                {stats.transfers.count}
                             </div>
                             <p className="text-xs text-gray-500">
-                                {stats.transfersOut.count} saídas
+                                movimentações
                             </p>
                         </CardContent>
                     </Card>
@@ -441,7 +497,7 @@ export default function ChaseBusinessCheckingPage() {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-gray-600" />
-                                Total Transactions
+                                Total
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -449,7 +505,7 @@ export default function ChaseBusinessCheckingPage() {
                                 {transactions.length}
                             </div>
                             <p className="text-xs text-gray-500">
-                                movimentações
+                                todas transações
                             </p>
                         </CardContent>
                     </Card>
@@ -497,11 +553,15 @@ export default function ChaseBusinessCheckingPage() {
                                 </TabsTrigger>
                                 <TabsTrigger value="deposits">
                                     <TrendingUp className="w-4 h-4 mr-1" />
-                                    Deposits ({stats.deposits.count})
+                                    Entradas ({stats.inflows.count})
+                                </TabsTrigger>
+                                <TabsTrigger value="expenses">
+                                    <TrendingDown className="w-4 h-4 mr-1" />
+                                    Saídas ({stats.outflows.count})
                                 </TabsTrigger>
                                 <TabsTrigger value="transfers">
                                     <ArrowUpDown className="w-4 h-4 mr-1" />
-                                    Transfers ({stats.transfersIn.count + stats.transfersOut.count})
+                                    Transfers ({stats.transfers.count})
                                 </TabsTrigger>
                             </TabsList>
 
@@ -530,25 +590,19 @@ export default function ChaseBusinessCheckingPage() {
                                                     <td className="py-3 px-4">
                                                         <Badge
                                                             variant="outline"
-                                                            className={`${tx.source === "quickbooks-deposits"
-                                                                    ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                                                                    : tx.amount > 0
-                                                                        ? "bg-blue-100 text-blue-700 border-blue-200"
-                                                                        : "bg-orange-100 text-orange-700 border-orange-200"
+                                                            className={`${tx.amount > 0
+                                                                ? "bg-emerald-100 text-emerald-700 border-emerald-200"
+                                                                : "bg-red-100 text-red-700 border-red-200"
                                                                 }`}
                                                         >
-                                                            {tx.source === "quickbooks-deposits"
-                                                                ? "Deposit"
-                                                                : tx.amount > 0
-                                                                    ? "Transfer In"
-                                                                    : "Transfer Out"}
+                                                            {tx.classification || (tx.amount > 0 ? "Credit" : "Debit")}
                                                         </Badge>
                                                     </td>
                                                     <td className="py-3 px-4 text-sm max-w-md truncate">
                                                         {tx.description}
-                                                        {tx.custom_data?.private_note && (
+                                                        {tx.custom_data?.entity_name && (
                                                             <span className="text-gray-400 ml-2">
-                                                                - {tx.custom_data.private_note}
+                                                                ({tx.custom_data.entity_name})
                                                             </span>
                                                         )}
                                                     </td>

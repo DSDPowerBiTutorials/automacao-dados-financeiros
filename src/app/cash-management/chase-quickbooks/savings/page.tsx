@@ -70,6 +70,16 @@ interface ChaseTransaction {
         private_note?: string
         line_count?: number
         synced_at?: string
+        // QuickBooks Expenses/Payments fields
+        account_name?: string
+        account_id?: string
+        entity_name?: string
+        entity_id?: string
+        payment_type?: string
+        doc_number?: string
+        vendor_name?: string
+        vendor_id?: string
+        bill_id?: string
     }
 }
 
@@ -95,43 +105,46 @@ export default function ChaseSavingsPage() {
                 return
             }
 
-            // Buscar deposits e transfers que envolvem a conta Chase Savings
-            const { data: deposits, error: depositsError } = await supabase
-                .from("csv_rows")
-                .select("*")
-                .eq("source", "quickbooks-deposits")
-                .order("date", { ascending: false })
+            // Buscar TODAS as fontes de dados do QuickBooks
+            const [depositsRes, transfersRes, expensesRes, paymentsRes] = await Promise.all([
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-deposits").order("date", { ascending: false }),
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-transfers").order("date", { ascending: false }),
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-expenses").order("date", { ascending: false }),
+                supabase.from("csv_rows").select("*").eq("source", "quickbooks-payments").order("date", { ascending: false })
+            ])
 
-            const { data: transfers, error: transfersError } = await supabase
-                .from("csv_rows")
-                .select("*")
-                .eq("source", "quickbooks-transfers")
-                .order("date", { ascending: false })
-
-            if (depositsError) console.error("Error loading deposits:", depositsError)
-            if (transfersError) console.error("Error loading transfers:", transfersError)
+            const deposits = depositsRes.data || []
+            const transfers = transfersRes.data || []
+            const expenses = expensesRes.data || []
+            const payments = paymentsRes.data || []
 
             const allTransactions: ChaseTransaction[] = []
 
-            // Filtrar deposits que envolvem Chase Savings
-            deposits?.forEach((row) => {
-                const depositAccount = row.custom_data?.deposit_account?.toLowerCase() || ""
-                if (depositAccount.includes("chase") && depositAccount.includes("savings")) {
+            // Helper para verificar se é conta Chase Savings
+            const isChaseSavings = (accountName: string | undefined | null): boolean => {
+                if (!accountName) return false
+                const lower = accountName.toLowerCase()
+                return lower.includes("chase") && lower.includes("savings")
+            }
+
+            // Deposits que entram na Chase Savings
+            deposits.forEach((row) => {
+                if (isChaseSavings(row.custom_data?.deposit_account)) {
                     allTransactions.push({
                         ...row,
                         amount: parseFloat(row.amount) || 0,
-                        reconciled: row.reconciled || false
+                        reconciled: row.reconciled || false,
+                        classification: "Deposit"
                     })
                 }
             })
 
-            // Filtrar transfers que envolvem Chase Savings
-            transfers?.forEach((row) => {
-                const fromAccount = row.custom_data?.from_account?.toLowerCase() || ""
-                const toAccount = row.custom_data?.to_account?.toLowerCase() || ""
+            // Transfers - entrada e saída
+            transfers.forEach((row) => {
+                const fromAccount = row.custom_data?.from_account
+                const toAccount = row.custom_data?.to_account
 
-                if (fromAccount.includes("chase") && fromAccount.includes("savings")) {
-                    // Saída da conta
+                if (isChaseSavings(fromAccount)) {
                     allTransactions.push({
                         ...row,
                         id: row.id + "-out",
@@ -141,8 +154,7 @@ export default function ChaseSavingsPage() {
                     })
                 }
 
-                if (toAccount.includes("chase") && toAccount.includes("savings")) {
-                    // Entrada na conta
+                if (isChaseSavings(toAccount)) {
                     allTransactions.push({
                         ...row,
                         id: row.id + "-in",
@@ -153,21 +165,43 @@ export default function ChaseSavingsPage() {
                 }
             })
 
+            // Expenses (Purchase) - saídas da conta
+            expenses.forEach((row) => {
+                if (isChaseSavings(row.custom_data?.account_name)) {
+                    allTransactions.push({
+                        ...row,
+                        amount: parseFloat(row.amount) || 0,
+                        reconciled: row.reconciled || false,
+                        classification: "Expense"
+                    })
+                }
+            })
+
+            // Payments received - entradas
+            payments.forEach((row) => {
+                if (isChaseSavings(row.custom_data?.deposit_account)) {
+                    allTransactions.push({
+                        ...row,
+                        amount: parseFloat(row.amount) || 0,
+                        reconciled: row.reconciled || false,
+                        classification: "Payment Received"
+                    })
+                }
+            })
+
             // Ordenar por data
             allTransactions.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
 
             setTransactions(allTransactions)
 
             // Pegar última sincronização
-            if (allTransactions.length > 0) {
-                const syncDates = allTransactions
-                    .map((t) => t.custom_data?.synced_at)
-                    .filter(Boolean)
-                    .sort()
-                    .reverse()
-                if (syncDates.length > 0) {
-                    setLastSync(syncDates[0] || null)
-                }
+            const syncDates = allTransactions
+                .map((t) => t.custom_data?.synced_at)
+                .filter(Boolean)
+                .sort()
+                .reverse()
+            if (syncDates.length > 0) {
+                setLastSync(syncDates[0] || null)
             }
         } catch (error) {
             console.error("Error loading data:", error)
@@ -183,12 +217,13 @@ export default function ChaseSavingsPage() {
             const response = await fetch("/api/quickbooks/sync", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ syncType: "bank" })
+                body: JSON.stringify({ syncType: "all" })
             })
             const result = await response.json()
 
             if (result.success) {
                 await loadData()
+                alert(`✅ Sync completo!\n• Expenses: ${result.expenses?.count || 0}\n• Deposits: ${result.deposits?.count || 0}\n• Transfers: ${result.transfers?.count || 0}`)
             } else {
                 console.error("Sync failed:", result.error)
                 alert(`Sync failed: ${result.error}`)
@@ -205,8 +240,10 @@ export default function ChaseSavingsPage() {
     const filteredTransactions = useMemo(() => {
         let filtered = [...transactions]
 
-        if (activeTab === "deposits") {
-            filtered = filtered.filter((t) => t.source === "quickbooks-deposits")
+        if (activeTab === "inflows") {
+            filtered = filtered.filter((t) => t.amount > 0)
+        } else if (activeTab === "outflows") {
+            filtered = filtered.filter((t) => t.amount < 0)
         } else if (activeTab === "transfers") {
             filtered = filtered.filter((t) => t.source === "quickbooks-transfers")
         }
@@ -216,7 +253,8 @@ export default function ChaseSavingsPage() {
             filtered = filtered.filter(
                 (t) =>
                     t.description.toLowerCase().includes(term) ||
-                    t.custom_data?.private_note?.toLowerCase().includes(term)
+                    t.custom_data?.private_note?.toLowerCase().includes(term) ||
+                    t.custom_data?.entity_name?.toLowerCase().includes(term)
             )
         }
 
@@ -232,22 +270,27 @@ export default function ChaseSavingsPage() {
 
     // Estatísticas
     const stats = useMemo(() => {
-        const deposits = transactions.filter((t) => t.source === "quickbooks-deposits")
+        // Entradas (positivo)
+        const inflows = transactions.filter((t) => t.amount > 0)
+        const totalInflows = inflows.reduce((sum, t) => sum + t.amount, 0)
 
-        const totalDeposits = deposits.reduce((sum, t) => sum + t.amount, 0)
-        const totalTransfersIn = transactions
-            .filter((t) => t.source === "quickbooks-transfers" && t.amount > 0)
-            .reduce((sum, t) => sum + t.amount, 0)
-        const totalTransfersOut = transactions
-            .filter((t) => t.source === "quickbooks-transfers" && t.amount < 0)
-            .reduce((sum, t) => sum + Math.abs(t.amount), 0)
+        // Saídas (negativo)
+        const outflows = transactions.filter((t) => t.amount < 0)
+        const totalOutflows = outflows.reduce((sum, t) => sum + Math.abs(t.amount), 0)
 
-        const netBalance = totalDeposits + totalTransfersIn - totalTransfersOut
+        // Por tipo
+        const deposits = transactions.filter((t) => t.classification === "Deposit" || t.classification === "Payment Received")
+        const expenses = transactions.filter((t) => t.classification === "Expense")
+        const transfers = transactions.filter((t) => t.classification?.includes("Transfer"))
+
+        const netBalance = totalInflows - totalOutflows
 
         return {
-            deposits: { count: deposits.length, total: totalDeposits },
-            transfersIn: { count: transactions.filter((t) => t.amount > 0 && t.source === "quickbooks-transfers").length, total: totalTransfersIn },
-            transfersOut: { count: transactions.filter((t) => t.amount < 0).length, total: totalTransfersOut },
+            inflows: { count: inflows.length, total: totalInflows },
+            outflows: { count: outflows.length, total: totalOutflows },
+            deposits: { count: deposits.length },
+            expenses: { count: expenses.length },
+            transfers: { count: transfers.length },
             netBalance
         }
     }, [transactions])
@@ -377,15 +420,15 @@ export default function ChaseSavingsPage() {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                                Deposits
+                                Entradas
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold text-emerald-600">
-                                {formatUSD(stats.deposits.total)}
+                                {formatUSD(stats.inflows.total)}
                             </div>
                             <p className="text-xs text-gray-500">
-                                {stats.deposits.count} depósitos
+                                {stats.inflows.count} transações
                             </p>
                         </CardContent>
                     </Card>
@@ -393,16 +436,16 @@ export default function ChaseSavingsPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                                <ArrowUpDown className="w-4 h-4 text-blue-600" />
-                                Transfers In
+                                <TrendingDown className="w-4 h-4 text-red-600" />
+                                Saídas
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-blue-600">
-                                {formatUSD(stats.transfersIn.total)}
+                            <div className="text-2xl font-bold text-red-600">
+                                {formatUSD(stats.outflows.total)}
                             </div>
                             <p className="text-xs text-gray-500">
-                                {stats.transfersIn.count} entradas
+                                {stats.outflows.count} transações
                             </p>
                         </CardContent>
                     </Card>
@@ -410,16 +453,16 @@ export default function ChaseSavingsPage() {
                     <Card>
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                                <TrendingDown className="w-4 h-4 text-orange-600" />
-                                Transfers Out
+                                <ArrowUpDown className="w-4 h-4 text-purple-600" />
+                                Transfers
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-orange-600">
-                                {formatUSD(stats.transfersOut.total)}
+                            <div className="text-2xl font-bold text-purple-600">
+                                {stats.transfers.count}
                             </div>
                             <p className="text-xs text-gray-500">
-                                {stats.transfersOut.count} saídas
+                                movimentações
                             </p>
                         </CardContent>
                     </Card>
@@ -428,7 +471,7 @@ export default function ChaseSavingsPage() {
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                                 <DollarSign className="w-4 h-4 text-gray-600" />
-                                Total Transactions
+                                Total
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -482,13 +525,17 @@ export default function ChaseSavingsPage() {
                                 <TabsTrigger value="all">
                                     Todos ({transactions.length})
                                 </TabsTrigger>
-                                <TabsTrigger value="deposits">
+                                <TabsTrigger value="inflows">
                                     <TrendingUp className="w-4 h-4 mr-1" />
-                                    Deposits ({stats.deposits.count})
+                                    Entradas ({stats.inflows.count})
+                                </TabsTrigger>
+                                <TabsTrigger value="outflows">
+                                    <TrendingDown className="w-4 h-4 mr-1" />
+                                    Saídas ({stats.outflows.count})
                                 </TabsTrigger>
                                 <TabsTrigger value="transfers">
                                     <ArrowUpDown className="w-4 h-4 mr-1" />
-                                    Transfers ({stats.transfersIn.count + stats.transfersOut.count})
+                                    Transfers ({stats.transfers.count})
                                 </TabsTrigger>
                             </TabsList>
 
@@ -496,10 +543,10 @@ export default function ChaseSavingsPage() {
                                 <table className="w-full">
                                     <thead>
                                         <tr className="border-b-2 border-gray-200 bg-gray-50">
-                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Date</th>
-                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Type</th>
-                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Description</th>
-                                            <th className="text-right py-3 px-4 font-bold text-sm text-gray-700">Amount</th>
+                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Data</th>
+                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Tipo</th>
+                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Descrição</th>
+                                            <th className="text-right py-3 px-4 font-bold text-sm text-gray-700">Valor</th>
                                             <th className="text-center py-3 px-4 font-bold text-sm text-gray-700">Status</th>
                                         </tr>
                                     </thead>
@@ -511,50 +558,64 @@ export default function ChaseSavingsPage() {
                                                 </td>
                                             </tr>
                                         ) : (
-                                            filteredTransactions.map((tx) => (
-                                                <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                                    <td className="py-3 px-4 text-sm">{formatUSDate(tx.date)}</td>
-                                                    <td className="py-3 px-4">
-                                                        <Badge
-                                                            variant="outline"
-                                                            className={`${tx.source === "quickbooks-deposits"
-                                                                    ? "bg-emerald-100 text-emerald-700 border-emerald-200"
-                                                                    : tx.amount > 0
-                                                                        ? "bg-blue-100 text-blue-700 border-blue-200"
-                                                                        : "bg-orange-100 text-orange-700 border-orange-200"
+                                            filteredTransactions.map((tx) => {
+                                                const isDeposit = tx.source === "quickbooks-deposits";
+                                                const isTransfer = tx.source === "quickbooks-transfers";
+                                                const isExpense = tx.source === "quickbooks-expenses";
+                                                const isPayment = tx.source === "quickbooks-payments";
+
+                                                let badgeClass = "bg-gray-100 text-gray-700 border-gray-200";
+                                                let badgeLabel = tx.source?.replace("quickbooks-", "") || "Unknown";
+
+                                                if (isDeposit) {
+                                                    badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
+                                                    badgeLabel = "Depósito";
+                                                } else if (isTransfer) {
+                                                    badgeClass = tx.amount >= 0
+                                                        ? "bg-blue-100 text-blue-700 border-blue-200"
+                                                        : "bg-purple-100 text-purple-700 border-purple-200";
+                                                    badgeLabel = tx.amount >= 0 ? "Transfer In" : "Transfer Out";
+                                                } else if (isExpense) {
+                                                    badgeClass = "bg-red-100 text-red-700 border-red-200";
+                                                    badgeLabel = "Expense";
+                                                } else if (isPayment) {
+                                                    badgeClass = "bg-orange-100 text-orange-700 border-orange-200";
+                                                    badgeLabel = "Payment";
+                                                }
+
+                                                return (
+                                                    <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50">
+                                                        <td className="py-3 px-4 text-sm">{formatUSDate(tx.date)}</td>
+                                                        <td className="py-3 px-4">
+                                                            <Badge variant="outline" className={badgeClass}>
+                                                                {badgeLabel}
+                                                            </Badge>
+                                                        </td>
+                                                        <td className="py-3 px-4 text-sm max-w-md truncate">
+                                                            {tx.description}
+                                                            {tx.custom_data?.private_note && (
+                                                                <span className="text-gray-400 ml-2">
+                                                                    - {tx.custom_data.private_note}
+                                                                </span>
+                                                            )}
+                                                        </td>
+                                                        <td
+                                                            className={`py-3 px-4 text-sm text-right font-bold ${tx.amount >= 0 ? "text-emerald-600" : "text-red-600"
                                                                 }`}
                                                         >
-                                                            {tx.source === "quickbooks-deposits"
-                                                                ? "Deposit"
-                                                                : tx.amount > 0
-                                                                    ? "Transfer In"
-                                                                    : "Transfer Out"}
-                                                        </Badge>
-                                                    </td>
-                                                    <td className="py-3 px-4 text-sm max-w-md truncate">
-                                                        {tx.description}
-                                                        {tx.custom_data?.private_note && (
-                                                            <span className="text-gray-400 ml-2">
-                                                                - {tx.custom_data.private_note}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td
-                                                        className={`py-3 px-4 text-sm text-right font-bold ${tx.amount >= 0 ? "text-emerald-600" : "text-red-600"
-                                                            }`}
-                                                    >
-                                                        {tx.amount >= 0 ? "+" : ""}
-                                                        {formatUSD(tx.amount)}
-                                                    </td>
-                                                    <td className="py-3 px-4 text-center">
-                                                        {tx.reconciled ? (
-                                                            <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto" />
-                                                        ) : (
-                                                            <XCircle className="w-5 h-5 text-gray-300 mx-auto" />
-                                                        )}
-                                                    </td>
-                                                </tr>
-                                            ))
+                                                            {tx.amount >= 0 ? "+" : ""}
+                                                            {formatUSD(tx.amount)}
+                                                        </td>
+                                                        <td className="py-3 px-4 text-center">
+                                                            {tx.reconciled ? (
+                                                                <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto" />
+                                                            ) : (
+                                                                <XCircle className="w-5 h-5 text-gray-300 mx-auto" />
+                                                            )}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })
                                         )}
                                     </tbody>
                                 </table>
