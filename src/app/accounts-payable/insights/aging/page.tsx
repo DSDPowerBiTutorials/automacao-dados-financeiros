@@ -4,9 +4,9 @@ export default function AgingReportPage() {
     return (
         <PlaceholderPage
             title="Accounts Payable · Aging Report"
-            description="Relatório de aging (a construir)."
+            description="Aging report (coming soon)."
             backHref="/accounts-payable"
-            backLabel="Voltar ao Accounts Payable"
+            backLabel="Back to Accounts Payable"
         />
     );
 }

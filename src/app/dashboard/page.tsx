@@ -283,7 +283,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="min-h-full px-6 py-6 space-y-6">
       <Breadcrumbs
         items={[
           { label: "Home", href: "/" },
@@ -292,10 +292,10 @@ export default function DashboardPage() {
       />
 
       {/* Institutional Header */}
-      <div className="bg-gradient-to-r from-[#243140] to-[#1a2530] rounded-lg p-8 text-white shadow-lg">
+      <header className="page-header-standard bg-gradient-to-r from-[#243140] to-[#1a2530] rounded-lg p-8 text-white shadow-lg">
         <div className="max-w-4xl">
-          <h1 className="text-4xl font-bold mb-2">DSD Finance Hub</h1>
-          <p className="text-lg text-gray-200 mb-4">
+          <h1 className="header-title text-white">DSD Finance Hub</h1>
+          <p className="header-subtitle text-gray-200">
             Integrated Financial Management Platform — empowering global operations from Spain and USA
           </p>
           {profile && (
@@ -311,7 +311,7 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-      </div>
+      </header>
 
       {/* Overview Cards */}
       <div>

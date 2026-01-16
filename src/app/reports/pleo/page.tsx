@@ -118,7 +118,7 @@ export default function PleoReportPage() {
         setError(null);
 
         try {
-            console.log('[Pleo Report] Iniciando sincronização com API...');
+            console.log('[Pleo Report] Starting sync com API...');
 
             const response = await fetch('/api/pleo/sync', {
                 method: 'POST',
@@ -220,7 +220,7 @@ export default function PleoReportPage() {
     // Filtros aplicados
     const filteredExpenses = useMemo(() => {
         return expenses.filter(exp => {
-            // Filtro de busca
+            // Filter by busca
             if (searchTerm) {
                 const searchLower = searchTerm.toLowerCase();
                 const matchDescription = exp.description?.toLowerCase().includes(searchLower);
@@ -233,22 +233,22 @@ export default function PleoReportPage() {
                 }
             }
 
-            // Filtro de status
+            // Filter by status
             if (statusFilter !== 'all' && exp.custom_data?.status !== statusFilter) {
                 return false;
             }
 
-            // Filtro de categoria
+            // Filter by categoria
             if (categoryFilter !== 'all' && exp.custom_data?.category !== categoryFilter) {
                 return false;
             }
 
-            // Filtro de usuário
+            // Filter by user
             if (userFilter !== 'all' && exp.custom_data?.user_email !== userFilter) {
                 return false;
             }
 
-            // Filtro de reconciliado
+            // Filter by reconciliado
             if (!showReconciled && exp.reconciled) {
                 return false;
             }
@@ -276,7 +276,7 @@ export default function PleoReportPage() {
             const category = exp.custom_data?.category || 'Sem categoria';
             result.byCategory[category] = (result.byCategory[category] || 0) + 1;
 
-            // Usuário
+            // User
             const user = exp.custom_data?.user_email || 'Desconhecido';
             result.byUser[user] = (result.byUser[user] || 0) + 1;
 
@@ -287,7 +287,7 @@ export default function PleoReportPage() {
         return result;
     }, [filteredExpenses]);
 
-    // Valores únicos para filtros
+    // Amountes únicos para filtros
     const uniqueStatuses = useMemo(() =>
         Array.from(new Set(expenses.map(e => e.custom_data?.status).filter(Boolean))),
         [expenses]
@@ -304,7 +304,7 @@ export default function PleoReportPage() {
     );
 
     const exportToCSV = () => {
-        const headers = ['Data', 'Comerciante', 'Usuário', 'Email', 'Categoria', 'Valor', 'Moeda', 'Status', 'Nota', 'Reconciliado'];
+        const headers = ['Data', 'Merchant', 'User', 'Email', 'Categoria', 'Amount', 'Moeda', 'Status', 'Nota', 'Reconciliado'];
         const rows = filteredExpenses.map(exp => [
             exp.date,
             exp.custom_data?.merchant || '',
@@ -315,7 +315,7 @@ export default function PleoReportPage() {
             exp.custom_data?.currency || 'EUR',
             exp.custom_data?.status || '',
             exp.custom_data?.note || '',
-            exp.reconciled ? 'Sim' : 'Não'
+            exp.reconciled ? 'Yes' : 'No'
         ]);
 
         const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
@@ -347,7 +347,7 @@ export default function PleoReportPage() {
                     </Link>
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight">Despesas Pleo</h1>
-                        <p className="text-gray-500">Gestão de despesas corporativas</p>
+                        <p className="text-gray-500">Corporate expense management</p>
                     </div>
                 </div>
 
@@ -361,10 +361,10 @@ export default function PleoReportPage() {
                         disabled={true}
                         variant="outline"
                         className="opacity-50 cursor-not-allowed"
-                        title="API Pleo Legacy descontinuada. Use exportação manual."
+                        title="API Pleo Legacy discontinued. Use manual export."
                     >
                         <RefreshCw className="h-4 w-4 mr-2" />
-                        Sincronizar Pleo (Indisponível)
+                        Sincronizar Pleo (Unavailable)
                     </Button>
                 </div>
             </div>
@@ -372,8 +372,8 @@ export default function PleoReportPage() {
             {/* API Legacy Warning */}
             <Alert className="bg-yellow-50 border-yellow-200">
                 <AlertDescription className="text-yellow-800">
-                    <strong>⚠️ API Pleo Legacy Descontinuada:</strong> A sincronização automática não está disponível.
-                    Por favor, exporte os dados manualmente do Pleo Dashboard e faça upload via CSV.
+                    <strong>⚠️ Pleo Legacy API Discontinued:</strong> A auto sync is not available.
+                    Please, export data manually do Pleo Dashboard e upload via CSV.
                     <a
                         href="https://app.pleo.io/settings/export"
                         target="_blank"
@@ -409,7 +409,7 @@ export default function PleoReportPage() {
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
-                            Valor Total
+                            Amount Total
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -422,7 +422,7 @@ export default function PleoReportPage() {
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
-                            Usuários
+                            Users
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -459,7 +459,7 @@ export default function PleoReportPage() {
                         <div>
                             <label className="text-sm font-medium mb-2 block">Buscar</label>
                             <Input
-                                placeholder="Comerciante, usuário, email..."
+                                placeholder="Merchant, user, email..."
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
@@ -500,7 +500,7 @@ export default function PleoReportPage() {
                         </div>
 
                         <div>
-                            <label className="text-sm font-medium mb-2 block">Usuário</label>
+                            <label className="text-sm font-medium mb-2 block">User</label>
                             <Select value={userFilter} onValueChange={setUserFilter}>
                                 <SelectTrigger>
                                     <SelectValue />
@@ -524,7 +524,7 @@ export default function PleoReportPage() {
                             onCheckedChange={(checked) => setShowReconciled(checked as boolean)}
                         />
                         <label htmlFor="showReconciled" className="text-sm">
-                            Mostrar reconciliadas
+                            Show reconciled
                         </label>
                     </div>
                 </CardContent>
@@ -542,14 +542,14 @@ export default function PleoReportPage() {
                                 <tr className="text-left text-sm font-medium text-gray-500">
                                     <th className="pb-3 px-2">Reconciliada</th>
                                     <th className="pb-3 px-2">Data</th>
-                                    <th className="pb-3 px-2">Comerciante</th>
-                                    <th className="pb-3 px-2">Usuário</th>
+                                    <th className="pb-3 px-2">Merchant</th>
+                                    <th className="pb-3 px-2">User</th>
                                     <th className="pb-3 px-2">Categoria</th>
-                                    <th className="pb-3 px-2 text-right">Valor</th>
+                                    <th className="pb-3 px-2 text-right">Amount</th>
                                     <th className="pb-3 px-2">Status</th>
                                     <th className="pb-3 px-2">Nota</th>
                                     <th className="pb-3 px-2 text-center">Recibo</th>
-                                    <th className="pb-3 px-2 text-right">Ações</th>
+                                    <th className="pb-3 px-2 text-right">Actions</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y">

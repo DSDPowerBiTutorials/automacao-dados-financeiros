@@ -183,7 +183,7 @@ export default function ChaseSavingsPage() {
 
             setTransactions(allTransactions)
 
-            // Pegar última sincronização
+            // Get last sync
             const syncDates = allTransactions
                 .map((t) => t.custom_data?.synced_at)
                 .filter(Boolean)
@@ -259,20 +259,34 @@ export default function ChaseSavingsPage() {
 
     // Estatísticas
     const stats = useMemo(() => {
-        // Entradas (positivo)
+        // Inflows (positivo)
         const inflows = transactions.filter((t) => t.amount > 0)
         const totalInflows = inflows.reduce((sum, t) => sum + t.amount, 0)
 
-        // Saídas (negativo)
+        // Outflows (negativo)
         const outflows = transactions.filter((t) => t.amount < 0)
-        const totalOutflows = outflows.reduce((sum, t) => sum + Math.abs(t.amount), 0)
+        const totalOutflows = outflows.reduce((sum, t) => sum + t.amount, 0)
 
         // Por tipo
         const deposits = transactions.filter((t) => t.classification === "Deposit" || t.classification === "Payment Received")
         const expenses = transactions.filter((t) => t.classification === "Expense")
         const transfers = transactions.filter((t) => t.classification?.includes("Transfer"))
 
-        const netBalance = totalInflows - totalOutflows
+        // Calcular saldo inicial (transactions antes do período filtrado)
+        let openingBalance = 0
+        if (dateFilter.start) {
+            openingBalance = transactions
+                .filter((t) => t.date < dateFilter.start!)
+                .reduce((sum, t) => sum + t.amount, 0)
+        }
+
+        // Calcular saldo final
+        const closingBalance = openingBalance + totalInflows + totalOutflows
+
+        // Datas do período
+        const sortedByDate = [...transactions].sort((a, b) => a.date.localeCompare(b.date))
+        const oldestDate = sortedByDate.length > 0 ? sortedByDate[0].date : null
+        const newestDate = sortedByDate.length > 0 ? sortedByDate[sortedByDate.length - 1].date : null
 
         return {
             inflows: { count: inflows.length, total: totalInflows },
@@ -280,9 +294,12 @@ export default function ChaseSavingsPage() {
             deposits: { count: deposits.length },
             expenses: { count: expenses.length },
             transfers: { count: transfers.length },
-            netBalance
+            openingBalance,
+            closingBalance,
+            oldestDate,
+            newestDate
         }
-    }, [transactions])
+    }, [transactions, dateFilter])
 
     const exportToCSV = () => {
         const headers = ["Date", "Type", "Description", "Amount", "Notes"]
@@ -305,42 +322,41 @@ export default function ChaseSavingsPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center">
+            <div className="min-h-full flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-[#117ACA]" />
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-full">
             {/* Header */}
-            <header className="border-b border-[#0f1c34] bg-[#117ACA] text-white shadow-lg sticky top-0 z-30">
-                <div className="container mx-auto px-6 py-5">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-4">
-                            <Link href="/cash-management/chase-quickbooks">
-                                <Button variant="ghost" size="sm" className="gap-2 text-white hover:bg-white/10">
-                                    <ArrowLeft className="h-4 w-4" />
-                                    Back
-                                </Button>
-                            </Link>
-                            <div>
-                                <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                                    <span className="text-2xl">🇺🇸</span>
-                                    Chase Savings
-                                </h1>
-                                <p className="text-sm text-white/80">
-                                    Conta Poupança • QuickBooks Online
-                                </p>
-                            </div>
+            <header className="page-header-standard">
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Link href="/cash-management/chase-quickbooks">
+                            <Button variant="ghost" size="sm" className="gap-2 text-white hover:bg-white/10">
+                                <ArrowLeft className="h-4 w-4" />
+                                Back
+                            </Button>
+                        </Link>
+                        <div>
+                            <h1 className="header-title flex items-center gap-2">
+                                <span className="text-2xl">🇺🇸</span>
+                                Chase Savings
+                            </h1>
+                            <p className="header-subtitle">
+                                Savings Account • QuickBooks Online
+                            </p>
                         </div>
+                    </div>
 
-                        <div className="flex items-center gap-2">
-                            {lastSync && (
-                                <span className="text-xs text-white/70">
-                                    Última sync: {formatTimestamp(new Date(lastSync))}
-                                </span>
-                            )}
+                    <div className="flex items-center gap-2">
+                        {lastSync && (
+                            <span className="text-xs text-white/70">
+                                Last sync: {formatTimestamp(new Date(lastSync))}
+                            </span>
+                        )}
 
                             <Button
                                 variant="outline"
@@ -365,13 +381,12 @@ export default function ChaseSavingsPage() {
                                 )}
                                 Sync Now
                             </Button>
-                        </div>
                     </div>
                 </div>
             </header>
 
             {/* Account Card */}
-            <div className="container mx-auto px-6 py-4">
+            <div className="px-6 py-4">
                 <Card className="bg-gradient-to-r from-[#2E8B57] to-[#3CB371] border-0 shadow-xl">
                     <CardContent className="p-4">
                         <div className="flex items-center justify-between">
@@ -392,9 +407,9 @@ export default function ChaseSavingsPage() {
                                 </div>
                             </div>
                             <div className="text-right text-white">
-                                <p className="text-sm opacity-90">Net Activity</p>
-                                <p className={`text-2xl font-bold ${stats.netBalance >= 0 ? "text-emerald-200" : "text-red-200"}`}>
-                                    {formatUSD(stats.netBalance)}
+                                <p className="text-sm opacity-90">Current Balance</p>
+                                <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-emerald-200" : "text-red-200"}`}>
+                                    {formatUSD(stats.closingBalance)}
                                 </p>
                             </div>
                         </div>
@@ -402,14 +417,31 @@ export default function ChaseSavingsPage() {
                 </Card>
             </div>
 
-            {/* Stats Cards */}
-            <div className="container mx-auto px-6 py-4">
+            {/* Stats Cards - Opening Balance, Inflows, Outflows, Closing Balance */}
+            <div className="px-6 py-4">
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <Card>
+                    <Card className="border-l-4 border-l-blue-500">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                <Calendar className="w-4 h-4 text-blue-600" />
+                                Opening Balance
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className={`text-2xl font-bold ${stats.openingBalance >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                                {formatUSD(stats.openingBalance)}
+                            </div>
+                            <p className="text-xs text-gray-500">
+                                {stats.oldestDate ? formatDate(stats.oldestDate) : "No data"}
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    <Card className="border-l-4 border-l-emerald-500">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                                 <TrendingUp className="w-4 h-4 text-emerald-600" />
-                                Entradas
+                                Inflows
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -417,16 +449,16 @@ export default function ChaseSavingsPage() {
                                 {formatUSD(stats.inflows.total)}
                             </div>
                             <p className="text-xs text-gray-500">
-                                {stats.inflows.count} transações
+                                {stats.inflows.count} transactions
                             </p>
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="border-l-4 border-l-red-500">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                                 <TrendingDown className="w-4 h-4 text-red-600" />
-                                Saídas
+                                Outflows
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
@@ -434,41 +466,24 @@ export default function ChaseSavingsPage() {
                                 {formatUSD(stats.outflows.total)}
                             </div>
                             <p className="text-xs text-gray-500">
-                                {stats.outflows.count} transações
+                                {stats.outflows.count} transactions
                             </p>
                         </CardContent>
                     </Card>
 
-                    <Card>
+                    <Card className="border-l-4 border-l-purple-500">
                         <CardHeader className="pb-2">
                             <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                                <ArrowUpDown className="w-4 h-4 text-purple-600" />
-                                Transfers
+                                <PiggyBank className="w-4 h-4 text-purple-600" />
+                                Closing Balance
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="text-2xl font-bold text-purple-600">
-                                {stats.transfers.count}
+                            <div className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-purple-600" : "text-red-600"}`}>
+                                {formatUSD(stats.closingBalance)}
                             </div>
                             <p className="text-xs text-gray-500">
-                                movimentações
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardHeader className="pb-2">
-                            <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                                <DollarSign className="w-4 h-4 text-gray-600" />
-                                Total
-                            </CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold text-gray-700">
-                                {transactions.length}
-                            </div>
-                            <p className="text-xs text-gray-500">
-                                movimentações
+                                {stats.newestDate ? formatDate(stats.newestDate) : "No data"}
                             </p>
                         </CardContent>
                     </Card>
@@ -476,16 +491,16 @@ export default function ChaseSavingsPage() {
             </div>
 
             {/* Transactions Table */}
-            <div className="container mx-auto px-6 py-4">
+            <div className="px-6 py-4">
                 <Card>
                     <CardHeader>
                         <div className="flex items-center justify-between">
-                            <CardTitle>Movimentações</CardTitle>
+                            <CardTitle>Transactions</CardTitle>
                             <div className="flex items-center gap-2">
                                 <div className="relative">
                                     <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                                     <Input
-                                        placeholder="Buscar..."
+                                        placeholder="Search..."
                                         value={searchTerm}
                                         onChange={(e) => setSearchTerm(e.target.value)}
                                         className="w-64 pl-9"
@@ -498,7 +513,7 @@ export default function ChaseSavingsPage() {
                                     onChange={(e) => setDateFilter((prev) => ({ ...prev, start: e.target.value }))}
                                     className="w-36"
                                 />
-                                <span className="text-gray-400">até</span>
+                                <span className="text-gray-400">to</span>
                                 <Input
                                     type="date"
                                     value={dateFilter.end || ""}
@@ -512,15 +527,15 @@ export default function ChaseSavingsPage() {
                         <Tabs value={activeTab} onValueChange={setActiveTab}>
                             <TabsList className="mb-4">
                                 <TabsTrigger value="all">
-                                    Todos ({transactions.length})
+                                    All ({transactions.length})
                                 </TabsTrigger>
                                 <TabsTrigger value="inflows">
                                     <TrendingUp className="w-4 h-4 mr-1" />
-                                    Entradas ({stats.inflows.count})
+                                    Inflows ({stats.inflows.count})
                                 </TabsTrigger>
                                 <TabsTrigger value="outflows">
                                     <TrendingDown className="w-4 h-4 mr-1" />
-                                    Saídas ({stats.outflows.count})
+                                    Outflows ({stats.outflows.count})
                                 </TabsTrigger>
                                 <TabsTrigger value="transfers">
                                     <ArrowUpDown className="w-4 h-4 mr-1" />
@@ -529,21 +544,21 @@ export default function ChaseSavingsPage() {
                             </TabsList>
 
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="table-standard">
                                     <thead>
-                                        <tr className="border-b-2 border-gray-200 bg-gray-50">
-                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Data</th>
-                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Tipo</th>
-                                            <th className="text-left py-3 px-4 font-bold text-sm text-gray-700">Descrição</th>
-                                            <th className="text-right py-3 px-4 font-bold text-sm text-gray-700">Valor</th>
-                                            <th className="text-center py-3 px-4 font-bold text-sm text-gray-700">Status</th>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Type</th>
+                                            <th>Description</th>
+                                            <th className="text-right">Amount</th>
+                                            <th className="text-center">Status</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredTransactions.length === 0 ? (
                                             <tr>
                                                 <td colSpan={5} className="py-8 text-center text-gray-500">
-                                                    Nenhuma transação encontrada. Clique em "Sync Now" para sincronizar os dados do QuickBooks.
+                                                    No transactions found. Click "Sync Now" to sync data from QuickBooks.
                                                 </td>
                                             </tr>
                                         ) : (
@@ -557,18 +572,18 @@ export default function ChaseSavingsPage() {
                                                 let badgeLabel = tx.source?.replace("quickbooks-", "") || "Unknown";
 
                                                 if (isDeposit) {
-                                                    badgeClass = "bg-emerald-100 text-emerald-700 border-emerald-200";
-                                                    badgeLabel = "Depósito";
+                                                    badgeClass = "badge-light-success";
+                                                    badgeLabel = "Deposit";
                                                 } else if (isTransfer) {
                                                     badgeClass = tx.amount >= 0
-                                                        ? "bg-blue-100 text-blue-700 border-blue-200"
-                                                        : "bg-purple-100 text-purple-700 border-purple-200";
+                                                        ? "badge-light-info"
+                                                        : "badge-light-warning";
                                                     badgeLabel = tx.amount >= 0 ? "Transfer In" : "Transfer Out";
                                                 } else if (isExpense) {
-                                                    badgeClass = "bg-red-100 text-red-700 border-red-200";
+                                                    badgeClass = "badge-light-danger";
                                                     badgeLabel = "Expense";
                                                 } else if (isPayment) {
-                                                    badgeClass = "bg-orange-100 text-orange-700 border-orange-200";
+                                                    badgeClass = "badge-light-warning";
                                                     badgeLabel = "Payment";
                                                 }
 
@@ -589,7 +604,7 @@ export default function ChaseSavingsPage() {
                                                             )}
                                                         </td>
                                                         <td
-                                                            className={`py-3 px-4 text-sm text-right font-bold ${tx.amount >= 0 ? "text-emerald-600" : "text-red-600"
+                                                            className={`py-3 px-4 text-sm text-right font-bold ${tx.amount >= 0 ? "amount-positive" : "amount-negative"
                                                                 }`}
                                                         >
                                                             {tx.amount >= 0 ? "+" : ""}

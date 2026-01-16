@@ -169,7 +169,7 @@ export default function StripeUSDPage() {
             }
         } catch (err) {
             console.error("Error loading Stripe USD data:", err);
-            setLoadError(err instanceof Error ? err.message : "Erro ao carregar dados");
+            setLoadError(err instanceof Error ? err.message : "Error loading data");
         } finally {
             setIsLoading(false);
         }
@@ -192,12 +192,12 @@ export default function StripeUSDPage() {
 
             if (result.success) {
                 await loadData();
-                setAutoReconcileSummary(`✅ Sincronizado: ${result.summary?.charges_synced || 0} transações`);
+                setAutoReconcileSummary(`✅ Synced: ${result.summary?.charges_synced || 0} transactions`);
             } else {
                 setAutoReconcileSummary(`❌ Erro: ${result.error}`);
             }
         } catch (err) {
-            setAutoReconcileSummary(`❌ Erro ao sincronizar: ${err instanceof Error ? err.message : "Erro"}`);
+            setAutoReconcileSummary(`❌ Sync error: ${err instanceof Error ? err.message : "Error"}`);
         } finally {
             setIsSyncing(false);
             setTimeout(() => setAutoReconcileSummary(null), 5000);
@@ -274,13 +274,13 @@ export default function StripeUSDPage() {
             }
 
             setAutoReconcileSummary(
-                `✅ Reconciliação automática: ${matchCount} transações conciliadas`
+                `✅ Auto reconciliation: ${matchCount} transactions reconciled`
             );
             await loadData();
         } catch (err) {
             console.error("Auto reconcile error:", err);
             setAutoReconcileSummary(
-                `❌ Erro na reconciliação: ${err instanceof Error ? err.message : "Erro"}`
+                `❌ Erro na reconciliation: ${err instanceof Error ? err.message : "Erro"}`
             );
         } finally {
             setIsReconciling(false);
@@ -333,7 +333,7 @@ export default function StripeUSDPage() {
     };
 
     const deleteRow = async (id: string) => {
-        if (!confirm("Tem certeza que deseja excluir esta transação?")) return;
+        if (!confirm("Are you sure you want to delete this transaction?")) return;
         setIsDeleting(true);
 
         try {
@@ -461,13 +461,13 @@ export default function StripeUSDPage() {
     const handleExport = () => {
         const headers = [
             "Data",
-            "Descrição",
-            "Valor",
+            "Description",
+            "Amount",
             "Status",
             "Tipo",
             "Cliente",
             "Email",
-            "Método Pagamento",
+            "Payment Method",
             "Transaction ID",
             "Order ID",
             "Reconciliado",
@@ -487,7 +487,7 @@ export default function StripeUSDPage() {
                     row.payment_method,
                     row.transaction_id,
                     row.order_id || "",
-                    row.reconciled ? "Sim" : "Não",
+                    row.reconciled ? "Yes" : "No",
                 ].join(",")
             ),
         ].join("\n");
@@ -502,15 +502,15 @@ export default function StripeUSDPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50">
+        <div className="min-h-full">
             {/* Header */}
-            <div className="bg-white border-b border-gray-200 px-6 py-4">
+            <header className="page-header-standard">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/payment-channels">
                             <Button variant="ghost" size="sm">
                                 <ArrowLeft className="w-4 h-4 mr-2" />
-                                Voltar
+                                Back
                             </Button>
                         </Link>
                         <div>
@@ -519,10 +519,10 @@ export default function StripeUSDPage() {
                                 Stripe USD
                             </h1>
                             <p className="text-sm text-gray-500">
-                                Transações em Dólar • {rows.length} registros
+                                USD Transactions • {rows.length} records
                                 {lastSyncDate && (
                                     <span className="ml-2">
-                                        • Última sync: {formatDate(lastSyncDate)}
+                                        • Last sync: {formatDate(lastSyncDate)}
                                     </span>
                                 )}
                             </p>
@@ -541,7 +541,7 @@ export default function StripeUSDPage() {
                             ) : (
                                 <RefreshCw className="w-4 h-4 mr-2" />
                             )}
-                            Sincronizar API
+                            Sync API
                         </Button>
 
                         <Button
@@ -555,23 +555,23 @@ export default function StripeUSDPage() {
                             ) : (
                                 <Zap className="w-4 h-4 mr-2" />
                             )}
-                            Reconciliar Auto
+                            Auto Reconcile
                         </Button>
 
                         <Button variant="outline" size="sm" onClick={handleExport}>
                             <Download className="w-4 h-4 mr-2" />
-                            Exportar
+                            Export
                         </Button>
                     </div>
                 </div>
-            </div>
+            </header>
 
             {/* Alerts */}
             {autoReconcileSummary && (
                 <div className="px-6 pt-4">
                     <Alert
                         className={
-                            autoReconcileSummary.startsWith("✅")
+                            autoReconcileSummary && autoReconcileSummary.startsWith("✅")
                                 ? "bg-green-50 border-green-200"
                                 : "bg-red-50 border-red-200"
                         }
@@ -595,12 +595,12 @@ export default function StripeUSDPage() {
                     <CardContent className="pt-4">
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                             <DollarSign className="w-4 h-4" />
-                            Total Vendas
+                            Total Sales
                         </div>
                         <div className="text-xl font-bold text-green-600">
                             ${stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
-                        <div className="text-xs text-gray-400">{stats.salesCount} transações</div>
+                        <div className="text-xs text-gray-400">{stats.salesCount} transactions</div>
                     </CardContent>
                 </Card>
 
@@ -608,12 +608,12 @@ export default function StripeUSDPage() {
                     <CardContent className="pt-4">
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                             <DollarSign className="w-4 h-4" />
-                            Reembolsos
+                            Refunds
                         </div>
                         <div className="text-xl font-bold text-red-600">
                             ${stats.totalRefunds.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
-                        <div className="text-xs text-gray-400">{stats.refundsCount} transações</div>
+                        <div className="text-xs text-gray-400">{stats.refundsCount} transactions</div>
                     </CardContent>
                 </Card>
 
@@ -621,7 +621,7 @@ export default function StripeUSDPage() {
                     <CardContent className="pt-4">
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                             <DollarSign className="w-4 h-4" />
-                            Líquido
+                            Net
                         </div>
                         <div className={`text-xl font-bold ${stats.netAmount >= 0 ? "text-green-600" : "text-red-600"}`}>
                             ${stats.netAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
@@ -644,7 +644,7 @@ export default function StripeUSDPage() {
                     <CardContent className="pt-4">
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                             <XCircle className="w-4 h-4" />
-                            Pendentes
+                            Pending
                         </div>
                         <div className="text-xl font-bold text-orange-600">{stats.pendingCount}</div>
                     </CardContent>
@@ -654,7 +654,7 @@ export default function StripeUSDPage() {
                     <CardContent className="pt-4">
                         <div className="flex items-center gap-2 text-sm text-gray-500">
                             <Calendar className="w-4 h-4" />
-                            Período
+                            Period
                         </div>
                         <div className="text-sm font-medium">
                             {dateFilter.start} a {dateFilter.end}
@@ -668,7 +668,7 @@ export default function StripeUSDPage() {
                 <div className="flex items-center gap-2">
                     <Search className="w-4 h-4 text-gray-400" />
                     <Input
-                        placeholder="Buscar por nome, email, order ID..."
+                        placeholder="Search by name, email, order ID..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="w-64"
@@ -683,7 +683,7 @@ export default function StripeUSDPage() {
                         onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
                         className="w-36"
                     />
-                    <span className="text-gray-400">até</span>
+                    <span className="text-gray-400">to</span>
                     <Input
                         type="date"
                         value={dateFilter.end}
@@ -697,20 +697,20 @@ export default function StripeUSDPage() {
                         <SelectValue placeholder="Status" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="reconciled">Reconciliados</SelectItem>
-                        <SelectItem value="pending">Pendentes</SelectItem>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="reconciled">Reconciled</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
                     </SelectContent>
                 </Select>
 
                 <Select value={typeFilter} onValueChange={setTypeFilter}>
                     <SelectTrigger className="w-32">
-                        <SelectValue placeholder="Tipo" />
+                        <SelectValue placeholder="Type" />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value="sale">Venda</SelectItem>
-                        <SelectItem value="refund">Reembolso</SelectItem>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="sale">Sale</SelectItem>
+                        <SelectItem value="refund">Refund</SelectItem>
                         <SelectItem value="invoice">Invoice</SelectItem>
                     </SelectContent>
                 </Select>
@@ -723,13 +723,13 @@ export default function StripeUSDPage() {
                         {isLoading ? (
                             <div className="flex items-center justify-center py-20">
                                 <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-                                <span className="ml-2 text-gray-500">Carregando...</span>
+                                <span className="ml-2 text-gray-500">Loading...</span>
                             </div>
                         ) : filteredRows.length === 0 ? (
                             <div className="text-center py-20 text-gray-500">
                                 <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                                <p>Nenhuma transação encontrada</p>
-                                <p className="text-sm">Tente sincronizar com a API do Stripe</p>
+                                <p>No transactions found</p>
+                                <p className="text-sm">Try syncing with the Stripe API</p>
                             </div>
                         ) : (
                             <div className="overflow-x-auto">
@@ -746,7 +746,7 @@ export default function StripeUSDPage() {
                                                 </button>
                                             </th>
                                             <th className="px-4 py-3 text-left font-medium text-gray-700">
-                                                Descrição
+                                                Description
                                             </th>
                                             <th className="px-4 py-3 text-left font-medium text-gray-700">
                                                 Cliente
@@ -756,7 +756,7 @@ export default function StripeUSDPage() {
                                                     className="flex items-center gap-1 font-medium text-gray-700 hover:text-gray-900 ml-auto"
                                                     onClick={() => handleSort("amount")}
                                                 >
-                                                    Valor
+                                                    Amount
                                                     <ArrowUpDown className="w-3 h-3" />
                                                 </button>
                                             </th>
@@ -764,13 +764,13 @@ export default function StripeUSDPage() {
                                                 Tipo
                                             </th>
                                             <th className="px-4 py-3 text-center font-medium text-gray-700">
-                                                Método
+                                                Method
                                             </th>
                                             <th className="px-4 py-3 text-center font-medium text-gray-700">
                                                 Reconciliado
                                             </th>
                                             <th className="px-4 py-3 text-center font-medium text-gray-700">
-                                                Ações
+                                                Actions
                                             </th>
                                         </tr>
                                     </thead>
@@ -855,9 +855,9 @@ export default function StripeUSDPage() {
                                                         className="text-xs"
                                                     >
                                                         {row.type === "sale"
-                                                            ? "Venda"
+                                                            ? "Sale"
                                                             : row.type === "refund"
-                                                                ? "Reembolso"
+                                                                ? "Refund"
                                                                 : row.type}
                                                     </Badge>
                                                 </td>
@@ -941,7 +941,7 @@ export default function StripeUSDPage() {
                         {totalPages > 1 && (
                             <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
                                 <div className="text-sm text-gray-500">
-                                    Mostrando {(currentPage - 1) * rowsPerPage + 1} a{" "}
+                                    Showing {(currentPage - 1) * rowsPerPage + 1} to{" "}
                                     {Math.min(currentPage * rowsPerPage, filteredRows.length)} de{" "}
                                     {filteredRows.length}
                                 </div>
@@ -955,7 +955,7 @@ export default function StripeUSDPage() {
                                         Anterior
                                     </Button>
                                     <span className="text-sm text-gray-500">
-                                        Página {currentPage} de {totalPages}
+                                        Page {currentPage} de {totalPages}
                                     </span>
                                     <Button
                                         variant="outline"
@@ -963,7 +963,7 @@ export default function StripeUSDPage() {
                                         onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                                         disabled={currentPage === totalPages}
                                     >
-                                        Próxima
+                                        Next
                                     </Button>
                                 </div>
                             </div>

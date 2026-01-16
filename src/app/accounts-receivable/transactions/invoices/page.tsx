@@ -4,9 +4,9 @@ export default function ARInvoicesPage() {
     return (
         <PlaceholderPage
             title="Accounts Receivable · Invoices"
-            description="Invoices (a construir)."
+            description="Invoices (under construction)."
             backHref="/accounts-receivable"
-            backLabel="Voltar ao Accounts Receivable"
+            backLabel="Back to Accounts Receivable"
         />
     );
 }

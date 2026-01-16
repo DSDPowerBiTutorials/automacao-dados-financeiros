@@ -273,7 +273,7 @@ export default function PnLReport() {
     },
   ];
 
-  // Função para calcular totais por sub-departamento
+  // Function to calcular totais por sub-departamento
   const calculateSubDeptTotal = (
     items: LineItem[],
     subDeptCode: string,
@@ -285,7 +285,7 @@ export default function PnLReport() {
     }, 0);
   };
 
-  // Função para calcular totais por departamento
+  // Function to calcular totais por departamento
   const calculateDeptTotal = (
     items: LineItem[],
     dept: Department,
@@ -296,7 +296,7 @@ export default function PnLReport() {
     }, 0);
   };
 
-  // Função para calcular grand total
+  // Function to calcular grand total
   const calculateGrandTotal = (
     items: LineItem[],
     type: "budget" | "incurred",
@@ -626,7 +626,7 @@ export default function PnLReport() {
                   {formatPercentage(
                     ((totalRevenueIncurred - totalRevenueBudget) /
                       totalRevenueBudget) *
-                      100,
+                    100,
                   )}{" "}
                   vs Budget
                 </div>
@@ -655,7 +655,7 @@ export default function PnLReport() {
                     ((totalCostOfOperationIncurred -
                       totalCostOfOperationBudget) /
                       totalCostOfOperationBudget) *
-                      100,
+                    100,
                   )}{" "}
                   vs Budget
                 </div>
@@ -681,7 +681,7 @@ export default function PnLReport() {
                   {formatPercentage(
                     ((profitDeficitIncurred - profitDeficitBudget) /
                       profitDeficitBudget) *
-                      100,
+                    100,
                   )}{" "}
                   vs Budget
                 </div>
@@ -955,8 +955,8 @@ export default function PnLReport() {
                       const variance =
                         profitBudget !== 0
                           ? ((profitIncurred - profitBudget) /
-                              Math.abs(profitBudget)) *
-                            100
+                            Math.abs(profitBudget)) *
+                          100
                           : 0;
                       return (
                         <div

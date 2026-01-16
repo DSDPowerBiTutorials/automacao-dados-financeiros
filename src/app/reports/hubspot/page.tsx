@@ -62,7 +62,7 @@ interface HubSpotDeal {
     customer_name?: string;
     custom_data?: {
         // ==========================================
-        // IDs e Códigos (CRÍTICO para linkagem)
+        // IDs e Codes (CRÍTICO para linkagem)
         // ==========================================
         deal_id?: string; // HubSpot Deal ID
         order_code?: string; // Order Code (e437d54, a3d2c9a) - NOVO!
@@ -94,7 +94,7 @@ interface HubSpotDeal {
         createdate?: string;
 
         // ==========================================
-        // Customer - Informações Completas
+        // Customer - Information Completas
         // ==========================================
         customer_firstname?: string;
         customer_lastname?: string;
@@ -121,7 +121,7 @@ interface HubSpotDeal {
         company_phone?: string;
 
         // ==========================================
-        // Valores e Pagamento
+        // Amountes e Pagamento
         // ==========================================
         currency?: string;
         total_payment?: number; // Paid Amount
@@ -136,8 +136,8 @@ interface HubSpotDeal {
         // Produtos (LineItems)
         // ==========================================
         product_name?: string;
-        product_short_name?: string; // Nome curto - NOVO!
-        product_name_full?: string; // Nome completo - NOVO!
+        product_short_name?: string; // Name curto - NOVO!
+        product_name_full?: string; // Name completo - NOVO!
         product_name_raw?: string;
         product_quantity?: number;
         product_amount?: number;
@@ -228,7 +228,7 @@ export default function HubSpotReportPage() {
             setCurrentPage(1); // Resetar página ao carregar novos dados
 
             console.log('📡 [FETCH] Fazendo query no Supabase...');
-            // Buscar todas as orders (sem filtro de data)
+            // Fetch all orders (sem filtro de data)
             const { data, error, count } = await supabase
                 .from("csv_rows")
                 .select("*", { count: "exact" })
@@ -236,7 +236,7 @@ export default function HubSpotReportPage() {
                 .order("date", { ascending: false })
                 .limit(2000);
 
-            console.log(`✅ [FETCH] Query completou: ${data?.length} registros, total: ${count}`);
+            console.log(`✅ [FETCH] Query completou: ${data?.length} records, total: ${count}`);
 
             if (error) {
                 console.error('❌ [FETCH] Erro na query:', error);
@@ -280,11 +280,11 @@ export default function HubSpotReportPage() {
 
     const syncFromSQLServer = async () => {
         try {
-            console.log('🔄 [HUBSPOT FRONTEND] Iniciando sincronização...');
+            console.log('🔄 [HUBSPOT FRONTEND] Starting sync...');
             setSyncing(true);
-            showAlert("success", "Sincronizando dados do SQL Server... (pode levar até 2 minutos)");
+            showAlert("success", "Syncing data from SQL Server... (may take up to 2 minutes)");
 
-            console.log('📡 [HUBSPOT FRONTEND] Fazendo requisição para /api/hubspot/sync...');
+            console.log('📡 [HUBSPOT FRONTEND] Making request to /api/hubspot/sync...');
 
             // Criar um controller para controlar timeout
             const controller = new AbortController();
@@ -297,7 +297,7 @@ export default function HubSpotReportPage() {
 
             clearTimeout(timeoutId);
 
-            console.log('📥 [HUBSPOT FRONTEND] Resposta recebida:', response.status);
+            console.log('📥 [HUBSPOT FRONTEND] Response received:', response.status);
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -305,20 +305,20 @@ export default function HubSpotReportPage() {
             }
 
             const result = await response.json();
-            console.log('📋 [HUBSPOT FRONTEND] Resultado:', result);
+            console.log('📋 [HUBSPOT FRONTEND] Result:', result);
 
             if (!result.success) {
-                throw new Error(result.error || "Erro na sincronização");
+                throw new Error(result.error || "Sync error");
             }
 
             showAlert("success", result.message);
-            console.log('🔄 [HUBSPOT FRONTEND] Recarregando dados...');
+            console.log('🔄 [HUBSPOT FRONTEND] Reloading data...');
             await fetchRows();
-            console.log('✅ [HUBSPOT FRONTEND] Sincronização completa!');
+            console.log('✅ [HUBSPOT FRONTEND] Sync complete!');
         } catch (error: any) {
-            console.error('❌ [HUBSPOT FRONTEND] Erro na sincronização:', error);
+            console.error('❌ [HUBSPOT FRONTEND] Sync error:', error);
             if (error.name === 'AbortError') {
-                showAlert("error", "Sincronização cancelada: tempo limite excedido (3 min)");
+                showAlert("error", "Sync cancelled: timeout exceeded (3 min)");
             } else {
                 showAlert("error", `Erro ao sincronizar: ${error.message}`);
             }
@@ -333,7 +333,7 @@ export default function HubSpotReportPage() {
         }
 
         try {
-            console.log('🗑️ Iniciando limpeza e re-sincronização...');
+            console.log('🗑️ Starting cleanup and re-sync...');
             setCleaning(true);
 
             // Passo 1: Deletar dados antigos
@@ -347,13 +347,13 @@ export default function HubSpotReportPage() {
                 throw new Error(cleanupResult.error || "Erro ao deletar dados");
             }
 
-            console.log(`✅ ${cleanupResult.deleted} registros deletados`);
+            console.log(`✅ ${cleanupResult.deleted} records deletados`);
 
             // Passo 2: Sincronizar novamente
             showAlert("success", "Re-sincronizando dados do SQL Server...");
             await syncFromSQLServer();
 
-            showAlert("success", "Limpeza e re-sincronização concluídas!");
+            showAlert("success", "Cleanup and re-sync completed!");
         } catch (error: any) {
             console.error('❌ Erro na limpeza:', error);
             showAlert("error", `Erro: ${error.message}`);
@@ -381,8 +381,8 @@ export default function HubSpotReportPage() {
             const message = `
 Schema verificado! 
 ✓ ${result.totalColumns} colunas na tabela Deal
-✓ ${result.criticalFields.filter((f: any) => f.exists).length}/${result.criticalFields.length} campos críticos encontrados
-✓ ${result.relatedTables.filter((t: any) => t.exists).length}/${result.relatedTables.length} tabelas relacionadas disponíveis
+✓ ${result.criticalFields.filter((f: any) => f.exists).length}/${result.criticalFields.length} critical fields found
+✓ ${result.relatedTables.filter((t: any) => t.exists).length}/${result.relatedTables.length} related tables available
 
 ${result.recommendations.join('\n')}
             `.trim();
@@ -392,7 +392,7 @@ ${result.recommendations.join('\n')}
             // Abrir console para ver detalhes completos
             console.table(result.criticalFields);
             console.table(result.relatedTables);
-            console.log('💡 Recomendações:', result.recommendations);
+            console.log('💡 Recommendations:', result.recommendations);
 
         } catch (error: any) {
             console.error('❌ Erro ao verificar schema:', error);
@@ -406,7 +406,7 @@ ${result.recommendations.join('\n')}
     const runAutoMatch = async (dryRun: boolean = false) => {
         try {
             setMatching(true);
-            showAlert("success", dryRun ? "Analisando matches possíveis..." : "Executando auto-match...");
+            showAlert("success", dryRun ? "Analyzing possible matches..." : "Executing auto-match...");
 
             const response = await fetch("/api/hubspot/auto-match", {
                 method: "POST",
@@ -422,8 +422,8 @@ ${result.recommendations.join('\n')}
 
             setMatchStats(result.stats);
             showAlert("success", dryRun
-                ? `Análise completa: ${result.stats.matched} matches encontrados (${result.stats.averageConfidence}% confiança média)`
-                : `Auto-match completo: ${result.stats.matched} registros reconciliados`
+                ? `Analysis complete: ${result.stats.matched} matches found (${result.stats.averageConfidence}% average confidence)`
+                : `Auto-match completo: ${result.stats.matched} records reconciliados`
             );
 
             if (!dryRun) {
@@ -603,12 +603,12 @@ ${result.recommendations.join('\n')}
     };
 
     const exportToCSV = () => {
-        const headers = ["Data", "Descrição", "Valor", "Conciliado", "Deal ID", "Stage", "Pipeline", "Owner", "Company"];
+        const headers = ["Data", "Description", "Amount", "Reconciled", "Deal ID", "Stage", "Pipeline", "Owner", "Company"];
         const csvData = filteredRows.map((row) => [
             row.date,
             row.description,
             row.amount,
-            row.reconciled ? "Sim" : "Não",
+            row.reconciled ? "Yes" : "No",
             row.custom_data?.deal_id || "",
             row.custom_data?.stage || "",
             row.custom_data?.pipeline || "",
@@ -652,13 +652,13 @@ ${result.recommendations.join('\n')}
         };
     }, [rows]);
 
-    // Calcular total de registros após filtros (para paginação correta)
+    // Calcular total de records após filtros (para paginação correta)
     const totalFilteredCount = filteredRows.length;
     const totalPages = Math.ceil(totalFilteredCount / pageSize);
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center min-h-screen">
+            <div className="flex items-center justify-center min-h-full">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             </div>
         );
@@ -776,7 +776,7 @@ ${result.recommendations.join('\n')}
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
-                            Conciliados
+                            Reconcileds
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -788,7 +788,7 @@ ${result.recommendations.join('\n')}
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
-                            Pendentes
+                            Pending
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -809,14 +809,14 @@ ${result.recommendations.join('\n')}
                             {stats.matched}
                         </div>
                         <p className="text-xs text-purple-600 mt-1">
-                            {stats.avgConfidence}% confiança média
+                            {stats.avgConfidence}% average confidence
                         </p>
                     </CardContent>
                 </Card>
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
-                            Valor Total
+                            Amount Total
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -828,7 +828,7 @@ ${result.recommendations.join('\n')}
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
-                            Conciliado
+                            Reconciled
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -848,7 +848,7 @@ ${result.recommendations.join('\n')}
                 </CardHeader>
                 <CardContent className="flex gap-4">
                     <Input
-                        placeholder="Buscar por descrição, deal ID, empresa..."
+                        placeholder="Search by description, deal ID, company..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="max-w-md"
@@ -860,7 +860,7 @@ ${result.recommendations.join('\n')}
                     >
                         <option value="all">Todos Status</option>
                         <option value="paid">Pagos</option>
-                        <option value="unpaid">Não Pagos</option>
+                        <option value="unpaid">No Pagos</option>
                     </select>
                 </CardContent>
             </Card>
@@ -918,14 +918,14 @@ ${result.recommendations.join('\n')}
                                     const paidStatusRaw = row.custom_data?.paid_status || row.custom_data?.Paid_Status || 'Unpaid';
                                     const paidStatus = getLastPaidStatus(paidStatusRaw);
 
-                                    // Valores numéricos
+                                    // Amountes numéricos
                                     const totalPaid = row.custom_data?.total_paid || row.custom_data?.Total_Paid || 0;
                                     const totalAmount = row.amount || row.custom_data?.Total || 0;
 
                                     return (
                                         <>
                                             <tr key={row.id} className="hover:bg-gray-50">
-                                                {/* 1. Order ID com ícone de olho */}
+                                                {/* 1. Order ID with eye icon */}
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
                                                         <span className="text-blue-600 font-semibold font-mono">
@@ -1136,7 +1136,7 @@ ${result.recommendations.join('\n')}
                                                                             </code>
                                                                         </div>
                                                                         <div className="flex items-center gap-2">
-                                                                            <span className="text-gray-600 min-w-[140px]">Conta destino:</span>
+                                                                            <span className="text-gray-600 min-w-[140px]">Destination account:</span>
                                                                             <code className="bg-orange-50 px-2 py-1 rounded font-mono text-orange-700 break-all">
                                                                                 {row.custom_data?.bank_destination_account || "-"}
                                                                             </code>
@@ -1315,11 +1315,11 @@ ${result.recommendations.join('\n')}
                         </div>
                     )}
 
-                    {/* Paginação */}
+                    {/* Pagination */}
                     {filteredRows.length > 0 && (
                         <div className="flex items-center justify-between p-4 bg-gray-50 border-t">
                             <div className="text-sm text-gray-600">
-                                Mostrando {totalFilteredCount === 0 ? 0 : ((currentPage - 1) * pageSize) + 1} a {Math.min(currentPage * pageSize, totalFilteredCount)} de {totalFilteredCount} registros
+                                Mostrando {totalFilteredCount === 0 ? 0 : ((currentPage - 1) * pageSize) + 1} a {Math.min(currentPage * pageSize, totalFilteredCount)} de {totalFilteredCount} records
                             </div>
                             <div className="flex gap-2">
                                 <Button
@@ -1332,7 +1332,7 @@ ${result.recommendations.join('\n')}
                                 </Button>
                                 <div className="flex items-center gap-2 px-3">
                                     <span className="text-sm font-medium">
-                                        Página {currentPage} de {totalPages}
+                                        Page {currentPage} de {totalPages}
                                     </span>
                                 </div>
                                 <Button
@@ -1341,7 +1341,7 @@ ${result.recommendations.join('\n')}
                                     variant="outline"
                                     size="sm"
                                 >
-                                    Próxima
+                                    Next
                                 </Button>
                             </div>
                         </div>

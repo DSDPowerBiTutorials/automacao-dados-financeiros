@@ -53,7 +53,7 @@ export default function HubSpotPipelinePage() {
 
             if (error) throw error;
 
-            // Agrupar por stage
+            // Group por stage
             const stageGroups: { [key: string]: any[] } = {};
             data?.forEach((row) => {
                 const stage = row.custom_data?.stage || "Unknown";
@@ -129,7 +129,7 @@ export default function HubSpotPipelinePage() {
                     <div>
                         <h1 className="text-3xl font-bold">Pipeline Analytics</h1>
                         <p className="text-gray-500">
-                            Análise do funil de vendas e métricas de conversão
+                            Sales funnel analysis and conversion metrics
                         </p>
                     </div>
                 </div>
@@ -155,7 +155,7 @@ export default function HubSpotPipelinePage() {
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <DollarSign className="w-4 h-4" />
-                            Valor Total
+                            Amount Total
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -168,7 +168,7 @@ export default function HubSpotPipelinePage() {
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
                             <TrendingUp className="w-4 h-4" />
-                            Deal Médio
+                            Average Deal
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -210,7 +210,7 @@ export default function HubSpotPipelinePage() {
                 <CardHeader>
                     <CardTitle>Stages do Pipeline</CardTitle>
                     <CardDescription>
-                        Distribuição de deals por estágio do funil de vendas
+                        Deal distribution by sales funnel stage
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
@@ -233,7 +233,7 @@ export default function HubSpotPipelinePage() {
                                                     {stage.stage.replace(/_/g, " ")}
                                                 </div>
                                                 <div className="text-sm text-gray-500">
-                                                    {stage.count} deals • Média:{" "}
+                                                    {stage.count} deals • Average:{" "}
                                                     {formatCurrency(stage.avgDealSize)}
                                                 </div>
                                             </div>
@@ -266,7 +266,7 @@ export default function HubSpotPipelinePage() {
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <Target className="w-5 h-5" />
-                            Taxa de Conversão
+                            Conversion Rate
                         </CardTitle>
                     </CardHeader>
                     <CardContent>

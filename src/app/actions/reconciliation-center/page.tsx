@@ -2,12 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { format } from "date-fns";
-import {
-  AlertCircle,
-  CheckCircle2,
-  FileSpreadsheet,
-  Loader2,
-} from "lucide-react";
+import { AlertCircle, CheckCircle2, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,12 +43,12 @@ export default function ReconciliationCenter() {
     const loadRows = async () => {
       if (!supabase) {
         console.error(
-          "❌ Supabase client não configurado para reconciliation-center",
+          "❌ Supabase client not configured for reconciliation-center",
         );
         toast({
-          title: "Supabase indisponível",
+          title: "Supabase unavailable",
           description:
-            "Configure as variáveis de ambiente do Supabase para carregar os uploads.",
+            "Configure Supabase environment variables to load uploads.",
           variant: "destructive",
         });
         setIsLoading(false);
@@ -82,11 +77,11 @@ export default function ReconciliationCenter() {
         });
         setLinks(initialLinks);
       } catch (error) {
-        console.error("❌ Erro ao carregar CSVs do Supabase:", error);
+        console.error("❌ Error loading CSVs from Supabase:", error);
         toast({
-          title: "Erro ao carregar dados",
+          title: "Error loading data",
           description:
-            "Não foi possível carregar os uploads recentes. Tente novamente em instantes.",
+            "Could not load recent uploads. Please try again shortly.",
           variant: "destructive",
         });
       } finally {
@@ -99,11 +94,11 @@ export default function ReconciliationCenter() {
 
   const handleSave = async (src: string) => {
     if (!supabase) {
-      console.error("❌ Supabase client não configurado para salvar link");
+      console.error("❌ Supabase client not configured to save link");
       toast({
-        title: "Supabase indisponível",
+        title: "Supabase unavailable",
         description:
-          "Configure as variáveis de ambiente do Supabase para salvar os links.",
+          "Configure Supabase environment variables to save links.",
         variant: "destructive",
       });
       return;
@@ -112,8 +107,8 @@ export default function ReconciliationCenter() {
     const link = links[src];
     if (!link) {
       toast({
-        title: "Informe um link",
-        description: "Adicione uma URL válida antes de salvar.",
+        title: "Enter a link",
+        description: "Add a valid URL before saving.",
         variant: "destructive",
       });
       return;
@@ -132,15 +127,15 @@ export default function ReconciliationCenter() {
       }
 
       toast({
-        title: "Link atualizado",
-        description: "URL salva com sucesso no Supabase.",
+        title: "Link updated",
+        description: "URL successfully saved to Supabase.",
       });
     } catch (error) {
-      console.error("❌ Erro ao salvar link no Supabase:", error);
+      console.error("❌ Error saving link to Supabase:", error);
       toast({
-        title: "Erro ao salvar",
+        title: "Error saving",
         description:
-          "Não foi possível atualizar o link. Verifique a URL e tente novamente.",
+          "Could not update the link. Check the URL and try again.",
         variant: "destructive",
       });
     } finally {
@@ -153,8 +148,8 @@ export default function ReconciliationCenter() {
   const getStatus = (createdAt: string | null) => {
     if (!createdAt) {
       return {
-        label: "Sem upload",
-        color: "text-red-600",
+        label: "No upload",
+        className: "badge-light-danger",
       };
     }
 
@@ -162,42 +157,32 @@ export default function ReconciliationCenter() {
     const days = Math.floor((now.getTime() - lastUpload.getTime()) / 86400000);
 
     if (days <= 2) {
-      return { label: "Atualizado", color: "text-green-600" };
+      return { label: "Up to date", className: "badge-light-success" };
     }
 
     if (days <= 4) {
-      return { label: "Pendente", color: "text-yellow-500" };
+      return { label: "Pending", className: "badge-light-warning" };
     }
 
     if (days <= 7) {
-      return { label: "Atenção", color: "text-orange-500" };
+      return { label: "Attention", className: "badge-light-warning" };
     }
 
-    return { label: "Desatualizado", color: "text-red-600" };
+    return { label: "Outdated", className: "badge-light-danger" };
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full">
 
       <main className="">
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-sm sticky top-0 z-20">
-          <div className="container mx-auto px-6 py-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#1a2b4a] to-[#2c3e5f] flex items-center justify-center">
-              <FileSpreadsheet className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-[#1a2b4a]">
-                Reconciliation Center
-              </h1>
-              <p className="text-sm text-gray-600">
-                Monitoramento dos uploads CSV por conta e atualização de links
-                de referência.
-              </p>
-            </div>
-          </div>
+        <header className="page-header-standard">
+          <h1 className="header-title">Reconciliation Center</h1>
+          <p className="header-subtitle">
+            Monitor CSV uploads per account and update reference links.
+          </p>
         </header>
 
-        <section className="container mx-auto px-6 py-10">
+        <section className="px-6 py-10">
           <Card className="shadow-lg">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <div className="flex items-center gap-3">
@@ -205,26 +190,26 @@ export default function ReconciliationCenter() {
                 <div>
                   <CardTitle className="text-xl">CSV Uploads</CardTitle>
                   <CardDescription className="text-white/80 text-sm">
-                    Status e links das últimas importações.
+                    Status and links of recent imports.
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
 
             <CardContent className="overflow-x-auto p-0">
-              <table className="w-full text-sm">
+              <table className="table-standard">
                 <thead className="border-b bg-gray-50">
                   <tr>
-                    <th className="text-left py-3 px-4 font-bold">Fonte</th>
+                    <th className="text-left py-3 px-4 font-bold">Source</th>
                     <th className="text-left py-3 px-4 font-bold">
-                      Tipo de Integração
+                      Integration Type
                     </th>
                     <th className="text-center py-3 px-4 font-bold">Status</th>
                     <th className="text-center py-3 px-4 font-bold">
-                      Último Upload
+                      Last Upload
                     </th>
                     <th className="text-left py-3 px-4 font-bold">
-                      Link do CSV
+                      CSV Link
                     </th>
                   </tr>
                 </thead>
@@ -239,10 +224,10 @@ export default function ReconciliationCenter() {
                           {label}
                         </td>
                         <td className="py-3 px-4 text-gray-700">CSV Upload</td>
-                        <td
-                          className={`py-3 px-4 text-center font-semibold ${status.color}`}
-                        >
-                          {status.label}
+                        <td className="py-3 px-4 text-center">
+                          <span className={status.className}>
+                            {status.label}
+                          </span>
                         </td>
                         <td className="py-3 px-4 text-center text-gray-700">
                           {data?.created_at
@@ -269,7 +254,7 @@ export default function ReconciliationCenter() {
                               {isSaving[source] ? (
                                 <Loader2 className="h-4 w-4 animate-spin" />
                               ) : (
-                                "Salvar"
+                                "Save"
                               )}
                             </Button>
                           </div>
@@ -286,7 +271,7 @@ export default function ReconciliationCenter() {
                       >
                         <div className="inline-flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
-                          <span>Carregando uploads...</span>
+                          <span>Loading uploads...</span>
                         </div>
                       </td>
                     </tr>
@@ -300,7 +285,7 @@ export default function ReconciliationCenter() {
                       >
                         <div className="inline-flex items-center gap-2">
                           <AlertCircle className="h-4 w-4" />
-                          <span>Nenhum upload encontrado no Supabase.</span>
+                          <span>No uploads found in Supabase.</span>
                         </div>
                       </td>
                     </tr>

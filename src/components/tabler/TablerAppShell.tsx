@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import { TablerTopbar } from "@/components/tabler/TablerTopbar";
+import Image from "next/image";
 
 const NAV_VISIBILITY_STORAGE_KEY = "tblr.nav.visible";
 
@@ -42,8 +43,20 @@ export function TablerAppShell({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="page">
-      <div className="page-wrapper">
+    <div className="page relative min-h-screen">
+      {/* Background with logos - fixed behind everything */}
+      <div className="fixed inset-0 z-0">
+        <Image
+          src="/LoginBackgroundLogo.png"
+          alt="Background"
+          fill
+          className="object-cover"
+          priority
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-[#243140]/50" />
+      </div>
+
+      <div className="page-wrapper relative z-10">
         <TablerTopbar
           mobileOpen={mobileOpen}
           navVisible={navVisible}
@@ -51,7 +64,11 @@ export function TablerAppShell({ children }: { children: React.ReactNode }) {
           onToggleNavVisible={toggleNavVisible}
         />
         <div className="page-body">
-          <div className="app-container">{children}</div>
+          <div className="app-container">
+            <div className="app-content-wrapper bg-white rounded-lg shadow-xl my-4 min-h-[calc(100vh-120px)]">
+              {children}
+            </div>
+          </div>
         </div>
       </div>
     </div>

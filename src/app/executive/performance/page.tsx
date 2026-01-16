@@ -44,14 +44,14 @@ export default function PerformanceAnalyticsPage() {
   ];
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Performance Analytics</h1>
-        <p className="text-gray-600 mt-1">
+      <header className="page-header-standard">
+        <h1 className="header-title">Performance Analytics</h1>
+        <p className="header-subtitle">
           Real-time performance metrics and business intelligence
         </p>
-      </div>
+      </header>
 
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -140,7 +140,7 @@ export default function PerformanceAnalyticsPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="table-standard">
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Department</th>
@@ -154,10 +154,10 @@ export default function PerformanceAnalyticsPage() {
                 <tr className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4 font-medium">Sales</td>
                   <td className="py-3 px-4 text-right">€2,450,000</td>
-                  <td className="py-3 px-4 text-right text-green-600">+15.3%</td>
+                  <td className="py-3 px-4 text-right amount-positive">+15.3%</td>
                   <td className="py-3 px-4 text-right">28.5%</td>
                   <td className="py-3 px-4 text-right">
-                    <span className="px-2 py-1 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                    <span className="badge-light-success">
                       Excellent
                     </span>
                   </td>
@@ -165,10 +165,10 @@ export default function PerformanceAnalyticsPage() {
                 <tr className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4 font-medium">Marketing</td>
                   <td className="py-3 px-4 text-right">€1,250,000</td>
-                  <td className="py-3 px-4 text-right text-green-600">+8.7%</td>
+                  <td className="py-3 px-4 text-right amount-positive">+8.7%</td>
                   <td className="py-3 px-4 text-right">22.1%</td>
                   <td className="py-3 px-4 text-right">
-                    <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                    <span className="badge-light-info">
                       Good
                     </span>
                   </td>
@@ -176,10 +176,10 @@ export default function PerformanceAnalyticsPage() {
                 <tr className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4 font-medium">Operations</td>
                   <td className="py-3 px-4 text-right">€890,000</td>
-                  <td className="py-3 px-4 text-right text-red-600">-2.3%</td>
+                  <td className="py-3 px-4 text-right amount-negative">-2.3%</td>
                   <td className="py-3 px-4 text-right">18.9%</td>
                   <td className="py-3 px-4 text-right">
-                    <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full text-xs font-medium">
+                    <span className="badge-light-warning">
                       Needs Attention
                     </span>
                   </td>

@@ -103,7 +103,7 @@ export default function HubSpotSettingsPage() {
             if (error) throw error;
 
             setConnectionStatus("connected");
-            showAlert("success", `Conexão ativa! ${dataStats.deals} deals disponíveis`);
+            showAlert("success", `Connection active! ${dataStats.deals} deals available`);
         } catch (error) {
             setConnectionStatus("disconnected");
             showAlert("error", "Falha ao conectar com dados do HubSpot");
@@ -113,7 +113,7 @@ export default function HubSpotSettingsPage() {
     const syncHubSpotData = async () => {
         setLoading(true);
         try {
-            showAlert("success", "Iniciando sincronização...");
+            showAlert("success", "Starting sync...");
 
             const response = await fetch("/api/hubspot/sync", {
                 method: "POST",
@@ -125,10 +125,10 @@ export default function HubSpotSettingsPage() {
                 throw new Error(result.error || "Erro ao sincronizar");
             }
 
-            showAlert("success", result.message || "Sincronização concluída!");
+            showAlert("success", result.message || "Sync completed!");
             await fetchDataStats();
         } catch (error: any) {
-            console.error("Erro na sincronização:", error);
+            console.error("Sync error:", error);
             showAlert("error", `Erro ao sincronizar: ${error.message}`);
         } finally {
             setLoading(false);
@@ -137,7 +137,7 @@ export default function HubSpotSettingsPage() {
 
     const checkAvailableTables = async () => {
         try {
-            showAlert("success", "Verificando tabelas disponíveis...");
+            showAlert("success", "Checking available tables...");
 
             const response = await fetch("/api/hubspot/tables");
             const result = await response.json();
@@ -146,7 +146,7 @@ export default function HubSpotSettingsPage() {
                 throw new Error(result.error || "Erro ao verificar tabelas");
             }
 
-            console.log("Tabelas disponíveis:", result.tables);
+            console.log("Available tables:", result.tables);
             showAlert("success", `Encontradas ${result.count} tabelas no SQL Server. Verifique o console para detalhes.`);
         } catch (error: any) {
             console.error("Erro ao verificar tabelas:", error);
@@ -159,7 +159,7 @@ export default function HubSpotSettingsPage() {
         try {
             // Aqui você salvaria as configurações no banco
             await new Promise((resolve) => setTimeout(resolve, 1000));
-            showAlert("success", "Configurações salvas com sucesso!");
+            showAlert("success", "Settings saved successfully!");
         } catch (error: any) {
             showAlert("error", `Erro ao salvar: ${error.message}`);
         } finally {
@@ -185,7 +185,7 @@ export default function HubSpotSettingsPage() {
                     <div>
                         <h1 className="text-3xl font-bold">HubSpot Settings</h1>
                         <p className="text-gray-500">
-                            Configurações de sincronização e integração
+                            Sync and integration settings
                         </p>
                     </div>
                 </div>
@@ -202,7 +202,7 @@ export default function HubSpotSettingsPage() {
                     ) : (
                         <>
                             <Save className="w-4 h-4" />
-                            Salvar Configurações
+                            Save Settings
                         </>
                     )}
                 </Button>
@@ -231,10 +231,10 @@ export default function HubSpotSettingsPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Globe className="w-5 h-5" />
-                        Status da Conexão
+                        Connection Status
                     </CardTitle>
                     <CardDescription>
-                        Estado atual da integração com HubSpot
+                        Current HubSpot integration status
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -255,10 +255,10 @@ export default function HubSpotSettingsPage() {
                                     {connectionStatus === "disconnected" &&
                                         "Desconectado"}
                                     {connectionStatus === "testing" &&
-                                        "Testando conexão..."}
+                                        "Testing connection..."}
                                 </div>
                                 <div className="text-sm text-gray-500">
-                                    {dataStats.deals} deals sincronizados | Última sincronização:{" "}
+                                    {dataStats.deals} deals synced | Last sync:{" "}
                                     {formatTimestamp(settings.lastSync)}
                                 </div>
                             </div>
@@ -270,7 +270,7 @@ export default function HubSpotSettingsPage() {
                             className="gap-2"
                         >
                             <RefreshCw className="w-4 h-4" />
-                            Testar Conexão
+                            Test Connection
                         </Button>
                     </div>
 
@@ -309,10 +309,10 @@ export default function HubSpotSettingsPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Key className="w-5 h-5" />
-                        Configuração da API
+                        API Configuration
                     </CardTitle>
                     <CardDescription>
-                        Credenciais e endpoints de integração
+                        Integration credentials and endpoints
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -355,7 +355,7 @@ export default function HubSpotSettingsPage() {
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                         <Database className="w-5 h-5" />
-                        Configuração de Sincronização
+                        Sync Configuration
                     </CardTitle>
                     <CardDescription>
                         Controle o que sincronizar do HubSpot
@@ -364,7 +364,7 @@ export default function HubSpotSettingsPage() {
                 <CardContent className="space-y-4">
                     <div className="flex items-center justify-between">
                         <div className="space-y-1">
-                            <div className="font-medium">Sincronização Automática</div>
+                            <div className="font-medium">Auto Sync</div>
                             <div className="text-sm text-gray-500">
                                 Sincronizar automaticamente em intervalos regulares
                             </div>
@@ -382,7 +382,7 @@ export default function HubSpotSettingsPage() {
                     <div className="space-y-2">
                         <label className="text-sm font-medium flex items-center gap-2">
                             <Clock className="w-4 h-4" />
-                            Intervalo de Sincronização (minutos)
+                            Sync Interval (minutes)
                         </label>
                         <Input
                             type="number"
@@ -465,9 +465,9 @@ export default function HubSpotSettingsPage() {
             <Alert className="bg-blue-50 border-blue-200">
                 <AlertCircle className="w-4 h-4 text-blue-600" />
                 <AlertDescription className="text-blue-900">
-                    <strong>Nota:</strong> As alterações nas configurações de sincronização
-                    afetarão a próxima execução automática. Para sincronizar imediatamente,
-                    use o botão &quot;Sincronizar&quot; nas páginas específicas.
+                    <strong>Note:</strong> The changes to sync settings
+                    will affect the next auto execution. Para sincronizar imediatamente,
+                    use the button &quot;Sincronizar&quot; on specific pages.
                 </AlertDescription>
             </Alert>
         </div>

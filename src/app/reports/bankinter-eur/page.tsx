@@ -211,13 +211,13 @@ export default function BankinterEURPage() {
       }
 
       const summary = result.data?.summary
-      let message = `✅ ${result.data.rowCount} transações importadas!`
+      let message = `✅ ${result.data.rowCount} transactions imported!`
 
       if (summary) {
         message += `\n\n📊 Resumo:`
-        message += `\n• Total Crédito: €${summary.totalCredito.toFixed(2)}`
-        message += `\n• Total Débito: €${summary.totalDebito.toFixed(2)}`
-        message += `\n• Saldo Final: €${summary.saldoFinal.toFixed(2)}`
+        message += `\n• Total Credit: €${summary.totalCredito.toFixed(2)}`
+        message += `\n• Total Debit: €${summary.totalDebito.toFixed(2)}`
+        message += `\n• Closing Balance: €${summary.saldoFinal.toFixed(2)}`
         if (summary.totalSkipped > 0) {
           message += `\n• Linhas ignoradas: ${summary.totalSkipped}`
         }
@@ -460,9 +460,29 @@ export default function BankinterEURPage() {
     return paymentSourceColors[source] || { bg: "bg-gray-100", text: "text-gray-600", border: "border-gray-200" }
   }
 
-  // Calcular estatísticas
+  // Calcular estatísticas com saldo inicial e final
   const calculateStats = () => {
+    if (filteredRows.length === 0) {
+      return {
+        totalIncomes: 0,
+        totalExpenses: 0,
+        incomesBySource: {} as Record<string, number>,
+        unreconciledCount: 0,
+        openingBalance: 0,
+        closingBalance: 0,
+        oldestDate: null as string | null,
+        newestDate: null as string | null
+      }
+    }
+
+    // Ordenar por data
+    const sortedByDate = [...filteredRows].sort((a, b) =>
+      new Date(a.date).getTime() - new Date(b.date).getTime()
+    )
+
     const totalIncomes = filteredRows.filter((row) => row.amount > 0).reduce((sum, row) => sum + row.amount, 0)
+    const totalExpenses = filteredRows.filter((row) => row.amount < 0).reduce((sum, row) => sum + Math.abs(row.amount), 0)
+
     const incomesBySource = filteredRows
       .filter((row) => row.amount > 0 && row.paymentSource)
       .reduce((acc, row) => {
@@ -471,24 +491,45 @@ export default function BankinterEURPage() {
       }, {} as Record<string, number>)
     const unreconciledCount = filteredRows.filter((row) => !row.conciliado).length
 
-    return { totalIncomes, incomesBySource, unreconciledCount }
+    // Saldo inicial = soma das transactions ANTES do período filtrado
+    const transactionsBeforePeriod = dateFrom
+      ? rows.filter(r => r.date < dateFrom).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      : []
+    const openingBalance = transactionsBeforePeriod.reduce((sum, r) => sum + r.amount, 0)
+
+    // Saldo final = saldo inicial + movement do período
+    const closingBalance = openingBalance + totalIncomes - totalExpenses
+
+    const oldestDate = sortedByDate.length > 0 ? sortedByDate[0].date : null
+    const newestDate = sortedByDate.length > 0 ? sortedByDate[sortedByDate.length - 1].date : null
+
+    return {
+      totalIncomes,
+      totalExpenses,
+      incomesBySource,
+      unreconciledCount,
+      openingBalance,
+      closingBalance,
+      oldestDate,
+      newestDate
+    }
   }
 
-  const { totalIncomes, incomesBySource, unreconciledCount } = calculateStats()
+  const stats = calculateStats()
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#FF7300]" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full">
       <div>
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
-          <div className="container mx-auto px-6 py-5">
+        <header className="page-header-standard">
+          <div className="flex items-center justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/">
@@ -549,10 +590,10 @@ export default function BankinterEURPage() {
                   variant="outline"
                   size="sm"
                   className="gap-2 border-white text-white hover:bg-white/10"
-                  title="Forçar atualização dos dados"
+                  title="Force data refresh"
                 >
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  Atualizar
+                  Refresh
                 </Button>
                 <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
@@ -611,7 +652,7 @@ export default function BankinterEURPage() {
         </header>
 
         {/* 🏦 Account Information Card */}
-        <div className="container mx-auto px-6 py-4">
+        <div className="px-6 py-4">
           <Card className="bg-gradient-to-r from-[#FF7300] to-[#FF9A3C] border-0 shadow-xl">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -636,11 +677,8 @@ export default function BankinterEURPage() {
                 </div>
                 <div className="text-right text-white">
                   <p className="text-sm opacity-90">Current Balance</p>
-                  <p className="text-2xl font-bold">
-                    {rows.length > 0
-                      ? formatCurrency(rows.reduce((sum, r) => sum + r.amount, 0))
-                      : "€0.00"
-                    }
+                  <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-emerald-200" : "text-red-200"}`}>
+                    {formatCurrency(stats.closingBalance)}
                   </p>
                 </div>
               </div>
@@ -648,7 +686,80 @@ export default function BankinterEURPage() {
           </Card>
         </div>
 
-        <div className="container mx-auto px-6 py-8">
+        {/* Stats Cards - Opening Balance, Inflows, Outflows, Closing Balance */}
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="border-l-4 border-l-blue-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  Opening Balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${stats.openingBalance >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                  {formatCurrency(stats.openingBalance)}
+                </div>
+                <p className="text-xs text-gray-500">
+                  {stats.oldestDate ? formatEuropeanDate(stats.oldestDate) : "No data"}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-emerald-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-emerald-600" />
+                  Inflows
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {formatCurrency(stats.totalIncomes)}
+                </div>
+                <p className="text-xs text-gray-500">
+                  {filteredRows.filter(r => r.amount > 0).length} transactions
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-red-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-red-600" />
+                  Outflows
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-600">
+                  {formatCurrency(stats.totalExpenses)}
+                </div>
+                <p className="text-xs text-gray-500">
+                  {filteredRows.filter(r => r.amount < 0).length} transactions
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-purple-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <Database className="w-4 h-4 text-purple-600" />
+                  Closing Balance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-purple-600" : "text-red-600"}`}>
+                  {formatCurrency(stats.closingBalance)}
+                </div>
+                <p className="text-xs text-gray-500">
+                  {stats.newestDate ? formatEuropeanDate(stats.newestDate) : "No data"}
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        <div className="px-6 py-8">
           {/* Alerta de dados antigos com erros */}
           {rows.length > 0 && rows.some(row => {
             const customData = row.custom_data || {}
@@ -658,55 +769,18 @@ export default function BankinterEURPage() {
               <Alert className="mb-6 border-2 border-red-500 bg-red-50">
                 <XCircle className="h-5 w-5 text-red-600" />
                 <AlertDescription className="text-red-800">
-                  <div className="font-bold mb-2">⚠️ ATENÇÃO: Dados com formato incorreto detectados!</div>
+                  <div className="font-bold mb-2">⚠️ WARNING: Data with incorrect format detected!</div>
                   <div className="text-sm space-y-1">
-                    <p>• Datas aparecendo como &quot;1927-07-12&quot; (Excel serial date não convertido)</p>
-                    <p>• Valores monetários incorretos (ex: 8.121.793,00 ao invés de negativo)</p>
-                    <p>• Colunas vazias (Fecha Contable, Clave, Referencia, etc.)</p>
+                    <p>• Dates appearing as &quot;1927-07-12&quot; (Excel serial date not converted)</p>
+                    <p>• Incorrect monetary amounts (ex: 8.121.793,00 instead of negative)</p>
+                    <p>• Empty columns (Fecha Contable, Clave, Referencia, etc.)</p>
                   </div>
                   <div className="mt-3 font-bold">
-                    ✅ Solução: Clique em &quot;Delete All&quot; acima e faça novo upload do arquivo XLSX
+                    ✅ Solution: Clique em &quot;Delete All&quot; above and upload the XLSX file again
                   </div>
                 </AlertDescription>
               </Alert>
             )}
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Total Incomes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-green-600">{formatCurrency(totalIncomes)}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Unreconciled Entries</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">{unreconciledCount}</div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">Incomes by Source</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-1">
-                  {Object.entries(incomesBySource).map(([source, amount]) => (
-                    <div key={source} className="flex justify-between text-sm">
-                      <span>{source}:</span>
-                      <span className="font-medium">{formatCurrency(amount)}</span>
-                    </div>
-                  ))}
-                  {Object.keys(incomesBySource).length === 0 && <div className="text-sm text-gray-500">No reconciled incomes</div>}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
 
           <Card className="shadow-xl border-2 border-gray-200">
             <CardHeader className="bg-[#FF7300] text-white">
@@ -717,24 +791,24 @@ export default function BankinterEURPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="table-standard">
                   <thead>
-                    <tr className="border-b-2 border-gray-200 bg-gray-50">
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black w-20">ID</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Fecha Contable</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Fecha Valor</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Clave</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Referencia</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Categoría</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black min-w-64">Descripción</th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Debe</th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Haber</th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Importe</th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-black">Saldo</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">Payment Source</th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">Braintree Batch</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">Reconciliado</th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">Actions</th>
+                    <tr>
+                      <th className="w-20">ID</th>
+                      <th>Accounting Date</th>
+                      <th>Value Date</th>
+                      <th>Key</th>
+                      <th>Reference</th>
+                      <th>Category</th>
+                      <th className="min-w-64">Description</th>
+                      <th className="text-right">Debit</th>
+                      <th className="text-right">Credit</th>
+                      <th className="text-right">Amount</th>
+                      <th className="text-right">Balance</th>
+                      <th className="text-center">Payment Source</th>
+                      <th>Braintree Batch</th>
+                      <th className="text-center">Reconciled</th>
+                      <th className="text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -874,7 +948,7 @@ export default function BankinterEURPage() {
                                               <span className="text-[10px] font-mono">{row.braintreeSettlementBatchId.substring(0, 32)}...</span>
                                             </div>
                                             {row.braintreeTransactionCount ? (
-                                              <div className="text-[10px] text-white/70 mt-1">{row.braintreeTransactionCount} transações</div>
+                                              <div className="text-[10px] text-white/70 mt-1">{row.braintreeTransactionCount} transactions</div>
                                             ) : null}
                                           </div>
                                         )}

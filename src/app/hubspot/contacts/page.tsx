@@ -150,10 +150,10 @@ export default function HubSpotContactsPage() {
             const result = await response.json();
 
             if (!result.success) {
-                throw new Error(result.error || "Erro na sincronização");
+                throw new Error(result.error || "Sync error");
             }
 
-            showAlert("success", result.message || "Sincronização concluída!");
+            showAlert("success", result.message || "Sync completed!");
             await fetchContacts();
         } catch (error: any) {
             showAlert("error", `Erro ao sincronizar: ${error.message}`);
@@ -163,7 +163,7 @@ export default function HubSpotContactsPage() {
     };
 
     const exportToCSV = () => {
-        const headers = ["Email", "Nome", "Sobrenome", "Telefone", "Empresa", "Cargo", "Lifecycle Stage", "Status"];
+        const headers = ["Email", "Name", "Sobrenome", "Phone", "Empresa", "Cargo", "Lifecycle Stage", "Status"];
         const csvData = filteredContacts.map((contact) => [
             contact.email,
             contact.first_name,
@@ -219,7 +219,7 @@ export default function HubSpotContactsPage() {
                     <div>
                         <h1 className="text-3xl font-bold">HubSpot Contacts</h1>
                         <p className="text-gray-500">
-                            Gestão de contatos sincronizados do HubSpot CRM
+                            Management of synced contacts from HubSpot CRM
                         </p>
                     </div>
                 </div>
@@ -251,7 +251,7 @@ export default function HubSpotContactsPage() {
                 <Card>
                     <CardHeader className="pb-3">
                         <CardTitle className="text-sm font-medium text-gray-500">
-                            Total Contatos
+                            Total Contacts
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -329,13 +329,13 @@ export default function HubSpotContactsPage() {
                             <thead className="bg-gray-50 border-b">
                                 <tr>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Nome
+                                        Name
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Email
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Telefone
+                                        Phone
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Empresa
@@ -347,7 +347,7 @@ export default function HubSpotContactsPage() {
                                         Stage
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Data Criação
+                                        Created Date
                                     </th>
                                 </tr>
                             </thead>
@@ -422,7 +422,7 @@ export default function HubSpotContactsPage() {
                                 variant="outline"
                                 className="mt-4"
                             >
-                                Sincronizar Contatos
+                                Sync Contacts
                             </Button>
                         </div>
                     )}

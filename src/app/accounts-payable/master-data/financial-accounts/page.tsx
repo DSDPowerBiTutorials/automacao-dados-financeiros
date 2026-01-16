@@ -242,12 +242,12 @@ export default function FinancialAccountsPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="min-h-full px-6 space-y-6 py-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <header className="page-header-standard">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Financial Accounts</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="header-title">Financial Accounts</h1>
+          <p className="header-subtitle">
             Manage Chart of Accounts (hierarchical structure up to 5 levels)
           </p>
         </div>
@@ -263,7 +263,7 @@ export default function FinancialAccountsPage() {
           <Plus className="h-4 w-4 mr-2" />
           New Account
         </Button>
-      </div>
+      </header>
 
       {/* Filters */}
       <Card className="p-3 rounded-xl border-gray-200 shadow-sm">
@@ -325,7 +325,7 @@ export default function FinancialAccountsPage() {
       {/* Table */}
       <Card className="rounded-xl border-gray-200 shadow-sm">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="table-standard">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase tracking-wider">
@@ -395,16 +395,15 @@ export default function FinancialAccountsPage() {
                     <td className="px-3 py-2.5 text-center text-xs">{account.level}</td>
                     <td className="px-3 py-2.5 text-xs">{getParentCode(account.parent_id)}</td>
                     <td className="px-3 py-2.5">
-                      <Badge
-                        variant={account.is_active ? "default" : "secondary"}
+                      <span
                         className={
                           account.is_active
-                            ? "bg-green-100 text-green-800 hover:bg-green-100 text-[10px] px-2 py-0.5"
-                            : "text-[10px] px-2 py-0.5"
+                            ? "badge-light-success"
+                            : "badge-light-secondary"
                         }
                       >
                         {account.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      </span>
                     </td>
                   </tr>
                 ))

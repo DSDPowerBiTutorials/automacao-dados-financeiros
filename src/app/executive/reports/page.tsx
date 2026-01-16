@@ -53,26 +53,26 @@ export default function ConsolidatedReportsPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "Available":
-        return "bg-green-100 text-green-700";
+        return "badge-light-success";
       case "Generating":
-        return "bg-blue-100 text-blue-700";
+        return "badge-light-info";
       case "Scheduled":
-        return "bg-gray-100 text-gray-700";
+        return "badge-light-warning";
       default:
-        return "bg-gray-100 text-gray-700";
+        return "badge-light-warning";
     }
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Consolidated Reports</h1>
-          <p className="text-gray-600 mt-1">
+        <header className="page-header-standard">
+          <h1 className="header-title">Consolidated Reports</h1>
+          <p className="header-subtitle">
             Access financial reports across all business units
           </p>
-        </div>
+        </header>
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2">
             <Filter className="h-4 w-4" />
@@ -145,7 +145,7 @@ export default function ConsolidatedReportsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
+                  <span className={getStatusColor(report.status)}>
                     {report.status}
                   </span>
                   {report.status === "Available" && (

@@ -29,7 +29,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
-import { formatTimestamp } from "@/lib/formatters"
+import { formatTimestamp, formatDate } from "@/lib/formatters"
 
 // Formatar números no padrão europeu: 19172.80 → 19.172,80 €
 const formatEURCurrency = (value: number | null | undefined): string => {
@@ -46,23 +46,6 @@ const formatEURCurrency = (value: number | null | undefined): string => {
 }
 
 // Formatar data: Date → "DD/MM/YYYY"
-const formatEUDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return "-"
-
-    try {
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return dateString
-
-        const day = date.getDate().toString().padStart(2, "0")
-        const month = (date.getMonth() + 1).toString().padStart(2, "0")
-        const year = date.getFullYear()
-
-        return `${day}/${month}/${year}`
-    } catch {
-        return dateString
-    }
-}
-
 interface SabadellRow {
     id: string
     date: string
@@ -451,10 +434,28 @@ export default function SabadellPage() {
         return paymentSourceColors[source] || { bg: "bg-gray-100", text: "text-gray-600", border: "border-gray-200" }
     }
 
-    // Calcular estatísticas
+    // Calcular estatísticas com saldo inicial e final
     const calculateStats = () => {
+        if (filteredRows.length === 0) {
+            return {
+                totalIncomes: 0,
+                totalExpenses: 0,
+                incomesBySource: {} as Record<string, number>,
+                unreconciledCount: 0,
+                openingBalance: 0,
+                closingBalance: 0,
+                oldestDate: null as string | null,
+                newestDate: null as string | null
+            }
+        }
+
+        // Ordenar por data
+        const sortedByDate = [...filteredRows].sort((a, b) =>
+            new Date(a.date).getTime() - new Date(b.date).getTime()
+        )
+
         const totalIncomes = filteredRows.filter((row) => row.amount > 0).reduce((sum, row) => sum + row.amount, 0)
-        const totalExpenses = filteredRows.filter((row) => row.amount < 0).reduce((sum, row) => sum + row.amount, 0)
+        const totalExpenses = filteredRows.filter((row) => row.amount < 0).reduce((sum, row) => sum + Math.abs(row.amount), 0)
         const incomesBySource = filteredRows
             .filter((row) => row.amount > 0 && row.paymentSource)
             .reduce((acc, row) => {
@@ -463,24 +464,36 @@ export default function SabadellPage() {
             }, {} as Record<string, number>)
         const unreconciledCount = filteredRows.filter((row) => !row.conciliado).length
 
-        return { totalIncomes, totalExpenses, incomesBySource, unreconciledCount }
+        // Saldo inicial = soma das transactions ANTES do período filtrado
+        const transactionsBeforePeriod = dateFrom
+            ? rows.filter(r => r.date < dateFrom).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+            : []
+        const openingBalance = transactionsBeforePeriod.reduce((sum, r) => sum + r.amount, 0)
+
+        // Saldo final = saldo inicial + movement do período
+        const closingBalance = openingBalance + totalIncomes - totalExpenses
+
+        const oldestDate = sortedByDate.length > 0 ? sortedByDate[0].date : null
+        const newestDate = sortedByDate.length > 0 ? sortedByDate[sortedByDate.length - 1].date : null
+
+        return { totalIncomes, totalExpenses, incomesBySource, unreconciledCount, openingBalance, closingBalance, oldestDate, newestDate }
     }
 
-    const { totalIncomes, totalExpenses, incomesBySource, unreconciledCount } = calculateStats()
+    const stats = calculateStats()
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center">
+            <div className="min-h-full flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-[#004E8C]" />
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-full">
             <div>
-                <header className="border-b border-[#0f1c34] bg-[#004E8C] text-white shadow-lg sticky top-0 z-30">
-                    <div className="container mx-auto px-6 py-5">
+                <header className="page-header-standard bg-[#004E8C]">
+                    <div className="flex items-center justify-between">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <Link href="/">
@@ -596,7 +609,7 @@ export default function SabadellPage() {
                 </header>
 
                 {/* 🏦 Account Information Card */}
-                <div className="container mx-auto px-6 py-4">
+                <div className="px-6 py-4">
                     <Card className="bg-gradient-to-r from-[#004E8C] to-[#003366] border-0 shadow-xl">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
@@ -621,11 +634,8 @@ export default function SabadellPage() {
                                 </div>
                                 <div className="text-right text-white">
                                     <p className="text-sm opacity-90">Current Balance</p>
-                                    <p className="text-2xl font-bold">
-                                        {rows.length > 0
-                                            ? formatEURCurrency(rows.reduce((sum, r) => sum + r.amount, 0))
-                                            : "0,00 €"
-                                        }
+                                    <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-emerald-200" : "text-red-200"}`}>
+                                        {formatEURCurrency(stats.closingBalance)}
                                     </p>
                                 </div>
                             </div>
@@ -633,53 +643,80 @@ export default function SabadellPage() {
                     </Card>
                 </div>
 
-                <div className="container mx-auto px-6 py-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <Card>
+                {/* Stats Cards - Opening Balance, Inflows, Outflows, Closing Balance */}
+                <div className="px-6 py-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <Card className="border-l-4 border-l-blue-500">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600">Total Credits</CardTitle>
+                                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-blue-600" />
+                                    Opening Balance
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-green-600">{formatEURCurrency(totalIncomes)}</div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600">Total Debits</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-red-600">{formatEURCurrency(Math.abs(totalExpenses))}</div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600">Unreconciled Entries</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-orange-600">{unreconciledCount}</div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600">Credits by Source</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-1">
-                                    {Object.entries(incomesBySource).map(([source, amount]) => (
-                                        <div key={source} className="flex justify-between text-sm">
-                                            <span>{source}:</span>
-                                            <span className="font-medium">{formatEURCurrency(amount)}</span>
-                                        </div>
-                                    ))}
-                                    {Object.keys(incomesBySource).length === 0 && <div className="text-sm text-gray-500">No reconciled credits</div>}
+                                <div className={`text-2xl font-bold ${stats.openingBalance >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                                    {formatEURCurrency(stats.openingBalance)}
                                 </div>
+                                <p className="text-xs text-gray-500">
+                                    {stats.oldestDate ? formatDate(stats.oldestDate) : "No data"}
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-l-4 border-l-emerald-500">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <Zap className="w-4 h-4 text-emerald-600" />
+                                    Inflows
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-emerald-600">
+                                    {formatEURCurrency(stats.totalIncomes)}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    {filteredRows.filter(r => r.amount > 0).length} transactions
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-l-4 border-l-red-500">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <Euro className="w-4 h-4 text-red-600" />
+                                    Outflows
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-red-600">
+                                    {formatEURCurrency(stats.totalExpenses)}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    {filteredRows.filter(r => r.amount < 0).length} transactions
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-l-4 border-l-purple-500">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <Database className="w-4 h-4 text-purple-600" />
+                                    Closing Balance
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-purple-600" : "text-red-600"}`}>
+                                    {formatEURCurrency(stats.closingBalance)}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    {stats.newestDate ? formatDate(stats.newestDate) : "No data"}
+                                </p>
                             </CardContent>
                         </Card>
                     </div>
+                </div>
 
+                <div className="px-6 py-8">
                     <Card className="shadow-xl border-2 border-gray-200">
                         <CardHeader className="bg-[#004E8C] text-white">
                             <CardTitle className="text-white">Bank Statement Details</CardTitle>
@@ -689,20 +726,20 @@ export default function SabadellPage() {
                         </CardHeader>
                         <CardContent className="p-0">
                             <div className="overflow-x-auto">
-                                <table className="w-full">
+                                <table className="table-standard">
                                     <thead>
-                                        <tr className="border-b-2 border-gray-200 bg-gray-50">
-                                            <th className="text-left py-4 px-4 font-bold text-sm text-black w-20">ID</th>
-                                            <th className="text-left py-4 px-4 font-bold text-sm text-black">Date</th>
-                                            <th className="text-left py-4 px-4 font-bold text-sm text-black">Reference</th>
-                                            <th className="text-left py-4 px-4 font-bold text-sm text-black min-w-64">Description</th>
-                                            <th className="text-right py-4 px-4 font-bold text-sm text-black">Debit</th>
-                                            <th className="text-right py-4 px-4 font-bold text-sm text-black">Credit</th>
-                                            <th className="text-right py-4 px-4 font-bold text-sm text-black">Amount</th>
-                                            <th className="text-right py-4 px-4 font-bold text-sm text-black">Balance</th>
-                                            <th className="text-center py-4 px-4 font-bold text-sm text-black">Payment Source</th>
-                                            <th className="text-center py-4 px-4 font-bold text-sm text-black">Reconciled</th>
-                                            <th className="text-center py-4 px-4 font-bold text-sm text-black">Actions</th>
+                                        <tr>
+                                            <th className="w-20">ID</th>
+                                            <th>Date</th>
+                                            <th>Reference</th>
+                                            <th className="min-w-64">Description</th>
+                                            <th className="text-right">Debit</th>
+                                            <th className="text-right">Credit</th>
+                                            <th className="text-right">Amount</th>
+                                            <th className="text-right">Balance</th>
+                                            <th className="text-center">Payment Source</th>
+                                            <th className="text-center">Reconciled</th>
+                                            <th className="text-center">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -721,7 +758,7 @@ export default function SabadellPage() {
                                                     <tr key={row.id} className="border-b border-gray-200 hover:bg-gray-50">
                                                         <td className="py-3 px-4 text-sm font-bold text-black">{row.id.substring(0, 6)}...</td>
                                                         <td className="py-3 px-4 text-sm text-black font-medium">
-                                                            {formatEUDate(row.date)}
+                                                            {formatDate(row.date)}
                                                         </td>
                                                         <td className="py-3 px-4 text-sm text-gray-700">
                                                             {customData.referencia || "-"}
@@ -778,7 +815,7 @@ export default function SabadellPage() {
                                                                                 {row.bankMatchDate && (
                                                                                     <div className="flex items-center gap-1 text-white/90">
                                                                                         <Calendar className="h-3 w-3" />
-                                                                                        <span>{formatEUDate(row.bankMatchDate)}</span>
+                                                                                        <span>{formatDate(row.bankMatchDate)}</span>
                                                                                     </div>
                                                                                 )}
                                                                                 {row.bankMatchAmount !== null && row.bankMatchAmount !== undefined && (

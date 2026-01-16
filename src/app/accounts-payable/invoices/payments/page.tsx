@@ -323,14 +323,14 @@ export default function PaymentsPage() {
     }
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="min-h-full px-6 space-y-6 py-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
+            <header className="page-header-standard">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Cash Management</h1>
-                    <p className="text-gray-500 mt-1">View cash position, scheduled payments, and account balances</p>
+                    <h1 className="header-title">Cash Management</h1>
+                    <p className="header-subtitle">View cash position, scheduled payments, and account balances</p>
                 </div>
-            </div>
+            </header>
 
             {/* Date Filter Type Selector */}
             <Card>
@@ -714,9 +714,9 @@ export default function PaymentsPage() {
                                                 {inv.bank_account_code ? (
                                                     <Badge variant="outline">{inv.bank_account_code}</Badge>
                                                 ) : (
-                                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                                    <span className="badge-light-warning">
                                                         Not Assigned
-                                                    </Badge>
+                                                    </span>
                                                 )}
                                             </TableCell>
                                         </TableRow>
@@ -773,9 +773,9 @@ export default function PaymentsPage() {
                                                 {inv.bank_account_code ? (
                                                     <Badge variant="outline">{inv.bank_account_code}</Badge>
                                                 ) : (
-                                                    <Badge variant="secondary" className="bg-yellow-100 text-yellow-800">
+                                                    <span className="badge-light-warning">
                                                         Not Assigned
-                                                    </Badge>
+                                                    </span>
                                                 )}
                                             </TableCell>
                                         </TableRow>

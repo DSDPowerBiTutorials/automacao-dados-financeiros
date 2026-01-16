@@ -4,9 +4,9 @@ export default function PaymentsPage() {
     return (
         <PlaceholderPage
             title="Accounts Receivable · Payments"
-            description="Pagamentos (a construir)."
+            description="Payments (under construction)."
             backHref="/accounts-receivable"
-            backLabel="Voltar ao Accounts Receivable"
+            backLabel="Back to Accounts Receivable"
         />
     );
 }

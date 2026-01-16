@@ -171,7 +171,7 @@ export default function GoCardlessPage() {
     loadData();
   }, []);
 
-  // Função para carregar última data de sync
+  // Function to carregar última data de sync
   const loadLastSyncDate = async () => {
     try {
       const { data, error } = await supabase
@@ -189,25 +189,25 @@ export default function GoCardlessPage() {
     }
   };
 
-  // Função para abrir seletor de colunas
+  // Function to abrir seletor de colunas
   const openColumnSelector = () => {
     setTempVisibleColumns(new Set(visibleColumns));
     setColumnSelectorOpen(true);
   };
 
-  // Função para cancelar seleção de colunas
+  // Function to cancelar seleção de colunas
   const cancelColumnSelection = () => {
     setTempVisibleColumns(new Set());
     setColumnSelectorOpen(false);
   };
 
-  // Função para aplicar seleção de colunas
+  // Function to aplicar seleção de colunas
   const applyColumnSelection = () => {
     setVisibleColumns(new Set(tempVisibleColumns));
     setColumnSelectorOpen(false);
   };
 
-  // Função para alternar coluna temporária
+  // Function to alternar coluna temporária
   const toggleTempColumn = (column: string) => {
     const newSet = new Set(tempVisibleColumns);
     if (newSet.has(column)) {
@@ -218,7 +218,7 @@ export default function GoCardlessPage() {
     setTempVisibleColumns(newSet);
   };
 
-  // Função para alternar ordenação
+  // Function to alternar ordenação
   const toggleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -228,7 +228,7 @@ export default function GoCardlessPage() {
     }
   };
 
-  // Função para unconcile (limpar reconciliação)
+  // Function to unconcile (clear reconciliation)
   const handleUnconcile = async (rowId: string) => {
     if (!confirm("Are you sure you want to clear the reconciliation for this transaction?")) return;
 
@@ -237,7 +237,7 @@ export default function GoCardlessPage() {
       const row = rows.find((r) => r.id === rowId);
       if (!row) return;
 
-      // Limpar campos de reconciliação
+      // Limpar fields of reconciliation
       const { error } = await supabase
         .from("csv_rows")
         .update({
@@ -274,7 +274,7 @@ export default function GoCardlessPage() {
   // Quando houver dados do Bankinter, altere ENABLE_AUTO_RECONCILIATION para true
   const ENABLE_AUTO_RECONCILIATION = false;
 
-  // Função para verificar se duas datas estão dentro de ±3 dias
+  // Function to verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
     date1: string,
     date2: string,
@@ -290,7 +290,7 @@ export default function GoCardlessPage() {
   const reconcileBankStatements = async (
     braintreeRows: GoCardlessRow[],
   ): Promise<GoCardlessRow[]> => {
-    // Verifica se a reconciliação automática está habilitada
+    // Check if reconciliation automática is enabled
     if (!ENABLE_AUTO_RECONCILIATION) {
       console.log("Auto-reconciliation is currently disabled");
       return braintreeRows;
@@ -491,7 +491,7 @@ export default function GoCardlessPage() {
     if (!editingRow) return;
 
     // Atualizar conciliado se destinationAccount foi definido
-    const shouldBeConciliado =
+    const shouldBeReconciled =
       editedData.destinationAccount !== null &&
       editedData.destinationAccount !== undefined &&
       editedData.destinationAccount !== "";
@@ -501,7 +501,7 @@ export default function GoCardlessPage() {
         ? {
           ...row,
           ...editedData,
-          conciliado: shouldBeConciliado,
+          conciliado: shouldBeReconciled,
           reconciliationType: "manual" as const,
         }
         : row,
@@ -597,7 +597,7 @@ export default function GoCardlessPage() {
   // Processar dados com filtros e ordenação
   const processedRows = rows
     .filter((row) => {
-      // Filtro de busca
+      // Filter by busca
       if (searchTerm) {
         const search = searchTerm.toLowerCase();
         const matchesSearch =
@@ -614,7 +614,7 @@ export default function GoCardlessPage() {
         if (!matchesSearch) return false;
       }
 
-      // Filtro de status (padrão: settled)
+      // Filter by status (padrão: settled)
       if (statusFilter && statusFilter !== "all") {
         if (statusFilter === "settled") {
           // Match both "settled" and "settled_successfully"
@@ -624,23 +624,23 @@ export default function GoCardlessPage() {
         }
       }
 
-      // Filtro de tipo
+      // Filter by tipo
       if (typeFilter && typeFilter !== "all") {
         if (!row.type || row.type !== typeFilter) return false;
       }
 
-      // Filtro de currency
+      // Filter by currency
       if (currencyFilter && currencyFilter !== "all") {
         const rowCurrency = row.currency || "EUR";
         if (rowCurrency !== currencyFilter) return false;
       }
 
-      // Filtro de payment method
+      // Filter by payment method
       if (paymentMethodFilter && paymentMethodFilter !== "all") {
         if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
       }
 
-      // Filtro de valor
+      // Filter by valor
       if (amountFilter) {
         const { operator, value } = amountFilter;
         switch (operator) {
@@ -662,7 +662,7 @@ export default function GoCardlessPage() {
         }
       }
 
-      // Filtro de data
+      // Filter by data
       if (dateFilters.date) {
         const rowDate = new Date(row.date);
         if (dateFilters.date.start) {
@@ -711,7 +711,7 @@ export default function GoCardlessPage() {
       return sortDirection === "asc" ? comparison : -comparison;
     });
 
-  // Paginação
+  // Pagination
   const totalPages = Math.ceil(processedRows.length / rowsPerPage);
   const adjustedCurrentPage = currentPage > totalPages && totalPages > 0 ? totalPages : (totalPages === 0 ? 1 : currentPage);
   const startIndex = (adjustedCurrentPage - 1) * rowsPerPage;

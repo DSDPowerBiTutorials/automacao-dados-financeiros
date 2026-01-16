@@ -8,9 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 
 export default function ChaseQuickBooksPage() {
     return (
-        <div className="min-h-screen bg-white">
-            <header className="border-b border-[#0f1c34] bg-[#117ACA] text-white shadow-lg sticky top-0 z-30">
-                <div className="container mx-auto px-6 py-5">
+        <div className="min-h-full">
+            <header className="page-header-standard">
+                <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/cash-management/bank-statements">
                             <Button variant="ghost" size="sm" className="gap-2 text-white hover:bg-white/10">
@@ -19,19 +19,19 @@ export default function ChaseQuickBooksPage() {
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                            <h1 className="header-title flex items-center gap-2">
                                 <span className="text-2xl">🇺🇸</span>
                                 Chase Bank - QuickBooks
                             </h1>
-                            <p className="text-sm text-white/80">
-                                Extratos bancários sincronizados do QuickBooks Online
+                            <p className="header-subtitle">
+                                Bank statements synced from QuickBooks Online
                             </p>
                         </div>
                     </div>
                 </div>
             </header>
 
-            <div className="container mx-auto px-6 py-8">
+            <div className="px-6 py-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Chase Business Checking */}
                     <Link href="/cash-management/chase-quickbooks/business-checking">
@@ -43,17 +43,17 @@ export default function ChaseQuickBooksPage() {
                                     </div>
                                     <div>
                                         <CardTitle className="text-lg">Chase Business Checking</CardTitle>
-                                        <CardDescription>Conta corrente empresarial</CardDescription>
+                                        <CardDescription>Business checking account</CardDescription>
                                     </div>
                                 </div>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">Moeda</span>
+                                    <span className="text-gray-500">Currency</span>
                                     <span className="font-semibold">USD ($)</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm mt-2">
-                                    <span className="text-gray-500">Fonte</span>
+                                    <span className="text-gray-500">Source</span>
                                     <span className="font-semibold text-[#117ACA]">QuickBooks Online</span>
                                 </div>
                             </CardContent>
@@ -70,17 +70,17 @@ export default function ChaseQuickBooksPage() {
                                     </div>
                                     <div>
                                         <CardTitle className="text-lg">Chase Savings</CardTitle>
-                                        <CardDescription>Conta poupança</CardDescription>
+                                        <CardDescription>Savings account</CardDescription>
                                     </div>
                                 </div>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-center justify-between text-sm">
-                                    <span className="text-gray-500">Moeda</span>
+                                    <span className="text-gray-500">Currency</span>
                                     <span className="font-semibold">USD ($)</span>
                                 </div>
                                 <div className="flex items-center justify-between text-sm mt-2">
-                                    <span className="text-gray-500">Fonte</span>
+                                    <span className="text-gray-500">Source</span>
                                     <span className="font-semibold text-[#117ACA]">QuickBooks Online</span>
                                 </div>
                             </CardContent>
@@ -96,10 +96,10 @@ export default function ChaseQuickBooksPage() {
                                 <CreditCard className="h-5 w-5 text-blue-600" />
                             </div>
                             <div>
-                                <h3 className="font-semibold text-blue-900">Sincronização Automática</h3>
+                                <h3 className="font-semibold text-blue-900">Auto Sync</h3>
                                 <p className="text-sm text-blue-700 mt-1">
-                                    Os extratos bancários são sincronizados automaticamente do QuickBooks Online.
-                                    Inclui depósitos, transferências e movimentações das contas Chase.
+                                    Bank statements are automatically synced from QuickBooks Online.
+                                    Includes deposits, transfers, and transactions from Chase accounts.
                                 </p>
                             </div>
                         </div>

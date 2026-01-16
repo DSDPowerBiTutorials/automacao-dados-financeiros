@@ -17,6 +17,8 @@ import {
   Zap,
   User,
   Filter,
+  Calendar,
+  DollarSign,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -37,7 +39,7 @@ import {
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
-import { formatCurrency, formatTimestamp } from "@/lib/formatters";
+import { formatCurrency, formatTimestamp, formatDate, formatUSD } from "@/lib/formatters";
 
 interface BankinterUSDRow {
   id: string;
@@ -181,7 +183,7 @@ export default function BankinterUSDPage() {
           .map((h) => h.trim().replace(/^\\"|\\"$/g, ""));
         console.log("Headers found:", headers);
 
-        const fechaValorIndex = headers.findIndex(
+        const fechaAmountIndex = headers.findIndex(
           (h) =>
             h.toUpperCase().replace(/[ÃÁ]/g, "A").includes("FECHA") &&
             h.toUpperCase().includes("VALOR"),
@@ -199,9 +201,9 @@ export default function BankinterUSDPage() {
         console.log("Column mapping:");
         console.log(
           "- FECHA VALOR index:",
-          fechaValorIndex,
+          fechaAmountIndex,
           "→",
-          headers[fechaValorIndex],
+          headers[fechaAmountIndex],
         );
         console.log(
           "- DESCRIPCIÓN index:",
@@ -212,7 +214,7 @@ export default function BankinterUSDPage() {
         console.log("- HABER index:", haberIndex, "→", headers[haberIndex]);
 
         if (
-          fechaValorIndex === -1 ||
+          fechaAmountIndex === -1 ||
           descripcionIndex === -1 ||
           haberIndex === -1
         ) {
@@ -247,7 +249,7 @@ export default function BankinterUSDPage() {
           }
           values.push(currentValue.trim());
 
-          const fechaValor = (values[fechaValorIndex] || "").trim();
+          const fechaAmount = (values[fechaAmountIndex] || "").trim();
           const descripcion = (values[descripcionIndex] || "").trim();
           const haberValue = (values[haberIndex] || "0").trim();
 
@@ -264,7 +266,7 @@ export default function BankinterUSDPage() {
 
           newRows.push({
             id: uniqueId,
-            date: fechaValor,
+            date: fechaAmount,
             description: descripcion,
             amount: amountNumber,
             conciliado: false,
@@ -590,6 +592,9 @@ export default function BankinterUSDPage() {
     const totalIncomes = filteredRows
       .filter((row) => row.amount > 0)
       .reduce((sum, row) => sum + row.amount, 0);
+    const totalExpenses = filteredRows
+      .filter((row) => row.amount < 0)
+      .reduce((sum, row) => sum + row.amount, 0);
     const incomesBySource = filteredRows
       .filter((row) => row.amount > 0 && row.paymentSource)
       .reduce(
@@ -603,25 +608,41 @@ export default function BankinterUSDPage() {
       (row) => !row.conciliado,
     ).length;
 
-    return { totalIncomes, incomesBySource, unreconciledCount };
+    // Calcular saldo inicial (transactions antes do período filtrado)
+    let openingBalance = 0;
+    if (dateFrom) {
+      openingBalance = rows
+        .filter((row) => row.date < dateFrom)
+        .reduce((sum, row) => sum + row.amount, 0);
+    }
+
+    // Calcular saldo final
+    const closingBalance = openingBalance + totalIncomes + totalExpenses;
+
+    // Datas do período
+    const sortedByDate = [...filteredRows].sort((a, b) => a.date.localeCompare(b.date));
+    const oldestDate = sortedByDate.length > 0 ? sortedByDate[0].date : null;
+    const newestDate = sortedByDate.length > 0 ? sortedByDate[sortedByDate.length - 1].date : null;
+
+    return { totalIncomes, totalExpenses, incomesBySource, unreconciledCount, openingBalance, closingBalance, oldestDate, newestDate };
   };
 
-  const { totalIncomes, incomesBySource, unreconciledCount } = calculateStats();
+  const stats = calculateStats();
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#FF7300]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full">
 
       <div className="">
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
-          <div className="container mx-auto px-6 py-5">
+        <header className="page-header-standard">
+          <div className="flex items-center justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/">
@@ -774,7 +795,7 @@ export default function BankinterUSDPage() {
         </header>
 
         {/* 🏦 Account Information Card */}
-        <div className="container mx-auto px-6 py-4">
+        <div className="px-6 py-4">
           <Card className="bg-gradient-to-r from-[#FF7300] to-[#FF9A3C] border-0 shadow-xl">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
@@ -799,11 +820,8 @@ export default function BankinterUSDPage() {
                 </div>
                 <div className="text-right text-white">
                   <p className="text-sm opacity-90">Current Balance</p>
-                  <p className="text-2xl font-bold">
-                    {rows.length > 0
-                      ? formatCurrency(rows.reduce((sum, r) => sum + r.amount, 0))
-                      : "$0.00"
-                    }
+                  <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-emerald-200" : "text-red-200"}`}>
+                    {formatUSD(stats.closingBalance)}
                   </p>
                 </div>
               </div>
@@ -811,61 +829,80 @@ export default function BankinterUSDPage() {
           </Card>
         </div>
 
-        <div className="container mx-auto px-6 py-8">
-          {/* Estatísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <Card>
+        {/* Stats Cards - Opening Balance, Inflows, Outflows, Closing Balance */}
+        <div className="px-6 py-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card className="border-l-4 border-l-blue-500">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Total Incomes
+                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <Calendar className="w-4 h-4 text-blue-600" />
+                  Opening Balance
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalIncomes)}
+                <div className={`text-2xl font-bold ${stats.openingBalance >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                  {formatUSD(stats.openingBalance)}
                 </div>
+                <p className="text-xs text-gray-500">
+                  {stats.oldestDate ? formatDate(stats.oldestDate) : "No data"}
+                </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-l-4 border-l-emerald-500">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Unreconciled Entries
+                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-emerald-600" />
+                  Inflows
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-emerald-600">
+                  {formatUSD(stats.totalIncomes)}
+                </div>
+                <p className="text-xs text-gray-500">
+                  {filteredRows.filter(r => r.amount > 0).length} transactions
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card className="border-l-4 border-l-red-500">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-red-600" />
+                  Outflows
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold text-red-600">
-                  {unreconciledCount}
+                  {formatUSD(stats.totalExpenses)}
                 </div>
+                <p className="text-xs text-gray-500">
+                  {filteredRows.filter(r => r.amount < 0).length} transactions
+                </p>
               </CardContent>
             </Card>
 
-            <Card>
+            <Card className="border-l-4 border-l-purple-500">
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-600">
-                  Incomes by Source
+                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                  <Database className="w-4 h-4 text-purple-600" />
+                  Closing Balance
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-1">
-                  {Object.entries(incomesBySource).map(([source, amount]) => (
-                    <div key={source} className="flex justify-between text-sm">
-                      <span>{source}:</span>
-                      <span className="font-medium">
-                        {formatCurrency(amount)}
-                      </span>
-                    </div>
-                  ))}
-                  {Object.keys(incomesBySource).length === 0 && (
-                    <div className="text-sm text-gray-500">
-                      No reconciled incomes
-                    </div>
-                  )}
+                <div className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-purple-600" : "text-red-600"}`}>
+                  {formatUSD(stats.closingBalance)}
                 </div>
+                <p className="text-xs text-gray-500">
+                  {stats.newestDate ? formatDate(stats.newestDate) : "No data"}
+                </p>
               </CardContent>
             </Card>
           </div>
+        </div>
 
+        <div className="px-6 py-8">
           <Card className="shadow-xl border-2 border-gray-200">
             <CardHeader className="bg-[#FF7300] text-white">
               <CardTitle className="text-white">
@@ -878,28 +915,28 @@ export default function BankinterUSDPage() {
             </CardHeader>
             <CardContent className="p-0">
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="table-standard">
                   <thead>
-                    <tr className="border-b-2 border-gray-200 bg-gray-50">
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black w-24">
+                    <tr>
+                      <th className="w-24">
                         ID
                       </th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">
+                      <th>
                         Date
                       </th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-black">
+                      <th>
                         Description
                       </th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-black">
+                      <th className="text-right">
                         Amount
                       </th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">
+                      <th className="text-center">
                         Payment Source
                       </th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">
+                      <th className="text-center">
                         Payout Reconciliation
                       </th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-black">
+                      <th className="text-center">
                         Actions
                       </th>
                     </tr>

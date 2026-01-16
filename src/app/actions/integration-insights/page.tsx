@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BarChart3, PlugZap } from "lucide-react";
+import { PlugZap } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -22,95 +22,86 @@ const integrations: IntegrationItem[] = [
   {
     source: "PayPal",
     type: "REST API",
-    difficulty: "🔴 Difícil",
-    steps: ["OAuth 2.0", "Paginação", "Normalização → Supabase"],
+    difficulty: "Hard",
+    steps: ["OAuth 2.0", "Pagination", "Normalize → Supabase"],
     url: "https://developer.paypal.com/api/rest/",
   },
   {
     source: "Stripe",
     type: "REST API",
-    difficulty: "🟠 Médio",
-    steps: ["API key", "GET /charges", "Gravar no Supabase"],
+    difficulty: "Medium",
+    steps: ["API key", "GET /charges", "Save to Supabase"],
     url: "https://stripe.com/docs/api",
   },
   {
     source: "GoCardless",
     type: "REST + Webhooks",
-    difficulty: "🟠 Médio",
-    steps: ["Access token", "Webhooks de evento", "Conciliação automática"],
+    difficulty: "Medium",
+    steps: ["Access token", "Event webhooks", "Auto reconciliation"],
     url: "https://developer.gocardless.com/api-reference/",
   },
   {
     source: "Braintree",
     type: "SDK + REST",
-    difficulty: "🟠 Médio",
-    steps: ["Autenticação sandbox", "Download de transações", "Cross-match"],
+    difficulty: "Medium",
+    steps: ["Sandbox auth", "Download transactions", "Cross-match"],
     url: "https://developer.paypal.com/braintree/docs",
   },
   {
     source: "Wise",
     type: "REST API",
-    difficulty: "🟡 Moderado",
-    steps: ["OAuth2", "GET /transactions", "Sincronizar → Supabase"],
+    difficulty: "Moderate",
+    steps: ["OAuth2", "GET /transactions", "Sync → Supabase"],
     url: "https://api.transferwise.com",
   },
   {
     source: "Revolut",
     type: "REST API",
-    difficulty: "🟡 Moderado",
-    steps: ["Bearer token", "GET /transactions", "Salvar no Supabase"],
+    difficulty: "Moderate",
+    steps: ["Bearer token", "GET /transactions", "Save to Supabase"],
     url: "https://developer.revolut.com",
   },
   {
     source: "Pleo",
     type: "REST API + Webhooks",
-    difficulty: "🟠 Médio",
-    steps: ["API key", "GET /expenses", "Sincronizar no Supabase"],
+    difficulty: "Medium",
+    steps: ["API key", "GET /expenses", "Sync to Supabase"],
     url: "https://developers.pleo.io",
   },
   {
     source: "Sabadell",
     type: "CSV + Portal API",
-    difficulty: "🟢 Fácil",
+    difficulty: "Easy",
     steps: [
-      "Upload manual",
-      "API opcional (SABI Connect)",
-      "Ingestão automática",
+      "Manual upload",
+      "Optional API (SABI Connect)",
+      "Auto ingestion",
     ],
     url: "https://www.bancsabadell.com",
   },
   {
     source: "DSD Web (Craft CMS)",
     type: "GraphQL + REST",
-    difficulty: "🟡 Moderado",
-    steps: ["API key", "Fetch via GraphQL", "Sincronizar no Supabase"],
+    difficulty: "Moderate",
+    steps: ["API key", "Fetch via GraphQL", "Sync to Supabase"],
     url: "https://dsdplanning.com/admin/graphql",
   },
 ];
 
 export default function IntegrationInsights() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full">
 
       <main className="">
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-sm sticky top-0 z-20">
-          <div className="container mx-auto px-6 py-6 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#2c3e5f] to-[#1a2b4a] flex items-center justify-center">
-              <BarChart3 className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-[#1a2b4a]">
-                Integration Insights Dashboard
-              </h1>
-              <p className="text-sm text-gray-600">
-                Panorama das integrações API e híbridas conectadas ao Finance
-                Hub.
-              </p>
-            </div>
-          </div>
+        <header className="page-header-standard">
+          <h1 className="header-title">Integration Insights Dashboard</h1>
+          <p className="header-subtitle">
+            Overview of API and hybrid integrations connected to the Finance
+            Hub.
+          </p>
         </header>
 
-        <section className="container mx-auto px-6 py-10">
+        <section className="px-6 py-10">
           <Card className="shadow-lg">
             <CardHeader className="bg-gradient-to-r from-[#2c3e5f] to-[#1a2b4a] text-white">
               <div className="flex items-center gap-3">
@@ -118,26 +109,26 @@ export default function IntegrationInsights() {
                 <div>
                   <CardTitle className="text-xl">APIs & Webhooks</CardTitle>
                   <CardDescription className="text-white/80 text-sm">
-                    Prioridades de conectores e requisitos de implementação.
+                    Connector priorities and implementation requirements.
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
 
             <CardContent className="overflow-x-auto p-0">
-              <table className="w-full text-sm">
+              <table className="table-standard">
                 <thead className="border-b bg-gray-50">
                   <tr>
-                    <th className="text-left py-3 px-4 font-bold">Fonte</th>
+                    <th className="text-left py-3 px-4 font-bold">Source</th>
                     <th className="text-left py-3 px-4 font-bold">
-                      Tipo de Integração
+                      Integration Type
                     </th>
                     <th className="text-center py-3 px-4 font-bold">
-                      Complexidade
+                      Complexity
                     </th>
-                    <th className="text-left py-3 px-4 font-bold">Passos</th>
+                    <th className="text-left py-3 px-4 font-bold">Steps</th>
                     <th className="text-left py-3 px-4 font-bold">
-                      Documentação
+                      Documentation
                     </th>
                   </tr>
                 </thead>
@@ -154,7 +145,19 @@ export default function IntegrationInsights() {
                         {integration.type}
                       </td>
                       <td className="py-3 px-4 text-center">
-                        {integration.difficulty}
+                        <span
+                          className={
+                            integration.difficulty === "Hard"
+                              ? "badge-light-danger"
+                              : integration.difficulty === "Medium"
+                                ? "badge-light-warning"
+                                : integration.difficulty === "Moderate"
+                                  ? "badge-light-info"
+                                  : "badge-light-success"
+                          }
+                        >
+                          {integration.difficulty}
+                        </span>
                       </td>
                       <td className="py-3 px-4 text-gray-700">
                         <ul className="list-disc list-inside space-y-1">
@@ -170,7 +173,7 @@ export default function IntegrationInsights() {
                           href={integration.url}
                           target="_blank"
                           className="text-blue-600 underline hover:text-blue-800"
-                          aria-label={`Abrir documentação de ${integration.source}`}
+                          aria-label={`Open ${integration.source} documentation`}
                         >
                           {integration.url}
                         </Link>

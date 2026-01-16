@@ -4,9 +4,9 @@ export default function ARAgingReportPage() {
     return (
         <PlaceholderPage
             title="Accounts Receivable · Aging Report"
-            description="Relatório de aging (a construir)."
+            description="Aging report (under construction)."
             backHref="/accounts-receivable"
-            backLabel="Voltar ao Accounts Receivable"
+            backLabel="Back to Accounts Receivable"
         />
     );
 }

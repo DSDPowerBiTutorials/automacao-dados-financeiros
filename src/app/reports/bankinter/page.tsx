@@ -126,7 +126,7 @@ export default function BankinterPage() {
           console.log("🔍 Processing row:", row);
 
           // Mapear colunas do CSV para nosso formato
-          const fechaValor = row["FECHA VALOR"] || row["FECHA_VALOR"] || "";
+          const fechaAmount = row["FECHA VALOR"] || row["FECHA_VALOR"] || "";
           const descripcion = row["DESCRIPCIÓN"] || row["DESCRIPCION"] || "";
           const haberStr = row["HABER"] || row["Haber"] || "0";
 
@@ -140,12 +140,12 @@ export default function BankinterPage() {
 
           newRows.push({
             id: `BKTR-${String(idCounter).padStart(4, "0")}`,
-            date: fechaValor,
+            date: fechaAmount,
             description: descripcion,
             amount: haberValue,
             fecha_contable:
               row["FECHA CONTABLE"] || row["FECHA_CONTABLE"] || "",
-            fecha_valor: fechaValor,
+            fecha_valor: fechaAmount,
             clave: row["CLAVE"] || "",
             referencia: row["REFERENCIA"] || "",
             categoria: row["CATEGORÍA"] || row["CATEGORIA"] || "",
@@ -166,7 +166,7 @@ export default function BankinterPage() {
         const updatedRows = [...rows, ...newRows];
         setRows(updatedRows);
 
-        // Salvar no Supabase
+        // Save no Supabase
         const totalAmount = updatedRows.reduce(
           (sum, row) => sum + row.amount,
           0,
@@ -266,7 +266,7 @@ export default function BankinterPage() {
       "Description",
       "Amount",
       "Fecha Contable",
-      "Fecha Valor",
+      "Fecha Amount",
       "Clave",
       "Referencia",
       "Categoria",
@@ -307,18 +307,18 @@ export default function BankinterPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full">
 
       <div className="">
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
-          <div className="container mx-auto px-6 py-5">
+        <header className="page-header-standard">
+          <div className="flex items-center justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/">
@@ -415,7 +415,7 @@ export default function BankinterPage() {
           </Card>
         </div>
 
-        <div className="container mx-auto px-6 py-8">
+        <div className="px-6 py-8">
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Bankinter Bank Statement</CardTitle>

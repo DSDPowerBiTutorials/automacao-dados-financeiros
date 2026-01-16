@@ -7,14 +7,16 @@ import Link from "next/link";
 
 export default function AccountsPayableOverviewPage() {
   return (
-    <div className="space-y-6">
+    <div className="min-h-full px-6 space-y-6 py-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Accounts Payable Overview</h1>
-        <p className="text-gray-600 mt-1">
-          Manage supplier invoices, payments, and vendor relationships
-        </p>
-      </div>
+      <header className="page-header-standard">
+        <div>
+          <h1 className="header-title">Accounts Payable Overview</h1>
+          <p className="header-subtitle">
+            Manage supplier invoices, payments, and vendor relationships
+          </p>
+        </div>
+      </header>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

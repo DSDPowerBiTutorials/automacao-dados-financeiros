@@ -257,12 +257,12 @@ export default function CustomersPage() {
     }, [customers, search]);
 
     return (
-        <div className="p-6 space-y-6">
+        <div className="min-h-full px-6 py-6 space-y-6">
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold">Customers</h1>
-                    <p className="text-gray-500 mt-1">Manage customer information for Accounts Receivable</p>
-                </div>
+                <header className="page-header-standard">
+                    <h1 className="header-title">Customers</h1>
+                    <p className="header-subtitle">Manage customer information for Accounts Receivable</p>
+                </header>
                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                     <DialogTrigger asChild>
                         <Button onClick={handleAddNew}>
@@ -473,7 +473,7 @@ export default function CustomersPage() {
                             No customers found. Add your first customer to get started.
                         </div>
                     ) : (
-                        <Table>
+                        <Table className="table-standard">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Code</TableHead>
@@ -505,15 +505,15 @@ export default function CustomersPage() {
                                         </TableCell>
                                         <TableCell>
                                             {customer.is_active ? (
-                                                <Badge variant="default" className="gap-1">
+                                                <span className="badge-light-success">
                                                     <CheckCircle2 className="h-3 w-3" />
                                                     Active
-                                                </Badge>
+                                                </span>
                                             ) : (
-                                                <Badge variant="secondary" className="gap-1">
+                                                <span className="badge-light-danger">
                                                     <XCircle className="h-3 w-3" />
                                                     Inactive
-                                                </Badge>
+                                                </span>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">

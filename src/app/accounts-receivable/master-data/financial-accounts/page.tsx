@@ -4,9 +4,9 @@ export default function ARFinancialAccountsPage() {
     return (
         <PlaceholderPage
             title="Accounts Receivable · Financial Accounts"
-            description="Plano de contas (a construir)."
+            description="Chart of accounts (under construction)."
             backHref="/accounts-receivable"
-            backLabel="Voltar ao Accounts Receivable"
+            backLabel="Back to Accounts Receivable"
         />
     );
 }

@@ -264,7 +264,7 @@ export default function BraintreeEURPage() {
   const [dateFilters, setDateFilters] = useState<{
     [key: string]: { start?: string; end?: string };
   }>(() => {
-    // Default: sempre desde Dez/2024 até hoje
+    // Default: sempre desde Dez/2024 to hoje
     return { date: { start: "2024-12-01" } };
   });
   const [statusFilter, setStatusFilter] = useState<string>("settled"); // Default to settled
@@ -359,7 +359,7 @@ export default function BraintreeEURPage() {
         loadData();
       }
     } catch (e) {
-      const message = e instanceof Error ? e.message : "Erro ao inicializar a página";
+      const message = e instanceof Error ? e.message : "Error initializing page";
       setLoadError(message);
       isLoadingRef.current = false;
       setIsLoading(false);
@@ -423,7 +423,7 @@ export default function BraintreeEURPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       if ((isLoadingRef.current || isLoadingStateRef.current) && rowsRef.current.length === 0) {
-        setLoadError("Timeout ao carregar Braintree EUR. Tente clicar em Recarregar.");
+        setLoadError("Timeout loading Braintree EUR. Try clicking Refresh.");
         isLoadingRef.current = false;
         setIsLoading(false);
         setIsLoadingMore(false);
@@ -436,7 +436,7 @@ export default function BraintreeEURPage() {
   useEffect(() => {
     if (!didInitRef.current) return;
     const t = setTimeout(() => {
-      // quando usuário mexe, recarrega sem auto-reconcile (manual via botão)
+      // quando user mexe, recarrega sem auto-reconcile (manual via botão)
       loadData({ runReconcile: false, force: true });
     }, 350);
     return () => clearTimeout(t);
@@ -460,7 +460,7 @@ export default function BraintreeEURPage() {
     disbursementFilter,
   ]);
 
-  // Função para carregar última data de sync
+  // Function to carregar última data de sync
   const loadLastSyncDate = async () => {
     try {
       const { data, error } = await supabase
@@ -478,25 +478,25 @@ export default function BraintreeEURPage() {
     }
   };
 
-  // Função para abrir seletor de colunas
+  // Function to abrir seletor de colunas
   const openColumnSelector = () => {
     setTempVisibleColumns(new Set(visibleColumns));
     setColumnSelectorOpen(true);
   };
 
-  // Função para cancelar seleção de colunas
+  // Function to cancelar seleção de colunas
   const cancelColumnSelection = () => {
     setTempVisibleColumns(new Set());
     setColumnSelectorOpen(false);
   };
 
-  // Função para aplicar seleção de colunas
+  // Function to aplicar seleção de colunas
   const applyColumnSelection = () => {
     setVisibleColumns(new Set(tempVisibleColumns));
     setColumnSelectorOpen(false);
   };
 
-  // Função para alternar coluna temporária
+  // Function to alternar coluna temporária
   const toggleTempColumn = (column: string) => {
     const newSet = new Set(tempVisibleColumns);
     if (newSet.has(column)) {
@@ -578,7 +578,7 @@ export default function BraintreeEURPage() {
     );
   };
 
-  // Função para alternar ordenação
+  // Function to alternar ordenação
   const toggleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -588,7 +588,7 @@ export default function BraintreeEURPage() {
     }
   };
 
-  // Função para toggle de grupos de disbursement
+  // Function to toggle de grupos de disbursement
   const toggleGroup = (disbursementId: string) => {
     const newExpanded = new Set(expandedGroups);
     if (newExpanded.has(disbursementId)) {
@@ -599,7 +599,7 @@ export default function BraintreeEURPage() {
     setExpandedGroups(newExpanded);
   };
 
-  // 🆕 Função para toggle de settlement batch
+  // 🆕 Function to toggle de settlement batch
   const toggleSettlementBatch = (batchId: string) => {
     const newExpanded = new Set(expandedSettlementBatches);
     if (newExpanded.has(batchId)) {
@@ -610,10 +610,10 @@ export default function BraintreeEURPage() {
     setExpandedSettlementBatches(newExpanded);
   };
 
-  // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
-  // Não é necessário cálculo adicional - usar settlement_amount diretamente
+  // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees already deducted pela Braintree)
+  // No é necessário cálculo adicional - usar settlement_amount diretamente
 
-  // 💰 Função para calcular grupo de disbursement agregado
+  // 💰 Function to calcular grupo de disbursement agregado
   const calculateDisbursementGroup = (rows: BraintreeEURRow[]): DisbursementGroup | null => {
     if (!rows || rows.length === 0) return null;
 
@@ -629,7 +629,7 @@ export default function BraintreeEURPage() {
     };
   };
 
-  // Função para unconcile (limpar reconciliação)
+  // Function to unconcile (clear reconciliation)
   const handleUnconcile = async (rowId: string) => {
     if (!confirm("Are you sure you want to clear the reconciliation for this transaction?")) return;
 
@@ -638,7 +638,7 @@ export default function BraintreeEURPage() {
       const row = rows.find((r) => r.id === rowId);
       if (!row) return;
 
-      // Limpar campos de reconciliação
+      // Limpar fields of reconciliation
       const { error } = await supabase
         .from("csv_rows")
         .update({
@@ -675,7 +675,7 @@ export default function BraintreeEURPage() {
   // Quando houver dados do Bankinter, altere ENABLE_AUTO_RECONCILIATION para true
   const ENABLE_AUTO_RECONCILIATION = true;
 
-  // Função para verificar se duas datas estão dentro de ±3 dias
+  // Function to verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
     date1: string,
     date2: string,
@@ -691,7 +691,7 @@ export default function BraintreeEURPage() {
   const reconcileBankStatements = async (
     braintreeRows: BraintreeEURRow[],
   ): Promise<BraintreeEURRow[]> => {
-    // Verifica se a reconciliação automática está habilitada
+    // Check if reconciliation automática is enabled
     if (!ENABLE_AUTO_RECONCILIATION) {
       console.log("Auto-reconciliation is currently disabled");
       return braintreeRows;
@@ -873,25 +873,25 @@ export default function BraintreeEURPage() {
           const result = await Promise.race([
             q,
             new Promise((_, reject) =>
-              setTimeout(() => reject(new Error("Timeout após 30s")), 30000)
+              setTimeout(() => reject(new Error("Timeout after 30s")), 30000)
             )
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
           ]) as any;
 
           rowsData = result.data;
           error = result.error;
-          break; // Sucesso, sair do loop
+          break; // Success, sair do loop
         } catch (err) {
           console.error(`[Braintree EUR] Attempt ${attempt + 1} failed:`, err);
           if (attempt === 2) {
-            error = { message: err instanceof Error ? err.message : "Erro de conexão" };
+            error = { message: err instanceof Error ? err.message : "Connection error" };
           }
         }
       }
 
       if (error) {
         console.error("[Braintree EUR] Error loading data:", error);
-        setLoadError(error.message || "Erro ao carregar dados do Supabase");
+        setLoadError(error.message || "Error loading data from Supabase");
         if (!append) {
           setRows([]);
         }
@@ -966,7 +966,7 @@ export default function BraintreeEURPage() {
         }
       }
 
-      // 🆕 Contar transações sem hubspot_vid para disparar auto-link
+      // 🆕 Count transactions without hubspot_vid to trigger auto-link
       unmappedCount = rowsData.filter(
         (r) => !r.custom_data?.hubspot_vid && !r.custom_data?.order_id
       ).length;
@@ -1069,10 +1069,10 @@ export default function BraintreeEURPage() {
             settlement_batch_id: row.custom_data?.settlement_batch_id || (row as any).settlement_batch_id,
             settlement_date: settlementDate, // 🆕 Agora usa a variável com extração do batch_id
 
-            // 🔑 ID do payout agrupado
+            // 🔑 ID do payout grouped
             disbursement_id: row.custom_data?.disbursement_id,
 
-            // 🏦 Informações do match bancário
+            // 🏦 Information do match bancário
             bank_match_id: row.custom_data?.bank_match_id,
             bank_match_date: row.custom_data?.bank_match_date,
             bank_match_amount:
@@ -1275,7 +1275,7 @@ export default function BraintreeEURPage() {
       }
     } catch (error) {
       console.error("[Braintree EUR] Unexpected error:", error);
-      const message = error instanceof Error ? error.message : "Erro inesperado ao carregar";
+      const message = error instanceof Error ? error.message : "Unexpected error loading";
       setLoadError(message);
       if (!append) setRows([]);
     } finally {
@@ -1317,7 +1317,7 @@ export default function BraintreeEURPage() {
     if (!editingRow) return;
 
     // Atualizar conciliado se destinationAccount foi definido
-    const shouldBeConciliado =
+    const shouldBeReconciled =
       editedData.destinationAccount !== null &&
       editedData.destinationAccount !== undefined &&
       editedData.destinationAccount !== "";
@@ -1327,7 +1327,7 @@ export default function BraintreeEURPage() {
         ? {
           ...row,
           ...editedData,
-          conciliado: shouldBeConciliado,
+          conciliado: shouldBeReconciled,
           reconciliationType: "manual" as const,
         }
         : row,
@@ -1424,7 +1424,7 @@ export default function BraintreeEURPage() {
   const processedRows = useMemo(() => {
     const filtered = rows
       .filter((row) => {
-        // Filtro de busca
+        // Filter by busca
         if (searchTerm) {
           const search = searchTerm.toLowerCase();
           const matchesSearch =
@@ -1452,7 +1452,7 @@ export default function BraintreeEURPage() {
           }
         }
 
-        // Filtro de status (padrão: settled)
+        // Filter by status (padrão: settled)
         if (statusFilter && statusFilter !== "all") {
           if (statusFilter === "settled") {
             // Match both "settled" and "settled_successfully"
@@ -1462,28 +1462,28 @@ export default function BraintreeEURPage() {
           }
         }
 
-        // Filtro de merchant account
+        // Filter by merchant account
         if (merchantFilter && merchantFilter !== "all") {
           if (!row.merchant_account_id || row.merchant_account_id !== merchantFilter) return false;
         }
 
-        // Filtro de tipo
+        // Filter by tipo
         if (typeFilter && typeFilter !== "all") {
           if (!row.type || row.type !== typeFilter) return false;
         }
 
-        // Filtro de currency
+        // Filter by currency
         if (currencyFilter && currencyFilter !== "all") {
           const rowCurrency = row.currency || "EUR";
           if (rowCurrency !== currencyFilter) return false;
         }
 
-        // Filtro de payment method
+        // Filter by payment method
         if (paymentMethodFilter && paymentMethodFilter !== "all") {
           if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
         }
 
-        // Filtro de valor
+        // Filter by valor
         if (amountFilter) {
           const { operator, value } = amountFilter;
           switch (operator) {
@@ -1505,7 +1505,7 @@ export default function BraintreeEURPage() {
           }
         }
 
-        // Filtro de data
+        // Filter by data
         if (dateFilters.date) {
           const rowDate = new Date(row.date);
           if (dateFilters.date.start) {
@@ -1518,7 +1518,7 @@ export default function BraintreeEURPage() {
           }
         }
 
-        // 🆕 Filtro de settlement batch
+        // 🆕 Filter by settlement batch
         if (settlementBatchFilter && settlementBatchFilter !== "all") {
           if (settlementBatchFilter === "no-batch") {
             if (row.settlement_batch_id) return false;
@@ -1530,7 +1530,7 @@ export default function BraintreeEURPage() {
         return true;
       });
 
-    // 🆕 Agrupar por disbursement_id e calcular totais
+    // 🆕 Group por disbursement_id e calcular totais
     const grouped = filtered.reduce((acc: Record<string, BraintreeEURRow[]>, row: BraintreeEURRow) => {
       const disbursementId = row.disbursement_id || 'ungrouped';
       if (!acc[disbursementId]) {
@@ -1564,7 +1564,7 @@ export default function BraintreeEURPage() {
         (r.disbursement_id || 'ungrouped') === disbursementId
       ) === index;
 
-      // 🆕 Informações de Settlement Batch
+      // 🆕 Information de Settlement Batch
       const batchId = row.settlement_batch_id || 'no-batch';
       const batchRows = settlementBatches.get(batchId) || [];
       const batchSize = batchRows.length;
@@ -1637,7 +1637,7 @@ export default function BraintreeEURPage() {
     expandedGroups,
   ]);
 
-  // Paginação (memoizada para evitar recálculos)
+  // Pagination (memoizada para evitar recálculos)
   const { totalPages, adjustedCurrentPage, paginatedRows, startIndex, endIndex } = useMemo(() => {
     const totalPages = Math.ceil(processedRows.length / rowsPerPage);
     const adjustedCurrentPage =
@@ -1671,20 +1671,20 @@ export default function BraintreeEURPage() {
 
   if (isLoading && rows.length === 0) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full">
 
       <div
         className={` transition-all duration-300 ${splitScreenUrl ? "md:pr-[50%]" : ""}`}
       >
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
-          <div className="container mx-auto px-6 py-5">
+        <header className="page-header-standard">
+          <div className="flex items-center justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/">
@@ -1699,25 +1699,25 @@ export default function BraintreeEURPage() {
                   </h1>
                   <SyncStatusBadge source="braintree-eur" />
                   <div className="text-sm text-white/80 mt-1">
-                    {processedRows.length} records (carregados: {rows.length}{hasMoreServerRows ? "+" : ""})
+                    {processedRows.length} records (loaded: {rows.length}{hasMoreServerRows ? "+" : ""})
                   </div>
                 </div>
               </div>
               <div className="flex gap-2">
-                {/* Botão de Forçar Atualização */}
+                {/* Force Refresh Button */}
                 <Button
                   onClick={() => loadData()}
                   disabled={isLoading || isLoadingMore}
                   variant="outline"
                   size="sm"
                   className="gap-2 border-white text-white hover:bg-white/10"
-                  title="Forçar atualização dos dados"
+                  title="Force data refresh"
                 >
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  Recarregar
+                  Refresh
                 </Button>
 
-                {/* Controles de Sincronização */}
+                {/* Sync Controls */}
                 <BraintreeSyncControls />
 
                 {/* Update Pending/Force Update com timestamps */}
@@ -1730,11 +1730,11 @@ export default function BraintreeEURPage() {
               </div>
             </div>
 
-            {/* Status da conciliação automática */}
+            {/* Auto reconciliation status */}
             {ENABLE_AUTO_RECONCILIATION && (
               <div className="mt-3 flex items-center gap-3 text-sm text-white/80">
                 <Badge variant="outline" className="border-emerald-300 text-emerald-50 bg-emerald-500/20">
-                  ⚡ Auto conciliação ativa
+                  ⚡ Auto reconciliation active
                 </Badge>
                 {isReconciling ? (
                   <div className="flex items-center gap-2">
@@ -1744,7 +1744,7 @@ export default function BraintreeEURPage() {
                 ) : autoReconcileSummary ? (
                   <span>{autoReconcileSummary}</span>
                 ) : (
-                  <span>Será executada ao carregar os dados.</span>
+                  <span>Will run when loading data.</span>
                 )}
               </div>
             )}
@@ -1763,14 +1763,14 @@ export default function BraintreeEURPage() {
               <Alert className="mt-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20">
                 <XCircle className="h-5 w-5 text-red-600" />
                 <AlertDescription className="text-red-800 dark:text-red-200 font-medium">
-                  ❌ Erro ao carregar Braintree EUR: {loadError}
+                  ❌ Error loading Braintree EUR: {loadError}
                 </AlertDescription>
               </Alert>
             )}
           </div>
         </header>
 
-        <div className="container mx-auto px-6 py-8">
+        <div className="px-6 py-8">
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
@@ -1870,7 +1870,7 @@ export default function BraintreeEURPage() {
                           { id: "settlement_currency_iso_code", label: "🌍 Settlement Currency (Real)" },
                           { id: "settlement_currency_exchange_rate", label: "💱 FX Exchange Rate" },
                         ].map((column) => {
-                          // Adicionar descrições explicativas para campos de data
+                          // Adicionar descrições explicativas para fields of data
                           const descriptions: { [key: string]: string } = {
                             date: "When customer paid",
                             settlement_date: "When bank confirmed",
@@ -2467,7 +2467,7 @@ export default function BraintreeEURPage() {
                                         );
                                       }
 
-                                      // Não mostrar "sem HS" - auto-link vai resolver em background
+                                      // No mostrar "sem HS" - auto-link vai resolver em background
                                       return null;
                                     })()}
                                   </div>
@@ -2637,7 +2637,7 @@ export default function BraintreeEURPage() {
                                     {row.status || "N/A"}
                                   </Badge>
 
-                                  {/* 👁️ Ícone "Olho" com histórico de status */}
+                                  {/* 👁️ Eye icon with status history */}
                                   {row.status_history && row.status_history.length > 0 && (
                                     <Popover>
                                       <PopoverTrigger asChild>
@@ -2888,7 +2888,7 @@ export default function BraintreeEURPage() {
               <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
                 <div className="text-sm text-gray-600 dark:text-gray-300">
                   Showing {processedRows.length === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, processedRows.length)} of {processedRows.length} results
-                  {hasMoreServerRows ? " (há mais no servidor)" : ""}
+                  {hasMoreServerRows ? " (more on server)" : ""}
                 </div>
                 <div className="flex gap-2">
                   {hasMoreServerRows && (
@@ -2898,10 +2898,10 @@ export default function BraintreeEURPage() {
                       onClick={() => loadData({ runReconcile: false, append: true })}
                       disabled={isLoading || isLoadingMore}
                       className="gap-2"
-                      title="Carregar mais linhas do período selecionado"
+                      title="Load more rows from selected period"
                     >
                       {isLoadingMore && <Loader2 className="h-4 w-4 animate-spin" />}
-                      Carregar mais
+                      Load more
                     </Button>
                   )}
 

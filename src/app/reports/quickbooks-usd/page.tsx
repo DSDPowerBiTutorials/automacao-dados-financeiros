@@ -207,12 +207,12 @@ export default function QuickBooksUSDPage() {
     const filteredRows = useMemo(() => {
         let filtered = [...rows];
 
-        // Filtro por tab/tipo
+        // Filter by tab/tipo
         if (activeTab !== "all") {
             filtered = filtered.filter((row) => row.source === `quickbooks-${activeTab}`);
         }
 
-        // Filtro por busca
+        // Filter by busca
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
             filtered = filtered.filter(
@@ -224,7 +224,7 @@ export default function QuickBooksUSDPage() {
             );
         }
 
-        // Filtro por data
+        // Filter by data
         if (dateFilter.start) {
             filtered = filtered.filter((row) => row.date >= dateFilter.start!);
         }
@@ -232,7 +232,7 @@ export default function QuickBooksUSDPage() {
             filtered = filtered.filter((row) => row.date <= dateFilter.end!);
         }
 
-        // Filtro por reconciliação
+        // Filter by reconciliation
         if (reconciliationFilter === "reconciled") {
             filtered = filtered.filter((row) => row.reconciled);
         } else if (reconciliationFilter === "pending") {
@@ -258,7 +258,7 @@ export default function QuickBooksUSDPage() {
         return filtered;
     }, [rows, activeTab, searchTerm, dateFilter, reconciliationFilter, sortField, sortDirection]);
 
-    // Paginação
+    // Pagination
     const totalPages = Math.ceil(filteredRows.length / rowsPerPage);
     const paginatedRows = filteredRows.slice(
         (currentPage - 1) * rowsPerPage,
@@ -325,7 +325,7 @@ export default function QuickBooksUSDPage() {
     };
 
     return (
-        <div className="container mx-auto py-6 space-y-6">
+        <div className="min-h-full px-6 py-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
@@ -346,7 +346,7 @@ export default function QuickBooksUSDPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    {/* Status de Conexão */}
+                    {/* Connection Status */}
                     {syncStatus && (
                         <Badge
                             variant={syncStatus.connected ? "default" : "destructive"}
@@ -385,12 +385,12 @@ export default function QuickBooksUSDPage() {
                 </div>
             </div>
 
-            {/* Alerta se não conectado */}
+            {/* Alert if not connected */}
             {syncStatus && !syncStatus.connected && (
                 <Alert variant="destructive">
                     <AlertDescription className="flex items-center justify-between">
                         <span>
-                            QuickBooks não está conectado.{" "}
+                            QuickBooks is not connected.{" "}
                             {syncStatus.error && `Erro: ${syncStatus.error}`}
                         </span>
                         <Link href="/api/quickbooks/auth">
@@ -402,7 +402,7 @@ export default function QuickBooksUSDPage() {
                 </Alert>
             )}
 
-            {/* Cards de Estatísticas */}
+            {/* Statistics Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Card>
                     <CardHeader className="pb-2">
@@ -484,7 +484,7 @@ export default function QuickBooksUSDPage() {
                             {formatCurrency(stats.deposits.total, "USD")}
                         </div>
                         <p className="text-xs text-gray-500">
-                            {stats.deposits.count} depósitos
+                            {stats.deposits.count} deposits
                         </p>
                     </CardContent>
                 </Card>
@@ -501,7 +501,7 @@ export default function QuickBooksUSDPage() {
                             {formatCurrency(stats.transfers.total, "USD")}
                         </div>
                         <p className="text-xs text-gray-500">
-                            {stats.transfers.count} transferências
+                            {stats.transfers.count} transfers
                         </p>
                     </CardContent>
                 </Card>
@@ -511,9 +511,9 @@ export default function QuickBooksUSDPage() {
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">
-                        <CardTitle>Transações</CardTitle>
+                        <CardTitle>Transactions</CardTitle>
                         <div className="flex items-center gap-2">
-                            {/* Filtro de busca */}
+                            {/* Filter by busca */}
                             <div className="relative">
                                 <Input
                                     placeholder="Buscar..."
@@ -523,7 +523,7 @@ export default function QuickBooksUSDPage() {
                                 />
                             </div>
 
-                            {/* Filtro de data */}
+                            {/* Filter by data */}
                             <Input
                                 type="date"
                                 value={dateFilter.start || ""}
@@ -532,7 +532,7 @@ export default function QuickBooksUSDPage() {
                                 }
                                 className="w-36"
                             />
-                            <span className="text-gray-400">até</span>
+                            <span className="text-gray-400">to</span>
                             <Input
                                 type="date"
                                 value={dateFilter.end || ""}
@@ -542,7 +542,7 @@ export default function QuickBooksUSDPage() {
                                 className="w-36"
                             />
 
-                            {/* Filtro de reconciliação */}
+                            {/* Filter by reconciliation */}
                             <Select
                                 value={reconciliationFilter}
                                 onValueChange={setReconciliationFilter}
@@ -553,7 +553,7 @@ export default function QuickBooksUSDPage() {
                                 <SelectContent>
                                     <SelectItem value="all">Todos</SelectItem>
                                     <SelectItem value="reconciled">Reconciliados</SelectItem>
-                                    <SelectItem value="pending">Pendentes</SelectItem>
+                                    <SelectItem value="pending">Pending</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
@@ -598,7 +598,7 @@ export default function QuickBooksUSDPage() {
                                 </div>
                             ) : filteredRows.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">
-                                    Nenhuma transação encontrada
+                                    No transactions found
                                 </div>
                             ) : (
                                 <>
@@ -618,18 +618,18 @@ export default function QuickBooksUSDPage() {
                                                     </th>
                                                     <th className="px-4 py-3 text-left">Tipo</th>
                                                     <th className="px-4 py-3 text-left">Doc #</th>
-                                                    <th className="px-4 py-3 text-left">Descrição</th>
+                                                    <th className="px-4 py-3 text-left">Description</th>
                                                     <th
                                                         className="px-4 py-3 text-right cursor-pointer hover:bg-gray-100"
                                                         onClick={() => handleSort("amount")}
                                                     >
                                                         <div className="flex items-center justify-end gap-1">
-                                                            Valor
+                                                            Amount
                                                             <ArrowUpDown className="w-3 h-3" />
                                                         </div>
                                                     </th>
-                                                    <th className="px-4 py-3 text-left">Cliente/Fornecedor</th>
-                                                    <th className="px-4 py-3 text-left">Vencimento</th>
+                                                    <th className="px-4 py-3 text-left">Customer/Vendor</th>
+                                                    <th className="px-4 py-3 text-left">Due Date</th>
                                                     <th className="px-4 py-3 text-center">Status</th>
                                                 </tr>
                                             </thead>
@@ -673,7 +673,7 @@ export default function QuickBooksUSDPage() {
                                                             >
                                                                 {formatCurrency(Math.abs(amount), "USD")}
                                                                 {isNegative && (
-                                                                    <span className="text-xs ml-1">(saída)</span>
+                                                                    <span className="text-xs ml-1">(outgoing)</span>
                                                                 )}
                                                             </td>
                                                             <td className="px-4 py-3">
@@ -699,7 +699,7 @@ export default function QuickBooksUSDPage() {
                                                                     </Badge>
                                                                 ) : (
                                                                     <Badge variant="outline" className="text-gray-500">
-                                                                        Pendente
+                                                                        Pending
                                                                     </Badge>
                                                                 )}
                                                             </td>
@@ -710,7 +710,7 @@ export default function QuickBooksUSDPage() {
                                         </table>
                                     </div>
 
-                                    {/* Paginação */}
+                                    {/* Pagination */}
                                     {totalPages > 1 && (
                                         <div className="flex items-center justify-between mt-4 pt-4 border-t">
                                             <p className="text-sm text-gray-500">
@@ -728,7 +728,7 @@ export default function QuickBooksUSDPage() {
                                                     Anterior
                                                 </Button>
                                                 <span className="text-sm">
-                                                    Página {currentPage} de {totalPages}
+                                                    Page {currentPage} de {totalPages}
                                                 </span>
                                                 <Button
                                                     variant="outline"
@@ -738,7 +738,7 @@ export default function QuickBooksUSDPage() {
                                                     }
                                                     disabled={currentPage === totalPages}
                                                 >
-                                                    Próxima
+                                                    Next
                                                 </Button>
                                             </div>
                                         </div>

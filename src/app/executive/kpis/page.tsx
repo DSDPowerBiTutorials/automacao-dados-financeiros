@@ -70,14 +70,14 @@ export default function KPIsPage() {
   };
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">KPIs & Financial Ratios</h1>
-        <p className="text-gray-600 mt-1">
+      <header className="page-header-standard">
+        <h1 className="header-title">KPIs & Financial Ratios</h1>
+        <p className="header-subtitle">
           Key performance indicators and financial health metrics
         </p>
-      </div>
+      </header>
 
       {/* Executive Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -144,7 +144,7 @@ export default function KPIsPage() {
             </CardHeader>
             <CardContent>
               <div className="overflow-x-auto">
-                <table className="w-full">
+                <table className="table-standard">
                   <thead>
                     <tr className="border-b">
                       <th className="text-left py-3 px-4 font-medium text-gray-900">Metric</th>
@@ -165,8 +165,8 @@ export default function KPIsPage() {
                             className={
                               metric.change.startsWith("+") || metric.change.startsWith("-")
                                 ? metric.change.startsWith("+")
-                                  ? "text-green-600 font-medium"
-                                  : "text-red-600 font-medium"
+                                  ? "amount-positive"
+                                  : "amount-negative"
                                 : "text-gray-600"
                             }
                           >
@@ -177,7 +177,7 @@ export default function KPIsPage() {
                           <div className="flex items-center justify-center gap-2">
                             {getStatusIcon(metric.status)}
                             <span
-                              className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(metric.status)}`}
+                              className={`badge-light-${metric.status === 'good' ? 'success' : metric.status === 'warning' ? 'warning' : 'danger'}`}
                             >
                               {metric.status === "good"
                                 ? "On Target"

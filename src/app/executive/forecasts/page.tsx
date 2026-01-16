@@ -5,14 +5,14 @@ import { LineChart, TrendingUp, Calendar, AlertCircle } from "lucide-react";
 
 export default function ForecastsPage() {
   return (
-    <div className="p-8 space-y-6">
+    <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Financial Forecasts</h1>
-        <p className="text-gray-600 mt-1">
+      <header className="page-header-standard">
+        <h1 className="header-title">Financial Forecasts</h1>
+        <p className="header-subtitle">
           AI-powered predictions and scenario planning
         </p>
-      </div>
+      </header>
 
       {/* Forecast Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -89,7 +89,7 @@ export default function ForecastsPage() {
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="table-standard">
               <thead>
                 <tr className="border-b">
                   <th className="text-left py-3 px-4 font-medium text-gray-900">Quarter</th>
@@ -107,7 +107,7 @@ export default function ForecastsPage() {
                   <td className="py-3 px-4 text-right">€2,790,000</td>
                   <td className="py-3 px-4 text-right font-medium">€1,010,000</td>
                   <td className="py-3 px-4 text-right">26.5%</td>
-                  <td className="py-3 px-4 text-right text-green-600">+12.0%</td>
+                  <td className="py-3 px-4 text-right amount-positive">+12.0%</td>
                 </tr>
                 <tr className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4 font-medium">Q2 2026</td>
@@ -115,7 +115,7 @@ export default function ForecastsPage() {
                   <td className="py-3 px-4 text-right">€3,010,000</td>
                   <td className="py-3 px-4 text-right font-medium">€1,090,000</td>
                   <td className="py-3 px-4 text-right">26.6%</td>
-                  <td className="py-3 px-4 text-right text-green-600">+15.5%</td>
+                  <td className="py-3 px-4 text-right amount-positive">+15.5%</td>
                 </tr>
                 <tr className="border-b hover:bg-gray-50">
                   <td className="py-3 px-4 font-medium">Q3 2026</td>
@@ -123,7 +123,7 @@ export default function ForecastsPage() {
                   <td className="py-3 px-4 text-right">€3,190,000</td>
                   <td className="py-3 px-4 text-right font-medium">€1,160,000</td>
                   <td className="py-3 px-4 text-right">26.7%</td>
-                  <td className="py-3 px-4 text-right text-green-600">+18.2%</td>
+                  <td className="py-3 px-4 text-right amount-positive">+18.2%</td>
                 </tr>
                 <tr className="border-b hover:bg-gray-50 bg-blue-50">
                   <td className="py-3 px-4 font-medium">Q4 2026</td>
@@ -131,7 +131,7 @@ export default function ForecastsPage() {
                   <td className="py-3 px-4 text-right">€3,460,000</td>
                   <td className="py-3 px-4 text-right font-medium">€1,290,000</td>
                   <td className="py-3 px-4 text-right">27.2%</td>
-                  <td className="py-3 px-4 text-right text-green-600">+21.5%</td>
+                  <td className="py-3 px-4 text-right amount-positive">+21.5%</td>
                 </tr>
               </tbody>
               <tfoot>
@@ -141,7 +141,7 @@ export default function ForecastsPage() {
                   <td className="py-3 px-4 text-right">€12,450,000</td>
                   <td className="py-3 px-4 text-right">€4,550,000</td>
                   <td className="py-3 px-4 text-right">26.8%</td>
-                  <td className="py-3 px-4 text-right text-green-600">+16.8%</td>
+                  <td className="py-3 px-4 text-right amount-positive">+16.8%</td>
                 </tr>
               </tfoot>
             </table>

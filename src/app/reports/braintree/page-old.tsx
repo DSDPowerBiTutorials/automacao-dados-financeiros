@@ -282,7 +282,7 @@ export default function BraintreePage() {
 
   const downloadCSV = () => {
     try {
-      const headers = ["ID", "Date", "Description", "Amount", "Conciliado"];
+      const headers = ["ID", "Date", "Description", "Amount", "Reconciled"];
 
       const csvContent = [
         headers.join(","),
@@ -448,7 +448,7 @@ export default function BraintreePage() {
                         Amount
                       </th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Conciliado
+                        Reconciled
                       </th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
                         Actions

@@ -446,24 +446,40 @@ export default function ChaseUSDPage() {
             }, {} as Record<string, number>)
         const unreconciledCount = filteredRows.filter((row) => !row.conciliado).length
 
-        return { totalIncomes, totalExpenses, incomesBySource, unreconciledCount }
+        // Calcular saldo inicial (transactions antes do período filtrado)
+        let openingBalance = 0
+        if (dateFrom) {
+            openingBalance = rows
+                .filter((row) => row.date < dateFrom)
+                .reduce((sum, row) => sum + row.amount, 0)
+        }
+
+        // Calcular saldo final
+        const closingBalance = openingBalance + totalIncomes + totalExpenses
+
+        // Datas do período
+        const sortedByDate = [...filteredRows].sort((a, b) => a.date.localeCompare(b.date))
+        const oldestDate = sortedByDate.length > 0 ? sortedByDate[0].date : null
+        const newestDate = sortedByDate.length > 0 ? sortedByDate[sortedByDate.length - 1].date : null
+
+        return { totalIncomes, totalExpenses, incomesBySource, unreconciledCount, openingBalance, closingBalance, oldestDate, newestDate }
     }
 
-    const { totalIncomes, totalExpenses, incomesBySource, unreconciledCount } = calculateStats()
+    const stats = calculateStats()
 
     if (isLoading) {
         return (
-            <div className="min-h-screen bg-white flex items-center justify-center">
+            <div className="min-h-full flex items-center justify-center">
                 <Loader2 className="h-12 w-12 animate-spin text-[#117ACA]" />
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-white">
+        <div className="min-h-full">
             <div>
-                <header className="border-b border-[#0f1c34] bg-[#117ACA] text-white shadow-lg sticky top-0 z-30">
-                    <div className="container mx-auto px-6 py-5">
+                <header className="page-header-standard bg-[#117ACA]">
+                    <div className="flex items-center justify-between">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <Link href="/">
@@ -604,11 +620,8 @@ export default function ChaseUSDPage() {
                                 </div>
                                 <div className="text-right text-white">
                                     <p className="text-sm opacity-90">Current Balance</p>
-                                    <p className="text-2xl font-bold">
-                                        {rows.length > 0
-                                            ? formatUSDCurrency(rows.reduce((sum, r) => sum + r.amount, 0))
-                                            : "$0.00"
-                                        }
+                                    <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-emerald-200" : "text-red-200"}`}>
+                                        {formatUSDCurrency(stats.closingBalance)}
                                     </p>
                                 </div>
                             </div>
@@ -616,53 +629,80 @@ export default function ChaseUSDPage() {
                     </Card>
                 </div>
 
-                <div className="container mx-auto px-6 py-8">
-                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-                        <Card>
+                {/* Stats Cards - Opening Balance, Inflows, Outflows, Closing Balance */}
+                <div className="container mx-auto px-6 py-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <Card className="border-l-4 border-l-blue-500">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600">Total Credits</CardTitle>
+                                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <Calendar className="w-4 h-4 text-blue-600" />
+                                    Opening Balance
+                                </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="text-2xl font-bold text-green-600">{formatUSDCurrency(totalIncomes)}</div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600">Total Debits</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-red-600">{formatUSDCurrency(Math.abs(totalExpenses))}</div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600">Unreconciled Entries</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="text-2xl font-bold text-orange-600">{unreconciledCount}</div>
-                            </CardContent>
-                        </Card>
-
-                        <Card>
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-medium text-gray-600">Credits by Source</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="space-y-1">
-                                    {Object.entries(incomesBySource).map(([source, amount]) => (
-                                        <div key={source} className="flex justify-between text-sm">
-                                            <span>{source}:</span>
-                                            <span className="font-medium">{formatUSDCurrency(amount)}</span>
-                                        </div>
-                                    ))}
-                                    {Object.keys(incomesBySource).length === 0 && <div className="text-sm text-gray-500">No reconciled credits</div>}
+                                <div className={`text-2xl font-bold ${stats.openingBalance >= 0 ? "text-blue-600" : "text-red-600"}`}>
+                                    {formatUSDCurrency(stats.openingBalance)}
                                 </div>
+                                <p className="text-xs text-gray-500">
+                                    {stats.oldestDate ? formatDate(stats.oldestDate) : "No data"}
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-l-4 border-l-emerald-500">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <Zap className="w-4 h-4 text-emerald-600" />
+                                    Inflows
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-emerald-600">
+                                    {formatUSDCurrency(stats.totalIncomes)}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    {filteredRows.filter(r => r.amount > 0).length} transactions
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-l-4 border-l-red-500">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <DollarSign className="w-4 h-4 text-red-600" />
+                                    Outflows
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="text-2xl font-bold text-red-600">
+                                    {formatUSDCurrency(stats.totalExpenses)}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    {filteredRows.filter(r => r.amount < 0).length} transactions
+                                </p>
+                            </CardContent>
+                        </Card>
+
+                        <Card className="border-l-4 border-l-purple-500">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
+                                    <Database className="w-4 h-4 text-purple-600" />
+                                    Closing Balance
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <div className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-purple-600" : "text-red-600"}`}>
+                                    {formatUSDCurrency(stats.closingBalance)}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                    {stats.newestDate ? formatDate(stats.newestDate) : "No data"}
+                                </p>
                             </CardContent>
                         </Card>
                     </div>
+                </div>
 
+                <div className="px-6 py-8">
                     <Card className="shadow-xl border-2 border-gray-200">
                         <CardHeader className="bg-[#117ACA] text-white">
                             <CardTitle className="text-white">Bank Statement Details</CardTitle>

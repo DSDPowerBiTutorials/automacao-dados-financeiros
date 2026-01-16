@@ -81,7 +81,7 @@ interface BraintreeUSDRow {
   settlement_currency_iso_code?: string | null; // 🌍 Moeda real do depósito (pode diferir de currency)
   settlement_currency_exchange_rate?: number | null; // 💱 Taxa FX aplicada
 
-  // 🔑 ID do payout agrupado (agrupa transações pagas juntas)
+  // 🔑 ID do payout grouped (agrupa transactions paid together)
   disbursement_id?: string | null;
   settlement_batch_id?: string | null; // Formato: YYYY-MM-DD_merchant_uniqueid
 
@@ -90,7 +90,7 @@ interface BraintreeUSDRow {
   // Diferente de disbursement_date (quando dinheiro chega na conta)
   settlement_date?: string | null;
 
-  // 🏦 Informações do match bancário (reconciliação automática)
+  // 🏦 Information do match bancário (reconciliation automática)
   bank_match_id?: string | null;
   bank_match_date?: string | null;
   bank_match_amount?: number | null;
@@ -277,7 +277,7 @@ export default function BraintreeUSDPage() {
           filter: 'source=in.(braintree-api-revenue,braintree-api-fees,braintree-api-disbursement)',
         },
         (payload) => {
-          console.log('[Realtime Braintree USD] Mudança detectada:', payload);
+          console.log('[Realtime Braintree USD] Change detected:', payload);
           loadData();
         }
       )
@@ -306,7 +306,7 @@ export default function BraintreeUSDPage() {
     settlementBatchFilter, // 🆕
   ]);
 
-  // Função para carregar última data de sync
+  // Function to carregar última data de sync
   const loadLastSyncDate = async () => {
     try {
       const { data, error } = await supabase
@@ -324,25 +324,25 @@ export default function BraintreeUSDPage() {
     }
   };
 
-  // Função para abrir seletor de colunas
+  // Function to abrir seletor de colunas
   const openColumnSelector = () => {
     setTempVisibleColumns(new Set(visibleColumns));
     setColumnSelectorOpen(true);
   };
 
-  // Função para cancelar seleção de colunas
+  // Function to cancelar seleção de colunas
   const cancelColumnSelection = () => {
     setTempVisibleColumns(new Set());
     setColumnSelectorOpen(false);
   };
 
-  // Função para aplicar seleção de colunas
+  // Function to aplicar seleção de colunas
   const applyColumnSelection = () => {
     setVisibleColumns(new Set(tempVisibleColumns));
     setColumnSelectorOpen(false);
   };
 
-  // Função para alternar coluna temporária
+  // Function to alternar coluna temporária
   const toggleTempColumn = (column: string) => {
     const newSet = new Set(tempVisibleColumns);
     if (newSet.has(column)) {
@@ -353,7 +353,7 @@ export default function BraintreeUSDPage() {
     setTempVisibleColumns(newSet);
   };
 
-  // Função para alternar ordenação
+  // Function to alternar ordenação
   const toggleSort = (field: string) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -363,7 +363,7 @@ export default function BraintreeUSDPage() {
     }
   };
 
-  // Função para toggle de grupos de disbursement
+  // Function to toggle de grupos de disbursement
   const toggleGroup = (disbursementId: string) => {
     const newExpanded = new Set(expandedGroups);
     if (newExpanded.has(disbursementId)) {
@@ -374,10 +374,10 @@ export default function BraintreeUSDPage() {
     setExpandedGroups(newExpanded);
   };
 
-  // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees já deduzidos pela Braintree)
-  // Não é necessário cálculo adicional - usar settlement_amount diretamente
+  // ⚠️ NOTA: settlement_amount JÁ contém o valor líquido (fees already deducted pela Braintree)
+  // No é necessário cálculo adicional - usar settlement_amount diretamente
 
-  // Função para calcular grupo completo de disbursement
+  // Function to calcular grupo completo de disbursement
   const calculateDisbursementGroup = (rows: BraintreeUSDRow[]): DisbursementGroup | null => {
     if (rows.length === 0 || !rows[0].disbursement_id) return null;
 
@@ -394,7 +394,7 @@ export default function BraintreeUSDPage() {
     };
   };
 
-  // Função para unconcile (limpar reconciliação)
+  // Function to unconcile (clear reconciliation)
   const handleUnconcile = async (rowId: string) => {
     if (!confirm("Are you sure you want to clear the reconciliation for this transaction?")) return;
 
@@ -403,7 +403,7 @@ export default function BraintreeUSDPage() {
       const row = rows.find((r) => r.id === rowId);
       if (!row) return;
 
-      // Limpar campos de reconciliação
+      // Limpar fields of reconciliation
       const { error } = await supabase
         .from("csv_rows")
         .update({
@@ -440,7 +440,7 @@ export default function BraintreeUSDPage() {
   // Quando houver dados do Bankinter, altere ENABLE_AUTO_RECONCILIATION para true
   const ENABLE_AUTO_RECONCILIATION = true;
 
-  // Função para verificar se duas datas estão dentro de ±3 dias
+  // Function to verificar se duas datas estão dentro de ±3 dias
   const isWithinDateRange = (
     date1: string,
     date2: string,
@@ -456,7 +456,7 @@ export default function BraintreeUSDPage() {
   const reconcileBankStatements = async (
     braintreeRows: BraintreeUSDRow[],
   ): Promise<BraintreeUSDRow[]> => {
-    // Verifica se a reconciliação automática está habilitada
+    // Check if reconciliation automática is enabled
     if (!ENABLE_AUTO_RECONCILIATION) {
       console.log("Auto-reconciliation is currently disabled");
       return braintreeRows;
@@ -621,10 +621,10 @@ export default function BraintreeUSDPage() {
           settlement_batch_id: row.custom_data?.settlement_batch_id,
           settlement_date: row.custom_data?.settlement_date,
 
-          // 🔑 ID do payout agrupado
+          // 🔑 ID do payout grouped
           disbursement_id: row.custom_data?.disbursement_id,
 
-          // 🏦 Informações do match bancário
+          // 🏦 Information do match bancário
           bank_match_id: row.custom_data?.bank_match_id,
           bank_match_date: row.custom_data?.bank_match_date,
           bank_match_amount:
@@ -671,7 +671,7 @@ export default function BraintreeUSDPage() {
 
       console.log(`[Braintree USD] Mapped ${mappedRows.length} rows`);
 
-      // 🆕 Agrupar transações por Settlement Batch ID
+      // 🆕 Group transactions por Settlement Batch ID
       const batchGroups = new Map<string, BraintreeUSDRow[]>();
       mappedRows.forEach((row) => {
         const batchId = row.settlement_batch_id || 'no-batch';
@@ -770,7 +770,7 @@ export default function BraintreeUSDPage() {
     if (!editingRow) return;
 
     // Atualizar conciliado se destinationAccount foi definido
-    const shouldBeConciliado =
+    const shouldBeReconciled =
       editedData.destinationAccount !== null &&
       editedData.destinationAccount !== undefined &&
       editedData.destinationAccount !== "";
@@ -780,7 +780,7 @@ export default function BraintreeUSDPage() {
         ? {
           ...row,
           ...editedData,
-          conciliado: shouldBeConciliado,
+          conciliado: shouldBeReconciled,
           reconciliationType: "manual" as const,
         }
         : row,
@@ -877,7 +877,7 @@ export default function BraintreeUSDPage() {
   const processedRows = useMemo(() => {
     const filteredRows = rows
       .filter((row) => {
-        // Filtro de busca
+        // Filter by busca
         if (searchTerm) {
           const search = searchTerm.toLowerCase();
           const matchesSearch =
@@ -905,7 +905,7 @@ export default function BraintreeUSDPage() {
           }
         }
 
-        // Filtro de status (padrão: settled)
+        // Filter by status (padrão: settled)
         if (statusFilter && statusFilter !== "all") {
           if (statusFilter === "settled") {
             // Match both "settled" and "settled_successfully"
@@ -915,28 +915,28 @@ export default function BraintreeUSDPage() {
           }
         }
 
-        // Filtro de merchant account
+        // Filter by merchant account
         if (merchantFilter && merchantFilter !== "all") {
           if (!row.merchant_account_id || row.merchant_account_id !== merchantFilter) return false;
         }
 
-        // Filtro de tipo
+        // Filter by tipo
         if (typeFilter && typeFilter !== "all") {
           if (!row.type || row.type !== typeFilter) return false;
         }
 
-        // Filtro de currency
+        // Filter by currency
         if (currencyFilter && currencyFilter !== "all") {
           const rowCurrency = row.currency || "EUR";
           if (rowCurrency !== currencyFilter) return false;
         }
 
-        // Filtro de payment method
+        // Filter by payment method
         if (paymentMethodFilter && paymentMethodFilter !== "all") {
           if (!row.payment_method || row.payment_method !== paymentMethodFilter) return false;
         }
 
-        // Filtro de valor
+        // Filter by valor
         if (amountFilter) {
           const { operator, value } = amountFilter;
           switch (operator) {
@@ -958,7 +958,7 @@ export default function BraintreeUSDPage() {
           }
         }
 
-        // Filtro de data
+        // Filter by data
         if (dateFilters.date) {
           const rowDate = new Date(row.date);
           if (dateFilters.date.start) {
@@ -971,7 +971,7 @@ export default function BraintreeUSDPage() {
           }
         }
 
-        // 🆕 Filtro de settlement batch
+        // 🆕 Filter by settlement batch
         if (settlementBatchFilter && settlementBatchFilter !== "all") {
           if (settlementBatchFilter === "no-batch") {
             if (row.settlement_batch_id) return false;
@@ -983,7 +983,7 @@ export default function BraintreeUSDPage() {
         return true;
       });
 
-    // 🆕 Agrupar por disbursement_id e calcular totais
+    // 🆕 Group por disbursement_id e calcular totais
     const grouped = filteredRows.reduce((acc: Record<string, BraintreeUSDRow[]>, row: BraintreeUSDRow) => {
       const disbursementId = row.disbursement_id || 'ungrouped';
       if (!acc[disbursementId]) {
@@ -1060,7 +1060,7 @@ export default function BraintreeUSDPage() {
     return processedRows;
   }, [rows, searchTerm, statusFilter, merchantFilter, typeFilter, currencyFilter, paymentMethodFilter, amountFilter, dateFilters, sortField, sortDirection, disbursementFilter, expandedGroups]);
 
-  // Paginação
+  // Pagination
   const { totalPages, adjustedCurrentPage, paginatedRows } = useMemo(() => {
     const totalPages = Math.ceil(processedRows.length / rowsPerPage);
     const adjustedCurrentPage =
@@ -1097,20 +1097,20 @@ export default function BraintreeUSDPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full">
 
       <div
         className={` transition-all duration-300 ${splitScreenUrl ? "md:pr-[50%]" : ""}`}
       >
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
-          <div className="container mx-auto px-6 py-5">
+        <header className="page-header-standard">
+          <div className="flex items-center justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/">
@@ -1143,19 +1143,19 @@ export default function BraintreeUSDPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                {/* Botão de Forçar Atualização */}
+                {/* Force Refresh Button */}
                 <Button
                   onClick={loadData}
                   disabled={isLoading || isReconciling}
                   variant="outline"
                   size="sm"
                   className="gap-2 border-white text-white hover:bg-white/10"
-                  title="Forçar atualização dos dados"
+                  title="Force data refresh"
                 >  <RefreshCw className={`h-4 w-4 ${(isLoading || isReconciling) ? 'animate-spin' : ''}`} />
                   Atualizar
                 </Button>
 
-                {/* Sincronização direta via API */}
+                {/* Direct sync via API */}
                 <BraintreeApiSync />
 
                 {/* Update Pending/Force Update com timestamps */}
@@ -1188,7 +1188,7 @@ export default function BraintreeUSDPage() {
           </div>
         </header>
 
-        <div className="container mx-auto px-6 py-8">
+        <div className="px-6 py-8">
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
@@ -1559,14 +1559,14 @@ export default function BraintreeUSDPage() {
 
                             <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
                               <p className="text-xs text-blue-700 dark:text-blue-300">
-                                ℹ️ Valor líquido depositado (fees já deduzidos)
+                                ℹ️ Net amount deposited (fees already deducted)
                               </p>
                             </div>
                           </div>
                         );
                       })()}
 
-                      {/* Botão para buscar match no Bankinter */}
+                      {/* Button to find match in Bankinter */}
                       {disbursementGroups.get(disbursementFilter) && (
                         <div className="mt-4 pt-4 border-t border-green-200 dark:border-green-800">
                           <Button

@@ -7,14 +7,14 @@ import Link from "next/link";
 
 export default function AccountsReceivableOverviewPage() {
   return (
-    <div className="p-8 space-y-6">
+    <div className="min-h-full px-6 py-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Accounts Receivable Overview</h1>
-        <p className="text-gray-600 mt-1">
+      <header className="page-header-standard">
+        <h1 className="header-title">Accounts Receivable Overview</h1>
+        <p className="header-subtitle">
           Track customer invoices, payments, and collection activities
         </p>
-      </div>
+      </header>
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

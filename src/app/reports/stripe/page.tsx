@@ -272,7 +272,7 @@ export default function StripePage() {
 
   const downloadCSV = () => {
     try {
-      const headers = ["ID", "Date", "Description", "Amount", "Conciliado"];
+      const headers = ["ID", "Date", "Description", "Amount", "Reconciled"];
 
       const csvContent = [
         headers.join(","),
@@ -304,18 +304,18 @@ export default function StripePage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+    <div className="min-h-full">
 
       <div className="">
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
-          <div className="container mx-auto px-6 py-5">
+        <header className="page-header-standard">
+          <div className="flex items-center justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/">
@@ -376,7 +376,7 @@ export default function StripePage() {
                   variant="outline"
                   size="sm"
                   className="gap-2 border-white text-white hover:bg-white/10"
-                  title="Forçar atualização dos dados"
+                  title="Force data refresh"
                 >
                   <Download className="h-4 w-4" />
                   Atualizar
@@ -420,7 +420,7 @@ export default function StripePage() {
           </div>
         </header>
 
-        <div className="container mx-auto px-6 py-8">
+        <div className="px-6 py-8">
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Processing Details</CardTitle>
@@ -446,7 +446,7 @@ export default function StripePage() {
                         Amount
                       </th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Conciliado
+                        Reconciled
                       </th>
                       <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
                         Actions

@@ -87,7 +87,7 @@ export default function BraintreeTransactionsPage() {
           filter: 'source=in.(braintree-api-revenue,braintree-api-fees,braintree-api-disbursement)',
         },
         (payload) => {
-          console.log('[Realtime Braintree Transactions] Mudança detectada:', payload);
+          console.log('[Realtime Braintree Transactions] Change detected:', payload);
           loadData();
         }
       )
@@ -140,7 +140,7 @@ export default function BraintreeTransactionsPage() {
     transactionsData: BraintreeTransactionRow[],
     braintreeEURData: BraintreeEURRow[],
   ) => {
-    // Agrupar transações por Disbursement Date e Currency = EUR
+    // Group transactions por Disbursement Date e Currency = EUR
     const groupedTransactions = new Map<string, BraintreeTransactionRow[]>();
 
     transactionsData.forEach((tx) => {
@@ -165,11 +165,11 @@ export default function BraintreeTransactionsPage() {
         };
       }
 
-      // Buscar todas as transações do mesmo dia
+      // Fetch all transactions of the same day
       const sameDayTransactions =
         groupedTransactions.get(tx.disbursement_date) || [];
 
-      // Somar valores das transações do mesmo dia
+      // Sum values of transactions of the same day
       const totalAmount = sameDayTransactions.reduce(
         (sum, t) =>
           sum + (parseFloat(t.amount_authorized?.toString() || "0") || 0),
@@ -259,7 +259,7 @@ export default function BraintreeTransactionsPage() {
         // Executar conciliação
         performConciliation(updatedRows, braintreeEURRows);
 
-        // Salvar no Supabase
+        // Save no Supabase
         const totalAmount = updatedRows.reduce(
           (sum, row) => sum + row.amount_authorized,
           0,
@@ -410,18 +410,18 @@ export default function BraintreeTransactionsPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-white via-gray-50 to-gray-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 flex items-center justify-center">
+      <div className="min-h-full flex items-center justify-center">
         <Loader2 className="h-12 w-12 animate-spin text-[#1a2b4a]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-full">
 
       <div className="">
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
-          <div className="container mx-auto px-6 py-5">
+        <header className="page-header-standard">
+          <div className="flex items-center justify-between">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Link href="/">
@@ -457,7 +457,7 @@ export default function BraintreeTransactionsPage() {
                   </Button>
                 </label>
 
-                {/* Sincronização direta via API */}
+                {/* Direct sync via API */}
                 <BraintreeApiSync />
 
                 <Button
@@ -466,7 +466,7 @@ export default function BraintreeTransactionsPage() {
                   variant="outline"
                   size="sm"
                   className="gap-2 border-white text-white hover:bg-white/10"
-                  title="Forçar atualização dos dados"
+                  title="Force data refresh"
                 >
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                   Atualizar
@@ -494,7 +494,7 @@ export default function BraintreeTransactionsPage() {
           </div>
         </header>
 
-        <div className="container mx-auto px-6 py-8">
+        <div className="px-6 py-8">
           {/* Summary Cards */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card className="shadow-xl border-2 border-[#e5e7eb]">

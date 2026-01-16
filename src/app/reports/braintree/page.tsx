@@ -47,13 +47,13 @@ export default function BraintreeDashboard() {
           filter: 'source=in.(braintree-api-revenue,braintree-api-fees,braintree-api-disbursement)',
         },
         (payload) => {
-          console.log('[Realtime] Mudança detectada em Braintree:', payload);
+          console.log('[Realtime] Change detected em Braintree:', payload);
           // Recarregar stats quando houver mudança
           loadStats();
         }
       )
       .subscribe((status) => {
-        console.log(`[Realtime] Status da inscrição Braintree: ${status}`);
+        console.log(`[Realtime] Subscription status Braintree: ${status}`);
       });
 
     // Cleanup ao desmontar
@@ -70,7 +70,7 @@ export default function BraintreeDashboard() {
         return;
       }
 
-      // Buscar todas as transações de revenue
+      // Fetch all transactions de revenue
       const { data: revenueData, error: revenueError } = await supabase
         .from("csv_rows")
         .select("*")
@@ -81,7 +81,7 @@ export default function BraintreeDashboard() {
         return;
       }
 
-      // Buscar todas as fees
+      // Fetch all fees
       const { data: feesData, error: feesError } = await supabase
         .from("csv_rows")
         .select("*")
@@ -92,7 +92,7 @@ export default function BraintreeDashboard() {
         return;
       }
 
-      // Agrupar por moeda
+      // Group por moeda
       const currencyMap: { [key: string]: CurrencyStats } = {};
 
       // Processar revenue
@@ -159,7 +159,7 @@ export default function BraintreeDashboard() {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-full">
         <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
       </div>
     );
@@ -182,7 +182,7 @@ export default function BraintreeDashboard() {
             variant="ghost"
             size="sm"
             className="gap-2"
-            title="Forçar atualização dos dados"
+            title="Force data refresh"
           >
             <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar

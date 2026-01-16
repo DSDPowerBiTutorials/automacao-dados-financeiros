@@ -108,9 +108,9 @@ const DEPARTMENTS = [
 ];
 
 const PRODUCT_TYPES = [
-    { value: "service", label: "Serviço" },
-    { value: "product", label: "Produto" },
-    { value: "subscription", label: "Assinatura" },
+    { value: "service", label: "Service" },
+    { value: "product", label: "Product" },
+    { value: "subscription", label: "Subscription" },
 ];
 
 const CATEGORIES = [
@@ -124,8 +124,8 @@ const CATEGORIES = [
 
 const SCOPES = [
     { value: "GLOBAL", label: "Global" },
-    { value: "ES", label: "Espanha" },
-    { value: "US", label: "Estados Unidos" },
+    { value: "ES", label: "Spain" },
+    { value: "US", label: "United States" },
 ];
 
 export default function ProductsPage() {
@@ -201,8 +201,8 @@ export default function ProductsPage() {
         } catch (error) {
             console.error("Error loading data:", error);
             toast({
-                title: "Erro",
-                description: "Erro ao carregar dados",
+                title: "Error",
+                description: "Error loading data",
                 variant: "destructive",
             });
         } finally {
@@ -235,11 +235,11 @@ export default function ProductsPage() {
         products.forEach((p, i) => {
             const similar = products.filter((other, j) => {
                 if (i >= j) return false; // Avoid duplicates
-                const nameSimilar = p.name.toLowerCase().includes(other.name.toLowerCase().substring(0, 5)) ||
+                const nameYesilar = p.name.toLowerCase().includes(other.name.toLowerCase().substring(0, 5)) ||
                     other.name.toLowerCase().includes(p.name.toLowerCase().substring(0, 5));
-                const priceSimilar = p.default_price && other.default_price &&
+                const priceYesilar = p.default_price && other.default_price &&
                     Math.abs(p.default_price - other.default_price) < 100;
-                return nameSimilar || priceSimilar;
+                return nameYesilar || priceYesilar;
             });
             if (similar.length > 0) {
                 duplicates.push({ product: p, similar });
@@ -291,8 +291,8 @@ export default function ProductsPage() {
         try {
             if (!formData.name.trim()) {
                 toast({
-                    title: "Erro",
-                    description: "Nome é obrigatório",
+                    title: "Error",
+                    description: "Name is required",
                     variant: "destructive",
                 });
                 return;
@@ -348,11 +348,11 @@ export default function ProductsPage() {
                     .eq("id", editingProduct.id);
 
                 if (error) throw error;
-                toast({ title: "Sucesso", description: "Produto atualizado" });
+                toast({ title: "Success", description: "Product updated" });
             } else {
                 const { error } = await supabase.from("products").insert(productData);
                 if (error) throw error;
-                toast({ title: "Sucesso", description: "Produto criado" });
+                toast({ title: "Success", description: "Product created" });
             }
 
             setIsDialogOpen(false);
@@ -361,8 +361,8 @@ export default function ProductsPage() {
         } catch (error: any) {
             console.error("Error saving product:", error);
             toast({
-                title: "Erro",
-                description: error.message || "Erro ao salvar produto",
+                title: "Error",
+                description: error.message || "Error saving product",
                 variant: "destructive",
             });
         }
@@ -378,13 +378,13 @@ export default function ProductsPage() {
                 .eq("id", deleteConfirm.id);
 
             if (error) throw error;
-            toast({ title: "Sucesso", description: "Produto excluído" });
+            toast({ title: "Success", description: "Product deleted" });
             setDeleteConfirm(null);
             loadData();
         } catch (error: any) {
             toast({
-                title: "Erro",
-                description: error.message || "Erro ao excluir produto",
+                title: "Error",
+                description: error.message || "Error deleting product",
                 variant: "destructive",
             });
         }
@@ -403,8 +403,8 @@ export default function ProductsPage() {
     const handleMerge = async () => {
         if (selectedForMerge.length < 2 || !mergeTarget) {
             toast({
-                title: "Erro",
-                description: "Selecione pelo menos 2 produtos e defina o produto principal",
+                title: "Error",
+                description: "Select at least 2 products and define the main product",
                 variant: "destructive",
             });
             return;
@@ -456,8 +456,8 @@ export default function ProductsPage() {
             }
 
             toast({
-                title: "Sucesso",
-                description: `${toMerge.length} produto(s) unificado(s) em "${targetProduct.name}"`,
+                title: "Success",
+                description: `${toMerge.length} product(s) merged into "${targetProduct.name}"`,
             });
 
             setIsMergeDialogOpen(false);
@@ -467,8 +467,8 @@ export default function ProductsPage() {
         } catch (error: any) {
             console.error("Error merging products:", error);
             toast({
-                title: "Erro",
-                description: error.message || "Erro ao unificar produtos",
+                title: "Error",
+                description: error.message || "Error merging products",
                 variant: "destructive",
             });
         }
@@ -492,28 +492,28 @@ export default function ProductsPage() {
 
     if (loading) {
         return (
-            <div className="p-8 flex items-center justify-center min-h-screen">
+            <div className="min-h-full px-6 flex items-center justify-center">
                 <div className="text-center">
                     <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Carregando produtos...</p>
+                    <p className="text-gray-600">Loading products...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="p-8 space-y-6">
+        <div className="min-h-full px-6 py-8 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+                <header className="page-header-standard">
+                    <h1 className="header-title flex items-center gap-3">
                         <Package className="h-8 w-8 text-blue-600" />
-                        Produtos
+                        Products
                     </h1>
-                    <p className="text-gray-600 mt-1">
-                        Gerencie os produtos DSD - cadastro, unificação e associação financeira
+                    <p className="header-subtitle">
+                        Manage DSD products - registration, unification and financial association
                     </p>
-                </div>
+                </header>
                 <div className="flex gap-2">
                     <Button
                         variant="outline"
@@ -524,7 +524,7 @@ export default function ProductsPage() {
                                 const data = await res.json();
                                 if (data.success) {
                                     toast({
-                                        title: "Sincronização concluída",
+                                        title: "Sync completed",
                                         description: `${data.stats.inserted} novos produtos importados do HubSpot`,
                                     });
                                     if (data.stats.inserted > 0) loadData();
@@ -533,7 +533,7 @@ export default function ProductsPage() {
                                 }
                             } catch (error: any) {
                                 toast({
-                                    title: "Erro na sincronização",
+                                    title: "Sync error",
                                     description: error.message,
                                     variant: "destructive",
                                 });
@@ -545,7 +545,7 @@ export default function ProductsPage() {
                         className="gap-2"
                     >
                         <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                        {syncing ? "Sincronizando..." : "Sync HubSpot"}
+                        {syncing ? "Syncing..." : "Sync HubSpot"}
                     </Button>
                     <Button
                         variant="outline"
@@ -557,7 +557,7 @@ export default function ProductsPage() {
                         className="gap-2"
                     >
                         <Merge className="h-4 w-4" />
-                        Unificar ({selectedForMerge.length})
+                        Merge ({selectedForMerge.length})
                     </Button>
                     <Button
                         onClick={() => {
@@ -567,7 +567,7 @@ export default function ProductsPage() {
                         className="gap-2"
                     >
                         <Plus className="h-4 w-4" />
-                        Novo Produto
+                        New Product
                     </Button>
                 </div>
             </div>
@@ -594,7 +594,7 @@ export default function ProductsPage() {
                                 <CheckCircle className="h-5 w-5 text-green-600" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Ativos</p>
+                                <p className="text-sm text-gray-600">Active</p>
                                 <p className="text-2xl font-bold">{stats.active}</p>
                             </div>
                         </div>
@@ -607,7 +607,7 @@ export default function ProductsPage() {
                                 <DollarSign className="h-5 w-5 text-purple-600" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Com Preço</p>
+                                <p className="text-sm text-gray-600">With Price</p>
                                 <p className="text-2xl font-bold">{stats.withPrice}</p>
                             </div>
                         </div>
@@ -620,7 +620,7 @@ export default function ProductsPage() {
                                 <Building className="h-5 w-5 text-orange-600" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Com Conta Financeira</p>
+                                <p className="text-sm text-gray-600">With Financial Account</p>
                                 <p className="text-2xl font-bold">{stats.withFA}</p>
                             </div>
                         </div>
@@ -634,11 +634,11 @@ export default function ProductsPage() {
                     <CardHeader className="pb-2">
                         <CardTitle className="text-orange-700 flex items-center gap-2 text-lg">
                             <AlertTriangle className="h-5 w-5" />
-                            Possíveis Duplicados Detectados
+                            Possible Duplicates Detected
                         </CardTitle>
                         <CardDescription className="text-orange-600">
-                            {potentialDuplicates.length} grupo(s) de produtos similares encontrados.
-                            Considere unificá-los.
+                            {potentialDuplicates.length} group(s) of similar products found.
+                            Consider merging them.
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -654,7 +654,7 @@ export default function ProductsPage() {
                                         setIsMergeDialogOpen(true);
                                     }}
                                 >
-                                    {product.name} + {similar.length} similar(es)
+                                    {product.name} + {similar.length} similar
                                 </Badge>
                             ))}
                         </div>
@@ -670,7 +670,7 @@ export default function ProductsPage() {
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Buscar por nome, código..."
+                                    placeholder="Search by name, code..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
                                     className="pl-10"
@@ -680,10 +680,10 @@ export default function ProductsPage() {
                         <div>
                             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Categoria" />
+                                    <SelectValue placeholder="Category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Todas Categorias</SelectItem>
+                                    <SelectItem value="all">All Categories</SelectItem>
                                     {CATEGORIES.map((cat) => (
                                         <SelectItem key={cat} value={cat}>
                                             {cat}
@@ -698,7 +698,7 @@ export default function ProductsPage() {
                                     <SelectValue placeholder="Scope" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Todos Scopes</SelectItem>
+                                    <SelectItem value="all">All Scopes</SelectItem>
                                     {SCOPES.map((s) => (
                                         <SelectItem key={s.value} value={s.value}>
                                             {s.label}
@@ -716,7 +716,7 @@ export default function ProductsPage() {
                                 className="rounded"
                             />
                             <Label htmlFor="showInactive" className="text-sm cursor-pointer">
-                                Mostrar inativos
+                                Show inactive
                             </Label>
                         </div>
                     </div>
@@ -727,15 +727,15 @@ export default function ProductsPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">
-                        Produtos ({filteredProducts.length})
+                        Products ({filteredProducts.length})
                     </CardTitle>
                     <CardDescription>
-                        Selecione produtos para unificar clicando no checkbox
+                        Select products to merge by clicking the checkbox
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
                     <div className="overflow-x-auto">
-                        <Table>
+                        <Table className="table-standard">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead className="w-12">
@@ -751,15 +751,15 @@ export default function ProductsPage() {
                                             }}
                                         />
                                     </TableHead>
-                                    <TableHead>Código</TableHead>
-                                    <TableHead>Nome</TableHead>
-                                    <TableHead>Categoria</TableHead>
-                                    <TableHead>Preço</TableHead>
-                                    <TableHead>Conta Financeira</TableHead>
-                                    <TableHead>Departamento</TableHead>
+                                    <TableHead>Code</TableHead>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead>Price</TableHead>
+                                    <TableHead>Financial Account</TableHead>
+                                    <TableHead>Department</TableHead>
                                     <TableHead>Scope</TableHead>
                                     <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Ações</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -825,11 +825,11 @@ export default function ProductsPage() {
                                         </TableCell>
                                         <TableCell>
                                             {product.is_active ? (
-                                                <Badge className="bg-green-100 text-green-700">
-                                                    Ativo
-                                                </Badge>
+                                                <span className="badge-light-success">
+                                                    Active
+                                                </span>
                                             ) : (
-                                                <Badge variant="secondary">Inativo</Badge>
+                                                <span className="badge-light-danger">Inactive</span>
                                             )}
                                         </TableCell>
                                         <TableCell className="text-right">
@@ -856,7 +856,7 @@ export default function ProductsPage() {
                                 {filteredProducts.length === 0 && (
                                     <TableRow>
                                         <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                                            Nenhum produto encontrado
+                                            No products found
                                         </TableCell>
                                     </TableRow>
                                 )}
@@ -871,17 +871,17 @@ export default function ProductsPage() {
                 <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle>
-                            {editingProduct ? "Editar Produto" : "Novo Produto"}
+                            {editingProduct ? "Edit Product" : "New Product"}
                         </DialogTitle>
                         <DialogDescription>
-                            Preencha os dados do produto. Campos com * são obrigatórios.
+                            Fill in the product data. Fields with * are required.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="code">Código</Label>
+                                <Label htmlFor="code">Code</Label>
                                 <Input
                                     id="code"
                                     value={formData.code}
@@ -892,34 +892,34 @@ export default function ProductsPage() {
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="name">Nome *</Label>
+                                <Label htmlFor="name">Name *</Label>
                                 <Input
                                     id="name"
                                     value={formData.name}
                                     onChange={(e) =>
                                         setFormData({ ...formData, name: e.target.value })
                                     }
-                                    placeholder="Nome do produto"
+                                    placeholder="Product name"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <Label htmlFor="description">Descrição</Label>
+                            <Label htmlFor="description">Description</Label>
                             <Textarea
                                 id="description"
                                 value={formData.description}
                                 onChange={(e) =>
                                     setFormData({ ...formData, description: e.target.value })
                                 }
-                                placeholder="Descrição do produto"
+                                placeholder="Product description"
                                 rows={2}
                             />
                         </div>
 
                         <div className="grid grid-cols-3 gap-4">
                             <div>
-                                <Label htmlFor="default_price">Preço Padrão</Label>
+                                <Label htmlFor="default_price">Default Price</Label>
                                 <Input
                                     id="default_price"
                                     type="number"
@@ -932,7 +932,7 @@ export default function ProductsPage() {
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="currency">Moeda</Label>
+                                <Label htmlFor="currency">Currency</Label>
                                 <Select
                                     value={formData.currency}
                                     onValueChange={(v) =>
@@ -950,7 +950,7 @@ export default function ProductsPage() {
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="product_type">Tipo</Label>
+                                <Label htmlFor="product_type">Type</Label>
                                 <Select
                                     value={formData.product_type}
                                     onValueChange={(v) =>
@@ -973,7 +973,7 @@ export default function ProductsPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="category">Categoria</Label>
+                                <Label htmlFor="category">Category</Label>
                                 <Select
                                     value={formData.category}
                                     onValueChange={(v) =>
@@ -981,7 +981,7 @@ export default function ProductsPage() {
                                     }
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Selecione..." />
+                                        <SelectValue placeholder="Select..." />
                                     </SelectTrigger>
                                     <SelectContent>
                                         {CATEGORIES.map((cat) => (
@@ -1016,7 +1016,7 @@ export default function ProductsPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="financial_account">Conta Financeira</Label>
+                                <Label htmlFor="financial_account">Financial Account</Label>
                                 <Select
                                     value={formData.financial_account_id}
                                     onValueChange={(v) =>
@@ -1024,10 +1024,10 @@ export default function ProductsPage() {
                                     }
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Selecione..." />
+                                        <SelectValue placeholder="Select..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">Nenhuma</SelectItem>
+                                        <SelectItem value="">None</SelectItem>
                                         {financialAccounts.map((fa) => (
                                             <SelectItem key={fa.id} value={fa.id}>
                                                 {fa.code} - {fa.name}
@@ -1037,7 +1037,7 @@ export default function ProductsPage() {
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="department">Departamento</Label>
+                                <Label htmlFor="department">Department</Label>
                                 <Select
                                     value={formData.department}
                                     onValueChange={(v) =>
@@ -1045,10 +1045,10 @@ export default function ProductsPage() {
                                     }
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Selecione..." />
+                                        <SelectValue placeholder="Select..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">Nenhum</SelectItem>
+                                        <SelectItem value="">None</SelectItem>
                                         {DEPARTMENTS.map((d) => (
                                             <SelectItem key={d} value={d}>
                                                 {d}
@@ -1060,7 +1060,7 @@ export default function ProductsPage() {
                         </div>
 
                         <div>
-                            <Label htmlFor="cost_center">Centro de Custo</Label>
+                            <Label htmlFor="cost_center">Cost Center</Label>
                             <Select
                                 value={formData.cost_center_id}
                                 onValueChange={(v) =>
@@ -1068,10 +1068,10 @@ export default function ProductsPage() {
                                 }
                             >
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Selecione..." />
+                                    <SelectValue placeholder="Select..." />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="">Nenhum</SelectItem>
+                                    <SelectItem value="">None</SelectItem>
                                     {costCenters.map((cc) => (
                                         <SelectItem key={cc.id} value={cc.id}>
                                             {cc.code} - {cc.name}
@@ -1083,7 +1083,7 @@ export default function ProductsPage() {
 
                         <div>
                             <Label htmlFor="alternative_names">
-                                Nomes Alternativos (separados por vírgula)
+                                Alternative Names (comma separated)
                             </Label>
                             <Input
                                 id="alternative_names"
@@ -1091,10 +1091,10 @@ export default function ProductsPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, alternative_names: e.target.value })
                                 }
-                                placeholder="Nome 1, Nome 2, Nome 3..."
+                                placeholder="Name 1, Name 2, Name 3..."
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                                Use para mapear variações de nome, erros de digitação, etc.
+                                Use to map name variations, typos, etc.
                             </p>
                         </div>
 
@@ -1116,10 +1116,10 @@ export default function ProductsPage() {
 
                     <DialogFooter>
                         <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-                            Cancelar
+                            Cancel
                         </Button>
                         <Button onClick={handleSave}>
-                            {editingProduct ? "Salvar" : "Criar"}
+                            {editingProduct ? "Save" : "Criar"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1134,7 +1134,7 @@ export default function ProductsPage() {
                             Unificar Produtos
                         </DialogTitle>
                         <DialogDescription>
-                            Selecione o produto principal. Os outros serão marcados como
+                            Select the main product. Others will be marked as
                             &quot;merged&quot; e seus nomes adicionados como alternativos.
                         </DialogDescription>
                     </DialogHeader>
@@ -1170,8 +1170,8 @@ export default function ProductsPage() {
                         {mergeTarget && (
                             <div className="bg-blue-50 p-3 rounded-lg">
                                 <p className="text-sm text-blue-700">
-                                    <strong>Resultado:</strong> Os {selectedForMerge.length - 1}{" "}
-                                    produto(s) serão unificados em &quot;
+                                    <strong>Result:</strong> Os {selectedForMerge.length - 1}{" "}
+                                    product(s) will be merged into &quot;
                                     {products.find((p) => p.id === mergeTarget)?.name}&quot;
                                 </p>
                             </div>
@@ -1187,7 +1187,7 @@ export default function ProductsPage() {
                                 setMergeTarget("");
                             }}
                         >
-                            Cancelar
+                            Cancel
                         </Button>
                         <Button
                             onClick={handleMerge}
@@ -1203,19 +1203,19 @@ export default function ProductsPage() {
             <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Excluir Produto</AlertDialogTitle>
+                        <AlertDialogTitle>Delete Product</AlertDialogTitle>
                         <AlertDialogDescription>
                             Tem certeza que deseja excluir o produto &quot;{deleteConfirm?.name}
-                            &quot;? Esta ação não pode ser desfeita.
+                            &quot;? This action cannot be undone.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
-                        <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
                             className="bg-red-600 hover:bg-red-700"
                             onClick={handleDelete}
                         >
-                            Excluir
+                            Delete
                         </AlertDialogAction>
                     </AlertDialogFooter>
                 </AlertDialogContent>

@@ -101,7 +101,7 @@ export default function HubSpotCompaniesPage() {
 
             if (error) throw error;
 
-            // Agrupar deals por empresa e calcular métricas
+            // Group deals por empresa e calcular métricas
             const companyMap = new Map();
             deals?.forEach((deal, index) => {
                 const companyName = deal.custom_data?.company || "Unknown Company";
@@ -155,10 +155,10 @@ export default function HubSpotCompaniesPage() {
             const result = await response.json();
 
             if (!result.success) {
-                throw new Error(result.error || "Erro na sincronização");
+                throw new Error(result.error || "Sync error");
             }
 
-            showAlert("success", result.message || "Sincronização concluída!");
+            showAlert("success", result.message || "Sync completed!");
             await fetchCompanies();
         } catch (error: any) {
             showAlert("error", `Erro ao sincronizar: ${error.message}`);
@@ -168,7 +168,7 @@ export default function HubSpotCompaniesPage() {
     };
 
     const exportToCSV = () => {
-        const headers = ["Nome", "Domínio", "Indústria", "Cidade", "País", "Telefone", "Funcionários", "Receita Anual"];
+        const headers = ["Name", "Domain", "Industry", "City", "Country", "Phone", "Employees", "Annual Revenue"];
         const csvData = filteredCompanies.map((company) => [
             company.name,
             company.domain || "",
@@ -224,7 +224,7 @@ export default function HubSpotCompaniesPage() {
                     <div>
                         <h1 className="text-3xl font-bold">HubSpot Companies</h1>
                         <p className="text-gray-500">
-                            Gestão de empresas sincronizadas do HubSpot CRM
+                            Management of synced companies from HubSpot CRM
                         </p>
                     </div>
                 </div>
@@ -328,7 +328,7 @@ export default function HubSpotCompaniesPage() {
                 </CardHeader>
                 <CardContent className="flex gap-4">
                     <Input
-                        placeholder="Buscar por nome, domínio ou indústria..."
+                        placeholder="Search by name, domain or industry..."
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                         className="max-w-md"
@@ -357,16 +357,16 @@ export default function HubSpotCompaniesPage() {
                                         Empresa
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Indústria
+                                        Industry
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Localização
+                                        Location
                                     </th>
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
-                                        Funcionários
+                                        Employees
                                     </th>
                                     <th className="px-4 py-3 text-right text-sm font-medium text-gray-700">
-                                        Receita Anual
+                                        Annual Revenue
                                     </th>
                                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
                                         Tipo

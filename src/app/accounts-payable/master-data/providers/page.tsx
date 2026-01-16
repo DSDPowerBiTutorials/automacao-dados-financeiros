@@ -251,11 +251,11 @@ export default function ProvidersPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-full px-6 space-y-6 py-6">
+      <header className="page-header-standard">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Providers</h1>
-          <p className="text-gray-500 mt-1">
+          <h1 className="header-title">Providers</h1>
+          <p className="header-subtitle">
             Manage supplier and vendor master data
           </p>
         </div>
@@ -271,7 +271,7 @@ export default function ProvidersPage() {
           <Plus className="h-4 w-4 mr-2" />
           New Provider
         </Button>
-      </div>
+      </header>
 
       <Card className="p-4">
         <div className="space-y-4">
@@ -324,7 +324,7 @@ export default function ProvidersPage() {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="table-standard">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Scope</th>
@@ -374,12 +374,11 @@ export default function ProvidersPage() {
                     <td className="px-4 py-3 text-gray-600">{provider.currency || "-"}</td>
                     <td className="px-4 py-3">{provider.payment_terms || "-"}</td>
                     <td className="px-4 py-3">
-                      <Badge
-                        variant={provider.is_active ? "default" : "secondary"}
-                        className={provider.is_active ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+                      <span
+                        className={provider.is_active ? "badge-light-success" : "badge-light-secondary"}
                       >
                         {provider.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      </span>
                     </td>
                   </tr>
                 ))

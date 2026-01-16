@@ -4,9 +4,9 @@ export default function AccountsPayableReportsPage() {
     return (
         <PlaceholderPage
             title="Accounts Payable · Reports"
-            description="Relatórios de contas a pagar (a construir)."
+            description="Accounts payable reports (coming soon)."
             backHref="/accounts-payable"
-            backLabel="Voltar ao Accounts Payable"
+            backLabel="Back to Accounts Payable"
         />
     );
 }

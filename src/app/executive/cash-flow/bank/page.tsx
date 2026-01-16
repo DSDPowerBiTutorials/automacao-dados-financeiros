@@ -256,7 +256,7 @@ export default function BankCashFlowPage() {
 
             if (bankError) throw bankError;
 
-            // Carregar transações dos gateways para matching
+            // Carregar transactions dos gateways para matching
             const { data: gatewayData, error: gatewayError } = await supabase
                 .from("csv_rows")
                 .select("id, date, amount, source, custom_data")
@@ -377,8 +377,8 @@ export default function BankCashFlowPage() {
     const exportCSV = () => {
         const headers = [
             "Data",
-            "Descrição Banco",
-            "Valor",
+            "Description Banco",
+            "Amount",
             "Moeda",
             "Gateway",
             "Cliente",
@@ -398,7 +398,7 @@ export default function BankCashFlowPage() {
             t.gatewayMatch?.customer_email || "",
             t.gatewayMatch?.order_id || "",
             t.productCategory,
-            t.isReconciled ? "Sim" : "Não",
+            t.isReconciled ? "Yes" : "No",
         ]);
 
         const csv = [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
@@ -430,33 +430,33 @@ export default function BankCashFlowPage() {
 
     if (isLoading) {
         return (
-            <div className="p-8 flex items-center justify-center min-h-screen">
+            <div className="min-h-full px-6 py-6 flex items-center justify-center">
                 <div className="text-center">
                     <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Carregando fluxo de caixa bancário...</p>
+                    <p className="text-gray-600">Loading bank cash flow...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="p-8 space-y-6">
+        <div className="min-h-full px-6 py-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Fluxo de Caixa Bancário</h1>
-                    <p className="text-gray-600 mt-1">
-                        Extratos bancários com identificação de origem (Braintree, GoCardless, Stripe)
+                <header className="page-header-standard">
+                    <h1 className="header-title">Bank Cash Flow</h1>
+                    <p className="header-subtitle">
+                        Bank statements with source identification (Braintree, GoCardless, Stripe)
                     </p>
-                </div>
+                </header>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={loadData} className="gap-2">
                         <RefreshCw className="h-4 w-4" />
-                        Atualizar
+                        Refresh
                     </Button>
                     <Button onClick={exportCSV} className="gap-2">
                         <Download className="h-4 w-4" />
-                        Exportar CSV
+                        Export CSV
                     </Button>
                 </div>
             </div>
@@ -476,7 +476,7 @@ export default function BankCashFlowPage() {
                                 <ArrowDownCircle className="h-5 w-5 text-green-600" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-600">Entradas</p>
+                                <p className="text-xs text-gray-600">Inflows</p>
                                 <p className="text-lg font-bold text-green-600">
                                     {formatCurrency(summary.totalInflow)}
                                 </p>
@@ -492,7 +492,7 @@ export default function BankCashFlowPage() {
                                 <ArrowUpCircle className="h-5 w-5 text-red-600" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-600">Saídas</p>
+                                <p className="text-xs text-gray-600">Outflows</p>
                                 <p className="text-lg font-bold text-red-600">
                                     {formatCurrency(summary.totalOutflow)}
                                 </p>
@@ -508,7 +508,7 @@ export default function BankCashFlowPage() {
                                 <TrendingUp className="h-5 w-5 text-blue-600" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-600">Líquido</p>
+                                <p className="text-xs text-gray-600">Net</p>
                                 <p className={`text-lg font-bold ${summary.netCashFlow >= 0 ? "text-green-600" : "text-red-600"}`}>
                                     {formatCurrency(summary.netCashFlow)}
                                 </p>
@@ -524,7 +524,7 @@ export default function BankCashFlowPage() {
                                 <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-600">Reconciliados</p>
+                                <p className="text-xs text-gray-600">Reconciled</p>
                                 <p className="text-lg font-bold text-emerald-600">
                                     {matchingStats.matched}
                                 </p>
@@ -540,7 +540,7 @@ export default function BankCashFlowPage() {
                                 <AlertCircle className="h-5 w-5 text-amber-600" />
                             </div>
                             <div>
-                                <p className="text-xs text-gray-600">Pendentes</p>
+                                <p className="text-xs text-gray-600">Pending</p>
                                 <p className="text-lg font-bold text-amber-600">
                                     {matchingStats.unmatched}
                                 </p>
@@ -555,14 +555,14 @@ export default function BankCashFlowPage() {
                 <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Filter className="h-5 w-5" />
-                        Filtros
+                        Filters
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Data Início
+                                Start Date
                             </label>
                             <Input
                                 type="date"
@@ -572,7 +572,7 @@ export default function BankCashFlowPage() {
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Data Fim
+                                End Date
                             </label>
                             <Input
                                 type="date"
@@ -586,10 +586,10 @@ export default function BankCashFlowPage() {
                             </label>
                             <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Todos" />
+                                    <SelectValue placeholder="All" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Todos</SelectItem>
+                                    <SelectItem value="all">All</SelectItem>
                                     <SelectItem value="braintree">Braintree</SelectItem>
                                     <SelectItem value="stripe">Stripe</SelectItem>
                                     <SelectItem value="gocardless">GoCardless</SelectItem>
@@ -600,14 +600,14 @@ export default function BankCashFlowPage() {
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Categoria
+                                Category
                             </label>
                             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Todas" />
+                                    <SelectValue placeholder="All" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Todas</SelectItem>
+                                    <SelectItem value="all">All</SelectItem>
                                     {productCategories.map((cat) => (
                                         <SelectItem key={cat} value={cat}>
                                             {cat}
@@ -618,27 +618,27 @@ export default function BankCashFlowPage() {
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Fluxo
+                                Flow
                             </label>
                             <Select value={flowFilter} onValueChange={setFlowFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Todos" />
+                                    <SelectValue placeholder="All" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Todos</SelectItem>
-                                    <SelectItem value="income">Entradas</SelectItem>
-                                    <SelectItem value="expense">Saídas</SelectItem>
+                                    <SelectItem value="all">All</SelectItem>
+                                    <SelectItem value="income">Inflows</SelectItem>
+                                    <SelectItem value="expense">Outflows</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Buscar
+                                Search
                             </label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Cliente, descrição..."
+                                    placeholder="Customer, description..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pl-10"
@@ -656,7 +656,7 @@ export default function BankCashFlowPage() {
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <CreditCard className="h-5 w-5" />
-                            Receita por Gateway de Pagamento
+                            Revenue by Payment Gateway
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -667,7 +667,7 @@ export default function BankCashFlowPage() {
                                     <div key={gateway} className="flex items-center justify-between">
                                         <div className="flex items-center gap-2">
                                             <Badge className={getGatewayColor(gateway)}>
-                                                {gateway === "other" ? "Outros" : gateway.charAt(0).toUpperCase() + gateway.slice(1)}
+                                                {gateway === "other" ? "Others" : gateway.charAt(0).toUpperCase() + gateway.slice(1)}
                                             </Badge>
                                         </div>
                                         <span className="font-semibold text-green-600">
@@ -684,7 +684,7 @@ export default function BankCashFlowPage() {
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <Package className="h-5 w-5" />
-                            Receita por Categoria de Produto
+                            Revenue by Product Category
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -711,7 +711,7 @@ export default function BankCashFlowPage() {
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Calendar className="h-5 w-5" />
-                        Fluxo Mensal (Extrato Bancário)
+                        Monthly Flow (Bank Statement)
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -719,10 +719,10 @@ export default function BankCashFlowPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Mês</TableHead>
-                                    <TableHead className="text-right">Entradas</TableHead>
-                                    <TableHead className="text-right">Saídas</TableHead>
-                                    <TableHead className="text-right">Líquido</TableHead>
+                                    <TableHead>Month</TableHead>
+                                    <TableHead className="text-right">Inflows</TableHead>
+                                    <TableHead className="text-right">Outflows</TableHead>
+                                    <TableHead className="text-right">Net</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -751,7 +751,7 @@ export default function BankCashFlowPage() {
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Building className="h-5 w-5" />
-                        Movimentos Bancários ({filteredTransactions.length})
+                        Bank Movements ({filteredTransactions.length})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -759,13 +759,13 @@ export default function BankCashFlowPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Data</TableHead>
-                                    <TableHead>Descrição Banco</TableHead>
+                                    <TableHead>Date</TableHead>
+                                    <TableHead>Bank Description</TableHead>
                                     <TableHead>Gateway</TableHead>
-                                    <TableHead>Cliente</TableHead>
-                                    <TableHead>Categoria</TableHead>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Category</TableHead>
                                     <TableHead>Order ID</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
+                                    <TableHead className="text-right">Amount</TableHead>
                                     <TableHead className="text-center">Status</TableHead>
                                 </TableRow>
                             </TableHeader>
@@ -827,7 +827,7 @@ export default function BankCashFlowPage() {
                     {totalPages > 1 && (
                         <div className="flex items-center justify-between mt-4">
                             <p className="text-sm text-gray-600">
-                                Mostrando {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredTransactions.length)} de {filteredTransactions.length}
+                                Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length}
                             </p>
                             <div className="flex gap-2">
                                 <Button
@@ -836,7 +836,7 @@ export default function BankCashFlowPage() {
                                     disabled={currentPage === 1}
                                     onClick={() => setCurrentPage((p) => p - 1)}
                                 >
-                                    Anterior
+                                    Previous
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -844,7 +844,7 @@ export default function BankCashFlowPage() {
                                     disabled={currentPage === totalPages}
                                     onClick={() => setCurrentPage((p) => p + 1)}
                                 >
-                                    Próximo
+                                    Next
                                 </Button>
                             </div>
                         </div>

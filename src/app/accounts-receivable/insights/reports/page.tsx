@@ -4,9 +4,9 @@ export default function AccountsReceivableReportsPage() {
     return (
         <PlaceholderPage
             title="Accounts Receivable · Reports"
-            description="Relatórios de contas a receber (a construir)."
+            description="Accounts receivable reports (under construction)."
             backHref="/accounts-receivable"
-            backLabel="Voltar ao Accounts Receivable"
+            backLabel="Back to Accounts Receivable"
         />
     );
 }

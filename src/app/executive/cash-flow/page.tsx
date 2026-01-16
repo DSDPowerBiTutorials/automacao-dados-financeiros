@@ -5,14 +5,14 @@ import { ArrowDownCircle, ArrowUpCircle, TrendingUp, AlertCircle } from "lucide-
 
 export default function CashFlowSummaryPage() {
   return (
-    <div className="p-8 space-y-6">
+    <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Cash Flow Summary</h1>
-        <p className="text-gray-600 mt-1">
+      <header className="page-header-standard">
+        <h1 className="header-title">Cash Flow Summary</h1>
+        <p className="header-subtitle">
           Monitor your cash position and forecast future flows
         </p>
-      </div>
+      </header>
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -73,23 +73,23 @@ export default function CashFlowSummaryPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Revenue Collections</span>
-                <span className="text-sm font-bold text-green-600">+€1,125,000</span>
+                <span className="text-sm font-bold amount-positive">+€1,125,000</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Supplier Payments</span>
-                <span className="text-sm font-bold text-red-600">-€645,000</span>
+                <span className="text-sm font-bold amount-negative">-€645,000</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Operating Expenses</span>
-                <span className="text-sm font-bold text-red-600">-€234,500</span>
+                <span className="text-sm font-bold amount-negative">-€234,500</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Taxes Paid</span>
-                <span className="text-sm font-bold text-red-600">-€89,250</span>
+                <span className="text-sm font-bold amount-negative">-€89,250</span>
               </div>
               <div className="border-t pt-4 flex justify-between items-center">
                 <span className="font-bold">Net Operating Cash Flow</span>
-                <span className="font-bold text-green-600">+€156,250</span>
+                <span className="font-bold amount-positive">+€156,250</span>
               </div>
             </div>
           </CardContent>
@@ -104,23 +104,23 @@ export default function CashFlowSummaryPage() {
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Equipment Purchase</span>
-                <span className="text-sm font-bold text-red-600">-€45,000</span>
+                <span className="text-sm font-bold amount-negative">-€45,000</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Loan Proceeds</span>
-                <span className="text-sm font-bold text-green-600">+€150,000</span>
+                <span className="text-sm font-bold amount-positive">+€150,000</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Loan Repayment</span>
-                <span className="text-sm font-bold text-red-600">-€25,000</span>
+                <span className="text-sm font-bold amount-negative">-€25,000</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-sm font-medium">Dividends Paid</span>
-                <span className="text-sm font-bold text-red-600">-€35,000</span>
+                <span className="text-sm font-bold amount-negative">-€35,000</span>
               </div>
               <div className="border-t pt-4 flex justify-between items-center">
                 <span className="font-bold">Net Other Cash Flow</span>
-                <span className="font-bold text-green-600">+€45,000</span>
+                <span className="font-bold amount-positive">+€45,000</span>
               </div>
             </div>
           </CardContent>
@@ -144,7 +144,7 @@ export default function CashFlowSummaryPage() {
             </div>
 
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="table-standard">
                 <thead>
                   <tr className="border-b">
                     <th className="text-left py-3 px-4 font-medium text-gray-900">Period</th>
@@ -157,22 +157,22 @@ export default function CashFlowSummaryPage() {
                 <tbody>
                   <tr className="border-b hover:bg-gray-50">
                     <td className="py-3 px-4">Next 30 days</td>
-                    <td className="py-3 px-4 text-right text-green-600">+€450,000</td>
-                    <td className="py-3 px-4 text-right text-red-600">-€380,000</td>
+                    <td className="py-3 px-4 text-right amount-positive">+€450,000</td>
+                    <td className="py-3 px-4 text-right amount-negative">-€380,000</td>
                     <td className="py-3 px-4 text-right font-medium">+€70,000</td>
                     <td className="py-3 px-4 text-right font-bold">€893,450</td>
                   </tr>
                   <tr className="border-b hover:bg-gray-50">
                     <td className="py-3 px-4">30-60 days</td>
-                    <td className="py-3 px-4 text-right text-green-600">+€520,000</td>
-                    <td className="py-3 px-4 text-right text-red-600">-€410,000</td>
+                    <td className="py-3 px-4 text-right amount-positive">+€520,000</td>
+                    <td className="py-3 px-4 text-right amount-negative">-€410,000</td>
                     <td className="py-3 px-4 text-right font-medium">+€110,000</td>
                     <td className="py-3 px-4 text-right font-bold">€1,003,450</td>
                   </tr>
                   <tr className="border-b hover:bg-gray-50">
                     <td className="py-3 px-4">60-90 days</td>
-                    <td className="py-3 px-4 text-right text-green-600">+€480,000</td>
-                    <td className="py-3 px-4 text-right text-red-600">-€395,000</td>
+                    <td className="py-3 px-4 text-right amount-positive">+€480,000</td>
+                    <td className="py-3 px-4 text-right amount-negative">-€395,000</td>
                     <td className="py-3 px-4 text-right font-medium">+€85,000</td>
                     <td className="py-3 px-4 text-right font-bold">€1,088,450</td>
                   </tr>

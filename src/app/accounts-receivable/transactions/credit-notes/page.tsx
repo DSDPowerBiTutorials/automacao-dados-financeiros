@@ -4,9 +4,9 @@ export default function CreditNotesPage() {
     return (
         <PlaceholderPage
             title="Accounts Receivable · Credit Notes"
-            description="Notas de crédito (a construir)."
+            description="Credit notes (under construction)."
             backHref="/accounts-receivable"
-            backLabel="Voltar ao Accounts Receivable"
+            backLabel="Back to Accounts Receivable"
         />
     );
 }

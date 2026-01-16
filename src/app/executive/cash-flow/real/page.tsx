@@ -87,7 +87,7 @@ function formatDateBR(dateStr: string | null | undefined): string {
     }
 }
 
-// Simplificar método de pagamento ("visa ***0888" -> "Visa")
+// Yesplificar método de pagamento ("visa ***0888" -> "Visa")
 function simplifyPaymentMethod(method: unknown): string {
     if (!method || typeof method !== "string") return "Desconhecido";
     const m = method.toLowerCase();
@@ -178,7 +178,7 @@ export default function RealCashFlowPage() {
         setPendingDateRange(prev => ({ ...prev, [field]: value }));
     }, []);
 
-    // Aplicar filtro de data quando usuário clicar no botão
+    // Aplicar filtro de data quando user clicar no botão
     const applyDateFilter = useCallback(() => {
         setDateRange(pendingDateRange);
         setCurrentPage(1); // Reset página ao aplicar filtro
@@ -201,7 +201,7 @@ export default function RealCashFlowPage() {
 
         try {
             // Query otimizada: buscar apenas campos necessários e filtrar por date
-            // O disbursement_date geralmente é até 5 dias após a date de criação
+            // O disbursement_date geralmente é to 5 dias após a date de criação
             const expandedStart = new Date(dateRange.start);
             expandedStart.setDate(expandedStart.getDate() - 7); // Reduzido para 7 dias
             const expandedStartStr = expandedStart.toISOString().split("T")[0];
@@ -393,12 +393,12 @@ export default function RealCashFlowPage() {
     const exportCSV = () => {
         const headers = [
             "Data",
-            "Descrição",
-            "Valor",
+            "Description",
+            "Amount",
             "Moeda",
             "Cliente",
             "Email",
-            "Método",
+            "Method",
             "Categoria",
             "Order ID",
             "Source",
@@ -435,33 +435,33 @@ export default function RealCashFlowPage() {
 
     if (isLoading) {
         return (
-            <div className="p-8 flex items-center justify-center min-h-screen">
+            <div className="min-h-full px-6 py-6 flex items-center justify-center">
                 <div className="text-center">
                     <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Carregando fluxo de caixa...</p>
+                    <p className="text-gray-600">Loading cash flow...</p>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="p-8 space-y-6">
+        <div className="min-h-full px-6 py-6 space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Fluxo de Caixa Real</h1>
-                    <p className="text-gray-600 mt-1">
-                        Receitas reais de Braintree e GoCardless com categorização de produtos
+                <header className="page-header-standard">
+                    <h1 className="header-title">Real Cash Flow</h1>
+                    <p className="header-subtitle">
+                        Actual revenue from Braintree and GoCardless with product categorization
                     </p>
-                </div>
+                </header>
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={loadData} className="gap-2">
                         <RefreshCw className="h-4 w-4" />
-                        Atualizar
+                        Refresh
                     </Button>
                     <Button onClick={exportCSV} className="gap-2">
                         <Download className="h-4 w-4" />
-                        Exportar CSV
+                        Export CSV
                     </Button>
                 </div>
             </div>
@@ -481,7 +481,7 @@ export default function RealCashFlowPage() {
                                 <ArrowDownCircle className="h-6 w-6 text-green-600" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Entradas</p>
+                                <p className="text-sm text-gray-600">Inflows</p>
                                 <p className="text-2xl font-bold text-green-600">
                                     {formatCurrency(summary.totalInflow)}
                                 </p>
@@ -497,7 +497,7 @@ export default function RealCashFlowPage() {
                                 <ArrowUpCircle className="h-6 w-6 text-red-600" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Saídas (Refunds)</p>
+                                <p className="text-sm text-gray-600">Outflows (Refunds)</p>
                                 <p className="text-2xl font-bold text-red-600">
                                     {formatCurrency(summary.totalOutflow)}
                                 </p>
@@ -513,7 +513,7 @@ export default function RealCashFlowPage() {
                                 <TrendingUp className="h-6 w-6 text-blue-600" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Fluxo Líquido</p>
+                                <p className="text-sm text-gray-600">Net Flow</p>
                                 <p className={`text-2xl font-bold ${summary.netCashFlow >= 0 ? "text-green-600" : "text-red-600"}`}>
                                     {formatCurrency(summary.netCashFlow)}
                                 </p>
@@ -529,12 +529,12 @@ export default function RealCashFlowPage() {
                                 <CreditCard className="h-6 w-6 text-purple-600" />
                             </div>
                             <div>
-                                <p className="text-sm text-gray-600">Transações</p>
+                                <p className="text-sm text-gray-600">Transactions</p>
                                 <p className="text-2xl font-bold text-gray-900">
                                     {summary.transactionCount}
                                 </p>
                                 <p className="text-xs text-gray-500">
-                                    Média: {formatCurrency(summary.avgTransactionValue)}
+                                    Average: {formatCurrency(summary.avgTransactionValue)}
                                 </p>
                             </div>
                         </div>
@@ -547,14 +547,14 @@ export default function RealCashFlowPage() {
                 <CardHeader className="pb-3">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Filter className="h-5 w-5" />
-                        Filtros
+                        Filters
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Data Início
+                                Start Date
                             </label>
                             <Input
                                 type="date"
@@ -564,7 +564,7 @@ export default function RealCashFlowPage() {
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Data Fim
+                                End Date
                             </label>
                             <Input
                                 type="date"
@@ -582,19 +582,19 @@ export default function RealCashFlowPage() {
                                 className={`w-full gap-2 ${hasPendingChanges ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
                             >
                                 <Play className="h-4 w-4" />
-                                Aplicar Datas
+                                Apply Dates
                             </Button>
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Fonte
+                                Source
                             </label>
                             <Select value={sourceFilter} onValueChange={setSourceFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Todas" />
+                                    <SelectValue placeholder="All" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Todas</SelectItem>
+                                    <SelectItem value="all">All</SelectItem>
                                     <SelectItem value="braintree">Braintree</SelectItem>
                                     <SelectItem value="gocardless">GoCardless</SelectItem>
                                 </SelectContent>
@@ -602,14 +602,14 @@ export default function RealCashFlowPage() {
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Categoria
+                                Category
                             </label>
                             <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                                 <SelectTrigger>
-                                    <SelectValue placeholder="Todas" />
+                                    <SelectValue placeholder="All" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="all">Todas</SelectItem>
+                                    <SelectItem value="all">All</SelectItem>
                                     {categories.map((cat) => (
                                         <SelectItem key={cat} value={cat}>
                                             {cat}
@@ -620,12 +620,12 @@ export default function RealCashFlowPage() {
                         </div>
                         <div>
                             <label className="text-sm font-medium text-gray-700 mb-1 block">
-                                Buscar
+                                Search
                             </label>
                             <div className="relative">
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                                 <Input
-                                    placeholder="Cliente, email, order..."
+                                    placeholder="Customer, email, order..."
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                     className="pl-10"
@@ -643,7 +643,7 @@ export default function RealCashFlowPage() {
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <Package className="h-5 w-5" />
-                            Receita por Categoria de Produto
+                            Revenue by Product Category
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -670,7 +670,7 @@ export default function RealCashFlowPage() {
                     <CardHeader>
                         <CardTitle className="text-lg flex items-center gap-2">
                             <CreditCard className="h-5 w-5" />
-                            Volume por Método de Pagamento
+                            Volume by Payment Method
                         </CardTitle>
                     </CardHeader>
                     <CardContent>
@@ -698,7 +698,7 @@ export default function RealCashFlowPage() {
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <BarChart3 className="h-5 w-5" />
-                        Recebimentos por Mês
+                        Monthly Receipts
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -745,26 +745,26 @@ export default function RealCashFlowPage() {
                         <div className="flex items-center justify-center gap-6 pt-4 border-t">
                             <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 bg-gradient-to-r from-green-400 to-green-500 rounded" />
-                                <span className="text-sm text-gray-600">Entradas</span>
+                                <span className="text-sm text-gray-600">Inflows</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 bg-gradient-to-r from-red-400 to-red-500 rounded" />
-                                <span className="text-sm text-gray-600">Saídas (Refunds)</span>
+                                <span className="text-sm text-gray-600">Outflows (Refunds)</span>
                             </div>
                         </div>
 
                         {/* Totais do período */}
                         <div className="grid grid-cols-3 gap-4 pt-4 border-t bg-gray-50 -mx-6 -mb-6 px-6 py-4 rounded-b-lg">
                             <div className="text-center">
-                                <p className="text-xs text-gray-500 uppercase">Total Entradas</p>
+                                <p className="text-xs text-gray-500 uppercase">Total Inflows</p>
                                 <p className="text-xl font-bold text-green-600">{formatCurrency(summary.totalInflow)}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-xs text-gray-500 uppercase">Total Saídas</p>
+                                <p className="text-xs text-gray-500 uppercase">Total Outflows</p>
                                 <p className="text-xl font-bold text-red-600">{formatCurrency(summary.totalOutflow)}</p>
                             </div>
                             <div className="text-center">
-                                <p className="text-xs text-gray-500 uppercase">Líquido Período</p>
+                                <p className="text-xs text-gray-500 uppercase">Net Period</p>
                                 <p className={`text-xl font-bold ${summary.netCashFlow >= 0 ? 'text-blue-600' : 'text-orange-600'}`}>
                                     {formatCurrency(summary.netCashFlow)}
                                 </p>
@@ -779,10 +779,10 @@ export default function RealCashFlowPage() {
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Calendar className="h-5 w-5" />
-                        Recebimentos por Dia do Mês
+                        Receipts by Day of Month
                     </CardTitle>
                     <p className="text-sm text-gray-500 mt-1">
-                        Visualize em quais dias do mês os pagamentos mais acontecem
+                        Visualize which days of the month payments occur most frequently
                     </p>
                 </CardHeader>
                 <CardContent>
@@ -795,7 +795,7 @@ export default function RealCashFlowPage() {
                                 return summary.byDayOfMonth.map((dayData) => {
                                     const heightPercent = (dayData.total / maxTotal) * 100;
                                     const hasData = dayData.total > 0;
-                                    // Intensidade da cor baseada na quantidade de transações
+                                    // Intensidade da cor baseada na quantidade de transactions
                                     const intensity = Math.min(100, Math.round((dayData.count / maxCount) * 100));
                                     return (
                                         <div
@@ -833,7 +833,7 @@ export default function RealCashFlowPage() {
 
                         {/* Eixo X label */}
                         <div className="text-center text-xs text-gray-500 border-t pt-2">
-                            Dia do Mês (1-31)
+                            Day of Month (1-31)
                         </div>
 
                         {/* Insights */}
@@ -855,46 +855,46 @@ export default function RealCashFlowPage() {
                                 const midMonth = summary.byDayOfMonth.filter(d => d.day > 10 && d.day <= 20).reduce((s, d) => s + d.total, 0);
                                 const lateMonth = summary.byDayOfMonth.filter(d => d.day > 20).reduce((s, d) => s + d.total, 0);
 
-                                let pattern = 'Distribuído';
+                                let pattern = 'Distributed';
                                 let patternColor = 'text-gray-600';
                                 if (earlyMonth > midMonth && earlyMonth > lateMonth) {
-                                    pattern = 'Início do mês';
+                                    pattern = 'Start of Month';
                                     patternColor = 'text-blue-600';
                                 } else if (midMonth > earlyMonth && midMonth > lateMonth) {
-                                    pattern = 'Meio do mês';
+                                    pattern = 'Mid Month';
                                     patternColor = 'text-purple-600';
                                 } else if (lateMonth > earlyMonth && lateMonth > midMonth) {
-                                    pattern = 'Fim do mês';
+                                    pattern = 'End of Month';
                                     patternColor = 'text-orange-600';
                                 }
 
                                 return (
                                     <>
                                         <div className="text-center">
-                                            <p className="text-xs text-gray-500 uppercase">Melhor Dia</p>
+                                            <p className="text-xs text-gray-500 uppercase">Best Day</p>
                                             <p className="text-lg font-bold text-blue-600">
-                                                Dia {topDays[0]?.day || '-'}
+                                                Day {topDays[0]?.day || '-'}
                                             </p>
                                             <p className="text-xs text-gray-500">
                                                 {topDays[0] ? formatCurrency(topDays[0].total) : '—'}
                                             </p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-xs text-gray-500 uppercase">Dias Ativos</p>
+                                            <p className="text-xs text-gray-500 uppercase">Active Days</p>
                                             <p className="text-lg font-bold text-green-600">{totalWithData}</p>
-                                            <p className="text-xs text-gray-500">de 31 dias</p>
+                                            <p className="text-xs text-gray-500">of 31 days</p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-xs text-gray-500 uppercase">Média/Dia</p>
+                                            <p className="text-xs text-gray-500 uppercase">Avg/Day</p>
                                             <p className="text-lg font-bold text-purple-600">
                                                 {formatCurrency(avgPerActiveDay)}
                                             </p>
-                                            <p className="text-xs text-gray-500">dias com movimento</p>
+                                            <p className="text-xs text-gray-500">days with activity</p>
                                         </div>
                                         <div className="text-center">
-                                            <p className="text-xs text-gray-500 uppercase">Padrão</p>
+                                            <p className="text-xs text-gray-500 uppercase">Pattern</p>
                                             <p className={`text-lg font-bold ${patternColor}`}>{pattern}</p>
-                                            <p className="text-xs text-gray-500">concentração</p>
+                                            <p className="text-xs text-gray-500">concentration</p>
                                         </div>
                                     </>
                                 );
@@ -903,7 +903,7 @@ export default function RealCashFlowPage() {
 
                         {/* Top 5 Dias */}
                         <div className="pt-4 border-t">
-                            <p className="text-sm font-medium text-gray-700 mb-2">🏆 Top 5 Dias com Mais Recebimentos:</p>
+                            <p className="text-sm font-medium text-gray-700 mb-2">🏆 Top 5 Days with Most Receipts:</p>
                             <div className="flex flex-wrap gap-2">
                                 {(() => {
                                     const topDays = [...summary.byDayOfMonth]
@@ -931,7 +931,7 @@ export default function RealCashFlowPage() {
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Calendar className="h-5 w-5" />
-                        Detalhamento Mensal
+                        Monthly Detail
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -939,10 +939,10 @@ export default function RealCashFlowPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Mês</TableHead>
-                                    <TableHead className="text-right">Entradas</TableHead>
-                                    <TableHead className="text-right">Saídas</TableHead>
-                                    <TableHead className="text-right">Líquido</TableHead>
+                                    <TableHead>Month</TableHead>
+                                    <TableHead className="text-right">Inflows</TableHead>
+                                    <TableHead className="text-right">Outflows</TableHead>
+                                    <TableHead className="text-right">Net</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -971,7 +971,7 @@ export default function RealCashFlowPage() {
                 <CardHeader>
                     <CardTitle className="text-lg flex items-center gap-2">
                         <DollarSign className="h-5 w-5" />
-                        Transações ({filteredTransactions.length})
+                        Transactions ({filteredTransactions.length})
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
@@ -979,14 +979,14 @@ export default function RealCashFlowPage() {
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Data Recebimento</TableHead>
-                                    <TableHead>Cliente</TableHead>
-                                    <TableHead>Produto</TableHead>
-                                    <TableHead>Categoria</TableHead>
-                                    <TableHead>Método</TableHead>
+                                    <TableHead>Receipt Date</TableHead>
+                                    <TableHead>Customer</TableHead>
+                                    <TableHead>Product</TableHead>
+                                    <TableHead>Category</TableHead>
+                                    <TableHead>Method</TableHead>
                                     <TableHead>Order ID</TableHead>
-                                    <TableHead className="text-right">Valor</TableHead>
-                                    <TableHead>Fonte</TableHead>
+                                    <TableHead className="text-right">Amount</TableHead>
+                                    <TableHead>Source</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -996,7 +996,7 @@ export default function RealCashFlowPage() {
                                             <div>
                                                 <div className="font-medium">{formatDateBR(tx.cash_flow_date)}</div>
                                                 {tx.date !== tx.cash_flow_date && (
-                                                    <div className="text-xs text-gray-400">Criado: {formatDateBR(tx.date)}</div>
+                                                    <div className="text-xs text-gray-400">Created: {formatDateBR(tx.date)}</div>
                                                 )}
                                             </div>
                                         </TableCell>
@@ -1040,7 +1040,7 @@ export default function RealCashFlowPage() {
                     {totalPages > 1 && (
                         <div className="flex items-center justify-between mt-4">
                             <p className="text-sm text-gray-600">
-                                Mostrando {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredTransactions.length)} de {filteredTransactions.length}
+                                Showing {(currentPage - 1) * pageSize + 1} - {Math.min(currentPage * pageSize, filteredTransactions.length)} of {filteredTransactions.length}
                             </p>
                             <div className="flex gap-2">
                                 <Button
@@ -1049,7 +1049,7 @@ export default function RealCashFlowPage() {
                                     disabled={currentPage === 1}
                                     onClick={() => setCurrentPage((p) => p - 1)}
                                 >
-                                    Anterior
+                                    Previous
                                 </Button>
                                 <Button
                                     variant="outline"
@@ -1057,7 +1057,7 @@ export default function RealCashFlowPage() {
                                     disabled={currentPage === totalPages}
                                     onClick={() => setCurrentPage((p) => p + 1)}
                                 >
-                                    Próximo
+                                    Next
                                 </Button>
                             </div>
                         </div>

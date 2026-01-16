@@ -337,16 +337,16 @@ export default function BankAccountsPage() {
 
             <Card>
                 <div className="overflow-x-auto">
-                    <table className="w-full">
-                        <thead className="bg-gray-50 border-b">
+                    <table className="table-standard">
+                        <thead>
                             <tr>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Country</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Code</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Bank Name</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Currency</th>
-                                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                                <th>Country</th>
+                                <th>Actions</th>
+                                <th>Code</th>
+                                <th>Name</th>
+                                <th>Bank Name</th>
+                                <th>Currency</th>
+                                <th>Status</th>
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
@@ -388,8 +388,8 @@ export default function BankAccountsPage() {
                                         <td className="px-4 py-3">{account.currency}</td>
                                         <td className="px-4 py-3">
                                             <Badge
-                                                variant={account.is_active ? "default" : "secondary"}
-                                                className={account.is_active ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+                                                variant="outline"
+                                                className={account.is_active ? "badge-light-success" : "badge-light-danger"}
                                             >
                                                 {account.is_active ? "Active" : "Inactive"}
                                             </Badge>

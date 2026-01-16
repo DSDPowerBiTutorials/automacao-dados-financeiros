@@ -120,13 +120,13 @@ export default function Home() {
     }
   };
 
-  // Função para salvar TODOS os dados manualmente
+  // Function to salvar TODOS os dados manualmente
   const saveAllData = async () => {
     setIsSaving(true);
     setSaveSuccess(false);
 
     try {
-      // Salvar todos os arquivos CSV
+      // Save todos os arquivos CSV
       for (const file of csvFiles) {
         await saveCSVFile(file);
       }
@@ -202,7 +202,7 @@ export default function Home() {
   >("text");
   const [newColumnOptions, setNewColumnOptions] = useState("");
 
-  // Função para converter QUALQUER formato de data para DD/MM/YYYY
+  // Function to converter QUALQUER formato de data para DD/MM/YYYY
   const convertDateFormat = (dateString: string): string => {
     if (!dateString) return "";
 
@@ -241,7 +241,7 @@ export default function Home() {
           day = second;
           year = third;
         } else {
-          return cleanDate; // Não conseguiu identificar
+          return cleanDate; // No conseguiu identificar
         }
 
         return `${String(day).padStart(2, "0")}/${String(month).padStart(2, "0")}/${year}`;
@@ -251,7 +251,7 @@ export default function Home() {
     return cleanDate;
   };
 
-  // Função para limpar valores monetários (remove símbolos de moeda, espaços e vírgulas)
+  // Function to clear valores monetários (remove símbolos de moeda, espaços e vírgulas)
   const parseMonetaryValue = (value: string): number => {
     if (!value) return 0;
     // Remove símbolos de moeda (€, $, etc), espaços e vírgulas de milhares
@@ -264,13 +264,13 @@ export default function Home() {
     return parseFloat(normalized) || 0;
   };
 
-  // Função para converter data DD/MM/YYYY para Date object
+  // Function to converter data DD/MM/YYYY para Date object
   const parseDate = (dateStr: string): Date => {
     const [day, month, year] = dateStr.split("/").map(Number);
     return new Date(year, month - 1, day);
   };
 
-  // Função para filtrar por data
+  // Function to filtrar por data
   const filterByDate = (rows: CSVRow[]): CSVRow[] => {
     if (dateFilter === "all") return rows;
 
@@ -325,7 +325,7 @@ export default function Home() {
     });
   };
 
-  // Função para filtrar e ordenar linhas
+  // Function to filtrar e ordenar linhas
   const filterAndSortRows = (rows: CSVRow[]): CSVRow[] => {
     let filtered = [...rows];
 
@@ -361,7 +361,7 @@ export default function Home() {
     return filtered;
   };
 
-  // Função para alternar ordenação
+  // Function to alternar ordenação
   const toggleSort = (field: SortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === "asc" ? "desc" : "asc");
@@ -421,9 +421,9 @@ export default function Home() {
             const orderNumbersStr = row["Order ID"] || row["order_id"] || "";
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
-                  .split(/[,;]/)
-                  .map((o: string) => o.trim())
-                  .filter((o: string) => o)
+                .split(/[,;]/)
+                .map((o: string) => o.trim())
+                .filter((o: string) => o)
               : [];
 
             newRows.push({
@@ -474,9 +474,9 @@ export default function Home() {
             const orderNumbersStr = row["Order ID"] || row["order_id"] || "";
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
-                  .split(/[,;]/)
-                  .map((o: string) => o.trim())
-                  .filter((o: string) => o)
+                .split(/[,;]/)
+                .map((o: string) => o.trim())
+                .filter((o: string) => o)
               : [];
 
             newRows.push({
@@ -510,9 +510,9 @@ export default function Home() {
             const orderNumbersStr = row["Order ID"] || row["order_id"] || "";
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
-                  .split(/[,;]/)
-                  .map((o: string) => o.trim())
-                  .filter((o: string) => o)
+                .split(/[,;]/)
+                .map((o: string) => o.trim())
+                .filter((o: string) => o)
               : [];
 
             newRows.push({
@@ -560,9 +560,9 @@ export default function Home() {
             const orderNumbersStr = row["Order ID"] || row["order_id"] || "";
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
-                  .split(/[,;]/)
-                  .map((o: string) => o.trim())
-                  .filter((o: string) => o)
+                .split(/[,;]/)
+                .map((o: string) => o.trim())
+                .filter((o: string) => o)
               : [];
 
             newRows.push({
@@ -611,7 +611,7 @@ export default function Home() {
             const settlementSales =
               parseFloat(
                 row["settlement_currency_sales_EUR"] ||
-                  row["settlement_currency_sales_USD"],
+                row["settlement_currency_sales_USD"],
               ) || 0;
             const discount =
               parseFloat(row["discount_EUR"] || row["discount_USD"]) || 0;
@@ -622,7 +622,7 @@ export default function Home() {
             const perTransactionFees =
               parseFloat(
                 row["per_transaction_fees_EUR"] ||
-                  row["per_transaction_fees_USD"],
+                row["per_transaction_fees_USD"],
               ) || 0;
             const crossBorderFees =
               parseFloat(
@@ -639,9 +639,9 @@ export default function Home() {
             const orderNumbersStr = row["Order ID"] || row["order_id"] || "";
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
-                  .split(/[,;]/)
-                  .map((o: string) => o.trim())
-                  .filter((o: string) => o)
+                .split(/[,;]/)
+                .map((o: string) => o.trim())
+                .filter((o: string) => o)
               : [];
 
             newRows.push({
@@ -691,25 +691,25 @@ export default function Home() {
               chargebacks_lost_won_EUR:
                 parseFloat(
                   row["chargebacks_lost_won_EUR"] ||
-                    row["chargebacks_lost_won_USD"],
+                  row["chargebacks_lost_won_USD"],
                 ) || 0,
               settlement_currency_refunds_EUR:
                 parseFloat(
                   row["settlement_currency_refunds_EUR"] ||
-                    row["settlement_currency_refunds_USD"],
+                  row["settlement_currency_refunds_USD"],
                 ) || 0,
               "#_of_refunds": parseInt(row["#_of_refunds"]) || 0,
               chargeback_won_amt_EUR:
                 parseFloat(
                   row["chargeback_won_amt_EUR"] ||
-                    row["chargeback_won_amt_USD"],
+                  row["chargeback_won_amt_USD"],
                 ) || 0,
               "#_of_chargebacks_won":
                 parseInt(row["#_of_chargebacks_won"]) || 0,
               chargeback_issued_amt_EUR:
                 parseFloat(
                   row["chargeback_issued_amt_EUR"] ||
-                    row["chargeback_issued_amt_USD"],
+                  row["chargeback_issued_amt_USD"],
                 ) || 0,
               "#_of_chargebacks_issued":
                 parseInt(row["#_of_chargebacks_issued"]) || 0,
@@ -726,9 +726,9 @@ export default function Home() {
               row["OrderNumber"] || row["OrderNumbers"] || "";
             const orderNumbers = orderNumbersStr
               ? orderNumbersStr
-                  .split(/[,;]/)
-                  .map((o: string) => o.trim())
-                  .filter((o: string) => o)
+                .split(/[,;]/)
+                .map((o: string) => o.trim())
+                .filter((o: string) => o)
               : [];
 
             newRows.push({
@@ -874,7 +874,7 @@ export default function Home() {
     setNewOrderInput("");
   };
 
-  // Função para deletar linha individual
+  // Function to deletar linha individual
   const handleDeleteRow = async (fileIndex: number, rowId: string) => {
     if (!confirm("Are you sure you want to delete this row?")) return;
 
@@ -899,7 +899,7 @@ export default function Home() {
     }
   };
 
-  // Função para deletar todas as linhas de um arquivo
+  // Function to deletar todas as linhas de um arquivo
   const handleDeleteAllRows = async (fileIndex: number) => {
     if (
       !confirm(
@@ -1096,7 +1096,7 @@ export default function Home() {
     return <FileSpreadsheet className="h-5 w-5" />;
   };
 
-  // Função para calcular valores por período
+  // Function to calcular valores por período
   const getRevenueByPeriod = (
     source: CSVFile["source"],
     period: "week" | "lastWeek" | "lastMonth" | "year",
@@ -1146,7 +1146,7 @@ export default function Home() {
       .reduce((sum, row) => sum + row.amount, 0);
   };
 
-  // Função para obter a data mais recente de cada fonte de pagamento
+  // Function to obter a data mais recente de cada fonte de pagamento
   const getPaymentSourceDates = () => {
     const dates: { [key: string]: string } = {};
 
@@ -1219,7 +1219,7 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Highlights de Data e Valores */}
+            {/* Highlights de Data e Amountes */}
             <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
               <div className="bg-white/10 backdrop-blur-sm rounded-lg p-4">
                 <div className="flex items-center gap-2 mb-2">

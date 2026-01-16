@@ -1346,7 +1346,7 @@ export default function InvoicesPage() {
 
   if (loading) {
     return (
-      <div className="p-6">
+      <div className="min-h-full px-6 py-6">
         <Breadcrumbs />
         <div className="flex items-center justify-center h-64">
           <p className="text-muted-foreground">Loading invoices...</p>
@@ -1358,7 +1358,7 @@ export default function InvoicesPage() {
   return (
     <>
       {/* Fixed Header and Cards - always visible, no horizontal scroll */}
-      <div className="p-6 pb-0">
+      <div className="min-h-full px-6 py-6 pb-0">
         <div className="flex justify-between items-center mb-4">
           <Breadcrumbs />
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>

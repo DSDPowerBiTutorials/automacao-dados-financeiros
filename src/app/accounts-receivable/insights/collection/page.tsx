@@ -4,9 +4,9 @@ export default function CollectionPerformancePage() {
     return (
         <PlaceholderPage
             title="Accounts Receivable · Collection Performance"
-            description="Performance de cobrança (a construir)."
+            description="Collection performance (under construction)."
             backHref="/accounts-receivable"
-            backLabel="Voltar ao Accounts Receivable"
+            backLabel="Back to Accounts Receivable"
         />
     );
 }

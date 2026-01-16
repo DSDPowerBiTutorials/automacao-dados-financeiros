@@ -4,9 +4,9 @@ export default function PaymentSchedulePage() {
     return (
         <PlaceholderPage
             title="Accounts Payable · Payment Schedule"
-            description="Agenda de pagamentos (a construir)."
+            description="Payment schedule (coming soon)."
             backHref="/accounts-payable"
-            backLabel="Voltar ao Accounts Payable"
+            backLabel="Back to Accounts Payable"
         />
     );
 }

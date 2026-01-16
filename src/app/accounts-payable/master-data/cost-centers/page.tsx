@@ -201,11 +201,11 @@ export default function CostCentersPage() {
   };
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="min-h-full px-6 space-y-6 py-6">
+      <header className="page-header-standard">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Cost Centers</h1>
-          <p className="text-gray-500 mt-1">Manage organizational cost centers</p>
+          <h1 className="header-title">Cost Centers</h1>
+          <p className="header-subtitle">Manage organizational cost centers</p>
         </div>
         <Button
           onClick={(e) => {
@@ -219,7 +219,7 @@ export default function CostCentersPage() {
           <Plus className="h-4 w-4 mr-2" />
           New Cost Center
         </Button>
-      </div>
+      </header>
 
       <Card className="p-4">
         <div className="space-y-4">
@@ -265,7 +265,7 @@ export default function CostCentersPage() {
 
       <Card>
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className="table-standard">
             <thead className="bg-gray-50 border-b">
               <tr>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Country</th>
@@ -319,12 +319,11 @@ export default function CostCentersPage() {
                     <td className="px-4 py-3 text-gray-600">{cc.level || 1}</td>
                     <td className="px-4 py-3 text-gray-600 font-mono text-sm">{cc.parent_code || "-"}</td>
                     <td className="px-4 py-3">
-                      <Badge
-                        variant={cc.is_active ? "default" : "secondary"}
-                        className={cc.is_active ? "bg-green-100 text-green-800 hover:bg-green-100" : ""}
+                      <span
+                        className={cc.is_active ? "badge-light-success" : "badge-light-secondary"}
                       >
                         {cc.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      </span>
                     </td>
                   </tr>
                 ))
