@@ -59,14 +59,21 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
     try {
-        // Pegar data inicial dos query params
+        // Pegar data inicial do body JSON ou query params
         const { searchParams } = new URL(request.url);
         const sinceParam = searchParams.get("since");
 
-        // Default: 01/01/2025
-        const sinceDate = sinceParam
-            ? new Date(sinceParam)
-            : new Date("2025-01-01");
+        let bodyDate: string | null = null;
+        try {
+            const body = await request.json();
+            bodyDate = body?.sinceDate || body?.since || null;
+        } catch {
+            // Sem body JSON
+        }
+
+        // Prioridade: body > query params > default
+        const dateStr = bodyDate || sinceParam || "2025-01-01";
+        const sinceDate = new Date(dateStr);
 
         console.log(`[Stripe Sync All] 🔄 Starting sync since ${sinceDate.toISOString()}`);
 
