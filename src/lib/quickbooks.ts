@@ -8,8 +8,8 @@
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
 // QuickBooks API Configuration
-const QUICKBOOKS_CLIENT_ID = process.env.QUICKBOOKS_CLIENT_ID!
-const QUICKBOOKS_CLIENT_SECRET = process.env.QUICKBOOKS_CLIENT_SECRET!
+const QUICKBOOKS_CLIENT_ID = process.env.QUICKBOOKS_CLIENT_ID || "AB5kcgh6RMfYYEaKEW6kSirEzv9SM91CT45LmrcqexMjkOv51q"
+const QUICKBOOKS_CLIENT_SECRET = process.env.QUICKBOOKS_CLIENT_SECRET || "hMK3OiJlVtqcHCNmQzPi30MFLeJkN54UCEyqIzfT"
 const QUICKBOOKS_REDIRECT_URI = process.env.QUICKBOOKS_REDIRECT_URI || "https://www.dsdfinancehub.com/api/quickbooks/callback"
 const QUICKBOOKS_ENVIRONMENT = process.env.QUICKBOOKS_ENVIRONMENT || "production" // "sandbox" or "production"
 
