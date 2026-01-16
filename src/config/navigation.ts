@@ -274,6 +274,23 @@ export const NAV: NavGroup[] = [
         icon: Building2,
         children: [
           {
+            title: "Chase (QuickBooks)",
+            href: "/cash-management/chase-quickbooks",
+            icon: Building,
+            children: [
+              {
+                title: "Chase Business Checking",
+                href: "/cash-management/chase-quickbooks/business-checking",
+                icon: Banknote
+              },
+              {
+                title: "Chase Savings",
+                href: "/cash-management/chase-quickbooks/savings",
+                icon: Banknote
+              }
+            ]
+          },
+          {
             title: "Bankinter",
             href: "/reports/bankinter",
             icon: Building,
@@ -291,7 +308,7 @@ export const NAV: NavGroup[] = [
             ]
           },
           {
-            title: "Chase",
+            title: "Chase (CSV)",
             href: "/reports/chase",
             icon: Building,
             children: [
