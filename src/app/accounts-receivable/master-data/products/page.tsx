@@ -476,7 +476,7 @@ export default function ProductsPage() {
 
     const formatCurrency = (value: number | null, currency = "EUR") => {
         if (value === null) return "—";
-        return new Intl.NumberFormat("pt-PT", {
+        return new Intl.NumberFormat("pt-BR", {
             style: "currency",
             currency,
         }).format(value);

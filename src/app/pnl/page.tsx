@@ -366,12 +366,11 @@ export default function PnLReport() {
       : 0;
 
   const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "EUR",
+    const formatted = Math.abs(value).toLocaleString("pt-BR", {
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
-    }).format(value);
+    });
+    return value < 0 ? `€ (${formatted})` : `€ ${formatted}`;
   };
 
   const formatPercentage = (value: number) => {

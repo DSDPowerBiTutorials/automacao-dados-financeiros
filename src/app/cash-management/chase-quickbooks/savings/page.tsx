@@ -23,34 +23,18 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
-import { formatTimestamp } from "@/lib/formatters"
+import { formatTimestamp, formatDate, formatCurrency } from "@/lib/formatters"
 
-// Formatar USD
+// Formatar USD - padrão brasileiro: $ 1.234,56
 const formatUSD = (value: number | null | undefined): string => {
-    if (value === null || value === undefined || isNaN(value)) return "$0.00"
-    return new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
+    if (value === null || value === undefined || isNaN(value)) return "$ 0,00"
+    const isNegative = value < 0
+    const absValue = Math.abs(value)
+    const formatted = absValue.toLocaleString("pt-BR", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(value)
-}
-
-// Formatar data US - SEM conversão de timezone
-// A data vem do QuickBooks como "YYYY-MM-DD" e deve ser exibida exatamente assim
-const formatUSDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return "-"
-    try {
-        // Se a data está no formato YYYY-MM-DD, formatar diretamente
-        if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
-            const [year, month, day] = dateString.split("T")[0].split("-")
-            return `${month}/${day}/${year}`
-        }
-        // Fallback para outros formatos
-        return dateString
-    } catch {
-        return dateString
-    }
+    })
+    return isNegative ? `$ (${formatted})` : `$ ${formatted}`
 }
 
 interface ChaseTransaction {
@@ -590,7 +574,7 @@ export default function ChaseSavingsPage() {
 
                                                 return (
                                                     <tr key={tx.id} className="border-b border-gray-100 hover:bg-gray-50">
-                                                        <td className="py-3 px-4 text-sm">{formatUSDate(tx.date)}</td>
+                                                        <td className="py-3 px-4 text-sm">{formatDate(tx.date)}</td>
                                                         <td className="py-3 px-4">
                                                             <Badge variant="outline" className={badgeClass}>
                                                                 {badgeLabel}

@@ -955,7 +955,7 @@ ${result.recommendations.join('\n')}
 
                                                 {/* 3. Date Ordered */}
                                                 <td className="px-4 py-3 text-sm">
-                                                    {row.date ? new Date(row.date).toLocaleString('en-US', {
+                                                    {row.date ? new Date(row.date).toLocaleString('pt-BR', {
                                                         month: 'numeric',
                                                         day: 'numeric',
                                                         year: 'numeric'
@@ -990,7 +990,7 @@ ${result.recommendations.join('\n')}
                                                         if (!datePaid) return "-";
 
                                                         try {
-                                                            return new Date(datePaid).toLocaleString('en-US', {
+                                                            return new Date(datePaid).toLocaleString('pt-BR', {
                                                                 month: 'numeric',
                                                                 day: 'numeric',
                                                                 year: 'numeric'
@@ -1267,7 +1267,7 @@ ${result.recommendations.join('\n')}
                                                                                         const datePaid = row.custom_data.date_paid || row.custom_data.hs_closed_won_date;
                                                                                         if (!datePaid) return '-';
                                                                                         try {
-                                                                                            return new Date(datePaid).toLocaleString('en-US', {
+                                                                                            return new Date(datePaid).toLocaleString('pt-BR', {
                                                                                                 month: 'short',
                                                                                                 day: 'numeric',
                                                                                                 year: 'numeric',

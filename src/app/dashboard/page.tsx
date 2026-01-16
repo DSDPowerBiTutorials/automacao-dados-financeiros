@@ -151,7 +151,7 @@ export default function DashboardPage() {
         const outflow = outflows?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
 
         months.push({
-          month: date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+          month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
           inflow,
           outflow,
           net: inflow - outflow,

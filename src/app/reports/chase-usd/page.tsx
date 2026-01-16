@@ -30,38 +30,18 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import Link from "next/link"
-import { formatTimestamp } from "@/lib/formatters"
+import { formatTimestamp, formatDate } from "@/lib/formatters"
 
-// Formatar números no padrão americano: 19172.80 → 19,172.80
+// Formatar USD no padrão brasileiro: $ 1.234,56
 const formatUSDCurrency = (value: number | null | undefined): string => {
     if (value === null || value === undefined || isNaN(value)) return "-"
-
-    const formatted = new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
+    const isNegative = value < 0
+    const absValue = Math.abs(value)
+    const formatted = absValue.toLocaleString("pt-BR", {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2
-    }).format(value)
-
-    return formatted
-}
-
-// Formatar data: Date → "MM/DD/YYYY"
-const formatUSDate = (dateString: string | null | undefined): string => {
-    if (!dateString) return "-"
-
-    try {
-        const date = new Date(dateString)
-        if (isNaN(date.getTime())) return dateString
-
-        const month = (date.getMonth() + 1).toString().padStart(2, "0")
-        const day = date.getDate().toString().padStart(2, "0")
-        const year = date.getFullYear()
-
-        return `${month}/${day}/${year}`
-    } catch {
-        return dateString
-    }
+    })
+    return isNegative ? `$ (${formatted})` : `$ ${formatted}`
 }
 
 interface ChaseUSDRow {
@@ -725,7 +705,7 @@ export default function ChaseUSDPage() {
                                                     <tr key={row.id} className="border-b border-gray-200 hover:bg-gray-50">
                                                         <td className="py-3 px-4 text-sm font-bold text-black">{row.id.substring(0, 6)}...</td>
                                                         <td className="py-3 px-4 text-sm text-black font-medium">
-                                                            {formatUSDate(row.date)}
+                                                            {formatDate(row.date)}
                                                         </td>
                                                         <td className="py-3 px-4 text-sm text-gray-700">
                                                             {customData.post_date || "-"}
@@ -784,7 +764,7 @@ export default function ChaseUSDPage() {
                                                                                 {row.bankMatchDate && (
                                                                                     <div className="flex items-center gap-1 text-white/90">
                                                                                         <Calendar className="h-3 w-3" />
-                                                                                        <span>{formatUSDate(row.bankMatchDate)}</span>
+                                                                                        <span>{formatDate(row.bankMatchDate)}</span>
                                                                                     </div>
                                                                                 )}
                                                                                 {row.bankMatchAmount !== null && row.bankMatchAmount !== undefined && (

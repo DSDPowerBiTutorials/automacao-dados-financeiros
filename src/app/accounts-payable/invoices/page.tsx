@@ -2983,17 +2983,17 @@ export default function InvoicesPage() {
 
                             {/* Input Date */}
                             {visibleColumns.has('input_date') && (
-                              <td className="px-2 py-1 text-[11px]">{new Date(invoice.input_date).toLocaleDateString('en-GB')}</td>
+                              <td className="px-2 py-1 text-[11px]">{new Date(invoice.input_date).toLocaleDateString('pt-BR')}</td>
                             )}
 
                             {/* Invoice Date */}
                             {visibleColumns.has('invoice_date') && (
-                              <td className="px-2 py-1 text-[11px] font-medium">{new Date(invoice.invoice_date).toLocaleDateString('en-GB')}</td>
+                              <td className="px-2 py-1 text-[11px] font-medium">{new Date(invoice.invoice_date).toLocaleDateString('pt-BR')}</td>
                             )}
 
                             {/* Benefit Date */}
                             {visibleColumns.has('benefit_date') && (
-                              <td className="px-2 py-1 text-[11px]">{new Date(invoice.benefit_date).toLocaleDateString('en-GB')}</td>
+                              <td className="px-2 py-1 text-[11px]">{new Date(invoice.benefit_date).toLocaleDateString('pt-BR')}</td>
                             )}
 
                             {/* Due Date */}
@@ -3001,7 +3001,7 @@ export default function InvoicesPage() {
                               <td className="px-2 py-1 text-[11px]">
                                 {invoice.due_date ? (
                                   <Badge variant={new Date(invoice.due_date) < new Date() ? "destructive" : "outline"} className="text-[10px] px-1.5 py-0">
-                                    {new Date(invoice.due_date).toLocaleDateString('en-GB')}
+                                    {new Date(invoice.due_date).toLocaleDateString('pt-BR')}
                                   </Badge>
                                 ) : '-'}
                               </td>
@@ -3010,7 +3010,7 @@ export default function InvoicesPage() {
                             {/* Schedule Date */}
                             {visibleColumns.has('schedule_date') && (
                               <td className="px-2 py-1 text-[11px]">
-                                {invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('en-GB') : '-'}
+                                {invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('pt-BR') : '-'}
                               </td>
                             )}
 
@@ -3602,7 +3602,7 @@ export default function InvoicesPage() {
                             {/* Payment Date - NO INLINE EDIT (set by reconciliation) */}
                             {visibleColumns.has('payment_date') && (
                               <td className="px-2 py-1 text-[11px]">
-                                {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('en-GB') : <span className="text-gray-400">-</span>}
+                                {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-400">-</span>}
                               </td>
                             )}
                           </tr>

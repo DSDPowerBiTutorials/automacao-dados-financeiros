@@ -411,7 +411,7 @@ export default function BankCashFlowPage() {
     };
 
     const formatCurrency = (value: number, currency = "EUR") => {
-        return new Intl.NumberFormat("pt-PT", {
+        return new Intl.NumberFormat("pt-BR", {
             style: "currency",
             currency,
         }).format(value);

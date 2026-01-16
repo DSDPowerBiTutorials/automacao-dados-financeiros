@@ -1240,7 +1240,7 @@ export default function Home() {
                 </div>
                 <p className="text-lg font-bold text-white">
                   €
-                  {getRevenueByPeriod(source, "week").toLocaleString("en-US", {
+                  {getRevenueByPeriod(source, "week").toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                   })}
                 </p>
@@ -1254,7 +1254,7 @@ export default function Home() {
                 <p className="text-lg font-bold text-white">
                   €
                   {getRevenueByPeriod(source, "lastWeek").toLocaleString(
-                    "en-US",
+                    "pt-BR",
                     { minimumFractionDigits: 2 },
                   )}
                 </p>
@@ -1270,7 +1270,7 @@ export default function Home() {
                 <p className="text-lg font-bold text-white">
                   €
                   {getRevenueByPeriod(source, "lastMonth").toLocaleString(
-                    "en-US",
+                    "pt-BR",
                     { minimumFractionDigits: 2 },
                   )}
                 </p>
@@ -1285,7 +1285,7 @@ export default function Home() {
                 </div>
                 <p className="text-lg font-bold text-white">
                   €
-                  {getRevenueByPeriod(source, "year").toLocaleString("en-US", {
+                  {getRevenueByPeriod(source, "year").toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                   })}
                 </p>
@@ -1757,7 +1757,7 @@ export default function Home() {
                 </CardTitle>
                 <div className="text-4xl font-bold text-white">
                   €
-                  {getTotalAmount().toLocaleString("en-US", {
+                  {getTotalAmount().toLocaleString("pt-BR", {
                     minimumFractionDigits: 2,
                   })}
                 </div>
@@ -1890,7 +1890,7 @@ export default function Home() {
                   </p>
                   <p className="text-sm font-bold text-[#1a2b4a] dark:text-white">
                     Total Amount: €
-                    {getTotalAmount().toLocaleString("en-US", {
+                    {getTotalAmount().toLocaleString("pt-BR", {
                       minimumFractionDigits: 2,
                     })}
                   </p>

@@ -598,7 +598,7 @@ export default function StripeUSDPage() {
                             Total Vendas
                         </div>
                         <div className="text-xl font-bold text-green-600">
-                            ${stats.totalSales.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            ${stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
                         <div className="text-xs text-gray-400">{stats.salesCount} transações</div>
                     </CardContent>
@@ -611,7 +611,7 @@ export default function StripeUSDPage() {
                             Reembolsos
                         </div>
                         <div className="text-xl font-bold text-red-600">
-                            ${stats.totalRefunds.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            ${stats.totalRefunds.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
                         <div className="text-xs text-gray-400">{stats.refundsCount} transações</div>
                     </CardContent>
@@ -624,7 +624,7 @@ export default function StripeUSDPage() {
                             Líquido
                         </div>
                         <div className={`text-xl font-bold ${stats.netAmount >= 0 ? "text-green-600" : "text-red-600"}`}>
-                            ${stats.netAmount.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                            ${stats.netAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
                     </CardContent>
                 </Card>
@@ -843,7 +843,7 @@ export default function StripeUSDPage() {
                                                                     : "text-red-600"
                                                                 }`}
                                                         >
-                                                            ${row.amount.toLocaleString("en-US", {
+                                                            ${row.amount.toLocaleString("pt-BR", {
                                                                 minimumFractionDigits: 2,
                                                             })}
                                                         </span>

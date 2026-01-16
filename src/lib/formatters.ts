@@ -1,15 +1,30 @@
 /**
- * Formata data no padrão brasileiro: DD/MM/YYYY
- * @param dateString - String de data em qualquer formato
- * @returns Data formatada como "31/12/2025"
+ * FORMATADORES GLOBAIS - PADRÃO BRASILEIRO
+ * 
+ * Datas: DD/MM/YYYY (ex: 31/12/2026)
+ * Números: 1.000.000,00 (ponto milhar, vírgula decimal)
+ * 
+ * USE ESTAS FUNÇÕES EM TODA A APLICAÇÃO!
  */
-export function formatDate(dateString: string): string {
-  if (!dateString) return "";
-  // Datas YYYY-MM-DD não devem sofrer deslocamento de fuso
-  const simpleMatch = dateString.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (simpleMatch) {
-    const [, y, m, d] = simpleMatch;
-    return `${d}/${m}/${y}`;
+
+/**
+ * Formata data no padrão brasileiro: DD/MM/YYYY
+ * SEM conversão de timezone - mantém a data exata
+ * @param dateString - String de data em qualquer formato
+ * @returns Data formatada como "31/12/2026"
+ */
+export function formatDate(dateString: string | null | undefined): string {
+  if (!dateString) return "-";
+
+  // Se a data está no formato YYYY-MM-DD, formatar diretamente SEM new Date()
+  if (/^\d{4}-\d{2}-\d{2}/.test(dateString)) {
+    const [year, month, day] = dateString.split("T")[0].split("-");
+    return `${day}/${month}/${year}`;
+  }
+
+  // Se já está no formato DD/MM/YYYY, retorna como está
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(dateString)) {
+    return dateString;
   }
 
   // Tenta parsear preservando UTC para evitar shift de timezone
@@ -45,14 +60,15 @@ export function parseDateUTC(dateString: string): Date {
 }
 
 /**
- * Formata número no padrão: #.##0,0;(#.##0,0);-
- * Exemplos: 1.234,56 | (1.234,56) para negativos | - para zero
+ * Formata número no padrão BRASILEIRO: 1.000.000,00
+ * Ponto como separador de milhar, vírgula para decimais
  * @param value - Número a ser formatado
  * @param decimals - Número de casas decimais (padrão: 2)
  * @returns Número formatado
  */
-export function formatNumber(value: number, decimals: number = 2): string {
-  if (value === 0) return "-";
+export function formatNumber(value: number | null | undefined, decimals: number = 2): string {
+  if (value === null || value === undefined || isNaN(value)) return "-";
+  if (value === 0) return "0,00";
 
   const isNegative = value < 0;
   const absValue = Math.abs(value);
@@ -68,15 +84,20 @@ export function formatNumber(value: number, decimals: number = 2): string {
 }
 
 /**
- * Formata valor monetário em EUR
+ * Formata valor monetário com símbolo
+ * Padrão: € 1.234,56 ou $ 1.234,56
  * @param value - Valor numérico
  * @param currency - Código da moeda (EUR, USD, GBP, etc.)
- * @returns Valor formatado com símbolo e padrão brasileiro
+ * @returns Valor formatado com símbolo
  */
-export function formatCurrency(value: number, currency: string = "EUR"): string {
-  if (value === 0) {
+export function formatCurrency(value: number | null | undefined, currency: string = "EUR"): string {
+  if (value === null || value === undefined || isNaN(value)) {
     const symbol = getCurrencySymbol(currency);
     return `${symbol} -`;
+  }
+  if (value === 0) {
+    const symbol = getCurrencySymbol(currency);
+    return `${symbol} 0,00`;
   }
 
   const isNegative = value < 0;
@@ -92,6 +113,20 @@ export function formatCurrency(value: number, currency: string = "EUR"): string 
 }
 
 /**
+ * Formata valor em EUR
+ */
+export function formatEUR(value: number | null | undefined): string {
+  return formatCurrency(value, "EUR");
+}
+
+/**
+ * Formata valor em USD
+ */
+export function formatUSD(value: number | null | undefined): string {
+  return formatCurrency(value, "USD");
+}
+
+/**
  * Retorna o símbolo da moeda
  */
 function getCurrencySymbol(currency: string): string {
@@ -100,21 +135,27 @@ function getCurrencySymbol(currency: string): string {
     USD: "$",
     GBP: "£",
     AUD: "A$",
+    BRL: "R$",
   };
   return symbols[currency] || currency;
 }
 
 /**
  * Formata timestamp completo no padrão brasileiro
- * @param date - Objeto Date
- * @returns String formatada como "31/12/2025 23:59"
+ * @param date - Objeto Date ou string
+ * @returns String formatada como "31/12/2026 23:59"
  */
-export function formatTimestamp(date: Date): string {
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
+export function formatTimestamp(date: Date | string | null | undefined): string {
+  if (!date) return "-";
+
+  const d = typeof date === "string" ? new Date(date) : date;
+  if (isNaN(d.getTime())) return "-";
+
+  const day = String(d.getDate()).padStart(2, "0");
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const year = d.getFullYear();
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
 
   return `${day}/${month}/${year} ${hours}:${minutes}`;
 }
