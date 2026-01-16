@@ -312,7 +312,9 @@ async function makeApiRequest<T>(endpoint: string, method: string = "GET", body?
  * Get company information
  */
 export async function getCompanyInfo(): Promise<QuickBooksCompanyInfo> {
-    const response = await makeApiRequest<{ CompanyInfo: QuickBooksCompanyInfo }>("companyinfo")
+    const { realmId } = await getValidAccessToken()
+    // CompanyInfo endpoint requires realmId as the resource ID
+    const response = await makeApiRequest<{ CompanyInfo: QuickBooksCompanyInfo }>(`companyinfo/${realmId}`)
     return response.CompanyInfo
 }
 
