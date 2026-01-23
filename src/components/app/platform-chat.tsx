@@ -201,6 +201,7 @@ export function PlatformChat() {
     // Load messages for selected channel
     const loadMessages = useCallback(async () => {
         if (!selectedChannel) return;
+        console.log("Loading messages for channel:", selectedChannel.id, selectedChannel.name);
         setLoadingMessages(true);
         try {
             const { data, error } = await supabase
@@ -213,10 +214,13 @@ export function PlatformChat() {
                 .order("created_at", { ascending: true })
                 .limit(100);
 
+            console.log("Messages loaded:", data?.length, "Error:", error);
+
             if (error) {
                 console.log("Messages error:", error.message);
                 setMessages([]);
             } else {
+                console.log("Setting messages:", data);
                 setMessages(data || []);
                 // Clear unread for this channel
                 setUnreadByChannel((prev) => ({ ...prev, [selectedChannel.id]: 0 }));
@@ -373,9 +377,9 @@ export function PlatformChat() {
             // Check if DM already exists (both directions)
             const slug1 = `dm-${user.id}-${targetUser.id}`;
             const slug2 = `dm-${targetUser.id}-${user.id}`;
-            
+
             console.log("Checking for existing DM:", slug1, "or", slug2);
-            
+
             const { data: existingDms, error: searchError } = await supabase
                 .from("channels")
                 .select("*")
@@ -394,7 +398,7 @@ export function PlatformChat() {
             // Create new DM channel with readable name
             const dmName = targetUser.full_name || targetUser.username || "Direct Message";
             console.log("Creating new DM channel:", slug1, dmName);
-            
+
             const { data, error } = await supabase
                 .from("channels")
                 .insert([
