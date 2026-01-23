@@ -365,31 +365,41 @@ export function PlatformChat() {
     async function startDm(targetUser: UserProfile) {
         if (!user || startingDm) return;
 
+        console.log("Starting DM with:", targetUser);
         setStartingDm(true);
         setDmTargetUser(targetUser);
 
         try {
             // Check if DM already exists (both directions)
-            const { data: existingDms } = await supabase
+            const slug1 = `dm-${user.id}-${targetUser.id}`;
+            const slug2 = `dm-${targetUser.id}-${user.id}`;
+            
+            console.log("Checking for existing DM:", slug1, "or", slug2);
+            
+            const { data: existingDms, error: searchError } = await supabase
                 .from("channels")
                 .select("*")
                 .eq("channel_type", "direct")
-                .or(`slug.eq.dm-${user.id}-${targetUser.id},slug.eq.dm-${targetUser.id}-${user.id}`);
+                .or(`slug.eq.${slug1},slug.eq.${slug2}`);
+
+            console.log("Existing DMs found:", existingDms, "Error:", searchError);
 
             if (existingDms && existingDms.length > 0) {
+                console.log("Using existing DM channel:", existingDms[0]);
                 setSelectedChannel(existingDms[0]);
                 setStartingDm(false);
                 return;
             }
 
             // Create new DM channel with readable name
-            const slug = `dm-${user.id}-${targetUser.id}`;
             const dmName = targetUser.full_name || targetUser.username || "Direct Message";
+            console.log("Creating new DM channel:", slug1, dmName);
+            
             const { data, error } = await supabase
                 .from("channels")
                 .insert([
                     {
-                        slug,
+                        slug: slug1,
                         name: dmName,
                         description: `DM with ${dmName}`,
                         channel_type: "direct",
@@ -399,18 +409,29 @@ export function PlatformChat() {
                 .select()
                 .single();
 
-            if (error) throw error;
+            console.log("Channel created:", data, "Error:", error);
+
+            if (error) {
+                console.error("Error creating channel:", error);
+                alert(`Error creating DM: ${error.message}`);
+                setStartingDm(false);
+                return;
+            }
 
             // Add both users as members
-            await supabase.from("channel_members").insert([
+            const { error: membersError } = await supabase.from("channel_members").insert([
                 { channel_id: data.id, user_id: user.id, role: "owner" },
                 { channel_id: data.id, user_id: targetUser.id, role: "member" },
             ]);
 
+            console.log("Members added, error:", membersError);
+
             setDmChannels((prev) => [data, ...prev]);
             setSelectedChannel(data);
+            console.log("DM channel selected:", data);
         } catch (e: any) {
             console.error("Error creating DM:", e);
+            alert(`Error: ${e.message}`);
         } finally {
             setStartingDm(false);
         }
