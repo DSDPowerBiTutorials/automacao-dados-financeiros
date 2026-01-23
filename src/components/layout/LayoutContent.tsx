@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { AuthGuard } from "@/components/auth/AuthGuard";
 import { TablerAppShell } from "@/components/tabler/TablerAppShell";
+import { PlatformChat } from "@/components/app/platform-chat";
 
 export function LayoutContent({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -18,6 +19,7 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     return (
         <AuthGuard>
             <TablerAppShell>{children}</TablerAppShell>
+            <PlatformChat />
         </AuthGuard>
     );
 }

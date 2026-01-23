@@ -43,6 +43,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
+import { InvoiceFormModal } from "@/components/app/invoice-form-modal";
 
 type Invoice = {
     id: number;
@@ -156,6 +157,10 @@ export default function PaymentSchedulePage() {
     const [updatingInvoice, setUpdatingInvoice] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
     const [showCompleted, setShowCompleted] = useState(false);
+
+    // Invoice form modal
+    const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
+    const [defaultScheduleDateForModal, setDefaultScheduleDateForModal] = useState<string | null>(null);
 
     // Detail panel
     const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
@@ -406,7 +411,15 @@ export default function PaymentSchedulePage() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                        <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+                            onClick={() => {
+                                setDefaultScheduleDateForModal(null);
+                                setInvoiceModalOpen(true);
+                            }}
+                        >
                             <Plus className="h-4 w-4 mr-1" />
                             Add payment
                         </Button>
@@ -504,7 +517,13 @@ export default function PaymentSchedulePage() {
                                             </div>
                                         </div>
                                     ))}
-                                    <div className="px-6 py-2 text-gray-500 text-sm hover:text-gray-300 cursor-pointer flex items-center gap-2">
+                                    <div 
+                                        className="px-6 py-2 text-gray-500 text-sm hover:text-gray-300 cursor-pointer flex items-center gap-2"
+                                        onClick={() => {
+                                            setDefaultScheduleDateForModal(group.date === "unscheduled" ? null : group.date);
+                                            setInvoiceModalOpen(true);
+                                        }}
+                                    >
                                         <Plus className="h-4 w-4" />Add payment...
                                     </div>
                                 </div>
@@ -513,6 +532,15 @@ export default function PaymentSchedulePage() {
                     ))}
                 </div>
             </div>
+
+            {/* Invoice Form Modal */}
+            <InvoiceFormModal
+                open={invoiceModalOpen}
+                onOpenChange={setInvoiceModalOpen}
+                defaultScope={selectedScope === "GLOBAL" ? "ES" : selectedScope}
+                defaultScheduleDate={defaultScheduleDateForModal}
+                onSuccess={loadData}
+            />
 
             {/* Detail Panel */}
             {detailPanelOpen && selectedInvoice && (
