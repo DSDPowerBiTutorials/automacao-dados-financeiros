@@ -411,9 +411,9 @@ export default function PaymentSchedulePage() {
                     </div>
 
                     <div className="flex items-center justify-between">
-                        <Button 
-                            variant="outline" 
-                            size="sm" 
+                        <Button
+                            variant="outline"
+                            size="sm"
                             className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
                             onClick={() => {
                                 setDefaultScheduleDateForModal(null);
@@ -517,7 +517,7 @@ export default function PaymentSchedulePage() {
                                             </div>
                                         </div>
                                     ))}
-                                    <div 
+                                    <div
                                         className="px-6 py-2 text-gray-500 text-sm hover:text-gray-300 cursor-pointer flex items-center gap-2"
                                         onClick={() => {
                                             setDefaultScheduleDateForModal(group.date === "unscheduled" ? null : group.date);
