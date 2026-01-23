@@ -2,639 +2,728 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import {
-    Calendar,
-    CalendarDays,
-    Clock,
-    DollarSign,
-    ChevronLeft,
-    ChevronRight,
-    AlertCircle,
-    CheckCircle2,
-    Loader2,
-    X
+  ChevronDown,
+  ChevronRight,
+  Plus,
+  Calendar,
+  User,
+  CheckCircle,
+  Circle,
+  Loader2,
+  Filter,
+  ArrowUpDown,
+  Settings,
+  Search,
+  MoreHorizontal,
+  Zap,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "@/hooks/use-toast";
 import { Breadcrumbs } from "@/components/app/breadcrumbs";
 import { supabase } from "@/lib/supabase";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { matchesScope, SCOPE_CONFIG } from "@/lib/scope-utils";
 import {
-    formatDateForDB,
-    formatDateForDisplay,
+  formatDateForDB,
+  formatDateForDisplay,
 } from "@/lib/date-utils";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Invoice = {
-    id: number;
-    invoice_date: string;
-    benefit_date: string;
-    due_date?: string | null;
-    schedule_date?: string | null;
-    payment_date?: string | null;
-    invoice_type: string;
-    financial_account_code: string;
-    invoice_amount: number;
-    currency: string;
-    provider_code: string;
-    description?: string | null;
-    invoice_number?: string | null;
-    country_code: string;
-    payment_status?: string | null;
+  id: number;
+  invoice_date: string;
+  benefit_date: string;
+  due_date?: string | null;
+  schedule_date?: string | null;
+  payment_date?: string | null;
+  invoice_type: string;
+  financial_account_code: string;
+  invoice_amount: number;
+  currency: string;
+  provider_code: string;
+  description?: string | null;
+  invoice_number?: string | null;
+  country_code: string;
+  payment_status?: string | null;
+  is_paid?: boolean;
 };
 
 type Provider = {
-    code: string;
-    name: string;
+  code: string;
+  name: string;
 };
 
-type WeekData = {
-    weekStart: Date;
-    weekEnd: Date;
-    weekLabel: string;
-    invoices: Invoice[];
-    totalEUR: number;
-    totalUSD: number;
+type ScheduleGroup = {
+  date: string;
+  dateLabel: string;
+  invoices: Invoice[];
+  totalEUR: number;
+  totalUSD: number;
+  isExpanded: boolean;
 };
 
-// Helper to get Monday of a given week
-function getWeekStart(date: Date): Date {
-    const d = new Date(date);
-    const day = d.getDay();
-    const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-    d.setDate(diff);
-    d.setHours(0, 0, 0, 0);
-    return d;
+// Format date for group header (e.g., "January 1st")
+function formatDateForHeader(dateStr: string): string {
+  const date = new Date(dateStr);
+  const options: Intl.DateTimeFormatOptions = { month: "long", day: "numeric" };
+  const formatted = date.toLocaleDateString("en-US", options);
+  
+  // Add ordinal suffix
+  const day = date.getDate();
+  const suffix = 
+    day === 1 || day === 21 || day === 31 ? "st" :
+    day === 2 || day === 22 ? "nd" :
+    day === 3 || day === 23 ? "rd" : "th";
+  
+  return formatted.replace(/\d+/, day + suffix);
 }
 
-// Helper to get Sunday of a given week
-function getWeekEnd(date: Date): Date {
-    const start = getWeekStart(date);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    end.setHours(23, 59, 59, 999);
-    return end;
+// Format date for display (e.g., "21 jan")
+function formatShortDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
-// Format week label
-function formatWeekLabel(start: Date, end: Date): string {
-    const options: Intl.DateTimeFormatOptions = { day: "2-digit", month: "short" };
-    const startStr = start.toLocaleDateString("en-GB", options);
-    const endStr = end.toLocaleDateString("en-GB", options);
-    const year = end.getFullYear();
-    return `${startStr} - ${endStr}, ${year}`;
+// Check if date is today
+function isToday(dateStr: string): boolean {
+  const today = new Date();
+  const date = new Date(dateStr);
+  return date.toDateString() === today.toDateString();
 }
 
-// Get week number
-function getWeekNumber(date: Date): number {
-    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
-    const dayNum = d.getUTCDay() || 7;
-    d.setUTCDate(d.getUTCDate() + 4 - dayNum);
-    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
-    return Math.ceil((((d.getTime() - yearStart.getTime()) / 86400000) + 1) / 7);
+// Check if date is yesterday
+function isYesterday(dateStr: string): boolean {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const date = new Date(dateStr);
+  return date.toDateString() === yesterday.toDateString();
 }
 
-// Check if date is in current week
-function isCurrentWeek(date: Date): boolean {
-    const now = new Date();
-    const currentWeekStart = getWeekStart(now);
-    const targetWeekStart = getWeekStart(date);
-    return currentWeekStart.getTime() === targetWeekStart.getTime();
-}
-
-// Check if date is overdue
-function isOverdue(date: Date): boolean {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    return date < today;
+// Format relative date
+function formatRelativeDate(dateStr: string): string {
+  if (isToday(dateStr)) return "Today";
+  if (isYesterday(dateStr)) return "Yesterday";
+  return formatShortDate(dateStr);
 }
 
 export default function PaymentSchedulePage() {
-    const { selectedScope } = useGlobalScope();
-    const [invoices, setInvoices] = useState<Invoice[]>([]);
-    const [providers, setProviders] = useState<Provider[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [currentWeekOffset, setCurrentWeekOffset] = useState(0); // 0 = current week
-    const [updatingInvoice, setUpdatingInvoice] = useState<number | null>(null);
+  const { selectedScope } = useGlobalScope();
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [providers, setProviders] = useState<Provider[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+  const [updatingInvoice, setUpdatingInvoice] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [showCompleted, setShowCompleted] = useState(false);
+  
+  // Schedule dialog
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [newScheduleDate, setNewScheduleDate] = useState("");
 
-    useEffect(() => {
-        loadData();
-    }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-    async function loadData() {
-        setLoading(true);
-        try {
-            const [invoicesRes, providersRes] = await Promise.all([
-                supabase
-                    .from("invoices")
-                    .select("*")
-                    .eq("invoice_type", "INCURRED")
-                    .is("payment_date", null) // Only unpaid invoices
-                    .order("schedule_date", { ascending: true, nullsFirst: true }),
-                supabase.from("providers").select("code, name")
-            ]);
-
-            if (invoicesRes.error) throw invoicesRes.error;
-            if (providersRes.error) throw providersRes.error;
-
-            setInvoices(invoicesRes.data || []);
-            setProviders(providersRes.data || []);
-        } catch (e: any) {
-            toast({
-                title: "Error",
-                description: e?.message || "Failed to load data",
-                variant: "destructive",
-                className: "bg-white"
-            });
-        } finally {
-            setLoading(false);
+  // Expand all groups by default on load
+  useEffect(() => {
+    if (invoices.length > 0) {
+      const allDates = new Set<string>();
+      invoices.forEach(inv => {
+        if (inv.schedule_date) {
+          allDates.add(inv.schedule_date);
         }
+      });
+      allDates.add("unscheduled");
+      setExpandedGroups(allDates);
     }
+  }, [invoices]);
 
-    // Filter invoices by scope
-    const filteredInvoices = useMemo(() => {
-        return invoices.filter(inv => matchesScope(inv.country_code, selectedScope));
-    }, [invoices, selectedScope]);
+  async function loadData() {
+    setLoading(true);
+    try {
+      const [invoicesRes, providersRes] = await Promise.all([
+        supabase
+          .from("invoices")
+          .select("*")
+          .eq("invoice_type", "INCURRED")
+          .order("schedule_date", { ascending: true, nullsFirst: false }),
+        supabase.from("providers").select("code, name"),
+      ]);
 
-    // Separate unscheduled (pool) from scheduled
-    const { poolInvoices, scheduledInvoices } = useMemo(() => {
-        const pool: Invoice[] = [];
-        const scheduled: Invoice[] = [];
+      if (invoicesRes.error) throw invoicesRes.error;
+      if (providersRes.error) throw providersRes.error;
 
-        filteredInvoices.forEach(inv => {
-            if (!inv.schedule_date) {
-                pool.push(inv);
-            } else {
-                scheduled.push(inv);
-            }
-        });
-
-        return { poolInvoices: pool, scheduledInvoices: scheduled };
-    }, [filteredInvoices]);
-
-    // Organize scheduled invoices by weeks
-    const weeks = useMemo(() => {
-        const weeksMap = new Map<string, WeekData>();
-        const today = new Date();
-
-        // Generate 8 weeks starting from currentWeekOffset
-        for (let i = 0; i < 8; i++) {
-            const weekOffset = currentWeekOffset + i;
-            const referenceDate = new Date(today);
-            referenceDate.setDate(referenceDate.getDate() + (weekOffset * 7));
-
-            const weekStart = getWeekStart(referenceDate);
-            const weekEnd = getWeekEnd(referenceDate);
-            const key = weekStart.toISOString();
-
-            if (!weeksMap.has(key)) {
-                weeksMap.set(key, {
-                    weekStart,
-                    weekEnd,
-                    weekLabel: formatWeekLabel(weekStart, weekEnd),
-                    invoices: [],
-                    totalEUR: 0,
-                    totalUSD: 0
-                });
-            }
-        }
-
-        // Assign invoices to weeks
-        scheduledInvoices.forEach(inv => {
-            if (inv.schedule_date) {
-                const invDate = new Date(inv.schedule_date);
-                const weekStart = getWeekStart(invDate);
-                const key = weekStart.toISOString();
-
-                let weekData = weeksMap.get(key);
-                if (!weekData) {
-                    // Create week if not in visible range but has invoice
-                    weekData = {
-                        weekStart,
-                        weekEnd: getWeekEnd(invDate),
-                        weekLabel: formatWeekLabel(weekStart, getWeekEnd(invDate)),
-                        invoices: [],
-                        totalEUR: 0,
-                        totalUSD: 0
-                    };
-                    weeksMap.set(key, weekData);
-                }
-
-                weekData.invoices.push(inv);
-                if (inv.currency === "EUR") {
-                    weekData.totalEUR += inv.invoice_amount;
-                } else if (inv.currency === "USD") {
-                    weekData.totalUSD += inv.invoice_amount;
-                }
-            }
-        });
-
-        // Sort weeks by date
-        return Array.from(weeksMap.values()).sort(
-            (a, b) => a.weekStart.getTime() - b.weekStart.getTime()
-        );
-    }, [scheduledInvoices, currentWeekOffset]);
-
-    // Get provider name
-    function getProviderName(code: string): string {
-        const provider = providers.find(p => p.code === code);
-        return provider?.name || code;
+      setInvoices(invoicesRes.data || []);
+      setProviders(providersRes.data || []);
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to load data",
+        variant: "destructive",
+        className: "bg-white",
+      });
+    } finally {
+      setLoading(false);
     }
+  }
 
-    // Schedule an invoice to a specific week
-    async function scheduleToWeek(invoiceId: number, weekStart: Date) {
-        setUpdatingInvoice(invoiceId);
-        try {
-            // Schedule to Monday of that week
-            const scheduleDate = formatDateForDB(weekStart.toISOString().split("T")[0]);
-
-            const { error } = await supabase
-                .from("invoices")
-                .update({ schedule_date: scheduleDate })
-                .eq("id", invoiceId);
-
-            if (error) throw error;
-
-            // Update local state
-            setInvoices(prev => prev.map(inv =>
-                inv.id === invoiceId
-                    ? { ...inv, schedule_date: scheduleDate }
-                    : inv
-            ));
-
-            toast({
-                title: "Scheduled",
-                description: `Invoice scheduled for week of ${formatWeekLabel(weekStart, getWeekEnd(weekStart))}`,
-                className: "bg-white"
-            });
-        } catch (e: any) {
-            toast({
-                title: "Error",
-                description: e?.message || "Failed to schedule invoice",
-                variant: "destructive",
-                className: "bg-white"
-            });
-        } finally {
-            setUpdatingInvoice(null);
-        }
-    }
-
-    // Unschedule an invoice (move to pool)
-    async function unscheduleInvoice(invoiceId: number) {
-        setUpdatingInvoice(invoiceId);
-        try {
-            const { error } = await supabase
-                .from("invoices")
-                .update({ schedule_date: null })
-                .eq("id", invoiceId);
-
-            if (error) throw error;
-
-            setInvoices(prev => prev.map(inv =>
-                inv.id === invoiceId
-                    ? { ...inv, schedule_date: null }
-                    : inv
-            ));
-
-            toast({
-                title: "Unscheduled",
-                description: "Invoice moved back to pool",
-                className: "bg-white"
-            });
-        } catch (e: any) {
-            toast({
-                title: "Error",
-                description: e?.message || "Failed to unschedule invoice",
-                variant: "destructive",
-                className: "bg-white"
-            });
-        } finally {
-            setUpdatingInvoice(null);
-        }
-    }
-
-    // Format currency
-    function formatCurrency(amount: number, currency: string): string {
-        return new Intl.NumberFormat("pt-BR", {
-            style: "currency",
-            currency: currency,
-            minimumFractionDigits: 2
-        }).format(amount);
-    }
-
-    // Calculate totals
-    const totals = useMemo(() => {
-        let poolEUR = 0, poolUSD = 0;
-        let scheduledEUR = 0, scheduledUSD = 0;
-
-        poolInvoices.forEach(inv => {
-            if (inv.currency === "EUR") poolEUR += inv.invoice_amount;
-            else if (inv.currency === "USD") poolUSD += inv.invoice_amount;
-        });
-
-        scheduledInvoices.forEach(inv => {
-            if (inv.currency === "EUR") scheduledEUR += inv.invoice_amount;
-            else if (inv.currency === "USD") scheduledUSD += inv.invoice_amount;
-        });
-
-        return { poolEUR, poolUSD, scheduledEUR, scheduledUSD };
-    }, [poolInvoices, scheduledInvoices]);
-
-    // Invoice card component
-    const InvoiceCard = ({ invoice, showScheduleButtons = false }: { invoice: Invoice; showScheduleButtons?: boolean }) => {
-        const dueDate = invoice.due_date ? new Date(invoice.due_date) : null;
-        const isLate = dueDate && isOverdue(dueDate);
-        const scheduleDate = invoice.schedule_date ? new Date(invoice.schedule_date) : null;
-
-        return (
-            <div className={`p-3 bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow ${isLate ? "border-red-300 bg-red-50" : "border-gray-200"}`}>
-                <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-sm font-medium truncate">
-                                {getProviderName(invoice.provider_code)}
-                            </span>
-                            {isLate && (
-                                <Badge variant="destructive" className="text-xs">
-                                    <AlertCircle className="h-3 w-3 mr-1" />
-                                    Overdue
-                                </Badge>
-                            )}
-                        </div>
-                        <p className="text-xs text-gray-500 truncate">
-                            {invoice.invoice_number || `#${invoice.id}`}
-                        </p>
-                        {invoice.description && (
-                            <p className="text-xs text-gray-400 truncate mt-0.5">
-                                {invoice.description}
-                            </p>
-                        )}
-                        <div className="flex items-center gap-2 mt-2">
-                            <span className={`text-sm font-bold ${invoice.currency === "EUR" ? "text-blue-600" : "text-green-600"}`}>
-                                {formatCurrency(invoice.invoice_amount, invoice.currency)}
-                            </span>
-                            {dueDate && (
-                                <span className="text-xs text-gray-400">
-                                    Due: {formatDateForDisplay(invoice.due_date!)}
-                                </span>
-                            )}
-                        </div>
-                    </div>
-
-                    <div className="flex flex-col gap-1">
-                        {scheduleDate && (
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-6 w-6 p-0 text-gray-400 hover:text-red-500"
-                                onClick={() => unscheduleInvoice(invoice.id)}
-                                disabled={updatingInvoice === invoice.id}
-                            >
-                                {updatingInvoice === invoice.id ? (
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                ) : (
-                                    <X className="h-3 w-3" />
-                                )}
-                            </Button>
-                        )}
-                    </div>
-                </div>
-
-                {showScheduleButtons && (
-                    <div className="mt-3 pt-2 border-t flex flex-wrap gap-1">
-                        {weeks.slice(0, 4).map((week, idx) => (
-                            <Button
-                                key={week.weekStart.toISOString()}
-                                variant="outline"
-                                size="sm"
-                                className="text-xs h-6 px-2"
-                                onClick={() => scheduleToWeek(invoice.id, week.weekStart)}
-                                disabled={updatingInvoice === invoice.id}
-                            >
-                                {idx === 0 && currentWeekOffset === 0 ? "This Week" : `W${getWeekNumber(week.weekStart)}`}
-                            </Button>
-                        ))}
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    if (loading) {
-        return (
-            <div className="min-h-screen flex items-center justify-center">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
-            </div>
-        );
-    }
-
-    return (
-        <div className="min-h-screen bg-gray-50">
-            {/* Header */}
-            <div className="bg-white border-b px-6 py-4">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <Breadcrumbs items={[
-                            { label: "Accounts Payable", href: "/accounts-payable" },
-                            { label: "Payment Schedule" }
-                        ]} />
-                        <h1 className="text-2xl font-bold text-gray-900 mt-2">Payment Schedule</h1>
-                        <p className="text-gray-500 mt-1">
-                            Organize and schedule invoice payments by week • Scope: {SCOPE_CONFIG[selectedScope].label}
-                        </p>
-                    </div>
-
-                    {/* Navigation */}
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentWeekOffset(prev => prev - 4)}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-1" />
-                            Previous
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentWeekOffset(0)}
-                            disabled={currentWeekOffset === 0}
-                        >
-                            Today
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setCurrentWeekOffset(prev => prev + 4)}
-                        >
-                            Next
-                            <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                    </div>
-                </div>
-
-                {/* Summary Cards */}
-                <div className="grid grid-cols-4 gap-4 mt-6">
-                    <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-gray-500 mb-1">
-                                <Clock className="h-4 w-4" />
-                                <span className="text-sm">Pool (Unscheduled)</span>
-                            </div>
-                            <p className="text-2xl font-bold">{poolInvoices.length}</p>
-                            <div className="flex gap-2 mt-1">
-                                {totals.poolEUR > 0 && (
-                                    <span className="text-xs text-blue-600">{formatCurrency(totals.poolEUR, "EUR")}</span>
-                                )}
-                                {totals.poolUSD > 0 && (
-                                    <span className="text-xs text-green-600">{formatCurrency(totals.poolUSD, "USD")}</span>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-gray-500 mb-1">
-                                <CalendarDays className="h-4 w-4" />
-                                <span className="text-sm">Scheduled</span>
-                            </div>
-                            <p className="text-2xl font-bold">{scheduledInvoices.length}</p>
-                            <div className="flex gap-2 mt-1">
-                                {totals.scheduledEUR > 0 && (
-                                    <span className="text-xs text-blue-600">{formatCurrency(totals.scheduledEUR, "EUR")}</span>
-                                )}
-                                {totals.scheduledUSD > 0 && (
-                                    <span className="text-xs text-green-600">{formatCurrency(totals.scheduledUSD, "USD")}</span>
-                                )}
-                            </div>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-amber-600 mb-1">
-                                <AlertCircle className="h-4 w-4" />
-                                <span className="text-sm">Overdue</span>
-                            </div>
-                            <p className="text-2xl font-bold text-amber-600">
-                                {filteredInvoices.filter(inv => inv.due_date && isOverdue(new Date(inv.due_date))).length}
-                            </p>
-                        </CardContent>
-                    </Card>
-
-                    <Card>
-                        <CardContent className="pt-4">
-                            <div className="flex items-center gap-2 text-gray-500 mb-1">
-                                <DollarSign className="h-4 w-4" />
-                                <span className="text-sm">Total Pending</span>
-                            </div>
-                            <p className="text-xl font-bold text-blue-600">
-                                {formatCurrency(totals.poolEUR + totals.scheduledEUR, "EUR")}
-                            </p>
-                            {(totals.poolUSD + totals.scheduledUSD) > 0 && (
-                                <p className="text-lg font-bold text-green-600">
-                                    {formatCurrency(totals.poolUSD + totals.scheduledUSD, "USD")}
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
-
-            {/* Main Content */}
-            <div className="p-6">
-                <div className="flex gap-6">
-                    {/* Pool - Left Sidebar */}
-                    <div className="w-80 flex-shrink-0">
-                        <Card className="sticky top-6">
-                            <CardHeader className="pb-3">
-                                <CardTitle className="flex items-center gap-2 text-lg">
-                                    <Clock className="h-5 w-5 text-amber-500" />
-                                    Payment Pool
-                                </CardTitle>
-                                <CardDescription>
-                                    {poolInvoices.length} invoices waiting to be scheduled
-                                </CardDescription>
-                            </CardHeader>
-                            <CardContent className="max-h-[calc(100vh-300px)] overflow-y-auto">
-                                {poolInvoices.length === 0 ? (
-                                    <div className="text-center py-8 text-gray-400">
-                                        <CheckCircle2 className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                                        <p>All invoices are scheduled!</p>
-                                    </div>
-                                ) : (
-                                    <div className="space-y-3">
-                                        {poolInvoices.map(invoice => (
-                                            <InvoiceCard
-                                                key={invoice.id}
-                                                invoice={invoice}
-                                                showScheduleButtons={true}
-                                            />
-                                        ))}
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-
-                    {/* Weeks - Main Area */}
-                    <div className="flex-1">
-                        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                            {weeks.map((week) => {
-                                const isCurrent = isCurrentWeek(week.weekStart);
-                                const weekNum = getWeekNumber(week.weekStart);
-
-                                return (
-                                    <Card
-                                        key={week.weekStart.toISOString()}
-                                        className={isCurrent ? "ring-2 ring-blue-500" : ""}
-                                    >
-                                        <CardHeader className="pb-2">
-                                            <div className="flex items-center justify-between">
-                                                <CardTitle className="text-sm font-medium">
-                                                    Week {weekNum}
-                                                    {isCurrent && (
-                                                        <Badge className="ml-2 bg-blue-500">Current</Badge>
-                                                    )}
-                                                </CardTitle>
-                                            </div>
-                                            <CardDescription className="text-xs">
-                                                {week.weekLabel}
-                                            </CardDescription>
-                                            <div className="flex gap-2 mt-1">
-                                                {week.totalEUR > 0 && (
-                                                    <Badge variant="outline" className="text-xs text-blue-600 border-blue-200">
-                                                        {formatCurrency(week.totalEUR, "EUR")}
-                                                    </Badge>
-                                                )}
-                                                {week.totalUSD > 0 && (
-                                                    <Badge variant="outline" className="text-xs text-green-600 border-green-200">
-                                                        {formatCurrency(week.totalUSD, "USD")}
-                                                    </Badge>
-                                                )}
-                                            </div>
-                                        </CardHeader>
-                                        <CardContent className="space-y-2">
-                                            {week.invoices.length === 0 ? (
-                                                <div className="text-center py-6 text-gray-300 border-2 border-dashed rounded-lg">
-                                                    <Calendar className="h-8 w-8 mx-auto mb-1" />
-                                                    <p className="text-xs">No payments</p>
-                                                </div>
-                                            ) : (
-                                                week.invoices.map(invoice => (
-                                                    <InvoiceCard key={invoice.id} invoice={invoice} />
-                                                ))
-                                            )}
-                                        </CardContent>
-                                    </Card>
-                                );
-                            })}
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+  // Filter invoices by scope and search
+  const filteredInvoices = useMemo(() => {
+    let filtered = invoices.filter((inv) =>
+      matchesScope(inv.country_code, selectedScope)
     );
+
+    // Filter by paid status
+    if (!showCompleted) {
+      filtered = filtered.filter((inv) => !inv.payment_date);
+    }
+
+    // Filter by search term
+    if (searchTerm) {
+      const term = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        (inv) =>
+          inv.description?.toLowerCase().includes(term) ||
+          inv.invoice_number?.toLowerCase().includes(term) ||
+          inv.provider_code?.toLowerCase().includes(term) ||
+          getProviderName(inv.provider_code).toLowerCase().includes(term)
+      );
+    }
+
+    return filtered;
+  }, [invoices, selectedScope, searchTerm, showCompleted]);
+
+  // Group invoices by schedule_date
+  const groups = useMemo(() => {
+    const groupsMap = new Map<string, ScheduleGroup>();
+
+    // First add unscheduled group
+    groupsMap.set("unscheduled", {
+      date: "unscheduled",
+      dateLabel: "Unscheduled",
+      invoices: [],
+      totalEUR: 0,
+      totalUSD: 0,
+      isExpanded: expandedGroups.has("unscheduled"),
+    });
+
+    filteredInvoices.forEach((inv) => {
+      const key = inv.schedule_date || "unscheduled";
+
+      if (!groupsMap.has(key)) {
+        groupsMap.set(key, {
+          date: key,
+          dateLabel:
+            key === "unscheduled"
+              ? "Unscheduled"
+              : `Scheduled Payments - ${formatDateForHeader(key)}`,
+          invoices: [],
+          totalEUR: 0,
+          totalUSD: 0,
+          isExpanded: expandedGroups.has(key),
+        });
+      }
+
+      const group = groupsMap.get(key)!;
+      group.invoices.push(inv);
+
+      if (inv.currency === "EUR") {
+        group.totalEUR += inv.invoice_amount;
+      } else if (inv.currency === "USD") {
+        group.totalUSD += inv.invoice_amount;
+      }
+    });
+
+    // Sort groups by date
+    return Array.from(groupsMap.values()).sort((a, b) => {
+      if (a.date === "unscheduled") return 1;
+      if (b.date === "unscheduled") return -1;
+      return new Date(a.date).getTime() - new Date(b.date).getTime();
+    });
+  }, [filteredInvoices, expandedGroups]);
+
+  // Get provider name
+  function getProviderName(code: string): string {
+    const provider = providers.find((p) => p.code === code);
+    return provider?.name || code;
+  }
+
+  // Toggle group expansion
+  function toggleGroup(date: string) {
+    setExpandedGroups((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(date)) {
+        newSet.delete(date);
+      } else {
+        newSet.add(date);
+      }
+      return newSet;
+    });
+  }
+
+  // Mark invoice as paid
+  async function togglePaid(invoice: Invoice) {
+    setUpdatingInvoice(invoice.id);
+    try {
+      const newPaymentDate = invoice.payment_date ? null : new Date().toISOString().split("T")[0];
+
+      const { error } = await supabase
+        .from("invoices")
+        .update({ payment_date: newPaymentDate })
+        .eq("id", invoice.id);
+
+      if (error) throw error;
+
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoice.id ? { ...inv, payment_date: newPaymentDate } : inv
+        )
+      );
+
+      toast({
+        title: newPaymentDate ? "Marked as paid" : "Marked as unpaid",
+        className: "bg-white",
+      });
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to update",
+        variant: "destructive",
+        className: "bg-white",
+      });
+    } finally {
+      setUpdatingInvoice(null);
+    }
+  }
+
+  // Update schedule date
+  async function updateScheduleDate(invoiceId: number, date: string | null) {
+    setUpdatingInvoice(invoiceId);
+    try {
+      const { error } = await supabase
+        .from("invoices")
+        .update({ schedule_date: date })
+        .eq("id", invoiceId);
+
+      if (error) throw error;
+
+      setInvoices((prev) =>
+        prev.map((inv) =>
+          inv.id === invoiceId ? { ...inv, schedule_date: date } : inv
+        )
+      );
+
+      // Add new date to expanded groups
+      if (date) {
+        setExpandedGroups((prev) => new Set([...prev, date]));
+      }
+
+      toast({
+        title: date ? "Scheduled" : "Unscheduled",
+        className: "bg-white",
+      });
+
+      setScheduleDialogOpen(false);
+      setSelectedInvoice(null);
+    } catch (e: any) {
+      toast({
+        title: "Error",
+        description: e?.message || "Failed to schedule",
+        variant: "destructive",
+        className: "bg-white",
+      });
+    } finally {
+      setUpdatingInvoice(null);
+    }
+  }
+
+  // Format currency
+  function formatCurrency(amount: number, currency: string): string {
+    return new Intl.NumberFormat("de-DE", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  }
+
+  // Currency badge color
+  function getCurrencyBadge(currency: string) {
+    if (currency === "EUR") {
+      return (
+        <span className="inline-flex items-center justify-center w-8 h-6 rounded bg-blue-100 text-blue-700 text-xs font-medium">
+          €
+        </span>
+      );
+    }
+    if (currency === "USD") {
+      return (
+        <span className="inline-flex items-center justify-center w-8 h-6 rounded bg-green-100 text-green-700 text-xs font-medium">
+          US$
+        </span>
+      );
+    }
+    return (
+      <span className="inline-flex items-center justify-center w-8 h-6 rounded bg-gray-100 text-gray-700 text-xs font-medium">
+        {currency}
+      </span>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
+        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-[#1e1f21] text-white">
+      {/* Header */}
+      <div className="border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold">Payments & Invoice Control</h1>
+            <span className="text-gray-400">•</span>
+            <span className="text-gray-400 text-sm">
+              {SCOPE_CONFIG[selectedScope].label}
+            </span>
+          </div>
+        </div>
+
+        {/* Toolbar */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              Add payment
+            </Button>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Search..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 w-64 bg-transparent border-gray-600 text-white placeholder:text-gray-500"
+              />
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+            >
+              <Filter className="h-4 w-4 mr-1" />
+              Filter
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+            >
+              <ArrowUpDown className="h-4 w-4 mr-1" />
+              Sort
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowCompleted(!showCompleted)}
+              className={`bg-transparent border-gray-600 hover:bg-gray-700 ${
+                showCompleted ? "text-green-400" : "text-white"
+              }`}
+            >
+              <CheckCircle className="h-4 w-4 mr-1" />
+              {showCompleted ? "Hide Completed" : "Show Completed"}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Table Header */}
+      <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
+        <div className="grid grid-cols-12 gap-2 px-6 py-2 text-xs text-gray-400 font-medium uppercase">
+          <div className="col-span-4">Name</div>
+          <div className="col-span-1 text-center">Responsible</div>
+          <div className="col-span-1 text-center">Completion</div>
+          <div className="col-span-1">Invoice Date</div>
+          <div className="col-span-2">Invoice Nº</div>
+          <div className="col-span-1 text-right">Total Amount</div>
+          <div className="col-span-1 text-center">Currency</div>
+          <div className="col-span-1 text-center">Actions</div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="pb-20">
+        {groups.map((group) => (
+          <div key={group.date} className="border-b border-gray-800">
+            {/* Group Header */}
+            <div
+              className="flex items-center gap-2 px-4 py-3 hover:bg-gray-800/50 cursor-pointer"
+              onClick={() => toggleGroup(group.date)}
+            >
+              {expandedGroups.has(group.date) ? (
+                <ChevronDown className="h-4 w-4 text-gray-400" />
+              ) : (
+                <ChevronRight className="h-4 w-4 text-gray-400" />
+              )}
+              <span className="font-medium text-white">{group.dateLabel}</span>
+              <Zap className="h-4 w-4 text-yellow-500" />
+              <span className="text-gray-500 text-sm ml-auto">
+                {group.invoices.length > 0 && (
+                  <>
+                    TOT:{" "}
+                    <span className="text-white font-medium">
+                      {group.totalEUR > 0 && `€${formatCurrency(group.totalEUR, "EUR")}`}
+                      {group.totalEUR > 0 && group.totalUSD > 0 && " + "}
+                      {group.totalUSD > 0 && `$${formatCurrency(group.totalUSD, "USD")}`}
+                    </span>
+                  </>
+                )}
+              </span>
+            </div>
+
+            {/* Group Content */}
+            {expandedGroups.has(group.date) && (
+              <div>
+                {group.invoices.map((invoice) => (
+                  <div
+                    key={invoice.id}
+                    className="grid grid-cols-12 gap-2 px-6 py-2.5 hover:bg-gray-800/30 border-t border-gray-800/50 items-center group"
+                  >
+                    {/* Checkbox + Name */}
+                    <div className="col-span-4 flex items-center gap-3">
+                      <button
+                        onClick={() => togglePaid(invoice)}
+                        disabled={updatingInvoice === invoice.id}
+                        className="flex-shrink-0"
+                      >
+                        {updatingInvoice === invoice.id ? (
+                          <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                        ) : invoice.payment_date ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : (
+                          <Circle className="h-5 w-5 text-gray-500 hover:text-gray-300" />
+                        )}
+                      </button>
+                      <div className="flex flex-col min-w-0">
+                        <span
+                          className={`truncate ${
+                            invoice.payment_date
+                              ? "text-gray-500 line-through"
+                              : "text-white"
+                          }`}
+                        >
+                          {getProviderName(invoice.provider_code)}
+                        </span>
+                        {invoice.description && (
+                          <span className="text-xs text-gray-500 truncate">
+                            {invoice.description}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Responsible */}
+                    <div className="col-span-1 flex justify-center">
+                      <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center">
+                        <User className="h-4 w-4 text-gray-400" />
+                      </div>
+                    </div>
+
+                    {/* Completion Date (schedule_date) */}
+                    <div className="col-span-1 flex justify-center">
+                      <button
+                        onClick={() => {
+                          setSelectedInvoice(invoice);
+                          setNewScheduleDate(invoice.schedule_date || "");
+                          setScheduleDialogOpen(true);
+                        }}
+                        className="flex items-center gap-1 text-gray-400 hover:text-white hover:bg-gray-700 px-2 py-1 rounded"
+                      >
+                        <Calendar className="h-4 w-4" />
+                        {invoice.schedule_date ? (
+                          <span className="text-xs">
+                            {formatRelativeDate(invoice.schedule_date)}
+                          </span>
+                        ) : (
+                          <Plus className="h-3 w-3 opacity-0 group-hover:opacity-100" />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Invoice Date */}
+                    <div className="col-span-1 text-sm text-gray-300">
+                      {invoice.invoice_date
+                        ? formatShortDate(invoice.invoice_date)
+                        : "-"}
+                    </div>
+
+                    {/* Invoice Number */}
+                    <div className="col-span-2 text-sm text-gray-300 truncate">
+                      {invoice.invoice_number || "-"}
+                    </div>
+
+                    {/* Amount */}
+                    <div
+                      className={`col-span-1 text-sm text-right font-medium ${
+                        invoice.invoice_amount < 0
+                          ? "text-red-400"
+                          : "text-white"
+                      }`}
+                    >
+                      {formatCurrency(invoice.invoice_amount, invoice.currency)}
+                    </div>
+
+                    {/* Currency */}
+                    <div className="col-span-1 flex justify-center">
+                      {getCurrencyBadge(invoice.currency)}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="col-span-1 flex justify-center opacity-0 group-hover:opacity-100">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 text-gray-400 hover:text-white"
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="bg-[#2a2b2d] border-gray-700 text-white"
+                        >
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedInvoice(invoice);
+                              setNewScheduleDate(invoice.schedule_date || "");
+                              setScheduleDialogOpen(true);
+                            }}
+                            className="hover:bg-gray-700"
+                          >
+                            <Calendar className="h-4 w-4 mr-2" />
+                            Set schedule date
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => togglePaid(invoice)}
+                            className="hover:bg-gray-700"
+                          >
+                            <CheckCircle className="h-4 w-4 mr-2" />
+                            {invoice.payment_date
+                              ? "Mark as unpaid"
+                              : "Mark as paid"}
+                          </DropdownMenuItem>
+                          {invoice.schedule_date && (
+                            <DropdownMenuItem
+                              onClick={() =>
+                                updateScheduleDate(invoice.id, null)
+                              }
+                              className="hover:bg-gray-700 text-red-400"
+                            >
+                              <Calendar className="h-4 w-4 mr-2" />
+                              Remove from schedule
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </div>
+                ))}
+
+                {/* Add task row */}
+                <div className="px-6 py-2 text-gray-500 text-sm hover:text-gray-300 cursor-pointer flex items-center gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add payment...
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Schedule Dialog */}
+      <Dialog open={scheduleDialogOpen} onOpenChange={setScheduleDialogOpen}>
+        <DialogContent className="bg-[#2a2b2d] border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle>Schedule Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <div className="space-y-2">
+              <Label>Payment</Label>
+              <p className="text-sm text-gray-400">
+                {selectedInvoice &&
+                  getProviderName(selectedInvoice.provider_code)}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Schedule Date</Label>
+              <Input
+                type="date"
+                value={newScheduleDate}
+                onChange={(e) => setNewScheduleDate(e.target.value)}
+                className="bg-transparent border-gray-600 text-white"
+              />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button
+                variant="outline"
+                onClick={() => setScheduleDialogOpen(false)}
+                className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() =>
+                  selectedInvoice &&
+                  updateScheduleDate(
+                    selectedInvoice.id,
+                    newScheduleDate || null
+                  )
+                }
+                disabled={updatingInvoice !== null}
+                className="bg-blue-600 hover:bg-blue-700"
+              >
+                {updatingInvoice ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  "Save"
+                )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
 }
