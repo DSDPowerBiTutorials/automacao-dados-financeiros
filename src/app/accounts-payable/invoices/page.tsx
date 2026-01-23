@@ -1373,14 +1373,14 @@ export default function InvoicesPage() {
                 Switch to ES or US to create invoices
               </p>
             )}
-            <DialogContent className="max-w-[95vw] w-[1400px] max-h-[95vh] overflow-y-auto bg-white">
-              <DialogHeader>
+            <DialogContent className="max-w-[95vw] w-[900px] max-h-[90vh] overflow-y-auto bg-white p-8">
+              <DialogHeader className="pb-4 border-b">
                 <DialogTitle className="text-2xl">{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
-                <DialogDescription className="text-base">
+                <DialogDescription className="text-base mt-2">
                   {editingInvoice ? "Update invoice details" : "Add a new financial entry to accounts payable"}
                 </DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-8 pt-6">
                 {/* Invoice Type Selection */}
                 <div className="space-y-3">
                   <Label className="text-base">Invoice Type *</Label>
@@ -1409,7 +1409,7 @@ export default function InvoicesPage() {
                 </div>
 
                 {/* Dates Row */}
-                <div className="grid grid-cols-4 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="invoice_date">Invoice Date *</Label>
                     <Input
@@ -1418,6 +1418,7 @@ export default function InvoicesPage() {
                       value={formData.invoice_date}
                       onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
                       required
+                      className="h-10"
                     />
                   </div>
                   <div className="space-y-2">
@@ -1428,8 +1429,13 @@ export default function InvoicesPage() {
                       value={formData.benefit_date}
                       onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })}
                       required
+                      className="h-10"
                     />
                   </div>
+                </div>
+
+                {/* Due & Schedule Dates */}
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="due_date">Due Date *</Label>
                     <Input
@@ -1445,6 +1451,7 @@ export default function InvoicesPage() {
                         });
                       }}
                       required
+                      className="h-10"
                     />
                     <p className="text-xs text-muted-foreground">Invoice due date</p>
                   </div>
@@ -1462,7 +1469,7 @@ export default function InvoicesPage() {
                 </div>
 
                 {/* Scope & Invoice Number */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="scope">Scope (Country) *</Label>
                     <Select
@@ -1512,7 +1519,7 @@ export default function InvoicesPage() {
                 </div>
 
                 {/* Provider & Financial Account */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="provider_code">Provider *</Label>
                     <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })} required>
@@ -1544,7 +1551,7 @@ export default function InvoicesPage() {
                 </div>
 
                 {/* Amount & Currency */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="invoice_amount">Amount *</Label>
                     <Input
@@ -1586,7 +1593,7 @@ export default function InvoicesPage() {
                 </div>
 
                 {/* Cost Type, Dep Cost Type & Cost Center */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="cost_type_code">Cost Type *</Label>
                     <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })} required>
@@ -1631,7 +1638,7 @@ export default function InvoicesPage() {
                 </div>
 
                 {/* Payment Details */}
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-3 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="bank_account_code">Bank Account</Label>
                     <Select value={formData.bank_account_code} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>

@@ -120,7 +120,7 @@ export default function Sidebar() {
   const renderFlyout = (items: any[]) => {
     return (
       <div
-        className="fixed bg-white border border-gray-200 shadow-xl p-2 z-60 min-w-[240px]"
+        className="fixed bg-white border border-gray-200 shadow-xl p-2 z-[100] min-w-[240px] rounded-lg"
         style={{
           top: `${flyoutPosition.top}px`,
           left: `${flyoutPosition.left}px`,
