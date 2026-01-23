@@ -120,6 +120,8 @@ export function PlatformChat() {
     // Users for DMs
     const [users, setUsers] = useState<UserProfile[]>([]);
     const [dmChannels, setDmChannels] = useState<Channel[]>([]);
+    const [dmTargetUser, setDmTargetUser] = useState<UserProfile | null>(null);
+    const [startingDm, setStartingDm] = useState(false);
 
     // Unread
     const [unreadCount, setUnreadCount] = useState(0);
@@ -361,30 +363,35 @@ export function PlatformChat() {
 
     // Start DM
     async function startDm(targetUser: UserProfile) {
-        if (!user) return;
+        if (!user || startingDm) return;
 
-        // Check if DM already exists
-        const existingDm = dmChannels.find(
-            (c) =>
-                c.channel_type === "direct" &&
-                (c.name.includes(user.id) && c.name.includes(targetUser.id))
-        );
+        setStartingDm(true);
+        setDmTargetUser(targetUser);
 
-        if (existingDm) {
-            setSelectedChannel(existingDm);
-            return;
-        }
-
-        // Create new DM channel
         try {
+            // Check if DM already exists (both directions)
+            const { data: existingDms } = await supabase
+                .from("channels")
+                .select("*")
+                .eq("channel_type", "direct")
+                .or(`slug.eq.dm-${user.id}-${targetUser.id},slug.eq.dm-${targetUser.id}-${user.id}`);
+
+            if (existingDms && existingDms.length > 0) {
+                setSelectedChannel(existingDms[0]);
+                setStartingDm(false);
+                return;
+            }
+
+            // Create new DM channel with readable name
             const slug = `dm-${user.id}-${targetUser.id}`;
+            const dmName = targetUser.full_name || targetUser.username || "Direct Message";
             const { data, error } = await supabase
                 .from("channels")
                 .insert([
                     {
                         slug,
-                        name: `${user.id}-${targetUser.id}`,
-                        description: null,
+                        name: dmName,
+                        description: `DM with ${dmName}`,
                         channel_type: "direct",
                         created_by: user.id,
                     },
@@ -404,6 +411,8 @@ export function PlatformChat() {
             setSelectedChannel(data);
         } catch (e: any) {
             console.error("Error creating DM:", e);
+        } finally {
+            setStartingDm(false);
         }
     }
 
@@ -525,16 +534,24 @@ export function PlatformChat() {
                                             <button
                                                 key={u.id}
                                                 onClick={() => startDm(u)}
-                                                className="flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-800"
+                                                disabled={startingDm}
+                                                className={cn(
+                                                    "flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-800",
+                                                    selectedChannel?.channel_type === "direct" && selectedChannel?.name === (u.full_name || u.username) && "bg-blue-600"
+                                                )}
                                             >
-                                                <div
-                                                    className={cn(
-                                                        "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium",
-                                                        getAvatarColor(u.full_name || u.username || "")
-                                                    )}
-                                                >
-                                                    {getInitials(u.full_name || u.username || "?")}
-                                                </div>
+                                                {startingDm && dmTargetUser?.id === u.id ? (
+                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                ) : (
+                                                    <div
+                                                        className={cn(
+                                                            "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium",
+                                                            getAvatarColor(u.full_name || u.username || "")
+                                                        )}
+                                                    >
+                                                        {getInitials(u.full_name || u.username || "?")}
+                                                    </div>
+                                                )}
                                                 <span className="truncate">{u.full_name || u.username}</span>
                                                 <span
                                                     className={cn(
@@ -579,13 +596,19 @@ export function PlatformChat() {
                             <div className="flex items-center gap-2">
                                 {selectedChannel && (
                                     <>
-                                        <Hash className="h-4 w-4 text-gray-500" />
-                                        <span className="font-medium">{selectedChannel.name}</span>
-                                        {selectedChannel.description && (
-                                            <span className="text-xs text-gray-500 hidden sm:inline">
-                                                — {selectedChannel.description}
-                                            </span>
+                                        {selectedChannel.channel_type === "direct" ? (
+                                            <div
+                                                className={cn(
+                                                    "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white",
+                                                    getAvatarColor(selectedChannel.name)
+                                                )}
+                                            >
+                                                {getInitials(selectedChannel.name)}
+                                            </div>
+                                        ) : (
+                                            <Hash className="h-4 w-4 text-gray-500" />
                                         )}
+                                        <span className="font-medium">{selectedChannel.name}</span>
                                     </>
                                 )}
                             </div>
