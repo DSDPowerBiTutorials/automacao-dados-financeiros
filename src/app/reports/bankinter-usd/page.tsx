@@ -587,8 +587,21 @@ export default function BankinterUSDPage() {
     );
   };
 
-  // Calcular estatísticas
+  // Calcular estatísticas (usando saldo real do CSV)
   const calculateStats = () => {
+    if (filteredRows.length === 0) {
+      return {
+        totalIncomes: 0,
+        totalExpenses: 0,
+        incomesBySource: {} as Record<string, number>,
+        unreconciledCount: 0,
+        openingBalance: 0,
+        closingBalance: 0,
+        oldestDate: null as string | null,
+        newestDate: null as string | null
+      };
+    }
+
     const totalIncomes = filteredRows
       .filter((row) => row.amount > 0)
       .reduce((sum, row) => sum + row.amount, 0);
@@ -608,21 +621,22 @@ export default function BankinterUSDPage() {
       (row) => !row.conciliado,
     ).length;
 
-    // Calcular saldo inicial (transactions antes do período filtrado)
-    let openingBalance = 0;
-    if (dateFrom) {
-      openingBalance = rows
-        .filter((row) => row.date < dateFrom)
-        .reduce((sum, row) => sum + row.amount, 0);
-    }
-
-    // Calcular saldo final
-    const closingBalance = openingBalance + totalIncomes + totalExpenses;
-
-    // Datas do período
+    // Ordenar por data (mais antiga primeiro)
     const sortedByDate = [...filteredRows].sort((a, b) => a.date.localeCompare(b.date));
-    const oldestDate = sortedByDate.length > 0 ? sortedByDate[0].date : null;
-    const newestDate = sortedByDate.length > 0 ? sortedByDate[sortedByDate.length - 1].date : null;
+    
+    // Usar saldo real do CSV (primeira transação = opening, última = closing)
+    const firstRow = sortedByDate[0];
+    const lastRow = sortedByDate[sortedByDate.length - 1];
+    
+    // Opening Balance = saldo da primeira transação MENOS o amount dessa transação
+    const firstBalance = (firstRow as any).custom_data?.saldo ?? (firstRow as any).custom_data?.balance ?? 0;
+    const openingBalance = firstBalance - firstRow.amount;
+    
+    // Closing Balance = saldo da última transação (saldo APÓS todas as transações)
+    const closingBalance = (lastRow as any).custom_data?.saldo ?? (lastRow as any).custom_data?.balance ?? 0;
+
+    const oldestDate = firstRow.date;
+    const newestDate = lastRow.date;
 
     return { totalIncomes, totalExpenses, incomesBySource, unreconciledCount, openingBalance, closingBalance, oldestDate, newestDate };
   };

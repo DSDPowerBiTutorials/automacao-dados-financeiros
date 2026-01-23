@@ -449,7 +449,7 @@ export default function SabadellPage() {
             }
         }
 
-        // Ordenar por data
+        // Ordenar por data (mais antiga primeiro)
         const sortedByDate = [...filteredRows].sort((a, b) =>
             new Date(a.date).getTime() - new Date(b.date).getTime()
         )
@@ -464,17 +464,20 @@ export default function SabadellPage() {
             }, {} as Record<string, number>)
         const unreconciledCount = filteredRows.filter((row) => !row.conciliado).length
 
-        // Saldo inicial = soma das transactions ANTES do período filtrado
-        const transactionsBeforePeriod = dateFrom
-            ? rows.filter(r => r.date < dateFrom).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            : []
-        const openingBalance = transactionsBeforePeriod.reduce((sum, r) => sum + r.amount, 0)
+        // Usar balance real do CSV (primeira transação = opening, última = closing)
+        const firstRow = sortedByDate[0]
+        const lastRow = sortedByDate[sortedByDate.length - 1]
 
-        // Saldo final = saldo inicial + movement do período
-        const closingBalance = openingBalance + totalIncomes - totalExpenses
+        // Opening Balance = balance da primeira transação MENOS o amount dessa transação
+        // (para obter o saldo ANTES dessa transação)
+        const firstBalance = firstRow.custom_data?.balance ?? 0
+        const openingBalance = firstBalance - firstRow.amount
 
-        const oldestDate = sortedByDate.length > 0 ? sortedByDate[0].date : null
-        const newestDate = sortedByDate.length > 0 ? sortedByDate[sortedByDate.length - 1].date : null
+        // Closing Balance = balance da última transação (saldo APÓS todas as transações)
+        const closingBalance = lastRow.custom_data?.balance ?? 0
+
+        const oldestDate = firstRow.date
+        const newestDate = lastRow.date
 
         return { totalIncomes, totalExpenses, incomesBySource, unreconciledCount, openingBalance, closingBalance, oldestDate, newestDate }
     }

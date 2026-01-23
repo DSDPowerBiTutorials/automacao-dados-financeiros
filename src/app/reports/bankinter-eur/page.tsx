@@ -460,7 +460,7 @@ export default function BankinterEURPage() {
     return paymentSourceColors[source] || { bg: "bg-gray-100", text: "text-gray-600", border: "border-gray-200" }
   }
 
-  // Calcular estatísticas com saldo inicial e final
+  // Calcular estatísticas com saldo inicial e final (usando saldo real do CSV)
   const calculateStats = () => {
     if (filteredRows.length === 0) {
       return {
@@ -475,7 +475,7 @@ export default function BankinterEURPage() {
       }
     }
 
-    // Ordenar por data
+    // Ordenar por data (mais antiga primeiro)
     const sortedByDate = [...filteredRows].sort((a, b) =>
       new Date(a.date).getTime() - new Date(b.date).getTime()
     )
@@ -491,17 +491,19 @@ export default function BankinterEURPage() {
       }, {} as Record<string, number>)
     const unreconciledCount = filteredRows.filter((row) => !row.conciliado).length
 
-    // Saldo inicial = soma das transactions ANTES do período filtrado
-    const transactionsBeforePeriod = dateFrom
-      ? rows.filter(r => r.date < dateFrom).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-      : []
-    const openingBalance = transactionsBeforePeriod.reduce((sum, r) => sum + r.amount, 0)
+    // Usar saldo real do CSV (primeira transação = opening, última = closing)
+    const firstRow = sortedByDate[0]
+    const lastRow = sortedByDate[sortedByDate.length - 1]
+    
+    // Opening Balance = saldo da primeira transação MENOS o amount dessa transação
+    const firstBalance = firstRow.custom_data?.saldo ?? 0
+    const openingBalance = firstBalance - firstRow.amount
+    
+    // Closing Balance = saldo da última transação (saldo APÓS todas as transações)
+    const closingBalance = lastRow.custom_data?.saldo ?? 0
 
-    // Saldo final = saldo inicial + movement do período
-    const closingBalance = openingBalance + totalIncomes - totalExpenses
-
-    const oldestDate = sortedByDate.length > 0 ? sortedByDate[0].date : null
-    const newestDate = sortedByDate.length > 0 ? sortedByDate[sortedByDate.length - 1].date : null
+    const oldestDate = firstRow.date
+    const newestDate = lastRow.date
 
     return {
       totalIncomes,

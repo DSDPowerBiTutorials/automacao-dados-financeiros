@@ -21,6 +21,14 @@ Este documento lista todos os usuários com permissões de administrador no sist
 - **Criado em:** 2026-01-08
 - **User ID:** aeae50ee-40da-46c4-89b7-4789dcab3356
 
+### 3. Sofia Hernandez
+- **Email:** sofia@digitalsmiledesign.com
+- **Role:** admin
+- **Company Code:** GLOBAL
+- **Department:** Finance
+- **Status:** Ativo
+- **Criado em:** 2026-01-21
+
 ## Como Criar Novos Admins
 
 ### Via API (Recomendado durante desenvolvimento)
