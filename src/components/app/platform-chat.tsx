@@ -204,27 +204,48 @@ export function PlatformChat() {
         console.log("Loading messages for channel:", selectedChannel.id, selectedChannel.name);
         setLoadingMessages(true);
         try {
-            const { data, error } = await supabase
+            // First get messages
+            const { data: messagesData, error: messagesError } = await supabase
                 .from("messages")
-                .select(`
-          *,
-          user_profile:user_profiles(id, username, full_name, avatar_url, status)
-        `)
+                .select("*")
                 .eq("channel_id", selectedChannel.id)
                 .order("created_at", { ascending: true })
                 .limit(100);
 
-            console.log("Messages loaded:", data?.length, "Error:", error);
+            console.log("Messages loaded:", messagesData?.length, "Error:", messagesError);
 
-            if (error) {
-                console.log("Messages error:", error.message);
+            if (messagesError) {
+                console.log("Messages error:", messagesError.message);
                 setMessages([]);
-            } else {
-                console.log("Setting messages:", data);
-                setMessages(data || []);
-                // Clear unread for this channel
-                setUnreadByChannel((prev) => ({ ...prev, [selectedChannel.id]: 0 }));
+                return;
             }
+
+            if (!messagesData || messagesData.length === 0) {
+                setMessages([]);
+                return;
+            }
+
+            // Get unique user IDs
+            const userIds = [...new Set(messagesData.map(m => m.user_id).filter(Boolean))];
+
+            // Fetch user profiles
+            const { data: profiles } = await supabase
+                .from("user_profiles")
+                .select("*")
+                .in("id", userIds);
+
+            // Create a map of user profiles
+            const profileMap = new Map(profiles?.map(p => [p.id, p]) || []);
+
+            // Merge messages with profiles
+            const messagesWithProfiles = messagesData.map(msg => ({
+                ...msg,
+                user_profile: profileMap.get(msg.user_id) || null
+            }));
+
+            console.log("Setting messages with profiles:", messagesWithProfiles.length);
+            setMessages(messagesWithProfiles);
+            setUnreadByChannel((prev) => ({ ...prev, [selectedChannel.id]: 0 }));
         } catch (e) {
             console.log("Error loading messages:", e);
             setMessages([]);
