@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
 
         const { data: profile, error } = await supabaseAdmin
             .from('users')
-            .select('id, email, name, role, company_code, department, phone, avatar_url, is_active, created_at, last_login_at')
+            .select('id, email, name, role, company_code, department, phone, avatar_url, timezone, is_active, created_at, last_login_at')
             .eq('id', user.id)
             .single();
 
@@ -48,13 +48,14 @@ export async function PATCH(request: NextRequest) {
         }
 
         const body = await request.json();
-        const { name, department, phone, avatar_url } = body;
+        const { name, department, phone, avatar_url, timezone } = body;
 
         const updates: any = {};
         if (name !== undefined) updates.name = name;
         if (department !== undefined) updates.department = department;
         if (phone !== undefined) updates.phone = phone;
         if (avatar_url !== undefined) updates.avatar_url = avatar_url;
+        if (timezone !== undefined) updates.timezone = timezone;
 
         if (Object.keys(updates).length === 0) {
             return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
@@ -64,7 +65,7 @@ export async function PATCH(request: NextRequest) {
             .from('users')
             .update(updates)
             .eq('id', user.id)
-            .select('id, email, name, role, company_code, department, phone, avatar_url, is_active')
+            .select('id, email, name, role, company_code, department, phone, avatar_url, timezone, is_active')
             .single();
 
         if (error) {

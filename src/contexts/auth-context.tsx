@@ -14,6 +14,7 @@ interface UserProfile {
     department?: string;
     phone?: string;
     avatar_url?: string;
+    timezone?: string;
     is_active: boolean;
     last_login_at?: string;
 }

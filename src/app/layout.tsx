@@ -4,6 +4,7 @@ import { Toaster } from "@/components/ui/toaster"
 import { CompanyViewProvider } from "@/contexts/company-view-context"
 import { GlobalScopeProvider } from "@/contexts/global-scope-context"
 import { AuthProvider } from "@/contexts/auth-context"
+import { TimezoneProvider } from "@/contexts/timezone-context"
 import { LayoutContent } from "@/components/layout/LayoutContent"
 
 export const metadata = {
@@ -25,14 +26,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="pt-BR">
       <body className="text-neutral-900">
         <AuthProvider>
-          <CompanyViewProvider>
-            <GlobalScopeProvider>
-              <LayoutContent>
-                {children}
-              </LayoutContent>
-              <Toaster />
-            </GlobalScopeProvider>
-          </CompanyViewProvider>
+          <TimezoneProvider>
+            <CompanyViewProvider>
+              <GlobalScopeProvider>
+                <LayoutContent>
+                  {children}
+                </LayoutContent>
+                <Toaster />
+              </GlobalScopeProvider>
+            </CompanyViewProvider>
+          </TimezoneProvider>
         </AuthProvider>
       </body>
     </html>
