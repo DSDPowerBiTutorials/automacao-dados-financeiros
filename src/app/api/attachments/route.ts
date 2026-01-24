@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
         const formData = await request.formData();
 
         const file = formData.get('file') as File;
-        const entityType = formData.get('entity_type') as string || 'ap_invoice';
+        const entityType = formData.get('entity_type') as string || 'invoice';
         const entityId = formData.get('entity_id') as string;
         const batchId = formData.get('batch_id') as string;
         const kind = formData.get('kind') as string || 'invoice_pdf';

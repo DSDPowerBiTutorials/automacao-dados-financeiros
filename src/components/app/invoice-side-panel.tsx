@@ -467,7 +467,7 @@ export function InvoiceSidePanel({
                         <div className="space-y-3">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase">Attachments</h3>
                             <InvoiceAttachments
-                                entityType="ap_invoice"
+                                entityType="invoice"
                                 entityId={editingInvoice?.id || null}
                                 batchId={attachmentBatchId}
                                 invoiceDate={formData.invoice_date}
