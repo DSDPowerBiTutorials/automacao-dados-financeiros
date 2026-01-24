@@ -362,372 +362,219 @@ export function InvoiceFormModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="w-[98vw] max-w-[1400px] h-[95vh] overflow-y-auto overflow-x-hidden bg-white p-8">
-                <DialogHeader className="pb-6 border-b">
-                    <DialogTitle className="text-2xl font-bold">
+            <DialogContent className="max-w-[95vw] w-[1600px] max-h-[95vh] overflow-y-auto bg-white">
+                <DialogHeader className="pb-4">
+                    <DialogTitle className="text-xl font-bold">
                         {editingInvoice ? "Edit Invoice" : "Create New Invoice"}
                     </DialogTitle>
-                    <DialogDescription className="text-base">
-                        {editingInvoice ? "Update invoice details" : "Add a new financial entry to accounts payable"}
-                    </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-8 pt-6">
-                    {/* Invoice Type Selection - Horizontal cards */}
-                    <div className="space-y-3">
-                        <Label className="text-base font-semibold">Invoice Type *</Label>
-                        <div className="grid grid-cols-3 gap-6">
-                            {Object.entries(INVOICE_TYPE_CONFIG).map(([type, config]) => {
-                                const Icon = config.icon;
-                                const isSelected = formData.invoice_type === type;
-                                return (
-                                    <button
-                                        key={type}
-                                        type="button"
-                                        onClick={() => handleTypeChange(type as InvoiceType)}
-                                        className={`p-6 border-2 rounded-xl text-left transition-all ${isSelected ? config.colorSelected : config.color} hover:opacity-90`}
-                                    >
-                                        <div className="flex items-center gap-3 mb-2">
-                                            <Icon className="h-6 w-6" />
-                                            <span className="font-bold text-lg">{config.label}</span>
-                                        </div>
-                                        <p className="text-sm opacity-80">{config.description}</p>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
-
-                    {/* SECTION: Dates */}
-                    <div className="bg-gray-50 rounded-xl p-6 space-y-4">
-                        <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Dates</h3>
-                        <div className="grid grid-cols-5 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="invoice_date" className="text-sm font-medium">Invoice Date *</Label>
-                                <Input
-                                    id="invoice_date"
-                                    type="date"
-                                    value={formData.invoice_date}
-                                    onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
-                                    required
-                                    className="h-11 text-base"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="benefit_date" className="text-sm font-medium">Benefit Date *</Label>
-                                <Input
-                                    id="benefit_date"
-                                    type="date"
-                                    value={formData.benefit_date}
-                                    onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })}
-                                    required
-                                    className="h-11 text-base"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="due_date" className="text-sm font-medium">Due Date *</Label>
-                                <Input
-                                    id="due_date"
-                                    type="date"
-                                    value={formData.due_date}
-                                    onChange={(e) => {
-                                        const newDueDate = e.target.value;
-                                        setFormData({
-                                            ...formData,
-                                            due_date: newDueDate,
-                                            schedule_date: formData.schedule_date || newDueDate
-                                        });
-                                    }}
-                                    required
-                                    className="h-11 text-base"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="schedule_date" className="text-sm font-medium">Schedule Date</Label>
-                                <Input
-                                    id="schedule_date"
-                                    type="date"
-                                    value={formData.schedule_date}
-                                    onChange={(e) => setFormData({ ...formData, schedule_date: e.target.value })}
-                                    className="h-11 text-base"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="payment_date" className="text-sm font-medium">Payment Date</Label>
-                                <Input
-                                    id="payment_date"
-                                    type="date"
-                                    value={formData.payment_date || ""}
-                                    onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                                    className="h-11 text-base"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* SECTION: Amount & Details */}
-                    <div className="bg-blue-50 rounded-xl p-6 space-y-4">
-                        <h3 className="text-sm font-semibold text-blue-700 uppercase tracking-wide">Amount & Details</h3>
-
-                        <div className="grid grid-cols-6 gap-4">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Scope *</Label>
-                                <Select
-                                    value={formData.scope}
-                                    onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val as ScopeType, currency: val === "US" ? "USD" : "EUR" })}
+                <form onSubmit={handleSubmit} className="space-y-6">
+                    {/* ROW 1: Invoice Type (2 cards side by side) */}
+                    <div className="flex gap-4">
+                        {Object.entries(INVOICE_TYPE_CONFIG).filter(([type]) => type !== 'ADJUSTMENT').map(([type, config]) => {
+                            const Icon = config.icon;
+                            const isSelected = formData.invoice_type === type;
+                            return (
+                                <button
+                                    key={type}
+                                    type="button"
+                                    onClick={() => handleTypeChange(type as InvoiceType)}
+                                    className={`flex-1 p-4 border-2 rounded-lg text-left transition-all ${isSelected ? config.colorSelected : config.color}`}
                                 >
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white">
-                                        <SelectItem value="ES">🇪🇸 Spain</SelectItem>
-                                        <SelectItem value="US">🇺🇸 USA</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="invoice_number" className="text-sm font-medium">Invoice #</Label>
-                                <Input
-                                    id="invoice_number"
-                                    value={formData.invoice_number}
-                                    onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                                    placeholder="Auto"
-                                    className="h-11 text-base"
-                                />
-                            </div>
-                            <div className="col-span-2 space-y-2">
-                                <Label htmlFor="invoice_amount" className="text-sm font-medium">Amount *</Label>
-                                <Input
-                                    id="invoice_amount"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.invoice_amount}
-                                    onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })}
-                                    required
-                                    className="h-11 text-lg font-semibold"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Currency *</Label>
-                                <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white">
-                                        <SelectItem value="EUR">EUR €</SelectItem>
-                                        <SelectItem value="USD">USD $</SelectItem>
-                                        <SelectItem value="GBP">GBP £</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="eur_exchange" className="text-sm font-medium">EUR Rate</Label>
-                                <Input
-                                    id="eur_exchange"
-                                    type="number"
-                                    step="0.0001"
-                                    value={formData.eur_exchange || ""}
-                                    onChange={(e) => setFormData({ ...formData, eur_exchange: e.target.value })}
-                                    placeholder="1.0"
-                                    className="h-11 text-base"
-                                />
-                            </div>
+                                    <div className="flex items-center gap-2">
+                                        <Icon className="h-5 w-5" />
+                                        <span className="font-semibold">{config.label}</span>
+                                    </div>
+                                    <p className="text-xs mt-1 opacity-75">{config.description}</p>
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* ROW 2: ALL DATES in one row */}
+                    <div className="grid grid-cols-5 gap-4">
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Invoice Date *</Label>
+                            <Input type="date" value={formData.invoice_date} onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })} required className="mt-1" />
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Benefit Date *</Label>
+                            <Input type="date" value={formData.benefit_date} onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })} required className="mt-1" />
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Due Date *</Label>
+                            <Input type="date" value={formData.due_date} onChange={(e) => {
+                                const newDueDate = e.target.value;
+                                setFormData({ ...formData, due_date: newDueDate, schedule_date: formData.schedule_date || newDueDate });
+                            }} required className="mt-1" />
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Schedule Date</Label>
+                            <Input type="date" value={formData.schedule_date} onChange={(e) => setFormData({ ...formData, schedule_date: e.target.value })} className="mt-1" />
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Payment Date</Label>
+                            <Input type="date" value={formData.payment_date || ""} onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })} className="mt-1" />
                         </div>
                     </div>
 
-                    {/* SECTION: Provider & Classification */}
-                    <div className="bg-green-50 rounded-xl p-6 space-y-4">
-                        <h3 className="text-sm font-semibold text-green-700 uppercase tracking-wide">Provider & Classification</h3>
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Provider *</Label>
-                                <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue placeholder="Select provider" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[300px]">
-                                        {providers.map((p) => (
-                                            <SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Financial Account *</Label>
-                                <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue placeholder="Select account" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[300px]">
-                                        {financialAccounts.filter((a: any) => a.level >= 2).map((a) => (
-                                            <SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                    {/* ROW 3: Scope, Invoice #, Amount, Currency, EUR Rate */}
+                    <div className="grid grid-cols-6 gap-4">
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Scope *</Label>
+                            <Select value={formData.scope} onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val as ScopeType, currency: val === "US" ? "USD" : "EUR" })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-white">
+                                    <SelectItem value="ES">🇪🇸 Spain</SelectItem>
+                                    <SelectItem value="US">🇺🇸 USA</SelectItem>
+                                </SelectContent>
+                            </Select>
                         </div>
-
-                        <div className="grid grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Cost Type *</Label>
-                                <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[300px]">
-                                        {costTypes.map((t) => (
-                                            <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Dep Cost Type *</Label>
-                                <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[300px]">
-                                        {depCostTypes.map((t) => (
-                                            <SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Cost Center *</Label>
-                                <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[300px]">
-                                        {costCenters.map((c) => (
-                                            <SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Invoice #</Label>
+                            <Input value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })} placeholder="Auto" className="mt-1" />
+                        </div>
+                        <div className="col-span-2">
+                            <Label className="text-xs font-medium text-gray-600">Amount *</Label>
+                            <Input type="number" step="0.01" value={formData.invoice_amount} onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })} required className="mt-1 text-lg font-bold" />
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Currency *</Label>
+                            <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-white">
+                                    <SelectItem value="EUR">EUR €</SelectItem>
+                                    <SelectItem value="USD">USD $</SelectItem>
+                                    <SelectItem value="GBP">GBP £</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">EUR Rate</Label>
+                            <Input type="number" step="0.0001" value={formData.eur_exchange || ""} onChange={(e) => setFormData({ ...formData, eur_exchange: e.target.value })} placeholder="1.0" className="mt-1" />
                         </div>
                     </div>
 
-                    {/* SECTION: Payment & Course */}
-                    <div className="bg-purple-50 rounded-xl p-6 space-y-4">
-                        <h3 className="text-sm font-semibold text-purple-700 uppercase tracking-wide">Payment & Course</h3>
-                        <div className="grid grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Bank Account</Label>
-                                <Select value={formData.bank_account_code || ""} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[300px]">
-                                        {bankAccounts.map((b) => (
-                                            <SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Payment Method</Label>
-                                <Select value={formData.payment_method_code || ""} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[300px]">
-                                        {paymentMethods.map((m) => (
-                                            <SelectItem key={m.code} value={m.code}>{m.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-sm font-medium">Course</Label>
-                                <Select value={formData.course_code || ""} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
-                                    <SelectTrigger className="h-11 bg-white text-base">
-                                        <SelectValue placeholder="Select" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[300px]">
-                                        {courses.map((c) => (
-                                            <SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                    {/* ROW 4: Provider, Financial Account */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Provider *</Label>
+                            <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select provider" /></SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                    {providers.map((p) => (<SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Financial Account *</Label>
+                            <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select account" /></SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                    {financialAccounts.filter((a: any) => a.level >= 2).map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
-                    {/* SECTION: Notes */}
-                    <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="description" className="text-sm font-medium">Description</Label>
-                            <Textarea
-                                id="description"
-                                value={formData.description}
-                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                                rows={3}
-                                placeholder="Invoice description..."
-                                className="resize-none text-base"
-                            />
+                    {/* ROW 5: Cost Type, Dep Cost Type, Cost Center */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Cost Type *</Label>
+                            <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                    {costTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="notes" className="text-sm font-medium">Internal Notes</Label>
-                            <Textarea
-                                id="notes"
-                                value={formData.notes}
-                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                                rows={3}
-                                placeholder="Internal notes..."
-                                className="resize-none text-base"
-                            />
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Dep Cost Type *</Label>
+                            <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                    {depCostTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
                         </div>
-                    </div>
-
-                    {/* Impact Flags */}
-                    <div className="flex items-center gap-10 py-4 px-6 bg-amber-50 rounded-xl">
-                        <div className="flex items-center space-x-3">
-                            <Checkbox
-                                id="dre_impact"
-                                checked={formData.dre_impact}
-                                onCheckedChange={(checked) => setFormData({ ...formData, dre_impact: checked as boolean })}
-                                className="h-5 w-5"
-                            />
-                            <Label htmlFor="dre_impact" className="text-base font-medium cursor-pointer">
-                                Impacts DRE
-                            </Label>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <Checkbox
-                                id="cash_impact"
-                                checked={formData.cash_impact}
-                                onCheckedChange={(checked) => setFormData({ ...formData, cash_impact: checked as boolean })}
-                                className="h-5 w-5"
-                            />
-                            <Label htmlFor="cash_impact" className="text-base font-medium cursor-pointer">
-                                Impacts Cash Flow
-                            </Label>
-                        </div>
-                        <div className="flex items-center space-x-3">
-                            <Checkbox
-                                id="is_intercompany"
-                                checked={formData.is_intercompany}
-                                onCheckedChange={(checked) => setFormData({ ...formData, is_intercompany: checked as boolean })}
-                                className="h-5 w-5"
-                            />
-                            <Label htmlFor="is_intercompany" className="text-base font-medium cursor-pointer">
-                                Intercompany
-                            </Label>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Cost Center *</Label>
+                            <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                    {costCenters.map((c) => (<SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
                         </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex justify-end gap-4 pt-6 border-t">
-                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="h-12 px-8 text-base">
-                            Cancel
-                        </Button>
-                        <Button type="submit" disabled={submitting} className={`h-12 px-8 text-base font-semibold ${editingInvoice ? "bg-green-600 hover:bg-green-700" : ""}`}>
-                            {submitting ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : null}
-                            {submitting ? "Saving..." : editingInvoice ? "Update Invoice" : "Create Invoice"}
-                        </Button>
+                    {/* ROW 6: Bank, Payment Method, Course */}
+                    <div className="grid grid-cols-3 gap-4">
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Bank Account</Label>
+                            <Select value={formData.bank_account_code || ""} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                    {bankAccounts.map((b) => (<SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Payment Method</Label>
+                            <Select value={formData.payment_method_code || ""} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                    {paymentMethods.map((m) => (<SelectItem key={m.code} value={m.code}>{m.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Course</Label>
+                            <Select value={formData.course_code || ""} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
+                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                    {courses.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    {/* ROW 7: Description & Notes */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Description</Label>
+                            <Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} placeholder="Invoice description..." className="mt-1 resize-none" />
+                        </div>
+                        <div>
+                            <Label className="text-xs font-medium text-gray-600">Internal Notes</Label>
+                            <Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={2} placeholder="Internal notes..." className="mt-1 resize-none" />
+                        </div>
+                    </div>
+
+                    {/* ROW 8: Flags + Actions in same row */}
+                    <div className="flex items-center justify-between pt-4 border-t">
+                        <div className="flex items-center gap-6">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox checked={formData.dre_impact} onCheckedChange={(checked) => setFormData({ ...formData, dre_impact: checked as boolean })} />
+                                <span className="text-sm">Impacts DRE</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox checked={formData.cash_impact} onCheckedChange={(checked) => setFormData({ ...formData, cash_impact: checked as boolean })} />
+                                <span className="text-sm">Impacts Cash Flow</span>
+                            </label>
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <Checkbox checked={formData.is_intercompany} onCheckedChange={(checked) => setFormData({ ...formData, is_intercompany: checked as boolean })} />
+                                <span className="text-sm">Intercompany</span>
+                            </label>
+                        </div>
+                        <div className="flex gap-3">
+                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                            <Button type="submit" disabled={submitting} className={editingInvoice ? "bg-green-600 hover:bg-green-700" : ""}>
+                                {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                                {submitting ? "Saving..." : editingInvoice ? "Update Invoice" : "Create Invoice"}
+                            </Button>
+                        </div>
                     </div>
                 </form>
             </DialogContent>
