@@ -687,11 +687,12 @@ export default function PaymentSchedulePage() {
             if (error) throw error;
 
             // Filter by approximate amount (±5% tolerance)
-            const invoiceAmount = Math.abs(invoice.invoice_amount);
+            // Use paid_amount if available, otherwise fallback to invoice_amount
+            const matchAmount = Math.abs(invoice.paid_amount ?? invoice.invoice_amount);
             const matchingTransactions = (data || []).filter((tx: any) => {
                 const txAmount = Math.abs(tx.amount);
-                const diff = Math.abs(txAmount - invoiceAmount);
-                const tolerance = invoiceAmount * 0.05; // 5% tolerance
+                const diff = Math.abs(txAmount - matchAmount);
+                const tolerance = matchAmount * 0.05; // 5% tolerance
                 return diff <= tolerance || diff <= 1; // Also allow €1 difference
             });
 
@@ -1577,8 +1578,8 @@ export default function PaymentSchedulePage() {
                                 <div>
                                     <span className="text-gray-500">Amount</span>
                                     <p className="text-white font-medium">
-                                        {reconciliationInvoice.currency === "EUR" ? "€" : "$"}
-                                        {formatCurrency(reconciliationInvoice.invoice_amount)}
+                                        {(reconciliationInvoice.paid_currency || reconciliationInvoice.currency) === "EUR" ? "€" : "$"}
+                                        {formatCurrency(reconciliationInvoice.paid_amount ?? reconciliationInvoice.invoice_amount)}
                                     </p>
                                 </div>
                                 <div>
