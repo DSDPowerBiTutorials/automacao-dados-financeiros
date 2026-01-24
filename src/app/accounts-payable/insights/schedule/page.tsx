@@ -243,7 +243,7 @@ export default function PaymentSchedulePage() {
             setSubDepartments(subDepartmentsRes.data || []);
             setFinancialAccounts(financialAccountsRes.data || []);
         } catch (e: any) {
-            toast({ title: "Error", description: e?.message || "Failed to load data", variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: e?.message || "Failed to load data", variant: "destructive" });
         } finally {
             setLoading(false);
         }
@@ -314,9 +314,9 @@ export default function PaymentSchedulePage() {
 
             setActivities([data, ...activities]);
             setNewComment("");
-            toast({ title: "Comment added", className: "bg-white" });
+            toast({ title: "Comment added", variant: "success" });
         } catch (e: any) {
-            toast({ title: "Error", description: e?.message || "Failed to add comment", variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: e?.message || "Failed to add comment", variant: "destructive" });
         } finally {
             setSubmittingComment(false);
         }
@@ -405,6 +405,44 @@ export default function PaymentSchedulePage() {
     }
 
     async function togglePaid(invoice: Invoice) {
+        // If trying to mark as paid (not unmark), validate conditions
+        if (!invoice.payment_date) {
+            const missingFields: string[] = [];
+
+            // Check required fields
+            if (!invoice.bank_account_code) {
+                missingFields.push("Bank Account");
+            }
+            if (!invoice.payment_method_code) {
+                missingFields.push("Payment Method");
+            }
+            if (!invoice.schedule_date) {
+                missingFields.push("Scheduled Date");
+            }
+
+            // Check if payment method is bank transfer and finance status requirement
+            const isBankTransfer = invoice.payment_method_code?.toLowerCase().includes("transfer") ||
+                invoice.payment_method_code?.toLowerCase().includes("bank") ||
+                invoice.payment_method_code === "BANK_TRANSFER" ||
+                invoice.payment_method_code === "bank_transfer";
+
+            if (isBankTransfer) {
+                const financeStatus = invoice.finance_payment_status || "pending";
+                if (financeStatus !== "uploaded" && financeStatus !== "done") {
+                    missingFields.push("Finance Status must be 'Uploaded' or 'Done' for Bank Transfer payments");
+                }
+            }
+
+            if (missingFields.length > 0) {
+                toast({
+                    title: "Cannot mark as paid",
+                    description: `Please complete the following before marking as paid: ${missingFields.join(", ")}`,
+                    variant: "warning",
+                });
+                return;
+            }
+        }
+
         setUpdatingInvoice(invoice.id);
         try {
             const newPaymentDate = invoice.payment_date ? null : new Date().toISOString().split("T")[0];
@@ -412,9 +450,9 @@ export default function PaymentSchedulePage() {
             if (error) throw error;
             setInvoices((prev) => prev.map((inv) => (inv.id === invoice.id ? { ...inv, payment_date: newPaymentDate } : inv)));
             if (selectedInvoice?.id === invoice.id) setSelectedInvoice({ ...selectedInvoice, payment_date: newPaymentDate });
-            toast({ title: newPaymentDate ? "Marked as paid" : "Marked as unpaid", className: "bg-white" });
+            toast({ title: newPaymentDate ? "Marked as paid" : "Marked as unpaid", variant: "success" });
         } catch (e: any) {
-            toast({ title: "Error", description: e?.message, variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: e?.message, variant: "destructive" });
         } finally {
             setUpdatingInvoice(null);
         }
@@ -428,9 +466,9 @@ export default function PaymentSchedulePage() {
             setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? { ...inv, schedule_date: date } : inv)));
             if (selectedInvoice?.id === invoiceId) setSelectedInvoice({ ...selectedInvoice, schedule_date: date });
             if (date) setExpandedGroups((prev) => new Set([...prev, date]));
-            toast({ title: date ? "Scheduled" : "Unscheduled", className: "bg-white" });
+            toast({ title: date ? "Scheduled" : "Unscheduled", variant: "success" });
         } catch (e: any) {
-            toast({ title: "Error", description: e?.message, variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: e?.message, variant: "destructive" });
         } finally {
             setUpdatingInvoice(null);
         }
@@ -500,9 +538,9 @@ export default function PaymentSchedulePage() {
                 setExpandedGroups((prev) => new Set([...prev, value]));
             }
 
-            toast({ title: "Updated successfully", className: "bg-white" });
+            toast({ title: "Updated successfully", variant: "success" });
         } catch (e: any) {
-            toast({ title: "Error", description: e?.message, variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: e?.message, variant: "destructive" });
         } finally {
             setUpdatingInvoice(null);
         }
@@ -576,7 +614,7 @@ export default function PaymentSchedulePage() {
             setBankTransactions(matchingTransactions);
         } catch (e: any) {
             console.error("Error loading transactions:", e);
-            toast({ title: "Error", description: "Failed to load bank transactions", variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: "Failed to load bank transactions", variant: "destructive" });
             setBankTransactions([]);
         } finally {
             setLoadingTransactions(false);
@@ -632,12 +670,12 @@ export default function PaymentSchedulePage() {
                     : inv
             ));
 
-            toast({ title: "Reconciliation successful!", className: "bg-white" });
+            toast({ title: "Reconciliation successful!", variant: "success" });
             setReconciliationDialogOpen(false);
             setReconciliationInvoice(null);
             setSelectedTransaction(null);
         } catch (e: any) {
-            toast({ title: "Error", description: e?.message || "Failed to reconcile", variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: e?.message || "Failed to reconcile", variant: "destructive" });
         }
     }
 
@@ -696,9 +734,8 @@ export default function PaymentSchedulePage() {
 
                 {/* Table Header */}
                 <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
-                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase">
+                    <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-400 font-medium uppercase">
                         <div className="w-[130px] flex-shrink-0">Provider</div>
-                        <div className="w-[80px] flex-shrink-0">Amount</div>
                         <div className="w-[85px] flex-shrink-0">Finance</div>
                         <div className="w-[75px] flex-shrink-0">Invoice</div>
                         <div className="w-[65px] flex-shrink-0">Inv Date</div>
@@ -707,6 +744,7 @@ export default function PaymentSchedulePage() {
                         <div className="w-[85px] flex-shrink-0">Pay Method</div>
                         <div className="w-[90px] flex-shrink-0">Bank</div>
                         <div className="w-[85px] flex-shrink-0">Reconciliation</div>
+                        <div className="w-[90px] flex-shrink-0 text-right">Invoice Amount</div>
                     </div>
                 </div>
 
@@ -759,23 +797,16 @@ export default function PaymentSchedulePage() {
                                                         {updatingInvoice === invoice.id ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Circle className="h-4 w-4 text-gray-500 hover:text-gray-300" />}
                                                     </button>
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className={`text-[11px] truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
+                                                        <span className={`text-[12px] truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
                                                     </div>
-                                                </div>
-
-                                                {/* Amount */}
-                                                <div className="w-[80px] flex-shrink-0">
-                                                    <span className="text-[11px] font-medium text-white">
-                                                        {invoice.currency === "EUR" ? "€" : "$"}{formatCurrency(invoice.invoice_amount)}
-                                                    </span>
                                                 </div>
 
                                                 {/* Finance Payment Status - Editable */}
                                                 <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                                     <select
                                                         value={financeStatus}
-                                                        onChange={(e) => updateInvoiceField(invoice.id, "finance_payment_status", e.target.value, invoice.finance_payment_status)}
-                                                        className={`text-[9px] px-1 py-0.5 rounded border cursor-pointer w-full ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color} bg-transparent`}
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "finance_payment_status", e.target.value)}
+                                                        className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color} bg-transparent`}
                                                     >
                                                         <option value="pending" className="bg-gray-800 text-white">Pending</option>
                                                         <option value="uploaded" className="bg-gray-800 text-white">Uploaded</option>
@@ -788,8 +819,8 @@ export default function PaymentSchedulePage() {
                                                 <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                                     <select
                                                         value={invoiceStatus}
-                                                        onChange={(e) => updateInvoiceField(invoice.id, "invoice_status", e.target.value, invoice.invoice_status)}
-                                                        className={`text-[9px] px-1 py-0.5 rounded border cursor-pointer w-full ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color} bg-transparent`}
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "invoice_status", e.target.value)}
+                                                        className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color} bg-transparent`}
                                                     >
                                                         <option value="pending" className="bg-gray-800 text-white">Pending</option>
                                                         <option value="available" className="bg-gray-800 text-white">Available</option>
@@ -797,18 +828,29 @@ export default function PaymentSchedulePage() {
                                                 </div>
 
                                                 {/* Invoice Date */}
-                                                <div className="w-[65px] flex-shrink-0 text-[10px] text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
+                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
 
                                                 {/* Due Date */}
-                                                <div className="w-[65px] flex-shrink-0 text-[10px] text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
+                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
 
                                                 {/* Schedule Date - Editable */}
                                                 <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                                     <input
                                                         type="date"
-                                                        value={invoice.schedule_date || ""}
-                                                        onChange={(e) => updateInvoiceField(invoice.id, "schedule_date", e.target.value || null, invoice.schedule_date)}
-                                                        className="text-[9px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
+                                                        defaultValue={invoice.schedule_date || ""}
+                                                        key={`sched-${invoice.id}-${invoice.schedule_date}`}
+                                                        onBlur={(e) => {
+                                                            const newVal = e.target.value || null;
+                                                            if (newVal !== invoice.schedule_date) {
+                                                                updateInvoiceField(invoice.id, "schedule_date", newVal);
+                                                            }
+                                                        }}
+                                                        onKeyDown={(e) => {
+                                                            if (e.key === "Enter") {
+                                                                e.currentTarget.blur();
+                                                            }
+                                                        }}
+                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-white w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70"
                                                     />
                                                 </div>
 
@@ -816,8 +858,8 @@ export default function PaymentSchedulePage() {
                                                 <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                                     <select
                                                         value={invoice.payment_method_code || ""}
-                                                        onChange={(e) => updateInvoiceField(invoice.id, "payment_method_code", e.target.value || null, invoice.payment_method_code)}
-                                                        className="text-[9px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "payment_method_code", e.target.value || null)}
+                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
                                                     >
                                                         <option value="" className="bg-gray-800 text-white">—</option>
                                                         {paymentMethods.map((pm) => (
@@ -830,8 +872,8 @@ export default function PaymentSchedulePage() {
                                                 <div className="w-[90px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                                     <select
                                                         value={invoice.bank_account_code || ""}
-                                                        onChange={(e) => updateInvoiceField(invoice.id, "bank_account_code", e.target.value || null, invoice.bank_account_code)}
-                                                        className="text-[9px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "bank_account_code", e.target.value || null)}
+                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
                                                     >
                                                         <option value="" className="bg-gray-800 text-white">—</option>
                                                         {bankAccounts.map((ba) => (
@@ -843,7 +885,7 @@ export default function PaymentSchedulePage() {
                                                 {/* Reconciliation Status */}
                                                 <div className="w-[85px] flex-shrink-0">
                                                     {invoice.is_reconciled ? (
-                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-900/30 text-green-400 border-green-700">
+                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-900/30 text-green-400 border-green-700">
                                                             <CheckCircle className="h-3 w-3 mr-1" />
                                                             Reconciled
                                                         </Badge>
@@ -851,7 +893,7 @@ export default function PaymentSchedulePage() {
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className="h-5 text-[9px] px-1 bg-orange-900/30 text-orange-400 border-orange-700 hover:bg-orange-800/50"
+                                                            className="h-5 text-[10px] px-1 bg-orange-900/30 text-orange-400 border-orange-700 hover:bg-orange-800/50"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 openReconciliationDialog(invoice);
@@ -860,10 +902,17 @@ export default function PaymentSchedulePage() {
                                                             Match
                                                         </Button>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 bg-gray-800/50 text-gray-500 border-gray-700">
+                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-gray-800/50 text-gray-500 border-gray-700">
                                                             Pending
                                                         </Badge>
                                                     )}
+                                                </div>
+
+                                                {/* Invoice Amount - Last column, right aligned */}
+                                                <div className="w-[90px] flex-shrink-0 text-right">
+                                                    <span className="text-[12px] font-medium text-white">
+                                                        {invoice.currency === "EUR" ? "€" : "$"}{formatCurrency(invoice.invoice_amount)}
+                                                    </span>
                                                 </div>
                                             </div>
                                         );

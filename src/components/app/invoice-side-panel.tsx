@@ -232,12 +232,12 @@ export function InvoiceSidePanel({
         setSubmitting(true);
 
         try {
-            if (!formData.provider_code) { toast({ title: "Error", description: "Provider is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
-            if (!formData.financial_account_code) { toast({ title: "Error", description: "Financial Account is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
-            if (!formData.cost_center_code) { toast({ title: "Error", description: "Department is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
-            if (!formData.cost_type_code) { toast({ title: "Error", description: "Cost Type is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
-            if (!formData.dep_cost_type_code) { toast({ title: "Error", description: "Dep Cost Type is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
-            if (!formData.due_date) { toast({ title: "Error", description: "Due Date is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
+            if (!formData.provider_code) { toast({ title: "Error", description: "Provider is required", variant: "destructive" }); setSubmitting(false); return; }
+            if (!formData.financial_account_code) { toast({ title: "Error", description: "Financial Account is required", variant: "destructive" }); setSubmitting(false); return; }
+            if (!formData.cost_center_code) { toast({ title: "Error", description: "Department is required", variant: "destructive" }); setSubmitting(false); return; }
+            if (!formData.cost_type_code) { toast({ title: "Error", description: "Cost Type is required", variant: "destructive" }); setSubmitting(false); return; }
+            if (!formData.dep_cost_type_code) { toast({ title: "Error", description: "Dep Cost Type is required", variant: "destructive" }); setSubmitting(false); return; }
+            if (!formData.due_date) { toast({ title: "Error", description: "Due Date is required", variant: "destructive" }); setSubmitting(false); return; }
 
             const scopeFields = scopeToFields(formData.scope);
 
@@ -292,7 +292,7 @@ export function InvoiceSidePanel({
             if (editingInvoice) {
                 const { error } = await supabase.from("invoices").update(payload).eq("id", editingInvoice.id);
                 if (error) throw error;
-                toast({ title: "Invoice updated successfully", className: "bg-white" });
+                toast({ title: "Invoice updated successfully" });
             } else {
                 const { data: insertData, error } = await supabase.from("invoices").insert([payload]).select("id").single();
                 if (error) throw error;
@@ -310,13 +310,13 @@ export function InvoiceSidePanel({
                     });
                 }
 
-                toast({ title: "Invoice created successfully", className: "bg-white" });
+                toast({ title: "Invoice created successfully" });
             }
 
             onClose();
             onSuccess?.();
         } catch (e: any) {
-            toast({ title: "Error", description: e?.message || "Failed to save invoice", variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: e?.message || "Failed to save invoice", variant: "destructive" });
         } finally {
             setSubmitting(false);
         }

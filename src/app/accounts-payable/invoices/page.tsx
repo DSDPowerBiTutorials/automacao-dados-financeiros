@@ -317,7 +317,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: e?.message || "Failed to load invoices",
         variant: "destructive",
-        className: "bg-white"
+        
       });
     } finally {
       setLoading(false);
@@ -331,37 +331,37 @@ export default function InvoicesPage() {
     try {
       // Validar campos obrigatórios
       if (!formData.provider_code) {
-        toast({ title: "Error", description: "Provider is required", variant: "destructive", className: "bg-white" });
+        toast({ title: "Error", description: "Provider is required", variant: "destructive" });
         setSubmitting(false);
         return;
       }
       if (!formData.financial_account_code) {
-        toast({ title: "Error", description: "Financial Account is required", variant: "destructive", className: "bg-white" });
+        toast({ title: "Error", description: "Financial Account is required", variant: "destructive" });
         setSubmitting(false);
         return;
       }
       if (!formData.cost_center_code) {
-        toast({ title: "Error", description: "Department is required", variant: "destructive", className: "bg-white" });
+        toast({ title: "Error", description: "Department is required", variant: "destructive" });
         setSubmitting(false);
         return;
       }
       if (!formData.cost_type_code) {
-        toast({ title: "Error", description: "Cost Type is required", variant: "destructive", className: "bg-white" });
+        toast({ title: "Error", description: "Cost Type is required", variant: "destructive" });
         setSubmitting(false);
         return;
       }
       if (!formData.dep_cost_type_code) {
-        toast({ title: "Error", description: "Dep Cost Type is required", variant: "destructive", className: "bg-white" });
+        toast({ title: "Error", description: "Dep Cost Type is required", variant: "destructive" });
         setSubmitting(false);
         return;
       }
       if (!formData.due_date) {
-        toast({ title: "Error", description: "Due Date is required", variant: "destructive", className: "bg-white" });
+        toast({ title: "Error", description: "Due Date is required", variant: "destructive" });
         setSubmitting(false);
         return;
       }
       if (!formData.schedule_date) {
-        toast({ title: "Error", description: "Schedule Date is required", variant: "destructive", className: "bg-white" });
+        toast({ title: "Error", description: "Schedule Date is required", variant: "destructive" });
         setSubmitting(false);
         return;
       }
@@ -430,7 +430,7 @@ export default function InvoicesPage() {
           .eq("id", editingInvoice.id);
 
         if (error) throw error;
-        toast({ title: "Success", description: "Invoice updated successfully", className: "bg-white" });
+        toast({ title: "Success", description: "Invoice updated successfully" });
       } else {
         const { error } = await supabase.from("invoices").insert([{
           ...payload,
@@ -438,7 +438,7 @@ export default function InvoicesPage() {
         }]);
 
         if (error) throw error;
-        toast({ title: "Success", description: "Invoice created successfully", className: "bg-white" });
+        toast({ title: "Success", description: "Invoice created successfully" });
       }
 
       setDialogOpen(false);
@@ -449,7 +449,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: e?.message || "Failed to save invoice",
         variant: "destructive",
-        className: "bg-white"
+        
       });
     } finally {
       setSubmitting(false);
@@ -504,7 +504,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: "Invoice deleted successfully",
-        className: "bg-white"
+        
       });
 
       loadInvoices();
@@ -513,7 +513,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   }
@@ -605,7 +605,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: `Invoice split into ${splitConfig.type === 'installments' ? splitConfig.installments : splitConfig.splits.length} parts`,
-        className: "bg-white"
+        
       });
 
       setSplitDialogOpen(false);
@@ -615,7 +615,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        className: "bg-white"
+        
       });
     } finally {
       setSubmitting(false);
@@ -640,7 +640,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: "Field updated successfully",
-        className: "bg-white"
+        
       });
 
       await loadInvoices();
@@ -653,7 +653,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   }
@@ -681,7 +681,7 @@ export default function InvoicesPage() {
         title: "Warning",
         description: "Please select a value before saving",
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   }
@@ -707,7 +707,7 @@ export default function InvoicesPage() {
       toast({
         title: "Provider created",
         description: `Provider ${newProviderData.name} created successfully`,
-        className: "bg-white"
+        
       });
 
       loadMasterData();
@@ -730,7 +730,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   }
@@ -757,7 +757,7 @@ export default function InvoicesPage() {
       toast({
         title: "Financial Account created",
         description: `Account ${newAccountData.name} created successfully`,
-        className: "bg-white"
+        
       });
 
       loadMasterData();
@@ -780,7 +780,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   }

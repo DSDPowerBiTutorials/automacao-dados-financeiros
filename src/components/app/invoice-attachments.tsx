@@ -118,7 +118,7 @@ export function InvoiceAttachments({
                         title: "Tipo inválido",
                         description: `${file.name}: Apenas PDF, JPG, PNG são permitidos.`,
                         variant: "destructive",
-                        className: "bg-white"
+                        
                     });
                     continue;
                 }
@@ -128,7 +128,7 @@ export function InvoiceAttachments({
                         title: "Arquivo muito grande",
                         description: `${file.name}: Máximo 20MB.`,
                         variant: "destructive",
-                        className: "bg-white"
+                        
                     });
                     continue;
                 }
@@ -157,7 +157,7 @@ export function InvoiceAttachments({
                     toast({
                         title: "Upload concluído",
                         description: file.name,
-                        className: "bg-white"
+                        
                     });
                 } else {
                     throw new Error(result.error || "Upload failed");
@@ -168,7 +168,7 @@ export function InvoiceAttachments({
                 title: "Erro no upload",
                 description: err.message,
                 variant: "destructive",
-                className: "bg-white"
+                
             });
         } finally {
             setUploading(false);
@@ -188,7 +188,7 @@ export function InvoiceAttachments({
 
             if (res.ok) {
                 setAttachments(prev => prev.filter(a => a.id !== attachment.id));
-                toast({ title: "Anexo removido", className: "bg-white" });
+                toast({ title: "Anexo removido" });
             }
         } catch (err) {
             console.error("Delete error:", err);

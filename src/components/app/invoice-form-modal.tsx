@@ -247,32 +247,32 @@ export function InvoiceFormModal({
         try {
             // Validate required fields
             if (!formData.provider_code) {
-                toast({ title: "Error", description: "Provider is required", variant: "destructive", className: "bg-white" });
+                toast({ title: "Error", description: "Provider is required", variant: "destructive" });
                 setSubmitting(false);
                 return;
             }
             if (!formData.financial_account_code) {
-                toast({ title: "Error", description: "Financial Account is required", variant: "destructive", className: "bg-white" });
+                toast({ title: "Error", description: "Financial Account is required", variant: "destructive" });
                 setSubmitting(false);
                 return;
             }
             if (!formData.cost_center_code) {
-                toast({ title: "Error", description: "Department is required", variant: "destructive", className: "bg-white" });
+                toast({ title: "Error", description: "Department is required", variant: "destructive" });
                 setSubmitting(false);
                 return;
             }
             if (!formData.cost_type_code) {
-                toast({ title: "Error", description: "Cost Type is required", variant: "destructive", className: "bg-white" });
+                toast({ title: "Error", description: "Cost Type is required", variant: "destructive" });
                 setSubmitting(false);
                 return;
             }
             if (!formData.dep_cost_type_code) {
-                toast({ title: "Error", description: "Dep Cost Type is required", variant: "destructive", className: "bg-white" });
+                toast({ title: "Error", description: "Dep Cost Type is required", variant: "destructive" });
                 setSubmitting(false);
                 return;
             }
             if (!formData.due_date) {
-                toast({ title: "Error", description: "Due Date is required", variant: "destructive", className: "bg-white" });
+                toast({ title: "Error", description: "Due Date is required", variant: "destructive" });
                 setSubmitting(false);
                 return;
             }
@@ -337,17 +337,17 @@ export function InvoiceFormModal({
             if (editingInvoice) {
                 const { error } = await supabase.from("invoices").update(payload).eq("id", editingInvoice.id);
                 if (error) throw error;
-                toast({ title: "Invoice updated successfully", className: "bg-white" });
+                toast({ title: "Invoice updated successfully" });
             } else {
                 const { error } = await supabase.from("invoices").insert([payload]);
                 if (error) throw error;
-                toast({ title: "Invoice created successfully", className: "bg-white" });
+                toast({ title: "Invoice created successfully" });
             }
 
             onOpenChange(false);
             onSuccess?.();
         } catch (e: any) {
-            toast({ title: "Error", description: e?.message || "Failed to save invoice", variant: "destructive", className: "bg-white" });
+            toast({ title: "Error", description: e?.message || "Failed to save invoice", variant: "destructive" });
         } finally {
             setSubmitting(false);
         }

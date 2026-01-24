@@ -81,7 +81,7 @@ export default function ProvidersPage() {
         title: "Error",
         description: "Failed to load providers",
         variant: "destructive",
-        className: "bg-white"
+        
       });
     } finally {
       setLoading(false);
@@ -171,7 +171,7 @@ export default function ProvidersPage() {
           title: "Validation Error",
           description: "Name is required",
           variant: "destructive",
-          className: "bg-white"
+          
         });
         return;
       }
@@ -194,7 +194,7 @@ export default function ProvidersPage() {
           console.error("Update error:", error);
           throw error;
         }
-        toast({ title: "Success", description: "Provider updated successfully", className: "bg-white" });
+        toast({ title: "Success", description: "Provider updated successfully" });
       } else {
         const insertData = {
           code: finalCode,
@@ -214,7 +214,7 @@ export default function ProvidersPage() {
           throw error;
         }
         console.log("Insert success:", data);
-        toast({ title: "Success", description: "Provider created successfully", className: "bg-white" });
+        toast({ title: "Success", description: "Provider created successfully" });
       }
 
       setIsDialogOpen(false);
@@ -226,7 +226,7 @@ export default function ProvidersPage() {
         title: "Error",
         description: errorMessage,
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   };
@@ -237,7 +237,7 @@ export default function ProvidersPage() {
     try {
       const { error } = await supabase.from("providers").delete().eq("code", code);
       if (error) throw error;
-      toast({ title: "Success", description: "Provider deleted successfully", className: "bg-white" });
+      toast({ title: "Success", description: "Provider deleted successfully" });
       loadProviders();
     } catch (error) {
       console.error("Error deleting provider:", error);
@@ -245,7 +245,7 @@ export default function ProvidersPage() {
         title: "Error",
         description: "Failed to delete provider",
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   };

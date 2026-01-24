@@ -84,7 +84,7 @@ export default function FinancialAccountsPage() {
         title: "Error",
         description: "Failed to load financial accounts",
         variant: "destructive",
-        className: "bg-white"
+        
       });
     } finally {
       setLoading(false);
@@ -146,7 +146,7 @@ export default function FinancialAccountsPage() {
           title: "Validation Error",
           description: "Code and Name are required",
           variant: "destructive",
-          className: "bg-white"
+          
         });
         return;
       }
@@ -171,7 +171,7 @@ export default function FinancialAccountsPage() {
         toast({
           title: "Success",
           description: "Financial account updated successfully",
-          className: "bg-white"
+          
         });
       } else {
         // Create new account
@@ -191,7 +191,7 @@ export default function FinancialAccountsPage() {
         toast({
           title: "Success",
           description: "Financial account created successfully",
-          className: "bg-white"
+          
         });
       }
 
@@ -203,7 +203,7 @@ export default function FinancialAccountsPage() {
         title: "Error",
         description: "Failed to save financial account",
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   };
@@ -221,7 +221,7 @@ export default function FinancialAccountsPage() {
       toast({
         title: "Success",
         description: "Financial account deleted successfully",
-        className: "bg-white"
+        
       });
       loadAccounts();
     } catch (error) {
@@ -230,7 +230,7 @@ export default function FinancialAccountsPage() {
         title: "Error",
         description: "Failed to delete financial account",
         variant: "destructive",
-        className: "bg-white"
+        
       });
     }
   };
