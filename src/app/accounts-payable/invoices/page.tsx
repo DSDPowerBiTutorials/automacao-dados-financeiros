@@ -46,6 +46,8 @@ type Invoice = {
   invoice_amount: number;
   amount: number; // Alias for invoice_amount
   currency: string;
+  paid_amount?: number | null;
+  paid_currency?: string | null;
   eur_exchange: number;
   provider_code: string;
   bank_account_code?: string | null;
@@ -227,7 +229,9 @@ export default function InvoicesPage() {
     dre_impact: true,
     cash_impact: true,
     is_intercompany: false,
-    notes: ""
+    notes: "",
+    paid_amount: "",
+    paid_currency: ""
   });
 
   useEffect(() => {
@@ -317,7 +321,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: e?.message || "Failed to load invoices",
         variant: "destructive",
-        
+
       });
     } finally {
       setLoading(false);
@@ -420,6 +424,8 @@ export default function InvoicesPage() {
         cash_impact: formData.cash_impact,
         is_intercompany: formData.is_intercompany,
         notes: formData.notes || null,
+        paid_amount: formData.paid_amount ? parseFloat(formData.paid_amount) : null,
+        paid_currency: formData.paid_currency || null,
         updated_at: getCurrentTimestamp(),
       };
 
@@ -449,7 +455,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: e?.message || "Failed to save invoice",
         variant: "destructive",
-        
+
       });
     } finally {
       setSubmitting(false);
@@ -483,7 +489,9 @@ export default function InvoicesPage() {
       dre_impact: true,
       cash_impact: true,
       is_intercompany: false,
-      notes: ""
+      notes: "",
+      paid_amount: "",
+      paid_currency: ""
     });
     setEditingInvoice(null);
   }
@@ -504,7 +512,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: "Invoice deleted successfully",
-        
+
       });
 
       loadInvoices();
@@ -513,7 +521,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     }
   }
@@ -605,7 +613,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: `Invoice split into ${splitConfig.type === 'installments' ? splitConfig.installments : splitConfig.splits.length} parts`,
-        
+
       });
 
       setSplitDialogOpen(false);
@@ -615,7 +623,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     } finally {
       setSubmitting(false);
@@ -640,7 +648,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: "Field updated successfully",
-        
+
       });
 
       await loadInvoices();
@@ -653,7 +661,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     }
   }
@@ -681,7 +689,7 @@ export default function InvoicesPage() {
         title: "Warning",
         description: "Please select a value before saving",
         variant: "destructive",
-        
+
       });
     }
   }
@@ -707,7 +715,7 @@ export default function InvoicesPage() {
       toast({
         title: "Provider created",
         description: `Provider ${newProviderData.name} created successfully`,
-        
+
       });
 
       loadMasterData();
@@ -730,7 +738,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     }
   }
@@ -757,7 +765,7 @@ export default function InvoicesPage() {
       toast({
         title: "Financial Account created",
         description: `Account ${newAccountData.name} created successfully`,
-        
+
       });
 
       loadMasterData();
@@ -780,7 +788,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     }
   }
@@ -1173,6 +1181,8 @@ export default function InvoicesPage() {
       financial_account_code: invoice.financial_account_code,
       invoice_amount: invoice.invoice_amount.toString(),
       currency: invoice.currency,
+      paid_amount: invoice.paid_amount?.toString() || "",
+      paid_currency: invoice.paid_currency || "",
       eur_exchange: invoice.eur_exchange.toString(),
       provider_code: invoice.provider_code,
       bank_account_code: invoice.bank_account_code || "",

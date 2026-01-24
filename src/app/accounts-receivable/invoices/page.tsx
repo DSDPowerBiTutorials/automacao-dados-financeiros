@@ -310,7 +310,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: e?.message || "Failed to load invoices",
         variant: "destructive",
-        
+
       });
     } finally {
       setLoading(false);
@@ -442,7 +442,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: e?.message || "Failed to save invoice",
         variant: "destructive",
-        
+
       });
     } finally {
       setSubmitting(false);
@@ -497,7 +497,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: "Invoice deleted successfully",
-        
+
       });
 
       loadInvoices();
@@ -506,7 +506,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     }
   }
@@ -598,7 +598,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: `Invoice split into ${splitConfig.type === 'installments' ? splitConfig.installments : splitConfig.splits.length} parts`,
-        
+
       });
 
       setSplitDialogOpen(false);
@@ -608,7 +608,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     } finally {
       setSubmitting(false);
@@ -633,7 +633,7 @@ export default function InvoicesPage() {
       toast({
         title: "Success",
         description: "Field updated successfully",
-        
+
       });
 
       await loadInvoices();
@@ -646,7 +646,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     }
   }
@@ -674,7 +674,7 @@ export default function InvoicesPage() {
         title: "Warning",
         description: "Please select a value before saving",
         variant: "destructive",
-        
+
       });
     }
   }
@@ -700,7 +700,7 @@ export default function InvoicesPage() {
       toast({
         title: "Customer created",
         description: `Customer ${newCustomerData.name} created successfully`,
-        
+
       });
 
       loadMasterData();
@@ -723,7 +723,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     }
   }
@@ -750,7 +750,7 @@ export default function InvoicesPage() {
       toast({
         title: "Financial Account created",
         description: `Account ${newAccountData.name} created successfully`,
-        
+
       });
 
       loadMasterData();
@@ -773,7 +773,7 @@ export default function InvoicesPage() {
         title: "Error",
         description: err.message,
         variant: "destructive",
-        
+
       });
     }
   }

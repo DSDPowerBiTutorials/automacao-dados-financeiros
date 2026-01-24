@@ -81,6 +81,9 @@ type Invoice = {
     is_reconciled?: boolean | null;
     reconciled_transaction_id?: string | null;
     reconciled_at?: string | null;
+    // Paid amount tracking
+    paid_amount?: number | null;
+    paid_currency?: string | null;
 };
 
 type Provider = {
@@ -755,7 +758,7 @@ export default function PaymentSchedulePage() {
                         <div className="w-[85px] flex-shrink-0">Pay Method</div>
                         <div className="w-[90px] flex-shrink-0">Bank</div>
                         <div className="w-[85px] flex-shrink-0">Reconciliation</div>
-                        <div className="w-[90px] flex-shrink-0 text-right">Invoice Amount</div>
+                        <div className="w-[110px] flex-shrink-0 text-right">Amount</div>
                     </div>
                 </div>
 
@@ -920,10 +923,23 @@ export default function PaymentSchedulePage() {
                                                 </div>
 
                                                 {/* Invoice Amount - Last column, right aligned */}
-                                                <div className="w-[90px] flex-shrink-0 text-right">
-                                                    <span className="text-[12px] font-medium text-white">
-                                                        {invoice.currency === "EUR" ? "€" : "$"}{formatCurrency(invoice.invoice_amount)}
-                                                    </span>
+                                                <div className="w-[110px] flex-shrink-0 text-right">
+                                                    <div className="flex flex-col gap-0.5">
+                                                        <div className="flex items-center justify-end gap-1">
+                                                            <span className="text-[9px] text-gray-500">Inv:</span>
+                                                            <span className="text-[11px] font-medium text-white">
+                                                                {invoice.currency === "EUR" ? "€" : invoice.currency === "USD" ? "$" : invoice.currency}{formatCurrency(invoice.invoice_amount)}
+                                                            </span>
+                                                        </div>
+                                                        {invoice.paid_amount != null && (
+                                                            <div className="flex items-center justify-end gap-1">
+                                                                <span className="text-[9px] text-green-400">Paid:</span>
+                                                                <span className="text-[11px] font-medium text-green-400">
+                                                                    {invoice.paid_currency === "EUR" ? "€" : invoice.paid_currency === "USD" ? "$" : invoice.paid_currency || ""}{formatCurrency(invoice.paid_amount)}
+                                                                </span>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             </div>
                                         );
