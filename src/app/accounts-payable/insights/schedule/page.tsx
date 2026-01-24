@@ -697,15 +697,16 @@ export default function PaymentSchedulePage() {
                 {/* Table Header */}
                 <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
                     <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase">
-                        <div className="w-[140px] flex-shrink-0">Provider</div>
-                        <div className="w-[90px] flex-shrink-0">Finance</div>
-                        <div className="w-[80px] flex-shrink-0">Invoice</div>
-                        <div className="w-[70px] flex-shrink-0">Inv Date</div>
-                        <div className="w-[70px] flex-shrink-0">Due Date</div>
-                        <div className="w-[70px] flex-shrink-0">Sched</div>
-                        <div className="w-[90px] flex-shrink-0">Pay Method</div>
-                        <div className="w-[100px] flex-shrink-0">Bank</div>
-                        <div className="w-[100px] flex-shrink-0">Reconciliation</div>
+                        <div className="w-[130px] flex-shrink-0">Provider</div>
+                        <div className="w-[80px] flex-shrink-0">Amount</div>
+                        <div className="w-[85px] flex-shrink-0">Finance</div>
+                        <div className="w-[75px] flex-shrink-0">Invoice</div>
+                        <div className="w-[65px] flex-shrink-0">Inv Date</div>
+                        <div className="w-[65px] flex-shrink-0">Due Date</div>
+                        <div className="w-[75px] flex-shrink-0">Sched</div>
+                        <div className="w-[85px] flex-shrink-0">Pay Method</div>
+                        <div className="w-[90px] flex-shrink-0">Bank</div>
+                        <div className="w-[85px] flex-shrink-0">Reconciliation</div>
                     </div>
                 </div>
 
@@ -753,7 +754,7 @@ export default function PaymentSchedulePage() {
                                                 onClick={() => openDetailPanel(invoice)}
                                             >
                                                 {/* Provider */}
-                                                <div className="w-[140px] flex-shrink-0 flex items-center gap-2">
+                                                <div className="w-[130px] flex-shrink-0 flex items-center gap-2">
                                                     <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
                                                         {updatingInvoice === invoice.id ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Circle className="h-4 w-4 text-gray-500 hover:text-gray-300" />}
                                                     </button>
@@ -762,55 +763,85 @@ export default function PaymentSchedulePage() {
                                                     </div>
                                                 </div>
 
-                                                {/* Finance Payment Status */}
-                                                <div className="w-[90px] flex-shrink-0">
-                                                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color}`}>
-                                                        {financeStatusConfig[financeStatus]?.label || "Pending"}
-                                                    </Badge>
+                                                {/* Amount */}
+                                                <div className="w-[80px] flex-shrink-0">
+                                                    <span className="text-[11px] font-medium text-white">
+                                                        {invoice.currency === "EUR" ? "€" : "$"}{formatCurrency(invoice.invoice_amount)}
+                                                    </span>
                                                 </div>
 
-                                                {/* Invoice Status */}
-                                                <div className="w-[80px] flex-shrink-0">
-                                                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color}`}>
-                                                        {invoiceStatusConfig[invoiceStatus]?.label || "Pending"}
-                                                    </Badge>
+                                                {/* Finance Payment Status - Editable */}
+                                                <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    <select
+                                                        value={financeStatus}
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "finance_payment_status", e.target.value, invoice.finance_payment_status)}
+                                                        className={`text-[9px] px-1 py-0.5 rounded border cursor-pointer w-full ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color} bg-transparent`}
+                                                    >
+                                                        <option value="pending" className="bg-gray-800 text-white">Pending</option>
+                                                        <option value="uploaded" className="bg-gray-800 text-white">Uploaded</option>
+                                                        <option value="done" className="bg-gray-800 text-white">Done</option>
+                                                        <option value="info_required" className="bg-gray-800 text-white">Info Required</option>
+                                                    </select>
+                                                </div>
+
+                                                {/* Invoice Status - Editable */}
+                                                <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    <select
+                                                        value={invoiceStatus}
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "invoice_status", e.target.value, invoice.invoice_status)}
+                                                        className={`text-[9px] px-1 py-0.5 rounded border cursor-pointer w-full ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color} bg-transparent`}
+                                                    >
+                                                        <option value="pending" className="bg-gray-800 text-white">Pending</option>
+                                                        <option value="available" className="bg-gray-800 text-white">Available</option>
+                                                    </select>
                                                 </div>
 
                                                 {/* Invoice Date */}
-                                                <div className="w-[70px] flex-shrink-0 text-[10px] text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
+                                                <div className="w-[65px] flex-shrink-0 text-[10px] text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
 
                                                 {/* Due Date */}
-                                                <div className="w-[70px] flex-shrink-0 text-[10px] text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
+                                                <div className="w-[65px] flex-shrink-0 text-[10px] text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
 
-                                                {/* Schedule Date */}
-                                                <div className="w-[70px] flex-shrink-0 text-[10px] text-gray-300">
-                                                    {invoice.schedule_date ? formatShortDate(invoice.schedule_date) : "—"}
+                                                {/* Schedule Date - Editable */}
+                                                <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    <input
+                                                        type="date"
+                                                        value={invoice.schedule_date || ""}
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "schedule_date", e.target.value || null, invoice.schedule_date)}
+                                                        className="text-[9px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
+                                                    />
                                                 </div>
 
-                                                {/* Payment Method */}
-                                                <div className="w-[90px] flex-shrink-0">
-                                                    {invoice.payment_method_code ? (
-                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 bg-gray-800/50 text-gray-300 border-gray-600">
-                                                            {getPaymentMethodName(invoice.payment_method_code)}
-                                                        </Badge>
-                                                    ) : (
-                                                        <span className="text-gray-500 text-[10px]">—</span>
-                                                    )}
+                                                {/* Payment Method - Editable */}
+                                                <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    <select
+                                                        value={invoice.payment_method_code || ""}
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "payment_method_code", e.target.value || null, invoice.payment_method_code)}
+                                                        className="text-[9px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
+                                                    >
+                                                        <option value="" className="bg-gray-800 text-white">—</option>
+                                                        {paymentMethods.map((pm) => (
+                                                            <option key={pm.code} value={pm.code} className="bg-gray-800 text-white">{pm.name}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
 
-                                                {/* Bank Account */}
-                                                <div className="w-[100px] flex-shrink-0">
-                                                    {invoice.bank_account_code ? (
-                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 bg-indigo-900/30 text-indigo-400 border-indigo-700 truncate max-w-[95px]">
-                                                            {getBankAccountName(invoice.bank_account_code)}
-                                                        </Badge>
-                                                    ) : (
-                                                        <span className="text-gray-500 text-[10px]">—</span>
-                                                    )}
+                                                {/* Bank Account - Editable */}
+                                                <div className="w-[90px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                    <select
+                                                        value={invoice.bank_account_code || ""}
+                                                        onChange={(e) => updateInvoiceField(invoice.id, "bank_account_code", e.target.value || null, invoice.bank_account_code)}
+                                                        className="text-[9px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
+                                                    >
+                                                        <option value="" className="bg-gray-800 text-white">—</option>
+                                                        {bankAccounts.map((ba) => (
+                                                            <option key={ba.code} value={ba.code} className="bg-gray-800 text-white">{ba.name}</option>
+                                                        ))}
+                                                    </select>
                                                 </div>
 
                                                 {/* Reconciliation Status */}
-                                                <div className="w-[100px] flex-shrink-0">
+                                                <div className="w-[85px] flex-shrink-0">
                                                     {invoice.is_reconciled ? (
                                                         <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-900/30 text-green-400 border-green-700">
                                                             <CheckCircle className="h-3 w-3 mr-1" />
