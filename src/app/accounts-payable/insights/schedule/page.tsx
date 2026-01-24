@@ -27,7 +27,6 @@ import {
     Link2,
     Maximize2,
     MessageCircle,
-    Eye,
     Upload,
     AlertCircle,
     Clock,
@@ -48,7 +47,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
-import { InvoiceHistoryTimeline } from "@/components/app/invoice-history-timeline";
 
 type Invoice = {
     id: number;
@@ -405,6 +403,15 @@ export default function PaymentSchedulePage() {
     async function updateInvoiceField(invoiceId: number, field: string, value: any) {
         setUpdatingInvoice(invoiceId);
         try {
+            // Get current user info
+            const { data: userData } = await supabase.auth.getUser();
+            const userEmail = userData?.user?.email || "unknown";
+            const userName = userData?.user?.user_metadata?.name || userData?.user?.user_metadata?.full_name || userEmail.split("@")[0];
+
+            // Get old value before update
+            const currentInvoice = invoices.find(inv => inv.id === invoiceId);
+            const oldValue = currentInvoice ? (currentInvoice as any)[field] : null;
+
             const updatePayload: any = { [field]: value };
 
             // Update payment_status based on payment_date
@@ -421,6 +428,30 @@ export default function PaymentSchedulePage() {
             }
 
             const { error } = await supabase.from("invoices").update(updatePayload).eq("id", invoiceId);
+
+            // Record history with user name for tracked fields
+            if (!error && ["finance_payment_status", "invoice_status", "schedule_date", "payment_date"].includes(field)) {
+                const changeType = field === "payment_date"
+                    ? (value ? "paid" : "unpaid")
+                    : field === "finance_payment_status"
+                        ? "finance_status"
+                        : field === "invoice_status"
+                            ? "invoice_status"
+                            : "schedule_date";
+
+                await fetch("/api/invoice-history", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        invoice_id: invoiceId,
+                        change_type: changeType,
+                        field_name: field,
+                        old_value: oldValue?.toString() || null,
+                        new_value: value?.toString() || null,
+                        changed_by: userName
+                    })
+                });
+            }
             if (error) throw error;
 
             setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? { ...inv, ...updatePayload } : inv)));
@@ -579,14 +610,6 @@ export default function PaymentSchedulePage() {
                                                     <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
                                                         {updatingInvoice === invoice.id ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-500 hover:text-gray-300" />}
                                                     </button>
-                                                    <InvoiceHistoryTimeline
-                                                        invoiceId={invoice.id}
-                                                        trigger={
-                                                            <button onClick={(e) => e.stopPropagation()} className="p-1 hover:bg-gray-700 rounded">
-                                                                <Eye className="h-4 w-4 text-gray-500 hover:text-gray-300" />
-                                                            </button>
-                                                        }
-                                                    />
                                                     <div className="flex flex-col min-w-0">
                                                         <span className={`truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
                                                         {invoice.description && <span className="text-xs text-gray-500 truncate">{invoice.description}</span>}
