@@ -87,7 +87,7 @@ type Provider = {
 };
 
 type Activity = {
-    id: number;
+    id: number | string;
     invoice_id: number;
     user_email: string;
     user_name: string;
@@ -95,6 +95,10 @@ type Activity = {
     content: string;
     metadata: any;
     created_at: string;
+    // History specific fields
+    old_value?: string | null;
+    new_value?: string | null;
+    field_name?: string | null;
 };
 
 type MasterData = {
@@ -236,19 +240,40 @@ export default function PaymentSchedulePage() {
     async function loadActivities(invoiceId: number) {
         setLoadingActivities(true);
         try {
-            const { data, error } = await supabase
-                .from("invoice_activities")
-                .select("*")
-                .eq("invoice_id", invoiceId)
-                .order("created_at", { ascending: false });
+            // Fetch both activities and history in parallel
+            const [activitiesResult, historyResult] = await Promise.all([
+                supabase
+                    .from("invoice_activities")
+                    .select("*")
+                    .eq("invoice_id", invoiceId)
+                    .order("created_at", { ascending: false }),
+                fetch(`/api/invoice-history?invoice_id=${invoiceId}`).then(r => r.json())
+            ]);
 
-            if (error) {
-                // Table might not exist yet
-                console.log("Activities table not found or error:", error.message);
-                setActivities([]);
-            } else {
-                setActivities(data || []);
-            }
+            const activitiesData = activitiesResult.data || [];
+            const historyData = historyResult.success ? (historyResult.history || []) : [];
+
+            // Convert history entries to activity format
+            const historyAsActivities: Activity[] = historyData.map((h: any) => ({
+                id: `history-${h.id}`,
+                invoice_id: h.invoice_id,
+                user_email: h.changed_by || "system",
+                user_name: h.changed_by === "system" ? "System" : (h.changed_by === "user" ? "User" : h.changed_by || "System"),
+                activity_type: h.change_type,
+                content: "",
+                metadata: h.metadata || {},
+                created_at: h.changed_at,
+                old_value: h.old_value,
+                new_value: h.new_value,
+                field_name: h.field_name,
+            }));
+
+            // Combine and sort by date (newest first)
+            const combined = [...activitiesData, ...historyAsActivities].sort(
+                (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            );
+
+            setActivities(combined);
         } catch (e: any) {
             console.log("Error loading activities:", e);
             setActivities([]);
@@ -862,40 +887,79 @@ export default function PaymentSchedulePage() {
                                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                                 </div>
                             ) : (
-                                <div className="space-y-4">
+                                <div className="space-y-4 max-h-[300px] overflow-y-auto">
                                     {activities.length === 0 ? (
                                         <p className="text-center text-gray-500 py-4 text-sm">No activities yet.</p>
                                     ) : (
                                         activities
                                             .filter((a) => activeTab === "all" || a.activity_type === "comment")
-                                            .map((activity) => (
-                                                <div key={activity.id} className="flex gap-3">
-                                                    <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                                                        <span className="text-white text-xs font-medium">{activity.user_name?.charAt(0).toUpperCase() || "?"}</span>
-                                                    </div>
-                                                    <div className="flex-1">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-sm font-medium text-white">{activity.user_name}</span>
-                                                            {activity.activity_type !== "comment" && (
-                                                                <span className="text-sm text-gray-400">{activity.activity_type === "created" ? "created this task" : activity.activity_type}</span>
-                                                            )}
-                                                            <span className="text-xs text-gray-500">{formatActivityTime(activity.created_at)}</span>
+                                            .map((activity) => {
+                                                // Determine icon color based on activity type
+                                                const getActivityColor = () => {
+                                                    switch (activity.activity_type) {
+                                                        case "created": return "bg-blue-600";
+                                                        case "finance_status": return "bg-purple-600";
+                                                        case "invoice_status": return "bg-cyan-600";
+                                                        case "schedule_date": return "bg-orange-600";
+                                                        case "paid": return "bg-green-600";
+                                                        case "unpaid": return "bg-yellow-600";
+                                                        case "comment": return "bg-blue-600";
+                                                        case "attachment": return "bg-indigo-600";
+                                                        default: return "bg-gray-600";
+                                                    }
+                                                };
+
+                                                // Format activity description
+                                                const getActivityDescription = () => {
+                                                    const statusLabels: Record<string, string> = {
+                                                        pending: "Pending", uploaded: "Uploaded", done: "Done",
+                                                        info_required: "Info Required", available: "Available"
+                                                    };
+                                                    switch (activity.activity_type) {
+                                                        case "created": return "created this payment";
+                                                        case "finance_status":
+                                                            return `changed Finance Status: ${statusLabels[activity.old_value || ""] || activity.old_value || "—"} → ${statusLabels[activity.new_value || ""] || activity.new_value || "—"}`;
+                                                        case "invoice_status":
+                                                            return `changed Invoice Status: ${statusLabels[activity.old_value || ""] || activity.old_value || "—"} → ${statusLabels[activity.new_value || ""] || activity.new_value || "—"}`;
+                                                        case "schedule_date":
+                                                            const oldDate = activity.old_value ? new Date(activity.old_value).toLocaleDateString("pt-BR") : "none";
+                                                            const newDate = activity.new_value ? new Date(activity.new_value).toLocaleDateString("pt-BR") : "none";
+                                                            return `changed Schedule Date: ${oldDate} → ${newDate}`;
+                                                        case "paid": return "marked as Paid";
+                                                        case "unpaid": return "marked as Unpaid";
+                                                        default: return activity.activity_type;
+                                                    }
+                                                };
+
+                                                return (
+                                                    <div key={activity.id} className="flex gap-3">
+                                                        <div className={`w-8 h-8 rounded-full ${getActivityColor()} flex items-center justify-center flex-shrink-0`}>
+                                                            <span className="text-white text-xs font-medium">{activity.user_name?.charAt(0).toUpperCase() || "?"}</span>
                                                         </div>
-                                                        {activity.activity_type === "comment" && activity.content && (
-                                                            <p className="text-sm text-gray-300 mt-1">{activity.content}</p>
-                                                        )}
-                                                        {activity.activity_type === "attachment" && activity.metadata?.filename && (
-                                                            <div className="mt-2 flex items-center gap-2 bg-[#2a2b2d] rounded p-2">
-                                                                <FileText className="h-8 w-8 text-red-500" />
-                                                                <div>
-                                                                    <p className="text-sm text-white">{activity.metadata.filename}</p>
-                                                                    <p className="text-xs text-gray-500">PDF • Download</p>
-                                                                </div>
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <span className="text-sm font-medium text-white">{activity.user_name}</span>
+                                                                {activity.activity_type !== "comment" && (
+                                                                    <span className="text-sm text-gray-400">{getActivityDescription()}</span>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                            <span className="text-xs text-gray-500">{formatActivityTime(activity.created_at)}</span>
+                                                            {activity.activity_type === "comment" && activity.content && (
+                                                                <p className="text-sm text-gray-300 mt-1">{activity.content}</p>
+                                                            )}
+                                                            {activity.activity_type === "attachment" && activity.metadata?.filename && (
+                                                                <div className="mt-2 flex items-center gap-2 bg-[#2a2b2d] rounded p-2">
+                                                                    <FileText className="h-8 w-8 text-red-500" />
+                                                                    <div>
+                                                                        <p className="text-sm text-white">{activity.metadata.filename}</p>
+                                                                        <p className="text-xs text-gray-500">PDF • Download</p>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            ))
+                                                );
+                                            })
                                     )}
                                 </div>
                             )}
