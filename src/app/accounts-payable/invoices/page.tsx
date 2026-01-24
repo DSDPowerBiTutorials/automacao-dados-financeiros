@@ -54,6 +54,7 @@ type Invoice = {
   cost_type_code?: string | null;
   dep_cost_type_code?: string | null;
   cost_center_code?: string | null;
+  sub_department_code?: string | null;
   description?: string | null;
   invoice_number?: string | null;
   country_code: string;
@@ -271,7 +272,7 @@ export default function InvoicesPage() {
         supabase.from("payment_methods").select("*").eq("is_active", true),
         supabase.from("cost_types").select("*").eq("is_active", true),
         supabase.from("dep_cost_types").select("*").eq("is_active", true),
-        supabase.from("cost_centers").select("*").eq("is_active", true),
+        supabase.from("cost_centers").select("*").eq("is_active", true).eq("level", 1),
         supabase.from("sub_departments").select("*").eq("is_active", true),
         supabase.from("entry_types").select("*").eq("is_active", true),
         supabase.from("financial_accounts").select("*").eq("is_active", true),
@@ -2567,6 +2568,7 @@ export default function InvoicesPage() {
                         { id: 'currency', label: 'Currency' },
                         { id: 'financial_account', label: 'Financial Account' },
                         { id: 'cost_center', label: 'Department' },
+                        { id: 'sub_department', label: 'Sub-Department' },
                         { id: 'cost_type', label: 'Cost Type' },
                         { id: 'dep_cost_type', label: 'Dep Cost Type' },
                         { id: 'payment_status', label: 'Payment Status' },
@@ -2890,6 +2892,13 @@ export default function InvoicesPage() {
                               <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Department">
                                 <Filter className="h-3 w-3" />
                               </button>
+                            </div>
+                          </th>
+                        )}
+                        {visibleColumns.has('sub_department') && (
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                            <div className="flex items-center gap-1">
+                              Sub-Department
                             </div>
                           </th>
                         )}
@@ -3446,6 +3455,19 @@ export default function InvoicesPage() {
                                       <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
                                     </button>
                                   </div>
+                                )}
+                              </td>
+                            )}
+
+                            {/* Sub-Department */}
+                            {visibleColumns.has('sub_department') && (
+                              <td className="px-2 py-1 text-center">
+                                {invoice.sub_department_code ? (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-800 border-purple-300">
+                                    {subDepartments.find(sd => sd.code === invoice.sub_department_code)?.name || invoice.sub_department_code}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
                                 )}
                               </td>
                             )}
