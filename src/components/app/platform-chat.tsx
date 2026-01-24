@@ -6,8 +6,6 @@ import {
     Send,
     X,
     Loader2,
-    Minimize2,
-    Maximize2,
     Hash,
     Plus,
     ChevronDown,
@@ -102,7 +100,7 @@ function getAvatarColor(name: string): string {
 export function PlatformChat() {
     const { user, profile } = useAuth();
     const [isOpen, setIsOpen] = useState(false);
-    const [isExpanded, setIsExpanded] = useState(false);
+
 
     // Channels
     const [channels, setChannels] = useState<Channel[]>([]);
@@ -491,18 +489,13 @@ export function PlatformChat() {
             {/* Chat Window */}
             {isOpen && (
                 <div
-                    className={cn(
-                        "fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 flex transition-all duration-200",
-                        isExpanded
-                            ? "bottom-4 right-4 w-[700px] h-[600px]"
-                            : "bottom-6 right-6 w-[450px] h-[500px]"
-                    )}
+                    className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 flex transition-all duration-200 bottom-20 right-6 w-[380px] h-[400px] max-h-[60vh] overflow-hidden"
                 >
                     {/* Sidebar */}
-                    <div className="w-48 bg-gray-900 text-white rounded-l-lg flex flex-col">
+                    <div className="w-40 bg-gray-900 text-white rounded-l-lg flex flex-col overflow-hidden">
                         {/* Header */}
-                        <div className="p-3 border-b border-gray-700">
-                            <h3 className="font-semibold text-sm">DSD Finance Hub</h3>
+                        <div className="p-2 border-b border-gray-700">
+                            <h3 className="font-semibold text-xs">DSD Finance Hub</h3>
                         </div>
 
                         {/* Channels */}
@@ -582,26 +575,26 @@ export function PlatformChat() {
                                                 onClick={() => startDm(u)}
                                                 disabled={startingDm}
                                                 className={cn(
-                                                    "flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-800",
+                                                    "flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-800 min-w-0",
                                                     selectedChannel?.channel_type === "direct" && selectedChannel?.name === (u.full_name || u.username) && "bg-blue-600"
                                                 )}
                                             >
                                                 {startingDm && dmTargetUser?.id === u.id ? (
-                                                    <Loader2 className="h-5 w-5 animate-spin" />
+                                                    <Loader2 className="h-5 w-5 animate-spin flex-shrink-0" />
                                                 ) : (
                                                     <div
                                                         className={cn(
-                                                            "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium",
+                                                            "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0",
                                                             getAvatarColor(u.full_name || u.username || "")
                                                         )}
                                                     >
                                                         {getInitials(u.full_name || u.username || "?")}
                                                     </div>
                                                 )}
-                                                <span className="truncate">{u.full_name || u.username}</span>
+                                                <span className="truncate text-xs">{(u.full_name || u.username || "").substring(0, 12)}...</span>
                                                 <span
                                                     className={cn(
-                                                        "w-2 h-2 rounded-full ml-auto",
+                                                        "w-2 h-2 rounded-full ml-auto flex-shrink-0",
                                                         u.status === "online"
                                                             ? "bg-green-500"
                                                             : u.status === "away"
@@ -636,39 +629,29 @@ export function PlatformChat() {
                     </div>
 
                     {/* Main Content */}
-                    <div className="flex-1 flex flex-col bg-white rounded-r-lg">
+                    <div className="flex-1 flex flex-col bg-white rounded-r-lg min-w-0 overflow-hidden">
                         {/* Header */}
-                        <div className="flex items-center justify-between px-4 py-2 border-b">
-                            <div className="flex items-center gap-2">
+                        <div className="flex items-center justify-between px-3 py-2 border-b">
+                            <div className="flex items-center gap-2 min-w-0 flex-1">
                                 {selectedChannel && (
                                     <>
                                         {selectedChannel.channel_type === "direct" ? (
                                             <div
                                                 className={cn(
-                                                    "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white",
+                                                    "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white flex-shrink-0",
                                                     getAvatarColor(selectedChannel.name)
                                                 )}
                                             >
                                                 {getInitials(selectedChannel.name)}
                                             </div>
                                         ) : (
-                                            <Hash className="h-4 w-4 text-gray-500" />
+                                            <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
                                         )}
-                                        <span className="font-medium">{selectedChannel.name}</span>
+                                        <span className="font-medium text-sm truncate">{selectedChannel.name.length > 20 ? selectedChannel.name.substring(0, 20) + "..." : selectedChannel.name}</span>
                                     </>
                                 )}
                             </div>
-                            <div className="flex items-center gap-1">
-                                <button
-                                    onClick={() => setIsExpanded(!isExpanded)}
-                                    className="p-1 hover:bg-gray-100 rounded"
-                                >
-                                    {isExpanded ? (
-                                        <Minimize2 className="h-4 w-4 text-gray-500" />
-                                    ) : (
-                                        <Maximize2 className="h-4 w-4 text-gray-500" />
-                                    )}
-                                </button>
+                            <div className="flex items-center gap-1 flex-shrink-0">
                                 <button
                                     onClick={() => setIsOpen(false)}
                                     className="p-1 hover:bg-gray-100 rounded"

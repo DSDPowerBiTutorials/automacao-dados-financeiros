@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
 import {
   formatDateForDB,
   formatDateForInput,
@@ -114,6 +115,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
   const [splitInvoice, setSplitInvoice] = useState<Invoice | null>(null);
   const [viewSplitsDialogOpen, setViewSplitsDialogOpen] = useState(false);
@@ -1183,7 +1185,7 @@ export default function InvoicesPage() {
       is_intercompany: invoice.is_intercompany,
       notes: invoice.notes || ""
     });
-    setDialogOpen(true);
+    setSidePanelOpen(true);
   }
 
   function handleTypeChange(type: InvoiceType) {
@@ -1361,18 +1363,25 @@ export default function InvoicesPage() {
       <div className="min-h-full px-6 py-6 pb-0">
         <div className="flex justify-between items-center mb-4">
           <Breadcrumbs />
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogTrigger asChild>
-              <Button disabled={selectedScope === "GLOBAL"}>
-                <Plus className="h-4 w-4 mr-2" />
-                New Invoice
-              </Button>
-            </DialogTrigger>
+          <div className="flex items-center gap-2">
+            <Button
+              disabled={selectedScope === "GLOBAL"}
+              onClick={() => {
+                setEditingInvoice(null);
+                resetForm();
+                setSidePanelOpen(true);
+              }}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Invoice
+            </Button>
             {selectedScope === "GLOBAL" && (
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500">
                 Switch to ES or US to create invoices
               </p>
             )}
+          </div>
+          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
             <DialogContent className="max-w-[95vw] w-[900px] max-h-[90vh] overflow-y-auto bg-white p-8">
               <DialogHeader className="pb-4 border-b">
                 <DialogTitle className="text-2xl">{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
@@ -2358,7 +2367,7 @@ export default function InvoicesPage() {
                                     course_code: splitPart.course_code || ""
                                   });
                                   setViewSplitsDialogOpen(false);
-                                  setDialogOpen(true);
+                                  setSidePanelOpen(true);
                                 }}
                                 className="h-8"
                               >
@@ -3911,6 +3920,24 @@ export default function InvoicesPage() {
           </DialogContent>
         </Dialog>
       )}
+
+      {/* Invoice Side Panel */}
+      <InvoiceSidePanel
+        open={sidePanelOpen}
+        onClose={() => {
+          setSidePanelOpen(false);
+          setEditingInvoice(null);
+          resetForm();
+        }}
+        editingInvoice={editingInvoice}
+        defaultScope={selectedScope as ScopeType}
+        onSuccess={() => {
+          loadInvoices();
+          setSidePanelOpen(false);
+          setEditingInvoice(null);
+          resetForm();
+        }}
+      />
     </>
   );
 }

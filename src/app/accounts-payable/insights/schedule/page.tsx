@@ -43,7 +43,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
-import { InvoiceFormModal } from "@/components/app/invoice-form-modal";
+import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
 
 type Invoice = {
     id: number;
@@ -533,18 +533,21 @@ export default function PaymentSchedulePage() {
                 </div>
             </div>
 
-            {/* Invoice Form Modal */}
-            <InvoiceFormModal
+            {/* Invoice Side Panel */}
+            <InvoiceSidePanel
                 open={invoiceModalOpen}
-                onOpenChange={setInvoiceModalOpen}
+                onClose={() => setInvoiceModalOpen(false)}
                 defaultScope={selectedScope === "GLOBAL" ? "ES" : selectedScope}
                 defaultScheduleDate={defaultScheduleDateForModal}
-                onSuccess={loadData}
+                onSuccess={() => {
+                    loadData();
+                    setInvoiceModalOpen(false);
+                }}
             />
 
             {/* Detail Panel */}
             {detailPanelOpen && selectedInvoice && (
-                <div className="fixed right-0 top-0 h-full w-[500px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-50 shadow-2xl">
+                <div className="fixed right-0 top-[64px] h-[calc(100vh-64px)] w-[500px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
                     {/* Panel Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
                         <div className="flex items-center gap-2">
