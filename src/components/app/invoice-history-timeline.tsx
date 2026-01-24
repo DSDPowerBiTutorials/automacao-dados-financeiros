@@ -162,23 +162,24 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="bg-[#1e1f21] border-gray-700 text-white max-w-md max-h-[80vh] overflow-hidden">
+            <DialogContent className="bg-[#1e1f21] border-gray-700 text-white max-w-md">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
+                    <DialogTitle className="flex items-center gap-2 text-white">
                         <Clock className="h-5 w-5 text-gray-400" />
                         Payment History
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="overflow-y-auto max-h-[60vh] pr-2">
+                <div className="overflow-y-auto max-h-[60vh]">
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
                             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                         </div>
                     ) : history.length === 0 ? (
-                        <div className="text-center py-8 text-gray-500">
-                            <Clock className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p>No history yet</p>
+                        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                            <Clock className="h-10 w-10 mb-3 opacity-50" />
+                            <p className="text-sm">No history yet</p>
+                            <p className="text-xs text-gray-500 mt-1">Changes will appear here</p>
                         </div>
                     ) : (
                         <div className="relative">
