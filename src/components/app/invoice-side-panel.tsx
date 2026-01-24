@@ -29,6 +29,8 @@ type Invoice = {
     financial_account_code: string;
     invoice_amount: number;
     currency: string;
+    paid_amount?: number | null;
+    paid_currency?: string | null;
     eur_exchange?: number;
     provider_code: string;
     bank_account_code?: string | null;
@@ -99,6 +101,8 @@ export function InvoiceSidePanel({
         financial_account_code: "",
         invoice_amount: "",
         currency: defaultScope === "US" ? "USD" : "EUR",
+        paid_amount: "",
+        paid_currency: "",
         eur_exchange: "1.00",
         provider_code: "",
         bank_account_code: "",
@@ -132,6 +136,8 @@ export function InvoiceSidePanel({
                     financial_account_code: editingInvoice.financial_account_code || "",
                     invoice_amount: String(editingInvoice.invoice_amount) || "",
                     currency: editingInvoice.currency || "EUR",
+                    paid_amount: editingInvoice.paid_amount?.toString() || "",
+                    paid_currency: editingInvoice.paid_currency || "",
                     eur_exchange: String(editingInvoice.eur_exchange || "1.00"),
                     provider_code: editingInvoice.provider_code || "",
                     bank_account_code: editingInvoice.bank_account_code || "",
@@ -166,6 +172,8 @@ export function InvoiceSidePanel({
             financial_account_code: "",
             invoice_amount: "",
             currency: defaultScope === "US" ? "USD" : "EUR",
+            paid_amount: "",
+            paid_currency: "",
             eur_exchange: "1.00",
             provider_code: "",
             bank_account_code: "",
@@ -271,6 +279,8 @@ export function InvoiceSidePanel({
                 financial_account_code: formData.financial_account_code,
                 invoice_amount: parseFloat(formData.invoice_amount),
                 currency: formData.currency,
+                paid_amount: formData.paid_amount ? parseFloat(formData.paid_amount) : null,
+                paid_currency: formData.paid_currency || null,
                 eur_exchange: parseFloat(formData.eur_exchange) || 1,
                 provider_code: formData.provider_code,
                 bank_account_code: formData.bank_account_code || null,
@@ -397,6 +407,18 @@ export function InvoiceSidePanel({
                                 </div>
                             </div>
                             <div><Label className="text-xs text-gray-700">Invoice #</Label><Input value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })} placeholder="Auto-generated" className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
+
+                            {/* Paid Amount, Paid Currency, Payment Date */}
+                            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-200 mt-3">
+                                <div><Label className="text-xs text-gray-700">Paid Amount</Label><Input type="number" step="0.01" value={formData.paid_amount} onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })} placeholder="0.00" className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
+                                <div><Label className="text-xs text-gray-700">Paid Currency</Label>
+                                    <Select value={formData.paid_currency} onValueChange={(val) => setFormData({ ...formData, paid_currency: val })}>
+                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectContent className="bg-white"><SelectItem value="EUR">€ EUR</SelectItem><SelectItem value="USD">$ USD</SelectItem><SelectItem value="GBP">£ GBP</SelectItem><SelectItem value="BRL">R$ BRL</SelectItem></SelectContent>
+                                    </Select>
+                                </div>
+                                <div><Label className="text-xs text-gray-700">Payment Date</Label><Input type="date" value={formData.payment_date} onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })} className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
+                            </div>
                         </div>
 
                         {/* Section: Provider */}

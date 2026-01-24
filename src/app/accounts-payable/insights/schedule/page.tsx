@@ -210,6 +210,15 @@ export default function PaymentSchedulePage() {
     const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<string | null>(null);
 
+    // Payment confirmation dialog
+    const [paymentConfirmDialogOpen, setPaymentConfirmDialogOpen] = useState(false);
+    const [paymentConfirmInvoice, setPaymentConfirmInvoice] = useState<Invoice | null>(null);
+    const [paymentConfirmData, setPaymentConfirmData] = useState({
+        paid_amount: "",
+        paid_currency: "",
+        payment_date: ""
+    });
+
     useEffect(() => {
         loadData();
     }, []);
@@ -418,58 +427,109 @@ export default function PaymentSchedulePage() {
         });
     }
 
-    async function togglePaid(invoice: Invoice) {
-        // If trying to mark as paid (not unmark), validate conditions
-        if (!invoice.payment_date) {
-            const missingFields: string[] = [];
+    function openPaymentConfirmDialog(invoice: Invoice) {
+        // If already paid, just unmark it directly
+        if (invoice.payment_date) {
+            unmarkAsPaid(invoice);
+            return;
+        }
 
-            // Check required fields
-            if (!invoice.bank_account_code) {
-                missingFields.push("Bank Account");
-            }
-            if (!invoice.payment_method_code) {
-                missingFields.push("Payment Method");
-            }
-            if (!invoice.schedule_date) {
-                missingFields.push("Scheduled Date");
-            }
+        // Validate required fields before opening dialog
+        const missingFields: string[] = [];
+        if (!invoice.bank_account_code) missingFields.push("Bank Account");
+        if (!invoice.payment_method_code) missingFields.push("Payment Method");
+        if (!invoice.schedule_date) missingFields.push("Scheduled Date");
 
-            // Check if payment method is bank transfer and finance status requirement
-            const isBankTransfer = invoice.payment_method_code?.toLowerCase().includes("transfer") ||
-                invoice.payment_method_code?.toLowerCase().includes("bank") ||
-                invoice.payment_method_code === "BANK_TRANSFER" ||
-                invoice.payment_method_code === "bank_transfer";
+        const isBankTransfer = invoice.payment_method_code?.toLowerCase().includes("transfer") ||
+            invoice.payment_method_code?.toLowerCase().includes("bank") ||
+            invoice.payment_method_code === "BANK_TRANSFER" ||
+            invoice.payment_method_code === "bank_transfer";
 
-            if (isBankTransfer) {
-                const financeStatus = invoice.finance_payment_status || "pending";
-                if (financeStatus !== "uploaded" && financeStatus !== "done") {
-                    missingFields.push("Finance Status must be 'Uploaded' or 'Done' for Bank Transfer payments");
-                }
-            }
-
-            if (missingFields.length > 0) {
-                toast({
-                    title: "Cannot mark as paid",
-                    description: `Please complete the following before marking as paid: ${missingFields.join(", ")}`,
-                    variant: "warning",
-                });
-                return;
+        if (isBankTransfer) {
+            const financeStatus = invoice.finance_payment_status || "pending";
+            if (financeStatus !== "uploaded" && financeStatus !== "done") {
+                missingFields.push("Finance Status must be 'Uploaded' or 'Done' for Bank Transfer payments");
             }
         }
 
+        if (missingFields.length > 0) {
+            toast({
+                title: "Cannot mark as paid",
+                description: `Please complete the following before marking as paid: ${missingFields.join(", ")}`,
+                variant: "warning",
+            });
+            return;
+        }
+
+        // Pre-fill with invoice data
+        setPaymentConfirmData({
+            paid_amount: invoice.paid_amount?.toString() || invoice.invoice_amount.toString(),
+            paid_currency: invoice.paid_currency || invoice.currency,
+            payment_date: invoice.schedule_date || new Date().toISOString().split("T")[0]
+        });
+        setPaymentConfirmInvoice(invoice);
+        setPaymentConfirmDialogOpen(true);
+    }
+
+    async function unmarkAsPaid(invoice: Invoice) {
         setUpdatingInvoice(invoice.id);
         try {
-            const newPaymentDate = invoice.payment_date ? null : new Date().toISOString().split("T")[0];
-            const { error } = await supabase.from("invoices").update({ payment_date: newPaymentDate }).eq("id", invoice.id);
+            const { error } = await supabase.from("invoices").update({
+                payment_date: null,
+                paid_amount: null,
+                paid_currency: null
+            }).eq("id", invoice.id);
             if (error) throw error;
-            setInvoices((prev) => prev.map((inv) => (inv.id === invoice.id ? { ...inv, payment_date: newPaymentDate } : inv)));
-            if (selectedInvoice?.id === invoice.id) setSelectedInvoice({ ...selectedInvoice, payment_date: newPaymentDate });
-            toast({ title: newPaymentDate ? "Marked as paid" : "Marked as unpaid", variant: "success" });
+            setInvoices((prev) => prev.map((inv) => (inv.id === invoice.id ? { ...inv, payment_date: null, paid_amount: null, paid_currency: null } : inv)));
+            if (selectedInvoice?.id === invoice.id) setSelectedInvoice({ ...selectedInvoice, payment_date: null, paid_amount: null, paid_currency: null });
+            toast({ title: "Marked as unpaid", variant: "success" });
         } catch (e: any) {
             toast({ title: "Error", description: e?.message, variant: "destructive" });
         } finally {
             setUpdatingInvoice(null);
         }
+    }
+
+    async function confirmPayment() {
+        if (!paymentConfirmInvoice) return;
+
+        // Validate payment data
+        if (!paymentConfirmData.paid_amount || !paymentConfirmData.paid_currency || !paymentConfirmData.payment_date) {
+            toast({
+                title: "Missing fields",
+                description: "Please fill in Paid Amount, Paid Currency and Payment Date",
+                variant: "warning",
+            });
+            return;
+        }
+
+        setUpdatingInvoice(paymentConfirmInvoice.id);
+        try {
+            const updatePayload = {
+                payment_date: paymentConfirmData.payment_date,
+                paid_amount: parseFloat(paymentConfirmData.paid_amount),
+                paid_currency: paymentConfirmData.paid_currency
+            };
+
+            const { error } = await supabase.from("invoices").update(updatePayload).eq("id", paymentConfirmInvoice.id);
+            if (error) throw error;
+
+            setInvoices((prev) => prev.map((inv) => (inv.id === paymentConfirmInvoice.id ? { ...inv, ...updatePayload } : inv)));
+            if (selectedInvoice?.id === paymentConfirmInvoice.id) setSelectedInvoice({ ...selectedInvoice, ...updatePayload });
+
+            toast({ title: "Payment confirmed", variant: "success" });
+            setPaymentConfirmDialogOpen(false);
+            setPaymentConfirmInvoice(null);
+        } catch (e: any) {
+            toast({ title: "Error", description: e?.message, variant: "destructive" });
+        } finally {
+            setUpdatingInvoice(null);
+        }
+    }
+
+    // Legacy function kept for compatibility - now redirects to dialog
+    async function togglePaid(invoice: Invoice) {
+        openPaymentConfirmDialog(invoice);
     }
 
     async function updateScheduleDate(invoiceId: number, date: string | null) {
@@ -1108,6 +1168,35 @@ export default function PaymentSchedulePage() {
                                 />
                             </div>
 
+                            {/* Paid Amount */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Paid Amount</Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={selectedInvoice.paid_amount || ""}
+                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "paid_amount", e.target.value ? parseFloat(e.target.value) : null)}
+                                    placeholder={selectedInvoice.invoice_amount.toString()}
+                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                />
+                            </div>
+
+                            {/* Paid Currency */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Paid Currency</Label>
+                                <select
+                                    value={selectedInvoice.paid_currency || ""}
+                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "paid_currency", e.target.value || null)}
+                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                >
+                                    <option value="">Select currency...</option>
+                                    <option value="EUR">EUR</option>
+                                    <option value="USD">USD</option>
+                                    <option value="GBP">GBP</option>
+                                    <option value="BRL">BRL</option>
+                                </select>
+                            </div>
+
                             {/* Finance Payment Status */}
                             <div className="space-y-1">
                                 <Label className="text-xs text-gray-400">Finance Payment Status</Label>
@@ -1326,6 +1415,113 @@ export default function PaymentSchedulePage() {
                             <MessageCircle className="h-4 w-4 mr-1" />
                             Join task
                         </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Payment Confirmation Dialog */}
+            {paymentConfirmDialogOpen && paymentConfirmInvoice && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
+                    <div className="bg-[#2a2b2d] rounded-lg w-[450px] overflow-hidden flex flex-col">
+                        {/* Dialog Header */}
+                        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">Confirm Payment</h3>
+                                <p className="text-sm text-gray-400">{getProviderName(paymentConfirmInvoice.provider_code)}</p>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 w-8 p-0 text-gray-400 hover:text-white"
+                                onClick={() => {
+                                    setPaymentConfirmDialogOpen(false);
+                                    setPaymentConfirmInvoice(null);
+                                }}
+                            >
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+
+                        {/* Dialog Content */}
+                        <div className="px-6 py-4 space-y-4">
+                            {/* Invoice Info */}
+                            <div className="bg-[#1e1f21] rounded-lg p-3 space-y-2">
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-400">Invoice Amount:</span>
+                                    <span className="text-white font-medium">{formatCurrency(paymentConfirmInvoice.invoice_amount)} {paymentConfirmInvoice.currency}</span>
+                                </div>
+                                <div className="flex justify-between text-sm">
+                                    <span className="text-gray-400">Schedule Date:</span>
+                                    <span className="text-white">{paymentConfirmInvoice.schedule_date ? formatShortDate(paymentConfirmInvoice.schedule_date) : "—"}</span>
+                                </div>
+                            </div>
+
+                            {/* Paid Amount */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Paid Amount *</Label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    value={paymentConfirmData.paid_amount}
+                                    onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, paid_amount: e.target.value })}
+                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                    placeholder="0.00"
+                                />
+                            </div>
+
+                            {/* Paid Currency */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Paid Currency *</Label>
+                                <select
+                                    value={paymentConfirmData.paid_currency}
+                                    onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, paid_currency: e.target.value })}
+                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                >
+                                    <option value="">Select currency...</option>
+                                    <option value="EUR">EUR - Euro</option>
+                                    <option value="USD">USD - US Dollar</option>
+                                    <option value="GBP">GBP - British Pound</option>
+                                    <option value="BRL">BRL - Brazilian Real</option>
+                                </select>
+                            </div>
+
+                            {/* Payment Date */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Payment Date *</Label>
+                                <Input
+                                    type="date"
+                                    value={paymentConfirmData.payment_date}
+                                    onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, payment_date: e.target.value })}
+                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                />
+                            </div>
+                        </div>
+
+                        {/* Dialog Footer */}
+                        <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-2">
+                            <Button
+                                variant="ghost"
+                                onClick={() => {
+                                    setPaymentConfirmDialogOpen(false);
+                                    setPaymentConfirmInvoice(null);
+                                }}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={confirmPayment}
+                                disabled={updatingInvoice === paymentConfirmInvoice.id}
+                                className="bg-green-600 hover:bg-green-700 text-white"
+                            >
+                                {updatingInvoice === paymentConfirmInvoice.id ? (
+                                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                ) : (
+                                    <CheckCircle className="h-4 w-4 mr-2" />
+                                )}
+                                Confirm Payment
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
