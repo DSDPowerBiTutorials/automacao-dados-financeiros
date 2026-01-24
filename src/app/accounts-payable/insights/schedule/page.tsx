@@ -219,6 +219,16 @@ export default function PaymentSchedulePage() {
         payment_date: ""
     });
 
+    // Local edit state for paid_amount field (to avoid updating on every keystroke)
+    const [editingPaidAmount, setEditingPaidAmount] = useState<string>("");
+
+    // Sync editingPaidAmount when selectedInvoice changes
+    useEffect(() => {
+        if (selectedInvoice) {
+            setEditingPaidAmount(selectedInvoice.paid_amount?.toString() || "");
+        }
+    }, [selectedInvoice?.id, selectedInvoice?.paid_amount]);
+
     useEffect(() => {
         loadData();
     }, []);
@@ -1174,8 +1184,19 @@ export default function PaymentSchedulePage() {
                                 <Input
                                     type="number"
                                     step="any"
-                                    value={selectedInvoice.paid_amount || ""}
-                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "paid_amount", e.target.value ? parseFloat(e.target.value) : null)}
+                                    value={editingPaidAmount}
+                                    onChange={(e) => setEditingPaidAmount(e.target.value)}
+                                    onBlur={() => {
+                                        const newValue = editingPaidAmount ? parseFloat(editingPaidAmount) : null;
+                                        if (newValue !== selectedInvoice.paid_amount) {
+                                            updateInvoiceField(selectedInvoice.id, "paid_amount", newValue);
+                                        }
+                                    }}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.currentTarget.blur();
+                                        }
+                                    }}
                                     placeholder={selectedInvoice.invoice_amount.toString()}
                                     className="bg-[#1e1f21] border-gray-600 text-white h-9"
                                 />
