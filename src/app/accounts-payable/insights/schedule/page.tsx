@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
+import { InvoiceHistoryTimeline } from "@/components/app/invoice-history-timeline";
 
 type Invoice = {
     id: number;
@@ -553,29 +554,14 @@ export default function PaymentSchedulePage() {
                                                     <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
                                                         {updatingInvoice === invoice.id ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-500 hover:text-gray-300" />}
                                                     </button>
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
+                                                    <InvoiceHistoryTimeline
+                                                        invoiceId={invoice.id}
+                                                        trigger={
                                                             <button onClick={(e) => e.stopPropagation()} className="p-1 hover:bg-gray-700 rounded">
                                                                 <Eye className="h-4 w-4 text-gray-500 hover:text-gray-300" />
                                                             </button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="start" className="bg-[#2a2b2d] border-gray-700 text-white p-3 min-w-[200px]">
-                                                            <div className="space-y-2 text-xs">
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-gray-400">Created:</span>
-                                                                    <span className="text-white">{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("pt-BR") : "—"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-gray-400">Finance Status Changed:</span>
-                                                                    <span className="text-white">{invoice.finance_status_changed_at ? new Date(invoice.finance_status_changed_at).toLocaleDateString("pt-BR") : "—"}</span>
-                                                                </div>
-                                                                <div className="flex justify-between">
-                                                                    <span className="text-gray-400">Invoice Status Changed:</span>
-                                                                    <span className="text-white">{invoice.invoice_status_changed_at ? new Date(invoice.invoice_status_changed_at).toLocaleDateString("pt-BR") : "—"}</span>
-                                                                </div>
-                                                            </div>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                        }
+                                                    />
                                                     <div className="flex flex-col min-w-0">
                                                         <span className={`truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
                                                         {invoice.description && <span className="text-xs text-gray-500 truncate">{invoice.description}</span>}
