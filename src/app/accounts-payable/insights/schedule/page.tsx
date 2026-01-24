@@ -27,6 +27,10 @@ import {
     Link2,
     Maximize2,
     MessageCircle,
+    Eye,
+    Upload,
+    AlertCircle,
+    Clock,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -69,6 +73,11 @@ type Invoice = {
     notes?: string | null;
     created_at?: string;
     updated_at?: string;
+    // New tracking fields
+    finance_payment_status?: string | null;
+    invoice_status?: string | null;
+    finance_status_changed_at?: string | null;
+    invoice_status_changed_at?: string | null;
 };
 
 type Provider = {
@@ -377,6 +386,14 @@ export default function PaymentSchedulePage() {
                 updatePayload.payment_status = value ? "paid" : "pending";
             }
 
+            // Track status change timestamps
+            if (field === "finance_payment_status") {
+                updatePayload.finance_status_changed_at = new Date().toISOString();
+            }
+            if (field === "invoice_status") {
+                updatePayload.invoice_status_changed_at = new Date().toISOString();
+            }
+
             const { error } = await supabase.from("invoices").update(updatePayload).eq("id", invoiceId);
             if (error) throw error;
 
@@ -478,13 +495,12 @@ export default function PaymentSchedulePage() {
                 {/* Table Header */}
                 <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
                     <div className="grid grid-cols-12 gap-2 px-6 py-2 text-xs text-gray-400 font-medium uppercase">
-                        <div className="col-span-4">Name</div>
-                        <div className="col-span-1 text-center">Responsible</div>
-                        <div className="col-span-1 text-center">Schedule</div>
+                        <div className="col-span-3">Provider</div>
+                        <div className="col-span-2 text-center">Finance Payment</div>
+                        <div className="col-span-2 text-center">Invoice Status</div>
                         <div className="col-span-1">Invoice Date</div>
-                        <div className="col-span-2">Invoice Nº</div>
-                        <div className="col-span-1 text-right">Amount</div>
-                        <div className="col-span-1 text-center">Currency</div>
+                        <div className="col-span-1">Due Date</div>
+                        <div className="col-span-2">Schedule Date</div>
                         <div className="col-span-1"></div>
                     </div>
                 </div>
@@ -510,47 +526,105 @@ export default function PaymentSchedulePage() {
 
                             {expandedGroups.has(group.date) && (
                                 <div>
-                                    {group.invoices.map((invoice) => (
-                                        <div
-                                            key={invoice.id}
-                                            className={`grid grid-cols-12 gap-2 px-6 py-2.5 hover:bg-gray-800/30 border-t border-gray-800/50 items-center group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""}`}
-                                            onClick={() => openDetailPanel(invoice)}
-                                        >
-                                            <div className="col-span-4 flex items-center gap-3">
-                                                <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
-                                                    {updatingInvoice === invoice.id ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-500 hover:text-gray-300" />}
-                                                </button>
-                                                <div className="flex flex-col min-w-0">
-                                                    <span className={`truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
-                                                    {invoice.description && <span className="text-xs text-gray-500 truncate">{invoice.description}</span>}
+                                    {group.invoices.map((invoice) => {
+                                        const financeStatus = invoice.finance_payment_status || "pending";
+                                        const invoiceStatus = invoice.invoice_status || "pending";
+
+                                        const financeStatusConfig: Record<string, { label: string; color: string; icon: any }> = {
+                                            pending: { label: "Pending", color: "bg-yellow-900/30 text-yellow-400 border-yellow-700", icon: Clock },
+                                            uploaded: { label: "Uploaded", color: "bg-blue-900/30 text-blue-400 border-blue-700", icon: Upload },
+                                            done: { label: "Done", color: "bg-green-900/30 text-green-400 border-green-700", icon: CheckCircle },
+                                            info_required: { label: "Info Required", color: "bg-red-900/30 text-red-400 border-red-700", icon: AlertCircle },
+                                        };
+
+                                        const invoiceStatusConfig: Record<string, { label: string; color: string }> = {
+                                            pending: { label: "Pending", color: "bg-yellow-900/30 text-yellow-400 border-yellow-700" },
+                                            available: { label: "Available", color: "bg-green-900/30 text-green-400 border-green-700" },
+                                        };
+
+                                        return (
+                                            <div
+                                                key={invoice.id}
+                                                className={`grid grid-cols-12 gap-2 px-6 py-2.5 hover:bg-gray-800/30 border-t border-gray-800/50 items-center group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""}`}
+                                                onClick={() => openDetailPanel(invoice)}
+                                            >
+                                                {/* Provider */}
+                                                <div className="col-span-3 flex items-center gap-3">
+                                                    <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
+                                                        {updatingInvoice === invoice.id ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-500 hover:text-gray-300" />}
+                                                    </button>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <button onClick={(e) => e.stopPropagation()} className="p-1 hover:bg-gray-700 rounded">
+                                                                <Eye className="h-4 w-4 text-gray-500 hover:text-gray-300" />
+                                                            </button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="start" className="bg-[#2a2b2d] border-gray-700 text-white p-3 min-w-[200px]">
+                                                            <div className="space-y-2 text-xs">
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-400">Created:</span>
+                                                                    <span className="text-white">{invoice.created_at ? new Date(invoice.created_at).toLocaleDateString("pt-BR") : "—"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-400">Finance Status Changed:</span>
+                                                                    <span className="text-white">{invoice.finance_status_changed_at ? new Date(invoice.finance_status_changed_at).toLocaleDateString("pt-BR") : "—"}</span>
+                                                                </div>
+                                                                <div className="flex justify-between">
+                                                                    <span className="text-gray-400">Invoice Status Changed:</span>
+                                                                    <span className="text-white">{invoice.invoice_status_changed_at ? new Date(invoice.invoice_status_changed_at).toLocaleDateString("pt-BR") : "—"}</span>
+                                                                </div>
+                                                            </div>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                    <div className="flex flex-col min-w-0">
+                                                        <span className={`truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
+                                                        {invoice.description && <span className="text-xs text-gray-500 truncate">{invoice.description}</span>}
+                                                    </div>
+                                                </div>
+
+                                                {/* Finance Payment Status */}
+                                                <div className="col-span-2 flex justify-center">
+                                                    <Badge variant="outline" className={`text-xs ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color}`}>
+                                                        {financeStatusConfig[financeStatus]?.label || "Pending"}
+                                                    </Badge>
+                                                </div>
+
+                                                {/* Invoice Status */}
+                                                <div className="col-span-2 flex justify-center">
+                                                    <Badge variant="outline" className={`text-xs ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color}`}>
+                                                        {invoiceStatusConfig[invoiceStatus]?.label || "Pending"}
+                                                    </Badge>
+                                                </div>
+
+                                                {/* Invoice Date */}
+                                                <div className="col-span-1 text-sm text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
+
+                                                {/* Due Date */}
+                                                <div className="col-span-1 text-sm text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
+
+                                                {/* Schedule Date */}
+                                                <div className="col-span-2 text-sm text-gray-300">
+                                                    {invoice.schedule_date ? formatShortDate(invoice.schedule_date) : "—"}
+                                                </div>
+
+                                                {/* Actions */}
+                                                <div className="col-span-1 flex justify-center opacity-0 group-hover:opacity-100">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-white" onClick={(e) => e.stopPropagation()}>
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="bg-[#2a2b2d] border-gray-700 text-white">
+                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} className="hover:bg-gray-700">
+                                                                <CheckCircle className="h-4 w-4 mr-2" />{invoice.payment_date ? "Mark as unpaid" : "Mark as paid"}
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
                                                 </div>
                                             </div>
-                                            <div className="col-span-1 flex justify-center">
-                                                <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center"><User className="h-4 w-4 text-gray-400" /></div>
-                                            </div>
-                                            <div className="col-span-1 flex justify-center">
-                                                <span className="text-xs text-gray-400">{invoice.schedule_date ? formatRelativeDate(invoice.schedule_date) : "—"}</span>
-                                            </div>
-                                            <div className="col-span-1 text-sm text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "-"}</div>
-                                            <div className="col-span-2 text-sm text-gray-300 truncate">{invoice.invoice_number || "-"}</div>
-                                            <div className={`col-span-1 text-sm text-right font-medium ${invoice.invoice_amount < 0 ? "text-red-400" : "text-white"}`}>{formatCurrency(invoice.invoice_amount)}</div>
-                                            <div className="col-span-1 flex justify-center">{getCurrencyBadge(invoice.currency)}</div>
-                                            <div className="col-span-1 flex justify-center opacity-0 group-hover:opacity-100">
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-white" onClick={(e) => e.stopPropagation()}>
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="bg-[#2a2b2d] border-gray-700 text-white">
-                                                        <DropdownMenuItem onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} className="hover:bg-gray-700">
-                                                            <CheckCircle className="h-4 w-4 mr-2" />{invoice.payment_date ? "Mark as unpaid" : "Mark as paid"}
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                     <div
                                         className="px-6 py-2 text-gray-500 text-sm hover:text-gray-300 cursor-pointer flex items-center gap-2"
                                         onClick={() => {
@@ -713,6 +787,34 @@ export default function PaymentSchedulePage() {
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "payment_date", e.target.value || null)}
                                     className="bg-[#1e1f21] border-gray-600 text-white h-9"
                                 />
+                            </div>
+
+                            {/* Finance Payment Status */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Finance Payment Status</Label>
+                                <select
+                                    value={selectedInvoice.finance_payment_status || "pending"}
+                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "finance_payment_status", e.target.value)}
+                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                >
+                                    <option value="pending">Pending</option>
+                                    <option value="uploaded">Uploaded</option>
+                                    <option value="done">Done</option>
+                                    <option value="info_required">Info Required</option>
+                                </select>
+                            </div>
+
+                            {/* Invoice Status */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Invoice Status</Label>
+                                <select
+                                    value={selectedInvoice.invoice_status || "pending"}
+                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "invoice_status", e.target.value)}
+                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                >
+                                    <option value="pending">Pending</option>
+                                    <option value="available">Available</option>
+                                </select>
                             </div>
 
                             {/* Payment Status */}
