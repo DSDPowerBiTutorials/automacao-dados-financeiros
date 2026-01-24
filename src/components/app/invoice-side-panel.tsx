@@ -85,6 +85,7 @@ export function InvoiceSidePanel({
     const [costTypes, setCostTypes] = useState<MasterData[]>([]);
     const [depCostTypes, setDepCostTypes] = useState<MasterData[]>([]);
     const [costCenters, setCostCenters] = useState<MasterData[]>([]);
+    const [subDepartments, setSubDepartments] = useState<MasterData[]>([]);
     const [financialAccounts, setFinancialAccounts] = useState<MasterData[]>([]);
     const [courses, setCourses] = useState<MasterData[]>([]);
 
@@ -106,6 +107,7 @@ export function InvoiceSidePanel({
         cost_type_code: "",
         dep_cost_type_code: "",
         cost_center_code: "",
+        sub_department_code: "",
         description: "",
         invoice_number: "",
         country_code: defaultScope,
@@ -186,18 +188,26 @@ export function InvoiceSidePanel({
     async function loadMasterData() {
         setLoadingMasterData(true);
         try {
-            const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, financialAccountsRes, coursesRes] = await Promise.all([
+            const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, financialAccountsRes, coursesRes] = await Promise.all([
                 supabase.from("providers").select("*").eq("is_active", true),
                 supabase.from("bank_accounts").select("*").eq("is_active", true),
                 supabase.from("payment_methods").select("*").eq("is_active", true),
                 supabase.from("cost_types").select("*").eq("is_active", true),
                 supabase.from("dep_cost_types").select("*").eq("is_active", true),
                 supabase.from("cost_centers").select("*").eq("is_active", true),
+                supabase.from("sub_departments").select("*").eq("is_active", true),
                 supabase.from("financial_accounts").select("*").eq("is_active", true),
                 supabase.from("courses").select("*").eq("is_active", true)
             ]);
             setProviders(providersRes.data || []);
             setBankAccounts(bankAccountsRes.data || []);
+            setPaymentMethods(paymentMethodsRes.data || []);
+            setCostTypes(costTypesRes.data || []);
+            setDepCostTypes(depCostTypesRes.data || []);
+            setCostCenters(costCentersRes.data || []);
+            setSubDepartments(subDepartmentsRes.data || []);
+            setFinancialAccounts(financialAccountsRes.data || []);
+            setCourses(coursesRes.data || []);
             setPaymentMethods(paymentMethodsRes.data || []);
             setCostTypes(costTypesRes.data || []);
             setDepCostTypes(depCostTypesRes.data || []);
@@ -224,7 +234,7 @@ export function InvoiceSidePanel({
         try {
             if (!formData.provider_code) { toast({ title: "Error", description: "Provider is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
             if (!formData.financial_account_code) { toast({ title: "Error", description: "Financial Account is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
-            if (!formData.cost_center_code) { toast({ title: "Error", description: "Cost Center is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
+            if (!formData.cost_center_code) { toast({ title: "Error", description: "Department is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
             if (!formData.cost_type_code) { toast({ title: "Error", description: "Cost Type is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
             if (!formData.dep_cost_type_code) { toast({ title: "Error", description: "Dep Cost Type is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
             if (!formData.due_date) { toast({ title: "Error", description: "Due Date is required", variant: "destructive", className: "bg-white" }); setSubmitting(false); return; }
@@ -422,12 +432,18 @@ export function InvoiceSidePanel({
                                         <SelectContent className="bg-white max-h-[250px]">{depCostTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
-                                <div><Label className="text-xs text-gray-700">Cost Center *</Label>
-                                    <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val })}>
+                                <div><Label className="text-xs text-gray-700">Department *</Label>
+                                    <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val, sub_department_code: "" })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[250px]">{costCenters.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}</SelectContent>
+                                        <SelectContent className="bg-white max-h-[250px]">{costCenters.map((c) => (<SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
+                            </div>
+                            <div><Label className="text-xs text-gray-700">Sub-Department</Label>
+                                <Select value={formData.sub_department_code || ""} onValueChange={(val) => setFormData({ ...formData, sub_department_code: val })}>
+                                    <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectContent className="bg-white max-h-[250px]">{subDepartments.filter((s) => s.parent_department_code === formData.cost_center_code).map((s) => (<SelectItem key={s.code} value={s.code}>{s.code} - {s.name}</SelectItem>))}</SelectContent>
+                                </Select>
                             </div>
                         </div>
 

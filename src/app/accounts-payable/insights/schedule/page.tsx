@@ -69,6 +69,7 @@ type Invoice = {
     cost_type_code?: string | null;
     dep_cost_type_code?: string | null;
     cost_center_code?: string | null;
+    sub_department_code?: string | null;
     notes?: string | null;
     created_at?: string;
     updated_at?: string;
@@ -164,6 +165,7 @@ export default function PaymentSchedulePage() {
     const [costTypes, setCostTypes] = useState<MasterData[]>([]);
     const [depCostTypes, setDepCostTypes] = useState<MasterData[]>([]);
     const [costCenters, setCostCenters] = useState<MasterData[]>([]);
+    const [subDepartments, setSubDepartments] = useState<MasterData[]>([]);
     const [financialAccounts, setFinancialAccounts] = useState<MasterData[]>([]);
     const [loading, setLoading] = useState(true);
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -208,7 +210,7 @@ export default function PaymentSchedulePage() {
     async function loadData() {
         setLoading(true);
         try {
-            const [invoicesRes, providersRes, paymentMethodsRes, bankAccountsRes, costTypesRes, depCostTypesRes, costCentersRes, financialAccountsRes] = await Promise.all([
+            const [invoicesRes, providersRes, paymentMethodsRes, bankAccountsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, financialAccountsRes] = await Promise.all([
                 supabase.from("invoices").select("*").eq("invoice_type", "INCURRED").order("schedule_date", { ascending: true, nullsFirst: false }),
                 supabase.from("providers").select("code, name"),
                 supabase.from("payment_methods").select("code, name"),
@@ -216,6 +218,7 @@ export default function PaymentSchedulePage() {
                 supabase.from("cost_types").select("code, name"),
                 supabase.from("dep_cost_types").select("code, name"),
                 supabase.from("cost_centers").select("code, name"),
+                supabase.from("sub_departments").select("code, name, parent_department_code"),
                 supabase.from("financial_accounts").select("code, name"),
             ]);
 
@@ -227,6 +230,7 @@ export default function PaymentSchedulePage() {
             setCostTypes(costTypesRes.data || []);
             setDepCostTypes(depCostTypesRes.data || []);
             setCostCenters(costCentersRes.data || []);
+            setSubDepartments(subDepartmentsRes.data || []);
             setFinancialAccounts(financialAccountsRes.data || []);
         } catch (e: any) {
             toast({ title: "Error", description: e?.message || "Failed to load data", variant: "destructive", className: "bg-white" });
@@ -357,6 +361,18 @@ export default function PaymentSchedulePage() {
     function getMasterDataName(list: MasterData[], code: string | null | undefined): string {
         if (!code) return "—";
         return list.find((item) => item.code === code)?.name || code;
+    }
+
+    function getDepartmentName(code: string | null | undefined): string {
+        if (!code) return "—";
+        const dept = costCenters.find((c) => c.code === code);
+        return dept ? `${dept.code} - ${dept.name}` : code;
+    }
+
+    function getSubDepartmentName(code: string | null | undefined): string {
+        if (!code) return "—";
+        const subDept = subDepartments.find((s) => s.code === code);
+        return subDept ? `${subDept.code} - ${subDept.name}` : code;
     }
 
     function toggleGroup(date: string) {
@@ -877,7 +893,11 @@ export default function PaymentSchedulePage() {
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Department</p>
-                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700 text-xs">{getMasterDataName(costCenters, selectedInvoice.cost_center_code)}</Badge>
+                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700 text-xs">{getDepartmentName(selectedInvoice.cost_center_code)}</Badge>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Sub-Department</p>
+                                    <Badge variant="outline" className="bg-purple-900/30 text-purple-400 border-purple-700 text-xs">{getSubDepartmentName(selectedInvoice.sub_department_code)}</Badge>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Cost Type</p>
