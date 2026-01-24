@@ -362,7 +362,7 @@ export function InvoiceFormModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
+            <DialogContent className="w-[95vw] max-w-5xl max-h-[95vh] overflow-y-auto overflow-x-hidden bg-white p-6">
                 <DialogHeader className="pb-4 border-b">
                     <DialogTitle className="text-xl font-semibold">
                         {editingInvoice ? "Edit Invoice" : "Create New Invoice"}
@@ -372,11 +372,11 @@ export function InvoiceFormModal({
                     </DialogDescription>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="space-y-6 pt-4">
+                <form onSubmit={handleSubmit} className="space-y-5 pt-4">
                     {/* Invoice Type Selection */}
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                         <Label className="text-sm font-medium">Invoice Type *</Label>
-                        <div className="grid grid-cols-3 gap-3">
+                        <div className="grid grid-cols-3 gap-4">
                             {Object.entries(INVOICE_TYPE_CONFIG).map(([type, config]) => {
                                 const Icon = config.icon;
                                 const isSelected = formData.invoice_type === type;
@@ -385,11 +385,11 @@ export function InvoiceFormModal({
                                         key={type}
                                         type="button"
                                         onClick={() => handleTypeChange(type as InvoiceType)}
-                                        className={`p-3 border-2 rounded-lg text-left transition-all ${isSelected ? config.colorSelected : config.color} hover:opacity-90`}
+                                        className={`p-4 border-2 rounded-lg text-left transition-all ${isSelected ? config.colorSelected : config.color} hover:opacity-90`}
                                     >
                                         <div className="flex items-center gap-2 mb-1">
-                                            <Icon className="h-4 w-4" />
-                                            <span className="font-semibold text-sm">{config.label}</span>
+                                            <Icon className="h-5 w-5" />
+                                            <span className="font-semibold">{config.label}</span>
                                         </div>
                                         <p className="text-xs opacity-80 leading-tight">{config.description}</p>
                                     </button>
@@ -398,10 +398,10 @@ export function InvoiceFormModal({
                         </div>
                     </div>
 
-                    {/* Row 1: Dates */}
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="space-y-1.5">
-                            <Label htmlFor="invoice_date" className="text-sm">Invoice Date *</Label>
+                    {/* Row 1: Dates - All 5 in one row */}
+                    <div className="grid grid-cols-5 gap-3">
+                        <div className="space-y-1">
+                            <Label htmlFor="invoice_date" className="text-xs font-medium">Invoice Date *</Label>
                             <Input
                                 id="invoice_date"
                                 type="date"
@@ -411,8 +411,8 @@ export function InvoiceFormModal({
                                 className="h-9"
                             />
                         </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="benefit_date" className="text-sm">Benefit Date *</Label>
+                        <div className="space-y-1">
+                            <Label htmlFor="benefit_date" className="text-xs font-medium">Benefit Date *</Label>
                             <Input
                                 id="benefit_date"
                                 type="date"
@@ -422,8 +422,8 @@ export function InvoiceFormModal({
                                 className="h-9"
                             />
                         </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="due_date" className="text-sm">Due Date *</Label>
+                        <div className="space-y-1">
+                            <Label htmlFor="due_date" className="text-xs font-medium">Due Date *</Label>
                             <Input
                                 id="due_date"
                                 type="date"
@@ -440,8 +440,8 @@ export function InvoiceFormModal({
                                 className="h-9"
                             />
                         </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="schedule_date" className="text-sm">Schedule Date</Label>
+                        <div className="space-y-1">
+                            <Label htmlFor="schedule_date" className="text-xs font-medium">Schedule Date</Label>
                             <Input
                                 id="schedule_date"
                                 type="date"
@@ -450,12 +450,22 @@ export function InvoiceFormModal({
                                 className="h-9"
                             />
                         </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="payment_date" className="text-xs font-medium">Payment Date</Label>
+                            <Input
+                                id="payment_date"
+                                type="date"
+                                value={formData.payment_date || ""}
+                                onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                                className="h-9"
+                            />
+                        </div>
                     </div>
 
-                    {/* Row 2: Scope, Invoice Number, Amount, Currency */}
-                    <div className="grid grid-cols-4 gap-4">
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Scope (Country) *</Label>
+                    {/* Row 2: Scope, Invoice Number, Amount, Currency, EUR Rate */}
+                    <div className="grid grid-cols-5 gap-3">
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Scope *</Label>
                             <Select
                                 value={formData.scope}
                                 onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val, currency: val === "US" ? "USD" : "EUR" })}
@@ -464,23 +474,23 @@ export function InvoiceFormModal({
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent className="bg-white">
-                                    <SelectItem value="ES">🇪🇸 Spain (EUR)</SelectItem>
-                                    <SelectItem value="US">🇺🇸 United States (USD)</SelectItem>
+                                    <SelectItem value="ES">🇪🇸 Spain</SelectItem>
+                                    <SelectItem value="US">🇺🇸 USA</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="invoice_number" className="text-sm">Invoice Number</Label>
+                        <div className="space-y-1">
+                            <Label htmlFor="invoice_number" className="text-xs font-medium">Invoice Number</Label>
                             <Input
                                 id="invoice_number"
                                 value={formData.invoice_number}
                                 onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                                placeholder="Auto-generated"
+                                placeholder="Auto"
                                 className="h-9"
                             />
                         </div>
-                        <div className="space-y-1.5">
-                            <Label htmlFor="invoice_amount" className="text-sm">Amount *</Label>
+                        <div className="space-y-1">
+                            <Label htmlFor="invoice_amount" className="text-xs font-medium">Amount *</Label>
                             <Input
                                 id="invoice_amount"
                                 type="number"
@@ -491,8 +501,8 @@ export function InvoiceFormModal({
                                 className="h-9"
                             />
                         </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Currency *</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Currency *</Label>
                             <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue />
@@ -501,16 +511,27 @@ export function InvoiceFormModal({
                                     <SelectItem value="EUR">EUR</SelectItem>
                                     <SelectItem value="USD">USD</SelectItem>
                                     <SelectItem value="GBP">GBP</SelectItem>
-                                    <SelectItem value="BRL">BRL</SelectItem>
                                 </SelectContent>
                             </Select>
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="eur_exchange" className="text-xs font-medium">EUR Rate</Label>
+                            <Input
+                                id="eur_exchange"
+                                type="number"
+                                step="0.0001"
+                                value={formData.eur_exchange || ""}
+                                onChange={(e) => setFormData({ ...formData, eur_exchange: e.target.value })}
+                                placeholder="1.0"
+                                className="h-9"
+                            />
                         </div>
                     </div>
 
                     {/* Row 3: Provider, Financial Account */}
                     <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Provider *</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Provider *</Label>
                             <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue placeholder="Select provider" />
@@ -522,8 +543,8 @@ export function InvoiceFormModal({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Financial Account *</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Financial Account *</Label>
                             <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue placeholder="Select account" />
@@ -539,8 +560,8 @@ export function InvoiceFormModal({
 
                     {/* Row 4: Cost Type, Dep Cost Type, Cost Center */}
                     <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Cost Type *</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Cost Type *</Label>
                             <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue placeholder="Select" />
@@ -552,8 +573,8 @@ export function InvoiceFormModal({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Dep Cost Type *</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Dep Cost Type *</Label>
                             <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue placeholder="Select" />
@@ -565,8 +586,8 @@ export function InvoiceFormModal({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Cost Center *</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Cost Center *</Label>
                             <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue placeholder="Select" />
@@ -582,8 +603,8 @@ export function InvoiceFormModal({
 
                     {/* Row 5: Bank Account, Payment Method, Course */}
                     <div className="grid grid-cols-3 gap-4">
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Bank Account</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Bank Account</Label>
                             <Select value={formData.bank_account_code || ""} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue placeholder="Select" />
@@ -595,8 +616,8 @@ export function InvoiceFormModal({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Payment Method</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Payment Method</Label>
                             <Select value={formData.payment_method_code || ""} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue placeholder="Select" />
@@ -608,8 +629,8 @@ export function InvoiceFormModal({
                                 </SelectContent>
                             </Select>
                         </div>
-                        <div className="space-y-1.5">
-                            <Label className="text-sm">Course</Label>
+                        <div className="space-y-1">
+                            <Label className="text-xs font-medium">Course</Label>
                             <Select value={formData.course_code || ""} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
                                 <SelectTrigger className="h-9 bg-white">
                                     <SelectValue placeholder="Select" />
@@ -623,34 +644,34 @@ export function InvoiceFormModal({
                         </div>
                     </div>
 
-                    {/* Description */}
-                    <div className="space-y-1.5">
-                        <Label htmlFor="description" className="text-sm">Description</Label>
-                        <Textarea
-                            id="description"
-                            value={formData.description}
-                            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                            rows={2}
-                            placeholder="Invoice description..."
-                            className="resize-none"
-                        />
-                    </div>
-
-                    {/* Notes */}
-                    <div className="space-y-1.5">
-                        <Label htmlFor="notes" className="text-sm">Internal Notes</Label>
-                        <Textarea
-                            id="notes"
-                            value={formData.notes}
-                            onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                            rows={2}
-                            placeholder="Internal notes..."
-                            className="resize-none"
-                        />
+                    {/* Description & Notes side by side */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <Label htmlFor="description" className="text-xs font-medium">Description</Label>
+                            <Textarea
+                                id="description"
+                                value={formData.description}
+                                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                rows={2}
+                                placeholder="Invoice description..."
+                                className="resize-none"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <Label htmlFor="notes" className="text-xs font-medium">Internal Notes</Label>
+                            <Textarea
+                                id="notes"
+                                value={formData.notes}
+                                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                                rows={2}
+                                placeholder="Internal notes..."
+                                className="resize-none"
+                            />
+                        </div>
                     </div>
 
                     {/* Impact Flags */}
-                    <div className="flex items-center gap-6 pt-2">
+                    <div className="flex items-center gap-8 py-2 px-4 bg-gray-50 rounded-lg">
                         <div className="flex items-center space-x-2">
                             <Checkbox
                                 id="dre_impact"
