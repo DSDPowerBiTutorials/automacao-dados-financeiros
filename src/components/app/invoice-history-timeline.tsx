@@ -162,74 +162,74 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="bg-[#1e1f21] border-gray-700 text-white max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2 text-white">
-                        <Clock className="h-5 w-5 text-gray-400" />
+            <DialogContent className="bg-[#1e1f21] border-gray-700 text-white w-[600px] max-w-[90vw] min-h-[400px]">
+                <DialogHeader className="pb-4 border-b border-gray-700">
+                    <DialogTitle className="flex items-center gap-3 text-white text-xl">
+                        <Clock className="h-6 w-6 text-yellow-500" />
                         Payment History
                     </DialogTitle>
                 </DialogHeader>
 
-                <div className="overflow-y-auto max-h-[60vh]">
+                <div className="overflow-y-auto max-h-[70vh] py-4">
                     {loading ? (
-                        <div className="flex items-center justify-center py-8">
+                        <div className="flex items-center justify-center py-12">
                             <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                         </div>
                     ) : history.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-8 text-gray-400">
-                            <Clock className="h-10 w-10 mb-3 opacity-50" />
-                            <p className="text-sm">No history yet</p>
-                            <p className="text-xs text-gray-500 mt-1">Changes will appear here</p>
+                        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                            <Clock className="h-16 w-16 mb-4 opacity-50" />
+                            <p className="text-lg font-medium">No history yet</p>
+                            <p className="text-sm text-gray-500 mt-2">Changes will appear here when you update this payment</p>
                         </div>
                     ) : (
-                        <div className="relative">
+                        <div className="relative pl-4">
                             {/* Timeline line */}
-                            <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-700" />
+                            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-gray-700" />
 
                             {/* Timeline entries */}
-                            <div className="space-y-4">
+                            <div className="space-y-6">
                                 {history.map((entry, index) => {
                                     const config = getConfig(entry.change_type);
                                     const Icon = config.icon;
                                     const isLast = index === history.length - 1;
 
                                     return (
-                                        <div key={entry.id} className="relative pl-12">
+                                        <div key={entry.id} className="relative pl-14">
                                             {/* Icon circle */}
                                             <div
-                                                className={`absolute left-2 w-7 h-7 rounded-full flex items-center justify-center ${config.bgColor} border-2 border-gray-800`}
+                                                className={`absolute left-1 w-10 h-10 rounded-full flex items-center justify-center ${config.bgColor} border-2 border-gray-800`}
                                             >
-                                                <Icon className={`h-3.5 w-3.5 ${config.color}`} />
+                                                <Icon className={`h-5 w-5 ${config.color}`} />
                                             </div>
 
                                             {/* Content card */}
-                                            <div className={`${config.bgColor} rounded-lg p-3 border border-gray-700/50`}>
-                                                <div className="flex items-center justify-between mb-1">
-                                                    <span className={`text-sm font-medium ${config.color}`}>
+                                            <div className={`${config.bgColor} rounded-lg p-4 border border-gray-700/50`}>
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className={`text-base font-semibold ${config.color}`}>
                                                         {config.label}
                                                     </span>
-                                                    <span className="text-xs text-gray-500">
+                                                    <span className="text-sm text-gray-400">
                                                         {formatTime(entry.changed_at)}
                                                     </span>
                                                 </div>
 
-                                                <div className="text-xs text-gray-400">
+                                                <div className="text-sm text-gray-400">
                                                     {formatDate(entry.changed_at)}
                                                 </div>
 
                                                 {/* Show value changes */}
                                                 {entry.old_value || entry.new_value ? (
-                                                    <div className="mt-2 flex items-center gap-2 text-xs">
+                                                    <div className="mt-3 flex items-center gap-3 text-sm">
                                                         {entry.old_value && (
-                                                            <span className="px-2 py-0.5 rounded bg-gray-800/50 text-gray-400">
+                                                            <span className="px-3 py-1.5 rounded-md bg-gray-800/50 text-gray-300">
                                                                 {formatValue(entry.old_value, entry.field_name)}
                                                             </span>
                                                         )}
                                                         {entry.old_value && entry.new_value && (
-                                                            <ArrowRight className="h-3 w-3 text-gray-600" />
+                                                            <ArrowRight className="h-5 w-5 text-gray-500" />
                                                         )}
                                                         {entry.new_value && (
-                                                            <span className={`px-2 py-0.5 rounded ${config.bgColor} ${config.color} font-medium`}>
+                                                            <span className={`px-3 py-1.5 rounded-md ${config.bgColor} ${config.color} font-semibold`}>
                                                                 {formatValue(entry.new_value, entry.field_name)}
                                                             </span>
                                                         )}
@@ -238,7 +238,7 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
 
                                                 {/* Changed by */}
                                                 {entry.changed_by && entry.changed_by !== "user" && entry.changed_by !== "system" && (
-                                                    <div className="mt-1 text-xs text-gray-500">
+                                                    <div className="mt-2 text-sm text-gray-500">
                                                         by {entry.changed_by}
                                                     </div>
                                                 )}
