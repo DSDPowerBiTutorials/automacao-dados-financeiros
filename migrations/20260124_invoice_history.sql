@@ -22,6 +22,9 @@ CREATE INDEX IF NOT EXISTS idx_invoice_history_changed_at ON invoice_history(cha
 -- RLS Policies
 ALTER TABLE invoice_history ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Allow read invoice_history" ON invoice_history;
+DROP POLICY IF EXISTS "Allow insert invoice_history" ON invoice_history;
+
 CREATE POLICY "Allow read invoice_history" ON invoice_history FOR SELECT USING (true);
 CREATE POLICY "Allow insert invoice_history" ON invoice_history FOR INSERT WITH CHECK (true);
 
