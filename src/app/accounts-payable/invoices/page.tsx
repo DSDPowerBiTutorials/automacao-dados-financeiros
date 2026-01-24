@@ -1616,6 +1616,44 @@ export default function InvoicesPage() {
                   </div>
                 </div>
 
+                {/* Paid Amount & Paid Currency */}
+                <div className="grid grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="paid_amount">Paid Amount</Label>
+                    <Input
+                      id="paid_amount"
+                      type="number"
+                      step="0.01"
+                      value={formData.paid_amount}
+                      onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="paid_currency">Paid Currency</Label>
+                    <Select value={formData.paid_currency} onValueChange={(val) => setFormData({ ...formData, paid_currency: val })}>
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select currency" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        <SelectItem value="EUR">EUR - Euro</SelectItem>
+                        <SelectItem value="USD">USD - US Dollar</SelectItem>
+                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                        <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="payment_date">Payment Date</Label>
+                    <Input
+                      id="payment_date"
+                      type="date"
+                      value={formData.payment_date}
+                      onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                    />
+                  </div>
+                </div>
+
                 {/* Cost Type, Dep Cost Type, Department & Sub-Department */}
                 <div className="grid grid-cols-4 gap-6">
                   <div className="space-y-2">
