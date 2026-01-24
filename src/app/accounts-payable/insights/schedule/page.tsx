@@ -148,6 +148,7 @@ export default function PaymentSchedulePage() {
     const [invoices, setInvoices] = useState<Invoice[]>([]);
     const [providers, setProviders] = useState<Provider[]>([]);
     const [paymentMethods, setPaymentMethods] = useState<MasterData[]>([]);
+    const [bankAccounts, setBankAccounts] = useState<MasterData[]>([]);
     const [costTypes, setCostTypes] = useState<MasterData[]>([]);
     const [depCostTypes, setDepCostTypes] = useState<MasterData[]>([]);
     const [costCenters, setCostCenters] = useState<MasterData[]>([]);
@@ -195,10 +196,11 @@ export default function PaymentSchedulePage() {
     async function loadData() {
         setLoading(true);
         try {
-            const [invoicesRes, providersRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, financialAccountsRes] = await Promise.all([
+            const [invoicesRes, providersRes, paymentMethodsRes, bankAccountsRes, costTypesRes, depCostTypesRes, costCentersRes, financialAccountsRes] = await Promise.all([
                 supabase.from("invoices").select("*").eq("invoice_type", "INCURRED").order("schedule_date", { ascending: true, nullsFirst: false }),
                 supabase.from("providers").select("code, name"),
                 supabase.from("payment_methods").select("code, name"),
+                supabase.from("bank_accounts").select("code, name"),
                 supabase.from("cost_types").select("code, name"),
                 supabase.from("dep_cost_types").select("code, name"),
                 supabase.from("cost_centers").select("code, name"),
@@ -209,6 +211,7 @@ export default function PaymentSchedulePage() {
             setInvoices(invoicesRes.data || []);
             setProviders(providersRes.data || []);
             setPaymentMethods(paymentMethodsRes.data || []);
+            setBankAccounts(bankAccountsRes.data || []);
             setCostTypes(costTypesRes.data || []);
             setDepCostTypes(depCostTypesRes.data || []);
             setCostCenters(costCentersRes.data || []);
@@ -357,6 +360,37 @@ export default function PaymentSchedulePage() {
             if (selectedInvoice?.id === invoiceId) setSelectedInvoice({ ...selectedInvoice, schedule_date: date });
             if (date) setExpandedGroups((prev) => new Set([...prev, date]));
             toast({ title: date ? "Scheduled" : "Unscheduled", className: "bg-white" });
+        } catch (e: any) {
+            toast({ title: "Error", description: e?.message, variant: "destructive", className: "bg-white" });
+        } finally {
+            setUpdatingInvoice(null);
+        }
+    }
+
+    async function updateInvoiceField(invoiceId: number, field: string, value: any) {
+        setUpdatingInvoice(invoiceId);
+        try {
+            const updatePayload: any = { [field]: value };
+
+            // Update payment_status based on payment_date
+            if (field === "payment_date") {
+                updatePayload.payment_status = value ? "paid" : "pending";
+            }
+
+            const { error } = await supabase.from("invoices").update(updatePayload).eq("id", invoiceId);
+            if (error) throw error;
+
+            setInvoices((prev) => prev.map((inv) => (inv.id === invoiceId ? { ...inv, ...updatePayload } : inv)));
+            if (selectedInvoice?.id === invoiceId) {
+                setSelectedInvoice({ ...selectedInvoice, ...updatePayload });
+            }
+
+            // Expand group if schedule_date changed
+            if (field === "schedule_date" && value) {
+                setExpandedGroups((prev) => new Set([...prev, value]));
+            }
+
+            toast({ title: "Updated successfully", className: "bg-white" });
         } catch (e: any) {
             toast({ title: "Error", description: e?.message, variant: "destructive", className: "bg-white" });
         } finally {
@@ -578,6 +612,7 @@ export default function PaymentSchedulePage() {
 
                         {/* Fields */}
                         <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+                            {/* Invoice Info (read-only) */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-3">
                                     <Calendar className="h-4 w-4 text-gray-500" />
@@ -613,60 +648,104 @@ export default function PaymentSchedulePage() {
                             </div>
 
                             <div className="flex items-center gap-3">
-                                <CreditCard className="h-4 w-4 text-gray-500" />
+                                <Calendar className="h-4 w-4 text-gray-500" />
                                 <div>
-                                    <p className="text-xs text-gray-500">Payment Method</p>
-                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">{getMasterDataName(paymentMethods, selectedInvoice.payment_method_code)}</Badge>
+                                    <p className="text-xs text-gray-500">Due Date</p>
+                                    <p className="text-sm text-white">{selectedInvoice.due_date ? formatShortDate(selectedInvoice.due_date) : "—"}</p>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="flex items-center gap-3">
+                        {/* Payment Control (editable) */}
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <CreditCard className="h-4 w-4" />
+                                Payment Control
+                            </h3>
+
+                            {/* Schedule Date */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Schedule Date</Label>
+                                <Input
+                                    type="date"
+                                    value={selectedInvoice.schedule_date || ""}
+                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "schedule_date", e.target.value || null)}
+                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                />
+                            </div>
+
+                            {/* Bank Account */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Bank Account</Label>
+                                <select
+                                    value={selectedInvoice.bank_account_code || ""}
+                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "bank_account_code", e.target.value || null)}
+                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                >
+                                    <option value="">Select bank account...</option>
+                                    {bankAccounts.map((ba) => (
+                                        <option key={ba.code} value={ba.code}>{ba.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Payment Method */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Payment Method</Label>
+                                <select
+                                    value={selectedInvoice.payment_method_code || ""}
+                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "payment_method_code", e.target.value || null)}
+                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                >
+                                    <option value="">Select payment method...</option>
+                                    {paymentMethods.map((pm) => (
+                                        <option key={pm.code} value={pm.code}>{pm.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Payment Date */}
+                            <div className="space-y-1">
+                                <Label className="text-xs text-gray-400">Payment Date</Label>
+                                <Input
+                                    type="date"
+                                    value={selectedInvoice.payment_date || ""}
+                                    onChange={(e) => updateInvoiceField(selectedInvoice.id, "payment_date", e.target.value || null)}
+                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                />
+                            </div>
+
+                            {/* Payment Status */}
+                            <div className="flex items-center gap-3 pt-2">
                                 <CheckCircle className="h-4 w-4 text-gray-500" />
                                 <div>
-                                    <p className="text-xs text-gray-500">Invoice Status</p>
+                                    <p className="text-xs text-gray-500">Payment Status</p>
                                     <Badge variant="outline" className={selectedInvoice.payment_date ? "bg-green-900/30 text-green-400 border-green-700" : "bg-yellow-900/30 text-yellow-400 border-yellow-700"}>
                                         {selectedInvoice.payment_date ? "Paid" : "Pending"}
                                     </Badge>
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="flex items-center gap-3">
-                                <Calendar className="h-4 w-4 text-gray-500" />
+                        {/* Classification (read-only badges) */}
+                        <div className="px-4 py-4 space-y-3 border-b border-gray-800">
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Classification</h3>
+                            <div className="grid grid-cols-2 gap-3">
                                 <div>
-                                    <p className="text-xs text-gray-500">Payment Due</p>
-                                    <p className="text-sm text-white">{selectedInvoice.due_date ? formatShortDate(selectedInvoice.due_date) : "—"}</p>
+                                    <p className="text-xs text-gray-500 mb-1">P&L Account</p>
+                                    <Badge variant="outline" className="bg-red-900/30 text-red-400 border-red-700 text-xs">{getMasterDataName(financialAccounts, selectedInvoice.financial_account_code)}</Badge>
                                 </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Building2 className="h-4 w-4 text-gray-500" />
                                 <div>
-                                    <p className="text-xs text-gray-500">P&L - COGS</p>
-                                    <Badge variant="outline" className="bg-red-900/30 text-red-400 border-red-700">{getMasterDataName(financialAccounts, selectedInvoice.financial_account_code)}</Badge>
+                                    <p className="text-xs text-gray-500 mb-1">Dep Cost Type</p>
+                                    <Badge variant="outline" className="bg-green-900/30 text-green-400 border-green-700 text-xs">{getMasterDataName(depCostTypes, selectedInvoice.dep_cost_type_code)}</Badge>
                                 </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Building2 className="h-4 w-4 text-gray-500" />
                                 <div>
-                                    <p className="text-xs text-gray-500">Departamental Big Line</p>
-                                    <Badge variant="outline" className="bg-green-900/30 text-green-400 border-green-700">{getMasterDataName(depCostTypes, selectedInvoice.dep_cost_type_code)}</Badge>
+                                    <p className="text-xs text-gray-500 mb-1">Department</p>
+                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700 text-xs">{getMasterDataName(costCenters, selectedInvoice.cost_center_code)}</Badge>
                                 </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Building2 className="h-4 w-4 text-gray-500" />
                                 <div>
-                                    <p className="text-xs text-gray-500">Department</p>
-                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">{getMasterDataName(costCenters, selectedInvoice.cost_center_code)}</Badge>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <Building2 className="h-4 w-4 text-gray-500" />
-                                <div>
-                                    <p className="text-xs text-gray-500">Cost Type</p>
-                                    <Badge variant="outline" className="bg-pink-900/30 text-pink-400 border-pink-700">{getMasterDataName(costTypes, selectedInvoice.cost_type_code)}</Badge>
+                                    <p className="text-xs text-gray-500 mb-1">Cost Type</p>
+                                    <Badge variant="outline" className="bg-pink-900/30 text-pink-400 border-pink-700 text-xs">{getMasterDataName(costTypes, selectedInvoice.cost_type_code)}</Badge>
                                 </div>
                             </div>
                         </div>
