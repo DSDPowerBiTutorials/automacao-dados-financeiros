@@ -78,6 +78,9 @@ type Invoice = {
     invoice_status?: string | null;
     finance_status_changed_at?: string | null;
     invoice_status_changed_at?: string | null;
+    is_reconciled?: boolean | null;
+    reconciled_transaction_id?: string | null;
+    reconciled_at?: string | null;
 };
 
 type Provider = {
@@ -185,6 +188,13 @@ export default function PaymentSchedulePage() {
     const [newComment, setNewComment] = useState("");
     const [submittingComment, setSubmittingComment] = useState(false);
     const [activeTab, setActiveTab] = useState<"comments" | "all">("all");
+
+    // Reconciliation dialog
+    const [reconciliationDialogOpen, setReconciliationDialogOpen] = useState(false);
+    const [reconciliationInvoice, setReconciliationInvoice] = useState<Invoice | null>(null);
+    const [bankTransactions, setBankTransactions] = useState<any[]>([]);
+    const [loadingTransactions, setLoadingTransactions] = useState(false);
+    const [selectedTransaction, setSelectedTransaction] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
@@ -363,6 +373,16 @@ export default function PaymentSchedulePage() {
         return list.find((item) => item.code === code)?.name || code;
     }
 
+    function getPaymentMethodName(code: string | null | undefined): string {
+        if (!code) return "—";
+        return paymentMethods.find((pm) => pm.code === code)?.name || code;
+    }
+
+    function getBankAccountName(code: string | null | undefined): string {
+        if (!code) return "—";
+        return bankAccounts.find((ba) => ba.code === code)?.name || code;
+    }
+
     function getDepartmentName(code: string | null | undefined): string {
         if (!code) return "—";
         const dept = costCenters.find((c) => c.code === code);
@@ -512,6 +532,115 @@ export default function PaymentSchedulePage() {
         setActivities([]);
     }
 
+    async function openReconciliationDialog(invoice: Invoice) {
+        setReconciliationInvoice(invoice);
+        setReconciliationDialogOpen(true);
+        setLoadingTransactions(true);
+        setSelectedTransaction(null);
+
+        try {
+            // Fetch bank transactions that could match this invoice
+            // Looking for transactions within ±3 days and similar amount
+            const scheduleDate = invoice.schedule_date || invoice.payment_date;
+            if (!scheduleDate) {
+                setBankTransactions([]);
+                return;
+            }
+
+            const startDate = new Date(scheduleDate);
+            startDate.setDate(startDate.getDate() - 3);
+            const endDate = new Date(scheduleDate);
+            endDate.setDate(endDate.getDate() + 3);
+
+            // Query csv_rows for bank transactions
+            const { data, error } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .in("source", ["bankinter-eur", "bankinter-usd", "sabadell"])
+                .gte("date", startDate.toISOString().split("T")[0])
+                .lte("date", endDate.toISOString().split("T")[0])
+                .eq("reconciled", false)
+                .order("date", { ascending: false });
+
+            if (error) throw error;
+
+            // Filter by approximate amount (±5% tolerance)
+            const invoiceAmount = Math.abs(invoice.invoice_amount);
+            const matchingTransactions = (data || []).filter((tx: any) => {
+                const txAmount = Math.abs(tx.amount);
+                const diff = Math.abs(txAmount - invoiceAmount);
+                const tolerance = invoiceAmount * 0.05; // 5% tolerance
+                return diff <= tolerance || diff <= 1; // Also allow €1 difference
+            });
+
+            setBankTransactions(matchingTransactions);
+        } catch (e: any) {
+            console.error("Error loading transactions:", e);
+            toast({ title: "Error", description: "Failed to load bank transactions", variant: "destructive", className: "bg-white" });
+            setBankTransactions([]);
+        } finally {
+            setLoadingTransactions(false);
+        }
+    }
+
+    async function performManualReconciliation() {
+        if (!reconciliationInvoice || !selectedTransaction) return;
+
+        try {
+            const { data: userData } = await supabase.auth.getUser();
+            const userName = userData?.user?.user_metadata?.name || userData?.user?.email?.split("@")[0] || "User";
+
+            // Update invoice as reconciled
+            const { error: invoiceError } = await supabase
+                .from("invoices")
+                .update({
+                    is_reconciled: true,
+                    reconciled_transaction_id: selectedTransaction,
+                    reconciled_at: new Date().toISOString()
+                })
+                .eq("id", reconciliationInvoice.id);
+
+            if (invoiceError) throw invoiceError;
+
+            // Mark bank transaction as reconciled
+            const { error: txError } = await supabase
+                .from("csv_rows")
+                .update({ reconciled: true })
+                .eq("id", selectedTransaction);
+
+            if (txError) throw txError;
+
+            // Log history
+            await fetch("/api/invoice-history", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    invoice_id: reconciliationInvoice.id,
+                    change_type: "reconciled",
+                    field_name: "is_reconciled",
+                    old_value: "false",
+                    new_value: "true",
+                    changed_by: userName,
+                    metadata: { transaction_id: selectedTransaction, method: "manual" }
+                })
+            });
+
+            // Update local state
+            setInvoices((prev) => prev.map((inv) =>
+                inv.id === reconciliationInvoice.id
+                    ? { ...inv, is_reconciled: true, reconciled_transaction_id: selectedTransaction }
+                    : inv
+            ));
+
+            toast({ title: "Reconciliation successful!", className: "bg-white" });
+            setReconciliationDialogOpen(false);
+            setReconciliationInvoice(null);
+            setSelectedTransaction(null);
+        } catch (e: any) {
+            toast({ title: "Error", description: e?.message || "Failed to reconcile", variant: "destructive", className: "bg-white" });
+        }
+    }
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
@@ -567,14 +696,16 @@ export default function PaymentSchedulePage() {
 
                 {/* Table Header */}
                 <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
-                    <div className="grid grid-cols-12 gap-2 px-6 py-2 text-xs text-gray-400 font-medium uppercase">
-                        <div className="col-span-3">Provider</div>
+                    <div className="grid grid-cols-16 gap-2 px-6 py-2 text-xs text-gray-400 font-medium uppercase">
+                        <div className="col-span-2">Provider</div>
                         <div className="col-span-2 text-center">Finance Payment</div>
                         <div className="col-span-2 text-center">Invoice Status</div>
                         <div className="col-span-1">Invoice Date</div>
                         <div className="col-span-1">Due Date</div>
                         <div className="col-span-2">Schedule Date</div>
-                        <div className="col-span-1"></div>
+                        <div className="col-span-2 text-center">Payment Method</div>
+                        <div className="col-span-2 text-center">Bank Account</div>
+                        <div className="col-span-2 text-center">Reconciliation</div>
                     </div>
                 </div>
 
@@ -618,11 +749,11 @@ export default function PaymentSchedulePage() {
                                         return (
                                             <div
                                                 key={invoice.id}
-                                                className={`grid grid-cols-12 gap-2 px-6 py-2.5 hover:bg-gray-800/30 border-t border-gray-800/50 items-center group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""}`}
+                                                className={`grid grid-cols-16 gap-2 px-6 py-2.5 hover:bg-gray-800/30 border-t border-gray-800/50 items-center group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""}`}
                                                 onClick={() => openDetailPanel(invoice)}
                                             >
                                                 {/* Provider */}
-                                                <div className="col-span-3 flex items-center gap-3">
+                                                <div className="col-span-2 flex items-center gap-3">
                                                     <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
                                                         {updatingInvoice === invoice.id ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-500 hover:text-gray-300" />}
                                                     </button>
@@ -657,20 +788,52 @@ export default function PaymentSchedulePage() {
                                                     {invoice.schedule_date ? formatShortDate(invoice.schedule_date) : "—"}
                                                 </div>
 
-                                                {/* Actions */}
-                                                <div className="col-span-1 flex justify-center opacity-0 group-hover:opacity-100">
-                                                    <DropdownMenu>
-                                                        <DropdownMenuTrigger asChild>
-                                                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-400 hover:text-white" onClick={(e) => e.stopPropagation()}>
-                                                                <MoreHorizontal className="h-4 w-4" />
-                                                            </Button>
-                                                        </DropdownMenuTrigger>
-                                                        <DropdownMenuContent align="end" className="bg-[#2a2b2d] border-gray-700 text-white">
-                                                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} className="hover:bg-gray-700">
-                                                                <CheckCircle className="h-4 w-4 mr-2" />{invoice.payment_date ? "Mark as unpaid" : "Mark as paid"}
-                                                            </DropdownMenuItem>
-                                                        </DropdownMenuContent>
-                                                    </DropdownMenu>
+                                                {/* Payment Method */}
+                                                <div className="col-span-2 flex justify-center">
+                                                    {invoice.payment_method_code ? (
+                                                        <Badge variant="outline" className="text-xs bg-gray-800/50 text-gray-300 border-gray-600">
+                                                            {getPaymentMethodName(invoice.payment_method_code)}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-gray-500 text-sm">—</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Bank Account */}
+                                                <div className="col-span-2 flex justify-center">
+                                                    {invoice.bank_account_code ? (
+                                                        <Badge variant="outline" className="text-xs bg-indigo-900/30 text-indigo-400 border-indigo-700">
+                                                            {getBankAccountName(invoice.bank_account_code)}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-gray-500 text-sm">—</span>
+                                                    )}
+                                                </div>
+
+                                                {/* Reconciliation Status */}
+                                                <div className="col-span-2 flex justify-center">
+                                                    {invoice.is_reconciled ? (
+                                                        <Badge variant="outline" className="text-xs bg-green-900/30 text-green-400 border-green-700">
+                                                            <CheckCircle className="h-3 w-3 mr-1" />
+                                                            Reconciled
+                                                        </Badge>
+                                                    ) : invoice.payment_date ? (
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="h-6 text-xs bg-orange-900/30 text-orange-400 border-orange-700 hover:bg-orange-800/50"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                openReconciliationDialog(invoice);
+                                                            }}
+                                                        >
+                                                            Manual Match
+                                                        </Button>
+                                                    ) : (
+                                                        <Badge variant="outline" className="text-xs bg-gray-800/50 text-gray-500 border-gray-700">
+                                                            Pending
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -1057,6 +1220,119 @@ export default function PaymentSchedulePage() {
                             <MessageCircle className="h-4 w-4 mr-1" />
                             Join task
                         </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* Manual Reconciliation Dialog */}
+            {reconciliationDialogOpen && reconciliationInvoice && (
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
+                    <div className="bg-[#2a2b2d] rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+                        {/* Dialog Header */}
+                        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">Manual Reconciliation</h3>
+                                <p className="text-sm text-gray-400">Match invoice with a bank transaction</p>
+                            </div>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setReconciliationDialogOpen(false)}
+                                className="text-gray-400 hover:text-white"
+                            >
+                                <X className="h-5 w-5" />
+                            </Button>
+                        </div>
+
+                        {/* Invoice Info */}
+                        <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
+                            <div className="grid grid-cols-3 gap-4 text-sm">
+                                <div>
+                                    <span className="text-gray-500">Provider</span>
+                                    <p className="text-white font-medium">{getProviderName(reconciliationInvoice.provider_code)}</p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Amount</span>
+                                    <p className="text-white font-medium">
+                                        {reconciliationInvoice.currency === "EUR" ? "€" : "$"}
+                                        {formatCurrency(reconciliationInvoice.invoice_amount)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-gray-500">Bank Account</span>
+                                    <p className="text-white font-medium">{getBankAccountName(reconciliationInvoice.bank_account_code)}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Matching Transactions */}
+                        <div className="flex-1 overflow-auto px-6 py-4">
+                            <h4 className="text-sm font-medium text-gray-400 mb-3">Matching Bank Transactions (±3 days, ±5% amount)</h4>
+
+                            {loadingTransactions ? (
+                                <div className="flex items-center justify-center py-8">
+                                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                </div>
+                            ) : bankTransactions.length === 0 ? (
+                                <div className="text-center py-8 text-gray-500">
+                                    <AlertCircle className="h-8 w-8 mx-auto mb-2" />
+                                    <p>No matching transactions found</p>
+                                    <p className="text-xs mt-1">Try adjusting the date range or check the bank account</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {bankTransactions.map((tx) => (
+                                        <div
+                                            key={tx.id}
+                                            onClick={() => setSelectedTransaction(tx.id)}
+                                            className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTransaction === tx.id
+                                                    ? "border-blue-500 bg-blue-900/20"
+                                                    : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                                                }`}
+                                        >
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="radio"
+                                                        checked={selectedTransaction === tx.id}
+                                                        onChange={() => setSelectedTransaction(tx.id)}
+                                                        className="h-4 w-4 text-blue-600"
+                                                    />
+                                                    <div>
+                                                        <p className="text-white text-sm">{tx.description || "Bank Transaction"}</p>
+                                                        <p className="text-xs text-gray-500">{tx.date} • {tx.source}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className={`font-medium ${tx.amount < 0 ? "text-red-400" : "text-green-400"}`}>
+                                                        {tx.amount < 0 ? "-" : "+"}€{formatCurrency(Math.abs(tx.amount))}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Dialog Footer */}
+                        <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-end gap-3">
+                            <Button
+                                variant="outline"
+                                onClick={() => setReconciliationDialogOpen(false)}
+                                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={performManualReconciliation}
+                                disabled={!selectedTransaction}
+                                className="bg-blue-600 hover:bg-blue-700"
+                            >
+                                <CheckCircle className="h-4 w-4 mr-2" />
+                                Confirm Reconciliation
+                            </Button>
+                        </div>
                     </div>
                 </div>
             )}
