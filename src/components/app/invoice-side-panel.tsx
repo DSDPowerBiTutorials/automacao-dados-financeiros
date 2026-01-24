@@ -410,7 +410,7 @@ export function InvoiceSidePanel({
 
                             {/* Paid Amount, Paid Currency, Payment Date */}
                             <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-200 mt-3">
-                                <div><Label className="text-xs text-gray-700">Paid Amount</Label><Input type="number" step="0.01" value={formData.paid_amount} onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })} placeholder="0.00" className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
+                                <div><Label className="text-xs text-gray-700">Paid Amount</Label><Input type="number" step="any" value={formData.paid_amount} onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })} placeholder="0.00" className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
                                 <div><Label className="text-xs text-gray-700">Paid Currency</Label>
                                     <Select value={formData.paid_currency} onValueChange={(val) => setFormData({ ...formData, paid_currency: val })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>

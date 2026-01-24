@@ -1173,7 +1173,7 @@ export default function PaymentSchedulePage() {
                                 <Label className="text-xs text-gray-400">Paid Amount</Label>
                                 <Input
                                     type="number"
-                                    step="0.01"
+                                    step="any"
                                     value={selectedInvoice.paid_amount || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "paid_amount", e.target.value ? parseFloat(e.target.value) : null)}
                                     placeholder={selectedInvoice.invoice_amount.toString()}
@@ -1461,7 +1461,7 @@ export default function PaymentSchedulePage() {
                                 <Label className="text-xs text-gray-400">Paid Amount *</Label>
                                 <Input
                                     type="number"
-                                    step="0.01"
+                                    step="any"
                                     value={paymentConfirmData.paid_amount}
                                     onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, paid_amount: e.target.value })}
                                     className="bg-[#1e1f21] border-gray-600 text-white h-9"

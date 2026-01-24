@@ -1623,7 +1623,7 @@ export default function InvoicesPage() {
                     <Input
                       id="paid_amount"
                       type="number"
-                      step="0.01"
+                      step="any"
                       value={formData.paid_amount}
                       onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })}
                       placeholder="0.00"
