@@ -194,6 +194,7 @@ export default function InvoicesPage() {
   const [costTypes, setCostTypes] = useState<any[]>([]);
   const [depCostTypes, setDepCostTypes] = useState<any[]>([]);
   const [costCenters, setCostCenters] = useState<any[]>([]);
+  const [subDepartments, setSubDepartments] = useState<any[]>([]);
   const [entryTypes, setEntryTypes] = useState<any[]>([]);
   const [financialAccounts, setFinancialAccounts] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
@@ -217,6 +218,7 @@ export default function InvoicesPage() {
     cost_type_code: "",
     dep_cost_type_code: "",
     cost_center_code: "",
+    sub_department_code: "",
     description: "",
     invoice_number: "",
     country_code: "ES",
@@ -263,13 +265,14 @@ export default function InvoicesPage() {
         bankAccountsQuery = bankAccountsQuery.or(`country.eq.${selectedScope},applies_to_all_countries.eq.true`);
       }
 
-      const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, entryTypesRes, financialAccountsRes, coursesRes] = await Promise.all([
+      const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, entryTypesRes, financialAccountsRes, coursesRes] = await Promise.all([
         supabase.from("providers").select("*").eq("is_active", true),
         bankAccountsQuery,
         supabase.from("payment_methods").select("*").eq("is_active", true),
         supabase.from("cost_types").select("*").eq("is_active", true),
         supabase.from("dep_cost_types").select("*").eq("is_active", true),
         supabase.from("cost_centers").select("*").eq("is_active", true),
+        supabase.from("sub_departments").select("*").eq("is_active", true),
         supabase.from("entry_types").select("*").eq("is_active", true),
         supabase.from("financial_accounts").select("*").eq("is_active", true),
         supabase.from("courses").select("*").eq("is_active", true)
@@ -281,6 +284,7 @@ export default function InvoicesPage() {
       setCostTypes(costTypesRes.data || []);
       setDepCostTypes(depCostTypesRes.data || []);
       setCostCenters(costCentersRes.data || []);
+      setSubDepartments(subDepartmentsRes.data || []);
       setEntryTypes(entryTypesRes.data || []);
       setFinancialAccounts(financialAccountsRes.data || []);
       setCourses(coursesRes.data || []);
@@ -336,7 +340,7 @@ export default function InvoicesPage() {
         return;
       }
       if (!formData.cost_center_code) {
-        toast({ title: "Error", description: "Cost Center is required", variant: "destructive", className: "bg-white" });
+        toast({ title: "Error", description: "Department is required", variant: "destructive", className: "bg-white" });
         setSubmitting(false);
         return;
       }
@@ -851,7 +855,7 @@ export default function InvoicesPage() {
       const fieldLabels: Record<string, string> = {
         'provider_code': 'Provider',
         'financial_account_code': 'Financial Account',
-        'cost_center_code': 'Cost Center',
+        'cost_center_code': 'Department',
         'cost_type_code': 'Cost Type',
         'dep_cost_type_code': 'Dep Cost Type',
         'currency': 'Currency',
@@ -952,7 +956,7 @@ export default function InvoicesPage() {
         amount: "Amount",
         currency: "Currency",
         financial_account: "Financial Account",
-        cost_center: "Cost Center",
+        cost_center: "Department",
         cost_type: "Cost Type",
         dep_cost_type: "Dep Cost Type",
         payment_status: "Payment Status",
@@ -984,7 +988,7 @@ export default function InvoicesPage() {
         if (visibleColumns.has('amount')) row['Amount'] = formatEuropeanNumber(invoice.invoice_amount * invoice.eur_exchange);
         if (visibleColumns.has('currency')) row['Currency'] = invoice.currency;
         if (visibleColumns.has('financial_account')) row['Financial Account'] = getNameByCode(financialAccounts, invoice.financial_account_code);
-        if (visibleColumns.has('cost_center')) row['Cost Center'] = invoice.cost_center_code ? getNameByCode(costCenters, invoice.cost_center_code) : '';
+        if (visibleColumns.has('cost_center')) row['Department'] = invoice.cost_center_code ? getNameByCode(costCenters, invoice.cost_center_code) : '';
         if (visibleColumns.has('cost_type')) row['Cost Type'] = invoice.cost_type_code ? getNameByCode(costTypes, invoice.cost_type_code) : '';
         if (visibleColumns.has('dep_cost_type')) row['Dep Cost Type'] = invoice.dep_cost_type_code ? getNameByCode(depCostTypes, invoice.dep_cost_type_code) : '';
         if (visibleColumns.has('payment_status')) row['Payment Status'] = invoice.payment_status || '';
@@ -1046,7 +1050,7 @@ export default function InvoicesPage() {
       if (visibleColumns.has('amount')) columns.push('Amount');
       if (visibleColumns.has('currency')) columns.push('Currency');
       if (visibleColumns.has('financial_account')) columns.push('Financial Account');
-      if (visibleColumns.has('cost_center')) columns.push('Cost Center');
+      if (visibleColumns.has('cost_center')) columns.push('Department');
       if (visibleColumns.has('cost_type')) columns.push('Cost Type');
       if (visibleColumns.has('dep_cost_type')) columns.push('Dep Cost Type');
       if (visibleColumns.has('payment_status')) columns.push('Payment Status');
@@ -1601,8 +1605,8 @@ export default function InvoicesPage() {
                   </div>
                 </div>
 
-                {/* Cost Type, Dep Cost Type & Cost Center */}
-                <div className="grid grid-cols-3 gap-6">
+                {/* Cost Type, Dep Cost Type, Department & Sub-Department */}
+                <div className="grid grid-cols-4 gap-6">
                   <div className="space-y-2">
                     <Label htmlFor="cost_type_code">Cost Type *</Label>
                     <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })} required>
@@ -1630,10 +1634,10 @@ export default function InvoicesPage() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="cost_center_code">Cost Center *</Label>
-                    <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val })} required>
+                    <Label htmlFor="cost_center_code">Department *</Label>
+                    <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val, sub_department_code: "" })} required>
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select cost center" />
+                        <SelectValue placeholder="Select department" />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
                         {costCenters.map((center) => (
@@ -1641,6 +1645,27 @@ export default function InvoicesPage() {
                             {center.code} - {center.name}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="sub_department_code">Sub-Department</Label>
+                    <Select
+                      value={formData.sub_department_code}
+                      onValueChange={(val) => setFormData({ ...formData, sub_department_code: val })}
+                      disabled={!formData.cost_center_code}
+                    >
+                      <SelectTrigger className="bg-white">
+                        <SelectValue placeholder="Select sub-department" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-white">
+                        {subDepartments
+                          .filter(sd => sd.parent_department_code === formData.cost_center_code)
+                          .map((sd) => (
+                            <SelectItem key={sd.code} value={sd.code}>
+                              {sd.code} - {sd.name}
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -2017,7 +2042,7 @@ export default function InvoicesPage() {
                           className="h-4 w-4"
                         />
                         <Label htmlFor="split-cost-center" className="cursor-pointer">
-                          Split by Cost Center
+                          Split by Department
                         </Label>
                       </div>
                       <div className="flex items-center space-x-2">
@@ -2160,7 +2185,7 @@ export default function InvoicesPage() {
                                   setSplitConfig({ ...splitConfig, splits: newSplits });
                                 }}
                               >
-                                <option value="">Select Cost Center...</option>
+                                <option value="">Select Department...</option>
                                 {costCenters.map(cc => (
                                   <option key={cc.code} value={cc.code}>{cc.name}</option>
                                 ))}
@@ -2541,7 +2566,7 @@ export default function InvoicesPage() {
                         { id: 'amount', label: 'Amount' },
                         { id: 'currency', label: 'Currency' },
                         { id: 'financial_account', label: 'Financial Account' },
-                        { id: 'cost_center', label: 'Cost Center' },
+                        { id: 'cost_center', label: 'Department' },
                         { id: 'cost_type', label: 'Cost Type' },
                         { id: 'dep_cost_type', label: 'Dep Cost Type' },
                         { id: 'payment_status', label: 'Payment Status' },
@@ -2861,8 +2886,8 @@ export default function InvoicesPage() {
                         {visibleColumns.has('cost_center') && (
                           <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
                             <div className="flex items-center gap-1">
-                              Cost Center
-                              <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Cost Center">
+                              Department
+                              <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Department">
                                 <Filter className="h-3 w-3" />
                               </button>
                             </div>
@@ -3347,7 +3372,7 @@ export default function InvoicesPage() {
                               </td>
                             )}
 
-                            {/* Cost Center */}
+                            {/* Department */}
                             {visibleColumns.has('cost_center') && (
                               <td className="px-2 py-1 text-center group/cell relative">
                                 {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_center_code" ? (
@@ -3362,7 +3387,7 @@ export default function InvoicesPage() {
                                       <SelectContent className="bg-white max-h-[300px]">
                                         <div className="p-2 sticky top-0 bg-white border-b z-10">
                                           <Input
-                                            placeholder="Search cost centers..."
+                                            placeholder="Search departments..."
                                             value={selectSearchTerm}
                                             onChange={(e) => setSelectSearchTerm(e.target.value)}
                                             className="h-7 text-xs"

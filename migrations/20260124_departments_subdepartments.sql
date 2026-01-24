@@ -32,9 +32,10 @@ ON CONFLICT (code) DO UPDATE SET name = EXCLUDED.name, level = EXCLUDED.level;
 INSERT INTO sub_departments (code, name, parent_department_code, color) VALUES
     ('1.1.0', 'Education', '1.0.0', 'yellow'),
     ('2.1.0', 'Lab', '2.0.0', 'orange'),
-    ('2.1.1', 'PC', '2.0.0', 'gray'),
+    ('2.1.1', 'Planning Center', '2.0.0', 'gray'),
     ('2.1.2', 'Delight', '2.0.0', 'orange'),
     ('3.1.0', 'Corporate', '3.0.0', 'blue'),
+    ('3.1.1', 'Finance', '3.0.0', 'green'),
     ('3.1.2', 'Marketing', '3.0.0', 'pink')
 ON CONFLICT (code) DO UPDATE SET 
     name = EXCLUDED.name, 
