@@ -116,9 +116,20 @@ type ScheduleGroup = {
     totalUSD: number;
 };
 
+// Parse date string without timezone issues (treats as local date)
+function parseLocalDate(dateStr: string): Date {
+    // Handle ISO date strings like "2026-01-24" by parsing as local time
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    }
+    // Fallback for other formats
+    return new Date(dateStr);
+}
+
 // Format date for group header
 function formatDateForHeader(dateStr: string): string {
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     const options: Intl.DateTimeFormatOptions = { month: "long", day: "numeric" };
     const formatted = date.toLocaleDateString("en-US", options);
     const day = date.getDate();
@@ -130,13 +141,13 @@ function formatDateForHeader(dateStr: string): string {
 }
 
 function formatShortDate(dateStr: string): string {
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
 }
 
 function formatRelativeDate(dateStr: string): string {
     const today = new Date();
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     if (date.toDateString() === today.toDateString()) return "Today";
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
@@ -360,7 +371,7 @@ export default function PaymentSchedulePage() {
         return Array.from(groupsMap.values()).sort((a, b) => {
             if (a.date === "unscheduled") return 1;
             if (b.date === "unscheduled") return -1;
-            return new Date(a.date).getTime() - new Date(b.date).getTime();
+            return parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime();
         });
     }, [filteredInvoices]);
 
@@ -585,9 +596,9 @@ export default function PaymentSchedulePage() {
                 return;
             }
 
-            const startDate = new Date(scheduleDate);
+            const startDate = parseLocalDate(scheduleDate);
             startDate.setDate(startDate.getDate() - 3);
-            const endDate = new Date(scheduleDate);
+            const endDate = parseLocalDate(scheduleDate);
             endDate.setDate(endDate.getDate() + 3);
 
             // Query csv_rows for bank transactions
@@ -1207,8 +1218,8 @@ export default function PaymentSchedulePage() {
                                                         case "invoice_status":
                                                             return `changed Invoice Status: ${statusLabels[activity.old_value || ""] || activity.old_value || "—"} → ${statusLabels[activity.new_value || ""] || activity.new_value || "—"}`;
                                                         case "schedule_date":
-                                                            const oldDate = activity.old_value ? new Date(activity.old_value).toLocaleDateString("pt-BR") : "none";
-                                                            const newDate = activity.new_value ? new Date(activity.new_value).toLocaleDateString("pt-BR") : "none";
+                                                            const oldDate = activity.old_value ? parseLocalDate(activity.old_value).toLocaleDateString("pt-BR") : "none";
+                                                            const newDate = activity.new_value ? parseLocalDate(activity.new_value).toLocaleDateString("pt-BR") : "none";
                                                             return `changed Schedule Date: ${oldDate} → ${newDate}`;
                                                         case "paid": return "marked as Paid";
                                                         case "unpaid": return "marked as Unpaid";
