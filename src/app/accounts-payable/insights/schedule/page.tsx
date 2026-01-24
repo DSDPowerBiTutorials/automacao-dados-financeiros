@@ -696,16 +696,16 @@ export default function PaymentSchedulePage() {
 
                 {/* Table Header */}
                 <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
-                    <div className="grid grid-cols-16 gap-2 px-6 py-2 text-xs text-gray-400 font-medium uppercase">
-                        <div className="col-span-2">Provider</div>
-                        <div className="col-span-2 text-center">Finance Payment</div>
-                        <div className="col-span-2 text-center">Invoice Status</div>
-                        <div className="col-span-1">Invoice Date</div>
-                        <div className="col-span-1">Due Date</div>
-                        <div className="col-span-2">Schedule Date</div>
-                        <div className="col-span-2 text-center">Payment Method</div>
-                        <div className="col-span-2 text-center">Bank Account</div>
-                        <div className="col-span-2 text-center">Reconciliation</div>
+                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase">
+                        <div className="w-[140px] flex-shrink-0">Provider</div>
+                        <div className="w-[90px] flex-shrink-0">Finance</div>
+                        <div className="w-[80px] flex-shrink-0">Invoice</div>
+                        <div className="w-[70px] flex-shrink-0">Inv Date</div>
+                        <div className="w-[70px] flex-shrink-0">Due Date</div>
+                        <div className="w-[70px] flex-shrink-0">Sched</div>
+                        <div className="w-[90px] flex-shrink-0">Pay Method</div>
+                        <div className="w-[100px] flex-shrink-0">Bank</div>
+                        <div className="w-[100px] flex-shrink-0">Reconciliation</div>
                     </div>
                 </div>
 
@@ -749,71 +749,70 @@ export default function PaymentSchedulePage() {
                                         return (
                                             <div
                                                 key={invoice.id}
-                                                className={`grid grid-cols-16 gap-2 px-6 py-2.5 hover:bg-gray-800/30 border-t border-gray-800/50 items-center group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""}`}
+                                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""}`}
                                                 onClick={() => openDetailPanel(invoice)}
                                             >
                                                 {/* Provider */}
-                                                <div className="col-span-2 flex items-center gap-3">
+                                                <div className="w-[140px] flex-shrink-0 flex items-center gap-2">
                                                     <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
-                                                        {updatingInvoice === invoice.id ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-500 hover:text-gray-300" />}
+                                                        {updatingInvoice === invoice.id ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Circle className="h-4 w-4 text-gray-500 hover:text-gray-300" />}
                                                     </button>
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className={`truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
-                                                        {invoice.description && <span className="text-xs text-gray-500 truncate">{invoice.description}</span>}
+                                                        <span className={`text-[11px] truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
                                                     </div>
                                                 </div>
 
                                                 {/* Finance Payment Status */}
-                                                <div className="col-span-2 flex justify-center">
-                                                    <Badge variant="outline" className={`text-xs ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color}`}>
+                                                <div className="w-[90px] flex-shrink-0">
+                                                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color}`}>
                                                         {financeStatusConfig[financeStatus]?.label || "Pending"}
                                                     </Badge>
                                                 </div>
 
                                                 {/* Invoice Status */}
-                                                <div className="col-span-2 flex justify-center">
-                                                    <Badge variant="outline" className={`text-xs ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color}`}>
+                                                <div className="w-[80px] flex-shrink-0">
+                                                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color}`}>
                                                         {invoiceStatusConfig[invoiceStatus]?.label || "Pending"}
                                                     </Badge>
                                                 </div>
 
                                                 {/* Invoice Date */}
-                                                <div className="col-span-1 text-sm text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
+                                                <div className="w-[70px] flex-shrink-0 text-[10px] text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
 
                                                 {/* Due Date */}
-                                                <div className="col-span-1 text-sm text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
+                                                <div className="w-[70px] flex-shrink-0 text-[10px] text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
 
                                                 {/* Schedule Date */}
-                                                <div className="col-span-2 text-sm text-gray-300">
+                                                <div className="w-[70px] flex-shrink-0 text-[10px] text-gray-300">
                                                     {invoice.schedule_date ? formatShortDate(invoice.schedule_date) : "—"}
                                                 </div>
 
                                                 {/* Payment Method */}
-                                                <div className="col-span-2 flex justify-center">
+                                                <div className="w-[90px] flex-shrink-0">
                                                     {invoice.payment_method_code ? (
-                                                        <Badge variant="outline" className="text-xs bg-gray-800/50 text-gray-300 border-gray-600">
+                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 bg-gray-800/50 text-gray-300 border-gray-600">
                                                             {getPaymentMethodName(invoice.payment_method_code)}
                                                         </Badge>
                                                     ) : (
-                                                        <span className="text-gray-500 text-sm">—</span>
+                                                        <span className="text-gray-500 text-[10px]">—</span>
                                                     )}
                                                 </div>
 
                                                 {/* Bank Account */}
-                                                <div className="col-span-2 flex justify-center">
+                                                <div className="w-[100px] flex-shrink-0">
                                                     {invoice.bank_account_code ? (
-                                                        <Badge variant="outline" className="text-xs bg-indigo-900/30 text-indigo-400 border-indigo-700">
+                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 bg-indigo-900/30 text-indigo-400 border-indigo-700 truncate max-w-[95px]">
                                                             {getBankAccountName(invoice.bank_account_code)}
                                                         </Badge>
                                                     ) : (
-                                                        <span className="text-gray-500 text-sm">—</span>
+                                                        <span className="text-gray-500 text-[10px]">—</span>
                                                     )}
                                                 </div>
 
                                                 {/* Reconciliation Status */}
-                                                <div className="col-span-2 flex justify-center">
+                                                <div className="w-[100px] flex-shrink-0">
                                                     {invoice.is_reconciled ? (
-                                                        <Badge variant="outline" className="text-xs bg-green-900/30 text-green-400 border-green-700">
+                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-900/30 text-green-400 border-green-700">
                                                             <CheckCircle className="h-3 w-3 mr-1" />
                                                             Reconciled
                                                         </Badge>
@@ -821,16 +820,16 @@ export default function PaymentSchedulePage() {
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
-                                                            className="h-6 text-xs bg-orange-900/30 text-orange-400 border-orange-700 hover:bg-orange-800/50"
+                                                            className="h-5 text-[9px] px-1 bg-orange-900/30 text-orange-400 border-orange-700 hover:bg-orange-800/50"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
                                                                 openReconciliationDialog(invoice);
                                                             }}
                                                         >
-                                                            Manual Match
+                                                            Match
                                                         </Button>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-xs bg-gray-800/50 text-gray-500 border-gray-700">
+                                                        <Badge variant="outline" className="text-[9px] px-1 py-0 bg-gray-800/50 text-gray-500 border-gray-700">
                                                             Pending
                                                         </Badge>
                                                     )}
@@ -1286,8 +1285,8 @@ export default function PaymentSchedulePage() {
                                             key={tx.id}
                                             onClick={() => setSelectedTransaction(tx.id)}
                                             className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTransaction === tx.id
-                                                    ? "border-blue-500 bg-blue-900/20"
-                                                    : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                                                ? "border-blue-500 bg-blue-900/20"
+                                                : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
                                                 }`}
                                         >
                                             <div className="flex items-center justify-between">
