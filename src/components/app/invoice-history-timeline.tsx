@@ -113,8 +113,11 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
         try {
             const res = await fetch(`/api/invoice-history?invoice_id=${invoiceId}`);
             const data = await res.json();
+            console.log("History API response for invoice", invoiceId, ":", data);
             if (data.success) {
                 setHistory(data.history || []);
+            } else {
+                console.error("History API error:", data.error);
             }
         } catch (error) {
             console.error("Error fetching history:", error);
