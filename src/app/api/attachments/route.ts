@@ -109,6 +109,17 @@ export async function POST(request: NextRequest) {
             throw dbError;
         }
 
+        // Auto-update invoice_status to 'available' when attachment is uploaded
+        if (entityType === 'invoice' && entityId) {
+            await supabaseAdmin
+                .from('invoices')
+                .update({
+                    invoice_status: 'available',
+                    invoice_status_changed_at: new Date().toISOString()
+                })
+                .eq('id', parseInt(entityId));
+        }
+
         return NextResponse.json({
             success: true,
             attachment

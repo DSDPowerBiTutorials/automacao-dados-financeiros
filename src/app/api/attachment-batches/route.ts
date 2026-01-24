@@ -71,6 +71,17 @@ export async function PATCH(request: NextRequest) {
 
         if (attachError) throw attachError;
 
+        // Auto-update invoice_status when batch linked to invoice
+        if (entity_type === 'invoice' && entity_id) {
+            await supabaseAdmin
+                .from('invoices')
+                .update({
+                    invoice_status: 'available',
+                    invoice_status_changed_at: new Date().toISOString()
+                })
+                .eq('id', parseInt(entity_id));
+        }
+
         return NextResponse.json({ success: true });
 
     } catch (error: any) {
