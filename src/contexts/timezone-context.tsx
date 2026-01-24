@@ -1,109 +1,70 @@
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, ReactNode } from 'react';
 import {
-    SUPPORTED_TIMEZONES,
-    SupportedTimezone,
-    formatDateForUserTimezone,
-    formatDateTimeForUserTimezone,
-    getTimezoneOffsetLabel,
-    formatRelativeTimeForUser
+    formatDateForDisplay,
+    formatDateTimeForDisplay,
+    getMadridDate,
+    getCurrentDateForDB
 } from '@/lib/date-utils';
 
-// Reference timezone - ALL data is stored in Madrid timezone
+// REFERENCE TIMEZONE - ALL dates are displayed in Madrid timezone
+// No conversions, no local timezone considerations
+// Everyone sees the same date/time regardless of where they are
 const REFERENCE_TIMEZONE = 'Europe/Madrid';
 
 interface TimezoneContextType {
-    // User's display timezone (for viewing dates in their local time)
-    userTimezone: string;
-    // Set user's display timezone
-    setUserTimezone: (tz: string) => void;
-    // Reference timezone (always Madrid)
+    // Reference timezone (always Madrid - for display everywhere)
     referenceTimezone: string;
-    // List of supported timezones
-    supportedTimezones: typeof SUPPORTED_TIMEZONES;
-    // Format date for display in user's timezone
+    // Format date for display (always Madrid timezone)
     formatDate: (dateString: string | Date | null | undefined, locale?: string) => string;
-    // Format datetime for display in user's timezone  
+    // Format datetime for display (always Madrid timezone)
     formatDateTime: (dateString: string | Date | null | undefined, locale?: string) => string;
-    // Format relative time in user's timezone
-    formatRelativeTime: (dateString: string | Date | null | undefined) => string;
-    // Get offset label (e.g., "-4h from Spain")
-    getOffsetLabel: () => string;
-    // Is the user in a different timezone than Spain?
-    isDifferentTimezone: boolean;
+    // Get current date in Madrid timezone
+    getCurrentDate: () => Date;
+    // Get current date string for DB (YYYY-MM-DD in Madrid timezone)
+    getCurrentDateString: () => string;
 }
 
 const TimezoneContext = createContext<TimezoneContextType | undefined>(undefined);
 
 interface TimezoneProviderProps {
     children: ReactNode;
-    initialTimezone?: string;
 }
 
-export function TimezoneProvider({ children, initialTimezone }: TimezoneProviderProps) {
-    const [userTimezone, setUserTimezoneState] = useState<string>(initialTimezone || REFERENCE_TIMEZONE);
-
-    // Check if user is in a different timezone than Spain
-    const isDifferentTimezone = userTimezone !== REFERENCE_TIMEZONE;
-
-    // Format date for user's timezone
-    const formatDate = useCallback((
+export function TimezoneProvider({ children }: TimezoneProviderProps) {
+    // Format date - ALWAYS Madrid timezone, no conversions
+    const formatDate = (
         dateString: string | Date | null | undefined,
         locale: string = 'es-ES'
     ): string => {
-        return formatDateForUserTimezone(dateString, userTimezone, locale);
-    }, [userTimezone]);
+        return formatDateForDisplay(dateString, locale);
+    };
 
-    // Format datetime for user's timezone
-    const formatDateTime = useCallback((
+    // Format datetime - ALWAYS Madrid timezone, no conversions
+    const formatDateTime = (
         dateString: string | Date | null | undefined,
         locale: string = 'es-ES'
     ): string => {
-        return formatDateTimeForUserTimezone(dateString, userTimezone, locale);
-    }, [userTimezone]);
+        return formatDateTimeForDisplay(dateString, locale);
+    };
 
-    // Format relative time for user's timezone
-    const formatRelativeTime = useCallback((
-        dateString: string | Date | null | undefined
-    ): string => {
-        return formatRelativeTimeForUser(dateString, userTimezone);
-    }, [userTimezone]);
+    // Get current date in Madrid timezone
+    const getCurrentDate = (): Date => {
+        return getMadridDate();
+    };
 
-    // Get offset label
-    const getOffsetLabel = useCallback((): string => {
-        return getTimezoneOffsetLabel(userTimezone);
-    }, [userTimezone]);
-
-    // Update timezone and save preference
-    const setUserTimezone = useCallback((tz: string) => {
-        setUserTimezoneState(tz);
-        // Save to localStorage for persistence
-        if (typeof window !== 'undefined') {
-            localStorage.setItem('user-timezone', tz);
-        }
-    }, []);
-
-    // Load timezone from localStorage on mount
-    useEffect(() => {
-        if (typeof window !== 'undefined' && !initialTimezone) {
-            const savedTz = localStorage.getItem('user-timezone');
-            if (savedTz) {
-                setUserTimezoneState(savedTz);
-            }
-        }
-    }, [initialTimezone]);
+    // Get current date string for DB
+    const getCurrentDateString = (): string => {
+        return getCurrentDateForDB();
+    };
 
     const value: TimezoneContextType = {
-        userTimezone,
-        setUserTimezone,
         referenceTimezone: REFERENCE_TIMEZONE,
-        supportedTimezones: SUPPORTED_TIMEZONES,
         formatDate,
         formatDateTime,
-        formatRelativeTime,
-        getOffsetLabel,
-        isDifferentTimezone,
+        getCurrentDate,
+        getCurrentDateString,
     };
 
     return (

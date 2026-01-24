@@ -9,26 +9,20 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Camera, Trash2, Save, Lock, User, Mail, Building2, Phone, Calendar, Globe, Clock } from 'lucide-react';
+import { Loader2, Camera, Trash2, Save, Lock, User, Mail, Building2, Phone, Calendar } from 'lucide-react';
 import { formatTimestamp } from '@/lib/formatters';
-import { SUPPORTED_TIMEZONES, getTimezoneOffsetLabel } from '@/lib/date-utils';
-import { useTimezone } from '@/contexts/timezone-context';
 
 export default function ProfilePage() {
     const { user, profile, refreshProfile } = useAuth();
     const { toast } = useToast();
-    const { userTimezone, setUserTimezone } = useTimezone();
 
     // Profile data state
     const [name, setName] = useState('');
     const [department, setDepartment] = useState('');
     const [phone, setPhone] = useState('');
-    const [timezone, setTimezone] = useState('Europe/Madrid');
     const [isLoadingProfile, setIsLoadingProfile] = useState(false);
     const [isUpdatingProfile, setIsUpdatingProfile] = useState(false);
-    const [isSavingTimezone, setIsSavingTimezone] = useState(false);
 
     // Password state
     const [currentPassword, setCurrentPassword] = useState('');
@@ -49,59 +43,8 @@ export default function ProfilePage() {
             setDepartment(profile.department || '');
             setPhone(profile.phone || '');
             setAvatarUrl(profile.avatar_url || null);
-            // Load timezone from profile or use current context value
-            const profileTimezone = (profile as any).timezone || 'Europe/Madrid';
-            setTimezone(profileTimezone);
         }
     }, [profile]);
-
-    // Handle timezone change
-    const handleTimezoneChange = async (newTimezone: string) => {
-        if (!user) return;
-
-        setTimezone(newTimezone);
-        setIsSavingTimezone(true);
-
-        try {
-            const { data: { session } } = await supabase.auth.getSession();
-            if (!session) throw new Error('No session');
-
-            const response = await fetch('/api/profile', {
-                method: 'PATCH',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${session.access_token}`,
-                },
-                body: JSON.stringify({ timezone: newTimezone }),
-            });
-
-            if (!response.ok) {
-                const data = await response.json();
-                throw new Error(data.error || 'Failed to update timezone');
-            }
-
-            // Update the context with the new timezone
-            setUserTimezone(newTimezone);
-            await refreshProfile();
-
-            toast({
-                title: 'Success',
-                description: 'Timezone updated successfully',
-                variant: 'success',
-            });
-        } catch (error: any) {
-            console.error('Error updating timezone:', error);
-            toast({
-                title: 'Error',
-                description: error.message || 'Failed to update timezone',
-                variant: 'destructive',
-            });
-            // Revert to previous value
-            setTimezone((profile as any)?.timezone || 'Europe/Madrid');
-        } finally {
-            setIsSavingTimezone(false);
-        }
-    };
 
     const handleUpdateProfile = async () => {
         if (!user) return;
@@ -502,66 +445,6 @@ export default function ProfilePage() {
                                     </>
                                 )}
                             </Button>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Timezone Settings */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Globe className="h-5 w-5" />
-                            Timezone & Location
-                        </CardTitle>
-                        <CardDescription>
-                            Configure your local timezone. All dates are stored in Spain (Madrid) timezone.
-                            Your local timezone is used only for displaying dates in your local time.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="space-y-2">
-                            <Label htmlFor="timezone">
-                                <Clock className="inline h-4 w-4 mr-2" />
-                                Your Location / Timezone
-                            </Label>
-                            <Select
-                                value={timezone}
-                                onValueChange={handleTimezoneChange}
-                                disabled={isSavingTimezone}
-                            >
-                                <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select your timezone" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {SUPPORTED_TIMEZONES.map((tz) => (
-                                        <SelectItem key={tz.value} value={tz.value}>
-                                            <span className="flex items-center gap-2">
-                                                <span>{tz.label}</span>
-                                                <span className="text-gray-400 text-xs">({tz.offset})</span>
-                                            </span>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            {isSavingTimezone && (
-                                <p className="text-xs text-gray-500 flex items-center gap-1">
-                                    <Loader2 className="h-3 w-3 animate-spin" />
-                                    Saving...
-                                </p>
-                            )}
-                        </div>
-
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
-                            <h4 className="font-medium text-blue-900 flex items-center gap-2">
-                                <Globe className="h-4 w-4" />
-                                How timezone works
-                            </h4>
-                            <ul className="text-sm text-blue-800 space-y-1">
-                                <li>• <strong>Reference timezone:</strong> Spain (Europe/Madrid) — all data is stored using this timezone</li>
-                                <li>• <strong>Your timezone:</strong> {SUPPORTED_TIMEZONES.find(t => t.value === timezone)?.label || timezone}</li>
-                                <li>• <strong>Offset:</strong> {getTimezoneOffsetLabel(timezone)}</li>
-                                <li>• Dates will be displayed converted to your local time for convenience</li>
-                            </ul>
                         </div>
                     </CardContent>
                 </Card>

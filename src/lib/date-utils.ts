@@ -202,127 +202,23 @@ export function getDaysDifference(date1: string | Date, date2: string | Date): n
     return diffDays;
 }
 
-// =============================================================================
-// USER TIMEZONE CONVERSION UTILITIES
-// All data is stored in Europe/Madrid timezone
-// These functions convert dates for display in the user's local timezone
-// =============================================================================
-
 /**
- * List of supported timezones with display names
+ * Format relative time (always Madrid timezone)
+ * Shows "Just now", "X min ago", "Xh ago", "Yesterday", etc.
  */
-export const SUPPORTED_TIMEZONES = [
-    { value: 'Europe/Madrid', label: 'Spain (Madrid)', offset: '+1/+2' },
-    { value: 'America/Sao_Paulo', label: 'Brazil (São Paulo)', offset: '-3' },
-    { value: 'America/New_York', label: 'USA East (New York)', offset: '-5/-4' },
-    { value: 'America/Los_Angeles', label: 'USA West (Los Angeles)', offset: '-8/-7' },
-    { value: 'America/Mexico_City', label: 'Mexico (Mexico City)', offset: '-6/-5' },
-    { value: 'Europe/London', label: 'UK (London)', offset: '+0/+1' },
-    { value: 'Europe/Paris', label: 'France (Paris)', offset: '+1/+2' },
-    { value: 'Europe/Berlin', label: 'Germany (Berlin)', offset: '+1/+2' },
-    { value: 'Europe/Lisbon', label: 'Portugal (Lisbon)', offset: '+0/+1' },
-    { value: 'Asia/Tokyo', label: 'Japan (Tokyo)', offset: '+9' },
-    { value: 'Asia/Dubai', label: 'UAE (Dubai)', offset: '+4' },
-    { value: 'Australia/Sydney', label: 'Australia (Sydney)', offset: '+10/+11' },
-] as const;
-
-export type SupportedTimezone = typeof SUPPORTED_TIMEZONES[number]['value'];
-
-/**
- * Format date for display in user's local timezone
- * Data is stored in Madrid timezone, this converts for display only
- */
-export function formatDateForUserTimezone(
-    dateString: string | Date | null | undefined,
-    userTimezone: string = MADRID_TIMEZONE,
-    locale: string = 'es-ES'
-): string {
-    if (!dateString) return "";
-
-    const date = typeof dateString === 'string' ? parseMadridDate(dateString) : dateString;
-
-    return date.toLocaleDateString(locale, {
-        timeZone: userTimezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-    });
-}
-
-/**
- * Format datetime for display in user's local timezone
- */
-export function formatDateTimeForUserTimezone(
-    dateString: string | Date | null | undefined,
-    userTimezone: string = MADRID_TIMEZONE,
-    locale: string = 'es-ES'
-): string {
-    if (!dateString) return "";
-
-    const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
-
-    return date.toLocaleString(locale, {
-        timeZone: userTimezone,
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
-    });
-}
-
-/**
- * Get current date in user's timezone for display (not for storage!)
- */
-export function getCurrentDateInUserTimezone(userTimezone: string = MADRID_TIMEZONE): Date {
-    const now = new Date();
-    const userTime = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
-    return userTime;
-}
-
-/**
- * Get the timezone difference label between Madrid and user timezone
- */
-export function getTimezoneOffsetLabel(userTimezone: string): string {
-    const now = new Date();
-
-    // Get current hour in both timezones
-    const madridHour = parseInt(now.toLocaleString('en-US', {
-        timeZone: MADRID_TIMEZONE,
-        hour: 'numeric',
-        hour12: false
-    }));
-
-    const userHour = parseInt(now.toLocaleString('en-US', {
-        timeZone: userTimezone,
-        hour: 'numeric',
-        hour12: false
-    }));
-
-    const diff = userHour - madridHour;
-
-    if (diff === 0) return 'Same as Spain';
-    if (diff > 0) return `+${diff}h from Spain`;
-    return `${diff}h from Spain`;
-}
-
-/**
- * Format relative time in user's timezone
- */
-export function formatRelativeTimeForUser(
-    dateString: string | Date | null | undefined,
-    userTimezone: string = MADRID_TIMEZONE
+export function formatRelativeTime(
+    dateString: string | Date | null | undefined
 ): string {
     if (!dateString) return "";
 
     const date = typeof dateString === 'string' ? new Date(dateString) : dateString;
     const now = new Date();
 
-    // Convert both to user timezone for comparison
-    const dateInUserTz = new Date(date.toLocaleString('en-US', { timeZone: userTimezone }));
-    const nowInUserTz = new Date(now.toLocaleString('en-US', { timeZone: userTimezone }));
+    // Convert both to Madrid timezone for comparison
+    const dateInMadrid = new Date(date.toLocaleString('en-US', { timeZone: MADRID_TIMEZONE }));
+    const nowInMadrid = new Date(now.toLocaleString('en-US', { timeZone: MADRID_TIMEZONE }));
 
-    const diffMs = nowInUserTz.getTime() - dateInUserTz.getTime();
+    const diffMs = nowInMadrid.getTime() - dateInMadrid.getTime();
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
@@ -333,5 +229,5 @@ export function formatRelativeTimeForUser(
     if (diffDays === 1) return "Yesterday";
     if (diffDays < 7) return `${diffDays} days ago`;
 
-    return formatDateForUserTimezone(dateString, userTimezone);
+    return formatDateForDisplay(dateString);
 }
