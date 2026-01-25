@@ -77,6 +77,12 @@ interface BotTask {
     last_status: string | null;
 }
 
+// Mapeamento de tasks para seus endpoints de API
+const TASK_ENDPOINTS: Record<string, string> = {
+    'swift-commission-auto-invoice': '/api/bot/swift-commission',
+    // Adicionar novas tasks aqui
+};
+
 interface BotStats {
     totalTasks: number;
     completed: number;
@@ -167,6 +173,7 @@ export default function BotLogsPage() {
     const [loading, setLoading] = useState(true);
     const [filterType, setFilterType] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
+    const [executingTask, setExecutingTask] = useState<string | null>(null);
 
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -251,6 +258,37 @@ export default function BotLogsPage() {
         setTasks((prev) =>
             prev.map((t) => (t.task_key === taskKey ? { ...t, is_enabled: enabled } : t))
         );
+    };
+
+    const executeTask = async (taskKey: string) => {
+        const endpoint = TASK_ENDPOINTS[taskKey];
+        if (!endpoint) {
+            alert(`Endpoint não configurado para task: ${taskKey}`);
+            return;
+        }
+
+        setExecutingTask(taskKey);
+        try {
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                alert(`✅ Task executada com sucesso!\n\nProcessados: ${result.data?.processed || 0}\nCriados: ${result.data?.created || 0}\nFalhas: ${result.data?.failed || 0}`);
+            } else {
+                alert(`❌ Erro: ${result.error}`);
+            }
+            
+            // Recarregar dados
+            await fetchData();
+        } catch (error) {
+            alert(`❌ Erro ao executar task: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+        } finally {
+            setExecutingTask(null);
+        }
     };
 
     const formatDuration = (ms: number | null) => {
@@ -480,6 +518,7 @@ export default function BotLogsPage() {
                                         <TableHead>Última Execução</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-center">Ativo</TableHead>
+                                        <TableHead className="text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -513,6 +552,22 @@ export default function BotLogsPage() {
                                                         toggleTask(task.task_key, checked)
                                                     }
                                                 />
+                                            </TableCell>
+                                            <TableCell className="text-center">
+                                                {TASK_ENDPOINTS[task.task_key] && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        onClick={() => executeTask(task.task_key)}
+                                                        disabled={executingTask === task.task_key}
+                                                    >
+                                                        {executingTask === task.task_key ? (
+                                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                                        ) : (
+                                                            <Play className="h-4 w-4" />
+                                                        )}
+                                                    </Button>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}
