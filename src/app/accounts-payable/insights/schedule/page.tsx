@@ -698,7 +698,9 @@ export default function PaymentSchedulePage() {
             const updatePayload = {
                 payment_date: paymentConfirmData.payment_date,
                 paid_amount: parseFloat(paymentConfirmData.paid_amount),
-                paid_currency: paymentConfirmData.paid_currency
+                paid_currency: paymentConfirmData.paid_currency,
+                payment_status: "paid",
+                finance_payment_status: "done"
             };
 
             const { error } = await supabase.from("invoices").update(updatePayload).eq("id", paymentConfirmInvoice.id);
@@ -1139,8 +1141,8 @@ export default function PaymentSchedulePage() {
                                         };
 
                                         // Check if there's an amount discrepancy (same currency but different amounts)
-                                        const hasAmountDiscrepancy = invoice.paid_amount != null && 
-                                            invoice.paid_currency === invoice.currency && 
+                                        const hasAmountDiscrepancy = invoice.paid_amount != null &&
+                                            invoice.paid_currency === invoice.currency &&
                                             Math.abs((invoice.paid_amount || 0) - (invoice.invoice_amount || 0)) > 0.01;
 
                                         return (
