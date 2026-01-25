@@ -34,19 +34,21 @@ export const SWIFT_COMMISSION_CONFIG = {
     descriptionPattern: 'Comis.pago swift%',
 
     // Valores padrão para invoice (tabela invoices do Accounts Payable)
+    // ATENÇÃO: Todos os códigos abaixo são valores REAIS das tabelas de master data
     defaults: {
         currency: 'EUR',
         eur_exchange: 1.0,
         scope: 'ES',
         country_code: 'ES',
-        provider_code: 'BANKINTER',
-        cost_type_code: 'VC',              // Variable Cost
-        dep_cost_type_code: 'GE',          // General Expenses  
-        cost_center_code: '3.1.1',         // Finance
-        financial_account_code: '6290',    // Bank Charges
-        financial_account_name: 'Bank Charges - Swift',
-        bank_account_code: 'BKINT-4605',
-        payment_method_code: 'DD',         // Direct Debit
+        provider_code: 'BANKINTER',                    // providers.code = 'BANKINTER'
+        cost_type_code: 'VARIABLE',                    // cost_types.code = 'VARIABLE' (Variable Cost)
+        dep_cost_type_code: 'GENEXP',                  // dep_cost_types.code = 'GENEXP' (General Expenses)
+        cost_center_code: '3.0.0',                     // cost_centers.code = '3.0.0' (Corporate - Department)
+        sub_department_code: '3.1.1',                  // sub_departments.code = '3.1.1' (Finance)
+        financial_account_code: '209.1',               // financial_accounts.code = '209.1' (Bank and Financial Fees SPAIN)
+        financial_account_name: '209.1 - Bank and Financial Fees SPAIN',
+        bank_account_code: 'BANKINTER-4605',           // bank_accounts.code = 'BANKINTER-4605'
+        payment_method_code: 'DIRECT_DEBIT',           // payment_methods.code = 'DIRECT_DEBIT'
         entry_type: 'EXPENSE',
         invoice_type: 'INCURRED',
         dre_impact: true,
@@ -199,6 +201,7 @@ export async function executeSwiftCommissionTask(): Promise<{
                         cost_type_code: config.defaults.cost_type_code,
                         dep_cost_type_code: config.defaults.dep_cost_type_code,
                         cost_center_code: config.defaults.cost_center_code,
+                        sub_department_code: config.defaults.sub_department_code,
 
                         description: `Swift Commission: ${tx.description}`,
                         invoice_number: invoiceNumber,
