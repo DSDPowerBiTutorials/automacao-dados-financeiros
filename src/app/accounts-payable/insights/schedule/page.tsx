@@ -222,12 +222,36 @@ export default function PaymentSchedulePage() {
     // Local edit state for paid_amount field (to avoid updating on every keystroke)
     const [editingPaidAmount, setEditingPaidAmount] = useState<string>("");
 
+    // Reconciled transaction details
+    const [reconciledTransaction, setReconciledTransaction] = useState<any>(null);
+
     // Sync editingPaidAmount when selectedInvoice changes
     useEffect(() => {
         if (selectedInvoice) {
             setEditingPaidAmount(selectedInvoice.paid_amount?.toString() || "");
+            // Load reconciled transaction details if applicable
+            if (selectedInvoice.is_reconciled && selectedInvoice.reconciled_transaction_id) {
+                loadReconciledTransaction(selectedInvoice.reconciled_transaction_id);
+            } else {
+                setReconciledTransaction(null);
+            }
         }
-    }, [selectedInvoice?.id, selectedInvoice?.paid_amount]);
+    }, [selectedInvoice?.id, selectedInvoice?.paid_amount, selectedInvoice?.is_reconciled]);
+
+    async function loadReconciledTransaction(transactionId: string) {
+        try {
+            const { data, error } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .eq("id", transactionId)
+                .single();
+            if (error) throw error;
+            setReconciledTransaction(data);
+        } catch (e) {
+            console.error("Failed to load reconciled transaction:", e);
+            setReconciledTransaction(null);
+        }
+    }
 
     useEffect(() => {
         loadData();
@@ -1257,7 +1281,70 @@ export default function PaymentSchedulePage() {
                                     </Badge>
                                 </div>
                             </div>
+
+                            {/* Reconciliation Status */}
+                            <div className="flex items-center gap-3 pt-2">
+                                <Link2 className="h-4 w-4 text-gray-500" />
+                                <div className="flex-1">
+                                    <p className="text-xs text-gray-500">Reconciliation</p>
+                                    {selectedInvoice.is_reconciled ? (
+                                        <Badge variant="outline" className="bg-green-900/30 text-green-400 border-green-700">
+                                            Reconciled
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="bg-yellow-900/30 text-yellow-400 border-yellow-700">
+                                            Not Reconciled
+                                        </Badge>
+                                    )}
+                                </div>
+                                {!selectedInvoice.is_reconciled && selectedInvoice.payment_date && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs bg-orange-900/30 text-orange-400 border-orange-700 hover:bg-orange-800/50"
+                                        onClick={() => openReconciliationDialog(selectedInvoice)}
+                                    >
+                                        Match
+                                    </Button>
+                                )}
+                            </div>
                         </div>
+
+                        {/* Reconciled Transaction Details */}
+                        {selectedInvoice.is_reconciled && reconciledTransaction && (
+                            <div className="px-4 py-4 space-y-3 border-b border-gray-800 bg-green-900/10">
+                                <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
+                                    <Link2 className="h-4 w-4" />
+                                    Matched Bank Transaction
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Source:</span>
+                                        <span className="text-white">{reconciledTransaction.source}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Date:</span>
+                                        <span className="text-white">{reconciledTransaction.date ? formatShortDate(reconciledTransaction.date) : "—"}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Amount:</span>
+                                        <span className="text-white font-medium">{formatCurrency(Math.abs(reconciledTransaction.amount))} {reconciledTransaction.source?.includes("eur") ? "EUR" : "USD"}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-gray-400">Description:</span>
+                                        <span className="text-white text-right max-w-[200px] truncate" title={reconciledTransaction.description}>
+                                            {reconciledTransaction.description || "—"}
+                                        </span>
+                                    </div>
+                                    {selectedInvoice.reconciled_at && (
+                                        <div className="flex justify-between pt-1 border-t border-gray-700">
+                                            <span className="text-gray-500 text-xs">Reconciled at:</span>
+                                            <span className="text-gray-400 text-xs">{new Date(selectedInvoice.reconciled_at).toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
 
                         {/* Classification (read-only badges) */}
                         <div className="px-4 py-4 space-y-3 border-b border-gray-800">
