@@ -178,8 +178,15 @@ export function PlatformChat() {
         }
     }, [user]);
 
-    // BOTella system ID - must match migration
-    const BOTELLA_ID = '00000000-0000-0000-0000-b07e11a00001';
+    // BOTella system user - hardcoded since it's a system bot
+    const BOTELLA_USER: UserProfile & { _isBotella: boolean } = {
+        id: '00000000-0000-0000-0000-b07e11a00001',
+        username: 'botella',
+        full_name: 'BOTella',
+        avatar_url: '/avatars/botella.svg',
+        status: 'online',
+        _isBotella: true
+    };
 
     // Load users for DMs
     const loadUsers = useCallback(async () => {
@@ -192,26 +199,26 @@ export function PlatformChat() {
 
             if (error) {
                 console.log("User profiles not found:", error.message);
+                // Even if error, still show BOTella
+                setUsers([BOTELLA_USER] as any);
             } else {
-                // Ensure BOTella appears first and always online
-                const usersWithBotella = (data || []).map(u => {
-                    if (u.id === BOTELLA_ID || u.username === 'botella' || u.full_name === 'BOTella') {
-                        return { ...u, status: 'online', _isBotella: true };
-                    }
-                    return { ...u, _isBotella: false };
-                });
-                
-                // Sort: BOTella first, then by name
-                usersWithBotella.sort((a: any, b: any) => {
-                    if (a._isBotella) return -1;
-                    if (b._isBotella) return 1;
-                    return (a.full_name || '').localeCompare(b.full_name || '');
-                });
-                
-                setUsers(usersWithBotella);
+                // Add _isBotella flag to existing users
+                const usersWithFlag = (data || []).map(u => ({
+                    ...u,
+                    _isBotella: false
+                }));
+
+                // Add BOTella at the beginning (if not already the current user)
+                if (user?.id !== BOTELLA_USER.id) {
+                    setUsers([BOTELLA_USER, ...usersWithFlag] as any);
+                } else {
+                    setUsers(usersWithFlag as any);
+                }
             }
         } catch (e) {
             console.log("Error loading users:", e);
+            // Even on error, show BOTella
+            setUsers([BOTELLA_USER] as any);
         }
     }, [user]);
 
@@ -631,8 +638,8 @@ export function PlatformChat() {
                                                             : u.status === "online"
                                                                 ? "bg-green-500"
                                                                 : u.status === "away"
-                                                                ? "bg-yellow-500"
-                                                                : "bg-gray-500"
+                                                                    ? "bg-yellow-500"
+                                                                    : "bg-gray-500"
                                                     )}
                                                 />
                                             </button>
