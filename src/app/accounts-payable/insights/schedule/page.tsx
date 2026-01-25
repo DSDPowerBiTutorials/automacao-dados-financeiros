@@ -84,6 +84,17 @@ type Invoice = {
     // Paid amount tracking
     paid_amount?: number | null;
     paid_currency?: string | null;
+    // Partial reconciliation tracking
+    reconciled_amount?: number | null;
+};
+
+// Reconciliation balance tracking for partial reconciliation
+type ReconciliationBalance = {
+    transactionAmount: number;
+    totalReconciled: number;
+    remaining: number;
+    isFullyReconciled: boolean;
+    invoicesCount: number;
 };
 
 type Provider = {
@@ -225,6 +236,9 @@ export default function PaymentSchedulePage() {
     // Reconciled transaction details
     const [reconciledTransaction, setReconciledTransaction] = useState<any>(null);
 
+    // Reconciliation balances for partial reconciliation tracking
+    const [reconciliationBalances, setReconciliationBalances] = useState<Record<string, ReconciliationBalance>>({});
+
     // Sync editingPaidAmount when selectedInvoice changes
     useEffect(() => {
         if (selectedInvoice) {
@@ -253,6 +267,57 @@ export default function PaymentSchedulePage() {
         }
     }
 
+    // Calculate reconciliation balances for partial reconciliation
+    async function calculateReconciliationBalances(invoicesList: Invoice[]) {
+        try {
+            // Get all unique reconciled transaction IDs
+            const transactionIds = [...new Set(
+                invoicesList
+                    .filter(inv => inv.reconciled_transaction_id)
+                    .map(inv => inv.reconciled_transaction_id!)
+            )];
+
+            if (transactionIds.length === 0) {
+                setReconciliationBalances({});
+                return;
+            }
+
+            // Fetch the bank transactions for these IDs
+            const { data: transactions, error } = await supabase
+                .from("csv_rows")
+                .select("id, amount")
+                .in("id", transactionIds);
+
+            if (error) throw error;
+
+            // Build balance map
+            const balances: Record<string, ReconciliationBalance> = {};
+
+            for (const txId of transactionIds) {
+                const tx = transactions?.find(t => t.id === txId);
+                const txAmount = tx ? Math.abs(tx.amount) : 0;
+
+                // Sum all invoices reconciled to this transaction
+                const linkedInvoices = invoicesList.filter(inv => inv.reconciled_transaction_id === txId);
+                const totalReconciled = linkedInvoices.reduce((sum, inv) => {
+                    return sum + (inv.paid_amount ?? inv.invoice_amount ?? 0);
+                }, 0);
+
+                balances[txId] = {
+                    transactionAmount: txAmount,
+                    totalReconciled: totalReconciled,
+                    remaining: txAmount - totalReconciled,
+                    isFullyReconciled: Math.abs(txAmount - totalReconciled) < 0.01,
+                    invoicesCount: linkedInvoices.length
+                };
+            }
+
+            setReconciliationBalances(balances);
+        } catch (e) {
+            console.error("Failed to calculate reconciliation balances:", e);
+        }
+    }
+
     useEffect(() => {
         loadData();
     }, []);
@@ -265,6 +330,9 @@ export default function PaymentSchedulePage() {
             });
             allDates.add("unscheduled");
             setExpandedGroups(allDates);
+
+            // Calculate reconciliation balances
+            calculateReconciliationBalances(invoices);
         }
     }, [invoices]);
 
@@ -550,23 +618,55 @@ export default function PaymentSchedulePage() {
 
         setUpdatingInvoice(invoice.id);
         try {
-            // Unmark the bank transaction as reconciled
-            await supabase.from("csv_rows")
-                .update({ reconciled: false })
-                .eq("id", invoice.reconciled_transaction_id);
+            const transactionId = invoice.reconciled_transaction_id;
 
             // Clear reconciliation fields from invoice
             const { error } = await supabase.from("invoices").update({
                 is_reconciled: false,
                 reconciled_transaction_id: null,
-                reconciled_at: null
+                reconciled_at: null,
+                reconciled_amount: null
             }).eq("id", invoice.id);
             if (error) throw error;
+
+            // Check if there are still other invoices reconciled to this transaction
+            const { data: remainingInvoices } = await supabase
+                .from("invoices")
+                .select("id, paid_amount, invoice_amount")
+                .eq("reconciled_transaction_id", transactionId);
+
+            // If no more invoices linked OR remaining sum doesn't match, update transaction
+            if (!remainingInvoices || remainingInvoices.length === 0) {
+                // No more invoices - mark as not reconciled
+                await supabase.from("csv_rows")
+                    .update({ reconciled: false })
+                    .eq("id", transactionId);
+            } else {
+                // Recalculate if still fully reconciled
+                const { data: txData } = await supabase
+                    .from("csv_rows")
+                    .select("amount")
+                    .eq("id", transactionId)
+                    .single();
+
+                if (txData) {
+                    const txAmount = Math.abs(txData.amount);
+                    const totalReconciled = remainingInvoices.reduce((sum, inv) => {
+                        return sum + (inv.paid_amount ?? inv.invoice_amount ?? 0);
+                    }, 0);
+                    const isFullyReconciled = Math.abs(txAmount - totalReconciled) < 0.01;
+
+                    await supabase.from("csv_rows")
+                        .update({ reconciled: isFullyReconciled })
+                        .eq("id", transactionId);
+                }
+            }
 
             const updatedFields = {
                 is_reconciled: false,
                 reconciled_transaction_id: null,
-                reconciled_at: null
+                reconciled_at: null,
+                reconciled_amount: null
             };
             setInvoices((prev) => prev.map((inv) => (inv.id === invoice.id ? { ...inv, ...updatedFields } : inv)));
             if (selectedInvoice?.id === invoice.id) setSelectedInvoice({ ...selectedInvoice, ...updatedFields });
@@ -791,35 +891,58 @@ export default function PaymentSchedulePage() {
             const { data: userData } = await supabase.auth.getUser();
             const userName = userData?.user?.user_metadata?.name || userData?.user?.email?.split("@")[0] || "User";
 
-            // Mark bank transaction as reconciled FIRST (critical operation)
-            const { error: txError, data: txData } = await supabase
+            const paidAmount = reconciliationInvoice.paid_amount ?? reconciliationInvoice.invoice_amount ?? 0;
+
+            // Get the bank transaction amount
+            const { data: txData, error: txFetchError } = await supabase
                 .from("csv_rows")
-                .update({ reconciled: true })
+                .select("id, amount")
                 .eq("id", selectedTransaction)
-                .select();
+                .single();
 
-            if (txError) {
-                console.error("Error updating csv_rows:", txError);
-                throw new Error(`Failed to mark bank transaction: ${txError.message}`);
+            if (txFetchError || !txData) {
+                throw new Error("Bank transaction not found");
             }
 
-            if (!txData || txData.length === 0) {
-                throw new Error("Bank transaction not found or not updated");
-            }
+            const txAmount = Math.abs(txData.amount);
 
-            console.log("Bank transaction updated:", txData[0].id, "reconciled:", txData[0].reconciled);
-
-            // Update invoice as reconciled
+            // Update invoice as reconciled with reconciled_amount
             const { error: invoiceError } = await supabase
                 .from("invoices")
                 .update({
                     is_reconciled: true,
                     reconciled_transaction_id: selectedTransaction,
-                    reconciled_at: new Date().toISOString()
+                    reconciled_at: new Date().toISOString(),
+                    reconciled_amount: paidAmount
                 })
                 .eq("id", reconciliationInvoice.id);
 
             if (invoiceError) throw invoiceError;
+
+            // Calculate if transaction is now fully reconciled
+            const { data: allReconciledToTx } = await supabase
+                .from("invoices")
+                .select("paid_amount, invoice_amount")
+                .eq("reconciled_transaction_id", selectedTransaction);
+
+            const totalReconciled = (allReconciledToTx || []).reduce((sum, inv) => {
+                return sum + (inv.paid_amount ?? inv.invoice_amount ?? 0);
+            }, 0);
+
+            const isFullyReconciled = Math.abs(txAmount - totalReconciled) < 0.01;
+            const remaining = txAmount - totalReconciled;
+
+            // Mark bank transaction as reconciled only if fully matched
+            const { error: txError } = await supabase
+                .from("csv_rows")
+                .update({ reconciled: isFullyReconciled })
+                .eq("id", selectedTransaction);
+
+            if (txError) {
+                console.error("Error updating csv_rows:", txError);
+            }
+
+            console.log("Reconciliation complete:", { txAmount, totalReconciled, isFullyReconciled, remaining });
 
             // Log history
             await fetch("/api/invoice-history", {
@@ -832,18 +955,30 @@ export default function PaymentSchedulePage() {
                     old_value: "false",
                     new_value: "true",
                     changed_by: userName,
-                    metadata: { transaction_id: selectedTransaction, method: "manual" }
+                    metadata: {
+                        transaction_id: selectedTransaction,
+                        method: "manual",
+                        reconciled_amount: paidAmount,
+                        is_partial: !isFullyReconciled,
+                        remaining: remaining
+                    }
                 })
             });
 
             // Update local state
             setInvoices((prev) => prev.map((inv) =>
                 inv.id === reconciliationInvoice.id
-                    ? { ...inv, is_reconciled: true, reconciled_transaction_id: selectedTransaction }
+                    ? { ...inv, is_reconciled: true, reconciled_transaction_id: selectedTransaction, reconciled_amount: paidAmount }
                     : inv
             ));
 
-            toast({ title: "Reconciliation successful!", variant: "success" });
+            toast({
+                title: isFullyReconciled ? "Fully reconciled!" : "Partial reconciliation",
+                description: isFullyReconciled
+                    ? "Transaction completely matched"
+                    : `Remaining: ${remaining.toFixed(2)} ${reconciliationInvoice.paid_currency || reconciliationInvoice.currency}`,
+                variant: "success"
+            });
             setReconciliationDialogOpen(false);
             setReconciliationInvoice(null);
             setSelectedTransaction(null);
@@ -1058,10 +1193,32 @@ export default function PaymentSchedulePage() {
                                                 {/* Reconciliation Status */}
                                                 <div className="w-[85px] flex-shrink-0">
                                                     {invoice.is_reconciled ? (
-                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-900/30 text-green-400 border-green-700">
-                                                            <CheckCircle className="h-3 w-3 mr-1" />
-                                                            Reconciled
-                                                        </Badge>
+                                                        <div className="flex flex-col items-start gap-0.5">
+                                                            <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-900/30 text-green-400 border-green-700">
+                                                                <CheckCircle className="h-3 w-3 mr-1" />
+                                                                Reconciled
+                                                            </Badge>
+                                                            {invoice.reconciled_transaction_id && reconciliationBalances[invoice.reconciled_transaction_id] && (
+                                                                <div className="flex flex-col">
+                                                                    <span className={`text-[9px] font-medium ${reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled
+                                                                        ? 'text-green-400'
+                                                                        : 'text-amber-400'
+                                                                        }`}>
+                                                                        {reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled ? 'Total' : 'Partial'}
+                                                                    </span>
+                                                                    {!reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled && (
+                                                                        <span className="text-[8px] text-gray-400">
+                                                                            Rem: {reconciliationBalances[invoice.reconciled_transaction_id].remaining.toFixed(2)}
+                                                                        </span>
+                                                                    )}
+                                                                    {reconciliationBalances[invoice.reconciled_transaction_id].invoicesCount > 1 && (
+                                                                        <span className="text-[8px] text-gray-500">
+                                                                            ({reconciliationBalances[invoice.reconciled_transaction_id].invoicesCount} inv)
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            )}
+                                                        </div>
                                                     ) : invoice.payment_date ? (
                                                         <Button
                                                             variant="outline"
@@ -1415,6 +1572,49 @@ export default function PaymentSchedulePage() {
                                         <div className="flex justify-between pt-1 border-t border-gray-700">
                                             <span className="text-gray-500 text-xs">Reconciled at:</span>
                                             <span className="text-gray-400 text-xs">{new Date(selectedInvoice.reconciled_at).toLocaleString()}</span>
+                                        </div>
+                                    )}
+                                    {/* Partial Reconciliation Balance Info */}
+                                    {selectedInvoice.reconciled_transaction_id && reconciliationBalances[selectedInvoice.reconciled_transaction_id] && (
+                                        <div className="pt-2 mt-2 border-t border-gray-700 space-y-1">
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-gray-400 text-xs">Reconciliation Status:</span>
+                                                <Badge
+                                                    variant="outline"
+                                                    className={`text-xs ${reconciliationBalances[selectedInvoice.reconciled_transaction_id].isFullyReconciled
+                                                            ? "bg-green-900/50 text-green-400 border-green-700"
+                                                            : "bg-yellow-900/50 text-yellow-400 border-yellow-700"
+                                                        }`}
+                                                >
+                                                    {reconciliationBalances[selectedInvoice.reconciled_transaction_id].isFullyReconciled ? "Total" : "Partial"}
+                                                </Badge>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500 text-xs">Transaction Amount:</span>
+                                                <span className="text-gray-300 text-xs">
+                                                    {formatCurrency(reconciliationBalances[selectedInvoice.reconciled_transaction_id].transactionAmount)}
+                                                </span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500 text-xs">Total Reconciled:</span>
+                                                <span className="text-green-400 text-xs">
+                                                    {formatCurrency(reconciliationBalances[selectedInvoice.reconciled_transaction_id].totalReconciled)}
+                                                </span>
+                                            </div>
+                                            {!reconciliationBalances[selectedInvoice.reconciled_transaction_id].isFullyReconciled && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-gray-500 text-xs">Remaining:</span>
+                                                    <span className="text-yellow-400 text-xs font-medium">
+                                                        {formatCurrency(reconciliationBalances[selectedInvoice.reconciled_transaction_id].remaining)}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between">
+                                                <span className="text-gray-500 text-xs">Invoices Matched:</span>
+                                                <span className="text-gray-300 text-xs">
+                                                    {reconciliationBalances[selectedInvoice.reconciled_transaction_id].invoicesCount}
+                                                </span>
+                                            </div>
                                         </div>
                                     )}
                                 </div>
