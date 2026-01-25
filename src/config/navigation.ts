@@ -32,6 +32,7 @@ import {
   BarChart4,
   Settings2,
   Package,
+  Bot,
   type LucideIcon
 } from "lucide-react"
 
@@ -406,6 +407,11 @@ export const NAV: NavGroup[] = [
         title: "Reconciliation Center",
         href: "/actions/reconciliation-center",
         icon: CheckCircle2
+      },
+      {
+        title: "🤖 BOTella Logs",
+        href: "/actions/bot-logs",
+        icon: Bot
       }
     ]
   },

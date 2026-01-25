@@ -13,6 +13,8 @@
  * 
  * Endpoint: GET /api/cron/daily-sync
  * Autorização: Bearer ${CRON_SECRET} ou x-vercel-cron header
+ * 
+ * 🤖 Executado por: BOTella
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -20,6 +22,13 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 import { getSQLServerConnection } from "@/lib/sqlserver";
 import { syncGoCardlessTransactions } from "@/lib/gocardless";
 import { syncAllQuickBooksData, testConnection as testQuickBooksConnection } from "@/lib/quickbooks";
+import {
+    startBotTask,
+    completeBotTask,
+    failBotTask,
+    warnBotTask,
+    BOT_CONSOLE_NAME
+} from "@/lib/botella";
 import crypto from "crypto";
 
 interface SyncResult {
@@ -46,7 +55,15 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    console.log("🚀 [Daily Sync] Iniciando sincronização unificada...");
+    // 🤖 BOTella: Iniciar tarefa de sincronização
+    let botContext;
+    try {
+        botContext = await startBotTask("Sincronização Diária", "sync", "Iniciando sincronização de todos os sistemas");
+    } catch (e) {
+        console.warn(`${BOT_CONSOLE_NAME} Não foi possível criar log (tabela pode não existir ainda)`);
+    }
+
+    console.log(`${BOT_CONSOLE_NAME} 🚀 [Daily Sync] Iniciando sincronização unificada...`);
     console.log(`📅 Data: ${new Date().toISOString()}`);
 
     // ============================================
@@ -388,13 +405,14 @@ export async function GET(req: NextRequest) {
     const totalDuration = Date.now() - startTime;
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
+    const totalRecords = results.reduce((sum, r) => sum + (r.count || 0), 0);
 
     try {
         await supabaseAdmin.from("sync_metadata").upsert(
             {
                 source: "daily-sync",
                 last_sync: new Date().toISOString(),
-                records_synced: results.reduce((sum, r) => sum + (r.count || 0), 0),
+                records_synced: totalRecords,
                 metadata: {
                     results,
                     duration_ms: totalDuration,
@@ -408,10 +426,41 @@ export async function GET(req: NextRequest) {
         console.error("Failed to save sync metadata:", e);
     }
 
+    // 🤖 BOTella: Finalizar tarefa
+    if (botContext) {
+        try {
+            botContext.recordsProcessed = totalRecords;
+            botContext.recordsCreated = results.reduce((sum, r) => sum + (r.count || 0), 0);
+            botContext.recordsFailed = failCount;
+
+            if (failCount === 0) {
+                await completeBotTask(
+                    botContext,
+                    `Sincronização concluída: ${successCount}/7 sistemas`,
+                    { results, successCount, failCount }
+                );
+            } else if (successCount > 0) {
+                await warnBotTask(
+                    botContext,
+                    `Sincronização parcial: ${successCount}/7 ok, ${failCount} falhas`,
+                    { results, successCount, failCount }
+                );
+            } else {
+                await failBotTask(
+                    botContext,
+                    `Sincronização falhou: ${failCount}/7 erros`,
+                    { results, successCount, failCount }
+                );
+            }
+        } catch (e) {
+            console.warn(`${BOT_CONSOLE_NAME} Não foi possível atualizar log`);
+        }
+    }
+
     // ============================================
     // RESPOSTA FINAL
     // ============================================
-    console.log("\n✅ [Daily Sync] Sincronização concluída!");
+    console.log(`\n${BOT_CONSOLE_NAME} ✅ [Daily Sync] Sincronização concluída!`);
     console.log(`   ⏱️ Duração total: ${(totalDuration / 1000).toFixed(1)}s`);
     console.log(`   ✓ Sucesso: ${successCount}/7`);
     console.log(`   ✗ Falhas: ${failCount}/7`);
@@ -421,6 +470,7 @@ export async function GET(req: NextRequest) {
         message: `Daily sync completed: ${successCount}/7 successful`,
         duration_ms: totalDuration,
         timestamp: new Date().toISOString(),
+        bot: "BOTella",
         results,
     });
 }
