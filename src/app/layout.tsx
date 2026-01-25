@@ -5,6 +5,7 @@ import { CompanyViewProvider } from "@/contexts/company-view-context"
 import { GlobalScopeProvider } from "@/contexts/global-scope-context"
 import { AuthProvider } from "@/contexts/auth-context"
 import { TimezoneProvider } from "@/contexts/timezone-context"
+import { NotificationProvider } from "@/contexts/notification-context"
 import { LayoutContent } from "@/components/layout/LayoutContent"
 
 export const metadata = {
@@ -27,14 +28,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="text-neutral-900">
         <AuthProvider>
           <TimezoneProvider>
-            <CompanyViewProvider>
-              <GlobalScopeProvider>
-                <LayoutContent>
-                  {children}
-                </LayoutContent>
-                <Toaster />
-              </GlobalScopeProvider>
-            </CompanyViewProvider>
+            <NotificationProvider>
+              <CompanyViewProvider>
+                <GlobalScopeProvider>
+                  <LayoutContent>
+                    {children}
+                  </LayoutContent>
+                  <Toaster />
+                </GlobalScopeProvider>
+              </CompanyViewProvider>
+            </NotificationProvider>
           </TimezoneProvider>
         </AuthProvider>
       </body>

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { NAV, type NavGroup, type NavItem } from "@/config/navigation";
 import { UserMenu } from "@/components/auth/UserMenu";
+import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { SCOPE_CONFIG } from "@/lib/scope-utils";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
@@ -155,6 +156,11 @@ export function TablerTopbar({
             {/* Scope Label */}
             <div className="nav-item d-none d-lg-flex">
               <span className="nav-link small" style={{ color: '#888' }}>{SCOPE_CONFIG[selectedScope].label}</span>
+            </div>
+
+            {/* Notification Bell */}
+            <div className="nav-item">
+              <NotificationBell />
             </div>
 
             {/* User Menu */}
