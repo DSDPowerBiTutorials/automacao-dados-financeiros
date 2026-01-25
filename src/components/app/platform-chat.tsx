@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/auth-context";
 import { cn } from "@/lib/utils";
+import { UserAvatar } from "@/components/user-avatar";
 import {
     Dialog,
     DialogContent,
@@ -582,14 +583,15 @@ export function PlatformChat() {
                                                 {startingDm && dmTargetUser?.id === u.id ? (
                                                     <Loader2 className="h-5 w-5 animate-spin flex-shrink-0" />
                                                 ) : (
-                                                    <div
-                                                        className={cn(
-                                                            "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-medium flex-shrink-0",
-                                                            getAvatarColor(u.full_name || u.username || "")
-                                                        )}
-                                                    >
-                                                        {getInitials(u.full_name || u.username || "?")}
-                                                    </div>
+                                                    <UserAvatar
+                                                        user={{
+                                                            id: u.id,
+                                                            name: u.full_name || u.username,
+                                                            email: null,
+                                                            avatar_url: u.avatar_url
+                                                        }}
+                                                        size="xs"
+                                                    />
                                                 )}
                                                 <span className="truncate text-xs">{(u.full_name || u.username || "").substring(0, 12)}...</span>
                                                 <span
@@ -611,14 +613,15 @@ export function PlatformChat() {
 
                         {/* User info */}
                         <div className="p-2 border-t border-gray-700 flex items-center gap-2">
-                            <div
-                                className={cn(
-                                    "w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium",
-                                    getAvatarColor(profile?.name || user.email || "")
-                                )}
-                            >
-                                {getInitials(profile?.name || user.email || "?")}
-                            </div>
+                            <UserAvatar
+                                user={{
+                                    id: user?.id || null,
+                                    name: profile?.name,
+                                    email: user?.email,
+                                    avatar_url: profile?.avatar_url || null
+                                }}
+                                size="sm"
+                            />
                             <div className="flex-1 min-w-0">
                                 <p className="text-xs font-medium truncate">
                                     {profile?.name || user.email?.split("@")[0]}
@@ -636,14 +639,15 @@ export function PlatformChat() {
                                 {selectedChannel && (
                                     <>
                                         {selectedChannel.channel_type === "direct" ? (
-                                            <div
-                                                className={cn(
-                                                    "w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-medium text-white flex-shrink-0",
-                                                    getAvatarColor(selectedChannel.name)
-                                                )}
-                                            >
-                                                {getInitials(selectedChannel.name)}
-                                            </div>
+                                            <UserAvatar
+                                                user={{
+                                                    id: null,
+                                                    name: selectedChannel.name,
+                                                    email: null,
+                                                    avatar_url: null
+                                                }}
+                                                size="xs"
+                                            />
                                         ) : (
                                             <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
                                         )}
@@ -684,22 +688,16 @@ export function PlatformChat() {
                                         <div key={msg.id} className="flex gap-2">
                                             {/* Avatar */}
                                             <div className="flex-shrink-0">
-                                                {msg.user_profile?.avatar_url ? (
-                                                    <img
-                                                        src={msg.user_profile.avatar_url}
-                                                        alt={userName}
-                                                        className="w-8 h-8 rounded object-cover"
-                                                    />
-                                                ) : (
-                                                    <div
-                                                        className={cn(
-                                                            "w-8 h-8 rounded flex items-center justify-center text-white text-xs font-medium",
-                                                            getAvatarColor(userName)
-                                                        )}
-                                                    >
-                                                        {getInitials(userName)}
-                                                    </div>
-                                                )}
+                                                <UserAvatar
+                                                    user={{
+                                                        id: msg.user_id,
+                                                        name: userName,
+                                                        email: null,
+                                                        avatar_url: msg.user_profile?.avatar_url || null
+                                                    }}
+                                                    size="sm"
+                                                    className="rounded"
+                                                />
                                             </div>
 
                                             {/* Message */}

@@ -33,15 +33,6 @@ export function UserMenu() {
         return <Badge className={`${config.color} border`}>{config.label}</Badge>;
     };
 
-    const getInitials = (name: string) => {
-        return name
-            .split(' ')
-            .map(part => part[0])
-            .join('')
-            .toUpperCase()
-            .substring(0, 2);
-    };
-
     return (
         <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>

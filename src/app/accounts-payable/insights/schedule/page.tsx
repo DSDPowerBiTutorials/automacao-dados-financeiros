@@ -47,6 +47,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Label } from "@/components/ui/label";
 import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
+import { UserAvatar } from "@/components/user-avatar";
 
 type Invoice = {
     id: number;
@@ -107,6 +108,8 @@ type Activity = {
     invoice_id: number;
     user_email: string;
     user_name: string;
+    user_id?: string | null;
+    avatar_url?: string | null;
     activity_type: string;
     content: string;
     metadata: any;
@@ -382,13 +385,18 @@ export default function PaymentSchedulePage() {
             const [activitiesResult, historyResult] = await Promise.all([
                 supabase
                     .from("invoice_activities")
-                    .select("*")
+                    .select("*, users:user_id(avatar_url)")
                     .eq("invoice_id", invoiceId)
                     .order("created_at", { ascending: false }),
                 fetch(`/api/invoice-history?invoice_id=${invoiceId}`).then(r => r.json())
             ]);
 
-            const activitiesData = activitiesResult.data || [];
+            // Map activities to include avatar_url from joined user
+            const activitiesData = (activitiesResult.data || []).map((a: any) => ({
+                ...a,
+                avatar_url: a.users?.avatar_url || null,
+                users: undefined // Remove the nested object
+            }));
             const historyData = historyResult.success ? (historyResult.history || []) : [];
 
             // Convert history entries to activity format
@@ -1775,9 +1783,16 @@ export default function PaymentSchedulePage() {
 
                                                 return (
                                                     <div key={activity.id} className="flex gap-3">
-                                                        <div className={`w-8 h-8 rounded-full ${getActivityColor()} flex items-center justify-center flex-shrink-0`}>
-                                                            <span className="text-white text-xs font-medium">{activity.user_name?.charAt(0).toUpperCase() || "?"}</span>
-                                                        </div>
+                                                        <UserAvatar
+                                                            user={{
+                                                                id: activity.user_id || null,
+                                                                email: activity.user_email,
+                                                                name: activity.user_name,
+                                                                avatar_url: activity.avatar_url || null
+                                                            }}
+                                                            size="sm"
+                                                            className="flex-shrink-0"
+                                                        />
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                 <span className="text-sm font-medium text-white">{activity.user_name}</span>
