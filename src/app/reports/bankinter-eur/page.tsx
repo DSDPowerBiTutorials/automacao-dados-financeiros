@@ -2,28 +2,9 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import {
-  Upload,
-  Download,
-  Edit2,
-  Save,
-  X,
-  Trash2,
-  Loader2,
-  CheckCircle,
-  XCircle,
-  Database,
-  Zap,
-  User,
-  RefreshCw,
-  Calendar,
-  DollarSign,
-  FileText,
-  Key,
-  ChevronDown,
-  ChevronRight,
-  Search,
-  Link2,
-  AlertCircle
+  Upload, Download, Edit2, Save, X, Trash2, Loader2, CheckCircle, XCircle,
+  Database, Zap, User, RefreshCw, Calendar, DollarSign, FileText, Key,
+  ChevronDown, ChevronRight, Search, Link2, AlertCircle
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -31,6 +12,20 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { formatTimestamp } from "@/lib/formatters"
+import { useToast } from "@/hooks/use-toast"
+
+interface Invoice {
+  id: number
+  provider_code: string | null
+  invoice_number: string | null
+  invoice_amount: number
+  currency: string
+  paid_amount: number | null
+  paid_currency: string | null
+  schedule_date: string | null
+  is_reconciled: boolean
+  reconciled_transaction_id: string | null
+}
 
 const formatEuropeanCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined || isNaN(value)) return "-"
@@ -105,6 +100,16 @@ export default function BankinterEURPage() {
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
   const [selectedRow, setSelectedRow] = useState<BankinterEURRow | null>(null)
 
+  // Reconciliation dialog states
+  const [reconciliationDialogOpen, setReconciliationDialogOpen] = useState(false)
+  const [reconciliationTransaction, setReconciliationTransaction] = useState<BankinterEURRow | null>(null)
+  const [matchingInvoices, setMatchingInvoices] = useState<Invoice[]>([])
+  const [allAvailableInvoices, setAllAvailableInvoices] = useState<Invoice[]>([])
+  const [loadingInvoices, setLoadingInvoices] = useState(false)
+  const [selectedInvoice, setSelectedInvoice] = useState<number | null>(null)
+
+  const { toast } = useToast()
+
   useEffect(() => { loadData() }, [])
 
   useEffect(() => {
@@ -120,7 +125,7 @@ export default function BankinterEURPage() {
     try {
       if (!supabase) { setRows([]); setIsLoading(false); return }
       const { data: rowsData, error } = await supabase.from("csv_rows").select("*").eq("source", "bankinter-eur").order("date", { ascending: false })
-      if (error) { setRows([]) } 
+      if (error) { setRows([]) }
       else if (rowsData) {
         setRows(rowsData.map((row) => ({
           id: row.id,
@@ -139,7 +144,7 @@ export default function BankinterEURPage() {
           custom_data: row.custom_data || {}
         })))
       } else { setRows([]) }
-    } catch { setRows([]) } 
+    } catch { setRows([]) }
     finally { setIsLoading(false) }
   }
 
@@ -188,7 +193,7 @@ export default function BankinterEURPage() {
       if (!response.ok || !result.success) { alert("Erro no upload: " + result.error); return }
       alert(result.data.rowCount + " transactions imported!")
       loadData()
-    } catch { alert("Falha ao enviar o arquivo.") } 
+    } catch { alert("Falha ao enviar o arquivo.") }
     finally { setIsLoading(false); event.target.value = "" }
   }
 
@@ -215,7 +220,7 @@ export default function BankinterEURPage() {
       const response = await fetch("/api/csv-rows?id=" + rowId, { method: "DELETE" })
       const result = await response.json()
       if (response.ok && result.success) { await loadData(); setLastSaved(formatTimestamp(new Date())) }
-    } catch {} 
+    } catch {}
     finally { setIsDeleting(false) }
   }
 
@@ -227,7 +232,7 @@ export default function BankinterEURPage() {
       const response = await fetch("/api/csv-rows?source=bankinter-eur", { method: "DELETE" })
       const result = await response.json()
       if (response.ok && result.success) { await loadData(); alert("All rows deleted successfully!") }
-    } catch {} 
+    } catch {}
     finally { setIsDeleting(false) }
   }
 
@@ -247,11 +252,91 @@ export default function BankinterEURPage() {
     return paymentSourceColors[source] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" }
   }
 
+  // Open reconciliation dialog - find invoices matching this bank transaction
+  const openReconciliationDialog = async (transaction: BankinterEURRow) => {
+    setReconciliationTransaction(transaction)
+    setReconciliationDialogOpen(true)
+    setLoadingInvoices(true)
+    setSelectedInvoice(null)
+    setMatchingInvoices([])
+    setAllAvailableInvoices([])
+
+    try {
+      const transactionDate = transaction.date?.split("T")[0]
+      if (!transactionDate) { setMatchingInvoices([]); setAllAvailableInvoices([]); return }
+
+      const startDate = new Date(transactionDate)
+      startDate.setDate(startDate.getDate() - 3)
+      const endDate = new Date(transactionDate)
+      endDate.setDate(endDate.getDate() + 3)
+      const matchAmount = Math.abs(transaction.amount)
+
+      const { data: exactData, error: exactError } = await supabase
+        .from("invoices").select("*").eq("invoice_type", "INCURRED").eq("currency", "EUR").eq("is_reconciled", false)
+        .gte("schedule_date", startDate.toISOString().split("T")[0]).lte("schedule_date", endDate.toISOString().split("T")[0])
+        .order("schedule_date", { ascending: false })
+      if (exactError) throw exactError
+
+      const exactMatches = (exactData || []).filter((inv: Invoice) => {
+        const invAmount = inv.paid_amount ?? inv.invoice_amount ?? 0
+        return Math.abs(invAmount - matchAmount) < 0.01
+      })
+
+      const allStartDate = new Date()
+      allStartDate.setDate(allStartDate.getDate() - 60)
+
+      const { data: allData, error: allError } = await supabase
+        .from("invoices").select("*").eq("invoice_type", "INCURRED").eq("currency", "EUR").eq("is_reconciled", false)
+        .gte("schedule_date", allStartDate.toISOString().split("T")[0]).order("schedule_date", { ascending: false }).limit(100)
+      if (allError) throw allError
+
+      const exactMatchIds = new Set(exactMatches.map((inv: Invoice) => inv.id))
+      const availableForPartial = (allData || []).filter((inv: Invoice) => !exactMatchIds.has(inv.id))
+
+      setMatchingInvoices(exactMatches)
+      setAllAvailableInvoices(availableForPartial)
+    } catch (e: any) {
+      console.error("Error loading invoices:", e)
+      toast({ title: "Error", description: "Failed to load invoices", variant: "destructive" })
+      setMatchingInvoices([]); setAllAvailableInvoices([])
+    } finally { setLoadingInvoices(false) }
+  }
+
+  // Perform reconciliation
+  const performReconciliation = async () => {
+    if (!reconciliationTransaction || !selectedInvoice) return
+    try {
+      const txAmount = Math.abs(reconciliationTransaction.amount)
+      const invoice = [...matchingInvoices, ...allAvailableInvoices].find(inv => inv.id === selectedInvoice)
+      if (!invoice) throw new Error("Invoice not found")
+
+      const paidAmount = invoice.paid_amount ?? invoice.invoice_amount ?? 0
+      const isFullyReconciled = Math.abs(txAmount - paidAmount) < 0.01
+
+      const { error: invoiceError } = await supabase.from("invoices").update({
+        is_reconciled: true, reconciled_transaction_id: reconciliationTransaction.id,
+        reconciled_at: new Date().toISOString(), reconciled_amount: paidAmount
+      }).eq("id", selectedInvoice)
+      if (invoiceError) throw invoiceError
+
+      const { error: txError } = await supabase.from("csv_rows").update({
+        reconciled: isFullyReconciled,
+        custom_data: { ...reconciliationTransaction.custom_data, reconciliationType: "manual", reconciled_at: new Date().toISOString(), matched_invoice_id: selectedInvoice, matched_invoice_amount: paidAmount }
+      }).eq("id", reconciliationTransaction.id)
+      if (txError) throw txError
+
+      setRows((prev) => prev.map((row) => row.id === reconciliationTransaction.id ? { ...row, reconciled: isFullyReconciled, reconciliationType: "manual" as const } : row))
+      toast({ title: isFullyReconciled ? "Fully reconciled!" : "Partial reconciliation", description: isFullyReconciled ? "Transaction matched with invoice" : "Remaining: €" + (txAmount - paidAmount).toFixed(2), variant: "success" })
+      setReconciliationDialogOpen(false); setReconciliationTransaction(null); setSelectedInvoice(null)
+    } catch (e: any) { toast({ title: "Error", description: e?.message || "Failed to reconcile", variant: "destructive" }) }
+  }
+
   if (isLoading) return <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>
 
   return (
     <div className="min-h-screen bg-[#1e1f21] text-white flex">
       <div className={"flex-1 transition-all duration-300 " + (selectedRow ? "mr-[450px]" : "")}>
+        {/* Header */}
         <div className="border-b border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
@@ -285,6 +370,8 @@ export default function BankinterEURPage() {
             </div>
           </div>
         </div>
+
+        {/* Stats Bar */}
         <div className="border-b border-gray-700 px-6 py-3 bg-[#252627]">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2"><span className="text-gray-400 text-sm">Credits:</span><span className="text-green-400 font-medium">€{formatEuropeanCurrency(stats.totalCredits)}</span></div>
@@ -293,6 +380,8 @@ export default function BankinterEURPage() {
             <div className="flex items-center gap-2"><XCircle className="h-4 w-4 text-yellow-500" /><span className="text-gray-400 text-sm">Unreconciled:</span><span className="text-yellow-400 font-medium">{stats.unreconciledCount}</span></div>
           </div>
         </div>
+
+        {/* Table Header */}
         <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
           <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-400 font-medium uppercase">
             <div className="w-[70px] flex-shrink-0">Date</div>
@@ -307,6 +396,8 @@ export default function BankinterEURPage() {
             <div className="w-[70px] flex-shrink-0 text-center">Actions</div>
           </div>
         </div>
+
+        {/* Content */}
         <div className="pb-20">
           {groups.map((group) => (
             <div key={group.date} className="border-b border-gray-800">
@@ -333,7 +424,20 @@ export default function BankinterEURPage() {
                         <div className="w-[90px] flex-shrink-0 text-right text-[11px] font-mono">{isCredit ? <span className="text-green-400">€{formatEuropeanCurrency(row.amount)}</span> : <span className="text-gray-600">-</span>}</div>
                         <div className="w-[100px] flex-shrink-0 text-right text-[11px] font-mono font-medium text-white">€{formatEuropeanCurrency(customData.saldo)}</div>
                         <div className="w-[100px] flex-shrink-0 text-center">{row.paymentSource ? <Badge variant="outline" className={"text-[9px] px-1.5 py-0 " + sourceStyle.bg + " " + sourceStyle.text + " " + sourceStyle.border}>{row.paymentSource}</Badge> : <span className="text-gray-600 text-[10px]">-</span>}</div>
-                        <div className="w-[80px] flex-shrink-0 text-center">{row.reconciled ? <div className="flex items-center justify-center gap-1">{row.reconciliationType === "automatic" ? <><Zap className="h-4 w-4 text-green-500" /><span className="text-[9px] text-green-400">Auto</span></> : <><User className="h-4 w-4 text-blue-500" /><span className="text-[9px] text-blue-400">Manual</span></>}</div> : <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-yellow-900/30 text-yellow-400 border-yellow-700">Pending</Badge>}</div>
+                        {/* Reconciled Column with Link Icon */}
+                        <div className="w-[80px] flex-shrink-0 text-center" onClick={(e) => e.stopPropagation()}>
+                          {row.reconciled ? (
+                            <div className="flex items-center justify-center gap-1">
+                              {row.reconciliationType === "automatic" ? <><Zap className="h-4 w-4 text-green-500" /><span className="text-[9px] text-green-400">Auto</span></> : <><User className="h-4 w-4 text-blue-500" /><span className="text-[9px] text-blue-400">Manual</span></>}
+                            </div>
+                          ) : (
+                            <div className="flex flex-col items-center gap-1">
+                              <Button size="sm" variant="ghost" onClick={() => openReconciliationDialog(row)} className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30" title="Find matching invoice"><Link2 className="h-3.5 w-3.5" /></Button>
+                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-yellow-900/30 text-yellow-400 border-yellow-700">Pending</Badge>
+                            </div>
+                          )}
+                        </div>
+                        {/* Actions */}
                         <div className="w-[70px] flex-shrink-0 flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                           {editingRow === row.id ? <><Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30"><Save className="h-3 w-3" /></Button><Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-400 hover:text-gray-300 hover:bg-gray-700"><X className="h-3 w-3" /></Button></> : <><Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700" disabled={isDeleting}><Edit2 className="h-3 w-3" /></Button><Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30" disabled={isDeleting}>{isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}</Button></>}
                         </div>
@@ -347,6 +451,8 @@ export default function BankinterEURPage() {
           {groups.length === 0 && <div className="text-center py-20 text-gray-500"><Database className="h-12 w-12 mx-auto mb-4 opacity-50" /><p>No transactions found</p><p className="text-sm mt-1">Upload an XLSX file to get started</p></div>}
         </div>
       </div>
+
+      {/* Detail Panel */}
       {selectedRow && (
         <div className="fixed right-0 top-0 h-full w-[450px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
@@ -385,6 +491,57 @@ export default function BankinterEURPage() {
           </div>
           <div className="border-t border-gray-700 px-4 py-3 flex justify-end gap-2">
             {editingRow === selectedRow.id ? <><Button variant="ghost" size="sm" onClick={cancelEdit} className="text-gray-400 hover:text-white">Cancel</Button><Button size="sm" onClick={saveEdit} className="bg-green-600 hover:bg-green-700 text-white"><Save className="h-4 w-4 mr-1" />Save</Button></> : <Button variant="outline" size="sm" onClick={() => startEditing(selectedRow)} className="border-gray-600 text-white hover:bg-gray-700"><Edit2 className="h-4 w-4 mr-1" />Edit</Button>}
+          </div>
+        </div>
+      )}
+
+      {/* Reconciliation Dialog */}
+      {reconciliationDialogOpen && reconciliationTransaction && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
+          <div className="bg-[#2a2b2d] rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+            <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+              <div><h3 className="text-lg font-semibold text-white">Find Matching Invoice</h3><p className="text-sm text-gray-400">Link bank transaction to an invoice</p></div>
+              <Button variant="ghost" size="sm" onClick={() => setReconciliationDialogOpen(false)} className="text-gray-400 hover:text-white"><X className="h-5 w-5" /></Button>
+            </div>
+            <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div><span className="text-gray-500">Date</span><p className="text-white font-medium">{formatShortDate(reconciliationTransaction.date)}</p></div>
+                <div><span className="text-gray-500">Amount</span><p className={"font-medium " + (reconciliationTransaction.amount >= 0 ? "text-green-400" : "text-red-400")}>€{formatEuropeanCurrency(reconciliationTransaction.amount)}</p></div>
+                <div><span className="text-gray-500">Description</span><p className="text-white font-medium truncate" title={reconciliationTransaction.description}>{reconciliationTransaction.description.substring(0, 30)}...</p></div>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto px-6 py-4 space-y-6">
+              <div>
+                <h4 className="text-sm font-medium text-green-400 mb-3 flex items-center gap-2"><Zap className="h-4 w-4" />Suggested Match (exact amount, ±3 days)</h4>
+                {loadingInvoices ? <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                : matchingInvoices.length === 0 ? <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700"><p className="text-sm">No exact match found</p><p className="text-xs mt-1">Select from available invoices below</p></div>
+                : <div className="space-y-2">{matchingInvoices.map((inv) => (
+                    <div key={inv.id} onClick={() => setSelectedInvoice(inv.id)} className={"p-3 rounded-lg border cursor-pointer transition-all " + (selectedInvoice === inv.id ? "border-green-500 bg-green-900/20" : "border-green-700/50 hover:border-green-600 bg-green-900/10")}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3"><input type="radio" checked={selectedInvoice === inv.id} onChange={() => setSelectedInvoice(inv.id)} className="h-4 w-4 text-green-600" /><div><p className="text-white text-sm">{inv.invoice_number || "Invoice #" + inv.id}</p><p className="text-xs text-gray-500">{inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}</p></div></div>
+                        <div className="text-right"><p className="font-medium text-red-400">€{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}</p><span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">EXACT MATCH</span></div>
+                      </div>
+                    </div>
+                  ))}</div>}
+              </div>
+              <div>
+                <h4 className="text-sm font-medium text-amber-400 mb-3 flex items-center gap-2"><Search className="h-4 w-4" />All Available Invoices</h4>
+                {loadingInvoices ? <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                : allAvailableInvoices.length === 0 ? <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700"><p className="text-sm">No other invoices available</p></div>
+                : <div className="space-y-2 max-h-[300px] overflow-y-auto">{allAvailableInvoices.map((inv) => (
+                    <div key={inv.id} onClick={() => setSelectedInvoice(inv.id)} className={"p-3 rounded-lg border cursor-pointer transition-all " + (selectedInvoice === inv.id ? "border-blue-500 bg-blue-900/20" : "border-gray-700 hover:border-gray-600 bg-gray-800/30")}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3"><input type="radio" checked={selectedInvoice === inv.id} onChange={() => setSelectedInvoice(inv.id)} className="h-4 w-4 text-blue-600" /><div><p className="text-white text-sm">{inv.invoice_number || "Invoice #" + inv.id}</p><p className="text-xs text-gray-500">{inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}</p></div></div>
+                        <div className="text-right"><p className="font-medium text-red-400">€{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}</p></div>
+                      </div>
+                    </div>
+                  ))}</div>}
+              </div>
+            </div>
+            <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-end gap-3">
+              <Button variant="outline" onClick={() => setReconciliationDialogOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700">Cancel</Button>
+              <Button onClick={performReconciliation} disabled={!selectedInvoice} className="bg-cyan-600 hover:bg-cyan-700"><Link2 className="h-4 w-4 mr-2" />Reconcile</Button>
+            </div>
           </div>
         </div>
       )}
