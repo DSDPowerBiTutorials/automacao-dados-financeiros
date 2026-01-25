@@ -388,40 +388,74 @@ export default function BankinterEURPage() {
     }
   }
 
-  // Perform intercompany reconciliation
+  // Perform intercompany reconciliation with auto-linking
   const performIntercompanyReconciliation = async () => {
     if (!reconciliationTransaction || !selectedBankAccount) return
     try {
       const bankAccount = bankAccounts.find(acc => acc.code === selectedBankAccount)
       if (!bankAccount) throw new Error("Bank account not found")
+      const now = new Date().toISOString()
+      const txDate = new Date(reconciliationTransaction.date)
+      const startDate = new Date(txDate); startDate.setDate(startDate.getDate() - 5)
+      const endDate = new Date(txDate); endDate.setDate(endDate.getDate() + 5)
+      const oppositeAmount = -reconciliationTransaction.amount
+      const counterpartSource = selectedBankAccount.toLowerCase()
 
+      // Search for matching counterpart transaction
+      const { data: candidates } = await supabase.from("csv_rows").select("*")
+        .eq("source", counterpartSource).eq("reconciled", false)
+        .gte("date", startDate.toISOString().split("T")[0])
+        .lte("date", endDate.toISOString().split("T")[0])
+
+      let counterpartMatch: any = null
+      if (candidates && candidates.length > 0) {
+        counterpartMatch = candidates.find(c => Math.abs((parseFloat(c.amount) || 0) - oppositeAmount) < 0.01)
+        if (!counterpartMatch) {
+          const tolerance = Math.abs(oppositeAmount) * 0.005
+          counterpartMatch = candidates.find(c => Math.abs((parseFloat(c.amount) || 0) - oppositeAmount) <= tolerance)
+        }
+      }
+
+      // Update THIS transaction
       const { error: txError } = await supabase.from("csv_rows").update({
         reconciled: true,
         custom_data: {
           ...reconciliationTransaction.custom_data,
-          reconciliationType: "manual",
-          reconciled_at: new Date().toISOString(),
-          is_intercompany: true,
-          intercompany_account_code: selectedBankAccount,
-          intercompany_account_name: bankAccount.name,
-          intercompany_note: intercompanyNote || null,
-          exclude_from_pnl: true,
-          cash_flow_category: "intercompany_transfer"
+          reconciliationType: "manual", reconciled_at: now, is_intercompany: true,
+          intercompany_account_code: selectedBankAccount, intercompany_account_name: bankAccount.name,
+          intercompany_note: intercompanyNote || null, intercompany_linked_id: counterpartMatch?.id || null,
+          exclude_from_pnl: true, cash_flow_category: "intercompany_transfer"
         }
       }).eq("id", reconciliationTransaction.id)
       if (txError) throw txError
 
+      // If counterpart found, update it too
+      if (counterpartMatch) {
+        await supabase.from("csv_rows").update({
+          reconciled: true,
+          custom_data: {
+            ...counterpartMatch.custom_data,
+            reconciliationType: "manual", reconciled_at: now, is_intercompany: true,
+            intercompany_account_code: "bankinter-eur", intercompany_account_name: "Bankinter EUR",
+            intercompany_note: intercompanyNote || null, intercompany_linked_id: reconciliationTransaction.id,
+            exclude_from_pnl: true, cash_flow_category: "intercompany_transfer"
+          }
+        }).eq("id", counterpartMatch.id)
+      }
+
       setRows((prev) => prev.map((row) => row.id === reconciliationTransaction.id ? { 
-        ...row, 
-        reconciled: true, 
-        reconciliationType: "manual" as const,
-        isIntercompany: true,
-        intercompanyAccountCode: selectedBankAccount,
-        intercompanyAccountName: bankAccount.name,
+        ...row, reconciled: true, reconciliationType: "manual" as const, isIntercompany: true,
+        intercompanyAccountCode: selectedBankAccount, intercompanyAccountName: bankAccount.name,
         intercompanyNote: intercompanyNote || null
       } : row))
       const direction = reconciliationTransaction.amount > 0 ? "from" : "to"
-      toast({ title: "Intercompany Transfer", description: "Marked as transfer " + direction + " " + bankAccount.name, variant: "default" })
+      toast({ 
+        title: counterpartMatch ? "✓ Intercompany Linked" : "Intercompany Transfer", 
+        description: counterpartMatch 
+          ? "Both transactions marked as transfer " + direction + " " + bankAccount.name
+          : "Marked (counterpart not found in " + bankAccount.name + ")",
+        variant: counterpartMatch ? "default" : "default" 
+      })
       setReconciliationDialogOpen(false); setReconciliationTransaction(null); setIsIntercompany(false); setSelectedBankAccount(null); setIntercompanyNote("")
     } catch (e: unknown) { 
       const errorMessage = e instanceof Error ? e.message : "Failed to reconcile"
@@ -429,16 +463,20 @@ export default function BankinterEURPage() {
     }
   }
 
-  // Revert intercompany status
+  // Revert intercompany status (and linked counterpart if exists)
   const revertIntercompany = async (row: BankinterEURRow) => {
-    if (!confirm("Remove intercompany status from this transaction?")) return
+    const hasLinked = row.custom_data?.intercompany_linked_id
+    const confirmMsg = hasLinked ? "Reverter ambas transações intercompany linkadas?" : "Remove intercompany status from this transaction?"
+    if (!confirm(confirmMsg)) return
     setIsReverting(true)
     try {
       const newCustomData = { ...row.custom_data }
+      const linkedId = newCustomData.intercompany_linked_id
       delete newCustomData.is_intercompany
       delete newCustomData.intercompany_account_code
       delete newCustomData.intercompany_account_name
       delete newCustomData.intercompany_note
+      delete newCustomData.intercompany_linked_id
       delete newCustomData.exclude_from_pnl
       delete newCustomData.cash_flow_category
 
@@ -448,19 +486,27 @@ export default function BankinterEURPage() {
       }).eq("id", row.id)
       if (error) throw error
 
+      // Also revert linked counterpart
+      let revertedBoth = false
+      if (linkedId) {
+        const { data: counterpart } = await supabase.from("csv_rows").select("*").eq("id", linkedId).single()
+        if (counterpart) {
+          const cpData = { ...counterpart.custom_data }
+          delete cpData.is_intercompany; delete cpData.intercompany_account_code; delete cpData.intercompany_account_name
+          delete cpData.intercompany_note; delete cpData.intercompany_linked_id; delete cpData.exclude_from_pnl; delete cpData.cash_flow_category
+          await supabase.from("csv_rows").update({ reconciled: false, custom_data: { ...cpData, reconciliationType: null, reconciled_at: null } }).eq("id", linkedId)
+          revertedBoth = true
+        }
+      }
+
       setRows((prev) => prev.map((r) => r.id === row.id ? { 
-        ...r, 
-        reconciled: false, 
-        reconciliationType: null,
-        isIntercompany: false,
-        intercompanyAccountCode: null,
-        intercompanyAccountName: null,
-        intercompanyNote: null
+        ...r, reconciled: false, reconciliationType: null, isIntercompany: false,
+        intercompanyAccountCode: null, intercompanyAccountName: null, intercompanyNote: null
       } : r))
       if (selectedRow?.id === row.id) {
         setSelectedRow({ ...selectedRow, reconciled: false, reconciliationType: null, isIntercompany: false, intercompanyAccountCode: null, intercompanyAccountName: null, intercompanyNote: null })
       }
-      toast({ title: "Reverted", description: "Intercompany status removed", variant: "default" })
+      toast({ title: revertedBoth ? "Both Reverted" : "Reverted", description: revertedBoth ? "Both linked transactions reverted" : "Intercompany status removed", variant: "default" })
     } catch (e: unknown) {
       const errorMessage = e instanceof Error ? e.message : "Failed to revert"
       toast({ title: "Error", description: errorMessage, variant: "destructive" })
