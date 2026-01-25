@@ -48,6 +48,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
 import { UserAvatar } from "@/components/user-avatar";
+import { UserProfilePopup } from "@/components/user-profile-popup";
 
 type Invoice = {
     id: number;
@@ -110,6 +111,8 @@ type Activity = {
     user_name: string;
     user_id?: string | null;
     avatar_url?: string | null;
+    department?: string | null;
+    role?: string | null;
     activity_type: string;
     content: string;
     metadata: any;
@@ -385,7 +388,7 @@ export default function PaymentSchedulePage() {
             const [activitiesResult, historyResult] = await Promise.all([
                 supabase
                     .from("invoice_activities")
-                    .select("*, users:user_id(avatar_url)")
+                    .select("*, users:user_id(avatar_url, department, role)")
                     .eq("invoice_id", invoiceId)
                     .order("created_at", { ascending: false }),
                 fetch(`/api/invoice-history?invoice_id=${invoiceId}`).then(r => r.json())
@@ -395,6 +398,8 @@ export default function PaymentSchedulePage() {
             const activitiesData = (activitiesResult.data || []).map((a: any) => ({
                 ...a,
                 avatar_url: a.users?.avatar_url || null,
+                department: a.users?.department || null,
+                role: a.users?.role || null,
                 users: undefined // Remove the nested object
             }));
             const historyData = historyResult.success ? (historyResult.history || []) : [];
@@ -1783,19 +1788,43 @@ export default function PaymentSchedulePage() {
 
                                                 return (
                                                     <div key={activity.id} className="flex gap-3">
-                                                        <UserAvatar
+                                                        <UserProfilePopup
                                                             user={{
                                                                 id: activity.user_id || null,
                                                                 email: activity.user_email,
                                                                 name: activity.user_name,
-                                                                avatar_url: activity.avatar_url || null
+                                                                avatar_url: activity.avatar_url || null,
+                                                                department: activity.department || null,
+                                                                role: activity.role || null
                                                             }}
-                                                            size="sm"
-                                                            className="flex-shrink-0"
-                                                        />
+                                                            side="left"
+                                                        >
+                                                            <UserAvatar
+                                                                user={{
+                                                                    id: activity.user_id || null,
+                                                                    email: activity.user_email,
+                                                                    name: activity.user_name,
+                                                                    avatar_url: activity.avatar_url || null
+                                                                }}
+                                                                size="sm"
+                                                                className="flex-shrink-0"
+                                                            />
+                                                        </UserProfilePopup>
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2 flex-wrap">
-                                                                <span className="text-sm font-medium text-white">{activity.user_name}</span>
+                                                                <UserProfilePopup
+                                                                    user={{
+                                                                        id: activity.user_id || null,
+                                                                        email: activity.user_email,
+                                                                        name: activity.user_name,
+                                                                        avatar_url: activity.avatar_url || null,
+                                                                        department: activity.department || null,
+                                                                        role: activity.role || null
+                                                                    }}
+                                                                    side="bottom"
+                                                                >
+                                                                    <span className="text-sm font-medium text-white hover:underline cursor-pointer">{activity.user_name}</span>
+                                                                </UserProfilePopup>
                                                                 {activity.activity_type !== "comment" && (
                                                                     <span className="text-sm text-gray-400">{getActivityDescription()}</span>
                                                                 )}

@@ -2,7 +2,6 @@
 
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
 import { UserAvatar } from '@/components/user-avatar';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -36,12 +35,12 @@ export function UserMenu() {
     return (
         <DropdownMenu modal={false}>
             <DropdownMenuTrigger asChild>
-                <Button
-                    variant="ghost"
-                    className="relative h-10 w-10 rounded-full hover:opacity-80 transition-opacity"
+                <button
+                    type="button"
+                    className="relative hover:opacity-80 transition-opacity focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 rounded-full"
                 >
                     <UserAvatar user={profile} size="md" />
-                </Button>
+                </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
                 className="w-72 bg-white shadow-lg"
