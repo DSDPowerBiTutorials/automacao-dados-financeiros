@@ -791,6 +791,24 @@ export default function PaymentSchedulePage() {
             const { data: userData } = await supabase.auth.getUser();
             const userName = userData?.user?.user_metadata?.name || userData?.user?.email?.split("@")[0] || "User";
 
+            // Mark bank transaction as reconciled FIRST (critical operation)
+            const { error: txError, data: txData } = await supabase
+                .from("csv_rows")
+                .update({ reconciled: true })
+                .eq("id", selectedTransaction)
+                .select();
+
+            if (txError) {
+                console.error("Error updating csv_rows:", txError);
+                throw new Error(`Failed to mark bank transaction: ${txError.message}`);
+            }
+
+            if (!txData || txData.length === 0) {
+                throw new Error("Bank transaction not found or not updated");
+            }
+
+            console.log("Bank transaction updated:", txData[0].id, "reconciled:", txData[0].reconciled);
+
             // Update invoice as reconciled
             const { error: invoiceError } = await supabase
                 .from("invoices")
@@ -802,14 +820,6 @@ export default function PaymentSchedulePage() {
                 .eq("id", reconciliationInvoice.id);
 
             if (invoiceError) throw invoiceError;
-
-            // Mark bank transaction as reconciled
-            const { error: txError } = await supabase
-                .from("csv_rows")
-                .update({ reconciled: true })
-                .eq("id", selectedTransaction);
-
-            if (txError) throw txError;
 
             // Log history
             await fetch("/api/invoice-history", {
