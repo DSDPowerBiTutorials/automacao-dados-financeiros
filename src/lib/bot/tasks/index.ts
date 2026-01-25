@@ -35,14 +35,14 @@ export async function executeTaskByKey(key: string): Promise<{
     error?: string
 }> {
     const task = TASK_MAP.get(key)
-    
+
     if (!task) {
         return {
             success: false,
             error: `Task "${key}" não encontrada`
         }
     }
-    
+
     try {
         const result = await task.execute()
         return { success: true, result }

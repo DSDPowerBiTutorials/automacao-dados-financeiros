@@ -273,15 +273,15 @@ export default function BotLogsPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
             });
-            
+
             const result = await response.json();
-            
+
             if (result.success) {
                 alert(`✅ Task executada com sucesso!\n\nProcessados: ${result.data?.processed || 0}\nCriados: ${result.data?.created || 0}\nFalhas: ${result.data?.failed || 0}`);
             } else {
                 alert(`❌ Erro: ${result.error}`);
             }
-            
+
             // Recarregar dados
             await fetchData();
         } catch (error) {

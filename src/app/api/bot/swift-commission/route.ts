@@ -16,21 +16,21 @@ export const maxDuration = 60 // 60 segundos máximo
 
 export async function POST(request: NextRequest) {
     const taskName = SWIFT_COMMISSION_CONFIG.taskName
-    
+
     try {
         // Rate limiting
         if (!checkRateLimit(taskName, 5)) {
             return NextResponse.json(
-                { 
-                    success: false, 
-                    error: 'Rate limit atingido. Aguarde 1 minuto.' 
+                {
+                    success: false,
+                    error: 'Rate limit atingido. Aguarde 1 minuto.'
                 },
                 { status: 429 }
             )
         }
-        
+
         console.log(`${BOT_CONSOLE_NAME} [${taskName}] 📨 Requisição recebida`)
-        
+
         // Parse body opcional (pode incluir filtros adicionais no futuro)
         let body: Record<string, unknown> = {}
         try {
@@ -38,22 +38,22 @@ export async function POST(request: NextRequest) {
         } catch {
             // Body vazio é OK
         }
-        
+
         const dryRun = body.dryRun === true
-        
+
         if (dryRun) {
             console.log(`${BOT_CONSOLE_NAME} [${taskName}] 🔍 Modo dry-run ativado`)
         }
-        
+
         // Executar task
         const result = await executeSwiftCommissionTask()
-        
+
         console.log(`${BOT_CONSOLE_NAME} [${taskName}] ${result.success ? '✅' : '❌'} Resultado:`, {
             processed: result.processed,
             created: result.created,
             failed: result.failed
         })
-        
+
         return NextResponse.json({
             success: result.success,
             data: {
@@ -65,14 +65,14 @@ export async function POST(request: NextRequest) {
             },
             timestamp: new Date().toISOString()
         })
-        
+
     } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error)
         console.error(`${BOT_CONSOLE_NAME} [${taskName}] ❌ Erro crítico:`, errorMessage)
-        
+
         return NextResponse.json(
-            { 
-                success: false, 
+            {
+                success: false,
                 error: errorMessage,
                 timestamp: new Date().toISOString()
             },
