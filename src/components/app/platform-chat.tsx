@@ -178,6 +178,9 @@ export function PlatformChat() {
         }
     }, [user]);
 
+    // BOTella system ID - must match migration
+    const BOTELLA_ID = '00000000-0000-0000-0000-b07e11a00001';
+
     // Load users for DMs
     const loadUsers = useCallback(async () => {
         try {
@@ -190,7 +193,22 @@ export function PlatformChat() {
             if (error) {
                 console.log("User profiles not found:", error.message);
             } else {
-                setUsers(data || []);
+                // Ensure BOTella appears first and always online
+                const usersWithBotella = (data || []).map(u => {
+                    if (u.id === BOTELLA_ID || u.username === 'botella' || u.full_name === 'BOTella') {
+                        return { ...u, status: 'online', _isBotella: true };
+                    }
+                    return { ...u, _isBotella: false };
+                });
+                
+                // Sort: BOTella first, then by name
+                usersWithBotella.sort((a: any, b: any) => {
+                    if (a._isBotella) return -1;
+                    if (b._isBotella) return 1;
+                    return (a.full_name || '').localeCompare(b.full_name || '');
+                });
+                
+                setUsers(usersWithBotella);
             }
         } catch (e) {
             console.log("Error loading users:", e);
@@ -570,14 +588,15 @@ export function PlatformChat() {
 
                                 {dmsExpanded && (
                                     <div className="mt-1 space-y-0.5">
-                                        {users.slice(0, 5).map((u) => (
+                                        {users.slice(0, 10).map((u: any) => (
                                             <button
                                                 key={u.id}
                                                 onClick={() => startDm(u)}
                                                 disabled={startingDm}
                                                 className={cn(
                                                     "flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-800 min-w-0",
-                                                    selectedChannel?.channel_type === "direct" && selectedChannel?.name === (u.full_name || u.username) && "bg-blue-600"
+                                                    selectedChannel?.channel_type === "direct" && selectedChannel?.name === (u.full_name || u.username) && "bg-blue-600",
+                                                    u._isBotella && "bg-gradient-to-r from-purple-900/30 to-transparent"
                                                 )}
                                             >
                                                 {startingDm && dmTargetUser?.id === u.id ? (
@@ -591,15 +610,27 @@ export function PlatformChat() {
                                                             avatar_url: u.avatar_url
                                                         }}
                                                         size="xs"
+                                                        showOnlineIndicator={u._isBotella}
                                                     />
                                                 )}
-                                                <span className="truncate text-xs">{(u.full_name || u.username || "").substring(0, 12)}...</span>
+                                                <span className={cn(
+                                                    "truncate text-xs",
+                                                    u._isBotella && "font-medium"
+                                                )}>
+                                                    {u._isBotella ? (
+                                                        <><strong>BOT</strong>ella</>
+                                                    ) : (
+                                                        `${(u.full_name || u.username || "").substring(0, 12)}...`
+                                                    )}
+                                                </span>
                                                 <span
                                                     className={cn(
                                                         "w-2 h-2 rounded-full ml-auto flex-shrink-0",
-                                                        u.status === "online"
+                                                        u._isBotella
                                                             ? "bg-green-500"
-                                                            : u.status === "away"
+                                                            : u.status === "online"
+                                                                ? "bg-green-500"
+                                                                : u.status === "away"
                                                                 ? "bg-yellow-500"
                                                                 : "bg-gray-500"
                                                     )}
