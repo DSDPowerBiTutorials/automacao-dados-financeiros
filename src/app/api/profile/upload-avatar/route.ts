@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase-admin';
-import { supabase } from '@/lib/supabase';
 
 export async function POST(request: NextRequest) {
     console.log('🔵 [AVATAR UPLOAD] Iniciando upload de avatar...');
@@ -59,7 +58,7 @@ export async function POST(request: NextRequest) {
         console.log(`📤 Uploading avatar for user ${user.id}: ${filePath}`);
 
         // Verificar se o bucket existe
-        const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+        const { data: buckets, error: bucketsError } = await supabaseAdmin.storage.listBuckets();
 
         if (bucketsError) {
             console.error('Error listing buckets:', bucketsError);
@@ -88,8 +87,8 @@ export async function POST(request: NextRequest) {
 
         console.log('📤 [AVATAR UPLOAD] Fazendo upload para Supabase Storage...');
 
-        // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        // Upload to Supabase Storage usando admin (bypass de policies)
+        const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
             .from('user-uploads')
             .upload(filePath, buffer, {
                 contentType: file.type,
@@ -99,7 +98,6 @@ export async function POST(request: NextRequest) {
         if (uploadError) {
             console.error('❌ [AVATAR UPLOAD] Erro ao fazer upload:', {
                 message: uploadError.message,
-                statusCode: uploadError.statusCode,
                 error: uploadError
             });
             return NextResponse.json({
@@ -115,7 +113,7 @@ export async function POST(request: NextRequest) {
 
         // Get public URL
         console.log('🔗 [AVATAR UPLOAD] Gerando URL pública...');
-        const { data: { publicUrl } } = supabase.storage
+        const { data: { publicUrl } } = supabaseAdmin.storage
             .from('user-uploads')
             .getPublicUrl(filePath);
 
@@ -190,7 +188,7 @@ export async function DELETE(request: NextRequest) {
         // Try to delete file from storage (optional, don't fail if it doesn't exist)
         if (profile?.avatar_url) {
             const filePath = profile.avatar_url.split('/').slice(-2).join('/');
-            await supabase.storage.from('user-uploads').remove([filePath]);
+            await supabaseAdmin.storage.from('user-uploads').remove([filePath]);
         }
 
         return NextResponse.json({ message: 'Avatar removed successfully' });

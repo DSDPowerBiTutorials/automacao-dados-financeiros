@@ -19,6 +19,9 @@ import {
     completeBotTask,
     failBotTask,
     BOT_NAME,
+    logInvoiceCreated,
+    logPaymentMarked,
+    logReconciliationDone,
 } from '@/lib/botella'
 
 // ============================================
@@ -242,6 +245,25 @@ export async function executeSwiftCommissionTask(): Promise<{
                 if (updateError) {
                     console.warn(`Aviso: Não foi possível marcar transação como reconciliada: ${updateError.message}`)
                 }
+
+                // ============================================
+                // REGISTRAR ATIVIDADES (aparece em "All Activities")
+                // ============================================
+
+                // 1. Log de criação da invoice
+                await logInvoiceCreated(
+                    invoice.id,
+                    invoiceNumber,
+                    amount,
+                    config.defaults.currency,
+                    `Swift Commission: ${tx.description}`
+                )
+
+                // 2. Log de pagamento marcado como pago
+                await logPaymentMarked(invoice.id, amount, config.defaults.currency)
+
+                // 3. Log de reconciliação com transação bancária
+                await logReconciliationDone(invoice.id, tx.id, tx.description)
 
                 ctx.recordsCreated++
                 results.push({

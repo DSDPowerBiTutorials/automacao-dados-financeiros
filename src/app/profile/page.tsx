@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/user-avatar';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Camera, Trash2, Save, Lock, User, Mail, Building2, Phone, Calendar } from 'lucide-react';
@@ -292,10 +292,11 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center gap-6">
-                            <Avatar className="h-24 w-24">
-                                <AvatarImage src={avatarUrl || undefined} alt={profile.name} />
-                                <AvatarFallback className="text-2xl">{getInitials()}</AvatarFallback>
-                            </Avatar>
+                            <UserAvatar 
+                                user={profile} 
+                                size="xl" 
+                                className="h-24 w-24"
+                            />
                             <div className="flex flex-col gap-2">
                                 <input
                                     type="file"

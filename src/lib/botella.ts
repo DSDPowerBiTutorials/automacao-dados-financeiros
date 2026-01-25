@@ -485,3 +485,110 @@ export function checkRateLimit(taskKey: string, maxPerMinute: number): boolean {
     entry.count++;
     return true;
 }
+
+// ============================================================================
+// INVOICE ACTIVITY LOGGING
+// ============================================================================
+
+export type InvoiceActivityType =
+    | "created"
+    | "updated"
+    | "comment"
+    | "status_change"
+    | "reconciled"
+    | "payment_marked"
+    | "field_updated";
+
+/**
+ * Registra uma atividade na invoice (aparece em "All Activities" no side panel)
+ * Isso faz o BOTella aparecer como um usuário normal no histórico
+ */
+export async function logInvoiceActivity(
+    invoiceId: number,
+    activityType: InvoiceActivityType,
+    content: string,
+    metadata?: Record<string, unknown>
+): Promise<void> {
+    try {
+        const { error } = await supabaseAdmin
+            .from("invoice_activities")
+            .insert({
+                invoice_id: invoiceId,
+                user_email: "botella@system.local",
+                user_name: BOT_NAME,
+                activity_type: activityType,
+                content: content,
+                metadata: metadata || {},
+            });
+
+        if (error) {
+            console.error(`${BOT_CONSOLE_NAME} ❌ Erro ao registrar atividade:`, error.message);
+        }
+    } catch (e) {
+        console.error(`${BOT_CONSOLE_NAME} ❌ Falha ao registrar atividade:`, e);
+    }
+}
+
+/**
+ * Registra criação de invoice pelo BOTella
+ */
+export async function logInvoiceCreated(
+    invoiceId: number,
+    invoiceNumber: string,
+    amount: number,
+    currency: string,
+    description?: string
+): Promise<void> {
+    await logInvoiceActivity(
+        invoiceId,
+        "created",
+        `${BOT_NAME} created this payment`,
+        {
+            invoice_number: invoiceNumber,
+            amount: amount,
+            currency: currency,
+            description: description,
+            automated: true,
+        }
+    );
+}
+
+/**
+ * Registra pagamento marcado pelo BOTella
+ */
+export async function logPaymentMarked(
+    invoiceId: number,
+    amount: number,
+    currency: string
+): Promise<void> {
+    await logInvoiceActivity(
+        invoiceId,
+        "payment_marked",
+        `${BOT_NAME} marked payment as paid`,
+        {
+            amount: amount,
+            currency: currency,
+            automated: true,
+        }
+    );
+}
+
+/**
+ * Registra reconciliação feita pelo BOTella
+ */
+export async function logReconciliationDone(
+    invoiceId: number,
+    transactionId: string,
+    transactionDescription: string
+): Promise<void> {
+    await logInvoiceActivity(
+        invoiceId,
+        "reconciled",
+        `${BOT_NAME} reconciled with bank transaction`,
+        {
+            transaction_id: transactionId,
+            transaction_description: transactionDescription,
+            automated: true,
+        }
+    );
+}
