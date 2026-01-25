@@ -1,184 +1,133 @@
 /**
- * BOTella v2 - Sistema de Automação com Notificações
+ * BOTella - Sistema de Automação com Logs
  * 
- * Padrões inspirados no Celery:
- * - Retry com exponential backoff
- * - Rate limiting
- * - Task chaining (workflows)
- * - Dead letter queue
- * - Estados de tarefa (PENDING → STARTED → SUCCESS/FAILURE)
+ * Biblioteca para gerenciar tarefas automáticas do sistema.
+ * O nome "BOTella" aparece com "BOT" em negrito na UI.
  */
 
-import { supabaseAdmin } from './supabase-admin'
+import { supabaseAdmin } from "./supabase-admin";
 
-// ============================================
+// ============================================================================
 // TIPOS
-// ============================================
+// ============================================================================
 
-export type TaskStatus = 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE' | 'RETRY' | 'REVOKED'
-export type TaskType = 'sync' | 'reconciliation' | 'report' | 'notification' | 'cleanup' | 'backup'
-export type NotificationChannel = 'email' | 'push' | 'sms' | 'in_app'
-export type NotificationPriority = 'low' | 'normal' | 'high' | 'urgent'
-export type NotificationStatus = 'pending' | 'sent' | 'failed' | 'read'
+export type BotTaskType =
+    | "sync"
+    | "reconciliation"
+    | "cleanup"
+    | "notification"
+    | "backup";
 
-// Alias para compatibilidade com código anterior
-export type BotTaskType = TaskType
-export type BotLogStatus = 'started' | 'running' | 'completed' | 'failed' | 'warning'
-
-export interface BotTask {
-    id: string
-    task_key: string
-    name: string
-    description?: string
-    task_type: TaskType
-    cron_expression?: string
-    is_active: boolean
-    priority: number
-    max_retries: number
-    retry_delay_seconds: number
-    rate_limit_per_minute: number
-    timeout_seconds: number
-    config: Record<string, unknown>
-    last_run_at?: string
-    last_status?: TaskStatus
-}
+export type BotLogStatus =
+    | "PENDING"
+    | "STARTED"
+    | "SUCCESS"
+    | "FAILURE"
+    | "RETRY"
+    | "REVOKED";
 
 export interface BotLog {
-    id: string
-    task_id?: string
-    task_name: string
-    status: TaskStatus
-    attempt: number
-    records_processed: number
-    records_created: number
-    records_updated: number
-    records_failed: number
-    started_at: string
-    completed_at?: string
-    duration_ms?: number
-    result?: Record<string, unknown>
-    error_message?: string
-    error_stack?: string
-    metadata?: Record<string, unknown>
-    executed_by: string
+    id?: string;
+    task_id?: string;
+    task_name: string;
+    status: BotLogStatus;
+    attempt?: number;
+    records_processed?: number;
+    records_created?: number;
+    records_updated?: number;
+    records_failed?: number;
+    started_at?: string;
+    completed_at?: string;
+    duration_ms?: number;
+    result?: Record<string, unknown>;
+    error_message?: string;
+    error_stack?: string;
+    metadata?: Record<string, unknown>;
+    executed_by?: string;
 }
 
-export interface BotNotification {
-    id: string
-    user_id: string
-    channel: NotificationChannel
-    title: string
-    message: string
-    priority: NotificationPriority
-    status: NotificationStatus
-    scheduled_for: string
-    sent_at?: string
-    read_at?: string
-    metadata?: Record<string, unknown>
+export interface BotTask {
+    id: number;
+    task_key: string;
+    task_name: string;
+    task_type: BotTaskType;
+    description?: string;
+    schedule?: string;
+    is_enabled: boolean;
+    last_run_at?: string;
+    last_status?: BotLogStatus;
+    next_run_at?: string;
+    config?: Record<string, unknown>;
+    created_at: string;
+    updated_at: string;
 }
 
 export interface BotTaskContext {
-    logId: string
-    taskName: string
-    taskType: TaskType
-    taskId?: string
-    startTime: Date
-    attempt: number
-    recordsProcessed: number
-    recordsCreated: number
-    recordsUpdated: number
-    recordsFailed: number
-    metadata: Record<string, unknown>
+    logId: string;
+    taskName: string;
+    taskType: BotTaskType;
+    startTime: number;
+    recordsProcessed: number;
+    recordsCreated: number;
+    recordsUpdated: number;
+    recordsFailed: number;
 }
 
-export interface ExecutionResult<T = unknown> {
-    success: boolean
-    result?: T
-    error?: string
-    attempts: number
-    durationMs: number
-}
-
-// ============================================
+// ============================================================================
 // CONSTANTES
-// ============================================
+// ============================================================================
 
-export const BOT_NAME = 'BOTella'
-export const BOT_EMAIL = 'botella@system.local'
-export const BOT_CONSOLE_NAME = '🤖 BOTella'
-
-export const BOT_NAME_PARTS = {
-    bold: 'BOT',
-    normal: 'ella'
-}
-
-// ============================================
-// RATE LIMITER
-// ============================================
-
-const rateLimitCache: Map<string, { count: number; resetAt: number }> = new Map()
-
-export function checkRateLimit(key: string, maxPerMinute: number): boolean {
-    const now = Date.now()
-    const cached = rateLimitCache.get(key)
-
-    if (!cached || now > cached.resetAt) {
-        rateLimitCache.set(key, { count: 1, resetAt: now + 60000 })
-        return true
-    }
-
-    if (cached.count >= maxPerMinute) {
-        console.warn(`${BOT_CONSOLE_NAME} [${key}] Rate limit atingido (${maxPerMinute}/min)`)
-        return false
-    }
-
-    cached.count++
-    return true
-}
-
-// ============================================
-// LOGGING - Core Functions
-// ============================================
+export const BOT_NAME = "BOTella";
 
 /**
- * Inicia uma nova tarefa e retorna o contexto
+ * Renderiza o nome do BOT com formatação (para uso em React)
+ * Retorna: { bold: "BOT", normal: "ella" }
+ */
+export const BOT_NAME_PARTS = {
+    bold: "BOT",
+    normal: "ella",
+};
+
+/**
+ * Renderiza o nome completo para logs de console
+ */
+export const BOT_CONSOLE_NAME = "🤖 BOTella";
+
+// ============================================================================
+// FUNÇÕES DE LOGGING
+// ============================================================================
+
+/**
+ * Inicia uma nova tarefa do BOT e retorna o contexto
  */
 export async function startBotTask(
     taskName: string,
-    taskType: TaskType,
+    taskType: BotTaskType,
     message?: string
 ): Promise<BotTaskContext> {
-    const startTime = new Date()
+    const startTime = Date.now();
 
-    console.log(`${BOT_CONSOLE_NAME} [${taskName}] ▶️ Iniciando...`)
+    console.log(`${BOT_CONSOLE_NAME} [${taskName}] ▶️ Iniciando...`);
 
     const { data, error } = await supabaseAdmin
-        .from('bot_logs')
+        .from("bot_logs")
         .insert({
             task_name: taskName,
-            status: 'STARTED',
+            status: "STARTED",
             attempt: 1,
-            started_at: startTime.toISOString(),
-            metadata: message ? { message } : {},
-            executed_by: BOT_NAME
+            started_at: new Date().toISOString(),
+            executed_by: BOT_NAME,
+            metadata: {
+                task_type: taskType,
+                message: message || `Tarefa "${taskName}" iniciada`
+            },
         })
-        .select('id')
-        .single()
+        .select("id")
+        .single();
 
     if (error) {
-        console.error(`${BOT_CONSOLE_NAME} [${taskName}] ❌ Erro ao criar log:`, error.message)
-        return {
-            logId: 'local-' + Date.now(),
-            taskName,
-            taskType,
-            startTime,
-            attempt: 1,
-            recordsProcessed: 0,
-            recordsCreated: 0,
-            recordsUpdated: 0,
-            recordsFailed: 0,
-            metadata: {}
-        }
+        console.error(`${BOT_CONSOLE_NAME} [${taskName}] ❌ Erro ao criar log:`, error.message);
+        throw error;
     }
 
     return {
@@ -186,449 +135,353 @@ export async function startBotTask(
         taskName,
         taskType,
         startTime,
-        attempt: 1,
         recordsProcessed: 0,
         recordsCreated: 0,
         recordsUpdated: 0,
         recordsFailed: 0,
-        metadata: {}
-    }
+    };
 }
 
 /**
- * Atualiza o progresso de uma tarefa
+ * Atualiza o progresso de uma tarefa em execução
  */
 export async function updateBotProgress(
-    ctx: BotTaskContext,
+    context: BotTaskContext,
     message: string,
     details?: Record<string, unknown>
 ): Promise<void> {
-    console.log(`${BOT_CONSOLE_NAME} [${ctx.taskName}] 🔄 ${message}`)
-
-    if (ctx.logId.startsWith('local-')) return
+    console.log(`${BOT_CONSOLE_NAME} [${context.taskName}] 🔄 ${message}`);
 
     await supabaseAdmin
-        .from('bot_logs')
+        .from("bot_logs")
         .update({
-            status: 'STARTED',
-            records_processed: ctx.recordsProcessed,
-            records_created: ctx.recordsCreated,
-            records_updated: ctx.recordsUpdated,
-            records_failed: ctx.recordsFailed,
-            metadata: { ...ctx.metadata, progress: message, ...details }
+            status: "STARTED",
+            records_processed: context.recordsProcessed,
+            records_created: context.recordsCreated,
+            records_updated: context.recordsUpdated,
+            records_failed: context.recordsFailed,
+            metadata: { message, ...details },
         })
-        .eq('id', ctx.logId)
+        .eq("id", context.logId);
 }
 
 /**
  * Finaliza uma tarefa com sucesso
  */
 export async function completeBotTask(
-    ctx: BotTaskContext,
+    context: BotTaskContext,
     message?: string,
     details?: Record<string, unknown>
 ): Promise<void> {
-    const durationMs = Date.now() - ctx.startTime.getTime()
-    const durationSec = (durationMs / 1000).toFixed(1)
+    const durationMs = Date.now() - context.startTime;
+    const durationSec = (durationMs / 1000).toFixed(1);
 
-    console.log(`${BOT_CONSOLE_NAME} [${ctx.taskName}] ✅ Concluído em ${durationSec}s`)
-    console.log(`   📊 Processados: ${ctx.recordsProcessed} | Criados: ${ctx.recordsCreated} | Atualizados: ${ctx.recordsUpdated} | Falhas: ${ctx.recordsFailed}`)
-
-    if (ctx.logId.startsWith('local-')) return
+    console.log(`${BOT_CONSOLE_NAME} [${context.taskName}] ✅ Concluído em ${durationSec}s`);
+    console.log(`   📊 Processados: ${context.recordsProcessed} | Criados: ${context.recordsCreated} | Atualizados: ${context.recordsUpdated} | Falhas: ${context.recordsFailed}`);
 
     await supabaseAdmin
-        .from('bot_logs')
+        .from("bot_logs")
         .update({
-            status: 'SUCCESS',
-            completed_at: new Date().toISOString(),
+            status: "SUCCESS",
+            records_processed: context.recordsProcessed,
+            records_created: context.recordsCreated,
+            records_updated: context.recordsUpdated,
+            records_failed: context.recordsFailed,
             duration_ms: durationMs,
-            records_processed: ctx.recordsProcessed,
-            records_created: ctx.recordsCreated,
-            records_updated: ctx.recordsUpdated,
-            records_failed: ctx.recordsFailed,
-            result: details,
-            metadata: { ...ctx.metadata, message }
+            completed_at: new Date().toISOString(),
+            result: { message: message || `Tarefa concluída com sucesso`, ...details },
         })
-        .eq('id', ctx.logId)
+        .eq("id", context.logId);
 
-    if (ctx.taskId) {
-        await supabaseAdmin
-            .from('bot_tasks')
-            .update({ last_run_at: new Date().toISOString(), last_status: 'SUCCESS' })
-            .eq('id', ctx.taskId)
-    }
+    // Atualizar última execução na tabela de tarefas
+    await supabaseAdmin
+        .from("bot_tasks")
+        .update({
+            last_run_at: new Date().toISOString(),
+            last_status: "SUCCESS",
+            updated_at: new Date().toISOString(),
+        })
+        .eq("task_key", context.taskName);
 }
 
 /**
  * Finaliza uma tarefa com erro
  */
 export async function failBotTask(
-    ctx: BotTaskContext,
+    context: BotTaskContext,
     error: Error | string,
     details?: Record<string, unknown>
 ): Promise<void> {
-    const durationMs = Date.now() - ctx.startTime.getTime()
-    const errorMessage = error instanceof Error ? error.message : error
-    const errorStack = error instanceof Error ? error.stack : undefined
+    const durationMs = Date.now() - context.startTime;
+    const errorMessage = error instanceof Error ? error.message : error;
+    const errorStack = error instanceof Error ? error.stack : undefined;
 
-    console.error(`${BOT_CONSOLE_NAME} [${ctx.taskName}] ❌ Falhou: ${errorMessage}`)
-
-    if (ctx.logId.startsWith('local-')) return
+    console.error(`${BOT_CONSOLE_NAME} [${context.taskName}] ❌ Falhou: ${errorMessage}`);
 
     await supabaseAdmin
-        .from('bot_logs')
+        .from("bot_logs")
         .update({
-            status: 'FAILURE',
-            completed_at: new Date().toISOString(),
+            status: "FAILURE",
+            records_processed: context.recordsProcessed,
+            records_created: context.recordsCreated,
+            records_updated: context.recordsUpdated,
+            records_failed: context.recordsFailed,
             duration_ms: durationMs,
-            records_processed: ctx.recordsProcessed,
-            records_created: ctx.recordsCreated,
-            records_updated: ctx.recordsUpdated,
-            records_failed: ctx.recordsFailed,
             error_message: errorMessage,
             error_stack: errorStack,
+            completed_at: new Date().toISOString(),
             result: details,
-            metadata: ctx.metadata
         })
-        .eq('id', ctx.logId)
+        .eq("id", context.logId);
 
-    if (ctx.taskId) {
-        await supabaseAdmin
-            .from('bot_tasks')
-            .update({ last_run_at: new Date().toISOString(), last_status: 'FAILURE' })
-            .eq('id', ctx.taskId)
-    }
-
-    // Adicionar à dead letter queue
-    await supabaseAdmin.from('bot_dead_letter_queue').insert({
-        original_log_id: ctx.logId,
-        task_name: ctx.taskName,
-        payload: ctx.metadata,
-        error_message: errorMessage,
-        attempts: ctx.attempt
-    })
+    // Atualizar última execução na tabela de tarefas
+    await supabaseAdmin
+        .from("bot_tasks")
+        .update({
+            last_run_at: new Date().toISOString(),
+            last_status: "FAILURE",
+            updated_at: new Date().toISOString(),
+        })
+        .eq("task_key", context.taskName);
 }
 
 /**
  * Finaliza uma tarefa com warning (parcialmente bem-sucedida)
+ * Nota: No schema v2, warning é mapeado para SUCCESS com flag em metadata
  */
 export async function warnBotTask(
-    ctx: BotTaskContext,
+    context: BotTaskContext,
     message: string,
     details?: Record<string, unknown>
 ): Promise<void> {
-    const durationMs = Date.now() - ctx.startTime.getTime()
+    const durationMs = Date.now() - context.startTime;
 
-    console.warn(`${BOT_CONSOLE_NAME} [${ctx.taskName}] ⚠️ Warning: ${message}`)
-
-    if (ctx.logId.startsWith('local-')) return
+    console.warn(`${BOT_CONSOLE_NAME} [${context.taskName}] ⚠️ Warning: ${message}`);
 
     await supabaseAdmin
-        .from('bot_logs')
+        .from("bot_logs")
         .update({
-            status: 'SUCCESS', // Consideramos warning como success parcial
-            completed_at: new Date().toISOString(),
+            status: "SUCCESS",
+            records_processed: context.recordsProcessed,
+            records_created: context.recordsCreated,
+            records_updated: context.recordsUpdated,
+            records_failed: context.recordsFailed,
             duration_ms: durationMs,
-            records_processed: ctx.recordsProcessed,
-            records_created: ctx.recordsCreated,
-            records_updated: ctx.recordsUpdated,
-            records_failed: ctx.recordsFailed,
-            result: details,
-            metadata: { ...ctx.metadata, warning: message }
+            completed_at: new Date().toISOString(),
+            result: { warning: true, message, ...details },
         })
-        .eq('id', ctx.logId)
+        .eq("id", context.logId);
+
+    // Atualizar última execução na tabela de tarefas
+    await supabaseAdmin
+        .from("bot_tasks")
+        .update({
+            last_run_at: new Date().toISOString(),
+            last_status: "SUCCESS",
+            updated_at: new Date().toISOString(),
+        })
+        .eq("task_key", context.taskName);
 }
 
-// ============================================
-// EXECUTOR COM RETRY (Padrão Celery)
-// ============================================
+// ============================================================================
+// FUNÇÕES DE CONSULTA
+// ============================================================================
 
 /**
- * Executa uma função com retry automático e backoff exponencial
+ * Obtém os últimos logs do BOT
  */
-export async function executeWithRetry<T>(
-    taskName: string,
-    taskType: TaskType,
-    fn: (ctx: BotTaskContext) => Promise<T>,
-    options: {
-        maxRetries?: number
-        retryDelayMs?: number
-        exponentialBackoff?: boolean
-        taskId?: string
-        metadata?: Record<string, unknown>
-        rateLimit?: number
-    } = {}
-): Promise<ExecutionResult<T>> {
-    const maxRetries = options.maxRetries ?? 3
-    const baseDelay = options.retryDelayMs ?? 1000
-    const useBackoff = options.exponentialBackoff ?? true
-    const rateLimit = options.rateLimit ?? 60
+export async function getBotLogs(
+    limit: number = 50,
+    taskType?: BotTaskType,
+    status?: BotLogStatus
+): Promise<BotLog[]> {
+    let query = supabaseAdmin
+        .from("bot_logs")
+        .select("*")
+        .order("started_at", { ascending: false })
+        .limit(limit);
 
-    if (!checkRateLimit(taskName, rateLimit)) {
-        return { success: false, error: 'Rate limit exceeded', attempts: 0, durationMs: 0 }
+    // taskType está em metadata.task_type, não é filtrável diretamente
+    // mas podemos filtrar por status
+    if (status) {
+        query = query.eq("status", status);
     }
 
-    const ctx = await startBotTask(taskName, taskType)
-    ctx.taskId = options.taskId
-    ctx.metadata = options.metadata || {}
+    const { data, error } = await query;
 
-    let lastError: Error | null = null
-
-    for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        ctx.attempt = attempt
-
-        try {
-            const result = await fn(ctx)
-            await completeBotTask(ctx, 'Sucesso', typeof result === 'object' ? (result as Record<string, unknown>) : { value: result })
-
-            return {
-                success: true,
-                result,
-                attempts: attempt,
-                durationMs: Date.now() - ctx.startTime.getTime()
-            }
-        } catch (error) {
-            lastError = error instanceof Error ? error : new Error(String(error))
-
-            if (attempt < maxRetries) {
-                console.warn(`${BOT_CONSOLE_NAME} [${taskName}] 🔄 Retry #${attempt}: ${lastError.message}`)
-                const delay = useBackoff ? baseDelay * Math.pow(2, attempt - 1) : baseDelay
-                await new Promise(resolve => setTimeout(resolve, delay))
-            }
-        }
+    if (error) {
+        console.error(`${BOT_CONSOLE_NAME} Erro ao buscar logs:`, error.message);
+        throw error;
     }
 
-    await failBotTask(ctx, lastError!)
+    // Filtrar por taskType se fornecido (filtragem em memória)
+    if (taskType && data) {
+        return data.filter(log =>
+            log.metadata?.task_type === taskType
+        );
+    }
+
+    return data || [];
+}
+
+/**
+ * Obtém todas as tarefas configuradas
+ */
+export async function getBotTasks(): Promise<BotTask[]> {
+    const { data, error } = await supabaseAdmin
+        .from("bot_tasks")
+        .select("*")
+        .order("task_type", { ascending: true });
+
+    if (error) {
+        console.error(`${BOT_CONSOLE_NAME} Erro ao buscar tarefas:`, error.message);
+        throw error;
+    }
+
+    return data || [];
+}
+
+/**
+ * Ativa ou desativa uma tarefa
+ */
+export async function toggleBotTask(taskKey: string, enabled: boolean): Promise<void> {
+    const { error } = await supabaseAdmin
+        .from("bot_tasks")
+        .update({ is_enabled: enabled, updated_at: new Date().toISOString() })
+        .eq("task_key", taskKey);
+
+    if (error) {
+        console.error(`${BOT_CONSOLE_NAME} Erro ao atualizar tarefa:`, error.message);
+        throw error;
+    }
+}
+
+/**
+ * Obtém estatísticas do BOT
+ */
+export async function getBotStats(days: number = 7): Promise<{
+    totalTasks: number;
+    completed: number;
+    failed: number;
+    warnings: number;
+    avgDurationMs: number;
+    totalRecordsProcessed: number;
+}> {
+    const since = new Date();
+    since.setDate(since.getDate() - days);
+
+    const { data, error } = await supabaseAdmin
+        .from("bot_logs")
+        .select("status, duration_ms, records_processed, result")
+        .gte("started_at", since.toISOString());
+
+    if (error) {
+        console.error(`${BOT_CONSOLE_NAME} Erro ao buscar estatísticas:`, error.message);
+        throw error;
+    }
+
+    const logs = data || [];
 
     return {
-        success: false,
-        error: lastError?.message,
-        attempts: maxRetries,
-        durationMs: Date.now() - ctx.startTime.getTime()
-    }
+        totalTasks: logs.length,
+        completed: logs.filter(l => l.status === "SUCCESS").length,
+        failed: logs.filter(l => l.status === "FAILURE").length,
+        warnings: logs.filter(l => l.status === "SUCCESS" && l.result?.warning === true).length,
+        avgDurationMs: logs.length > 0
+            ? Math.round(logs.reduce((sum, l) => sum + (l.duration_ms || 0), 0) / logs.length)
+            : 0,
+        totalRecordsProcessed: logs.reduce((sum, l) => sum + (l.records_processed || 0), 0),
+    };
 }
 
+// ============================================================================
+// HELPER: Executar tarefa com tratamento automático de erros
+// ============================================================================
+
 /**
- * Wrapper simples para executar tarefa com logging automático
+ * Wrapper para executar uma tarefa do BOT com logging automático
  */
 export async function runBotTask<T>(
     taskName: string,
-    taskType: TaskType,
-    fn: (ctx: BotTaskContext) => Promise<T>
+    taskType: BotTaskType,
+    fn: (context: BotTaskContext) => Promise<T>
 ): Promise<T> {
-    const ctx = await startBotTask(taskName, taskType)
+    const context = await startBotTask(taskName, taskType);
 
     try {
-        const result = await fn(ctx)
-        await completeBotTask(ctx)
-        return result
+        const result = await fn(context);
+        await completeBotTask(context);
+        return result;
     } catch (error) {
-        await failBotTask(ctx, error instanceof Error ? error : String(error))
-        throw error
+        await failBotTask(context, error instanceof Error ? error : String(error));
+        throw error;
     }
 }
 
-// ============================================
-// SISTEMA DE NOTIFICAÇÕES
-// ============================================
+// ============================================================================
+// LOG SIMPLES (para uso rápido sem contexto)
+// ============================================================================
 
 /**
- * Cria uma notificação na fila
- */
-export async function createNotification(
-    userId: string,
-    channel: NotificationChannel,
-    title: string,
-    message: string,
-    options: {
-        priority?: NotificationPriority
-        scheduledFor?: Date
-        metadata?: Record<string, unknown>
-    } = {}
-): Promise<string | null> {
-    const { data, error } = await supabaseAdmin
-        .from('bot_notifications')
-        .insert({
-            user_id: userId,
-            channel,
-            title,
-            message,
-            priority: options.priority || 'normal',
-            scheduled_for: (options.scheduledFor || new Date()).toISOString(),
-            metadata: options.metadata || {}
-        })
-        .select('id')
-        .single()
-
-    if (error) {
-        console.error(`${BOT_CONSOLE_NAME} Erro ao criar notificação:`, error.message)
-        return null
-    }
-
-    console.log(`${BOT_CONSOLE_NAME} 📬 Notificação criada: ${title}`)
-    return data?.id || null
-}
-
-/**
- * Notifica todos os usuários configurados para um tipo de evento
- */
-export async function notifyByEvent(
-    eventType: string,
-    variables: Record<string, string | number>,
-    options: { priority?: NotificationPriority } = {}
-): Promise<number> {
-    const { data: rules } = await supabaseAdmin
-        .from('bot_notification_rules')
-        .select('*, bot_users!inner(*)')
-        .eq('event_type', eventType)
-        .eq('is_active', true)
-
-    if (!rules?.length) return 0
-
-    const { data: template } = await supabaseAdmin
-        .from('bot_notification_templates')
-        .select('*')
-        .eq('event_type', eventType)
-        .eq('is_active', true)
-        .single()
-
-    if (!template) return 0
-
-    let sent = 0
-
-    for (const rule of rules) {
-        if (!rule.bot_users?.is_active) continue
-
-        let title = template.subject || template.name
-        let message = template.body_template
-        const userVars = { ...variables, user_name: rule.bot_users.name }
-
-        for (const [key, value] of Object.entries(userVars)) {
-            const placeholder = new RegExp(`\\{\\{${key}\\}\\}`, 'g')
-            title = title.replace(placeholder, String(value))
-            message = message.replace(placeholder, String(value))
-        }
-
-        for (const channel of rule.channels || ['email', 'in_app']) {
-            const id = await createNotification(rule.user_id, channel as NotificationChannel, title, message, {
-                priority: options.priority,
-                metadata: { template_id: template.id, variables }
-            })
-            if (id) sent++
-        }
-    }
-
-    console.log(`${BOT_CONSOLE_NAME} 📨 ${sent} notificações criadas para evento: ${eventType}`)
-    return sent
-}
-
-/**
- * Log simples do BOT (para uso rápido sem contexto)
+ * Registra um log simples do BOT (sem contexto de tarefa)
  */
 export async function logBotAction(
     taskName: string,
-    taskType: TaskType,
-    status: 'STARTED' | 'SUCCESS' | 'FAILURE',
+    taskType: BotTaskType,
+    status: BotLogStatus,
     message: string,
     details?: Record<string, unknown>
 ): Promise<void> {
-    const emoji = status === 'SUCCESS' ? '✅' : status === 'FAILURE' ? '❌' : '▶️'
-    console.log(`${BOT_CONSOLE_NAME} [${taskName}] ${emoji} ${message}`)
+    console.log(`${BOT_CONSOLE_NAME} [${taskName}] ${getStatusEmoji(status)} ${message}`);
 
-    await supabaseAdmin.from('bot_logs').insert({
+    await supabaseAdmin.from("bot_logs").insert({
         task_name: taskName,
         status,
+        executed_by: BOT_NAME,
+        metadata: { task_type: taskType, message, ...details },
         started_at: new Date().toISOString(),
-        completed_at: status !== 'STARTED' ? new Date().toISOString() : null,
-        metadata: { message, ...details },
-        executed_by: BOT_NAME
-    })
+        completed_at: status !== "PENDING" && status !== "STARTED"
+            ? new Date().toISOString()
+            : null,
+    });
 }
 
-// ============================================
-// CONSULTAS
-// ============================================
-
-export async function getBotLogs(limit: number = 50, taskType?: TaskType): Promise<BotLog[]> {
-    let query = supabaseAdmin
-        .from('bot_logs')
-        .select('*')
-        .order('started_at', { ascending: false })
-        .limit(limit)
-
-    if (taskType) {
-        query = query.eq('task_type', taskType)
-    }
-
-    const { data } = await query
-    return data || []
-}
-
-export async function getBotTasks(): Promise<BotTask[]> {
-    const { data } = await supabaseAdmin
-        .from('bot_tasks')
-        .select('*')
-        .order('priority')
-    return data || []
-}
-
-export async function toggleBotTask(taskKey: string, enabled: boolean): Promise<void> {
-    await supabaseAdmin
-        .from('bot_tasks')
-        .update({ is_active: enabled })
-        .eq('task_key', taskKey)
-}
-
-export async function getBotStats(days: number = 7): Promise<{
-    totalTasks: number
-    completed: number
-    failed: number
-    warnings: number
-    avgDurationMs: number
-    totalRecordsProcessed: number
-}> {
-    const since = new Date()
-    since.setDate(since.getDate() - days)
-
-    const { data } = await supabaseAdmin
-        .from('bot_logs')
-        .select('status, duration_ms, records_processed')
-        .gte('started_at', since.toISOString())
-
-    if (!data?.length) {
-        return { totalTasks: 0, completed: 0, failed: 0, warnings: 0, avgDurationMs: 0, totalRecordsProcessed: 0 }
-    }
-
-    const durations = data.filter(l => l.duration_ms).map(l => l.duration_ms!)
-
-    return {
-        totalTasks: data.length,
-        completed: data.filter(l => l.status === 'SUCCESS').length,
-        failed: data.filter(l => l.status === 'FAILURE').length,
-        warnings: data.filter(l => l.status === 'RETRY').length,
-        avgDurationMs: durations.length > 0
-            ? Math.round(durations.reduce((a, b) => a + b, 0) / durations.length)
-            : 0,
-        totalRecordsProcessed: data.reduce((sum, l) => sum + (l.records_processed || 0), 0)
+function getStatusEmoji(status: BotLogStatus): string {
+    switch (status) {
+        case "PENDING": return "⏳";
+        case "STARTED": return "▶️";
+        case "SUCCESS": return "✅";
+        case "FAILURE": return "❌";
+        case "RETRY": return "🔄";
+        case "REVOKED": return "🚫";
+        default: return "📝";
     }
 }
 
-export async function getUnreadNotifications(userId: string): Promise<BotNotification[]> {
-    const { data } = await supabaseAdmin
-        .from('bot_notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .in('status', ['pending', 'sent'])
-        .eq('channel', 'in_app')
-        .order('created_at', { ascending: false })
-        .limit(20)
-    return data || []
-}
+// ============================================================================
+// RATE LIMITING
+// ============================================================================
 
-export async function markNotificationAsRead(notificationId: string): Promise<boolean> {
-    const { error } = await supabaseAdmin
-        .from('bot_notifications')
-        .update({ status: 'read', read_at: new Date().toISOString() })
-        .eq('id', notificationId)
-    return !error
+const rateLimitCache = new Map<string, { count: number; resetAt: number }>();
+
+/**
+ * Verifica rate limit para uma task (em memória)
+ * Retorna true se pode executar, false se atingiu o limite
+ */
+export function checkRateLimit(taskKey: string, maxPerMinute: number): boolean {
+    const now = Date.now();
+    const entry = rateLimitCache.get(taskKey);
+
+    if (!entry || now > entry.resetAt) {
+        // Reset ou primeira execução
+        rateLimitCache.set(taskKey, { count: 1, resetAt: now + 60000 });
+        return true;
+    }
+
+    if (entry.count >= maxPerMinute) {
+        return false;
+    }
+
+    entry.count++;
+    return true;
 }

@@ -40,7 +40,6 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { UserAvatar } from "@/components/user-avatar";
 
 // ============================================================================
 // TIPOS
@@ -77,12 +76,6 @@ interface BotTask {
     last_status: string | null;
 }
 
-// Mapeamento de tasks para seus endpoints de API
-const TASK_ENDPOINTS: Record<string, string> = {
-    'swift-commission-auto-invoice': '/api/bot/swift-commission',
-    // Adicionar novas tasks aqui
-};
-
 interface BotStats {
     totalTasks: number;
     completed: number;
@@ -109,29 +102,20 @@ function BotName({ className = "" }: { className?: string }) {
 // ============================================================================
 
 function StatusBadge({ status }: { status: string }) {
-    // Suporta tanto status antigos (lowercase) quanto novos (UPPERCASE)
-    const normalizedStatus = status.toUpperCase();
-
     const config: Record<string, { icon: React.ReactNode; variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
-        PENDING: { icon: <Clock className="h-3 w-3" />, variant: "secondary", label: "Pendente" },
-        STARTED: { icon: <Play className="h-3 w-3" />, variant: "secondary", label: "Iniciado" },
-        SUCCESS: { icon: <CheckCircle2 className="h-3 w-3" />, variant: "default", label: "Sucesso" },
-        FAILURE: { icon: <XCircle className="h-3 w-3" />, variant: "destructive", label: "Falhou" },
-        RETRY: { icon: <RefreshCw className="h-3 w-3" />, variant: "outline", label: "Retry" },
-        REVOKED: { icon: <XCircle className="h-3 w-3" />, variant: "outline", label: "Cancelado" },
-        // Manter compatibilidade com status antigos
-        RUNNING: { icon: <Loader2 className="h-3 w-3 animate-spin" />, variant: "default", label: "Executando" },
-        COMPLETED: { icon: <CheckCircle2 className="h-3 w-3" />, variant: "default", label: "Concluído" },
-        FAILED: { icon: <XCircle className="h-3 w-3" />, variant: "destructive", label: "Falhou" },
-        WARNING: { icon: <AlertTriangle className="h-3 w-3" />, variant: "outline", label: "Warning" },
+        started: { icon: <Play className="h-3 w-3" />, variant: "secondary", label: "Iniciado" },
+        running: { icon: <Loader2 className="h-3 w-3 animate-spin" />, variant: "default", label: "Executando" },
+        completed: { icon: <CheckCircle2 className="h-3 w-3" />, variant: "default", label: "Concluído" },
+        failed: { icon: <XCircle className="h-3 w-3" />, variant: "destructive", label: "Falhou" },
+        warning: { icon: <AlertTriangle className="h-3 w-3" />, variant: "outline", label: "Warning" },
     };
 
-    const { icon, variant, label } = config[normalizedStatus] || config.STARTED;
+    const { icon, variant, label } = config[status] || config.started;
 
     return (
         <Badge
             variant={variant}
-            className={`gap-1 ${normalizedStatus === "SUCCESS" || normalizedStatus === "COMPLETED" ? "bg-green-100 text-green-800 hover:bg-green-100" : ""} ${normalizedStatus === "WARNING" || normalizedStatus === "RETRY" ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100" : ""}`}
+            className={`gap-1 ${status === "completed" ? "bg-green-100 text-green-800 hover:bg-green-100" : ""} ${status === "warning" ? "bg-yellow-100 text-yellow-800 border-yellow-300 hover:bg-yellow-100" : ""}`}
         >
             {icon}
             {label}
@@ -173,7 +157,6 @@ export default function BotLogsPage() {
     const [loading, setLoading] = useState(true);
     const [filterType, setFilterType] = useState<string>("all");
     const [filterStatus, setFilterStatus] = useState<string>("all");
-    const [executingTask, setExecutingTask] = useState<string | null>(null);
 
     const supabase = createClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -219,9 +202,9 @@ export default function BotLogsPage() {
             if (statsData) {
                 setStats({
                     totalTasks: statsData.length,
-                    completed: statsData.filter((l) => l.status === "SUCCESS" || l.status === "completed").length,
-                    failed: statsData.filter((l) => l.status === "FAILURE" || l.status === "failed").length,
-                    warnings: statsData.filter((l) => l.status === "RETRY" || l.status === "warning").length,
+                    completed: statsData.filter((l) => l.status === "completed").length,
+                    failed: statsData.filter((l) => l.status === "failed").length,
+                    warnings: statsData.filter((l) => l.status === "warning").length,
                     avgDurationMs:
                         statsData.length > 0
                             ? Math.round(
@@ -260,37 +243,6 @@ export default function BotLogsPage() {
         );
     };
 
-    const executeTask = async (taskKey: string) => {
-        const endpoint = TASK_ENDPOINTS[taskKey];
-        if (!endpoint) {
-            alert(`Endpoint não configurado para task: ${taskKey}`);
-            return;
-        }
-
-        setExecutingTask(taskKey);
-        try {
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-            });
-
-            const result = await response.json();
-
-            if (result.success) {
-                alert(`✅ Task executada com sucesso!\n\nProcessados: ${result.data?.processed || 0}\nCriados: ${result.data?.created || 0}\nFalhas: ${result.data?.failed || 0}`);
-            } else {
-                alert(`❌ Erro: ${result.error}`);
-            }
-
-            // Recarregar dados
-            await fetchData();
-        } catch (error) {
-            alert(`❌ Erro ao executar task: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
-        } finally {
-            setExecutingTask(null);
-        }
-    };
-
     const formatDuration = (ms: number | null) => {
         if (!ms) return "-";
         if (ms < 1000) return `${ms}ms`;
@@ -303,10 +255,9 @@ export default function BotLogsPage() {
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                    <UserAvatar
-                        user={{ name: "BOTella", email: "botella@system.local" }}
-                        size="lg"
-                    />
+                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+                        <Bot className="h-7 w-7 text-white" />
+                    </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
                             <BotName />
@@ -419,11 +370,11 @@ export default function BotLogsPage() {
                             </SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="all">Todos os status</SelectItem>
-                                <SelectItem value="SUCCESS">Sucesso</SelectItem>
-                                <SelectItem value="FAILURE">Falhou</SelectItem>
-                                <SelectItem value="STARTED">Iniciado</SelectItem>
-                                <SelectItem value="RETRY">Retry</SelectItem>
-                                <SelectItem value="PENDING">Pendente</SelectItem>
+                                <SelectItem value="completed">Concluído</SelectItem>
+                                <SelectItem value="failed">Falhou</SelectItem>
+                                <SelectItem value="warning">Warning</SelectItem>
+                                <SelectItem value="running">Executando</SelectItem>
+                                <SelectItem value="started">Iniciado</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -518,7 +469,6 @@ export default function BotLogsPage() {
                                         <TableHead>Última Execução</TableHead>
                                         <TableHead>Status</TableHead>
                                         <TableHead className="text-center">Ativo</TableHead>
-                                        <TableHead className="text-center">Ação</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -552,22 +502,6 @@ export default function BotLogsPage() {
                                                         toggleTask(task.task_key, checked)
                                                     }
                                                 />
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {TASK_ENDPOINTS[task.task_key] && (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="outline"
-                                                        onClick={() => executeTask(task.task_key)}
-                                                        disabled={executingTask === task.task_key}
-                                                    >
-                                                        {executingTask === task.task_key ? (
-                                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                                        ) : (
-                                                            <Play className="h-4 w-4" />
-                                                        )}
-                                                    </Button>
-                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}
