@@ -752,9 +752,12 @@ export default function PaymentSchedulePage() {
 
             const updatePayload: any = { [field]: value };
 
-            // Update payment_status based on payment_date
+            // Update payment_status and finance_payment_status based on payment_date
             if (field === "payment_date") {
                 updatePayload.payment_status = value ? "paid" : "pending";
+                if (value) {
+                    updatePayload.finance_payment_status = "done";
+                }
             }
 
             // Track status change timestamps
@@ -1135,10 +1138,15 @@ export default function PaymentSchedulePage() {
                                             available: { label: "Available", color: "bg-green-900/30 text-green-400 border-green-700" },
                                         };
 
+                                        // Check if there's an amount discrepancy (same currency but different amounts)
+                                        const hasAmountDiscrepancy = invoice.paid_amount != null && 
+                                            invoice.paid_currency === invoice.currency && 
+                                            Math.abs((invoice.paid_amount || 0) - (invoice.invoice_amount || 0)) > 0.01;
+
                                         return (
                                             <div
                                                 key={invoice.id}
-                                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""}`}
+                                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""} ${hasAmountDiscrepancy ? "bg-red-900/20" : ""}`}
                                                 onClick={() => openDetailPanel(invoice)}
                                             >
                                                 {/* Provider */}
@@ -1287,15 +1295,17 @@ export default function PaymentSchedulePage() {
                                                 <div className="w-[110px] flex-shrink-0 text-right">
                                                     <div className="flex flex-col gap-0.5">
                                                         <div className="flex items-center justify-end gap-1">
+                                                            {hasAmountDiscrepancy && <AlertCircle className="h-3 w-3 text-red-400" />}
                                                             <span className="text-[9px] text-gray-500">Inv:</span>
-                                                            <span className="text-[11px] font-medium text-white">
+                                                            <span className={`text-[11px] font-medium ${hasAmountDiscrepancy ? "text-red-400" : "text-white"}`}>
                                                                 {invoice.currency === "EUR" ? "€" : invoice.currency === "USD" ? "$" : invoice.currency}{formatCurrency(invoice.invoice_amount)}
                                                             </span>
                                                         </div>
                                                         {invoice.paid_amount != null && (
                                                             <div className="flex items-center justify-end gap-1">
-                                                                <span className="text-[9px] text-green-400">Paid:</span>
-                                                                <span className="text-[11px] font-medium text-green-400">
+                                                                {hasAmountDiscrepancy && <AlertCircle className="h-3 w-3 text-red-400" />}
+                                                                <span className={`text-[9px] ${hasAmountDiscrepancy ? "text-red-400" : "text-green-400"}`}>Paid:</span>
+                                                                <span className={`text-[11px] font-medium ${hasAmountDiscrepancy ? "text-red-400" : "text-green-400"}`}>
                                                                     {invoice.paid_currency === "EUR" ? "€" : invoice.paid_currency === "USD" ? "$" : invoice.paid_currency || ""}{formatCurrency(invoice.paid_amount)}
                                                                 </span>
                                                             </div>
