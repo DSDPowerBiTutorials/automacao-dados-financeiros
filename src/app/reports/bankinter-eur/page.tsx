@@ -407,9 +407,33 @@ export default function BankinterEURPage() {
         .gte("date", startDate.toISOString().split("T")[0])
         .lte("date", endDate.toISOString().split("T")[0])
 
+      // Detect if cross-currency (EUR vs USD)
+      const isCrossCurrency = (bankAccount.currency === "USD" && reconciliationTransaction.amount !== undefined) ||
+        counterpartSource.includes("chase") || counterpartSource.includes("usd")
+
       let counterpartMatch: any = null
       if (candidates && candidates.length > 0) {
-        counterpartMatch = candidates.find(c => Math.abs((parseFloat(c.amount) || 0) - oppositeAmount) < 0.01)
+        const txDesc = (reconciliationTransaction.description || "").toLowerCase().trim()
+        
+        if (isCrossCurrency && txDesc.length > 5) {
+          // Cross-currency: match by DESCRIPTION (same text, opposite sign direction)
+          counterpartMatch = candidates.find(c => {
+            const cDesc = (c.description || "").toLowerCase().trim()
+            const cAmount = parseFloat(c.amount) || 0
+            const sameDirection = (reconciliationTransaction.amount > 0 && cAmount < 0) || (reconciliationTransaction.amount < 0 && cAmount > 0)
+            // Check if descriptions match (at least 80% similar or contain same key words)
+            const descMatch = cDesc === txDesc || 
+              cDesc.includes(txDesc) || txDesc.includes(cDesc) ||
+              (txDesc.split(" ").filter(w => w.length > 3 && cDesc.includes(w)).length >= 2)
+            return descMatch && sameDirection
+          })
+        }
+        
+        // Same currency: match by exact amount
+        if (!counterpartMatch) {
+          counterpartMatch = candidates.find(c => Math.abs((parseFloat(c.amount) || 0) - oppositeAmount) < 0.01)
+        }
+        // Fallback: 0.5% tolerance
         if (!counterpartMatch) {
           const tolerance = Math.abs(oppositeAmount) * 0.005
           counterpartMatch = candidates.find(c => Math.abs((parseFloat(c.amount) || 0) - oppositeAmount) <= tolerance)
