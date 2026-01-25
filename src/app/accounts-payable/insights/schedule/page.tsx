@@ -1090,6 +1090,7 @@ export default function PaymentSchedulePage() {
                         <div className="w-[65px] flex-shrink-0">Inv Date</div>
                         <div className="w-[65px] flex-shrink-0">Due Date</div>
                         <div className="w-[75px] flex-shrink-0">Sched</div>
+                        <div className="w-[65px] flex-shrink-0">Pay Date</div>
                         <div className="w-[85px] flex-shrink-0">Pay Method</div>
                         <div className="w-[90px] flex-shrink-0">Bank</div>
                         <div className="w-[85px] flex-shrink-0">Reconciliation</div>
@@ -1202,6 +1203,9 @@ export default function PaymentSchedulePage() {
                                                         className="text-[10px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-white w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70"
                                                     />
                                                 </div>
+
+                                                {/* Payment Date */}
+                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-300">{invoice.payment_date ? formatShortDate(invoice.payment_date) : "—"}</div>
 
                                                 {/* Payment Method - Editable */}
                                                 <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
