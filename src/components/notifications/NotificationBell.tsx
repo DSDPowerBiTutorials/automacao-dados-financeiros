@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check, CheckCheck, Trash2, X, MessageSquare, AlertCircle, CreditCard, FileText, Users, Settings } from 'lucide-react';
+import { Mail, Check, CheckCheck, Trash2, X, MessageSquare, AlertCircle, CreditCard, FileText, Users, Settings } from 'lucide-react';
 import { useNotifications, type Notification, type NotificationType } from '@/contexts/notification-context';
 import { UserAvatar } from '@/components/user-avatar';
 import { formatDistanceToNow } from 'date-fns';
@@ -165,14 +165,14 @@ export function NotificationBell() {
 
     return (
         <div className="relative" ref={dropdownRef}>
-            {/* Botão do sino */}
+            {/* Botão Mailbox */}
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
                 className="relative p-2 rounded-lg hover:bg-gray-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
                 aria-label="Notificações"
             >
-                <Bell size={20} className="text-gray-300" />
+                <Mail size={20} className="text-gray-300" />
 
                 {/* Badge de contagem */}
                 {unreadCount > 0 && (
@@ -191,7 +191,7 @@ export function NotificationBell() {
                     {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
                         <div className="flex items-center gap-2">
-                            <Bell size={18} className="text-gray-600" />
+                            <Mail size={18} className="text-gray-600" />
                             <h3 className="font-semibold text-gray-900">Notificações</h3>
                             {unreadCount > 0 && (
                                 <span className="px-2 py-0.5 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
@@ -226,7 +226,7 @@ export function NotificationBell() {
                             </div>
                         ) : notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                                <Bell size={40} className="text-gray-300 mb-3" />
+                                <Mail size={40} className="text-gray-300 mb-3" />
                                 <p className="text-sm font-medium">Nenhuma notificação</p>
                                 <p className="text-xs text-gray-400 mt-1">Você está em dia!</p>
                             </div>

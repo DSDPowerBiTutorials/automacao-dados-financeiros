@@ -70,103 +70,95 @@ export function TablerTopbar({
 
   return (
     <div ref={dropdownRootRef}>
-      {/* Top Header Bar - DARK */}
+      {/* Top Header Bar - DARK - Tudo em uma linha */}
       <header className="navbar navbar-expand-md d-print-none sticky-top" style={{ zIndex: 1030, background: '#1e1f21', borderBottom: '1px solid #333' }}>
-        <div className="app-container">
-          <button
-            className="navbar-toggler border-gray-600"
-            type="button"
-            onClick={onToggleMobileMenu}
-            aria-controls="navbar-menu"
-            aria-expanded={mobileOpen}
-            aria-label="Toggle navigation"
-            style={{ filter: 'invert(1)' }}
-          >
-            <span className="navbar-toggler-icon" />
-          </button>
+        <div className="app-container d-flex align-items-center justify-content-between w-100">
 
-          <h1 className="navbar-brand pe-0 pe-md-3 m-0">
-            <Link href="/dashboard" className="text-decoration-none">
-              <span className="d-inline-flex align-items-center gap-2">
-                <Image src="/favicon-32x32.png" alt="DSD" width={28} height={28} />
-                <span className="d-none d-sm-inline fw-bold" style={{ background: 'linear-gradient(90deg, #FF7300, #ffa94d)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-                  DSD Finance Hub
-                </span>
+          {/* Lado Esquerdo: Logo + Nome */}
+          <div className="d-flex align-items-center">
+            <button
+              className="navbar-toggler border-gray-600 d-md-none me-2"
+              type="button"
+              onClick={onToggleMobileMenu}
+              aria-controls="navbar-menu"
+              aria-expanded={mobileOpen}
+              aria-label="Toggle navigation"
+              style={{ filter: 'invert(1)' }}
+            >
+              <span className="navbar-toggler-icon" />
+            </button>
+
+            <Link href="/dashboard" className="text-decoration-none d-inline-flex align-items-center gap-2">
+              <Image src="/favicon-32x32.png" alt="DSD" width={28} height={28} />
+              <span className="d-none d-sm-inline fw-bold" style={{ background: 'linear-gradient(90deg, #FF7300, #ffa94d)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontSize: '16px' }}>
+                DSD Finance Hub
               </span>
             </Link>
-          </h1>
+          </div>
 
-          <div className="navbar-nav flex-row order-md-last align-items-center gap-2">
+          {/* Centro: Toggle Menu + Search + Scope Selector + Label */}
+          <div className="d-none d-md-flex align-items-center gap-3 mx-3">
             {/* Toggle Menu Button */}
-            <div className="nav-item">
-              <button
-                type="button"
-                className="btn btn-sm"
-                onClick={onToggleNavVisible}
-                aria-label={navVisible ? "Recolher menu" : "Expandir menu"}
-                title={navVisible ? "Recolher menu" : "Expandir menu"}
-                style={{ background: navVisible ? '#FF7300' : '#333', color: '#fff', border: 'none' }}
-              >
-                {navVisible ? (
-                  <span className="d-inline-flex align-items-center gap-1"><ChevronUp size={16} /> Menu</span>
-                ) : (
-                  <span className="d-inline-flex align-items-center gap-1"><ChevronDown size={16} /> Menu</span>
-                )}
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={onToggleNavVisible}
+              aria-label={navVisible ? "Recolher menu" : "Expandir menu"}
+              title={navVisible ? "Recolher menu" : "Expandir menu"}
+              style={{ background: navVisible ? '#FF7300' : '#333', color: '#fff', border: 'none' }}
+            >
+              {navVisible ? (
+                <span className="d-inline-flex align-items-center gap-1"><ChevronUp size={16} /> Menu</span>
+              ) : (
+                <span className="d-inline-flex align-items-center gap-1"><ChevronDown size={16} /> Menu</span>
+              )}
+            </button>
 
             {/* Search */}
-            <div className="nav-item d-none d-md-flex">
-              <div className="input-icon">
-                <span className="input-icon-addon" style={{ color: '#888' }}><Search size={16} /></span>
-                <input
-                  type="text"
-                  value={menuQuery}
-                  onChange={(e) => setMenuQuery(e.target.value)}
-                  className="form-control form-control-sm"
-                  placeholder="Buscar..."
-                  aria-label="Buscar no menu"
-                  style={{ background: '#2a2b2e', border: '1px solid #444', color: '#fff', width: '160px' }}
-                />
-              </div>
+            <div className="input-icon">
+              <span className="input-icon-addon" style={{ color: '#888' }}><Search size={16} /></span>
+              <input
+                type="text"
+                value={menuQuery}
+                onChange={(e) => setMenuQuery(e.target.value)}
+                className="form-control form-control-sm"
+                placeholder="Buscar..."
+                aria-label="Buscar no menu"
+                style={{ background: '#2a2b2e', border: '1px solid #444', color: '#fff', width: '160px' }}
+              />
             </div>
 
             {/* Scope Selector */}
-            <div className="nav-item d-none d-md-flex">
-              <div className="btn-group btn-group-sm">
-                {(["ES", "US", "GLOBAL"] as const).map((scope) => (
-                  <button
-                    key={scope}
-                    type="button"
-                    className="btn"
-                    onClick={() => setSelectedScope(scope)}
-                    style={{
-                      background: selectedScope === scope ? '#FF7300' : '#2a2b2e',
-                      color: selectedScope === scope ? '#fff' : '#aaa',
-                      border: '1px solid #444',
-                      fontWeight: selectedScope === scope ? 600 : 400
-                    }}
-                  >
-                    {scope === "GLOBAL" ? "🌐" : scope === "ES" ? "🇪🇸" : "🇺🇸"} {scope}
-                  </button>
-                ))}
-              </div>
+            <div className="btn-group btn-group-sm">
+              {(["ES", "US", "GLOBAL"] as const).map((scope) => (
+                <button
+                  key={scope}
+                  type="button"
+                  className="btn"
+                  onClick={() => setSelectedScope(scope)}
+                  style={{
+                    background: selectedScope === scope ? '#FF7300' : '#2a2b2e',
+                    color: selectedScope === scope ? '#fff' : '#aaa',
+                    border: '1px solid #444',
+                    fontWeight: selectedScope === scope ? 600 : 400
+                  }}
+                >
+                  {scope === "GLOBAL" ? "🌐" : scope === "ES" ? "🇪🇸" : "🇺🇸"} {scope}
+                </button>
+              ))}
             </div>
 
             {/* Scope Label */}
-            <div className="nav-item d-none d-lg-flex">
-              <span className="nav-link small" style={{ color: '#888' }}>{SCOPE_CONFIG[selectedScope].label}</span>
-            </div>
+            <span className="small" style={{ color: '#888' }}>{SCOPE_CONFIG[selectedScope].label}</span>
+          </div>
 
-            {/* Notification Bell */}
-            <div className="nav-item">
-              <NotificationBell />
-            </div>
+          {/* Lado Direito: Mailbox + Avatar */}
+          <div className="d-flex align-items-center gap-2">
+            {/* Mailbox (Notificações) */}
+            <NotificationBell />
 
-            {/* User Menu */}
-            <div className="nav-item ms-1">
-              <UserMenu />
-            </div>
+            {/* User Menu (Avatar) */}
+            <UserMenu />
           </div>
         </div>
       </header>

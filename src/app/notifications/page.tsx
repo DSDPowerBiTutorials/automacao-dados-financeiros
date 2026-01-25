@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bell, Check, CheckCheck, Trash2, MessageSquare, AlertCircle, CreditCard, FileText, Users, Settings, ArrowLeft } from 'lucide-react';
+import { Mail, Check, CheckCheck, Trash2, MessageSquare, AlertCircle, CreditCard, FileText, Users, Settings, ArrowLeft } from 'lucide-react';
 import { useNotifications, type Notification, type NotificationType } from '@/contexts/notification-context';
 import { UserAvatar } from '@/components/user-avatar';
 import { Button } from '@/components/ui/button';
@@ -185,7 +185,7 @@ export default function NotificationsPage() {
                         Voltar
                     </Button>
                     <div className="flex items-center gap-3">
-                        <Bell size={24} className="text-gray-600" />
+                        <Mail size={24} className="text-gray-600" />
                         <div>
                             <h1 className="text-xl font-bold text-gray-900">Notificações</h1>
                             <p className="text-sm text-gray-500">
@@ -231,7 +231,7 @@ export default function NotificationsPage() {
                 ) : notifications.length === 0 ? (
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-16">
-                            <Bell size={48} className="text-gray-300 mb-4" />
+                            <Mail size={48} className="text-gray-300 mb-4" />
                             <h3 className="text-lg font-medium text-gray-700">Nenhuma notificação</h3>
                             <p className="text-sm text-gray-500 mt-1">Você está em dia com tudo!</p>
                         </CardContent>
