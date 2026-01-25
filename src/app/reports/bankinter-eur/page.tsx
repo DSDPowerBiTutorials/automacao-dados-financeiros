@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from "react"
 import {
   Upload, Download, Edit2, Save, X, Trash2, Loader2, CheckCircle, XCircle,
   Database, Zap, User, RefreshCw, Calendar, DollarSign, FileText, Key,
-  ChevronDown, ChevronRight, Search, Link2, AlertCircle
+  ChevronDown, ChevronRight, Search, Link2, AlertCircle, Building2, ArrowLeftRight
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,14 @@ interface Invoice {
   schedule_date: string | null
   is_reconciled: boolean
   reconciled_transaction_id: string | null
+}
+
+interface BankAccount {
+  code: string
+  name: string
+  currency: string
+  iban?: string | null
+  bank_name?: string | null
 }
 
 const formatEuropeanCurrency = (value: number | null | undefined): string => {
@@ -80,13 +88,7 @@ const paymentSourceColors: { [key: string]: { bg: string; text: string; border: 
   GoCardless: { bg: "bg-yellow-900/30", text: "text-yellow-400", border: "border-yellow-700" }
 }
 
-interface DateGroup {
-  date: string
-  dateLabel: string
-  rows: BankinterEURRow[]
-  totalCredits: number
-  totalDebits: number
-}
+interface DateGroup { date: string; dateLabel: string; rows: BankinterEURRow[]; totalCredits: number; totalDebits: number }
 
 export default function BankinterEURPage() {
   const [rows, setRows] = useState<BankinterEURRow[]>([])
@@ -107,6 +109,11 @@ export default function BankinterEURPage() {
   const [allAvailableInvoices, setAllAvailableInvoices] = useState<Invoice[]>([])
   const [loadingInvoices, setLoadingInvoices] = useState(false)
   const [selectedInvoice, setSelectedInvoice] = useState<number | null>(null)
+
+  // Intercompany states
+  const [isIntercompany, setIsIntercompany] = useState(false)
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+  const [selectedBankAccount, setSelectedBankAccount] = useState<string | null>(null)
 
   const { toast } = useToast()
 
@@ -252,7 +259,7 @@ export default function BankinterEURPage() {
     return paymentSourceColors[source] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" }
   }
 
-  // Open reconciliation dialog - find invoices matching this bank transaction
+  // Open reconciliation dialog
   const openReconciliationDialog = async (transaction: BankinterEURRow) => {
     setReconciliationTransaction(transaction)
     setReconciliationDialogOpen(true)
@@ -260,8 +267,15 @@ export default function BankinterEURPage() {
     setSelectedInvoice(null)
     setMatchingInvoices([])
     setAllAvailableInvoices([])
+    setIsIntercompany(false)
+    setSelectedBankAccount(null)
 
     try {
+      // Load bank accounts for intercompany
+      const { data: accountsData } = await supabase.from("bank_accounts").select("code, name, currency, iban, bank_name").eq("is_active", true).order("code")
+      const otherAccounts = (accountsData || []).filter((acc: BankAccount) => acc.code !== "BANKINTER-EUR" && acc.code !== "bankinter-eur")
+      setBankAccounts(otherAccounts)
+
       const transactionDate = transaction.date?.split("T")[0]
       if (!transactionDate) { setMatchingInvoices([]); setAllAvailableInvoices([]); return }
 
@@ -302,7 +316,7 @@ export default function BankinterEURPage() {
     } finally { setLoadingInvoices(false) }
   }
 
-  // Perform reconciliation
+  // Perform reconciliation with invoice
   const performReconciliation = async () => {
     if (!reconciliationTransaction || !selectedInvoice) return
     try {
@@ -328,6 +342,35 @@ export default function BankinterEURPage() {
       setRows((prev) => prev.map((row) => row.id === reconciliationTransaction.id ? { ...row, reconciled: isFullyReconciled, reconciliationType: "manual" as const } : row))
       toast({ title: isFullyReconciled ? "Fully reconciled!" : "Partial reconciliation", description: isFullyReconciled ? "Transaction matched with invoice" : "Remaining: €" + (txAmount - paidAmount).toFixed(2), variant: "success" })
       setReconciliationDialogOpen(false); setReconciliationTransaction(null); setSelectedInvoice(null)
+    } catch (e: any) { toast({ title: "Error", description: e?.message || "Failed to reconcile", variant: "destructive" }) }
+  }
+
+  // Perform intercompany reconciliation
+  const performIntercompanyReconciliation = async () => {
+    if (!reconciliationTransaction || !selectedBankAccount) return
+    try {
+      const bankAccount = bankAccounts.find(acc => acc.code === selectedBankAccount)
+      if (!bankAccount) throw new Error("Bank account not found")
+
+      const { error: txError } = await supabase.from("csv_rows").update({
+        reconciled: true,
+        custom_data: {
+          ...reconciliationTransaction.custom_data,
+          reconciliationType: "manual",
+          reconciled_at: new Date().toISOString(),
+          is_intercompany: true,
+          intercompany_account_code: selectedBankAccount,
+          intercompany_account_name: bankAccount.name,
+          exclude_from_pnl: true,
+          cash_flow_category: "intercompany_transfer"
+        }
+      }).eq("id", reconciliationTransaction.id)
+      if (txError) throw txError
+
+      setRows((prev) => prev.map((row) => row.id === reconciliationTransaction.id ? { ...row, reconciled: true, reconciliationType: "manual" as const } : row))
+      const direction = reconciliationTransaction.amount > 0 ? "from" : "to"
+      toast({ title: "Intercompany Transfer", description: "Marked as transfer " + direction + " " + bankAccount.name, variant: "success" })
+      setReconciliationDialogOpen(false); setReconciliationTransaction(null); setIsIntercompany(false); setSelectedBankAccount(null)
     } catch (e: any) { toast({ title: "Error", description: e?.message || "Failed to reconcile", variant: "destructive" }) }
   }
 
@@ -424,7 +467,6 @@ export default function BankinterEURPage() {
                         <div className="w-[90px] flex-shrink-0 text-right text-[11px] font-mono">{isCredit ? <span className="text-green-400">€{formatEuropeanCurrency(row.amount)}</span> : <span className="text-gray-600">-</span>}</div>
                         <div className="w-[100px] flex-shrink-0 text-right text-[11px] font-mono font-medium text-white">€{formatEuropeanCurrency(customData.saldo)}</div>
                         <div className="w-[100px] flex-shrink-0 text-center">{row.paymentSource ? <Badge variant="outline" className={"text-[9px] px-1.5 py-0 " + sourceStyle.bg + " " + sourceStyle.text + " " + sourceStyle.border}>{row.paymentSource}</Badge> : <span className="text-gray-600 text-[10px]">-</span>}</div>
-                        {/* Reconciled Column with Link Icon */}
                         <div className="w-[80px] flex-shrink-0 text-center" onClick={(e) => e.stopPropagation()}>
                           {row.reconciled ? (
                             <div className="flex items-center justify-center gap-1">
@@ -437,7 +479,6 @@ export default function BankinterEURPage() {
                             </div>
                           )}
                         </div>
-                        {/* Actions */}
                         <div className="w-[70px] flex-shrink-0 flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
                           {editingRow === row.id ? <><Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30"><Save className="h-3 w-3" /></Button><Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-400 hover:text-gray-300 hover:bg-gray-700"><X className="h-3 w-3" /></Button></> : <><Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700" disabled={isDeleting}><Edit2 className="h-3 w-3" /></Button><Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30" disabled={isDeleting}>{isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}</Button></>}
                         </div>
@@ -498,9 +539,9 @@ export default function BankinterEURPage() {
       {/* Reconciliation Dialog */}
       {reconciliationDialogOpen && reconciliationTransaction && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-          <div className="bg-[#2a2b2d] rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-[#2a2b2d] rounded-lg w-[650px] max-h-[85vh] overflow-hidden flex flex-col">
             <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
-              <div><h3 className="text-lg font-semibold text-white">Find Matching Invoice</h3><p className="text-sm text-gray-400">Link bank transaction to an invoice</p></div>
+              <div><h3 className="text-lg font-semibold text-white">Find Matching Invoice</h3><p className="text-sm text-gray-400">Link bank transaction to an invoice or mark as intercompany</p></div>
               <Button variant="ghost" size="sm" onClick={() => setReconciliationDialogOpen(false)} className="text-gray-400 hover:text-white"><X className="h-5 w-5" /></Button>
             </div>
             <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
@@ -511,36 +552,71 @@ export default function BankinterEURPage() {
               </div>
             </div>
             <div className="flex-1 overflow-auto px-6 py-4 space-y-6">
-              <div>
-                <h4 className="text-sm font-medium text-green-400 mb-3 flex items-center gap-2"><Zap className="h-4 w-4" />Suggested Match (exact amount, ±3 days)</h4>
-                {loadingInvoices ? <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
-                : matchingInvoices.length === 0 ? <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700"><p className="text-sm">No exact match found</p><p className="text-xs mt-1">Select from available invoices below</p></div>
-                : <div className="space-y-2">{matchingInvoices.map((inv) => (
-                    <div key={inv.id} onClick={() => setSelectedInvoice(inv.id)} className={"p-3 rounded-lg border cursor-pointer transition-all " + (selectedInvoice === inv.id ? "border-green-500 bg-green-900/20" : "border-green-700/50 hover:border-green-600 bg-green-900/10")}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3"><input type="radio" checked={selectedInvoice === inv.id} onChange={() => setSelectedInvoice(inv.id)} className="h-4 w-4 text-green-600" /><div><p className="text-white text-sm">{inv.invoice_number || "Invoice #" + inv.id}</p><p className="text-xs text-gray-500">{inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}</p></div></div>
-                        <div className="text-right"><p className="font-medium text-red-400">€{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}</p><span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">EXACT MATCH</span></div>
-                      </div>
+              {/* Intercompany Toggle */}
+              <div className="p-4 rounded-lg border border-orange-700/50 bg-orange-900/10">
+                <div className="flex items-center gap-3">
+                  <input type="checkbox" id="intercompany-toggle" checked={isIntercompany} onChange={(e) => { setIsIntercompany(e.target.checked); if (e.target.checked) setSelectedInvoice(null); else setSelectedBankAccount(null) }} className="h-5 w-5 rounded border-orange-600 bg-transparent text-orange-500 focus:ring-orange-500" />
+                  <label htmlFor="intercompany-toggle" className="flex items-center gap-2 cursor-pointer"><ArrowLeftRight className="h-4 w-4 text-orange-400" /><span className="text-sm font-medium text-orange-400">Intercompany Transfer</span></label>
+                </div>
+                <p className="text-xs text-gray-500 mt-2 ml-8">Transfer between company bank accounts. Does not affect P&L.</p>
+                {isIntercompany && (
+                  <div className="mt-4 ml-8 space-y-3">
+                    <p className="text-xs text-gray-400">{reconciliationTransaction.amount > 0 ? "Select the account this money came FROM:" : "Select the account this money went TO:"}</p>
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {bankAccounts.length === 0 ? <div className="text-center py-3 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700"><p className="text-sm">No other bank accounts found</p></div> : bankAccounts.map((acc) => (
+                        <div key={acc.code} onClick={() => setSelectedBankAccount(acc.code)} className={"p-3 rounded-lg border cursor-pointer transition-all " + (selectedBankAccount === acc.code ? "border-orange-500 bg-orange-900/20" : "border-gray-700 hover:border-orange-600 bg-gray-800/30")}>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <input type="radio" checked={selectedBankAccount === acc.code} onChange={() => setSelectedBankAccount(acc.code)} className="h-4 w-4 text-orange-600" />
+                              <div><div className="flex items-center gap-2"><Building2 className="h-4 w-4 text-orange-400" /><p className="text-white text-sm font-medium">{acc.name}</p></div><p className="text-xs text-gray-500">{acc.bank_name || acc.code} • {acc.currency}</p></div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}</div>}
+                  </div>
+                )}
               </div>
-              <div>
-                <h4 className="text-sm font-medium text-amber-400 mb-3 flex items-center gap-2"><Search className="h-4 w-4" />All Available Invoices</h4>
-                {loadingInvoices ? <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
-                : allAvailableInvoices.length === 0 ? <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700"><p className="text-sm">No other invoices available</p></div>
-                : <div className="space-y-2 max-h-[300px] overflow-y-auto">{allAvailableInvoices.map((inv) => (
-                    <div key={inv.id} onClick={() => setSelectedInvoice(inv.id)} className={"p-3 rounded-lg border cursor-pointer transition-all " + (selectedInvoice === inv.id ? "border-blue-500 bg-blue-900/20" : "border-gray-700 hover:border-gray-600 bg-gray-800/30")}>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3"><input type="radio" checked={selectedInvoice === inv.id} onChange={() => setSelectedInvoice(inv.id)} className="h-4 w-4 text-blue-600" /><div><p className="text-white text-sm">{inv.invoice_number || "Invoice #" + inv.id}</p><p className="text-xs text-gray-500">{inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}</p></div></div>
-                        <div className="text-right"><p className="font-medium text-red-400">€{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}</p></div>
+
+              {/* Invoice Sections (hidden when intercompany) */}
+              {!isIntercompany && (
+                <>
+                <div>
+                  <h4 className="text-sm font-medium text-green-400 mb-3 flex items-center gap-2"><Zap className="h-4 w-4" />Suggested Match (exact amount, ±3 days)</h4>
+                  {loadingInvoices ? <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                  : matchingInvoices.length === 0 ? <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700"><p className="text-sm">No exact match found</p><p className="text-xs mt-1">Select from available invoices below</p></div>
+                  : <div className="space-y-2">{matchingInvoices.map((inv) => (
+                      <div key={inv.id} onClick={() => setSelectedInvoice(inv.id)} className={"p-3 rounded-lg border cursor-pointer transition-all " + (selectedInvoice === inv.id ? "border-green-500 bg-green-900/20" : "border-green-700/50 hover:border-green-600 bg-green-900/10")}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3"><input type="radio" checked={selectedInvoice === inv.id} onChange={() => setSelectedInvoice(inv.id)} className="h-4 w-4 text-green-600" /><div><p className="text-white text-sm">{inv.invoice_number || "Invoice #" + inv.id}</p><p className="text-xs text-gray-500">{inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}</p></div></div>
+                          <div className="text-right"><p className="font-medium text-red-400">€{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}</p><span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">EXACT MATCH</span></div>
+                        </div>
                       </div>
-                    </div>
-                  ))}</div>}
-              </div>
+                    ))}</div>}
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium text-amber-400 mb-3 flex items-center gap-2"><Search className="h-4 w-4" />All Available Invoices</h4>
+                  {loadingInvoices ? <div className="flex items-center justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                  : allAvailableInvoices.length === 0 ? <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700"><p className="text-sm">No other invoices available</p></div>
+                  : <div className="space-y-2 max-h-[250px] overflow-y-auto">{allAvailableInvoices.map((inv) => (
+                      <div key={inv.id} onClick={() => setSelectedInvoice(inv.id)} className={"p-3 rounded-lg border cursor-pointer transition-all " + (selectedInvoice === inv.id ? "border-blue-500 bg-blue-900/20" : "border-gray-700 hover:border-gray-600 bg-gray-800/30")}>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3"><input type="radio" checked={selectedInvoice === inv.id} onChange={() => setSelectedInvoice(inv.id)} className="h-4 w-4 text-blue-600" /><div><p className="text-white text-sm">{inv.invoice_number || "Invoice #" + inv.id}</p><p className="text-xs text-gray-500">{inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}</p></div></div>
+                          <div className="text-right"><p className="font-medium text-red-400">€{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}</p></div>
+                        </div>
+                      </div>
+                    ))}</div>}
+                </div>
+                </>
+              )}
             </div>
             <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-end gap-3">
               <Button variant="outline" onClick={() => setReconciliationDialogOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700">Cancel</Button>
-              <Button onClick={performReconciliation} disabled={!selectedInvoice} className="bg-cyan-600 hover:bg-cyan-700"><Link2 className="h-4 w-4 mr-2" />Reconcile</Button>
+              {isIntercompany ? (
+                <Button onClick={performIntercompanyReconciliation} disabled={!selectedBankAccount} className="bg-orange-600 hover:bg-orange-700"><ArrowLeftRight className="h-4 w-4 mr-2" />Mark Intercompany</Button>
+              ) : (
+                <Button onClick={performReconciliation} disabled={!selectedInvoice} className="bg-cyan-600 hover:bg-cyan-700"><Link2 className="h-4 w-4 mr-2" />Reconcile</Button>
+              )}
             </div>
           </div>
         </div>
