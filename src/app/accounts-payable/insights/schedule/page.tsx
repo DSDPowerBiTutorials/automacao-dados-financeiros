@@ -508,15 +508,70 @@ export default function PaymentSchedulePage() {
     async function unmarkAsPaid(invoice: Invoice) {
         setUpdatingInvoice(invoice.id);
         try {
+            // If reconciled, first undo the reconciliation
+            if (invoice.is_reconciled && invoice.reconciled_transaction_id) {
+                // Unmark the bank transaction as reconciled
+                await supabase.from("csv_rows")
+                    .update({ reconciled: false })
+                    .eq("id", invoice.reconciled_transaction_id);
+            }
+
             const { error } = await supabase.from("invoices").update({
                 payment_date: null,
                 paid_amount: null,
-                paid_currency: null
+                paid_currency: null,
+                is_reconciled: false,
+                reconciled_transaction_id: null,
+                reconciled_at: null
             }).eq("id", invoice.id);
             if (error) throw error;
-            setInvoices((prev) => prev.map((inv) => (inv.id === invoice.id ? { ...inv, payment_date: null, paid_amount: null, paid_currency: null } : inv)));
-            if (selectedInvoice?.id === invoice.id) setSelectedInvoice({ ...selectedInvoice, payment_date: null, paid_amount: null, paid_currency: null });
+
+            const updatedFields = {
+                payment_date: null,
+                paid_amount: null,
+                paid_currency: null,
+                is_reconciled: false,
+                reconciled_transaction_id: null,
+                reconciled_at: null
+            };
+            setInvoices((prev) => prev.map((inv) => (inv.id === invoice.id ? { ...inv, ...updatedFields } : inv)));
+            if (selectedInvoice?.id === invoice.id) setSelectedInvoice({ ...selectedInvoice, ...updatedFields });
+            setReconciledTransaction(null);
             toast({ title: "Marked as unpaid", variant: "success" });
+        } catch (e: any) {
+            toast({ title: "Error", description: e?.message, variant: "destructive" });
+        } finally {
+            setUpdatingInvoice(null);
+        }
+    }
+
+    async function undoReconciliation(invoice: Invoice) {
+        if (!invoice.is_reconciled || !invoice.reconciled_transaction_id) return;
+
+        setUpdatingInvoice(invoice.id);
+        try {
+            // Unmark the bank transaction as reconciled
+            await supabase.from("csv_rows")
+                .update({ reconciled: false })
+                .eq("id", invoice.reconciled_transaction_id);
+
+            // Clear reconciliation fields from invoice
+            const { error } = await supabase.from("invoices").update({
+                is_reconciled: false,
+                reconciled_transaction_id: null,
+                reconciled_at: null
+            }).eq("id", invoice.id);
+            if (error) throw error;
+
+            const updatedFields = {
+                is_reconciled: false,
+                reconciled_transaction_id: null,
+                reconciled_at: null
+            };
+            setInvoices((prev) => prev.map((inv) => (inv.id === invoice.id ? { ...inv, ...updatedFields } : inv)));
+            if (selectedInvoice?.id === invoice.id) setSelectedInvoice({ ...selectedInvoice, ...updatedFields });
+            setReconciledTransaction(null);
+            toast({ title: "Reconciliation undone", variant: "success" });
         } catch (e: any) {
             toast({ title: "Error", description: e?.message, variant: "destructive" });
         } finally {
@@ -710,14 +765,13 @@ export default function PaymentSchedulePage() {
 
             if (error) throw error;
 
-            // Filter by approximate amount (±5% tolerance)
+            // Filter by EXACT amount match
             // Use paid_amount if available, otherwise fallback to invoice_amount
             const matchAmount = Math.abs(invoice.paid_amount ?? invoice.invoice_amount);
             const matchingTransactions = (data || []).filter((tx: any) => {
                 const txAmount = Math.abs(tx.amount);
-                const diff = Math.abs(txAmount - matchAmount);
-                const tolerance = matchAmount * 0.05; // 5% tolerance
-                return diff <= tolerance || diff <= 1; // Also allow €1 difference
+                // Exact match with small epsilon for floating point precision
+                return Math.abs(txAmount - matchAmount) < 0.01;
             });
 
             setBankTransactions(matchingTransactions);
@@ -1305,6 +1359,17 @@ export default function PaymentSchedulePage() {
                                         onClick={() => openReconciliationDialog(selectedInvoice)}
                                     >
                                         Match
+                                    </Button>
+                                )}
+                                {selectedInvoice.is_reconciled && (
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs bg-red-900/30 text-red-400 border-red-700 hover:bg-red-800/50"
+                                        onClick={() => undoReconciliation(selectedInvoice)}
+                                        disabled={updatingInvoice === selectedInvoice.id}
+                                    >
+                                        Undo
                                     </Button>
                                 )}
                             </div>
