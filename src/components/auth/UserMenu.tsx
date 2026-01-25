@@ -3,7 +3,7 @@
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserAvatar } from '@/components/user-avatar';
 import { Badge } from '@/components/ui/badge';
 import {
     DropdownMenu,
@@ -49,14 +49,7 @@ export function UserMenu() {
                     variant="ghost"
                     className="relative h-10 w-10 rounded-full hover:opacity-80 transition-opacity"
                 >
-                    <Avatar className="h-10 w-10 border-2 border-[#243140]">
-                        {profile.avatar_url && (
-                            <AvatarImage src={profile.avatar_url} alt={profile.name} />
-                        )}
-                        <AvatarFallback className="bg-[#243140] text-white font-semibold">
-                            {getInitials(profile.name)}
-                        </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar user={profile} size="md" />
                 </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
