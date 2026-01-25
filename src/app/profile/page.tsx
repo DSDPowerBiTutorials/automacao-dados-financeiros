@@ -292,9 +292,9 @@ export default function ProfilePage() {
                     </CardHeader>
                     <CardContent>
                         <div className="flex items-center gap-6">
-                            <UserAvatar 
-                                user={profile} 
-                                size="xl" 
+                            <UserAvatar
+                                user={profile}
+                                size="xl"
                                 className="h-24 w-24"
                             />
                             <div className="flex flex-col gap-2">

@@ -1,10 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase-admin';
+import { createClient } from '@supabase/supabase-js';
+
+// Criar cliente admin diretamente nesta rota para evitar problemas de inicialização
+function getSupabaseAdmin() {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    if (!url || !key) {
+        console.error('❌ [AVATAR] Missing env vars:', { url: !!url, key: !!key });
+        throw new Error('Missing Supabase environment variables');
+    }
+
+    return createClient(url, key, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
+}
 
 export async function POST(request: NextRequest) {
     console.log('🔵 [AVATAR UPLOAD] Iniciando upload de avatar...');
 
     try {
+        const supabaseAdmin = getSupabaseAdmin();
+
         const authHeader = request.headers.get('authorization');
         if (!authHeader) {
             console.error('❌ [AVATAR UPLOAD] Sem header de autorização');
@@ -83,14 +103,14 @@ export async function POST(request: NextRequest) {
         // Convert File to ArrayBuffer for Supabase upload
         console.log('📤 [AVATAR UPLOAD] Convertendo arquivo para upload...');
         const arrayBuffer = await file.arrayBuffer();
-        const buffer = Buffer.from(arrayBuffer);
+        const uint8Array = new Uint8Array(arrayBuffer);
 
         console.log('📤 [AVATAR UPLOAD] Fazendo upload para Supabase Storage...');
 
         // Upload to Supabase Storage usando admin (bypass de policies)
         const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
             .from('user-uploads')
-            .upload(filePath, buffer, {
+            .upload(filePath, uint8Array, {
                 contentType: file.type,
                 upsert: true,
             });
@@ -155,6 +175,8 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
+        const supabaseAdmin = getSupabaseAdmin();
+
         const authHeader = request.headers.get('authorization');
         if (!authHeader) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
