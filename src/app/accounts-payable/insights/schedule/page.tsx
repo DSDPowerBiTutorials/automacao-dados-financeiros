@@ -217,7 +217,8 @@ export default function PaymentSchedulePage() {
     // Reconciliation dialog
     const [reconciliationDialogOpen, setReconciliationDialogOpen] = useState(false);
     const [reconciliationInvoice, setReconciliationInvoice] = useState<Invoice | null>(null);
-    const [bankTransactions, setBankTransactions] = useState<any[]>([]);
+    const [bankTransactions, setBankTransactions] = useState<any[]>([]); // Exact matches
+    const [allAvailableTransactions, setAllAvailableTransactions] = useState<any[]>([]); // All available for partial
     const [loadingTransactions, setLoadingTransactions] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<string | null>(null);
 
@@ -838,47 +839,87 @@ export default function PaymentSchedulePage() {
         setReconciliationDialogOpen(true);
         setLoadingTransactions(true);
         setSelectedTransaction(null);
+        setBankTransactions([]);
+        setAllAvailableTransactions([]);
 
         try {
-            // Fetch bank transactions that could match this invoice
-            // Looking for transactions within ±3 days and similar amount
             const scheduleDate = invoice.schedule_date || invoice.payment_date;
             if (!scheduleDate) {
                 setBankTransactions([]);
+                setAllAvailableTransactions([]);
                 return;
             }
 
+            // Determine bank source based on invoice bank account
+            const bankAccountCode = invoice.bank_account_code || "";
+            let sources = ["bankinter-eur", "bankinter-usd", "sabadell"];
+            if (bankAccountCode.includes("4605") || bankAccountCode.toLowerCase().includes("eur")) {
+                sources = ["bankinter-eur"];
+            } else if (bankAccountCode.toLowerCase().includes("usd")) {
+                sources = ["bankinter-usd"];
+            } else if (bankAccountCode.toLowerCase().includes("sabadell")) {
+                sources = ["sabadell"];
+            }
+
+            // Date range for exact match (±3 days)
             const startDate = parseLocalDate(scheduleDate);
             startDate.setDate(startDate.getDate() - 3);
             const endDate = parseLocalDate(scheduleDate);
             endDate.setDate(endDate.getDate() + 3);
 
-            // Query csv_rows for bank transactions
-            const { data, error } = await supabase
+            // Query for EXACT MATCHES (±3 days, exact amount)
+            const { data: matchData, error: matchError } = await supabase
                 .from("csv_rows")
                 .select("*")
-                .in("source", ["bankinter-eur", "bankinter-usd", "sabadell"])
+                .in("source", sources)
                 .gte("date", startDate.toISOString().split("T")[0])
                 .lte("date", endDate.toISOString().split("T")[0])
                 .eq("reconciled", false)
                 .order("date", { ascending: false });
 
-            if (error) throw error;
+            if (matchError) throw matchError;
 
-            // Filter by EXACT amount match
-            // Use paid_amount if available, otherwise fallback to invoice_amount
-            const matchAmount = Math.abs(invoice.paid_amount ?? invoice.invoice_amount);
-            const matchingTransactions = (data || []).filter((tx: any) => {
+            const matchAmount = Math.abs(invoice.paid_amount ?? invoice.invoice_amount ?? 0);
+            const exactMatches = (matchData || []).filter((tx: any) => {
                 const txAmount = Math.abs(tx.amount);
-                // Exact match with small epsilon for floating point precision
                 return Math.abs(txAmount - matchAmount) < 0.01;
             });
 
-            setBankTransactions(matchingTransactions);
+            // Query for ALL AVAILABLE TRANSACTIONS (last 60 days, for partial reconciliation)
+            const allStartDate = new Date();
+            allStartDate.setDate(allStartDate.getDate() - 60);
+
+            const { data: allData, error: allError } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .in("source", sources)
+                .gte("date", allStartDate.toISOString().split("T")[0])
+                .lt("amount", 0) // Only debits (negative amounts)
+                .order("date", { ascending: false })
+                .limit(100);
+
+            if (allError) throw allError;
+
+            // Filter out exact matches from all available and include partially reconciled
+            const exactMatchIds = new Set(exactMatches.map((tx: any) => tx.id));
+            const availableForPartial = (allData || []).filter((tx: any) => {
+                // Exclude exact matches (they're in the top section)
+                if (exactMatchIds.has(tx.id)) return false;
+                // Include if not reconciled OR if partially reconciled (has remaining balance)
+                if (!tx.reconciled) return true;
+                // Check if this transaction has remaining balance
+                const balance = reconciliationBalances[tx.id];
+                if (balance && !balance.isFullyReconciled) return true;
+                return false;
+            });
+
+            setBankTransactions(exactMatches);
+            setAllAvailableTransactions(availableForPartial);
         } catch (e: any) {
             console.error("Error loading transactions:", e);
             toast({ title: "Error", description: "Failed to load bank transactions", variant: "destructive" });
             setBankTransactions([]);
+            setAllAvailableTransactions([]);
         } finally {
             setLoadingTransactions(false);
         }
@@ -1582,8 +1623,8 @@ export default function PaymentSchedulePage() {
                                                 <Badge
                                                     variant="outline"
                                                     className={`text-xs ${reconciliationBalances[selectedInvoice.reconciled_transaction_id].isFullyReconciled
-                                                            ? "bg-green-900/50 text-green-400 border-green-700"
-                                                            : "bg-yellow-900/50 text-yellow-400 border-yellow-700"
+                                                        ? "bg-green-900/50 text-green-400 border-green-700"
+                                                        : "bg-yellow-900/50 text-yellow-400 border-yellow-700"
                                                         }`}
                                                 >
                                                     {reconciliationBalances[selectedInvoice.reconciled_transaction_id].isFullyReconciled ? "Total" : "Partial"}
@@ -1952,53 +1993,121 @@ export default function PaymentSchedulePage() {
                         </div>
 
                         {/* Matching Transactions */}
-                        <div className="flex-1 overflow-auto px-6 py-4">
-                            <h4 className="text-sm font-medium text-gray-400 mb-3">Matching Bank Transactions (±3 days, ±5% amount)</h4>
+                        <div className="flex-1 overflow-auto px-6 py-4 space-y-6">
+                            {/* SECTION 1: Exact Matches */}
+                            <div>
+                                <h4 className="text-sm font-medium text-green-400 mb-3 flex items-center gap-2">
+                                    <Zap className="h-4 w-4" />
+                                    Suggested Match (exact amount, ±3 days)
+                                </h4>
 
-                            {loadingTransactions ? (
-                                <div className="flex items-center justify-center py-8">
-                                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                                </div>
-                            ) : bankTransactions.length === 0 ? (
-                                <div className="text-center py-8 text-gray-500">
-                                    <AlertCircle className="h-8 w-8 mx-auto mb-2" />
-                                    <p>No matching transactions found</p>
-                                    <p className="text-xs mt-1">Try adjusting the date range or check the bank account</p>
-                                </div>
-                            ) : (
-                                <div className="space-y-2">
-                                    {bankTransactions.map((tx) => (
-                                        <div
-                                            key={tx.id}
-                                            onClick={() => setSelectedTransaction(tx.id)}
-                                            className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTransaction === tx.id
-                                                ? "border-blue-500 bg-blue-900/20"
-                                                : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
-                                                }`}
-                                        >
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-3">
-                                                    <input
-                                                        type="radio"
-                                                        checked={selectedTransaction === tx.id}
-                                                        onChange={() => setSelectedTransaction(tx.id)}
-                                                        className="h-4 w-4 text-blue-600"
-                                                    />
-                                                    <div>
-                                                        <p className="text-white text-sm">{tx.description || "Bank Transaction"}</p>
-                                                        <p className="text-xs text-gray-500">{tx.date} • {tx.source}</p>
+                                {loadingTransactions ? (
+                                    <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                                    </div>
+                                ) : bankTransactions.length === 0 ? (
+                                    <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                                        <p className="text-sm">No exact match found</p>
+                                        <p className="text-xs mt-1">Select from available transactions below for partial reconciliation</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {bankTransactions.map((tx) => (
+                                            <div
+                                                key={tx.id}
+                                                onClick={() => setSelectedTransaction(tx.id)}
+                                                className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTransaction === tx.id
+                                                    ? "border-green-500 bg-green-900/20"
+                                                    : "border-green-700/50 hover:border-green-600 bg-green-900/10"
+                                                    }`}
+                                            >
+                                                <div className="flex items-center justify-between">
+                                                    <div className="flex items-center gap-3">
+                                                        <input
+                                                            type="radio"
+                                                            checked={selectedTransaction === tx.id}
+                                                            onChange={() => setSelectedTransaction(tx.id)}
+                                                            className="h-4 w-4 text-green-600"
+                                                        />
+                                                        <div>
+                                                            <p className="text-white text-sm">{tx.description || "Bank Transaction"}</p>
+                                                            <p className="text-xs text-gray-500">{tx.date} • {tx.source}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        <p className="font-medium text-red-400">
+                                                            -€{formatCurrency(Math.abs(tx.amount))}
+                                                        </p>
+                                                        <span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">EXACT MATCH</span>
                                                     </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <p className={`font-medium ${tx.amount < 0 ? "text-red-400" : "text-green-400"}`}>
-                                                        {tx.amount < 0 ? "-" : "+"}€{formatCurrency(Math.abs(tx.amount))}
-                                                    </p>
-                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* SECTION 2: All Available Transactions (for partial reconciliation) */}
+                            <div>
+                                <h4 className="text-sm font-medium text-amber-400 mb-3 flex items-center gap-2">
+                                    <Search className="h-4 w-4" />
+                                    All Available Transactions (for partial reconciliation)
+                                </h4>
+
+                                {loadingTransactions ? (
+                                    <div className="flex items-center justify-center py-4">
+                                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                                    </div>
+                                ) : allAvailableTransactions.length === 0 ? (
+                                    <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                                        <p className="text-sm">No other transactions available</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                                        {allAvailableTransactions.map((tx) => {
+                                            const balance = reconciliationBalances[tx.id];
+                                            const isPartiallyReconciled = balance && !balance.isFullyReconciled;
+                                            return (
+                                                <div
+                                                    key={tx.id}
+                                                    onClick={() => setSelectedTransaction(tx.id)}
+                                                    className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTransaction === tx.id
+                                                        ? "border-blue-500 bg-blue-900/20"
+                                                        : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                                                        }`}
+                                                >
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-3">
+                                                            <input
+                                                                type="radio"
+                                                                checked={selectedTransaction === tx.id}
+                                                                onChange={() => setSelectedTransaction(tx.id)}
+                                                                className="h-4 w-4 text-blue-600"
+                                                            />
+                                                            <div>
+                                                                <p className="text-white text-sm">{tx.description || "Bank Transaction"}</p>
+                                                                <p className="text-xs text-gray-500">{tx.date} • {tx.source}</p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p className="font-medium text-red-400">
+                                                                -€{formatCurrency(Math.abs(tx.amount))}
+                                                            </p>
+                                                            {isPartiallyReconciled && (
+                                                                <div className="text-[10px]">
+                                                                    <span className="text-amber-400 bg-amber-900/30 px-1.5 py-0.5 rounded">
+                                                                        Remaining: €{balance.remaining.toFixed(2)}
+                                                                    </span>
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
                         {/* Dialog Footer */}
