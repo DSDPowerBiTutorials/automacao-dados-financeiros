@@ -159,7 +159,7 @@ export default function ARInvoicesPage() {
       const minDate = new Date('2025-11-01');
       const today = new Date();
       today.setHours(23, 59, 59, 999);
-      
+
       const validOrders = hubspotOrders.filter(order => {
         const cd = order.custom_data || {};
         const dateStr = cd.date_ordered || cd.date_paid || order.date;
