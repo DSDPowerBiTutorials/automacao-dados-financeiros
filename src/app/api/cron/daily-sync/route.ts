@@ -250,6 +250,33 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================
+    // 4b. GERAR INVOICES AR A PARTIR DO HUBSPOT
+    // ============================================
+    try {
+        const arStart = Date.now();
+        console.log("\n🧾 [4b/5] Gerando invoices AR a partir do HubSpot...");
+        const arUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/ar-invoices/from-hubspot`;
+        const response = await fetch(arUrl, { method: "POST" });
+        const result = await response.json();
+        results.push({
+            name: "AR Invoices from HubSpot",
+            success: result.success === true,
+            message: result.success ? `Criadas: ${result.created}, Skipped: ${result.skipped}` : result.error,
+            count: result.created || 0,
+            duration_ms: Date.now() - arStart,
+            error: result.error,
+        });
+    } catch (error: any) {
+        results.push({
+            name: "AR Invoices from HubSpot",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
     // 5. PRODUCTS (do HubSpot LineItem)
     // ============================================
     try {

@@ -433,7 +433,7 @@ export function InvoiceSidePanel({
                             <div><Label className="text-xs text-gray-700">Financial Account *</Label>
                                 <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })}>
                                     <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select account" /></SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[250px]">{financialAccounts.filter((a: any) => a.level >= 2).map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}</SelectContent>
+                                    <SelectContent className="bg-white max-h-[250px]">{financialAccounts.filter((a: any) => a.level >= 2 && a.type === 'expense').map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}</SelectContent>
                                 </Select>
                             </div>
                         </div>

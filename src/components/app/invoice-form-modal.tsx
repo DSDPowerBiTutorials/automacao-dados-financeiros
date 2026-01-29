@@ -477,7 +477,7 @@ export function InvoiceFormModal({
                             <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })}>
                                 <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select account" /></SelectTrigger>
                                 <SelectContent className="bg-white max-h-[300px]">
-                                    {financialAccounts.filter((a: any) => a.level >= 2).map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}
+                                    {financialAccounts.filter((a: any) => a.level >= 2 && a.type === 'expense').map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
                         </div>

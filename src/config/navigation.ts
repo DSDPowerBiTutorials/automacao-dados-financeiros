@@ -184,6 +184,11 @@ export const NAV: NavGroup[] = [
         icon: DollarSign
       },
       {
+        title: "Invoices",
+        href: "/accounts-receivable/invoices",
+        icon: FileText
+      },
+      {
         title: "Transactions",
         href: "/accounts-receivable/transactions",
         icon: Receipt,
@@ -192,11 +197,6 @@ export const NAV: NavGroup[] = [
             title: "Credit Notes",
             href: "/accounts-receivable/transactions/credit-notes",
             icon: FileText
-          },
-          {
-            title: "Invoices",
-            href: "/accounts-receivable/transactions/invoices",
-            icon: Receipt
           },
           {
             title: "Payments",
