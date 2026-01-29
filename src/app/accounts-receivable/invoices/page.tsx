@@ -155,12 +155,16 @@ export default function ARInvoicesPage() {
         return;
       }
 
-      // Verificar quais já existem
-      const existingNumbers = invoices.map((i) => i.invoice_number);
-      const newOrders = hubspotOrders.filter((order) => {
-        const invoiceNum = order.custom_data?.invoice_number || order.custom_data?.Number;
-        return invoiceNum && !existingNumbers.includes(invoiceNum);
-      });
+      // Buscar source_ids que já existem na tabela ar_invoices
+      const { data: existingInvoices } = await supabase
+        .from("ar_invoices")
+        .select("source_id")
+        .eq("source", "hubspot");
+
+      const existingSourceIds = new Set((existingInvoices || []).map((i) => i.source_id));
+
+      // Filtrar orders que ainda não foram importadas (usando csv_rows.id como source_id)
+      const newOrders = hubspotOrders.filter((order) => !existingSourceIds.has(String(order.id)));
 
       if (newOrders.length === 0) {
         toast({ title: "Info", description: "Todas as invoices já estão sincronizadas" });
@@ -168,31 +172,54 @@ export default function ARInvoicesPage() {
         return;
       }
 
-      // Criar invoices a partir dos pedidos HubSpot
-      const invoicesToInsert = newOrders.map((order) => ({
-        invoice_number: order.custom_data?.invoice_number || order.custom_data?.Number || `HS-${order.id}`,
-        order_id: order.custom_data?.order_id || order.custom_data?.Order || null,
-        order_date: order.custom_data?.order_date || order.date || null,
-        order_status: order.custom_data?.order_status || order.custom_data?.["Order Status"] || null,
-        invoice_date: order.custom_data?.invoice_date || order.date || new Date().toISOString().split("T")[0],
-        products: order.custom_data?.products || order.custom_data?.Products || order.description || null,
-        company_name: order.custom_data?.company || order.custom_data?.Company || null,
-        client_name: order.custom_data?.client || order.custom_data?.Client || null,
-        email: order.custom_data?.email || order.custom_data?.Email || null,
-        total_amount: parseFloat(order.amount) || order.custom_data?.total || order.custom_data?.Total || 0,
-        currency: order.custom_data?.currency || order.custom_data?.Currency || "EUR",
-        charged_amount: order.custom_data?.charged || order.custom_data?.Charged || null,
-        payment_method: order.custom_data?.payment_method || order.custom_data?.["Payment Method"] || null,
-        billing_entity: order.custom_data?.billing_entity || order.custom_data?.["Billing Entity"] || null,
-        note: order.custom_data?.note || order.custom_data?.Note || null,
-        discount_code: order.custom_data?.discount_code || order.custom_data?.["Discount Code"] || null,
-        discount_names: order.custom_data?.discount_names || order.custom_data?.["Discount Names"] || null,
-        status: "pending",
-        country_code: "ES",
-        scope: "ES",
-        source: "hubspot",
-        source_id: String(order.id)
-      }));
+      // Helper para formatar status
+      const mapStatus = (paidStatus: string | undefined): string => {
+        if (!paidStatus) return "pending";
+        const status = paidStatus.toLowerCase();
+        if (status === "paid" || status.includes("paid")) return "paid";
+        if (status === "unpaid" || status.includes("unpaid")) return "pending";
+        if (status.includes("partial")) return "partial";
+        return "pending";
+      };
+
+      // Criar invoices a partir dos pedidos HubSpot - mapeando campos reais
+      const invoicesToInsert = newOrders.map((order) => {
+        const cd = order.custom_data || {};
+        // Gerar invoice_number a partir de deal_id ou id do registro
+        const dealId = cd.deal_id || cd.dealId || order.id;
+        const invoiceNumber = `DSDFS-${String(dealId).slice(-8)}`;
+
+        // Montar nome do cliente
+        const firstName = cd.customer_firstname || cd.customerFirstname || "";
+        const lastName = cd.customer_lastname || cd.customerLastname || "";
+        const clientName = `${firstName} ${lastName}`.trim() || cd.customer_name || null;
+
+        return {
+          invoice_number: invoiceNumber,
+          order_id: cd.order_code || cd.order_id || cd.dealname || null,
+          order_date: cd.date_ordered || cd.dateOrdered || order.date || null,
+          order_status: cd.paid_status || cd.paidStatus || cd.order_status || null,
+          invoice_date: cd.date_paid || cd.datePaid || cd.date_ordered || order.date || new Date().toISOString().split("T")[0],
+          products: cd.dealname || cd.order_code || order.description || null,
+          company_name: cd.company_name || cd.company || cd.companyName || null,
+          client_name: clientName,
+          email: cd.customer_email || cd.customerEmail || cd.email || null,
+          total_amount: parseFloat(cd.final_price || cd.finalPrice || cd.total_price || cd.totalPrice || order.amount) || 0,
+          currency: cd.currency || cd.deal_currency || "EUR",
+          charged_amount: cd.charged_amount || cd.chargedAmount || cd.final_price || cd.finalPrice || null,
+          payment_method: cd.payment_method || cd.paymentMethod || cd.gateway_name || cd.gatewayName || null,
+          billing_entity: cd.billing_entity || cd.billingEntity || cd.company_name || cd.company || null,
+          note: cd.note || cd.notes || cd.description || null,
+          discount_code: cd.discount_code || cd.discountCode || cd.coupon_code || null,
+          discount_names: cd.discount_names || cd.discountNames || null,
+          status: mapStatus(cd.paid_status || cd.paidStatus),
+          country_code: cd.country_code || cd.countryCode || "ES",
+          scope: "ES",
+          source: "hubspot",
+          source_id: String(order.id),
+          source_data: cd
+        };
+      });
 
       const { error: insertError } = await supabase.from("ar_invoices").insert(invoicesToInsert);
       if (insertError) throw insertError;
@@ -201,7 +228,7 @@ export default function ARInvoicesPage() {
       loadInvoices();
     } catch (err: any) {
       console.error("Erro ao sincronizar HubSpot:", err);
-      toast({ title: "Erro", description: "Falha ao sincronizar com HubSpot", variant: "destructive" });
+      toast({ title: "Erro", description: `Falha ao sincronizar: ${err.message}`, variant: "destructive" });
     } finally {
       setSyncing(false);
     }
