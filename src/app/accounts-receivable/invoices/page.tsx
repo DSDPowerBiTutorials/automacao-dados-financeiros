@@ -185,9 +185,9 @@ export default function ARInvoicesPage() {
       // Criar invoices a partir dos pedidos HubSpot - mapeando campos reais
       const invoicesToInsert = newOrders.map((order) => {
         const cd = order.custom_data || {};
-        // Gerar invoice_number a partir de deal_id ou id do registro
-        const dealId = cd.deal_id || cd.dealId || order.id;
-        const invoiceNumber = `DSDFS-${String(dealId).slice(-8)}`;
+        // Gerar invoice_number a partir do UUID do csv_rows (garantindo unicidade)
+        const shortId = String(order.id).replace(/-/g, '').slice(0, 12).toUpperCase();
+        const invoiceNumber = `HS-${shortId}`;
 
         // Montar nome do cliente
         const firstName = cd.customer_firstname || cd.customerFirstname || "";
