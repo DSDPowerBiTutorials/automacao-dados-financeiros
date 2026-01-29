@@ -155,6 +155,19 @@ export default function ARInvoicesPage() {
         return;
       }
 
+      // Filtrar por data: >= 2025-11-01 e <= hoje
+      const minDate = new Date('2025-11-01');
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      const validOrders = hubspotOrders.filter(order => {
+        const cd = order.custom_data || {};
+        const dateStr = cd.date_ordered || cd.date_paid || order.date;
+        if (!dateStr) return false;
+        const orderDate = new Date(dateStr);
+        return orderDate >= minDate && orderDate <= today;
+      });
+
       // Buscar source_ids que já existem na tabela ar_invoices
       const { data: existingInvoices } = await supabase
         .from("ar_invoices")
@@ -163,8 +176,8 @@ export default function ARInvoicesPage() {
 
       const existingSourceIds = new Set((existingInvoices || []).map((i) => i.source_id));
 
-      // Filtrar orders que ainda não foram importadas (usando csv_rows.id como source_id)
-      const newOrders = hubspotOrders.filter((order) => !existingSourceIds.has(String(order.id)));
+      // Filtrar orders que ainda não foram importadas
+      const newOrders = validOrders.filter((order) => !existingSourceIds.has(String(order.id)));
 
       if (newOrders.length === 0) {
         toast({ title: "Info", description: "Todas as invoices já estão sincronizadas" });
@@ -177,47 +190,59 @@ export default function ARInvoicesPage() {
         if (!paidStatus) return "pending";
         const status = paidStatus.toLowerCase();
         if (status === "paid" || status.includes("paid")) return "paid";
-        if (status === "unpaid" || status.includes("unpaid")) return "pending";
-        if (status.includes("partial")) return "partial";
+        if (status === "partial") return "partial";
         return "pending";
       };
 
-      // Criar invoices a partir dos pedidos HubSpot - mapeando campos reais
+      // Helper para extrair código de ordem (apenas se for hash curto)
+      const extractOrderCode = (orderCode: string | undefined, dealname: string | undefined): string | null => {
+        if (orderCode && orderCode.length < 15 && orderCode !== dealname) return orderCode;
+        if (orderCode && (orderCode.startsWith('TEST_') || /^[a-f0-9]{7,8}$/i.test(orderCode))) return orderCode;
+        return null;
+      };
+
+      // Helper para extrair nome do produto
+      const extractProductName = (cd: Record<string, unknown>): string | null => {
+        if (cd.product_name && cd.product_name !== cd.order_code) return String(cd.product_name);
+        let name = String(cd.dealname || cd.product_name || "");
+        if (name) {
+          name = name.replace(/^(PM|TA|WIN BACK STRATEGY|CHECKOUT PENDING|CONTACT US COURSES)\s*-?\s*/i, '');
+          name = name.replace(/\s*-\s*[^\s]+@[^\s]+\s*(ROW|AMEX|APAC)?$/i, '');
+          if (/^[a-f0-9]{6,8}$/i.test(name.trim())) return String(cd.dealname) || null;
+        }
+        return name || null;
+      };
+
+      // Criar invoices com mapeamento CORRIGIDO
       const invoicesToInsert = newOrders.map((order) => {
         const cd = order.custom_data || {};
-        // Gerar invoice_number a partir do UUID do csv_rows (garantindo unicidade)
         const shortId = String(order.id).replace(/-/g, '').slice(0, 12).toUpperCase();
-        const invoiceNumber = `HS-${shortId}`;
+        const orderCode = extractOrderCode(cd.order_code as string, cd.dealname as string);
+        const productName = extractProductName(cd);
+        const invoiceDate = cd.date_paid || cd.date_ordered || order.date;
 
-        // Montar nome do cliente
         const firstName = cd.customer_firstname || cd.customerFirstname || "";
         const lastName = cd.customer_lastname || cd.customerLastname || "";
-        const clientName = `${firstName} ${lastName}`.trim() || cd.customer_name || null;
+        const clientName = `${firstName} ${lastName}`.trim() || null;
 
         return {
-          invoice_number: invoiceNumber,
-          order_id: cd.order_code || cd.order_id || cd.dealname || null,
-          order_date: cd.date_ordered || cd.dateOrdered || order.date || null,
-          order_status: cd.paid_status || cd.paidStatus || cd.order_status || null,
-          invoice_date: cd.date_paid || cd.datePaid || cd.date_ordered || order.date || new Date().toISOString().split("T")[0],
-          products: cd.dealname || cd.order_code || order.description || null,
-          company_name: cd.company_name || cd.company || cd.companyName || null,
+          invoice_number: `HS-${shortId}`,
+          order_id: orderCode,
+          order_date: cd.date_ordered || order.date || null,
+          order_status: cd.paid_status || null,
+          invoice_date: invoiceDate,
+          products: productName,
+          company_name: cd.company_name || cd.company || null,
           client_name: clientName,
-          email: cd.customer_email || cd.customerEmail || cd.email || null,
-          total_amount: parseFloat(cd.final_price || cd.finalPrice || cd.total_price || cd.totalPrice || order.amount) || 0,
-          currency: cd.currency || cd.deal_currency || "EUR",
-          charged_amount: cd.charged_amount || cd.chargedAmount || cd.final_price || cd.finalPrice || null,
-          payment_method: cd.payment_method || cd.paymentMethod || cd.gateway_name || cd.gatewayName || null,
-          billing_entity: cd.billing_entity || cd.billingEntity || cd.company_name || cd.company || null,
-          note: cd.note || cd.notes || cd.description || null,
-          discount_code: cd.discount_code || cd.discountCode || cd.coupon_code || null,
-          discount_names: cd.discount_names || cd.discountNames || null,
-          status: mapStatus(cd.paid_status || cd.paidStatus),
-          country_code: cd.country_code || cd.countryCode || "ES",
+          email: cd.customer_email || null,
+          total_amount: parseFloat(String(cd.final_price || cd.total_price || order.amount)) || 0,
+          currency: cd.currency || "EUR",
+          payment_method: cd.gateway_name || null,
+          status: mapStatus(cd.paid_status as string),
+          country_code: "ES",
           scope: "ES",
           source: "hubspot",
-          source_id: String(order.id),
-          source_data: cd
+          source_id: String(order.id)
         };
       });
 
@@ -226,9 +251,10 @@ export default function ARInvoicesPage() {
 
       toast({ title: "Sucesso", description: `${invoicesToInsert.length} invoices sincronizadas do HubSpot` });
       loadInvoices();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
       console.error("Erro ao sincronizar HubSpot:", err);
-      toast({ title: "Erro", description: `Falha ao sincronizar: ${err.message}`, variant: "destructive" });
+      toast({ title: "Erro", description: `Falha ao sincronizar: ${errorMessage}`, variant: "destructive" });
     } finally {
       setSyncing(false);
     }
