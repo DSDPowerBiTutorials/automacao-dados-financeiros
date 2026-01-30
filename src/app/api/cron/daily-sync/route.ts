@@ -10,6 +10,7 @@
  * 4. Products - Novos produtos do HubSpot
  * 5. Stripe (EUR + USD) - Últimos 7 dias
  * 6. QuickBooks (USD) - Últimos 30 dias (Escopo EUA)
+ * 7. Reconciliação Automática - AR Invoices x Braintree/Stripe/GoCardless
  * 
  * Endpoint: GET /api/cron/daily-sync
  * Autorização: Bearer ${CRON_SECRET} ou x-vercel-cron header
@@ -427,6 +428,44 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================
+    // 8. RECONCILIAÇÃO AUTOMÁTICA AR INVOICES
+    // ============================================
+    try {
+        const reconcileStart = Date.now();
+        console.log("\n🔗 [8/8] Reconciliação Automática (Braintree/Stripe/GoCardless)...");
+
+        const reconcileUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/reconcile/auto`;
+
+        const response = await fetch(reconcileUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dryRun: false }),
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            results.push({
+                name: "Reconciliation",
+                success: true,
+                message: `BT: ${result.summary.bySource.braintree}, ST: ${result.summary.bySource.stripe}, GC: ${result.summary.bySource.gocardless}`,
+                count: result.summary.updated,
+                duration_ms: Date.now() - reconcileStart,
+            });
+        } else {
+            throw new Error(result.error || "Reconciliation failed");
+        }
+    } catch (error: any) {
+        console.error("[Reconciliation] Error:", error);
+        results.push({
+            name: "Reconciliation",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
     // SALVAR METADATA DA SINCRONIZAÇÃO
     // ============================================
     const totalDuration = Date.now() - startTime;
@@ -463,19 +502,19 @@ export async function GET(req: NextRequest) {
             if (failCount === 0) {
                 await completeBotTask(
                     botContext,
-                    `Sincronização concluída: ${successCount}/7 sistemas`,
+                    `Sincronização concluída: ${successCount}/8 sistemas`,
                     { results, successCount, failCount }
                 );
             } else if (successCount > 0) {
                 await warnBotTask(
                     botContext,
-                    `Sincronização parcial: ${successCount}/7 ok, ${failCount} falhas`,
+                    `Sincronização parcial: ${successCount}/8 ok, ${failCount} falhas`,
                     { results, successCount, failCount }
                 );
             } else {
                 await failBotTask(
                     botContext,
-                    `Sincronização falhou: ${failCount}/7 erros`,
+                    `Sincronização falhou: ${failCount}/8 erros`,
                     { results, successCount, failCount }
                 );
             }
@@ -489,12 +528,12 @@ export async function GET(req: NextRequest) {
     // ============================================
     console.log(`\n${BOT_CONSOLE_NAME} ✅ [Daily Sync] Sincronização concluída!`);
     console.log(`   ⏱️ Duração total: ${(totalDuration / 1000).toFixed(1)}s`);
-    console.log(`   ✓ Sucesso: ${successCount}/7`);
-    console.log(`   ✗ Falhas: ${failCount}/7`);
+    console.log(`   ✓ Sucesso: ${successCount}/8`);
+    console.log(`   ✗ Falhas: ${failCount}/8`);
 
     return NextResponse.json({
         success: failCount === 0,
-        message: `Daily sync completed: ${successCount}/7 successful`,
+        message: `Daily sync completed: ${successCount}/8 successful`,
         duration_ms: totalDuration,
         timestamp: new Date().toISOString(),
         bot: "BOTella",

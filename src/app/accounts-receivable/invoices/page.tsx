@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2 } from "lucide-react";
+import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,10 @@ interface ARInvoice {
   scope: string;
   source: string | null;
   source_id: string | null;
+  reconciled?: boolean;
+  reconciled_at?: string;
+  reconciled_with?: string;
+  payment_reference?: string;
   created_at: string;
   updated_at: string;
 }
@@ -102,13 +106,14 @@ const EMPTY_INVOICE: Partial<ARInvoice> = {
 };
 
 export default function ARInvoicesPage() {
-  const { selectedScope } = useGlobalScope();
+  const { selectedScope, setSelectedScope } = useGlobalScope();
   const [invoices, setInvoices] = useState<ARInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
+  const [reconciling, setReconciling] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Partial<ARInvoice> | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
@@ -198,7 +203,7 @@ export default function ARInvoicesPage() {
       // Filtrar: data válida + ecommerce_deal = true + não TEST_
       const validOrders = hubspotOrders.filter(order => {
         const cd = order.custom_data || {};
-        
+
         // Filtro de data
         const dateStr = cd.date_ordered || cd.date_paid || order.date;
         if (!dateStr) return false;
@@ -312,6 +317,36 @@ export default function ARInvoicesPage() {
     }
   };
 
+  // Reconciliação automática com gateways de pagamento
+  const runAutoReconcile = async () => {
+    setReconciling(true);
+    try {
+      const response = await fetch('/api/reconcile/auto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: false })
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        const { summary } = result;
+        toast({
+          title: "Reconciliação Concluída",
+          description: `${summary.updated} invoices reconciliadas (Braintree: ${summary.bySource.braintree}, Stripe: ${summary.bySource.stripe}, GoCardless: ${summary.bySource.gocardless})`
+        });
+        loadInvoices();
+      } else {
+        throw new Error(result.error || 'Erro na reconciliação');
+      }
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
+      console.error("Erro na reconciliação:", err);
+      toast({ title: "Erro", description: `Falha na reconciliação: ${errorMessage}`, variant: "destructive" });
+    } finally {
+      setReconciling(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!editingInvoice) return;
     if (!editingInvoice.invoice_number?.trim()) {
@@ -411,11 +446,16 @@ export default function ARInvoicesPage() {
     const pendingTotal = pending.reduce((sum, i) => sum + (i.total_amount || 0), 0);
     const overdue = scopeInvoices.filter(i => i.status === "overdue");
     const overdueTotal = overdue.reduce((sum, i) => sum + (i.total_amount || 0), 0);
+    const reconciled = scopeInvoices.filter(i => i.reconciled === true);
+    const reconciledTotal = reconciled.reduce((sum, i) => sum + (i.total_amount || 0), 0);
+    const notReconciled = scopeInvoices.filter(i => !i.reconciled);
     return {
       total, totalCount: scopeInvoices.length,
       paidTotal, paidCount: paid.length,
       pendingTotal, pendingCount: pending.length,
-      overdueTotal, overdueCount: overdue.length
+      overdueTotal, overdueCount: overdue.length,
+      reconciledTotal, reconciledCount: reconciled.length,
+      notReconciledCount: notReconciled.length
     };
   }, [invoices, selectedScope]);
 
@@ -469,7 +509,11 @@ export default function ARInvoicesPage() {
           <p className="text-sm text-gray-600">Gestão de faturas de clientes - sincronizado com HubSpot</p>
         </div>
         <div className="flex items-center gap-3">
-          <ScopeSelector />
+          <ScopeSelector value={selectedScope} onValueChange={setSelectedScope} />
+          <Button variant="outline" size="sm" onClick={runAutoReconcile} disabled={reconciling}>
+            {reconciling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Link2 className="h-4 w-4 mr-2" />}
+            Reconciliar
+          </Button>
           <Button variant="outline" size="sm" onClick={syncFromHubSpot} disabled={syncing}>
             {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
             Sync HubSpot
@@ -484,7 +528,18 @@ export default function ARInvoicesPage() {
       </header>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-purple-600" /> Reconciliado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-700">€{formatEuropeanNumber(stats.reconciledTotal)}</div>
+            <p className="text-xs text-gray-500">{stats.reconciledCount} invoices ({stats.notReconciledCount} pendentes)</p>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
@@ -582,7 +637,7 @@ export default function ARInvoicesPage() {
                     <th className="px-3 py-3 text-left font-medium text-gray-600">Client</th>
                     <th className="px-3 py-3 text-right font-medium text-gray-600">Total</th>
                     <th className="px-3 py-3 text-left font-medium text-gray-600">Payment Method</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Billing Entity</th>
+                    <th className="px-3 py-3 text-left font-medium text-gray-600">Reconciliado</th>
                     <th className="px-3 py-3 text-left font-medium text-gray-600">Status</th>
                   </tr>
                 </thead>
@@ -590,7 +645,7 @@ export default function ARInvoicesPage() {
                   {filteredInvoices.map(inv => {
                     const statusConfig = STATUS_CONFIG[inv.status] || STATUS_CONFIG.pending;
                     return (
-                      <tr key={inv.id} className="hover:bg-gray-50">
+                      <tr key={inv.id} className={`hover:bg-gray-50 ${inv.reconciled ? 'bg-green-50/30' : ''}`}>
                         <td className="px-3 py-2">
                           <div className="flex items-center gap-1">
                             <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)}>
@@ -616,7 +671,16 @@ export default function ARInvoicesPage() {
                           {inv.currency === "EUR" ? "€" : inv.currency === "USD" ? "$" : inv.currency}{formatEuropeanNumber(inv.total_amount)}
                         </td>
                         <td className="px-3 py-2">{inv.payment_method || "-"}</td>
-                        <td className="px-3 py-2 text-xs">{inv.billing_entity || "-"}</td>
+                        <td className="px-3 py-2">
+                          {inv.reconciled ? (
+                            <div className="flex items-center gap-1 text-green-600" title={inv.reconciled_with || ''}>
+                              <Link2 className="h-4 w-4" />
+                              <span className="text-xs">{inv.reconciled_with?.split(':')[0] || 'Yes'}</span>
+                            </div>
+                          ) : (
+                            <Unlink className="h-4 w-4 text-gray-300" />
+                          )}
+                        </td>
                         <td className="px-3 py-2">
                           <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
                         </td>
