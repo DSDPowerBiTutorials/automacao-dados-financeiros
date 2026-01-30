@@ -59,6 +59,32 @@ interface BankAccount {
   bank_name?: string | null
 }
 
+// Payment Source Match for credit reconciliation
+interface PaymentSourceMatch {
+  id: string
+  source: string
+  sourceLabel: string
+  date: string
+  amount: number
+  currency: string
+  description: string
+  reference: string
+  matchType: "exact" | "amount" | "description"
+  transactionCount?: number
+  disbursementDate?: string
+}
+
+// Intercompany Match for automatic suggestions
+interface IntercompanyMatch {
+  id: string
+  source: string
+  sourceLabel: string
+  date: string
+  amount: number
+  currency: string
+  description: string
+}
+
 // Formatar números no padrão europeu
 const formatEuropeanCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined || isNaN(value)) return "-"
@@ -129,6 +155,7 @@ interface BankinterEURRow {
     intercompany_account_code?: string
     intercompany_account_name?: string
     intercompany_note?: string
+    intercompany_linked_id?: string
     exclude_from_pnl?: boolean
     cash_flow_category?: string
     reconciliationType?: string
@@ -181,6 +208,22 @@ export default function BankinterEURPage() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
   const [selectedBankAccount, setSelectedBankAccount] = useState<string | null>(null)
   const [intercompanyNote, setIntercompanyNote] = useState("")
+
+  // New: Invoice search filter
+  const [invoiceSearchTerm, setInvoiceSearchTerm] = useState("")
+
+  // New: Payment source matches for credits
+  const [paymentSourceMatches, setPaymentSourceMatches] = useState<PaymentSourceMatch[]>([])
+  const [selectedPaymentMatch, setSelectedPaymentMatch] = useState<string | null>(null)
+  const [loadingPaymentMatches, setLoadingPaymentMatches] = useState(false)
+
+  // New: Intercompany matches from other bank statements
+  const [intercompanyMatches, setIntercompanyMatches] = useState<IntercompanyMatch[]>([])
+  const [selectedIntercompanyMatch, setSelectedIntercompanyMatch] = useState<string | null>(null)
+
+  // Detect transaction type (debit for AP, credit for payment sources)
+  const isDebitTransaction = reconciliationTransaction ? reconciliationTransaction.amount < 0 : false
+  const isCreditTransaction = reconciliationTransaction ? reconciliationTransaction.amount > 0 : false
 
   const { toast } = useToast()
 
@@ -543,6 +586,181 @@ export default function BankinterEURPage() {
     })
   }
 
+  // Detect payment source from bank description
+  const detectPaymentSource = (description: string): { source: string; label: string } | null => {
+    const descLower = (description || "").toLowerCase()
+    if (descLower.includes("paypal") || descLower.includes("braintree")) {
+      return { source: "braintree-api-revenue", label: "Braintree" }
+    }
+    if (descLower.includes("stripe")) {
+      return { source: "stripe-eur", label: "Stripe" }
+    }
+    if (descLower.includes("gocardless")) {
+      return { source: "gocardless", label: "GoCardless" }
+    }
+    if (descLower.includes("american express") || descLower.includes("amex")) {
+      return { source: "braintree-api-revenue", label: "Braintree (Amex)" }
+    }
+    return null
+  }
+
+  // Load payment source matches for credit transactions
+  const loadPaymentSourceMatches = async (transaction: BankinterEURRow) => {
+    try {
+      const transactionDate = transaction.date?.split("T")[0]
+      if (!transactionDate) return
+
+      const detectedSource = detectPaymentSource(transaction.description)
+      const txAmount = Math.abs(transaction.amount)
+
+      // Date range: ±5 days
+      const startDate = parseDateUTC(transactionDate)
+      const endDate = parseDateUTC(transactionDate)
+      if (!startDate || !endDate) return
+      startDate.setDate(startDate.getDate() - 5)
+      endDate.setDate(endDate.getDate() + 5)
+
+      // Build query based on detected source or search all payment sources
+      const sources = detectedSource
+        ? [detectedSource.source]
+        : ["braintree-api-revenue", "stripe-eur", "gocardless"]
+
+      const matches: PaymentSourceMatch[] = []
+
+      for (const source of sources) {
+        // Query payment source transactions with disbursement info
+        const { data: sourceTxs } = await supabase
+          .from("csv_rows")
+          .select("id, date, amount, description, custom_data")
+          .eq("source", source)
+          .gte("date", startDate.toISOString().split("T")[0])
+          .lte("date", endDate.toISOString().split("T")[0])
+          .limit(100)
+
+        if (!sourceTxs) continue
+
+        // Group by disbursement_date for Braintree
+        const grouped: { [key: string]: { total: number; count: number; txs: any[] } } = {}
+
+        sourceTxs.forEach(tx => {
+          const cd = tx.custom_data || {}
+          const disbDate = cd.disbursement_date?.split("T")[0]
+          const key = disbDate || tx.date?.split("T")[0] || "unknown"
+
+          if (!grouped[key]) grouped[key] = { total: 0, count: 0, txs: [] }
+          grouped[key].total += parseFloat(cd.settlement_amount || tx.amount || 0)
+          grouped[key].count++
+          grouped[key].txs.push(tx)
+        })
+
+        // Find matches by amount
+        Object.entries(grouped).forEach(([date, data]) => {
+          const amountDiff = Math.abs(data.total - txAmount)
+          const isExactMatch = amountDiff < 0.10
+          const isCloseMatch = amountDiff < txAmount * 0.02 // 2% tolerance
+
+          if (isExactMatch || isCloseMatch) {
+            const sourceLabel = source.includes("braintree") ? "Braintree"
+              : source.includes("stripe") ? "Stripe"
+                : source.includes("gocardless") ? "GoCardless" : source
+
+            matches.push({
+              id: `${source}-${date}`,
+              source,
+              sourceLabel,
+              date,
+              amount: Math.round(data.total * 100) / 100,
+              currency: "EUR",
+              description: `${data.count} transaction${data.count > 1 ? "s" : ""} grouped`,
+              reference: data.txs[0]?.custom_data?.settlement_batch_id || date,
+              matchType: isExactMatch ? "exact" : "amount",
+              transactionCount: data.count,
+              disbursementDate: date
+            })
+          }
+        })
+      }
+
+      // Sort by match quality then date
+      matches.sort((a, b) => {
+        if (a.matchType === "exact" && b.matchType !== "exact") return -1
+        if (b.matchType === "exact" && a.matchType !== "exact") return 1
+        return b.date.localeCompare(a.date)
+      })
+
+      setPaymentSourceMatches(matches)
+    } catch (e) {
+      console.error("Error loading payment source matches:", e)
+    } finally {
+      setLoadingPaymentMatches(false)
+    }
+  }
+
+  // Load intercompany matches from other bank statements
+  const loadIntercompanyMatches = async (transaction: BankinterEURRow) => {
+    try {
+      const transactionDate = transaction.date?.split("T")[0]
+      if (!transactionDate) return
+
+      const txAmount = Math.abs(transaction.amount)
+      const oppositeAmount = -transaction.amount // Looking for opposite flow
+
+      // Date range: ±5 days
+      const startDate = parseDateUTC(transactionDate)
+      const endDate = parseDateUTC(transactionDate)
+      if (!startDate || !endDate) return
+      startDate.setDate(startDate.getDate() - 5)
+      endDate.setDate(endDate.getDate() + 5)
+
+      // Search other bank accounts for opposite transactions
+      const otherBankSources = ["bankinter-usd", "sabadell-eur"]
+      const matches: IntercompanyMatch[] = []
+
+      for (const source of otherBankSources) {
+        const { data: candidates } = await supabase
+          .from("csv_rows")
+          .select("id, date, amount, description, custom_data")
+          .eq("source", source)
+          .eq("reconciled", false)
+          .gte("date", startDate.toISOString().split("T")[0])
+          .lte("date", endDate.toISOString().split("T")[0])
+          .limit(50)
+
+        if (!candidates) continue
+
+        candidates.forEach(tx => {
+          const txAmt = parseFloat(tx.amount) || 0
+          // Look for opposite sign transactions with similar amount
+          const amountDiff = Math.abs(Math.abs(txAmt) - txAmount)
+          const isMatch = amountDiff < txAmount * 0.01 // 1% tolerance
+
+          // For intercompany, we expect opposite signs
+          const hasOppositeSigns = (transaction.amount > 0 && txAmt < 0) || (transaction.amount < 0 && txAmt > 0)
+
+          if (isMatch && hasOppositeSigns) {
+            const currency = source.includes("usd") ? "USD" : "EUR"
+            const sourceLabel = source === "bankinter-usd" ? "Bankinter USD"
+              : source === "sabadell-eur" ? "Sabadell EUR" : source
+
+            matches.push({
+              id: tx.id,
+              source,
+              sourceLabel,
+              date: tx.date?.split("T")[0] || "",
+              amount: txAmt,
+              currency,
+              description: tx.description || ""
+            })
+          }
+        })
+      }
+
+      setIntercompanyMatches(matches)
+    } catch (e) {
+      console.error("Error loading intercompany matches:", e)
+    }
+  }
+
   // Open reconciliation dialog - find invoices matching this bank transaction
   const openReconciliationDialog = async (transaction: BankinterEURRow) => {
     setReconciliationTransaction(transaction)
@@ -554,6 +772,15 @@ export default function BankinterEURPage() {
     setIsIntercompany(false)
     setSelectedBankAccount(null)
     setIntercompanyNote("")
+    setInvoiceSearchTerm("")
+    setPaymentSourceMatches([])
+    setSelectedPaymentMatch(null)
+    setLoadingPaymentMatches(false)
+    setIntercompanyMatches([])
+    setSelectedIntercompanyMatch(null)
+
+    const isCredit = transaction.amount > 0
+    const isDebit = transaction.amount < 0
 
     try {
       // Load bank accounts for intercompany option
@@ -573,8 +800,18 @@ export default function BankinterEURPage() {
       if (!transactionDate) {
         setMatchingInvoices([])
         setAllAvailableInvoices([])
+        setLoadingInvoices(false)
         return
       }
+
+      // For CREDITS: Find payment source matches (Braintree, Stripe, etc.)
+      if (isCredit) {
+        setLoadingPaymentMatches(true)
+        await loadPaymentSourceMatches(transaction)
+        await loadIntercompanyMatches(transaction)
+      }
+
+      // For DEBITS: Find AP invoices
 
       // Date range for exact match (±3 days)
       const startDate = parseDateUTC(transactionDate)
@@ -872,7 +1109,7 @@ export default function BankinterEURPage() {
 
       // Also revert the linked counterpart if exists
       let revertedBoth = false
-      if (hasLinked) {
+      if (hasLinked && custom_data?.intercompany_linked_id) {
         const { data: counterpart } = await supabase
           .from("csv_rows")
           .select("*")
@@ -1504,12 +1741,18 @@ export default function BankinterEURPage() {
       {/* Reconciliation Dialog */}
       {reconciliationDialogOpen && reconciliationTransaction && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-          <div className="bg-[#2a2b2d] rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+          <div className="bg-[#2a2b2d] rounded-lg w-[650px] max-h-[85vh] overflow-hidden flex flex-col">
             {/* Dialog Header */}
             <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-white">Find Matching Invoice</h3>
-                <p className="text-sm text-gray-400">Link bank transaction to an invoice</p>
+                <h3 className="text-lg font-semibold text-white">
+                  {isDebitTransaction ? "Reconcile Payment (Debit)" : "Reconcile Receipt (Credit)"}
+                </h3>
+                <p className="text-sm text-gray-400">
+                  {isDebitTransaction
+                    ? "Match this outgoing payment to an invoice"
+                    : "Match this incoming payment to a payment source"}
+                </p>
               </div>
               <Button
                 variant="ghost"
@@ -1541,9 +1784,17 @@ export default function BankinterEURPage() {
                   </p>
                 </div>
               </div>
+              {/* Detected source hint for credits */}
+              {isCreditTransaction && detectPaymentSource(reconciliationTransaction.description) && (
+                <div className="mt-2 flex items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-600">
+                    Detected: {detectPaymentSource(reconciliationTransaction.description)?.label}
+                  </Badge>
+                </div>
+              )}
             </div>
 
-            {/* Matching Invoices */}
+            {/* Matching Content */}
             <div className="flex-1 overflow-auto px-6 py-4 space-y-6">
               {/* SECTION 0: Intercompany Toggle */}
               <div className="p-4 rounded-lg border border-orange-700/50 bg-orange-900/10">
@@ -1555,9 +1806,11 @@ export default function BankinterEURPage() {
                     onChange={(e) => {
                       setIsIntercompany(e.target.checked)
                       if (e.target.checked) {
-                        setSelectedInvoice(null) // Clear invoice selection
+                        setSelectedInvoice(null)
+                        setSelectedPaymentMatch(null)
                       } else {
-                        setSelectedBankAccount(null) // Clear bank account selection
+                        setSelectedBankAccount(null)
+                        setSelectedIntercompanyMatch(null)
                       }
                     }}
                     className="h-5 w-5 rounded border-orange-600 bg-transparent text-orange-500 focus:ring-orange-500"
@@ -1571,85 +1824,176 @@ export default function BankinterEURPage() {
                   Transfer between company bank accounts. Does not affect P&L.
                 </p>
 
-                {/* Bank Account Selection (shown when intercompany is checked) */}
+                {/* Intercompany content */}
                 {isIntercompany && (
-                  <div className="mt-4 ml-8 space-y-3">
-                    <p className="text-xs text-gray-400">
-                      {reconciliationTransaction.amount > 0
-                        ? "Select the account this money came FROM:"
-                        : "Select the account this money went TO:"}
-                    </p>
-                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
-                      {bankAccounts.length === 0 ? (
-                        <div className="text-center py-3 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
-                          <p className="text-sm">No other bank accounts found</p>
-                        </div>
-                      ) : (
-                        bankAccounts.map((acc) => (
+                  <div className="mt-4 ml-8 space-y-4">
+                    {/* Auto-detected intercompany matches */}
+                    {intercompanyMatches.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-xs text-green-400 font-medium flex items-center gap-1">
+                          <Zap className="h-3 w-3" />
+                          Auto-detected matches in other statements
+                        </p>
+                        {intercompanyMatches.map((match) => (
                           <div
-                            key={acc.code}
-                            onClick={() => setSelectedBankAccount(acc.code)}
-                            className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedBankAccount === acc.code
-                              ? "border-orange-500 bg-orange-900/20"
-                              : "border-gray-700 hover:border-orange-600 bg-gray-800/30"
+                            key={match.id}
+                            onClick={() => {
+                              setSelectedIntercompanyMatch(match.id)
+                              setSelectedBankAccount(match.source)
+                            }}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedIntercompanyMatch === match.id
+                              ? "border-green-500 bg-green-900/20"
+                              : "border-gray-700 hover:border-green-600 bg-gray-800/30"
                               }`}
                           >
                             <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <input
-                                  type="radio"
-                                  checked={selectedBankAccount === acc.code}
-                                  onChange={() => setSelectedBankAccount(acc.code)}
-                                  className="h-4 w-4 text-orange-600"
-                                />
-                                <div>
-                                  <div className="flex items-center gap-2">
-                                    <Building2 className="h-4 w-4 text-orange-400" />
-                                    <p className="text-white text-sm font-medium">{acc.name}</p>
-                                  </div>
-                                  <p className="text-xs text-gray-500">
-                                    {acc.bank_name || acc.code} • {acc.currency}
-                                  </p>
-                                </div>
+                              <div>
+                                <p className="text-white text-sm font-medium">{match.sourceLabel}</p>
+                                <p className="text-xs text-gray-500">{formatShortDate(match.date)} • {match.description.substring(0, 30)}</p>
+                              </div>
+                              <div className="text-right">
+                                <p className={`font-medium ${match.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                  {match.currency === "EUR" ? "€" : "$"}{formatEuropeanCurrency(match.amount)}
+                                </p>
+                                <span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">MATCH</span>
                               </div>
                             </div>
                           </div>
-                        ))
-                      )}
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Manual bank account selection */}
+                    <div>
+                      <p className="text-xs text-gray-400 mb-2">
+                        {reconciliationTransaction.amount > 0
+                          ? "Select the account this money came FROM:"
+                          : "Select the account this money went TO:"}
+                      </p>
+                      <div className="space-y-2 max-h-[150px] overflow-y-auto">
+                        {bankAccounts.length === 0 ? (
+                          <div className="text-center py-3 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                            <p className="text-sm">No other bank accounts found</p>
+                          </div>
+                        ) : (
+                          bankAccounts.map((acc) => (
+                            <div
+                              key={acc.code}
+                              onClick={() => {
+                                setSelectedBankAccount(acc.code)
+                                setSelectedIntercompanyMatch(null)
+                              }}
+                              className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedBankAccount === acc.code && !selectedIntercompanyMatch
+                                ? "border-orange-500 bg-orange-900/20"
+                                : "border-gray-700 hover:border-orange-600 bg-gray-800/30"
+                                }`}
+                            >
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  checked={selectedBankAccount === acc.code && !selectedIntercompanyMatch}
+                                  onChange={() => {
+                                    setSelectedBankAccount(acc.code)
+                                    setSelectedIntercompanyMatch(null)
+                                  }}
+                                  className="h-4 w-4 text-orange-600"
+                                />
+                                <div className="flex items-center gap-2">
+                                  <Building2 className="h-4 w-4 text-orange-400" />
+                                  <div>
+                                    <p className="text-white text-sm font-medium">{acc.name}</p>
+                                    <p className="text-xs text-gray-500">{acc.bank_name || acc.code} • {acc.currency}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
                     </div>
 
                     {/* Note field */}
-                    <div className="mt-4">
+                    <div>
                       <label className="text-xs text-gray-400 block mb-1">Note (optional)</label>
                       <Input
-                        placeholder="e.g., Monthly treasury transfer, Capital injection..."
+                        placeholder="e.g., Monthly treasury transfer..."
                         value={intercompanyNote}
                         onChange={(e) => setIntercompanyNote(e.target.value)}
                         className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm"
                       />
                     </div>
-
-                    {/* Info box */}
-                    <div className="mt-4 p-3 rounded-lg bg-gray-800/50 border border-gray-700">
-                      <div className="flex items-start gap-2">
-                        <AlertCircle className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                        <div className="text-xs text-gray-400 space-y-1">
-                          <p><strong className="text-gray-300">Intercompany transfers:</strong></p>
-                          <ul className="list-disc list-inside space-y-0.5 text-gray-500">
-                            <li>Do not affect Profit & Loss (DRE)</li>
-                            <li>Neutral for cash flow reporting</li>
-                            <li>Automatically marked as reconciled</li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
                   </div>
                 )}
               </div>
 
-              {/* SECTION 1: Exact Matches (hidden when intercompany is checked) */}
-              {!isIntercompany && (
+              {/* SECTION FOR CREDITS: Payment Source Matches */}
+              {!isIntercompany && isCreditTransaction && (
+                <div>
+                  <h4 className="text-sm font-medium text-blue-400 mb-3 flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />
+                    Payment Source Matches
+                  </h4>
+
+                  {loadingPaymentMatches ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    </div>
+                  ) : paymentSourceMatches.length === 0 ? (
+                    <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                      <p className="text-sm">No payment source matches found</p>
+                      <p className="text-xs mt-1">Try marking as intercompany or manual reconciliation</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[250px] overflow-y-auto">
+                      {paymentSourceMatches.map((match) => (
+                        <div
+                          key={match.id}
+                          onClick={() => setSelectedPaymentMatch(match.id)}
+                          className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedPaymentMatch === match.id
+                            ? "border-blue-500 bg-blue-900/20"
+                            : match.matchType === "exact"
+                              ? "border-green-700/50 hover:border-green-600 bg-green-900/10"
+                              : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                            }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <input
+                                type="radio"
+                                checked={selectedPaymentMatch === match.id}
+                                onChange={() => setSelectedPaymentMatch(match.id)}
+                                className="h-4 w-4 text-blue-600"
+                              />
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-white text-sm font-medium">{match.sourceLabel}</span>
+                                  {match.matchType === "exact" && (
+                                    <span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">EXACT</span>
+                                  )}
+                                </div>
+                                <p className="text-xs text-gray-500">
+                                  {formatShortDate(match.disbursementDate || match.date)} • {match.transactionCount} transaction{match.transactionCount !== 1 ? "s" : ""}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <p className="font-medium text-green-400">
+                                €{formatEuropeanCurrency(match.amount)}
+                              </p>
+                              <p className="text-[10px] text-gray-500">{match.reference.substring(0, 15)}</p>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SECTION FOR DEBITS: AP Invoices */}
+              {!isIntercompany && isDebitTransaction && (
                 <>
+                  {/* Suggested matches */}
                   <div>
                     <h4 className="text-sm font-medium text-green-400 mb-3 flex items-center gap-2">
                       <Zap className="h-4 w-4" />
@@ -1663,7 +2007,7 @@ export default function BankinterEURPage() {
                     ) : matchingInvoices.length === 0 ? (
                       <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
                         <p className="text-sm">No exact match found</p>
-                        <p className="text-xs mt-1">Select from available invoices below</p>
+                        <p className="text-xs mt-1">Search available invoices below</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
@@ -1703,62 +2047,91 @@ export default function BankinterEURPage() {
                       </div>
                     )}
                   </div>
-                </>
-              )}
 
-              {/* SECTION 2: All Available Invoices */}
-              {!isIntercompany && (
-                <div>
-                  <h4 className="text-sm font-medium text-amber-400 mb-3 flex items-center gap-2">
-                    <Search className="h-4 w-4" />
-                    All Available Invoices
-                  </h4>
+                  {/* All available invoices with search */}
+                  <div>
+                    <h4 className="text-sm font-medium text-amber-400 mb-3 flex items-center gap-2">
+                      <Search className="h-4 w-4" />
+                      All Available Invoices
+                    </h4>
 
-                  {loadingInvoices ? (
-                    <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    {/* Search input */}
+                    <div className="relative mb-3">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Input
+                        placeholder="Search by provider, invoice number, amount..."
+                        value={invoiceSearchTerm}
+                        onChange={(e) => setInvoiceSearchTerm(e.target.value)}
+                        className="pl-9 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm"
+                      />
                     </div>
-                  ) : allAvailableInvoices.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
-                      <p className="text-sm">No other invoices available</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                      {allAvailableInvoices.map((inv) => (
-                        <div
-                          key={inv.id}
-                          onClick={() => setSelectedInvoice(inv.id)}
-                          className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedInvoice === inv.id
-                            ? "border-blue-500 bg-blue-900/20"
-                            : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
-                            }`}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              <input
-                                type="radio"
-                                checked={selectedInvoice === inv.id}
-                                onChange={() => setSelectedInvoice(inv.id)}
-                                className="h-4 w-4 text-blue-600"
-                              />
-                              <div>
-                                <p className="text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
-                                <p className="text-xs text-gray-500">
-                                  {inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}
-                                </p>
+
+                    {loadingInvoices ? (
+                      <div className="flex items-center justify-center py-4">
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                      </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                        {allAvailableInvoices
+                          .filter(inv => {
+                            if (!invoiceSearchTerm) return true
+                            const term = invoiceSearchTerm.toLowerCase()
+                            return (
+                              (inv.provider_code || "").toLowerCase().includes(term) ||
+                              (inv.invoice_number || "").toLowerCase().includes(term) ||
+                              String(inv.invoice_amount).includes(term) ||
+                              String(inv.paid_amount || "").includes(term)
+                            )
+                          })
+                          .map((inv) => (
+                            <div
+                              key={inv.id}
+                              onClick={() => setSelectedInvoice(inv.id)}
+                              className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedInvoice === inv.id
+                                ? "border-blue-500 bg-blue-900/20"
+                                : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                                }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    type="radio"
+                                    checked={selectedInvoice === inv.id}
+                                    onChange={() => setSelectedInvoice(inv.id)}
+                                    className="h-4 w-4 text-blue-600"
+                                  />
+                                  <div>
+                                    <p className="text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="font-medium text-red-400">
+                                    €{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}
+                                  </p>
+                                </div>
                               </div>
                             </div>
-                            <div className="text-right">
-                              <p className="font-medium text-red-400">
-                                €{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}
-                              </p>
+                          ))}
+                        {allAvailableInvoices.filter(inv => {
+                          if (!invoiceSearchTerm) return true
+                          const term = invoiceSearchTerm.toLowerCase()
+                          return (
+                            (inv.provider_code || "").toLowerCase().includes(term) ||
+                            (inv.invoice_number || "").toLowerCase().includes(term) ||
+                            String(inv.invoice_amount).includes(term)
+                          )
+                        }).length === 0 && (
+                            <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                              <p className="text-sm">No invoices found</p>
                             </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                          )}
+                      </div>
+                    )}
+                  </div>
+                </>
               )}
             </div>
 
@@ -1774,11 +2147,20 @@ export default function BankinterEURPage() {
               {isIntercompany ? (
                 <Button
                   onClick={performIntercompanyReconciliation}
-                  disabled={!selectedBankAccount}
+                  disabled={!selectedBankAccount && !selectedIntercompanyMatch}
                   className="bg-orange-600 hover:bg-orange-700"
                 >
                   <ArrowLeftRight className="h-4 w-4 mr-2" />
                   Mark Intercompany
+                </Button>
+              ) : isCreditTransaction ? (
+                <Button
+                  onClick={performReconciliation}
+                  disabled={!selectedPaymentMatch}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  <Link2 className="h-4 w-4 mr-2" />
+                  Match Payment Source
                 </Button>
               ) : (
                 <Button
@@ -1787,7 +2169,7 @@ export default function BankinterEURPage() {
                   className="bg-cyan-600 hover:bg-cyan-700"
                 >
                   <Link2 className="h-4 w-4 mr-2" />
-                  Reconcile
+                  Reconcile Invoice
                 </Button>
               )}
             </div>
