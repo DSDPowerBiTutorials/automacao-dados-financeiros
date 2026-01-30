@@ -356,6 +356,92 @@ export default function ProductsPage() {
         return "—";
     };
 
+    // Inline update functions
+    const updateProductFinancialAccount = async (productId: string, financialAccountId: string | null) => {
+        try {
+            const fa = financialAccountId ? financialAccounts.find((f) => f.id === financialAccountId) : null;
+            const { error } = await supabase
+                .from("products")
+                .update({
+                    financial_account_id: financialAccountId,
+                    financial_account_code: fa?.code || null,
+                })
+                .eq("id", productId);
+
+            if (error) throw error;
+
+            // Update local state
+            setProducts((prev) =>
+                prev.map((p) =>
+                    p.id === productId
+                        ? { ...p, financial_account_id: financialAccountId, financial_account_code: fa?.code || null }
+                        : p
+                )
+            );
+            toast({ title: "Updated", description: "Financial account updated" });
+        } catch (e: any) {
+            toast({ title: "Error", description: e.message, variant: "destructive" });
+        }
+    };
+
+    const updateProductDepartmentalGroup = async (productId: string, groupId: string | null) => {
+        try {
+            const { error } = await supabase
+                .from("products")
+                .update({
+                    departmental_account_group_id: groupId,
+                    departmental_account_subgroup_id: null, // Reset subgroup when group changes
+                })
+                .eq("id", productId);
+
+            if (error) throw error;
+
+            setProducts((prev) =>
+                prev.map((p) =>
+                    p.id === productId
+                        ? { ...p, departmental_account_group_id: groupId, departmental_account_subgroup_id: null }
+                        : p
+                )
+            );
+            toast({ title: "Updated", description: "Departmental group updated" });
+        } catch (e: any) {
+            toast({ title: "Error", description: e.message, variant: "destructive" });
+        }
+    };
+
+    const updateProductDepartmentalSubgroup = async (productId: string, subgroupId: string | null) => {
+        try {
+            const { error } = await supabase
+                .from("products")
+                .update({
+                    departmental_account_subgroup_id: subgroupId,
+                })
+                .eq("id", productId);
+
+            if (error) throw error;
+
+            setProducts((prev) =>
+                prev.map((p) =>
+                    p.id === productId ? { ...p, departmental_account_subgroup_id: subgroupId } : p
+                )
+            );
+            toast({ title: "Updated", description: "Departmental subgroup updated" });
+        } catch (e: any) {
+            toast({ title: "Error", description: e.message, variant: "destructive" });
+        }
+    };
+
+    // Get subgroups for a specific group
+    const getSubgroupsForGroup = (groupId: string | null) => {
+        if (!groupId) return [];
+        return departmentalAccounts.filter((da) => da.level === 2 && da.parent_id === groupId);
+    };
+
+    // Get groups (level 1)
+    const departmentalGroups = useMemo(() => {
+        return departmentalAccounts.filter((da) => da.level === 1);
+    }, [departmentalAccounts]);
+
     if (loading) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
@@ -485,12 +571,13 @@ export default function ProductsPage() {
                     <div className="w-[30px] flex-shrink-0"></div>
                     <div className="w-[30px] flex-shrink-0"></div>
                     <div className="w-[100px] flex-shrink-0">Code</div>
-                    <div className="w-[250px] flex-shrink-0">Name</div>
+                    <div className="w-[200px] flex-shrink-0">Name</div>
                     <div className="w-[120px] flex-shrink-0">Category</div>
-                    <div className="w-[100px] flex-shrink-0">Financial Acc</div>
-                    <div className="w-[180px] flex-shrink-0">Departmental</div>
-                    <div className="w-[80px] flex-shrink-0">Scope</div>
-                    <div className="w-[80px] flex-shrink-0">Status</div>
+                    <div className="w-[140px] flex-shrink-0">Financial Acc</div>
+                    <div className="w-[150px] flex-shrink-0">Dept Group</div>
+                    <div className="w-[150px] flex-shrink-0">Dept Subgroup</div>
+                    <div className="w-[60px] flex-shrink-0">Scope</div>
+                    <div className="w-[60px] flex-shrink-0">Status</div>
                 </div>
             </div>
 
@@ -556,7 +643,7 @@ export default function ProductsPage() {
                                 </div>
 
                                 {/* Name */}
-                                <div className="w-[250px] flex-shrink-0">
+                                <div className="w-[200px] flex-shrink-0">
                                     <div className="text-[12px] text-white truncate">{product.name}</div>
                                     {product.alternative_names?.length > 0 && (
                                         <div className="text-[10px] text-gray-500 truncate">
@@ -573,45 +660,85 @@ export default function ProductsPage() {
                                     </span>
                                 </div>
 
-                                {/* Financial Account */}
-                                <div className="w-[100px] flex-shrink-0">
-                                    {getFinancialAccountDisplay(product) !== "—" ? (
-                                        <Badge
-                                            variant="outline"
-                                            className="text-[10px] px-1 py-0 border-green-600 text-green-400"
-                                        >
-                                            {getFinancialAccountDisplay(product)}
-                                        </Badge>
-                                    ) : (
-                                        <span className="text-[11px] text-gray-500">—</span>
-                                    )}
+                                {/* Financial Account - INLINE DROPDOWN */}
+                                <div className="w-[140px] flex-shrink-0">
+                                    <Select
+                                        value={product.financial_account_id || "none"}
+                                        onValueChange={(v) => updateProductFinancialAccount(product.id, v === "none" ? null : v)}
+                                    >
+                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800">
+                                            <SelectValue placeholder="Select..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">—</SelectItem>
+                                            {financialAccounts.map((fa) => (
+                                                <SelectItem key={fa.id} value={fa.id}>
+                                                    {fa.code}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
-                                {/* Departmental */}
-                                <div className="w-[180px] flex-shrink-0">
-                                    <span className="text-[11px] text-gray-300 truncate block">
-                                        {getDepartmentalDisplay(product)}
-                                    </span>
+                                {/* Departmental Group - INLINE DROPDOWN */}
+                                <div className="w-[150px] flex-shrink-0">
+                                    <Select
+                                        value={product.departmental_account_group_id || "none"}
+                                        onValueChange={(v) => updateProductDepartmentalGroup(product.id, v === "none" ? null : v)}
+                                    >
+                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800">
+                                            <SelectValue placeholder="Select..." />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">—</SelectItem>
+                                            {departmentalGroups.map((da) => (
+                                                <SelectItem key={da.id} value={da.id}>
+                                                    {da.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Departmental Subgroup - INLINE DROPDOWN */}
+                                <div className="w-[150px] flex-shrink-0">
+                                    <Select
+                                        value={product.departmental_account_subgroup_id || "none"}
+                                        onValueChange={(v) => updateProductDepartmentalSubgroup(product.id, v === "none" ? null : v)}
+                                        disabled={!product.departmental_account_group_id}
+                                    >
+                                        <SelectTrigger className={`h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800 ${!product.departmental_account_group_id ? "opacity-50" : ""}`}>
+                                            <SelectValue placeholder={product.departmental_account_group_id ? "Select..." : "—"} />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">—</SelectItem>
+                                            {getSubgroupsForGroup(product.departmental_account_group_id).map((da) => (
+                                                <SelectItem key={da.id} value={da.id}>
+                                                    {da.name}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 {/* Scope */}
-                                <div className="w-[80px] flex-shrink-0">
+                                <div className="w-[60px] flex-shrink-0">
                                     <Badge
                                         variant={product.scope === "GLOBAL" ? "default" : "outline"}
-                                        className="text-[10px] px-1 py-0"
+                                        className="text-[9px] px-1 py-0"
                                     >
                                         {product.scope}
                                     </Badge>
                                 </div>
 
                                 {/* Status */}
-                                <div className="w-[80px] flex-shrink-0">
+                                <div className="w-[60px] flex-shrink-0">
                                     {product.is_active ? (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/50 text-green-400">
+                                        <span className="text-[9px] px-1 py-0.5 rounded bg-green-900/50 text-green-400">
                                             Active
                                         </span>
                                     ) : (
-                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/50 text-red-400">
+                                        <span className="text-[9px] px-1 py-0.5 rounded bg-red-900/50 text-red-400">
                                             Inactive
                                         </span>
                                     )}
@@ -631,7 +758,7 @@ export default function ProductsPage() {
                                             <div className="w-[100px] flex-shrink-0 pl-4">
                                                 <code className="text-[10px] text-gray-500">{child.code}</code>
                                             </div>
-                                            <div className="w-[250px] flex-shrink-0">
+                                            <div className="w-[200px] flex-shrink-0">
                                                 <span className="text-[11px] text-gray-400 italic">
                                                     ↳ {child.name}
                                                 </span>
@@ -647,10 +774,11 @@ export default function ProductsPage() {
                                                     {child.category || "—"}
                                                 </span>
                                             </div>
-                                            <div className="w-[100px] flex-shrink-0"></div>
-                                            <div className="w-[180px] flex-shrink-0"></div>
-                                            <div className="w-[80px] flex-shrink-0"></div>
-                                            <div className="w-[80px] flex-shrink-0">
+                                            <div className="w-[140px] flex-shrink-0"></div>
+                                            <div className="w-[150px] flex-shrink-0"></div>
+                                            <div className="w-[150px] flex-shrink-0"></div>
+                                            <div className="w-[60px] flex-shrink-0"></div>
+                                            <div className="w-[60px] flex-shrink-0">
                                                 <span className="text-[9px] px-1 py-0.5 rounded bg-gray-800 text-gray-500">
                                                     Merged
                                                 </span>
