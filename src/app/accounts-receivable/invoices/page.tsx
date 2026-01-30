@@ -305,7 +305,7 @@ export default function ARInvoicesPage() {
       // Mapeamento de dealstage IDs para nomes legíveis
       const STAGE_MAPPING: Record<string, string> = {
         'checkout_completed': 'Web Order',
-        'checkout_pending': 'Outstanding Payment',
+        'checkout_pending': 'Credit Order',
         'cancelled': 'Cancelled',
         'closedwon': 'Web Order',
         'presentationscheduled': 'New',
@@ -313,7 +313,7 @@ export default function ARInvoicesPage() {
         '108197794': 'Web Order',
         '206173276': 'Web Order',
         '1031801652': 'Credit Order',
-        '1031823104': 'Outstanding Payment',
+        '1031823104': 'Credit Order',
         '1203581030': 'New',
         '1203581031': 'New',
         '1203581032': 'New',
@@ -322,7 +322,7 @@ export default function ARInvoicesPage() {
         '1203581036': 'Cancelled',
         '1067293738': 'Subscription Plan',
         '1065782346': 'Subscription Plan',
-        '1065782348': 'Outstanding Payment',
+        '1065782348': 'Credit Order',
         '1065782349': 'Cancelled',
         '1065782350': 'Subscription Plan',
         '1026647932': 'New',
@@ -339,22 +339,19 @@ export default function ARInvoicesPage() {
         // Cancelled stages
         if (stage === 'cancelled' || stage === '1203581036' || stage === '1065782349') return 'Cancelled';
 
-        // Credit Order - APENAS dealstage específico 1031801652
-        if (stage === '1031801652') return 'Credit Order';
+        // Credit Order stages (inclui antigo Outstanding Payment)
+        if (stage === '1031801652' || stage === 'checkout_pending' || stage === '1031823104' || stage === '1065782348') return 'Credit Order';
 
         // Web Order stages (formerly Shipped)
         if (stage === 'checkout_completed' || stage === 'closedwon' || stage === '108197794' || stage === '206173276' || stage === '1203581035' || stage === '1026592320') return 'Web Order';
-
-        // Outstanding Payment stages
-        if (stage === 'checkout_pending' || stage === '1031823104' || stage === '1065782348') return 'Outstanding Payment';
 
         // Subscription Plan stages
         if (stage === '1067293738' || stage === '1065782346' || stage === '1065782350') return 'Subscription Plan';
 
         // Fallback baseado em paid_status
         if (paid === 'paid') return 'Web Order';
-        if (paid === 'partial') return 'Outstanding Payment';
-        if (paid === 'unpaid') return 'Outstanding Payment';
+        if (paid === 'partial') return 'Credit Order';
+        if (paid === 'unpaid') return 'Credit Order';
 
         return STAGE_MAPPING[stage] || 'New';
       };
