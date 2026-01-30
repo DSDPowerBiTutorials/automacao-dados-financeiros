@@ -195,13 +195,28 @@ export default function ARInvoicesPage() {
       const today = new Date();
       today.setHours(23, 59, 59, 999);
 
+      // Filtrar: data válida + ecommerce_deal = true + não TEST_
       const validOrders = hubspotOrders.filter(order => {
         const cd = order.custom_data || {};
+        
+        // Filtro de data
         const dateStr = cd.date_ordered || cd.date_paid || order.date;
         if (!dateStr) return false;
         const orderDate = new Date(dateStr);
-        return orderDate >= minDate && orderDate <= today;
+        if (orderDate < minDate || orderDate > today) return false;
+
+        // Excluir orders de teste
+        const dealname = (cd.dealname || "").toUpperCase();
+        const orderCode = (cd.order_code || "").toUpperCase();
+        if (dealname.startsWith('TEST_') || orderCode.startsWith('TEST_')) return false;
+
+        // Excluir se ecommerce_deal = false (não é order de produção)
+        if (cd.ecommerce_deal === false || cd.ecommerce_deal === "false") return false;
+
+        return true;
       });
+
+      console.log(`📦 Após filtros: ${validOrders.length} orders válidas`);
 
       // Deletar todos os registros HubSpot existentes para fazer sync completo
       // Isso evita erro 409 de conflito de source_id

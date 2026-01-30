@@ -228,7 +228,7 @@ export default function HubSpotReportPage() {
             setCurrentPage(1); // Resetar página ao carregar novos dados
 
             console.log('📡 [FETCH] Fazendo query no Supabase com paginação...');
-            
+
             // Buscar TODOS os registros usando paginação
             let allData: any[] = [];
             let offset = 0;

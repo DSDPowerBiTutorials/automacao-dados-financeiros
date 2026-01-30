@@ -111,22 +111,27 @@ async function syncHubSpot() {
 
     console.log(`📊 Após filtro de data (01/12/2025 - ${today.toISOString().split('T')[0]}): ${validOrders.length}`);
 
-    // 4. FILTROS DE QUALIDADE - APENAS TEST_ (mínimo necessário)
+    // 4. FILTROS DE QUALIDADE - Apenas orders de e-commerce reais
     const beforeFilter = validOrders.length;
     validOrders = validOrders.filter(order => {
         const cd = order.custom_data || {};
         const dealname = (cd.dealname || "").toUpperCase();
         const orderCode = (cd.order_code || "").toUpperCase();
 
-        // Excluir APENAS TEST_ orders
+        // Excluir TEST_ orders
         if (dealname.startsWith('TEST_') || orderCode.startsWith('TEST_')) {
+            return false;
+        }
+
+        // Excluir se ecommerce_deal = false (não é order de produção)
+        if (cd.ecommerce_deal === false || cd.ecommerce_deal === "false") {
             return false;
         }
 
         return true;
     });
 
-    console.log(`📊 Após filtro TEST_: ${validOrders.length} (removidos: ${beforeFilter - validOrders.length})`);
+    console.log(`📊 Após filtros (TEST_ + ecommerce_deal): ${validOrders.length} (removidos: ${beforeFilter - validOrders.length})`);
 
     // 5. Funções auxiliares
     const mapStatus = (paidStatus) => {
