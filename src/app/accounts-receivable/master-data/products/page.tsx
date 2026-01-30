@@ -71,6 +71,9 @@ interface Product {
     department: string | null;
     cost_center_id: string | null;
     cost_center_code: string | null;
+    departmental_account_id: string | null;
+    departmental_account_group_id: string | null;
+    departmental_account_subgroup_id: string | null;
     category: string | null;
     product_type: string;
     scope: string;
@@ -90,10 +93,13 @@ interface FinancialAccount {
     scope: string;
 }
 
-interface CostCenter {
+interface DepartmentalAccount {
     id: string;
     code: string;
     name: string;
+    level: number;
+    parent_id: string | null;
+    full_path: string | null;
 }
 
 const DEPARTMENTS = [
@@ -131,7 +137,7 @@ const SCOPES = [
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([]);
-    const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+    const [departmentalAccounts, setDepartmentalAccounts] = useState<DepartmentalAccount[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState("");
     const [categoryFilter, setCategoryFilter] = useState("all");
@@ -155,8 +161,8 @@ export default function ProductsPage() {
         default_price: "",
         currency: "EUR",
         financial_account_id: "",
-        department: "",
-        cost_center_id: "",
+        departmental_account_group_id: "",
+        departmental_account_subgroup_id: "",
         category: "",
         product_type: "service",
         scope: "GLOBAL",
@@ -191,13 +197,13 @@ export default function ProductsPage() {
                 .order("code");
             setFinancialAccounts(faData || []);
 
-            // Load cost centers
-            const { data: ccData } = await supabase
-                .from("cost_centers")
-                .select("id, code, name")
+            // Load departmental accounts
+            const { data: daData } = await supabase
+                .from("departmental_accounts")
+                .select("id, code, name, level, parent_id, full_path")
                 .eq("is_active", true)
                 .order("code");
-            setCostCenters(ccData || []);
+            setDepartmentalAccounts(daData || []);
         } catch (error) {
             console.error("Error loading data:", error);
             toast({
@@ -256,8 +262,8 @@ export default function ProductsPage() {
             default_price: "",
             currency: "EUR",
             financial_account_id: "",
-            department: "",
-            cost_center_id: "",
+            departmental_account_group_id: "",
+            departmental_account_subgroup_id: "",
             category: "",
             product_type: "service",
             scope: "GLOBAL",
@@ -276,8 +282,8 @@ export default function ProductsPage() {
             default_price: product.default_price?.toString() || "",
             currency: product.currency,
             financial_account_id: product.financial_account_id || "",
-            department: product.department || "",
-            cost_center_id: product.cost_center_id || "",
+            departmental_account_group_id: product.departmental_account_group_id || "",
+            departmental_account_subgroup_id: product.departmental_account_subgroup_id || "",
             category: product.category || "",
             product_type: product.product_type,
             scope: product.scope,
@@ -319,7 +325,6 @@ export default function ProductsPage() {
 
             // Get financial account code
             const fa = financialAccounts.find((f) => f.id === formData.financial_account_id);
-            const cc = costCenters.find((c) => c.id === formData.cost_center_id);
 
             const productData = {
                 code,
@@ -329,9 +334,8 @@ export default function ProductsPage() {
                 currency: formData.currency,
                 financial_account_id: formData.financial_account_id || null,
                 financial_account_code: fa?.code || null,
-                department: formData.department || null,
-                cost_center_id: formData.cost_center_id || null,
-                cost_center_code: cc?.code || null,
+                departmental_account_group_id: formData.departmental_account_group_id || null,
+                departmental_account_subgroup_id: formData.departmental_account_subgroup_id || null,
                 category: formData.category || null,
                 product_type: formData.product_type,
                 scope: formData.scope,
@@ -1036,49 +1040,54 @@ export default function ProductsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="department">Department</Label>
+                                <Label htmlFor="departmental_group">Departmental Group</Label>
                                 <Select
-                                    value={formData.department}
+                                    value={formData.departmental_account_group_id}
                                     onValueChange={(v) =>
-                                        setFormData({ ...formData, department: v })
+                                        setFormData({ ...formData, departmental_account_group_id: v, departmental_account_subgroup_id: "" })
                                     }
                                 >
                                     <SelectTrigger>
-                                        <SelectValue placeholder="Select..." />
+                                        <SelectValue placeholder="Select group..." />
                                     </SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="">None</SelectItem>
-                                        {DEPARTMENTS.map((d) => (
-                                            <SelectItem key={d} value={d}>
-                                                {d}
+                                        {departmentalAccounts.filter(da => da.level === 1).map((da) => (
+                                            <SelectItem key={da.id} value={da.id}>
+                                                {da.code} - {da.name}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
-
-                        <div>
-                            <Label htmlFor="cost_center">Cost Center</Label>
-                            <Select
-                                value={formData.cost_center_id}
-                                onValueChange={(v) =>
-                                    setFormData({ ...formData, cost_center_id: v })
-                                }
-                            >
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="">None</SelectItem>
-                                    {costCenters.map((cc) => (
-                                        <SelectItem key={cc.id} value={cc.id}>
-                                            {cc.code} - {cc.name}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div>
+                                <Label htmlFor="departmental_subgroup">Departmental Subgroup</Label>
+                                <Select
+                                    value={formData.departmental_account_subgroup_id}
+                                    onValueChange={(v) =>
+                                        setFormData({ ...formData, departmental_account_subgroup_id: v })
+                                    }
+                                    disabled={!formData.departmental_account_group_id}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder={formData.departmental_account_group_id ? "Select subgroup..." : "Select group first"} />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="">None</SelectItem>
+                                        {departmentalAccounts
+                                            .filter(da => da.level === 2 && da.parent_id === formData.departmental_account_group_id)
+                                            .map((da) => (
+                                                <SelectItem key={da.id} value={da.id}>
+                                                    {da.code} - {da.name}
+                                                </SelectItem>
+                                            ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
                         </div>
 
                         <div>

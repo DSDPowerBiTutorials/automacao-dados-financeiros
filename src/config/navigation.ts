@@ -163,14 +163,14 @@ export const NAV: NavGroup[] = [
         icon: Boxes,
         children: [
           {
-            title: "Cost Centers",
-            href: "/accounts-payable/master-data/cost-centers",
-            icon: Target
-          },
-          {
             title: "Financial Accounts",
             href: "/accounts-payable/master-data/financial-accounts",
             icon: Banknote
+          },
+          {
+            title: "Departmental Accounts",
+            href: "/accounts-payable/master-data/departmental-accounts",
+            icon: Target
           },
           {
             title: "Bank Accounts",
@@ -275,14 +275,17 @@ export const NAV: NavGroup[] = [
           {
             title: "Products",
             href: "/accounts-receivable/master-data/products",
-            icon: Package,
-            underConstruction: true
+            icon: Package
           },
           {
             title: "Financial Accounts",
-            href: "/accounts-receivable/master-data/financial-accounts",
-            icon: Banknote,
-            underConstruction: true
+            href: "/accounts-payable/master-data/financial-accounts",
+            icon: Banknote
+          },
+          {
+            title: "Departmental Accounts",
+            href: "/accounts-payable/master-data/departmental-accounts",
+            icon: Target
           }
         ]
       }
