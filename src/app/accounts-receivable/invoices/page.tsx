@@ -146,20 +146,35 @@ export default function ARInvoicesPage() {
   const syncFromHubSpot = async () => {
     setSyncing(true);
     try {
-      // Buscar orders do HubSpot que ainda não foram importadas
-      const { data: hubspotOrders, error: hubspotError } = await supabase
-        .from("csv_rows")
-        .select("*")
-        .eq("source", "hubspot")
-        .order("date", { ascending: false });
+      // Buscar TODAS as orders do HubSpot usando paginação
+      let hubspotOrders: any[] = [];
+      let offset = 0;
+      const pageSize = 1000;
 
-      if (hubspotError) throw hubspotError;
+      while (true) {
+        const { data, error } = await supabase
+          .from("csv_rows")
+          .select("*")
+          .eq("source", "hubspot")
+          .range(offset, offset + pageSize - 1);
 
-      if (!hubspotOrders || hubspotOrders.length === 0) {
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+
+        hubspotOrders = hubspotOrders.concat(data);
+        console.log(`📦 Carregados ${hubspotOrders.length} registros...`);
+
+        if (data.length < pageSize) break;
+        offset += pageSize;
+      }
+
+      if (hubspotOrders.length === 0) {
         toast({ title: "Info", description: "Nenhum pedido HubSpot encontrado para sincronizar" });
         setSyncing(false);
         return;
       }
+
+      console.log(`📦 Total carregado: ${hubspotOrders.length} registros`);
 
       // Filtrar por data: >= 2025-12-01 e <= hoje
       const minDate = new Date('2025-12-01');
