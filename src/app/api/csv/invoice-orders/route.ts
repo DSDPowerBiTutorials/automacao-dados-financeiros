@@ -221,6 +221,7 @@ export async function POST(request: NextRequest) {
 
                     return {
                         source: "invoice-orders",
+                        file_name: file.name,
                         date: dateValue || new Date().toISOString().split("T")[0],
                         description: description.substring(0, 500),
                         amount: amount,
