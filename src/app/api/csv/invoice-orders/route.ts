@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
                         source: "invoice-orders",
                         date: dateValue || new Date().toISOString().split("T")[0],
                         description: description.substring(0, 500),
-                        amount: amount.toString(),
+                        amount: amount,
                         reconciled: false,
                         custom_data: customData
                     };

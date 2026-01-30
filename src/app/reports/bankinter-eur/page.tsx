@@ -85,6 +85,20 @@ interface IntercompanyMatch {
   description: string
 }
 
+// Order linked to a reconciled bank transaction via disbursement
+interface LinkedOrder {
+  id: string
+  orderId: string
+  orderNumber?: string
+  transactionId: string
+  amount: number
+  currency: string
+  customerName?: string
+  email?: string
+  date: string
+  product?: string
+}
+
 // Formatar números no padrão europeu
 const formatEuropeanCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined || isNaN(value)) return "-"
@@ -221,6 +235,10 @@ export default function BankinterEURPage() {
   const [intercompanyMatches, setIntercompanyMatches] = useState<IntercompanyMatch[]>([])
   const [selectedIntercompanyMatch, setSelectedIntercompanyMatch] = useState<string | null>(null)
 
+  // Orders linked to reconciled bank transaction
+  const [linkedOrders, setLinkedOrders] = useState<LinkedOrder[]>([])
+  const [loadingLinkedOrders, setLoadingLinkedOrders] = useState(false)
+
   // Detect transaction type (debit for AP, credit for payment sources)
   const isDebitTransaction = reconciliationTransaction ? reconciliationTransaction.amount < 0 : false
   const isCreditTransaction = reconciliationTransaction ? reconciliationTransaction.amount > 0 : false
@@ -240,6 +258,106 @@ export default function BankinterEURPage() {
       setExpandedGroups(allDates)
     }
   }, [rows])
+
+  // Load linked orders when a reconciled credit transaction is selected
+  useEffect(() => {
+    const loadLinkedOrders = async () => {
+      if (!selectedRow || !selectedRow.reconciled || selectedRow.amount <= 0) {
+        setLinkedOrders([])
+        return
+      }
+
+      // Check if this bank row has a disbursement link
+      const customData = selectedRow.custom_data as Record<string, unknown> || {}
+      const disbursementId = (customData.disbursement_id || customData.disbursement_matched) as string | undefined
+      if (!disbursementId) {
+        setLinkedOrders([])
+        return
+      }
+
+      setLoadingLinkedOrders(true)
+      try {
+        // First, get the disbursement record to find transaction_ids
+        const { data: disbursement, error: disbError } = await supabase
+          .from("csv_rows")
+          .select("*")
+          .eq("source", "braintree-api-disbursement")
+          .eq("id", disbursementId)
+          .single()
+
+        if (disbError || !disbursement) {
+          console.error("Disbursement not found:", disbError)
+          setLinkedOrders([])
+          setLoadingLinkedOrders(false)
+          return
+        }
+
+        const transactionIds = (disbursement.custom_data as Record<string, unknown>)?.transaction_ids as string[] || []
+
+        if (transactionIds.length === 0) {
+          setLinkedOrders([])
+          setLoadingLinkedOrders(false)
+          return
+        }
+
+        // Get Braintree transactions by their transaction_ids
+        const { data: braintreeTxs, error: btError } = await supabase
+          .from("csv_rows")
+          .select("*")
+          .eq("source", "braintree-api-revenue")
+
+        if (btError) throw btError
+
+        // Filter transactions that are in this disbursement
+        const matchedTxs = (braintreeTxs || []).filter((tx) => {
+          const txData = tx.custom_data as Record<string, unknown> || {}
+          return transactionIds.includes(txData.transaction_id as string)
+        })
+
+        // Get order IDs from transactions
+        const orderIds = matchedTxs
+          .map((tx) => (tx.custom_data as Record<string, unknown>)?.order_id as string)
+          .filter(Boolean)
+
+        // Fetch web orders (ar_invoices) for these order IDs
+        const { data: webOrders, error: woError } = await supabase
+          .from("ar_invoices")
+          .select("*")
+          .in("order_id", orderIds.length > 0 ? orderIds : ["__none__"])
+
+        if (woError) console.error("Error loading web orders:", woError)
+
+        // Build linked orders list
+        const orders: LinkedOrder[] = matchedTxs.map((tx) => {
+          const txData = tx.custom_data as Record<string, unknown> || {}
+          const orderId = txData.order_id as string || ""
+          const webOrder = (webOrders || []).find((wo) => wo.order_id === orderId)
+
+          return {
+            id: tx.id,
+            orderId: orderId,
+            orderNumber: webOrder?.invoice_number || orderId,
+            transactionId: txData.transaction_id as string || "",
+            amount: parseFloat(tx.amount) || 0,
+            currency: txData.currency as string || "EUR",
+            customerName: webOrder?.client_name || webOrder?.company_name || txData.customer_name as string || "",
+            email: webOrder?.email || txData.email as string || "",
+            date: tx.date,
+            product: webOrder?.products || txData.product as string || ""
+          }
+        })
+
+        setLinkedOrders(orders)
+      } catch (error) {
+        console.error("Error loading linked orders:", error)
+        setLinkedOrders([])
+      } finally {
+        setLoadingLinkedOrders(false)
+      }
+    }
+
+    loadLinkedOrders()
+  }, [selectedRow])
 
   const loadData = async () => {
     setIsLoading(true)
@@ -1691,6 +1809,79 @@ export default function BankinterEURPage() {
                     </div>
                   )}
                 </div>
+              </div>
+            )}
+
+            {/* Linked Orders Section - Shows orders that compose this payment */}
+            {selectedRow.reconciled && selectedRow.amount > 0 && (linkedOrders.length > 0 || loadingLinkedOrders) && (
+              <div className="px-4 py-4 space-y-3 bg-blue-900/10 border-t border-gray-800">
+                <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Orders in this Payment ({linkedOrders.length})
+                </h3>
+
+                {loadingLinkedOrders ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
+                    <span className="ml-2 text-sm text-gray-400">Loading orders...</span>
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                    {linkedOrders.map((order, index) => (
+                      <div
+                        key={order.id}
+                        className="p-3 rounded-lg border border-blue-700/30 bg-blue-900/20 space-y-2"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs text-gray-500">#{index + 1}</span>
+                            <span className="text-sm font-mono text-blue-400">
+                              {order.orderId || order.transactionId}
+                            </span>
+                          </div>
+                          <span className="text-sm font-bold text-green-400">
+                            {order.currency} {formatEuropeanCurrency(order.amount)}
+                          </span>
+                        </div>
+
+                        {order.customerName && (
+                          <div className="flex items-center gap-2">
+                            <User className="h-3 w-3 text-gray-500" />
+                            <span className="text-xs text-gray-300 truncate">
+                              {order.customerName}
+                            </span>
+                          </div>
+                        )}
+
+                        {order.product && (
+                          <p className="text-xs text-gray-500 truncate" title={order.product}>
+                            {order.product.substring(0, 50)}...
+                          </p>
+                        )}
+
+                        <div className="flex justify-between text-xs text-gray-500">
+                          <span>{formatShortDate(order.date)}</span>
+                          <span className="font-mono">{order.transactionId}</span>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Summary */}
+                    <div className="pt-3 mt-2 border-t border-blue-700/30">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-gray-400">Total ({linkedOrders.length} orders):</span>
+                        <span className="text-green-400 font-bold">
+                          €{formatEuropeanCurrency(linkedOrders.reduce((sum, o) => sum + o.amount, 0))}
+                        </span>
+                      </div>
+                      {linkedOrders.length > 0 && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          Net after fees: €{formatEuropeanCurrency(selectedRow.amount)}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
