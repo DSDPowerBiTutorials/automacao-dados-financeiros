@@ -669,11 +669,11 @@ export default function ProductsPage() {
                                         <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
-                                        <SelectContent className="z-[9999] bg-[#2a2b2d] border-gray-600">
-                                            <SelectItem value="none">—</SelectItem>
+                                        <SelectContent className="z-[9999] bg-white border-gray-300">
+                                            <SelectItem value="none" className="text-gray-900">—</SelectItem>
                                             {financialAccounts.map((fa) => (
-                                                <SelectItem key={fa.id} value={fa.id}>
-                                                    {fa.code}
+                                                <SelectItem key={fa.id} value={fa.id} className="text-gray-900">
+                                                    {fa.code} - {fa.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -689,11 +689,11 @@ export default function ProductsPage() {
                                         <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
-                                        <SelectContent className="z-[9999] bg-[#2a2b2d] border-gray-600">
-                                            <SelectItem value="none">—</SelectItem>
+                                        <SelectContent className="z-[9999] bg-white border-gray-300">
+                                            <SelectItem value="none" className="text-gray-900">—</SelectItem>
                                             {departmentalGroups.map((da) => (
-                                                <SelectItem key={da.id} value={da.id}>
-                                                    {da.name}
+                                                <SelectItem key={da.id} value={da.id} className="text-gray-900">
+                                                    {da.code} - {da.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
@@ -710,11 +710,11 @@ export default function ProductsPage() {
                                         <SelectTrigger className={`h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800 ${!product.departmental_account_group_id ? "opacity-50" : ""}`}>
                                             <SelectValue placeholder={product.departmental_account_group_id ? "Select..." : "—"} />
                                         </SelectTrigger>
-                                        <SelectContent className="z-[9999] bg-[#2a2b2d] border-gray-600">
-                                            <SelectItem value="none">—</SelectItem>
+                                        <SelectContent className="z-[9999] bg-white border-gray-300">
+                                            <SelectItem value="none" className="text-gray-900">—</SelectItem>
                                             {getSubgroupsForGroup(product.departmental_account_group_id).map((da) => (
-                                                <SelectItem key={da.id} value={da.id}>
-                                                    {da.name}
+                                                <SelectItem key={da.id} value={da.id} className="text-gray-900">
+                                                    {da.code} - {da.name}
                                                 </SelectItem>
                                             ))}
                                         </SelectContent>
