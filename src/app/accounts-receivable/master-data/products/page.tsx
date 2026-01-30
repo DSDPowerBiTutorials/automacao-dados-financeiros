@@ -632,8 +632,8 @@ export default function ProductsPage() {
                             {/* Main Product Row */}
                             <div
                                 className={`flex items-center gap-1 px-4 py-2 border-b border-gray-800 hover:bg-gray-800/50 ${selectedForMerge.find((p) => p.id === product.id)
-                                        ? "bg-blue-900/30"
-                                        : ""
+                                    ? "bg-blue-900/30"
+                                    : ""
                                     }`}
                             >
                                 {/* Checkbox for merge */}
@@ -798,20 +798,21 @@ export default function ProductsPage() {
 
             {/* Product Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#2a2b2d] border-gray-700 text-white">
-                    <DialogHeader>
-                        <DialogTitle className="text-white">
+                <DialogContent className="w-[900px] max-w-[95vw] max-h-[85vh] overflow-y-auto bg-[#1e1f21] border-gray-600 text-white p-8">
+                    <DialogHeader className="mb-6">
+                        <DialogTitle className="text-white text-xl">
                             {editingProduct ? "Edit Product" : "New Product"}
                         </DialogTitle>
-                        <DialogDescription className="text-gray-400">
+                        <DialogDescription className="text-gray-400 text-sm">
                             Fill in the product data. Fields with * are required.
                         </DialogDescription>
                     </DialogHeader>
 
-                    <div className="grid gap-4 py-4">
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="code" className="text-gray-300 text-xs">
+                    <div className="grid gap-6">
+                        {/* Row 1: Code and Name */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="code" className="text-gray-300 text-sm font-medium">
                                     Code
                                 </Label>
                                 <Input
@@ -821,11 +822,11 @@ export default function ProductsPage() {
                                         setFormData({ ...formData, code: e.target.value })
                                     }
                                     placeholder="Auto-generated if empty"
-                                    className="bg-gray-800 border-gray-600 text-white text-sm"
+                                    className="bg-gray-800 border-gray-600 text-white h-10"
                                 />
                             </div>
-                            <div>
-                                <Label htmlFor="name" className="text-gray-300 text-xs">
+                            <div className="space-y-2">
+                                <Label htmlFor="name" className="text-gray-300 text-sm font-medium">
                                     Name *
                                 </Label>
                                 <Input
@@ -835,13 +836,14 @@ export default function ProductsPage() {
                                         setFormData({ ...formData, name: e.target.value })
                                     }
                                     placeholder="Product name"
-                                    className="bg-gray-800 border-gray-600 text-white text-sm"
+                                    className="bg-gray-800 border-gray-600 text-white h-10"
                                 />
                             </div>
                         </div>
 
-                        <div>
-                            <Label htmlFor="description" className="text-gray-300 text-xs">
+                        {/* Row 2: Description */}
+                        <div className="space-y-2">
+                            <Label htmlFor="description" className="text-gray-300 text-sm font-medium">
                                 Description
                             </Label>
                             <Textarea
@@ -851,14 +853,15 @@ export default function ProductsPage() {
                                     setFormData({ ...formData, description: e.target.value })
                                 }
                                 placeholder="Product description"
-                                rows={2}
-                                className="bg-gray-800 border-gray-600 text-white text-sm"
+                                rows={3}
+                                className="bg-gray-800 border-gray-600 text-white resize-none"
                             />
                         </div>
 
-                        <div className="grid grid-cols-3 gap-4">
-                            <div>
-                                <Label htmlFor="currency" className="text-gray-300 text-xs">
+                        {/* Row 3: Currency, Type, Scope */}
+                        <div className="grid grid-cols-3 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="currency" className="text-gray-300 text-sm font-medium">
                                     Currency
                                 </Label>
                                 <Select
@@ -867,7 +870,7 @@ export default function ProductsPage() {
                                         setFormData({ ...formData, currency: v })
                                     }
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -877,8 +880,8 @@ export default function ProductsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
-                                <Label htmlFor="product_type" className="text-gray-300 text-xs">
+                            <div className="space-y-2">
+                                <Label htmlFor="product_type" className="text-gray-300 text-sm font-medium">
                                     Type
                                 </Label>
                                 <Select
@@ -887,7 +890,7 @@ export default function ProductsPage() {
                                         setFormData({ ...formData, product_type: v })
                                     }
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -899,8 +902,8 @@ export default function ProductsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
-                                <Label htmlFor="scope" className="text-gray-300 text-xs">
+                            <div className="space-y-2">
+                                <Label htmlFor="scope" className="text-gray-300 text-sm font-medium">
                                     Scope
                                 </Label>
                                 <Select
@@ -909,7 +912,7 @@ export default function ProductsPage() {
                                         setFormData({ ...formData, scope: v })
                                     }
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -923,9 +926,10 @@ export default function ProductsPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="category" className="text-gray-300 text-xs">
+                        {/* Row 4: Category and Financial Account */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="category" className="text-gray-300 text-sm font-medium">
                                     Category
                                 </Label>
                                 <Select
@@ -934,7 +938,7 @@ export default function ProductsPage() {
                                         setFormData({ ...formData, category: v })
                                     }
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
                                         <SelectValue placeholder="Select..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -946,8 +950,8 @@ export default function ProductsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
-                                <Label htmlFor="financial_account" className="text-gray-300 text-xs">
+                            <div className="space-y-2">
+                                <Label htmlFor="financial_account" className="text-gray-300 text-sm font-medium">
                                     Financial Account
                                 </Label>
                                 <Select
@@ -956,7 +960,7 @@ export default function ProductsPage() {
                                         setFormData({ ...formData, financial_account_id: v === "none" ? "" : v })
                                     }
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
                                         <SelectValue placeholder="Select..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -971,9 +975,10 @@ export default function ProductsPage() {
                             </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <Label htmlFor="departmental_group" className="text-gray-300 text-xs">
+                        {/* Row 5: Departmental Accounts */}
+                        <div className="grid grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="departmental_group" className="text-gray-300 text-sm font-medium">
                                     Departmental Group
                                 </Label>
                                 <Select
@@ -986,7 +991,7 @@ export default function ProductsPage() {
                                         })
                                     }
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
                                         <SelectValue placeholder="Select group..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1001,8 +1006,8 @@ export default function ProductsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <div>
-                                <Label htmlFor="departmental_subgroup" className="text-gray-300 text-xs">
+                            <div className="space-y-2">
+                                <Label htmlFor="departmental_subgroup" className="text-gray-300 text-sm font-medium">
                                     Departmental Subgroup
                                 </Label>
                                 <Select
@@ -1015,7 +1020,7 @@ export default function ProductsPage() {
                                     }
                                     disabled={!formData.departmental_account_group_id}
                                 >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
                                         <SelectValue
                                             placeholder={
                                                 formData.departmental_account_group_id
@@ -1042,8 +1047,9 @@ export default function ProductsPage() {
                             </div>
                         </div>
 
-                        <div>
-                            <Label htmlFor="alternative_names" className="text-gray-300 text-xs">
+                        {/* Row 6: Alternative Names */}
+                        <div className="space-y-2">
+                            <Label htmlFor="alternative_names" className="text-gray-300 text-sm font-medium">
                                 Alternative Names (comma separated)
                             </Label>
                             <Input
@@ -1053,14 +1059,15 @@ export default function ProductsPage() {
                                     setFormData({ ...formData, alternative_names: e.target.value })
                                 }
                                 placeholder="Name 1, Name 2, Name 3..."
-                                className="bg-gray-800 border-gray-600 text-white text-sm"
+                                className="bg-gray-800 border-gray-600 text-white h-10"
                             />
-                            <p className="text-[10px] text-gray-500 mt-1">
+                            <p className="text-xs text-gray-500">
                                 Use to map name variations, typos, etc.
                             </p>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        {/* Row 7: Active checkbox */}
+                        <div className="flex items-center gap-3 pt-2">
                             <input
                                 type="checkbox"
                                 id="is_active"
@@ -1068,24 +1075,24 @@ export default function ProductsPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, is_active: e.target.checked })
                                 }
-                                className="rounded bg-gray-700 border-gray-600"
+                                className="rounded bg-gray-700 border-gray-600 h-5 w-5"
                             />
-                            <Label htmlFor="is_active" className="cursor-pointer text-gray-300 text-xs">
+                            <Label htmlFor="is_active" className="cursor-pointer text-gray-300 text-sm">
                                 Active product
                             </Label>
                         </div>
                     </div>
 
-                    <DialogFooter>
+                    <DialogFooter className="mt-6 pt-4 border-t border-gray-700">
                         <Button
                             variant="outline"
                             onClick={() => setIsDialogOpen(false)}
-                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700 h-10 px-6"
                         >
                             Cancel
                         </Button>
-                        <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
-                            {editingProduct ? "Save" : "Create"}
+                        <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 h-10 px-6">
+                            {editingProduct ? "Save Changes" : "Create Product"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1115,8 +1122,8 @@ export default function ProductsPage() {
                                     <div
                                         key={p.id}
                                         className={`flex items-center justify-between p-2 rounded border ${mergeTarget === p.id
-                                                ? "border-blue-500 bg-blue-900/30"
-                                                : "border-gray-600"
+                                            ? "border-blue-500 bg-blue-900/30"
+                                            : "border-gray-600"
                                             }`}
                                     >
                                         <div>
