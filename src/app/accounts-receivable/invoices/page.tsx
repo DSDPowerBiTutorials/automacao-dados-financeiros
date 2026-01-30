@@ -154,11 +154,11 @@ export default function ARInvoicesPage() {
       setInvoices(allData);
     } catch (e: any) {
       if (e?.message?.includes("does not exist") || e?.code === "42P01") {
-        setError("Tabela ar_invoices não existe. Execute a migration SQL primeiro.");
+        setError("Table ar_invoices does not exist. Run the SQL migration first.");
       } else {
-        setError(e?.message || "Erro ao carregar invoices");
+        setError(e?.message || "Error loading invoices");
       }
-      toast({ title: "Erro", description: e?.message, variant: "destructive" });
+      toast({ title: "Error", description: e?.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -230,16 +230,16 @@ export default function ARInvoicesPage() {
 
       console.log(`📦 Após filtros: ${validOrders.length} orders válidas`);
 
-      // Deletar todos os registros HubSpot existentes para fazer sync completo
-      // Isso evita erro 409 de conflito de source_id
+      // Delete all existing HubSpot records for full sync
+      // This prevents 409 conflict error on source_id
       const { error: deleteError } = await supabase
         .from("ar_invoices")
         .delete()
         .eq("source", "hubspot");
 
       if (deleteError) {
-        console.error("Erro ao deletar registros antigos:", deleteError);
-        // Continuar mesmo com erro de delete
+        console.error("Error deleting old records:", deleteError);
+        // Continue even with delete error
       }
 
       // Helper para formatar status
@@ -317,14 +317,14 @@ export default function ARInvoicesPage() {
       loadInvoices();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
-      console.error("Erro ao sincronizar HubSpot:", err);
-      toast({ title: "Erro", description: `Falha ao sincronizar: ${errorMessage}`, variant: "destructive" });
+      console.error("Error syncing HubSpot:", err);
+      toast({ title: "Error", description: `Sync failed: ${errorMessage}`, variant: "destructive" });
     } finally {
       setSyncing(false);
     }
   };
 
-  // Reconciliação automática com gateways de pagamento
+  // Auto reconciliation with payment gateways
   const runAutoReconcile = async () => {
     setReconciling(true);
     try {
@@ -338,23 +338,23 @@ export default function ARInvoicesPage() {
       if (result.success) {
         const { summary } = result;
         toast({
-          title: "Reconciliação Concluída",
-          description: `${summary.updated} invoices reconciliadas (Braintree: ${summary.bySource.braintree}, Stripe: ${summary.bySource.stripe}, GoCardless: ${summary.bySource.gocardless})`
+          title: "Reconciliation Complete",
+          description: `${summary.updated} invoices reconciled (Braintree: ${summary.bySource.braintree}, Stripe: ${summary.bySource.stripe}, GoCardless: ${summary.bySource.gocardless})`
         });
         loadInvoices();
       } else {
-        throw new Error(result.error || 'Erro na reconciliação');
+        throw new Error(result.error || 'Reconciliation error');
       }
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
-      console.error("Erro na reconciliação:", err);
-      toast({ title: "Erro", description: `Falha na reconciliação: ${errorMessage}`, variant: "destructive" });
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      console.error("Reconciliation error:", err);
+      toast({ title: "Error", description: `Reconciliation failed: ${errorMessage}`, variant: "destructive" });
     } finally {
       setReconciling(false);
     }
   };
 
-  // Reconciliação manual
+  // Manual reconciliation
   const openManualReconcile = (invoice: ARInvoice) => {
     setReconcileTarget(invoice);
     setReconcileSource("credit-payment");
@@ -378,19 +378,19 @@ export default function ARInvoicesPage() {
       const result = await response.json();
 
       if (result.success) {
-        toast({ title: "Sucesso", description: `Invoice ${reconcileTarget.invoice_number} reconciliada manualmente` });
+        toast({ title: "Success", description: `Invoice ${reconcileTarget.invoice_number} manually reconciled` });
         setManualReconcileDialog(false);
         loadInvoices();
       } else {
         throw new Error(result.error);
       }
     } catch (err: any) {
-      toast({ title: "Erro", description: err.message, variant: "destructive" });
+      toast({ title: "Error", description: err.message, variant: "destructive" });
     }
   };
 
   const handleRemoveReconciliation = async (invoice: ARInvoice) => {
-    if (!confirm(`Remover reconciliação de ${invoice.invoice_number}?`)) return;
+    if (!confirm(`Remove reconciliation from ${invoice.invoice_number}?`)) return;
 
     try {
       const response = await fetch(`/api/reconcile/manual?invoiceId=${invoice.id}`, {
@@ -399,7 +399,7 @@ export default function ARInvoicesPage() {
       const result = await response.json();
 
       if (result.success) {
-        toast({ title: "Sucesso", description: "Reconciliação removida" });
+        toast({ title: "Success", description: "Reconciliation removed" });
         loadInvoices();
       } else {
         throw new Error(result.error);
@@ -421,7 +421,7 @@ export default function ARInvoicesPage() {
       const [source, transactionId] = invoice.reconciled_with.split(':');
 
       if (!transactionId || !['braintree', 'gocardless', 'stripe'].includes(source)) {
-        // Mostrar apenas informações básicas para reconciliações manuais
+        // Show basic info for manual reconciliations
         setTransactionDetails({
           type: 'manual',
           source: source,
@@ -431,7 +431,7 @@ export default function ARInvoicesPage() {
         return;
       }
 
-      // Buscar transação no csv_rows
+      // Fetch transaction from csv_rows
       let query = supabase.from("csv_rows").select("*");
 
       if (source === 'braintree') {
@@ -448,12 +448,39 @@ export default function ARInvoicesPage() {
 
       if (data && data.length > 0) {
         const tx = data[0];
+
+        // For Braintree, also fetch settlement/disbursement info
+        let settlementInfo = null;
+        if (source === 'braintree' && tx.custom_data?.transaction_id) {
+          const { data: disbursements } = await supabase
+            .from("csv_rows")
+            .select("*")
+            .eq("source", "braintree-api-disbursement")
+            .contains("custom_data", { transaction_ids: [tx.custom_data.transaction_id] })
+            .limit(1);
+
+          if (disbursements && disbursements.length > 0) {
+            const d = disbursements[0];
+            settlementInfo = {
+              settlement_date: d.date,
+              disbursement_id: d.custom_data?.disbursement_id,
+              merchant_account_id: d.custom_data?.merchant_account_id,
+              bank_account: d.custom_data?.merchant_account_id?.includes('EUR')
+                ? 'Bankinter EUR'
+                : d.custom_data?.merchant_account_id?.includes('USD')
+                  ? 'Bankinter USD'
+                  : d.custom_data?.merchant_account_id
+            };
+          }
+        }
+
         setTransactionDetails({
           type: 'payment',
           source: source,
           invoice: invoice,
           transaction: tx,
-          custom_data: tx.custom_data || {}
+          custom_data: tx.custom_data || {},
+          settlement: settlementInfo
         });
       } else {
         setTransactionDetails({
@@ -464,19 +491,19 @@ export default function ARInvoicesPage() {
         });
       }
     } catch (err) {
-      console.error("Erro ao carregar detalhes:", err);
+      console.error("Error loading details:", err);
       setTransactionDetails({
         type: 'error',
         source: invoice.reconciled_with?.split(':')[0],
         invoice: invoice,
-        error: err instanceof Error ? err.message : 'Erro desconhecido'
+        error: err instanceof Error ? err.message : 'Unknown error'
       });
     } finally {
       setLoadingTransactionDetails(false);
     }
   };
 
-  // Gerar URL para payment source
+  // Generate URL for payment source
   const getPaymentSourceUrl = (source: string, transactionId: string) => {
     switch (source) {
       case 'braintree':
@@ -493,11 +520,11 @@ export default function ARInvoicesPage() {
   const handleSave = async () => {
     if (!editingInvoice) return;
     if (!editingInvoice.invoice_number?.trim()) {
-      toast({ title: "Erro", description: "Número da invoice é obrigatório", variant: "destructive" });
+      toast({ title: "Error", description: "Invoice number is required", variant: "destructive" });
       return;
     }
     if (!editingInvoice.invoice_date) {
-      toast({ title: "Erro", description: "Data da invoice é obrigatória", variant: "destructive" });
+      toast({ title: "Error", description: "Invoice date is required", variant: "destructive" });
       return;
     }
 
@@ -509,35 +536,35 @@ export default function ARInvoicesPage() {
           .update({ ...editingInvoice, updated_at: new Date().toISOString() })
           .eq("id", editingInvoice.id);
         if (error) throw error;
-        toast({ title: "Sucesso", description: "Invoice atualizada" });
+        toast({ title: "Success", description: "Invoice updated" });
       } else {
         const { error } = await supabase.from("ar_invoices").insert({
           ...editingInvoice,
           created_at: new Date().toISOString()
         });
         if (error) throw error;
-        toast({ title: "Sucesso", description: "Invoice criada" });
+        toast({ title: "Success", description: "Invoice created" });
       }
       setDialogOpen(false);
       setEditingInvoice(null);
       loadInvoices();
     } catch (err: any) {
-      console.error("Erro ao salvar:", err);
-      toast({ title: "Erro", description: err?.message || "Falha ao salvar invoice", variant: "destructive" });
+      console.error("Error saving:", err);
+      toast({ title: "Error", description: err?.message || "Failed to save invoice", variant: "destructive" });
     } finally {
       setSaving(false);
     }
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("Tem certeza que deseja excluir esta invoice?")) return;
+    if (!confirm("Are you sure you want to delete this invoice?")) return;
     try {
       const { error } = await supabase.from("ar_invoices").delete().eq("id", id);
       if (error) throw error;
-      toast({ title: "Sucesso", description: "Invoice excluída" });
+      toast({ title: "Success", description: "Invoice deleted" });
       loadInvoices();
     } catch (err: any) {
-      toast({ title: "Erro", description: err?.message, variant: "destructive" });
+      toast({ title: "Error", description: err?.message, variant: "destructive" });
     }
   };
 
@@ -655,7 +682,7 @@ export default function ARInvoicesPage() {
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={runAutoReconcile} disabled={reconciling}>
               {reconciling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
-              Reconciliar
+              Reconcile
             </Button>
             <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={syncFromHubSpot} disabled={syncing}>
               {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
@@ -665,7 +692,7 @@ export default function ARInvoicesPage() {
               <Download className="h-4 w-4 mr-1" /> Export
             </Button>
             <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditingInvoice({ ...EMPTY_INVOICE, scope: selectedScope }); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" /> Nova
+              <Plus className="h-4 w-4 mr-1" /> New
             </Button>
           </div>
           <div className="flex items-center gap-3">
@@ -822,7 +849,7 @@ export default function ARInvoicesPage() {
                       <button onClick={() => handleRemoveReconciliation(inv)} className="p-0.5 text-gray-600 hover:text-red-400" title="Remover"><X className="h-2.5 w-2.5" /></button>
                     </div>
                   ) : (
-                    <button onClick={() => openManualReconcile(inv)} className="p-1 text-gray-600 hover:text-purple-400" title="Reconciliar"><Link2 className="h-3 w-3" /></button>
+                    <button onClick={() => openManualReconcile(inv)} className="p-1 text-gray-600 hover:text-purple-400" title="Reconcile"><Link2 className="h-3 w-3" /></button>
                   )}
                 </div>
               </div>
@@ -960,7 +987,7 @@ export default function ARInvoicesPage() {
                   step="0.01"
                   value={editingInvoice.charged_amount || ""}
                   onChange={e => setEditingInvoice({ ...editingInvoice, charged_amount: parseFloat(e.target.value) || null })}
-                  placeholder="Deixe vazio se não cobrado"
+                  placeholder="Leave empty if not charged"
                 />
               </div>
               <div className="space-y-2">
@@ -969,7 +996,7 @@ export default function ARInvoicesPage() {
                   value={editingInvoice.payment_method || ""}
                   onValueChange={v => setEditingInvoice({ ...editingInvoice, payment_method: v })}
                 >
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                   <SelectContent>
                     {PAYMENT_METHODS.map(pm => <SelectItem key={pm} value={pm}>{pm}</SelectItem>)}
                   </SelectContent>
@@ -981,7 +1008,7 @@ export default function ARInvoicesPage() {
                   value={editingInvoice.billing_entity || ""}
                   onValueChange={v => setEditingInvoice({ ...editingInvoice, billing_entity: v })}
                 >
-                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
                   <SelectContent>
                     {BILLING_ENTITIES.map(be => <SelectItem key={be} value={be}>{be}</SelectItem>)}
                   </SelectContent>
@@ -1014,10 +1041,10 @@ export default function ARInvoicesPage() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setDialogOpen(false)}>Cancel</Button>
             <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Salvar
+              Save
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1027,7 +1054,7 @@ export default function ARInvoicesPage() {
       <Dialog open={manualReconcileDialog} onOpenChange={setManualReconcileDialog}>
         <DialogContent className="max-w-md bg-[#2a2b2d] border-gray-700 text-white">
           <DialogHeader>
-            <DialogTitle className="text-white">Reconciliação Manual</DialogTitle>
+            <DialogTitle className="text-white">Manual Reconciliation</DialogTitle>
             <DialogDescription className="text-gray-400">
               {reconcileTarget && (
                 <span>
@@ -1039,39 +1066,39 @@ export default function ARInvoicesPage() {
 
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-gray-300">Fonte do Pagamento</Label>
+              <Label className="text-gray-300">Payment Source</Label>
               <Select value={reconcileSource} onValueChange={setReconcileSource}>
                 <SelectTrigger className="bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
                 <SelectContent className="bg-gray-800 border-gray-700">
-                  <SelectItem value="credit-payment" className="text-white hover:bg-gray-700">Credit Payment (crédito interno)</SelectItem>
-                  <SelectItem value="bank-transfer" className="text-white hover:bg-gray-700">Bank Transfer (transferência)</SelectItem>
-                  <SelectItem value="hubspot-confirmed" className="text-white hover:bg-gray-700">HubSpot Confirmed (paid_status)</SelectItem>
-                  <SelectItem value="check" className="text-white hover:bg-gray-700">Check (cheque)</SelectItem>
-                  <SelectItem value="cash" className="text-white hover:bg-gray-700">Cash (dinheiro)</SelectItem>
-                  <SelectItem value="other" className="text-white hover:bg-gray-700">Other (outro)</SelectItem>
+                  <SelectItem value="credit-payment" className="text-white hover:bg-gray-700">Credit Payment</SelectItem>
+                  <SelectItem value="bank-transfer" className="text-white hover:bg-gray-700">Bank Transfer</SelectItem>
+                  <SelectItem value="hubspot-confirmed" className="text-white hover:bg-gray-700">HubSpot Confirmed</SelectItem>
+                  <SelectItem value="check" className="text-white hover:bg-gray-700">Check</SelectItem>
+                  <SelectItem value="cash" className="text-white hover:bg-gray-700">Cash</SelectItem>
+                  <SelectItem value="other" className="text-white hover:bg-gray-700">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-gray-300">Referência do Pagamento</Label>
+              <Label className="text-gray-300">Payment Reference</Label>
               <Input
                 value={reconcileReference}
                 onChange={e => setReconcileReference(e.target.value)}
-                placeholder="Ex: ID da transação, número do cheque..."
+                placeholder="e.g.: Transaction ID, check number..."
                 className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
               />
               <p className="text-xs text-gray-500">
-                Opcional. Se vazio, será gerado automaticamente.
+                Optional. If empty, will be auto-generated.
               </p>
             </div>
           </div>
 
           <DialogFooter>
-            <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setManualReconcileDialog(false)}>Cancelar</Button>
+            <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setManualReconcileDialog(false)}>Cancel</Button>
             <Button onClick={handleManualReconcile} className="bg-purple-600 hover:bg-purple-700">
               <Link2 className="h-4 w-4 mr-2" />
-              Reconciliar
+              Reconcile
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1079,11 +1106,11 @@ export default function ARInvoicesPage() {
 
       {/* Transaction Details Dialog */}
       <Dialog open={transactionDetailsDialog} onOpenChange={setTransactionDetailsDialog}>
-        <DialogContent className="sm:max-w-[600px] !bg-[#2a2b2d] !border-gray-700 [&>button]:text-white">
+        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto !bg-[#2a2b2d] !border-gray-600 [&>button]:text-white">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Eye className="h-5 w-5 text-blue-400" />
-              Detalhes da Reconciliação
+              Reconciliation Details
             </DialogTitle>
             <DialogDescription className="text-gray-400">
               {transactionDetails?.invoice && (
@@ -1097,38 +1124,39 @@ export default function ARInvoicesPage() {
           {loadingTransactionDetails ? (
             <div className="py-8 text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-400" />
-              <p className="text-gray-400 mt-2">Carregando detalhes...</p>
+              <p className="text-gray-400 mt-2">Loading details...</p>
             </div>
           ) : transactionDetails?.type === 'manual' ? (
             <div className="p-4 bg-[#1e1f21] rounded-lg border border-gray-600">
-              <h4 className="text-sm font-medium text-gray-300 mb-3">Reconciliação Manual</h4>
+              <h4 className="text-sm font-medium text-gray-300 mb-3">Manual Reconciliation</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div>
-                  <span className="text-gray-500">Fonte:</span>
+                  <span className="text-gray-500">Source:</span>
                   <span className="ml-2 text-white capitalize">{transactionDetails.source}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Referência:</span>
+                  <span className="text-gray-500">Reference:</span>
                   <span className="ml-2 text-white">{transactionDetails.reference}</span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Valor:</span>
+                  <span className="text-gray-500">Amount:</span>
                   <span className="ml-2 text-green-400">
                     {transactionDetails.invoice.currency === "EUR" ? "€" : "$"}
                     {formatEuropeanNumber(transactionDetails.invoice.total_amount)}
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-500">Data:</span>
+                  <span className="text-gray-500">Date:</span>
                   <span className="ml-2 text-white">{formatDate(transactionDetails.invoice.reconciled_at)}</span>
                 </div>
               </div>
             </div>
           ) : transactionDetails?.type === 'payment' ? (
             <div className="space-y-4">
+              {/* Transaction Info */}
               <div className="p-4 bg-[#1e1f21] rounded-lg border border-gray-600">
                 <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-gray-300">Transação {transactionDetails.source.toUpperCase()}</h4>
+                  <h4 className="text-sm font-medium text-gray-300">{transactionDetails.source.toUpperCase()} Transaction</h4>
                   {transactionDetails.source === 'braintree' && transactionDetails.custom_data?.transaction_id && (
                     <a
                       href={`https://www.braintreegateway.com/merchants/plncntrspdsd/transactions/${transactionDetails.custom_data.transaction_id}`}
@@ -1137,7 +1165,7 @@ export default function ARInvoicesPage() {
                       className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      Abrir no Braintree
+                      Open in Braintree
                     </a>
                   )}
                   {transactionDetails.source === 'gocardless' && transactionDetails.custom_data?.payment_id && (
@@ -1148,7 +1176,7 @@ export default function ARInvoicesPage() {
                       className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      Abrir no GoCardless
+                      Open in GoCardless
                     </a>
                   )}
                   {transactionDetails.source === 'stripe' && transactionDetails.custom_data?.charge_id && (
@@ -1159,7 +1187,7 @@ export default function ARInvoicesPage() {
                       className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
                     >
                       <ExternalLink className="h-3 w-3" />
-                      Abrir no Stripe
+                      Open in Stripe
                     </a>
                   )}
                 </div>
@@ -1180,18 +1208,18 @@ export default function ARInvoicesPage() {
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Valor:</span>
+                    <span className="text-gray-500">Amount:</span>
                     <span className="ml-2 text-green-400 font-medium">
                       {transactionDetails.custom_data?.currency || transactionDetails.transaction?.currency || 'EUR'} {formatEuropeanNumber(parseFloat(transactionDetails.transaction?.amount) || 0)}
                     </span>
                   </div>
                   <div>
-                    <span className="text-gray-500">Data:</span>
+                    <span className="text-gray-500">Transaction Date:</span>
                     <span className="ml-2">{formatDate(transactionDetails.transaction?.date)}</span>
                   </div>
                   {transactionDetails.custom_data?.customer_name && (
                     <div className="col-span-2">
-                      <span className="text-gray-500">Cliente:</span>
+                      <span className="text-gray-500">Customer:</span>
                       <span className="ml-2">{transactionDetails.custom_data.customer_name}</span>
                     </div>
                   )}
@@ -1203,8 +1231,8 @@ export default function ARInvoicesPage() {
                   )}
                   {transactionDetails.custom_data?.payment_method && (
                     <div>
-                      <span className="text-gray-500">Método:</span>
-                      <span className="ml-2">{transactionDetails.custom_data.payment_method}</span>
+                      <span className="text-gray-500">Payment Method:</span>
+                      <span className="ml-2">{typeof transactionDetails.custom_data.payment_method === 'object' ? 'Card' : transactionDetails.custom_data.payment_method}</span>
                     </div>
                   )}
                   {transactionDetails.custom_data?.order_id && (
@@ -1216,18 +1244,44 @@ export default function ARInvoicesPage() {
                 </div>
               </div>
 
+              {/* Settlement Info */}
+              {transactionDetails.settlement && (
+                <div className="p-4 bg-[#1e1f21] rounded-lg border border-blue-900/50">
+                  <h4 className="text-sm font-medium text-blue-400 mb-3 flex items-center gap-2">
+                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    Settlement Information
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3 text-sm text-white">
+                    <div>
+                      <span className="text-gray-500">Settlement Date:</span>
+                      <span className="ml-2 text-blue-300 font-medium">{formatDate(transactionDetails.settlement.settlement_date)}</span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Bank Account:</span>
+                      <span className="ml-2 text-blue-300">{transactionDetails.settlement.bank_account}</span>
+                    </div>
+                    {transactionDetails.settlement.disbursement_id && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">Disbursement ID:</span>
+                        <span className="ml-2 font-mono text-xs text-gray-300">{transactionDetails.settlement.disbursement_id}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Additional Details */}
-              {transactionDetails.custom_data && Object.keys(transactionDetails.custom_data).filter(key => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency'].includes(key)).length > 0 && (
+              {transactionDetails.custom_data && Object.keys(transactionDetails.custom_data).filter(key => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency', 'created_at', 'customer_id', 'billing_name', 'company_name', 'merchant_account_id'].includes(key)).length > 0 && (
                 <div className="p-4 bg-[#1e1f21]/50 rounded-lg border border-gray-700">
-                  <h4 className="text-xs font-medium text-gray-400 mb-2">Dados Adicionais</h4>
-                  <div className="text-xs space-y-1 max-h-24 overflow-y-auto">
+                  <h4 className="text-xs font-medium text-gray-400 mb-2">Additional Details</h4>
+                  <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                     {Object.entries(transactionDetails.custom_data)
-                      .filter(([key]) => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency'].includes(key))
-                      .slice(0, 8)
+                      .filter(([key]) => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency', 'created_at', 'customer_id', 'billing_name', 'company_name', 'merchant_account_id'].includes(key))
+                      .slice(0, 6)
                       .map(([key, value]) => (
                         <div key={key} className="flex">
                           <span className="text-gray-500 w-32 flex-shrink-0">{key}:</span>
-                          <span className="text-gray-400 truncate">{String(value)}</span>
+                          <span className="text-gray-400 truncate">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
                         </div>
                       ))}
                   </div>
@@ -1237,20 +1291,20 @@ export default function ARInvoicesPage() {
           ) : transactionDetails?.type === 'not_found' ? (
             <div className="py-8 text-center">
               <AlertCircle className="h-8 w-8 mx-auto text-yellow-400" />
-              <p className="text-gray-400 mt-2">Transação não encontrada</p>
+              <p className="text-gray-400 mt-2">Transaction not found</p>
               <p className="text-gray-500 text-sm mt-1">ID: {transactionDetails.transactionId}</p>
             </div>
           ) : transactionDetails?.type === 'error' ? (
             <div className="py-8 text-center">
               <AlertCircle className="h-8 w-8 mx-auto text-red-400" />
-              <p className="text-gray-400 mt-2">Erro ao carregar detalhes</p>
+              <p className="text-gray-400 mt-2">Error loading details</p>
               <p className="text-red-400 text-sm mt-1">{transactionDetails.error}</p>
             </div>
           ) : null}
 
           <DialogFooter>
             <Button variant="outline" className="bg-gray-700 border-gray-600 text-white hover:bg-gray-600" onClick={() => setTransactionDetailsDialog(false)}>
-              Fechar
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

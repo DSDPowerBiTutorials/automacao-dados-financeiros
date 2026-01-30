@@ -69,7 +69,7 @@ async function main() {
         const email = cd.customer_email?.toLowerCase();
         const domain = email?.split('@')[1];
         const amount = Math.round(parseFloat(t.amount));
-        
+
         const payment = {
             source: 'braintree',
             transaction_id: cd.transaction_id || t.id,
@@ -81,7 +81,7 @@ async function main() {
             row_id: t.id
         };
         allPayments.push(payment);
-        
+
         if (domain) {
             const key = `${domain}:${amount}`;
             if (!paymentsByDomain.has(key)) paymentsByDomain.set(key, []);
@@ -94,7 +94,7 @@ async function main() {
         const email = cd.customer_email?.toLowerCase();
         const domain = email?.split('@')[1];
         const amount = Math.round(parseFloat(t.amount));
-        
+
         const payment = {
             source: 'stripe',
             transaction_id: cd.payment_intent || cd.charge_id || t.id,
@@ -106,7 +106,7 @@ async function main() {
             row_id: t.id
         };
         allPayments.push(payment);
-        
+
         if (domain) {
             const key = `${domain}:${amount}`;
             if (!paymentsByDomain.has(key)) paymentsByDomain.set(key, []);
@@ -119,7 +119,7 @@ async function main() {
         const email = cd.customer_email?.toLowerCase();
         const domain = email?.split('@')[1];
         const amount = Math.round(parseFloat(t.amount));
-        
+
         const payment = {
             source: 'gocardless',
             transaction_id: cd.payment_id || t.id,
@@ -131,7 +131,7 @@ async function main() {
             row_id: t.id
         };
         allPayments.push(payment);
-        
+
         if (domain) {
             const key = `${domain}:${amount}`;
             if (!paymentsByDomain.has(key)) paymentsByDomain.set(key, []);
@@ -153,7 +153,7 @@ async function main() {
         let match = null;
         if (inv.order_id) {
             const orderKey = inv.order_id.toLowerCase();
-            match = allPayments.find(p => 
+            match = allPayments.find(p =>
                 !usedPayments.has(p.row_id) &&
                 p.order_id?.toLowerCase() === orderKey
             );
@@ -178,13 +178,13 @@ async function main() {
         if (!match && invDomain) {
             const key = `${invDomain}:${invAmount}`;
             const candidates = paymentsByDomain.get(key) || [];
-            
+
             for (const candidate of candidates) {
                 if (usedPayments.has(candidate.row_id)) continue;
-                
+
                 const payDate = new Date(candidate.date);
                 const daysDiff = Math.abs((payDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
-                
+
                 if (daysDiff <= 3 && Math.abs(candidate.amount - inv.total_amount) < 1) {
                     match = { ...candidate, match_type: 'domain+amount+date' };
                     break;
@@ -198,11 +198,11 @@ async function main() {
                 !usedPayments.has(p.row_id) &&
                 Math.abs(p.amount - inv.total_amount) < 0.01
             );
-            
+
             for (const candidate of candidates) {
                 const payDate = new Date(candidate.date);
                 const daysDiff = Math.abs((payDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
-                
+
                 if (daysDiff <= 1) { // Janela mais restrita sem email
                     match = { ...candidate, match_type: 'amount+date' };
                     break;
@@ -228,7 +228,7 @@ async function main() {
     }
 
     console.log(`\n✅ Matches encontrados: ${fixes.length}`);
-    
+
     // Mostrar por tipo de match
     const byType = {};
     fixes.forEach(f => {
@@ -246,7 +246,7 @@ async function main() {
     if (!DRY_RUN && fixes.length > 0) {
         console.log('\n⚡ Aplicando correções...');
         let updated = 0;
-        
+
         for (const fix of fixes) {
             const { error } = await supabase
                 .from('ar_invoices')
@@ -256,14 +256,14 @@ async function main() {
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', fix.invoice_id);
-            
+
             if (!error) {
                 updated++;
             } else {
                 console.error(`   Erro em ${fix.invoice_number}:`, error.message);
             }
         }
-        
+
         console.log(`✅ ${updated}/${fixes.length} invoices corrigidas`);
     } else if (DRY_RUN) {
         console.log('\n⚠️  DRY RUN - nenhuma alteração feita');

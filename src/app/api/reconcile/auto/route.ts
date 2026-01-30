@@ -134,7 +134,7 @@ export async function POST(req: NextRequest) {
                 const email = inv.email.toLowerCase();
                 if (!invoiceByEmail.has(email)) invoiceByEmail.set(email, []);
                 invoiceByEmail.get(email)!.push(inv);
-                
+
                 // Index por domínio do email
                 const domain = email.split('@')[1];
                 if (domain) {
