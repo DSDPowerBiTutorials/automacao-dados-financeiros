@@ -87,11 +87,29 @@ const PRODUCT_TYPES = [
 ];
 
 const CATEGORIES = [
-    "Premium Course",
-    "Standard Course",
+    // Planning Center Services
+    "Planning",
+    "Guide Design",
+    "Implant Planning",
+    // Manufacturing / Lab
+    "Surgical Guide",
+    "Prosthesis",
+    "Abutment",
+    "Crown",
+    "Denture",
+    "Model",
+    // Education
+    "Course",
+    "Residency",
     "Workshop/Module",
+    "Certification",
+    "Coaching",
+    // Clinical
     "Clinic Fee",
+    // Subscriptions & Software
     "Subscription",
+    "License",
+    // Other
     "Other",
 ];
 
@@ -432,6 +450,27 @@ export default function ProductsPage() {
         }
     };
 
+    // Inline update for category
+    const updateProductCategory = async (productId: string, category: string | null) => {
+        try {
+            const { error } = await supabase
+                .from("products")
+                .update({ category })
+                .eq("id", productId);
+
+            if (error) throw error;
+
+            setProducts((prev) =>
+                prev.map((p) =>
+                    p.id === productId ? { ...p, category } : p
+                )
+            );
+            toast({ title: "Updated", description: "Category updated" });
+        } catch (e: any) {
+            toast({ title: "Error", description: e.message, variant: "destructive" });
+        }
+    };
+
     // Get subgroups for a specific group
     const getSubgroupsForGroup = (groupId: string | null) => {
         if (!groupId) return [];
@@ -539,14 +578,14 @@ export default function ProductsPage() {
                             />
                         </div>
                         <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                            <SelectTrigger className="w-40 bg-transparent border-gray-600 text-white">
+                            <SelectTrigger className="w-44 bg-transparent border-gray-600 text-white">
                                 <Filter className="h-4 w-4 mr-1" />
                                 <SelectValue placeholder="Category" />
                             </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Categories</SelectItem>
+                            <SelectContent className="z-[9999] bg-white border-gray-300 max-h-[350px]">
+                                <SelectItem value="all" className="text-gray-900">All Categories</SelectItem>
                                 {CATEGORIES.map((cat) => (
-                                    <SelectItem key={cat} value={cat}>
+                                    <SelectItem key={cat} value={cat} className="text-gray-900">
                                         {cat}
                                     </SelectItem>
                                 ))}
@@ -573,7 +612,7 @@ export default function ProductsPage() {
                     <div className="w-[30px] flex-shrink-0"></div>
                     <div className="w-[100px] flex-shrink-0">Code</div>
                     <div className="w-[200px] flex-shrink-0">Name</div>
-                    <div className="w-[120px] flex-shrink-0">Category</div>
+                    <div className="w-[130px] flex-shrink-0">Category</div>
                     <div className="w-[140px] flex-shrink-0">Financial Acc</div>
                     <div className="w-[150px] flex-shrink-0">Dept Group</div>
                     <div className="w-[150px] flex-shrink-0">Dept Subgroup</div>
@@ -654,11 +693,24 @@ export default function ProductsPage() {
                                     )}
                                 </div>
 
-                                {/* Category */}
-                                <div className="w-[120px] flex-shrink-0">
-                                    <span className="text-[11px] text-gray-300">
-                                        {product.category || "—"}
-                                    </span>
+                                {/* Category - INLINE DROPDOWN */}
+                                <div className="w-[130px] flex-shrink-0">
+                                    <Select
+                                        value={product.category || "none"}
+                                        onValueChange={(v) => updateProductCategory(product.id, v === "none" ? null : v)}
+                                    >
+                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800">
+                                            <SelectValue placeholder="Select..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="z-[9999] bg-white border-gray-300 max-h-[300px]">
+                                            <SelectItem value="none" className="text-gray-900">—</SelectItem>
+                                            {CATEGORIES.map((cat) => (
+                                                <SelectItem key={cat} value={cat} className="text-gray-900">
+                                                    {cat}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
                                 </div>
 
                                 {/* Financial Account - INLINE DROPDOWN */}
