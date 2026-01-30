@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { DataFreshnessIndicator } from "@/components/sync/DataFreshnessIndicator";
 
 export default function Sidebar() {
   const pathname = usePathname();
@@ -237,6 +238,14 @@ export default function Sidebar() {
             <p className="text-xs text-gray-500 mt-2">{SCOPE_CONFIG[selectedScope].label}</p>
           </div>
         )}
+
+        {/* Data Freshness Indicator */}
+        <div className={cn("border-b border-gray-800", collapsed ? "p-2" : "p-4")}>
+          {!collapsed && (
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Data Health</p>
+          )}
+          <DataFreshnessIndicator collapsed={collapsed} />
+        </div>
 
         {/* Search */}
         {!collapsed && (
