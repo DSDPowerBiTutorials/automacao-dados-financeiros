@@ -227,23 +227,34 @@ export default function HubSpotReportPage() {
             setLoading(true);
             setCurrentPage(1); // Resetar página ao carregar novos dados
 
-            console.log('📡 [FETCH] Fazendo query no Supabase...');
-            // Fetch all orders (sem filtro de data)
-            const { data, error, count } = await supabase
-                .from("csv_rows")
-                .select("*", { count: "exact" })
-                .eq("source", "hubspot")
-                .order("date", { ascending: false })
-                .limit(2000);
+            console.log('📡 [FETCH] Fazendo query no Supabase com paginação...');
+            
+            // Buscar TODOS os registros usando paginação
+            let allData: any[] = [];
+            let offset = 0;
+            const batchSize = 1000;
 
-            console.log(`✅ [FETCH] Query completou: ${data?.length} records, total: ${count}`);
+            while (true) {
+                const { data, error } = await supabase
+                    .from("csv_rows")
+                    .select("*")
+                    .eq("source", "hubspot")
+                    .order("date", { ascending: false })
+                    .range(offset, offset + batchSize - 1);
 
-            if (error) {
-                console.error('❌ [FETCH] Erro na query:', error);
-                throw error;
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+
+                allData = allData.concat(data);
+                console.log(`📦 [FETCH] Carregados ${allData.length} registros...`);
+
+                if (data.length < batchSize) break;
+                offset += batchSize;
             }
 
-            setRows(data || []);
+            console.log(`✅ [FETCH] Query completou: ${allData.length} records`);
+
+            setRows(allData);
             console.log('✅ [FETCH] Dados carregados com sucesso!');
         } catch (error: any) {
             console.error('❌ [FETCH] Erro ao carregar dados:', error);
