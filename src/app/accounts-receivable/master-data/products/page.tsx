@@ -566,7 +566,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Table Header */}
-            <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
+            <div className="sticky top-0 z-[5] bg-[#2a2b2d] border-b border-gray-700">
                 <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-400 font-medium uppercase">
                     <div className="w-[30px] flex-shrink-0"></div>
                     <div className="w-[30px] flex-shrink-0"></div>
@@ -669,7 +669,7 @@ export default function ProductsPage() {
                                         <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-[9999] bg-[#2a2b2d] border-gray-600">
                                             <SelectItem value="none">—</SelectItem>
                                             {financialAccounts.map((fa) => (
                                                 <SelectItem key={fa.id} value={fa.id}>
@@ -689,7 +689,7 @@ export default function ProductsPage() {
                                         <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-[9999] bg-[#2a2b2d] border-gray-600">
                                             <SelectItem value="none">—</SelectItem>
                                             {departmentalGroups.map((da) => (
                                                 <SelectItem key={da.id} value={da.id}>
@@ -710,7 +710,7 @@ export default function ProductsPage() {
                                         <SelectTrigger className={`h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800 ${!product.departmental_account_group_id ? "opacity-50" : ""}`}>
                                             <SelectValue placeholder={product.departmental_account_group_id ? "Select..." : "—"} />
                                         </SelectTrigger>
-                                        <SelectContent>
+                                        <SelectContent className="z-[9999] bg-[#2a2b2d] border-gray-600">
                                             <SelectItem value="none">—</SelectItem>
                                             {getSubgroupsForGroup(product.departmental_account_group_id).map((da) => (
                                                 <SelectItem key={da.id} value={da.id}>
