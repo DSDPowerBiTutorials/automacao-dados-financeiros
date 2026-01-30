@@ -2,6 +2,21 @@ import { NextRequest, NextResponse } from "next/server"
 import * as XLSX from "xlsx"
 import { supabaseAdmin } from "@/lib/supabase-admin"
 
+/**
+ * Converte serial Excel para data ISO YYYY-MM-DD usando parse_date_code do XLSX
+ * Evita problemas de fuso/offset e garante a data exata do arquivo
+ */
+function excelSerialToISO(serial: number): string {
+    const parsed = XLSX.SSF.parse_date_code(serial)
+    if (!parsed) throw new Error(`Data Excel inválida: ${serial}`)
+
+    const year = parsed.y
+    const month = String(parsed.m).padStart(2, "0")
+    const day = String(parsed.d).padStart(2, "0")
+
+    return `${year}-${month}-${day}`
+}
+
 export async function POST(request: NextRequest) {
     try {
         console.log("🚀 [Bankinter EUR] Iniciando processamento...")
@@ -146,33 +161,41 @@ export async function POST(request: NextRequest) {
                     return null
                 }
 
-                // Preferir FECHA CONTABLE; se não vier, cair para FECHA VALOR
-                const rawDate = fechaContableRaw ?? fechaValorRaw
+                // USAR APENAS FECHA VALOR (data do extrato)
+                const rawDate = fechaValorRaw
 
-                let dateString: string
+                if (!rawDate) {
+                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Sem FECHA VALOR`)
+                    skippedCount++
+                    return null
+                }
+
+                let isoDate: string
                 if (typeof rawDate === "number") {
-                    dateString = XLSX.SSF.format("dd/mm/yyyy", rawDate)
+                    isoDate = excelSerialToISO(rawDate)
+                    console.log(`📅 [DEBUG] Serial ${rawDate} → ${isoDate}`)
                 } else if (typeof rawDate === "string") {
-                    dateString = rawDate.trim()
+                    const dateString = rawDate.trim()
+                    const parts = dateString.split(/[\/\-\.]/)
+                    if (parts.length !== 3) {
+                        console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data não parseável:`, dateString)
+                        skippedCount++
+                        return null
+                    }
+                    const [d, m, y] = parts
+                    isoDate = `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
                 } else {
-                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data inválida (contable/valor):`, rawDate)
+                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data inválida (valor):`, rawDate)
                     skippedCount++
                     return null
                 }
 
-                // Validar formato DD/MM/YYYY
-                const dateParts = dateString.split(/[\/\-\.]/)
-                if (dateParts.length !== 3) {
-                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data não parseável:`, dateString)
-                    skippedCount++
-                    return null
-                }
-
-                // Converter para ISO YYYY-MM-DD para Supabase (banco precisa desse formato)
-                const day = dateParts[0].padStart(2, "0")
-                const month = dateParts[1].padStart(2, "0")
-                const year = dateParts[2]
-                const isoDate = `${year}-${month}-${day}`
+                // Aplicar +1 dia conforme solicitado
+                const isoDatePlusOne = (() => {
+                    const dt = new Date(`${isoDate}T00:00:00Z`)
+                    dt.setUTCDate(dt.getUTCDate() + 1)
+                    return dt.toISOString().split("T")[0]
+                })()
 
                 // Parse valores monetários - formato europeu: 1.234,56 ou -2.636,09
                 const parseAmount = (val: any): number => {
@@ -218,16 +241,8 @@ export async function POST(request: NextRequest) {
                 const clave = colIndex.clave !== -1 ? String(row[colIndex.clave] || "") : ""
                 const categoria = colIndex.categoria !== -1 ? String(row[colIndex.categoria] || "") : ""
 
-                // Parse fecha_contable usando o valor já capturado
-                let fechaContable: string | null = null
-                if (fechaContableRaw) {
-                    if (typeof fechaContableRaw === "number") {
-                        // Usar XLSX.SSF.format direto
-                        fechaContable = XLSX.SSF.format("dd/mm/yyyy", fechaContableRaw)
-                    } else if (typeof fechaContableRaw === "string") {
-                        fechaContable = fechaContableRaw
-                    }
-                }
+                // Guardar fecha_contable apenas como referência bruta
+                const fechaContableISO: string | null = null
 
                 // DEBUG CRÍTICO: Log do objeto custom_data ANTES de construir
                 if (index === 0) {
@@ -236,21 +251,24 @@ export async function POST(request: NextRequest) {
                     console.log("  haber:", haber, typeof haber)
                     console.log("  importe:", importe, typeof importe)
                     console.log("  saldo:", saldo, typeof saldo)
+                    console.log("  isoDate (FECHA VALOR):", isoDate)
+                    console.log("  fechaContableISO:", fechaContableISO)
                 }
 
                 return {
                     source: "bankinter-eur",
                     file_name: file.name,
-                    date: isoDate, // salvar como FECHA CONTABLE (prioritário) em formato ISO
+                    date: isoDatePlusOne, // FECHA VALOR +1 dia conforme solicitado
                     description: descripcion || "Sin descripción",
                     amount: amount.toString(),
                     category: categoria || "Other",
                     classification: categoria || "Other",
                     reconciled: false,
                     custom_data: {
-                        fecha_contable: fechaContable, // original (string ou serial)
-                        fecha_contable_iso: isoDate,   // ISO normalizado, usado na conciliação
-                        fecha_valor: fechaValorRaw,    // referência bruta
+                        fecha_contable: fechaContableRaw, // referência
+                        fecha_contable_iso: fechaContableISO,
+                        fecha_valor: fechaValorRaw,    // FECHA VALOR bruta (original)
+                        fecha_valor_iso: isoDatePlusOne, // FECHA VALOR +1 dia
                         debe,
                         haber,
                         importe,

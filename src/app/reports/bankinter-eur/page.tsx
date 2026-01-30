@@ -62,29 +62,36 @@ interface BankAccount {
 // Formatar números no padrão europeu
 const formatEuropeanCurrency = (value: number | null | undefined): string => {
   if (value === null || value === undefined || isNaN(value)) return "-"
-  const formatted = new Intl.NumberFormat('es-ES', {
+  const formatted = new Intl.NumberFormat("es-ES", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2
   }).format(value)
   return formatted
 }
 
+// Parse ISO (YYYY-MM-DD) como data UTC para evitar D-1 por fuso horário
+const parseDateUTC = (dateString: string | null | undefined): Date | null => {
+  if (!dateString) return null
+  const parts = dateString.split("-")
+  if (parts.length !== 3) return null
+  const [year, month, day] = parts.map(Number)
+  if (!year || !month || !day) return null
+  return new Date(Date.UTC(year, month - 1, day))
+}
+
 // Formatar data curta
 const formatShortDate = (dateString: string | null | undefined): string => {
   if (!dateString) return "-"
-  try {
-    const date = new Date(dateString)
-    if (isNaN(date.getTime())) return dateString
-    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" })
-  } catch {
-    return dateString
-  }
+  const date = parseDateUTC(dateString)
+  if (!date || isNaN(date.getTime())) return dateString
+  return date.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
 }
 
 // Formatar data para header de grupo
 const formatDateForHeader = (dateStr: string): string => {
-  const date = new Date(dateStr)
-  const options: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", year: "numeric" }
+  const date = parseDateUTC(dateStr)
+  if (!date) return dateStr
+  const options: Intl.DateTimeFormatOptions = { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" }
   return date.toLocaleDateString("en-US", options)
 }
 
@@ -287,7 +294,7 @@ export default function BankinterEURPage() {
     return Array.from(groupsMap.values()).sort((a, b) => {
       if (a.date === "unknown") return 1
       if (b.date === "unknown") return -1
-      return new Date(b.date).getTime() - new Date(a.date).getTime()
+      return (parseDateUTC(b.date)?.getTime() || 0) - (parseDateUTC(a.date)?.getTime() || 0)
     })
   }, [filteredRows])
 
@@ -305,7 +312,9 @@ export default function BankinterEURPage() {
     const intercompanyDebits = intercompanyRows.filter(r => r.amount < 0).reduce((sum, r) => sum + Math.abs(r.amount), 0)
 
     // Get closing balance from the most recent transaction
-    const sortedByDate = [...rows].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    const sortedByDate = [...rows].sort(
+      (a, b) => (parseDateUTC(b.date)?.getTime() || 0) - (parseDateUTC(a.date)?.getTime() || 0)
+    )
     const closingBalance = sortedByDate[0]?.custom_data?.saldo ?? 0
 
     return { totalCredits, totalDebits, reconciledCount, unreconciledCount, closingBalance, intercompanyCount, intercompanyCredits, intercompanyDebits }
@@ -568,9 +577,10 @@ export default function BankinterEURPage() {
       }
 
       // Date range for exact match (±3 days)
-      const startDate = new Date(transactionDate)
+      const startDate = parseDateUTC(transactionDate)
+      const endDate = parseDateUTC(transactionDate)
+      if (!startDate || !endDate) return
       startDate.setDate(startDate.getDate() - 3)
-      const endDate = new Date(transactionDate)
       endDate.setDate(endDate.getDate() + 3)
 
       const matchAmount = Math.abs(transaction.amount)
@@ -700,7 +710,8 @@ export default function BankinterEURPage() {
       if (!bankAccount) throw new Error("Bank account not found")
 
       const now = new Date().toISOString()
-      const txDate = new Date(reconciliationTransaction.date)
+      const txDate = parseDateUTC(reconciliationTransaction.date)
+      if (!txDate) return
       const startDate = new Date(txDate)
       startDate.setDate(startDate.getDate() - 5)
       const endDate = new Date(txDate)
