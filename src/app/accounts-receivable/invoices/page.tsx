@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink } from "lucide-react";
+import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -54,13 +54,13 @@ interface ARInvoice {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: "Rascunho", color: "bg-gray-100 text-gray-700" },
-  pending: { label: "Pendente", color: "bg-yellow-100 text-yellow-800" },
-  sent: { label: "Enviada", color: "bg-blue-100 text-blue-800" },
-  paid: { label: "Paga", color: "bg-green-100 text-green-800" },
-  partial: { label: "Parcial", color: "bg-orange-100 text-orange-800" },
-  overdue: { label: "Vencida", color: "bg-red-100 text-red-800" },
-  cancelled: { label: "Cancelada", color: "bg-gray-200 text-gray-500" }
+  draft: { label: "Rascunho", color: "bg-gray-700/50 text-gray-300 border border-gray-600" },
+  pending: { label: "Pendente", color: "bg-yellow-900/30 text-yellow-400 border border-yellow-700" },
+  sent: { label: "Enviada", color: "bg-blue-900/30 text-blue-400 border border-blue-700" },
+  paid: { label: "Paga", color: "bg-green-900/30 text-green-400 border border-green-700" },
+  partial: { label: "Parcial", color: "bg-orange-900/30 text-orange-400 border border-orange-700" },
+  overdue: { label: "Vencida", color: "bg-red-900/30 text-red-400 border border-red-700" },
+  cancelled: { label: "Cancelada", color: "bg-gray-800/50 text-gray-500 border border-gray-700" }
 };
 
 const PAYMENT_METHODS = ["Braintree", "Stripe", "GoCardless", "PayPal", "Bank Transfer", "Credit Card", "Other"];
@@ -115,6 +115,10 @@ export default function ARInvoicesPage() {
   const [syncing, setSyncing] = useState(false);
   const [reconciling, setReconciling] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Partial<ARInvoice> | null>(null);
+  const [manualReconcileDialog, setManualReconcileDialog] = useState(false);
+  const [reconcileTarget, setReconcileTarget] = useState<ARInvoice | null>(null);
+  const [reconcileSource, setReconcileSource] = useState("credit-payment");
+  const [reconcileReference, setReconcileReference] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [sortField, setSortField] = useState<string>("invoice_date");
@@ -347,6 +351,61 @@ export default function ARInvoicesPage() {
     }
   };
 
+  // Reconciliação manual
+  const openManualReconcile = (invoice: ARInvoice) => {
+    setReconcileTarget(invoice);
+    setReconcileSource("credit-payment");
+    setReconcileReference("");
+    setManualReconcileDialog(true);
+  };
+
+  const handleManualReconcile = async () => {
+    if (!reconcileTarget) return;
+
+    try {
+      const response = await fetch('/api/reconcile/manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: reconcileTarget.id,
+          paymentSource: reconcileSource,
+          paymentReference: reconcileReference || undefined
+        })
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast({ title: "Sucesso", description: `Invoice ${reconcileTarget.invoice_number} reconciliada manualmente` });
+        setManualReconcileDialog(false);
+        loadInvoices();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleRemoveReconciliation = async (invoice: ARInvoice) => {
+    if (!confirm(`Remover reconciliação de ${invoice.invoice_number}?`)) return;
+
+    try {
+      const response = await fetch(`/api/reconcile/manual?invoiceId=${invoice.id}`, {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        toast({ title: "Sucesso", description: "Reconciliação removida" });
+        loadInvoices();
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message, variant: "destructive" });
+    }
+  };
+
   const handleSave = async () => {
     if (!editingInvoice) return;
     if (!editingInvoice.invoice_number?.trim()) {
@@ -497,243 +556,228 @@ export default function ARInvoicesPage() {
   }
 
   return (
-    <div className="min-h-full px-6 space-y-6 py-6">
-      <Breadcrumbs items={[
-        { label: "Accounts Receivable", href: "/accounts-receivable" },
-        { label: "Invoices" }
-      ]} />
-
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">AR Invoices</h1>
-          <p className="text-sm text-gray-600">Gestão de faturas de clientes - sincronizado com HubSpot</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <div className="min-h-screen bg-[#1e1f21] text-white">
+      {/* Header */}
+      <div className="border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold">AR Invoices</h1>
+            <span className="text-gray-400">•</span>
+            <span className="text-gray-400 text-sm">Contas a Receber</span>
+          </div>
           <ScopeSelector value={selectedScope} onValueChange={setSelectedScope} />
-          <Button variant="outline" size="sm" onClick={runAutoReconcile} disabled={reconciling}>
-            {reconciling ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Link2 className="h-4 w-4 mr-2" />}
-            Reconciliar
-          </Button>
-          <Button variant="outline" size="sm" onClick={syncFromHubSpot} disabled={syncing}>
-            {syncing ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
-            Sync HubSpot
-          </Button>
-          <Button variant="outline" size="sm" onClick={exportToExcel}>
-            <Download className="h-4 w-4 mr-2" /> Export
-          </Button>
-          <Button onClick={() => { setEditingInvoice({ ...EMPTY_INVOICE, scope: selectedScope }); setDialogOpen(true); }}>
-            <Plus className="h-4 w-4 mr-2" /> New Invoice
-          </Button>
         </div>
-      </header>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <Link2 className="h-4 w-4 text-purple-600" /> Reconciliado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-700">€{formatEuropeanNumber(stats.reconciledTotal)}</div>
-            <p className="text-xs text-gray-500">{stats.reconciledCount} invoices ({stats.notReconciledCount} pendentes)</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-blue-600" /> Revenue Total
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">€{formatEuropeanNumber(stats.total)}</div>
-            <p className="text-xs text-gray-500">{stats.totalCount} invoices</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-green-600" /> Pago
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-700">€{formatEuropeanNumber(stats.paidTotal)}</div>
-            <p className="text-xs text-gray-500">{stats.paidCount} invoices</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <Clock className="h-4 w-4 text-yellow-600" /> Pendente
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-yellow-700">€{formatEuropeanNumber(stats.pendingTotal)}</div>
-            <p className="text-xs text-gray-500">{stats.pendingCount} invoices</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-red-600" /> Vencido
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-700">€{formatEuropeanNumber(stats.overdueTotal)}</div>
-            <p className="text-xs text-gray-500">{stats.overdueCount} invoices</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input
-            placeholder="Buscar por número, cliente, empresa, email, produtos..."
-            value={searchTerm}
-            onChange={e => setSearchTerm(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select value={selectedStatus} onValueChange={setSelectedStatus}>
-          <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="ALL">Todos Status</SelectItem>
-            {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-              <SelectItem key={key} value={key}>{config.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" /></div>
-          ) : error ? (
-            <div className="p-8 text-center text-red-500">{error}</div>
-          ) : filteredInvoices.length === 0 ? (
-            <div className="p-8 text-center text-gray-500">Nenhuma invoice encontrada</div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b">
-                  <tr>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Ações</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600 cursor-pointer" onClick={() => handleSort("invoice_number")}>
-                      <div className="flex items-center gap-1">Number <ArrowUpDown className="h-3 w-3" /></div>
-                    </th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600 cursor-pointer" onClick={() => handleSort("invoice_date")}>
-                      <div className="flex items-center gap-1">Order Date <ArrowUpDown className="h-3 w-3" /></div>
-                    </th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Order</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Paid Status</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Status</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Products</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Company</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Client</th>
-                    <th className="px-3 py-3 text-right font-medium text-gray-600">Total</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Payment Method</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Reconciliado</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {filteredInvoices.map(inv => {
-                    const statusConfig = STATUS_CONFIG[inv.status] || STATUS_CONFIG.pending;
-                    return (
-                      <tr key={inv.id} className={`hover:bg-gray-50 ${inv.reconciled ? 'bg-green-50/30' : ''}`}>
-                        <td className="px-3 py-2">
-                          <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(inv)}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(inv.id)}>
-                              <Trash2 className="h-4 w-4 text-red-500" />
-                            </Button>
-                          </div>
-                        </td>
-                        <td className="px-3 py-2 font-mono text-xs">{inv.invoice_number}</td>
-                        <td className="px-3 py-2">{formatDate(inv.invoice_date)}</td>
-                        <td className="px-3 py-2 font-mono text-xs">{inv.order_id || "-"}</td>
-                        <td className="px-3 py-2">{inv.order_status || "-"}</td>
-                        <td className="px-3 py-2">{inv.deal_status || "-"}</td>
-                        <td className="px-3 py-2 max-w-[150px] truncate" title={inv.products || ""}>{inv.products || "-"}</td>
-                        <td className="px-3 py-2">{inv.company_name || "-"}</td>
-                        <td className="px-3 py-2">
-                          <div>{inv.client_name || "-"}</div>
-                          {inv.email && <div className="text-xs text-gray-400">{inv.email}</div>}
-                        </td>
-                        <td className="px-3 py-2 text-right font-medium">
-                          {inv.currency === "EUR" ? "€" : inv.currency === "USD" ? "$" : inv.currency}{formatEuropeanNumber(inv.total_amount)}
-                        </td>
-                        <td className="px-3 py-2">{inv.payment_method || "-"}</td>
-                        <td className="px-3 py-2">
-                          {inv.reconciled ? (
-                            <div className="flex items-center gap-1 text-green-600" title={inv.reconciled_with || ''}>
-                              <Link2 className="h-4 w-4" />
-                              <span className="text-xs">{inv.reconciled_with?.split(':')[0] || 'Yes'}</span>
-                            </div>
-                          ) : (
-                            <Unlink className="h-4 w-4 text-gray-300" />
-                          )}
-                        </td>
-                        <td className="px-3 py-2">
-                          <Badge className={statusConfig.color}>{statusConfig.label}</Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={runAutoReconcile} disabled={reconciling}>
+              {reconciling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
+              Reconciliar
+            </Button>
+            <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={syncFromHubSpot} disabled={syncing}>
+              {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+              Sync
+            </Button>
+            <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={exportToExcel}>
+              <Download className="h-4 w-4 mr-1" /> Export
+            </Button>
+            <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditingInvoice({ ...EMPTY_INVOICE, scope: selectedScope }); setDialogOpen(true); }}>
+              <Plus className="h-4 w-4 mr-1" /> Nova
+            </Button>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+                className="pl-9 w-64 bg-transparent border-gray-600 text-white placeholder:text-gray-500"
+              />
             </div>
-          )}
-        </CardContent>
-      </Card>
+            <Select value={selectedStatus} onValueChange={setSelectedStatus}>
+              <SelectTrigger className="w-[130px] bg-transparent border-gray-600 text-white"><SelectValue /></SelectTrigger>
+              <SelectContent className="bg-gray-800 border-gray-700">
+                <SelectItem value="ALL" className="text-white hover:bg-gray-700">Todos</SelectItem>
+                {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                  <SelectItem key={key} value={key} className="text-white hover:bg-gray-700">{config.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+
+      {/* Summary Stats Bar */}
+      <div className="flex items-center gap-6 px-6 py-3 bg-[#2a2b2d] border-b border-gray-700 text-sm">
+        <div className="flex items-center gap-2">
+          <Link2 className="h-4 w-4 text-purple-400" />
+          <span className="text-gray-400">Reconciliado:</span>
+          <span className="text-purple-400 font-semibold">€{formatEuropeanNumber(stats.reconciledTotal)}</span>
+          <span className="text-gray-500 text-xs">({stats.reconciledCount})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <DollarSign className="h-4 w-4 text-blue-400" />
+          <span className="text-gray-400">Total:</span>
+          <span className="text-white font-semibold">€{formatEuropeanNumber(stats.total)}</span>
+          <span className="text-gray-500 text-xs">({stats.totalCount})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <CheckCircle2 className="h-4 w-4 text-green-400" />
+          <span className="text-gray-400">Pago:</span>
+          <span className="text-green-400 font-semibold">€{formatEuropeanNumber(stats.paidTotal)}</span>
+          <span className="text-gray-500 text-xs">({stats.paidCount})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-yellow-400" />
+          <span className="text-gray-400">Pendente:</span>
+          <span className="text-yellow-400 font-semibold">€{formatEuropeanNumber(stats.pendingTotal)}</span>
+          <span className="text-gray-500 text-xs">({stats.pendingCount})</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <AlertCircle className="h-4 w-4 text-red-400" />
+          <span className="text-gray-400">Vencido:</span>
+          <span className="text-red-400 font-semibold">€{formatEuropeanNumber(stats.overdueTotal)}</span>
+          <span className="text-gray-500 text-xs">({stats.overdueCount})</span>
+        </div>
+      </div>
+
+      {/* Table Header */}
+      <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
+        <div className="flex items-center gap-1 px-3 py-2 text-[10px] text-gray-400 font-medium uppercase">
+          <div className="w-[55px] flex-shrink-0"></div>
+          <div className="w-[100px] flex-shrink-0 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_number")}>Invoice</div>
+          <div className="w-[70px] flex-shrink-0 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_date")}>Date</div>
+          <div className="w-[65px] flex-shrink-0">Order</div>
+          <div className="w-[55px] flex-shrink-0">Paid</div>
+          <div className="w-[70px] flex-shrink-0">Deal</div>
+          <div className="w-[140px] flex-shrink-0">Products</div>
+          <div className="w-[100px] flex-shrink-0">Company</div>
+          <div className="w-[120px] flex-shrink-0">Client</div>
+          <div className="w-[85px] flex-shrink-0 text-right">Total</div>
+          <div className="w-[70px] flex-shrink-0">Rec</div>
+          <div className="w-[65px] flex-shrink-0">Status</div>
+        </div>
+      </div>
+
+      {/* Table Content */}
+      <div className="flex-1 overflow-auto pb-20">
+        {loading ? (
+          <div className="p-8 text-center"><Loader2 className="h-8 w-8 animate-spin mx-auto text-gray-400" /></div>
+        ) : error ? (
+          <div className="p-8 text-center text-red-400">{error}</div>
+        ) : filteredInvoices.length === 0 ? (
+          <div className="p-8 text-center text-gray-500">Nenhuma invoice encontrada</div>
+        ) : (
+          filteredInvoices.map(inv => {
+            const statusConfig = STATUS_CONFIG[inv.status] || STATUS_CONFIG.pending;
+            return (
+              <div
+                key={inv.id}
+                className={`flex items-center gap-1 px-3 py-1.5 border-b border-gray-800/50 hover:bg-gray-800/30 text-[11px] ${inv.reconciled ? 'bg-green-900/10' : ''}`}
+              >
+                {/* Actions */}
+                <div className="w-[55px] flex-shrink-0 flex items-center gap-0.5">
+                  <button onClick={() => handleEdit(inv)} className="p-1 text-gray-500 hover:text-white">
+                    <Pencil className="h-3 w-3" />
+                  </button>
+                  <button onClick={() => handleDelete(inv.id)} className="p-1 text-gray-500 hover:text-red-400">
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+                {/* Invoice */}
+                <div className="w-[100px] flex-shrink-0 font-mono text-gray-300 truncate" title={inv.invoice_number}>{inv.invoice_number.replace('HS-', '')}</div>
+                {/* Date */}
+                <div className="w-[70px] flex-shrink-0 text-gray-400">{formatDate(inv.invoice_date)}</div>
+                {/* Order */}
+                <div className="w-[65px] flex-shrink-0 font-mono text-gray-500 truncate">{inv.order_id || "-"}</div>
+                {/* Paid Status */}
+                <div className="w-[55px] flex-shrink-0">
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded ${inv.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
+                      inv.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
+                        'bg-gray-700/50 text-gray-400'
+                    }`}>{inv.order_status || "-"}</span>
+                </div>
+                {/* Deal Status */}
+                <div className="w-[70px] flex-shrink-0 text-gray-500 truncate">{inv.deal_status || "-"}</div>
+                {/* Products */}
+                <div className="w-[140px] flex-shrink-0 text-gray-400 truncate" title={inv.products || ""}>{inv.products || "-"}</div>
+                {/* Company */}
+                <div className="w-[100px] flex-shrink-0 text-gray-300 truncate" title={inv.company_name || ""}>{inv.company_name || "-"}</div>
+                {/* Client */}
+                <div className="w-[120px] flex-shrink-0 truncate">
+                  <span className="text-gray-300">{inv.client_name || "-"}</span>
+                  {inv.email && <span className="text-gray-600 ml-1 text-[9px]">{inv.email.split('@')[0]}</span>}
+                </div>
+                {/* Total */}
+                <div className="w-[85px] flex-shrink-0 text-right font-medium text-white">
+                  <span className={inv.currency === "EUR" ? "text-blue-400" : "text-green-400"}>{inv.currency === "EUR" ? "€" : "$"}</span>
+                  {formatEuropeanNumber(inv.total_amount)}
+                </div>
+                {/* Reconciliation */}
+                <div className="w-[70px] flex-shrink-0">
+                  {inv.reconciled ? (
+                    <div className="flex items-center gap-0.5">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-400 border border-green-700/50">{inv.reconciled_with?.split(':')[0] || 'Yes'}</span>
+                      <button onClick={() => handleRemoveReconciliation(inv)} className="p-0.5 text-gray-600 hover:text-red-400"><X className="h-2.5 w-2.5" /></button>
+                    </div>
+                  ) : (
+                    <button onClick={() => openManualReconcile(inv)} className="p-1 text-gray-600 hover:text-purple-400" title="Reconciliar"><Link2 className="h-3 w-3" /></button>
+                  )}
+                </div>
+                {/* Status */}
+                <div className="w-[65px] flex-shrink-0">
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded ${statusConfig.color}`}>{statusConfig.label}</span>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
 
       {/* Edit/Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#2a2b2d] border-gray-700 text-white">
           <DialogHeader>
-            <DialogTitle>{editingInvoice?.id ? "Editar Invoice" : "Nova Invoice"}</DialogTitle>
-            <DialogDescription>Campos do relatório HubSpot/Backend</DialogDescription>
+            <DialogTitle className="text-white">{editingInvoice?.id ? "Editar Invoice" : "Nova Invoice"}</DialogTitle>
+            <DialogDescription className="text-gray-400">Campos do relatório HubSpot/Backend</DialogDescription>
           </DialogHeader>
 
           {editingInvoice && (
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Invoice Number *</Label>
+                <Label className="text-gray-300">Invoice Number *</Label>
                 <Input
                   value={editingInvoice.invoice_number || ""}
                   onChange={e => setEditingInvoice({ ...editingInvoice, invoice_number: e.target.value })}
                   placeholder="#DSDFS4F46AC9-53077"
+                  className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Order ID</Label>
+                <Label className="text-gray-300">Order ID</Label>
                 <Input
                   value={editingInvoice.order_id || ""}
                   onChange={e => setEditingInvoice({ ...editingInvoice, order_id: e.target.value })}
                   placeholder="4f46ac9"
+                  className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Order Date</Label>
+                <Label className="text-gray-300">Order Date</Label>
                 <Input
                   type="date"
                   value={editingInvoice.order_date || ""}
                   onChange={e => setEditingInvoice({ ...editingInvoice, order_date: e.target.value })}
+                  className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
               <div className="space-y-2">
-                <Label>Invoice Date *</Label>
+                <Label className="text-gray-300">Invoice Date *</Label>
                 <Input
                   type="date"
                   value={editingInvoice.invoice_date || ""}
                   onChange={e => setEditingInvoice({ ...editingInvoice, invoice_date: e.target.value })}
+                  className="bg-gray-800 border-gray-600 text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -873,10 +917,64 @@ export default function ARInvoicesPage() {
           )}
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancelar</Button>
-            <Button onClick={handleSave} disabled={saving}>
+            <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setDialogOpen(false)}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Reconciliation Dialog */}
+      <Dialog open={manualReconcileDialog} onOpenChange={setManualReconcileDialog}>
+        <DialogContent className="max-w-md bg-[#2a2b2d] border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white">Reconciliação Manual</DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {reconcileTarget && (
+                <span>
+                  {reconcileTarget.invoice_number} • <span className={reconcileTarget.currency === "EUR" ? "text-blue-400" : "text-green-400"}>{reconcileTarget.currency === "EUR" ? "€" : "$"}{formatEuropeanNumber(reconcileTarget.total_amount)}</span>
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-gray-300">Fonte do Pagamento</Label>
+              <Select value={reconcileSource} onValueChange={setReconcileSource}>
+                <SelectTrigger className="bg-gray-800 border-gray-600 text-white"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-gray-800 border-gray-700">
+                  <SelectItem value="credit-payment" className="text-white hover:bg-gray-700">Credit Payment (crédito interno)</SelectItem>
+                  <SelectItem value="bank-transfer" className="text-white hover:bg-gray-700">Bank Transfer (transferência)</SelectItem>
+                  <SelectItem value="hubspot-confirmed" className="text-white hover:bg-gray-700">HubSpot Confirmed (paid_status)</SelectItem>
+                  <SelectItem value="check" className="text-white hover:bg-gray-700">Check (cheque)</SelectItem>
+                  <SelectItem value="cash" className="text-white hover:bg-gray-700">Cash (dinheiro)</SelectItem>
+                  <SelectItem value="other" className="text-white hover:bg-gray-700">Other (outro)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-gray-300">Referência do Pagamento</Label>
+              <Input
+                value={reconcileReference}
+                onChange={e => setReconcileReference(e.target.value)}
+                placeholder="Ex: ID da transação, número do cheque..."
+                className="bg-gray-800 border-gray-600 text-white placeholder:text-gray-500"
+              />
+              <p className="text-xs text-gray-500">
+                Opcional. Se vazio, será gerado automaticamente.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setManualReconcileDialog(false)}>Cancelar</Button>
+            <Button onClick={handleManualReconcile} className="bg-purple-600 hover:bg-purple-700">
+              <Link2 className="h-4 w-4 mr-2" />
+              Reconciliar
             </Button>
           </DialogFooter>
         </DialogContent>

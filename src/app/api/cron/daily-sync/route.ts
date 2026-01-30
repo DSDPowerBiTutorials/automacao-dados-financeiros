@@ -447,7 +447,7 @@ export async function GET(req: NextRequest) {
             results.push({
                 name: "Reconciliation",
                 success: true,
-                message: `BT: ${result.summary.bySource.braintree}, ST: ${result.summary.bySource.stripe}, GC: ${result.summary.bySource.gocardless}`,
+                message: `BT: ${result.summary.bySource.braintree}, ST: ${result.summary.bySource.stripe}, GC: ${result.summary.bySource.gocardless}, HS: ${result.summary.bySource.hubspot_confirmed || 0}`,
                 count: result.summary.updated,
                 duration_ms: Date.now() - reconcileStart,
             });

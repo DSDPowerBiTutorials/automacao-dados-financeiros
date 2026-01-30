@@ -140,7 +140,7 @@ export async function POST(req: NextRequest) {
 
         // Fazer matching
         const matches: Match[] = [];
-        const stats = { braintree: 0, stripe: 0, gocardless: 0 };
+        const stats = { braintree: 0, stripe: 0, gocardless: 0, hubspot_confirmed: 0 };
         const matchedInvoiceIds = new Set<number>();
 
         for (const payment of allPayments) {
@@ -201,6 +201,39 @@ export async function POST(req: NextRequest) {
                     payment_amount: payment.amount,
                     invoice_amount: invoice.total_amount,
                     match_type: matchType
+                });
+            }
+        }
+
+        // 4. Reconciliar por HubSpot order_status para Credit Payment e outros
+        // Invoices com order_status = "Paid" que não foram matchadas por gateway
+        for (const inv of invoices) {
+            if (matchedInvoiceIds.has(inv.id)) continue;
+
+            // Check order_status from HubSpot sync (campo que indica pagamento)
+            const orderStatus = inv.order_status;
+            const paymentMethod = (inv.payment_method || '').toLowerCase();
+
+            // Se order_status = Paid e não foi matchado por gateway
+            if (orderStatus === 'Paid') {
+                // Determinar fonte baseado no payment_method
+                let source = 'hubspot-confirmed';
+                if (paymentMethod.includes('credit')) {
+                    source = 'credit-payment';
+                } else if (paymentMethod.includes('transfer') || paymentMethod.includes('bank')) {
+                    source = 'bank-transfer';
+                }
+
+                matchedInvoiceIds.add(inv.id);
+                stats.hubspot_confirmed++;
+                matches.push({
+                    invoice_id: inv.id,
+                    invoice_number: inv.invoice_number,
+                    payment_source: source,
+                    transaction_id: `hubspot-${inv.hubspot_id || inv.id}`,
+                    payment_amount: inv.total_amount,
+                    invoice_amount: inv.total_amount,
+                    match_type: 'hubspot_paid_status'
                 });
             }
         }
