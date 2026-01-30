@@ -119,13 +119,27 @@ export default function ARInvoicesPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from("ar_invoices")
-        .select("*")
-        .order("invoice_date", { ascending: false });
+      // Buscar TODOS os registros usando paginação
+      let allData: any[] = [];
+      let offset = 0;
+      const batchSize = 1000;
 
-      if (error) throw error;
-      setInvoices(data || []);
+      while (true) {
+        const { data, error } = await supabase
+          .from("ar_invoices")
+          .select("*")
+          .order("invoice_date", { ascending: false })
+          .range(offset, offset + batchSize - 1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+
+        allData = allData.concat(data);
+        if (data.length < batchSize) break;
+        offset += batchSize;
+      }
+
+      setInvoices(allData);
     } catch (e: any) {
       if (e?.message?.includes("does not exist") || e?.code === "42P01") {
         setError("Tabela ar_invoices não existe. Execute a migration SQL primeiro.");
