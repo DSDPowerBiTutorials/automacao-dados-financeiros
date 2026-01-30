@@ -262,37 +262,60 @@ export default function BankinterEURPage() {
   // Load linked orders when a reconciled credit transaction is selected
   useEffect(() => {
     const loadLinkedOrders = async () => {
-      if (!selectedRow || !selectedRow.reconciled || selectedRow.amount <= 0) {
+      if (!selectedRow || !selectedRow.reconciled) {
         setLinkedOrders([])
         return
       }
 
-      // Check if this bank row has a disbursement link
+      // Check if this bank row has a disbursement link or settlement batch ID
       const customData = selectedRow.custom_data as Record<string, unknown> || {}
       const disbursementId = (customData.disbursement_id || customData.disbursement_matched) as string | undefined
-      if (!disbursementId) {
+      const settlementBatchId = selectedRow.braintreeSettlementBatchId || customData.settlement_batch_id as string | undefined
+      const paymentSource = selectedRow.paymentSource || customData.paymentSource as string | undefined
+      
+      if (!disbursementId && !settlementBatchId) {
         setLinkedOrders([])
         return
       }
 
       setLoadingLinkedOrders(true)
       try {
-        // First, get the disbursement record to find transaction_ids
-        const { data: disbursement, error: disbError } = await supabase
-          .from("csv_rows")
-          .select("*")
-          .eq("source", "braintree-api-disbursement")
-          .eq("id", disbursementId)
-          .single()
+        let transactionIds: string[] = []
+        
+        // Method 1: Get transactions from disbursement record
+        if (disbursementId) {
+          const { data: disbursement, error: disbError } = await supabase
+            .from("csv_rows")
+            .select("*")
+            .eq("source", "braintree-api-disbursement")
+            .eq("id", disbursementId)
+            .single()
 
-        if (disbError || !disbursement) {
-          console.error("Disbursement not found:", disbError)
-          setLinkedOrders([])
-          setLoadingLinkedOrders(false)
-          return
+          if (!disbError && disbursement) {
+            transactionIds = (disbursement.custom_data as Record<string, unknown>)?.transaction_ids as string[] || []
+          }
         }
-
-        const transactionIds = (disbursement.custom_data as Record<string, unknown>)?.transaction_ids as string[] || []
+        
+        // Method 2: If no transactions from disbursement, try settlement_batch_id
+        if (transactionIds.length === 0 && settlementBatchId) {
+          // Get all Braintree transactions with this settlement_batch_id
+          const { data: batchTxs, error: batchError } = await supabase
+            .from("csv_rows")
+            .select("*")
+            .or(`source.eq.braintree-api-revenue,source.eq.braintree-eur,source.eq.braintree-usd`)
+          
+          if (!batchError && batchTxs) {
+            const matchedByBatch = batchTxs.filter((tx) => {
+              const txData = tx.custom_data as Record<string, unknown> || {}
+              return txData.settlement_batch_id === settlementBatchId || 
+                     txData.settlementBatchId === settlementBatchId
+            })
+            transactionIds = matchedByBatch.map((tx) => {
+              const txData = tx.custom_data as Record<string, unknown> || {}
+              return txData.transaction_id as string || tx.id
+            }).filter(Boolean)
+          }
+        }
 
         if (transactionIds.length === 0) {
           setLinkedOrders([])
@@ -304,14 +327,15 @@ export default function BankinterEURPage() {
         const { data: braintreeTxs, error: btError } = await supabase
           .from("csv_rows")
           .select("*")
-          .eq("source", "braintree-api-revenue")
+          .or(`source.eq.braintree-api-revenue,source.eq.braintree-eur,source.eq.braintree-usd`)
 
         if (btError) throw btError
 
-        // Filter transactions that are in this disbursement
+        // Filter transactions that are in this disbursement/settlement
         const matchedTxs = (braintreeTxs || []).filter((tx) => {
           const txData = tx.custom_data as Record<string, unknown> || {}
-          return transactionIds.includes(txData.transaction_id as string)
+          return transactionIds.includes(txData.transaction_id as string) || 
+                 transactionIds.includes(tx.id)
         })
 
         // Get order IDs from transactions
@@ -1812,12 +1836,12 @@ export default function BankinterEURPage() {
               </div>
             )}
 
-            {/* Linked Orders Section - Shows orders that compose this payment */}
-            {selectedRow.reconciled && selectedRow.amount > 0 && (linkedOrders.length > 0 || loadingLinkedOrders) && (
+            {/* Linked Orders Section - Shows orders that compose this payment/disbursement */}
+            {selectedRow.reconciled && (linkedOrders.length > 0 || loadingLinkedOrders) && (
               <div className="px-4 py-4 space-y-3 bg-blue-900/10 border-t border-gray-800">
                 <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-2">
                   <FileText className="h-4 w-4" />
-                  Orders in this Payment ({linkedOrders.length})
+                  {selectedRow.amount > 0 ? "Orders in this Payment" : "Orders in this Disbursement"} ({linkedOrders.length})
                 </h3>
 
                 {loadingLinkedOrders ? (
