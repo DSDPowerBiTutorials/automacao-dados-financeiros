@@ -7,6 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { NAV, type NavGroup, type NavItem } from "@/config/navigation";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { NotificationBell } from "@/components/notifications/NotificationBell";
+import { DataFreshnessIndicator } from "@/components/sync/DataFreshnessIndicator";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { SCOPE_CONFIG } from "@/lib/scope-utils";
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
@@ -156,6 +157,11 @@ export function TablerTopbar({
           <div className="d-flex align-items-center gap-2">
             {/* Mailbox (Notificações) */}
             <NotificationBell />
+
+            {/* Data Freshness Indicator (produção usa este Topbar) */}
+            <div className="d-inline-flex align-items-center">
+              <DataFreshnessIndicator collapsed placement="topbar" />
+            </div>
 
             {/* User Menu (Avatar) */}
             <UserMenu />

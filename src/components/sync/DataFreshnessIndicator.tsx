@@ -101,9 +101,10 @@ const STATUS_CONFIG = {
 
 interface DataFreshnessIndicatorProps {
     collapsed?: boolean;
+    placement?: "sidebar" | "topbar";
 }
 
-export function DataFreshnessIndicator({ collapsed = false }: DataFreshnessIndicatorProps) {
+export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar" }: DataFreshnessIndicatorProps) {
     const { toast } = useToast();
     const [data, setData] = useState<DataFreshnessResponse | null>(null);
     const [loading, setLoading] = useState(true);
@@ -259,10 +260,10 @@ export function DataFreshnessIndicator({ collapsed = false }: DataFreshnessIndic
                 </button>
             </PopoverTrigger>
             <PopoverContent
-                side="right"
-                align="start"
+                side={placement === "topbar" ? "bottom" : "right"}
+                align={placement === "topbar" ? "end" : "start"}
                 className="!bg-[#1a1b1d] border-gray-700 w-96 p-0 shadow-2xl"
-                sideOffset={12}
+                sideOffset={placement === "topbar" ? 8 : 12}
             >
                 {/* Header */}
                 <div className="p-4 border-b border-gray-700 bg-gray-800/50">
