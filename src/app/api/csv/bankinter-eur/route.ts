@@ -190,13 +190,6 @@ export async function POST(request: NextRequest) {
                     return null
                 }
 
-                // Aplicar +1 dia conforme solicitado
-                const isoDatePlusOne = (() => {
-                    const dt = new Date(`${isoDate}T00:00:00Z`)
-                    dt.setUTCDate(dt.getUTCDate() + 1)
-                    return dt.toISOString().split("T")[0]
-                })()
-
                 // Parse valores monetários - formato europeu: 1.234,56 ou -2.636,09
                 const parseAmount = (val: any): number => {
                     if (val === null || val === undefined || val === "") return 0
@@ -258,7 +251,7 @@ export async function POST(request: NextRequest) {
                 return {
                     source: "bankinter-eur",
                     file_name: file.name,
-                    date: isoDatePlusOne, // FECHA VALOR +1 dia conforme solicitado
+                    date: isoDate, // FECHA VALOR exata do extrato
                     description: descripcion || "Sin descripción",
                     amount: amount.toString(),
                     category: categoria || "Other",
@@ -268,7 +261,7 @@ export async function POST(request: NextRequest) {
                         fecha_contable: fechaContableRaw, // referência
                         fecha_contable_iso: fechaContableISO,
                         fecha_valor: fechaValorRaw,    // FECHA VALOR bruta (original)
-                        fecha_valor_iso: isoDatePlusOne, // FECHA VALOR +1 dia
+                        fecha_valor_iso: isoDate, // FECHA VALOR exata
                         debe,
                         haber,
                         importe,
