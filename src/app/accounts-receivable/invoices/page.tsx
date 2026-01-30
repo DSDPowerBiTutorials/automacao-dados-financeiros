@@ -649,7 +649,7 @@ export default function ARInvoicesPage() {
           <div className="w-[70px] flex-shrink-0 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_date")}>Date</div>
           <div className="w-[65px] flex-shrink-0">Order</div>
           <div className="w-[55px] flex-shrink-0">Paid</div>
-          <div className="w-[70px] flex-shrink-0">Deal</div>
+          <div className="w-[70px] flex-shrink-0">Order Status</div>
           <div className="w-[140px] flex-shrink-0">Products</div>
           <div className="w-[100px] flex-shrink-0">Company</div>
           <div className="w-[120px] flex-shrink-0">Client</div>
@@ -693,8 +693,8 @@ export default function ARInvoicesPage() {
                 {/* Paid Status */}
                 <div className="w-[55px] flex-shrink-0">
                   <span className={`text-[9px] px-1.5 py-0.5 rounded ${inv.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
-                      inv.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
-                        'bg-gray-700/50 text-gray-400'
+                    inv.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
+                      'bg-gray-700/50 text-gray-400'
                     }`}>{inv.order_status || "-"}</span>
                 </div>
                 {/* Deal Status */}

@@ -39,18 +39,25 @@ function getDealStatus(stageId, paidStatus, hsClosedWon) {
     const stage = stageId.toString();
     const paid = (paidStatus || '').toLowerCase();
 
+    // Cancelled stages
     if (stage === 'cancelled' || stage === '1203581036' || stage === '1065782349') return 'Cancelled';
+
+    // Credit Order - APENAS dealstage específico 1031801652
     if (stage === '1031801652') return 'Credit Order';
+
+    // Shipped stages
     if (stage === 'checkout_completed' || stage === 'closedwon') return 'Shipped';
+
+    // Outstanding Payment stages
     if (stage === 'checkout_pending' || stage === '1031823104' || stage === '1065782348') return 'Outstanding Payment';
+
+    // Subscription Plan stages
     if (stage === '1067293738' || stage === '1065782346' || stage === '1065782350') return 'Subscription Plan';
 
+    // Fallback baseado em paid_status (para outros stages como 108197790)
     if (paid === 'paid') return 'Shipped';
     if (paid === 'partial') return 'Outstanding Payment';
-    if (paid === 'unpaid') {
-        if (hsClosedWon === false) return 'Credit Order';
-        return 'Outstanding Payment';
-    }
+    if (paid === 'unpaid') return 'Outstanding Payment';  // Unpaid sem stage específico = Outstanding
 
     return STAGE_MAPPING[stage] || 'New';
 }
@@ -111,16 +118,22 @@ async function syncHubSpot() {
 
     console.log(`📊 Após filtro de data (01/12/2025 - ${today.toISOString().split('T')[0]}): ${validOrders.length}`);
 
-    // 4. FILTROS DE QUALIDADE - Apenas orders de e-commerce reais
+    // 4. FILTROS DE QUALIDADE - Apenas orders de e-commerce reais + Credit Orders
     const beforeFilter = validOrders.length;
     validOrders = validOrders.filter(order => {
         const cd = order.custom_data || {};
         const dealname = (cd.dealname || "").toUpperCase();
         const orderCode = (cd.order_code || "").toUpperCase();
+        const dealstage = (cd.dealstage || "").toString();
 
         // Excluir TEST_ orders
         if (dealname.startsWith('TEST_') || orderCode.startsWith('TEST_')) {
             return false;
+        }
+
+        // Incluir Credit Orders mesmo que ecommerce_deal = false
+        if (dealstage === '1031801652') {
+            return true; // Credit Order - sempre incluir
         }
 
         // Excluir se ecommerce_deal = false (não é order de produção)
@@ -131,7 +144,7 @@ async function syncHubSpot() {
         return true;
     });
 
-    console.log(`📊 Após filtros (TEST_ + ecommerce_deal): ${validOrders.length} (removidos: ${beforeFilter - validOrders.length})`);
+    console.log(`📊 Após filtros (TEST_ + ecommerce_deal, inclui Credit Orders): ${validOrders.length} (removidos: ${beforeFilter - validOrders.length})`);
 
     // 5. Funções auxiliares
     const mapStatus = (paidStatus) => {
