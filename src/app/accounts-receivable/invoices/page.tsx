@@ -1079,7 +1079,7 @@ export default function ARInvoicesPage() {
 
       {/* Transaction Details Dialog */}
       <Dialog open={transactionDetailsDialog} onOpenChange={setTransactionDetailsDialog}>
-        <DialogContent className="max-w-2xl bg-[#2a2b2d] border-gray-700 text-white">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto bg-[#2a2b2d] border-gray-700 text-white">
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Eye className="h-5 w-5 text-blue-400" />
@@ -1094,13 +1094,13 @@ export default function ARInvoicesPage() {
             </DialogDescription>
           </DialogHeader>
 
-          {loadingTransactionDetails ? (
-            <div className="py-8 text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-400" />
-              <p className="text-gray-400 mt-2">Carregando detalhes...</p>
-            </div>
-          ) : transactionDetails?.type === 'manual' ? (
-            <div className="space-y-4">
+          <div className="space-y-4">
+            {loadingTransactionDetails ? (
+              <div className="py-8 text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-400" />
+                <p className="text-gray-400 mt-2">Carregando detalhes...</p>
+              </div>
+            ) : transactionDetails?.type === 'manual' ? (
               <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
                 <h4 className="text-sm font-medium text-gray-300 mb-3">Reconciliação Manual</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
@@ -1125,128 +1125,128 @@ export default function ARInvoicesPage() {
                   </div>
                 </div>
               </div>
-            </div>
-          ) : transactionDetails?.type === 'payment' ? (
-            <div className="space-y-4">
-              <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
-                <div className="flex items-center justify-between mb-3">
-                  <h4 className="text-sm font-medium text-gray-300">Transação {transactionDetails.source.toUpperCase()}</h4>
-                  {transactionDetails.source === 'braintree' && transactionDetails.custom_data?.transaction_id && (
-                    <a
-                      href={`https://www.braintreegateway.com/merchants/plncntrspdsd/transactions/${transactionDetails.custom_data.transaction_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Abrir no Braintree
-                    </a>
-                  )}
-                  {transactionDetails.source === 'gocardless' && transactionDetails.custom_data?.payment_id && (
-                    <a
-                      href={`https://manage.gocardless.com/payments/${transactionDetails.custom_data.payment_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Abrir no GoCardless
-                    </a>
-                  )}
-                  {transactionDetails.source === 'stripe' && transactionDetails.custom_data?.charge_id && (
-                    <a
-                      href={`https://dashboard.stripe.com/payments/${transactionDetails.custom_data.charge_id}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Abrir no Stripe
-                    </a>
-                  )}
-                </div>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <span className="text-gray-500">Transaction ID:</span>
-                    <span className="ml-2 text-white font-mono text-xs">
-                      {transactionDetails.custom_data?.transaction_id || transactionDetails.custom_data?.payment_id || transactionDetails.custom_data?.charge_id || 'N/A'}
-                    </span>
+            ) : transactionDetails?.type === 'payment' ? (
+              <>
+                <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-sm font-medium text-gray-300">Transação {transactionDetails.source.toUpperCase()}</h4>
+                    {transactionDetails.source === 'braintree' && transactionDetails.custom_data?.transaction_id && (
+                      <a
+                        href={`https://www.braintreegateway.com/merchants/plncntrspdsd/transactions/${transactionDetails.custom_data.transaction_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Abrir no Braintree
+                      </a>
+                    )}
+                    {transactionDetails.source === 'gocardless' && transactionDetails.custom_data?.payment_id && (
+                      <a
+                        href={`https://manage.gocardless.com/payments/${transactionDetails.custom_data.payment_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Abrir no GoCardless
+                      </a>
+                    )}
+                    {transactionDetails.source === 'stripe' && transactionDetails.custom_data?.charge_id && (
+                      <a
+                        href={`https://dashboard.stripe.com/payments/${transactionDetails.custom_data.charge_id}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Abrir no Stripe
+                      </a>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-gray-500">Status:</span>
-                    <span className={`ml-2 px-2 py-0.5 rounded text-xs ${transactionDetails.custom_data?.status === 'settled' || transactionDetails.custom_data?.status === 'confirmed' || transactionDetails.custom_data?.status === 'succeeded'
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-gray-500">Transaction ID:</span>
+                      <span className="ml-2 text-white font-mono text-xs">
+                        {transactionDetails.custom_data?.transaction_id || transactionDetails.custom_data?.payment_id || transactionDetails.custom_data?.charge_id || 'N/A'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-gray-500">Status:</span>
+                      <span className={`ml-2 px-2 py-0.5 rounded text-xs ${transactionDetails.custom_data?.status === 'settled' || transactionDetails.custom_data?.status === 'confirmed' || transactionDetails.custom_data?.status === 'succeeded'
                         ? 'bg-green-900/30 text-green-400'
                         : 'bg-yellow-900/30 text-yellow-400'
-                      }`}>
-                      {transactionDetails.custom_data?.status || 'N/A'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Valor:</span>
-                    <span className="ml-2 text-green-400 font-medium">
-                      {transactionDetails.custom_data?.currency || transactionDetails.transaction?.currency || 'EUR'} {formatEuropeanNumber(parseFloat(transactionDetails.transaction?.amount) || 0)}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-500">Data:</span>
-                    <span className="ml-2 text-white">{formatDate(transactionDetails.transaction?.date)}</span>
-                  </div>
-                  {transactionDetails.custom_data?.customer_name && (
-                    <div>
-                      <span className="text-gray-500">Cliente:</span>
-                      <span className="ml-2 text-white">{transactionDetails.custom_data.customer_name}</span>
+                        }`}>
+                        {transactionDetails.custom_data?.status || 'N/A'}
+                      </span>
                     </div>
-                  )}
-                  {transactionDetails.custom_data?.customer_email && (
                     <div>
-                      <span className="text-gray-500">Email:</span>
-                      <span className="ml-2 text-gray-300 text-xs">{transactionDetails.custom_data.customer_email}</span>
+                      <span className="text-gray-500">Valor:</span>
+                      <span className="ml-2 text-green-400 font-medium">
+                        {transactionDetails.custom_data?.currency || transactionDetails.transaction?.currency || 'EUR'} {formatEuropeanNumber(parseFloat(transactionDetails.transaction?.amount) || 0)}
+                      </span>
                     </div>
-                  )}
-                  {transactionDetails.custom_data?.payment_method && (
                     <div>
-                      <span className="text-gray-500">Método:</span>
-                      <span className="ml-2 text-white">{transactionDetails.custom_data.payment_method}</span>
+                      <span className="text-gray-500">Data:</span>
+                      <span className="ml-2 text-white">{formatDate(transactionDetails.transaction?.date)}</span>
                     </div>
-                  )}
-                  {transactionDetails.custom_data?.order_id && (
-                    <div>
-                      <span className="text-gray-500">Order ID:</span>
-                      <span className="ml-2 text-white font-mono text-xs">{transactionDetails.custom_data.order_id}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Additional Details */}
-              <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-700/50">
-                <h4 className="text-xs font-medium text-gray-400 mb-2">Dados Adicionais</h4>
-                <div className="text-xs text-gray-500 space-y-1 max-h-32 overflow-auto">
-                  {Object.entries(transactionDetails.custom_data || {})
-                    .filter(([key]) => !['transaction_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency'].includes(key))
-                    .slice(0, 10)
-                    .map(([key, value]) => (
-                      <div key={key} className="flex">
-                        <span className="text-gray-600 w-36 flex-shrink-0">{key}:</span>
-                        <span className="text-gray-400 truncate">{String(value)}</span>
+                    {transactionDetails.custom_data?.customer_name && (
+                      <div>
+                        <span className="text-gray-500">Cliente:</span>
+                        <span className="ml-2 text-white">{transactionDetails.custom_data.customer_name}</span>
                       </div>
-                    ))}
+                    )}
+                    {transactionDetails.custom_data?.customer_email && (
+                      <div>
+                        <span className="text-gray-500">Email:</span>
+                        <span className="ml-2 text-gray-300 text-xs">{transactionDetails.custom_data.customer_email}</span>
+                      </div>
+                    )}
+                    {transactionDetails.custom_data?.payment_method && (
+                      <div>
+                        <span className="text-gray-500">Método:</span>
+                        <span className="ml-2 text-white">{transactionDetails.custom_data.payment_method}</span>
+                      </div>
+                    )}
+                    {transactionDetails.custom_data?.order_id && (
+                      <div>
+                        <span className="text-gray-500">Order ID:</span>
+                        <span className="ml-2 text-white font-mono text-xs">{transactionDetails.custom_data.order_id}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
+
+                {/* Additional Details */}
+                <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-700/50">
+                  <h4 className="text-xs font-medium text-gray-400 mb-2">Dados Adicionais</h4>
+                  <div className="text-xs text-gray-500 space-y-1 max-h-32 overflow-auto">
+                    {Object.entries(transactionDetails.custom_data || {})
+                      .filter(([key]) => !['transaction_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency'].includes(key))
+                      .slice(0, 10)
+                      .map(([key, value]) => (
+                        <div key={key} className="flex">
+                          <span className="text-gray-600 w-36 flex-shrink-0">{key}:</span>
+                          <span className="text-gray-400 truncate">{String(value)}</span>
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </>
+            ) : transactionDetails?.type === 'not_found' ? (
+              <div className="py-8 text-center">
+                <AlertCircle className="h-8 w-8 mx-auto text-yellow-400" />
+                <p className="text-gray-400 mt-2">Transação não encontrada</p>
+                <p className="text-gray-500 text-sm mt-1">ID: {transactionDetails.transactionId}</p>
               </div>
-            </div>
-          ) : transactionDetails?.type === 'not_found' ? (
-            <div className="py-8 text-center">
-              <AlertCircle className="h-8 w-8 mx-auto text-yellow-400" />
-              <p className="text-gray-400 mt-2">Transação não encontrada</p>
-              <p className="text-gray-500 text-sm mt-1">ID: {transactionDetails.transactionId}</p>
-            </div>
-          ) : transactionDetails?.type === 'error' ? (
-            <div className="py-8 text-center">
-              <AlertCircle className="h-8 w-8 mx-auto text-red-400" />
-              <p className="text-gray-400 mt-2">Erro ao carregar detalhes</p>
-              <p className="text-red-400 text-sm mt-1">{transactionDetails.error}</p>
-            </div>
-          ) : null}
+            ) : transactionDetails?.type === 'error' ? (
+              <div className="py-8 text-center">
+                <AlertCircle className="h-8 w-8 mx-auto text-red-400" />
+                <p className="text-gray-400 mt-2">Erro ao carregar detalhes</p>
+                <p className="text-red-400 text-sm mt-1">{transactionDetails.error}</p>
+              </div>
+            ) : null}
+          </div>
 
           <DialogFooter>
             <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setTransactionDetailsDialog(false)}>
