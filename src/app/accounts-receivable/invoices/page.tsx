@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X, Eye, ExternalLink } from "lucide-react";
+import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X, Eye, ExternalLink, Globe } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -732,6 +732,7 @@ export default function ARInvoicesPage() {
           <div className="w-[100px] flex-shrink-0 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_number")}>Invoice</div>
           <div className="w-[70px] flex-shrink-0 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_date")}>Date</div>
           <div className="w-[65px] flex-shrink-0">Order</div>
+          <div className="w-[30px] flex-shrink-0">Web</div>
           <div className="w-[55px] flex-shrink-0">Paid</div>
           <div className="w-[70px] flex-shrink-0">Order Status</div>
           <div className="w-[140px] flex-shrink-0">Products</div>
@@ -773,6 +774,22 @@ export default function ARInvoicesPage() {
                 <div className="w-[70px] flex-shrink-0 text-gray-400">{formatDate(inv.invoice_date)}</div>
                 {/* Order */}
                 <div className="w-[65px] flex-shrink-0 font-mono text-gray-500 truncate">{inv.order_id || "-"}</div>
+                {/* Web URL */}
+                <div className="w-[30px] flex-shrink-0">
+                  {inv.order_id ? (
+                    <a
+                      href={`https://digitalsmiledesign.com/admin/commerce/orders?source=*&search=${inv.order_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="p-1 text-blue-400 hover:text-blue-300"
+                      title={`Abrir ${inv.order_id} no backend`}
+                    >
+                      <Globe className="h-3 w-3" />
+                    </a>
+                  ) : (
+                    <span className="text-gray-700">-</span>
+                  )}
+                </div>
                 {/* Paid Status */}
                 <div className="w-[55px] flex-shrink-0">
                   <span className={`text-[9px] px-1.5 py-0.5 rounded ${inv.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
