@@ -65,10 +65,12 @@ interface Product {
 }
 
 interface FinancialAccount {
-    id: string;
+    id: string;  // Using code as id
     code: string;
     name: string;
-    scope: string;
+    type?: string;
+    level?: number;
+    parent_code?: string | null;
 }
 
 interface DepartmentalAccount {
@@ -176,11 +178,13 @@ export default function ProductsPage() {
             // Load financial accounts (REVENUE only for AR products)
             const { data: faData } = await supabase
                 .from("financial_accounts")
-                .select("id, code, name, scope, type")
+                .select("code, name, type, level, parent_code")
                 .eq("is_active", true)
                 .eq("type", "revenue")
                 .order("code");
-            setFinancialAccounts(faData || []);
+            // Map code to id for compatibility with existing code
+            const faWithId = (faData || []).map(fa => ({ ...fa, id: fa.code }));
+            setFinancialAccounts(faWithId);
 
             // Load departmental accounts
             const { data: daData } = await supabase
@@ -376,14 +380,14 @@ export default function ProductsPage() {
     };
 
     // Inline update functions
-    const updateProductFinancialAccount = async (productId: string, financialAccountId: string | null) => {
+    const updateProductFinancialAccount = async (productId: string, financialAccountCode: string | null) => {
         try {
-            const fa = financialAccountId ? financialAccounts.find((f) => f.id === financialAccountId) : null;
+            const fa = financialAccountCode ? financialAccounts.find((f) => f.code === financialAccountCode) : null;
             const { error } = await supabase
                 .from("products")
                 .update({
-                    financial_account_id: financialAccountId,
-                    financial_account_code: fa?.code || null,
+                    financial_account_id: null,  // Clear UUID field (not used with code-based lookup)
+                    financial_account_code: financialAccountCode || null,
                 })
                 .eq("id", productId);
 
@@ -393,7 +397,7 @@ export default function ProductsPage() {
             setProducts((prev) =>
                 prev.map((p) =>
                     p.id === productId
-                        ? { ...p, financial_account_id: financialAccountId, financial_account_code: fa?.code || null }
+                        ? { ...p, financial_account_id: null, financial_account_code: financialAccountCode || null }
                         : p
                 )
             );
@@ -716,7 +720,7 @@ export default function ProductsPage() {
                                 {/* Financial Account - INLINE DROPDOWN */}
                                 <div className="w-[140px] flex-shrink-0">
                                     <Select
-                                        value={product.financial_account_id || "none"}
+                                        value={product.financial_account_code || "none"}
                                         onValueChange={(v) => updateProductFinancialAccount(product.id, v === "none" ? null : v)}
                                     >
                                         <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-700 text-white hover:bg-gray-800">
@@ -725,7 +729,7 @@ export default function ProductsPage() {
                                         <SelectContent className="z-[9999] bg-white border-gray-300">
                                             <SelectItem value="none" className="text-gray-900">—</SelectItem>
                                             {financialAccounts.map((fa) => (
-                                                <SelectItem key={fa.id} value={fa.id} className="text-gray-900">
+                                                <SelectItem key={fa.code} value={fa.code} className="text-gray-900">
                                                     {fa.code} - {fa.name}
                                                 </SelectItem>
                                             ))}

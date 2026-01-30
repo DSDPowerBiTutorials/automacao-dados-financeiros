@@ -30,10 +30,12 @@ interface Product {
 }
 
 interface FinancialAccount {
-    id: string;
+    id: string;  // Using code as id
     code: string;
     name: string;
-    scope: string;
+    type?: string;
+    level?: number;
+    parent_code?: string | null;
 }
 
 interface DepartmentalAccount {
@@ -112,7 +114,7 @@ export function ProductSidePanel({
                     description: editingProduct.description || "",
                     default_price: editingProduct.default_price?.toString() || "",
                     currency: editingProduct.currency || "EUR",
-                    financial_account_id: editingProduct.financial_account_id || "",
+                    financial_account_id: editingProduct.financial_account_code || "",  // Use code, not id
                     departmental_account_group_id: editingProduct.departmental_account_group_id || "",
                     departmental_account_subgroup_id: editingProduct.departmental_account_subgroup_id || "",
                     category: editingProduct.category || "",
@@ -149,10 +151,17 @@ export function ProductSidePanel({
         setLoadingMasterData(true);
         try {
             const [faRes, daRes] = await Promise.all([
-                supabase.from("financial_accounts").select("id, code, name, scope").eq("is_active", true).order("code"),
+                supabase
+                    .from("financial_accounts")
+                    .select("code, name, type, level, parent_code")
+                    .eq("is_active", true)
+                    .eq("type", "revenue")
+                    .order("code"),
                 supabase.from("departmental_accounts").select("id, code, name, level, parent_id, full_path").eq("is_active", true).order("code")
             ]);
-            setFinancialAccounts(faRes.data || []);
+            // Map code to id for compatibility
+            const faWithId = (faRes.data || []).map(fa => ({ ...fa, id: fa.code }));
+            setFinancialAccounts(faWithId);
             setDepartmentalAccounts(daRes.data || []);
         } catch (e: any) {
             console.error("Failed to load master data:", e);
@@ -191,8 +200,8 @@ export function ProductSidePanel({
                 }
             }
 
-            // Get financial account code
-            const fa = financialAccounts.find((f) => f.id === formData.financial_account_id);
+            // Get financial account code (financial_account_id in form is actually the code)
+            const faCode = formData.financial_account_id || null;
 
             const productData = {
                 code,
@@ -200,8 +209,8 @@ export function ProductSidePanel({
                 description: formData.description.trim() || null,
                 default_price: formData.default_price ? parseFloat(formData.default_price) : null,
                 currency: formData.currency,
-                financial_account_id: formData.financial_account_id || null,
-                financial_account_code: fa?.code || null,
+                financial_account_id: null,  // Don't use UUID field
+                financial_account_code: faCode,
                 departmental_account_group_id: formData.departmental_account_group_id || null,
                 departmental_account_subgroup_id: formData.departmental_account_subgroup_id || null,
                 category: formData.category || null,
@@ -377,7 +386,7 @@ export function ProductSidePanel({
                                         <SelectContent>
                                             <SelectItem value="none">None</SelectItem>
                                             {financialAccounts.map((fa) => (
-                                                <SelectItem key={fa.id} value={fa.id}>
+                                                <SelectItem key={fa.code} value={fa.code}>
                                                     {fa.code} - {fa.name}
                                                 </SelectItem>
                                             ))}
