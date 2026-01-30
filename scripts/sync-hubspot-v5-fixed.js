@@ -111,44 +111,22 @@ async function syncHubSpot() {
 
     console.log(`📊 Após filtro de data (01/12/2025 - ${today.toISOString().split('T')[0]}): ${validOrders.length}`);
 
-    // 4. FILTROS DE QUALIDADE
+    // 4. FILTROS DE QUALIDADE - APENAS TEST_ (mínimo necessário)
+    const beforeFilter = validOrders.length;
     validOrders = validOrders.filter(order => {
         const cd = order.custom_data || {};
         const dealname = (cd.dealname || "").toUpperCase();
         const orderCode = (cd.order_code || "").toUpperCase();
 
-        // Excluir se ecommerce_deal = false
-        if (cd.ecommerce_deal === false || cd.ecommerce_deal === "false") {
-            return false;
-        }
-
-        // Excluir TEST_ orders
+        // Excluir APENAS TEST_ orders
         if (dealname.startsWith('TEST_') || orderCode.startsWith('TEST_')) {
             return false;
-        }
-
-        // Excluir padrões de non-deals
-        const excludePatterns = [
-            /^CHECKOUT PENDING/i,
-            /^WIN BACK STRATEGY/i,
-            /^CONTACT US COURSES/i,
-            /^TEST /i,
-            /TEST ORDER/i,
-        ];
-
-        for (const pattern of excludePatterns) {
-            if (pattern.test(dealname)) {
-                // Só excluir se não tem produto real
-                if (!cd.product_name || cd.product_name === cd.dealname) {
-                    return false;
-                }
-            }
         }
 
         return true;
     });
 
-    console.log(`📊 Após filtros de qualidade (excl TEST_, etc): ${validOrders.length}`);
+    console.log(`📊 Após filtro TEST_: ${validOrders.length} (removidos: ${beforeFilter - validOrders.length})`);
 
     // 5. Funções auxiliares
     const mapStatus = (paidStatus) => {
