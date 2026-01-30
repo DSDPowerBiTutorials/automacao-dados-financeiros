@@ -267,13 +267,12 @@ export default function BankinterEURPage() {
         return
       }
 
-      // Check if this bank row has a disbursement link or settlement batch ID
       const customData = selectedRow.custom_data as Record<string, unknown> || {}
       const disbursementId = (customData.disbursement_id || customData.disbursement_matched) as string | undefined
       const settlementBatchId = selectedRow.braintreeSettlementBatchId || customData.settlement_batch_id as string | undefined
-      const paymentSource = selectedRow.paymentSource || customData.paymentSource as string | undefined
-      
-      if (!disbursementId && !settlementBatchId) {
+      const directTransactionIds = customData.transaction_ids as string[] | undefined
+
+      if (!disbursementId && !settlementBatchId && (!directTransactionIds || directTransactionIds.length === 0)) {
         setLinkedOrders([])
         return
       }
@@ -281,34 +280,37 @@ export default function BankinterEURPage() {
       setLoadingLinkedOrders(true)
       try {
         let transactionIds: string[] = []
-        
+
+        // Method 0: Use transaction_ids directly from custom_data (saved by auto-reconcile)
+        if (directTransactionIds && directTransactionIds.length > 0) {
+          transactionIds = directTransactionIds
+        }
+
         // Method 1: Get transactions from disbursement record
-        if (disbursementId) {
-          const { data: disbursement, error: disbError } = await supabase
+        if (transactionIds.length === 0 && disbursementId) {
+          const { data: disbursement } = await supabase
             .from("csv_rows")
             .select("*")
             .eq("source", "braintree-api-disbursement")
             .eq("id", disbursementId)
             .single()
 
-          if (!disbError && disbursement) {
+          if (disbursement) {
             transactionIds = (disbursement.custom_data as Record<string, unknown>)?.transaction_ids as string[] || []
           }
         }
-        
-        // Method 2: If no transactions from disbursement, try settlement_batch_id
+
+        // Method 2: Search by settlement_batch_id
         if (transactionIds.length === 0 && settlementBatchId) {
-          // Get all Braintree transactions with this settlement_batch_id
-          const { data: batchTxs, error: batchError } = await supabase
+          const { data: batchTxs } = await supabase
             .from("csv_rows")
             .select("*")
             .or(`source.eq.braintree-api-revenue,source.eq.braintree-eur,source.eq.braintree-usd`)
-          
-          if (!batchError && batchTxs) {
+
+          if (batchTxs) {
             const matchedByBatch = batchTxs.filter((tx) => {
               const txData = tx.custom_data as Record<string, unknown> || {}
-              return txData.settlement_batch_id === settlementBatchId || 
-                     txData.settlementBatchId === settlementBatchId
+              return txData.settlement_batch_id === settlementBatchId || txData.settlementBatchId === settlementBatchId
             })
             transactionIds = matchedByBatch.map((tx) => {
               const txData = tx.custom_data as Record<string, unknown> || {}
@@ -331,27 +333,20 @@ export default function BankinterEURPage() {
 
         if (btError) throw btError
 
-        // Filter transactions that are in this disbursement/settlement
         const matchedTxs = (braintreeTxs || []).filter((tx) => {
           const txData = tx.custom_data as Record<string, unknown> || {}
-          return transactionIds.includes(txData.transaction_id as string) || 
-                 transactionIds.includes(tx.id)
+          return transactionIds.includes(txData.transaction_id as string) || transactionIds.includes(tx.id)
         })
 
-        // Get order IDs from transactions
         const orderIds = matchedTxs
           .map((tx) => (tx.custom_data as Record<string, unknown>)?.order_id as string)
           .filter(Boolean)
 
-        // Fetch web orders (ar_invoices) for these order IDs
-        const { data: webOrders, error: woError } = await supabase
+        const { data: webOrders } = await supabase
           .from("ar_invoices")
           .select("*")
           .in("order_id", orderIds.length > 0 ? orderIds : ["__none__"])
 
-        if (woError) console.error("Error loading web orders:", woError)
-
-        // Build linked orders list
         const orders: LinkedOrder[] = matchedTxs.map((tx) => {
           const txData = tx.custom_data as Record<string, unknown> || {}
           const orderId = txData.order_id as string || ""

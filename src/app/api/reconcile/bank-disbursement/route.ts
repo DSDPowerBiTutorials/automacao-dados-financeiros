@@ -20,6 +20,8 @@ interface DisbursementInfo {
     reference: string;
     transaction_count?: number;
     merchant_account_id?: string;
+    settlement_batch_id?: string;
+    transaction_ids?: string[];
 }
 
 interface BankRow {
@@ -41,6 +43,9 @@ interface Match {
     disbursement_amount: number;
     disbursement_reference: string;
     match_type: string;
+    settlement_batch_id?: string;
+    transaction_ids?: string[];
+    transaction_count?: number;
 }
 
 async function fetchBankRows(source: string): Promise<BankRow[]> {
@@ -83,7 +88,13 @@ async function fetchBraintreeDisbursements(): Promise<DisbursementInfo[]> {
     if (!data) return [];
 
     // Agrupar por disbursement_date + merchant_account_id
-    const grouped = new Map<string, { amount: number; count: number; merchant_account_id: string; batch_id: string }>();
+    const grouped = new Map<string, {
+        amount: number;
+        count: number;
+        merchant_account_id: string;
+        batch_id: string;
+        transaction_ids: string[];
+    }>();
 
     data.forEach(tx => {
         const cd = tx.custom_data || {};
@@ -97,12 +108,18 @@ async function fetchBraintreeDisbursements(): Promise<DisbursementInfo[]> {
                 amount: 0,
                 count: 0,
                 merchant_account_id: merchantId,
-                batch_id: cd.settlement_batch_id || ''
+                batch_id: cd.settlement_batch_id || '',
+                transaction_ids: []
             });
         }
         const g = grouped.get(key)!;
         g.amount += parseFloat(cd.settlement_amount || tx.amount || 0);
         g.count++;
+        // Collect transaction IDs
+        const txId = cd.transaction_id || cd.id || tx.id;
+        if (txId && !g.transaction_ids.includes(txId)) {
+            g.transaction_ids.push(txId);
+        }
     });
 
     return Array.from(grouped.entries()).map(([key, val]) => {
@@ -114,7 +131,9 @@ async function fetchBraintreeDisbursements(): Promise<DisbursementInfo[]> {
             currency: merchantId.includes('EUR') ? 'EUR' : merchantId.includes('USD') ? 'USD' : 'EUR',
             reference: `braintree-disb-${date}`,
             transaction_count: val.count,
-            merchant_account_id: merchantId
+            merchant_account_id: merchantId,
+            settlement_batch_id: val.batch_id || `${date}_${merchantId}`,
+            transaction_ids: val.transaction_ids
         };
     });
 }
@@ -322,7 +341,10 @@ export async function POST(req: NextRequest) {
                     disbursement_date: match.date,
                     disbursement_amount: match.amount,
                     disbursement_reference: match.reference,
-                    match_type: matchType
+                    match_type: matchType,
+                    settlement_batch_id: match.settlement_batch_id,
+                    transaction_ids: match.transaction_ids,
+                    transaction_count: match.transaction_count
                 });
             }
         }
@@ -347,7 +369,11 @@ export async function POST(req: NextRequest) {
                     disbursement_reference: match.disbursement_reference,
                     disbursement_amount: match.disbursement_amount,
                     disbursement_date: match.disbursement_date,
-                    match_type: match.match_type
+                    match_type: match.match_type,
+                    // NEW: Store settlement batch ID and transaction IDs for linked orders
+                    settlement_batch_id: match.settlement_batch_id,
+                    transaction_ids: match.transaction_ids,
+                    braintree_transaction_count: match.transaction_count
                 };
 
                 const { error } = await supabaseAdmin
