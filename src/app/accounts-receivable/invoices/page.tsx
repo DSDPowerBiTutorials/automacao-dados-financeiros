@@ -161,8 +161,8 @@ export default function ARInvoicesPage() {
         return;
       }
 
-      // Filtrar por data: >= 2025-11-01 e <= hoje
-      const minDate = new Date('2025-11-01');
+      // Filtrar por data: >= 2025-12-01 e <= hoje
+      const minDate = new Date('2025-12-01');
       const today = new Date();
       today.setHours(23, 59, 59, 999);
 
@@ -174,21 +174,16 @@ export default function ARInvoicesPage() {
         return orderDate >= minDate && orderDate <= today;
       });
 
-      // Buscar source_ids que já existem na tabela ar_invoices
-      const { data: existingInvoices } = await supabase
+      // Deletar todos os registros HubSpot existentes para fazer sync completo
+      // Isso evita erro 409 de conflito de source_id
+      const { error: deleteError } = await supabase
         .from("ar_invoices")
-        .select("source_id")
+        .delete()
         .eq("source", "hubspot");
 
-      const existingSourceIds = new Set((existingInvoices || []).map((i) => i.source_id));
-
-      // Filtrar orders que ainda não foram importadas
-      const newOrders = validOrders.filter((order) => !existingSourceIds.has(String(order.id)));
-
-      if (newOrders.length === 0) {
-        toast({ title: "Info", description: "Todas as invoices já estão sincronizadas" });
-        setSyncing(false);
-        return;
+      if (deleteError) {
+        console.error("Erro ao deletar registros antigos:", deleteError);
+        // Continuar mesmo com erro de delete
       }
 
       // Helper para formatar status
@@ -220,7 +215,7 @@ export default function ARInvoicesPage() {
       };
 
       // Criar invoices com mapeamento CORRIGIDO
-      const invoicesToInsert = newOrders.map((order) => {
+      const invoicesToInsert = validOrders.map((order) => {
         const cd = order.custom_data || {};
         const shortId = String(order.id).replace(/-/g, '').slice(0, 12).toUpperCase();
         const orderCode = extractOrderCode(cd.order_code as string, cd.dealname as string);
@@ -252,10 +247,17 @@ export default function ARInvoicesPage() {
         };
       });
 
-      const { error: insertError } = await supabase.from("ar_invoices").insert(invoicesToInsert);
-      if (insertError) throw insertError;
+      // Inserir em batches para evitar timeout
+      const BATCH_SIZE = 100;
+      let insertedCount = 0;
+      for (let i = 0; i < invoicesToInsert.length; i += BATCH_SIZE) {
+        const batch = invoicesToInsert.slice(i, i + BATCH_SIZE);
+        const { error: insertError } = await supabase.from("ar_invoices").insert(batch);
+        if (insertError) throw insertError;
+        insertedCount += batch.length;
+      }
 
-      toast({ title: "Sucesso", description: `${invoicesToInsert.length} invoices sincronizadas do HubSpot` });
+      toast({ title: "Sucesso", description: `${insertedCount} invoices sincronizadas do HubSpot` });
       loadInvoices();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
