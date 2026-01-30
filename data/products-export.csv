@@ -1,0 +1,358 @@
+[dotenv@17.2.3] injecting env (20) from .env.local -- tip: 🔑 add access controls to secrets: https://dotenvx.com/ops
+code;name;category;financial_account_code;product_type;scope;is_active;default_price;currency
+PROD-889;Additional Design;Other;103.0;service;GLOBAL;true;65;EUR
+PROD-890;Additional Manufacture;Other;104.0;service;GLOBAL;true;82.5;EUR
+PROD-892;Annual Subscription to DSD Online Content;Subscription;;service;GLOBAL;true;375;EUR
+PROD-886;Cancellation fee  - DSD Provider Washington DC June 2025;Other;;service;GLOBAL;true;800;EUR
+PROD-160;Case Acceptance Mastery Miami April 2026;Other;;service;GLOBAL;true;1650;EUR
+PROD-476;Case Acceptance Mastery Miami April 2026 Staff;Other;;service;GLOBAL;true;1900;EUR
+PROD-868;Consultancy - Gold Bundle  - DSD Consultancy;Other;;service;GLOBAL;true;5600;EUR
+PROD-151;Consultancy DSD Interdisciplinary - Consultancy DSD Shell Design;Other;;service;GLOBAL;true;0;EUR
+PROD-475;Designing Smiles Hands On Madrid May 2026;Other;;service;GLOBAL;true;2660;EUR
+PROD-876;Designing Smiles Hands On with Christian Coachman Madrid May 2026;Other;;service;GLOBAL;true;2660;EUR
+PROD-335;Designing Smiles Hands On with Christian Coachman Madrid November 2025;Other;;service;GLOBAL;true;3700;EUR
+PROD-870;Designing Smiles Hands On with Christian Coachman Madrid October 2026;Other;;service;GLOBAL;true;3200;EUR
+PROD-873;Designing Smiles Hands On with Christian Coachman São Paulo August 2025;Other;;service;GLOBAL;true;4200;EUR
+PROD-477;Designing Smiles On Demand;Other;;service;GLOBAL;true;1000;EUR
+PROD-852;Designing Smiles with Christian Coachman Livestream October 2025;Other;;service;GLOBAL;true;2000;EUR
+PROD-333;Direct Restoration Design;Other;;service;GLOBAL;true;410;EUR
+PROD-468;Direct Restoration Manufacture;Other;;service;GLOBAL;true;290;EUR
+PROD-334;DSD Additional Design;Other;;service;GLOBAL;true;90;EUR
+PROD-850;DSD Additional Manufacture;Other;;service;GLOBAL;true;70;EUR
+PROD-191;DSD Admin - ANGEL TEST test TEST TEST;Other;;service;GLOBAL;true;0;EUR
+PROD-857;DSD Aligners November 2025;Other;;service;GLOBAL;true;1700;EUR
+PROD-332;DSD Anterior Deprogrammer Design;Other;;service;GLOBAL;true;95.06;EUR
+PROD-305;DSD Anterior Deprogrammer Manufacture;Other;;service;GLOBAL;true;190;EUR
+PROD-486;DSD Bite Splint Design;Other;;service;GLOBAL;true;176.25;EUR
+PROD-336;DSD Bite Splint Manufacture;Other;;service;GLOBAL;true;161.25;EUR
+PROD-158;DSD Clic Guide Design;Other;;service;GLOBAL;true;800;EUR
+PROD-152;DSD Clic Guide Manufacture;Other;;service;GLOBAL;true;465;EUR
+PROD-915;DSD Clinic Exclusive Services - Growth Hub Onboarding  - DSD Growth Hub Onboarding Fee;Clinic Fee;;service;GLOBAL;true;9680;EUR
+PROD-916;DSD Clinic Exclusive Services - Smile to Success Workshop  - Smile to Success Workshop;Clinic Fee;;service;GLOBAL;true;0;EUR
+PROD-480;DSD Clinic Services  - Monthly Fee -  April 2025;Clinic Fee;;service;GLOBAL;true;4000;EUR
+PROD-479;DSD Clinic Services  - Monthly Fee -  August 2025;Clinic Fee;;service;GLOBAL;true;3000;EUR
+PROD-484;DSD Clinic Services  - Monthly Fee -  December 2025;Clinic Fee;;service;GLOBAL;true;2000;EUR
+PROD-905;DSD Clinic Services  - Monthly Fee -  Enero 2025;Clinic Fee;;service;GLOBAL;true;2662;EUR
+PROD-499;DSD Clinic Services  - Monthly Fee -  February 2025;Clinic Fee;;service;GLOBAL;true;4000;EUR
+PROD-500;DSD Clinic Services  - Monthly Fee -  January 2025;Clinic Fee;;service;GLOBAL;true;3500;EUR
+PROD-337;DSD Clinic Services  - Monthly Fee -  January 2026;Clinic Fee;;service;GLOBAL;true;4500;EUR
+PROD-496;DSD Clinic Services  - Monthly Fee -  July 2025;Clinic Fee;;service;GLOBAL;true;2000;EUR
+PROD-489;DSD Clinic Services  - Monthly Fee -  June 2025;Clinic Fee;;service;GLOBAL;true;3000;EUR
+PROD-493;DSD Clinic Services  - Monthly Fee -  March 2025;Clinic Fee;;service;GLOBAL;true;3500;EUR
+PROD-492;DSD Clinic Services  - Monthly Fee -  May 2025;Clinic Fee;;service;GLOBAL;true;4000;EUR
+PROD-750;DSD Clinic Services  - Monthly Fee -  November 2025;Clinic Fee;;service;GLOBAL;true;3500;EUR
+PROD-749;DSD Clinic Services  - Monthly Fee -  October 2025;Clinic Fee;;service;GLOBAL;true;3500;EUR
+PROD-758;DSD Clinic Services  - Monthly Fee -  September 2025;Clinic Fee;;service;GLOBAL;true;5500;EUR
+PROD-759;DSD Clinical Course Education Sponsorship  - Seville Oct 23-25, 2025;Clinic Fee;;service;GLOBAL;true;6000;EUR
+PROD-760;DSD Clinical Seville March 2025;Clinic Fee;;service;GLOBAL;true;4110;EUR
+PROD-321;DSD Clinical Seville October 2025;Clinic Fee;;service;GLOBAL;true;5137.5;EUR
+PROD-964;DSD Clinical Seville October 2025  - Companion extra expenses;Clinic Fee;;service;GLOBAL;true;200;EUR
+PROD-965;DSD Clinical Seville October 2025: Doctor Standard;Clinic Fee;;service;GLOBAL;true;5480;EUR
+PROD-967;DSD Clinical Seville October 2026;Clinic Fee;;service;GLOBAL;true;6000;EUR
+PROD-969;DSD Clinics Contract Management Fee 2025  - Abenaa Ayeh - Somerset Dental on James in Calgary;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-970;DSD Clinics Contract Management Fee 2025  - Adrian Acosta;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-971;DSD Clinics Contract Management Fee 2025  - Ahmed Hamada - Village Dental of New England;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-972;DSD Clinics Contract Management Fee 2025  - Albert Lee - Lee, Bonfiglio, Vesely, & Associates;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-973;DSD Clinics Contract Management Fee 2025  - Alvin Babu - Smile Oasis;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-974;DSD Clinics Contract Management Fee 2025  - Andrew Jorgensen - Pine Grove Dental Arts;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-975;DSD Clinics Contract Management Fee 2025  - Assey Dental Associates (new era);Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-976;DSD Clinics Contract Management Fee 2025  - Basil Moukarim- Dental Illusions;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-977;DSD Clinics Contract Management Fee 2025  - Bauer Dental Center VIORELA BAUER;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-978;DSD Clinics Contract Management Fee 2025  - Bella Dentaire NILESH AMIN;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-979;DSD Clinics Contract Management Fee 2025  - Caroline Laporte - Pure Dentistrie;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-980;DSD Clinics Contract Management Fee 2025  - Chad Kasperowski DMD;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-981;DSD Clinics Contract Management Fee 2025  - Charles Regalado;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-982;DSD Clinics Contract Management Fee 2025  - Christine Oh - Smile with Dr. Oh;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-983;DSD Clinics Contract Management Fee 2025  - Clareo Inc.;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-984;DSD Clinics Contract Management Fee 2025  - Damon Jenkins - Jenkins Dental;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-985;DSD Clinics Contract Management Fee 2025  - David Alfi - Alfi Oral Surgery;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-986;DSD Clinics Contract Management Fee 2025  - Diana Torres - Artful Dentistry;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-987;DSD Clinics Contract Management Fee 2025  - Douglas Walker - Dental Wellness;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-988;DSD Clinics Contract Management Fee 2025  - Dr. Katie To;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-989;DSD Clinics Contract Management Fee 2025  - Dwayne Bodie;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-990;DSD Clinics Contract Management Fee 2025  - Evergreen Dental JAMES MC CASLIN;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-991;DSD Clinics Contract Management Fee 2025  - Gustavo de Oliveira - Lake Lucerne Lifestyle Dentistry;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-992;DSD Clinics Contract Management Fee 2025  - Ilona P Fotek DMD PLLC;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-993;DSD Clinics Contract Management Fee 2025  - Ironwood Dental Care;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-994;DSD Clinics Contract Management Fee 2025  - Jacqueline Lo;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-995;DSD Clinics Contract Management Fee 2025  - Jade Gan - Genuine Smiles;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-996;DSD Clinics Contract Management Fee 2025  - JOSEPH FIELD - PCCD;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-997;DSD Clinics Contract Management Fee 2025  - Karen Baghdasaryn - Viva Smile;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-998;DSD Clinics Contract Management Fee 2025  - Karla Soto - Smile Institute;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-999;DSD Clinics Contract Management Fee 2025  - Kenneth Hovden;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1000;DSD Clinics Contract Management Fee 2025  - Kristen Donohue - Sunshine Dentists;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1001;DSD Clinics Contract Management Fee 2025  - Kristen Ritzau - Shoreline Dental Studio;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1002;DSD Clinics Contract Management Fee 2025  - Linty John-Varghese - Ohio Holistic Dental Center;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1003;DSD Clinics Contract Management Fee 2025  - Lynelle Zabel - Highlands Ranch Dental Care;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1004;DSD Clinics Contract Management Fee 2025  - Mackenzie Naylor - Confluence Dental;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1005;DSD Clinics Contract Management Fee 2025  - Maria Cárdenas DMD;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1006;DSD Clinics Contract Management Fee 2025  - Maria Moser - Weston Dental Group;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1007;DSD Clinics Contract Management Fee 2025  - Matt O'Shea;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1008;DSD Clinics Contract Management Fee 2025  - Mauricio Figueredo - PEBE;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1009;DSD Clinics Contract Management Fee 2025  - Meadowbrook Dental Care;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1010;DSD Clinics Contract Management Fee 2025  - Meadowbrook Dentistry;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1011;DSD Clinics Contract Management Fee 2025  - Meggie Graham - Lake Park Dental;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1012;DSD Clinics Contract Management Fee 2025  - Michael Katsaros;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1013;DSD Clinics Contract Management Fee 2025  - Olesya Salathe - Salathe Dental;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1014;DSD Clinics Contract Management Fee 2025  - Priyank Taneja - Back Bay Dental Associates;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1015;DSD Clinics Contract Management Fee 2025  - Publio Silfa - Silfa Dental Aesthetic;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1016;DSD Clinics Contract Management Fee 2025  - Ramesh Kare - Westford Smiles Dental Center;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1017;DSD Clinics Contract Management Fee 2025  - Raquel Reis;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1018;DSD Clinics Contract Management Fee 2025  - Reynolds Lawnin - Tanglewood Dental Associates;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1019;DSD Clinics Contract Management Fee 2025  - Ryan Braden - Braden Dental;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1020;DSD Clinics Contract Management Fee 2025  - Saba Rizvi - My Dentist for Life;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1021;DSD Clinics Contract Management Fee 2025  - Samer Nuwwareh | SmilEra Dental Studio;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1022;DSD Clinics Contract Management Fee 2025  - Sanju Jose - Columbia Center;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1023;DSD Clinics Contract Management Fee 2025  - Sean Shahram Bahrami - Rockville Dental Suite;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1024;DSD Clinics Contract Management Fee 2025  - Shawn Anderson - Willow Dental Group;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1025;DSD Clinics Contract Management Fee 2025  - Souvik Sarkar - Main Street Dental (Smile & Co);Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1026;DSD Clinics Contract Management Fee 2025  - Steve Truong - Dental 32;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1027;DSD Clinics Contract Management Fee 2025  - SUSAN LATIMER;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1028;DSD Clinics Contract Management Fee 2025  - Suzanne Tack - Lux Dental;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1029;DSD Clinics Contract Management Fee 2025  - Tâm Phan - Centre Dentaire NP;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1030;DSD Clinics Contract Management Fee 2025  - Tiffany Moncrieffe - Palm Beach Dentistry;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1031;DSD Clinics Contract Management Fee 2025  - Todd Scheyer - Perio Health Professionals;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1032;DSD Clinics Contract Management Fee 2025  - Tran Han - Mint Dental Loft;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1033;DSD Clinics Contract Management Fee 2025  - Vanila Choudry - Guru Dentistry;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1034;DSD Clinics Contract Management Fee 2025  - Vitaliya Genieva - The Dental Bar;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1035;DSD Clinics Contract Management Fee 2025  - Vivek Mehta;Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-1036;DSD Clinics Contract Management Fee 2025  - Yetunde Abayomi -Forever Smiles Dental (Onyx Dental);Clinic Fee;;service;GLOBAL;true;1100;EUR
+PROD-178;DSD Clinics Services  - Coaching;Clinic Fee;;service;GLOBAL;true;1500;EUR
+PROD-774;DSD Clinics Services  - Coaching (April 2025);Clinic Fee;;service;GLOBAL;true;500;EUR
+PROD-156;DSD Coaching ;Coaching;;service;GLOBAL;true;0;EUR
+PROD-765;DSD Coordinators Course;Course;;service;GLOBAL;true;549;EUR
+PROD-742;DSD Coordinators Course Düsseldorf June 2025 - DEUTSCH;Course;;service;GLOBAL;true;1260;EUR
+PROD-772;DSD Courses Rescheduling Fee;Course;;service;GLOBAL;true;1480;EUR
+PROD-313;DSD Crown Lengthening Guide Design;Other;;service;GLOBAL;true;266.25;EUR
+PROD-314;DSD Crown Lengthening Guide Design + Perio;Other;;service;GLOBAL;true;355;EUR
+PROD-179;DSD Crown Lengthening Guide Manufacture;Other;;service;GLOBAL;true;150;EUR
+PROD-453;DSD Customer Hub  - Growth subscription;Subscription;;service;GLOBAL;true;750;EUR
+PROD-183;DSD Denture Design;Other;;service;GLOBAL;true;210;EUR
+PROD-180;DSD Denture Manufacture;Other;;service;GLOBAL;true;221.25;EUR
+PROD-316;DSD Diagnostic Design;Other;;service;GLOBAL;true;212.5;EUR
+PROD-182;DSD Direct Injected Design;Other;;service;GLOBAL;true;400;EUR
+PROD-322;DSD Direct Injected Manufacture;Other;;service;GLOBAL;true;225;EUR
+PROD-187;DSD Direct Pressed Design;Other;;service;GLOBAL;true;450;EUR
+PROD-157;DSD Direct Pressed Manufactured;Other;;service;GLOBAL;true;225;EUR
+PROD-188;DSD Direct Restoration Design;Other;;service;GLOBAL;true;296;EUR
+PROD-155;DSD Direct Restoration Manufacture;Other;;service;GLOBAL;true;165;EUR
+PROD-839;DSD Full Arch Implant Bridge Express Design;Other;;service;GLOBAL;true;120;EUR
+PROD-309;DSD Full Arch Implant Bridge Manufacture (C Components);Other;;service;GLOBAL;true;3900;EUR
+PROD-714;DSD Growth Hub Set-up Fee;Other;;service;GLOBAL;true;427.5;EUR
+PROD-462;DSD Ideal Post Manufacture;Other;;service;GLOBAL;true;146.25;EUR
+PROD-828;DSD Ideal Pre Manufacture;Other;;service;GLOBAL;true;109.5;EUR
+PROD-815;DSD Immediate Full Arch Temp Design;Other;;service;GLOBAL;true;135;EUR
+PROD-816;DSD Immediate Full Arch Temp Manufacture;Other;;service;GLOBAL;true;150;EUR
+PROD-186;DSD Implant Abutment Manufacture - per unit;Other;;service;GLOBAL;true;382.5;EUR
+PROD-154;DSD Implant Partial Guide Manufacture;Other;;service;GLOBAL;true;157.5;EUR
+PROD-175;DSD Implant Partial Planning & Guide Design;Planning;;service;GLOBAL;true;225;EUR
+PROD-807;DSD Implant Planning;Planning;;service;GLOBAL;true;510;EUR
+PROD-311;DSD Interdisciplinary;Other;;service;GLOBAL;true;975;EUR
+PROD-312;DSD Level 1 Annual Discount EUR;Other;;service;GLOBAL;true;175;EUR
+PROD-456;DSD Level 1 Annual Discount USD;Other;;service;GLOBAL;true;210;EUR
+PROD-153;DSD Level 1 Annual EUR;Other;;service;GLOBAL;true;175;EUR
+PROD-184;DSD Level 1 Annual USD;Other;;service;GLOBAL;true;350;EUR
+PROD-810;DSD Level 1 Monthly Plan;Other;;service;GLOBAL;true;5990;EUR
+PROD-177;DSD Level 1 Monthly Zone A EUR;Other;;service;GLOBAL;true;49;EUR
+PROD-809;DSD Level 2 Annual Plan;Other;;service;GLOBAL;true;4990;EUR
+PROD-176;DSD Level 2 Annual Zone A EUR;Other;;service;GLOBAL;true;5990;EUR
+PROD-725;DSD Level 2 Annual Zone A USD;Other;;service;GLOBAL;true;5950;EUR
+PROD-633;DSD Lower;Other;;service;GLOBAL;true;139.5;EUR
+PROD-198;DSD Master certification;Certification;;service;GLOBAL;true;191.25;EUR
+PROD-638;DSD Motivational Mockup Design;Other;;service;GLOBAL;true;59.15;EUR
+PROD-640;DSD Motivational Mockup Lower Design;Other;;service;GLOBAL;true;160;EUR
+PROD-394;DSD Motivational Mockup Manufacture;Other;;service;GLOBAL;true;112.5;EUR
+PROD-1241;DSD Natural Restoration Design + Manufacture - Per Unit - DSD Natural Restorations Manufacture PER UNIT;Other;;service;GLOBAL;true;195;EUR
+PROD-637;DSD Natural Restoration Simple (NR-S);Other;;service;GLOBAL;true;258.75;EUR
+PROD-346;DSD Natural Restorations Design PER UNIT;Other;;service;GLOBAL;true;39;EUR
+PROD-200;DSD Natural Restorations Manufacture PER UNIT;Other;;service;GLOBAL;true;359.1;EUR
+PROD-630;DSD Online Content;Other;;service;GLOBAL;true;540;EUR
+PROD-392;DSD Ortho Planning;Planning;;service;GLOBAL;true;487.5;EUR
+PROD-199;DSD Ortho Planning + TPS;Planning;;service;GLOBAL;true;503.63;EUR
+PROD-610;DSD Ortho Quality Control;Other;;service;GLOBAL;true;75;EUR
+PROD-390;DSD Ortho TPS;Other;;service;GLOBAL;true;210;EUR
+PROD-1298;DSD Over Prep Design;Other;;service;GLOBAL;true;450;EUR
+PROD-613;DSD Perio Analysis;Other;;service;GLOBAL;true;112.5;EUR
+PROD-1295;DSD Planning Center Access Key;Planning;;service;GLOBAL;true;0;EUR
+PROD-195;DSD Prep Guides Design;Other;;service;GLOBAL;true;171;EUR
+PROD-172;DSD Prep Guides Manufacture;Other;;service;GLOBAL;true;296.25;EUR
+PROD-196;DSD Prep Kit Design;Other;;service;GLOBAL;true;210;EUR
+PROD-352;DSD Prep Kit Manufacture - Prep Kit Manufacture;Other;;service;GLOBAL;true;262.5;EUR
+PROD-1283;DSD Provider Berlin September 2025;Other;;service;GLOBAL;true;2600;EUR
+PROD-605;DSD Provider Livestream Español Febrero 2025;Other;;service;GLOBAL;true;1190;EUR
+PROD-617;DSD Provider London October 2024;Other;;service;GLOBAL;true;100;EUR
+PROD-353;DSD Provider Madrid April 2025;Other;;service;GLOBAL;true;1820;EUR
+PROD-604;DSD Provider Madrid September 2025;Other;;service;GLOBAL;true;0;EUR
+PROD-385;DSD Provider On Demand;Other;;service;GLOBAL;true;765;EUR
+PROD-170;DSD Provider Washington DC June 2025;Other;;service;GLOBAL;true;2030;EUR
+PROD-1330;DSD Residency 2 Seville February 2023;Residency;;service;GLOBAL;true;7725;EUR
+PROD-1331;DSD Restorative - Restorative Planning;Planning;;service;GLOBAL;true;0;EUR
+PROD-1335;DSD Restorative & Surgical Planning;Planning;;service;GLOBAL;true;0;EUR
+PROD-1336;DSD Restorative Planning - DSD Restorative & Surgical Planning;Planning;;service;GLOBAL;true;0;EUR
+PROD-197;DSD Restorative Planning - Restorative Planning;Planning;;service;GLOBAL;true;324;EUR
+PROD-359;DSD SFOT Guide Design;Other;;service;GLOBAL;true;442.5;EUR
+PROD-169;DSD Shell Design;Other;;service;GLOBAL;true;97.5;EUR
+PROD-340;DSD Shell Manufacture - DSD Shell manufacture;Other;;service;GLOBAL;true;112.5;EUR
+PROD-301;DSD TAD Guide Design;Other;;service;GLOBAL;true;292.5;EUR
+PROD-341;DSD Team Consultancy;Other;;service;GLOBAL;true;8800;EUR
+PROD-194;DSD Temps Manufacture;Other;;service;GLOBAL;true;80;EUR
+PROD-173;DSD Update Ortho Planning design + TPS;Planning;;service;GLOBAL;true;555;EUR
+PROD-342;DSD Update Upper & Lower design;Other;;service;GLOBAL;true;285;EUR
+DSD UPPER;DSD Upper;Other;;service;GLOBAL;true;450;EUR
+PROD-302;DSD Upper & Lower;Other;;service;GLOBAL;true;357.5;EUR
+PROD-1050;FAIB Temp Design;Other;;service;GLOBAL;true;150;EUR
+PROD-1049;FREE DSD Provider On Demand;Other;;service;GLOBAL;true;0;EUR
+PROD-1047;Full Arch Implant Bridge Manufacture (B Components);Other;;service;GLOBAL;true;2700;EUR
+PROD-338;Full Arch Implant Bridge Manufacture (C Components);Other;;service;GLOBAL;true;3900;EUR
+PROD-303;III WTD Meeting Madrid September 13-14 2026;Other;;service;GLOBAL;true;1200;EUR
+PROD-1040;Immediate Full Arch Temp Design;Other;;service;GLOBAL;true;150;EUR
+PROD-1041;Immediate Full Arch Temp Manufacture;Other;;service;GLOBAL;true;0;EUR
+PROD-1042;Intraoral Scanner F1 Festival  - Companion Social events - Modena, May 2025;Other;;service;GLOBAL;true;396;EUR
+PROD-1043;Intraoral Scanner F1 Festival  - Course support - Modena, May 15th-18th 2025;Course;;service;GLOBAL;true;4000;EUR
+PROD-1039;Intraoral Scanner F1 Festival  - Sponsor participation - Modena, May 2025;Other;;service;GLOBAL;true;1500;EUR
+PROD-1037;Intraoral Scanner F1 Festival  - travel and meals expenses - Modena, May 2025;Other;;service;GLOBAL;true;330;EUR
+PROD-1038;Intraoral Scanner F1 Festival Course  - Sponsorship Package - Modena, May 15th-18th 2025;Course;;service;GLOBAL;true;6000;EUR
+PROD-396;IntraOral Scanner Festival May 2025;Other;;service;GLOBAL;true;2750;EUR
+PROD-646;IntraOral Scanner Festival May 2026;Other;;service;GLOBAL;true;1000;EUR
+PROD-1201;IOS Festival 2026 Event Sponsorship  - Golden Partner;Other;;service;GLOBAL;true;12000;EUR
+PROD-1202;Kois & Coachman Course - Exhibit Space  - Bronze Package;Course;;service;GLOBAL;true;4500;EUR
+PROD-1203;Kois & Coachman Course Collaboration  - Miami, March 20th-21st;Course;;service;GLOBAL;true;1000;EUR
+PROD-1204;Kois & Coachman Course Sponsorship  - Bronze Package;Course;;service;GLOBAL;true;2500;EUR
+PROD-1205;Kois & Coachman Course Sponsorship Collaboration  - Bronze Package - Miami, March 20th-21st;Course;;service;GLOBAL;true;5000;EUR
+PROD-1206;Kois & Coachman Miami Course Collaboration: Accommodation offer  - 3 nights from March 19th to 22nd (breakfast included);Course;;service;GLOBAL;true;847.5;EUR
+PROD-1207;Marketing Collaboration Agreement  - 1st Payment;Other;;service;GLOBAL;true;16000;EUR
+PROD-1208;Marketing Collaboration Agreement  - 2nd Payment;Other;;service;GLOBAL;true;14000;EUR
+PROD-1209;Motivational Mockup Design;Other;;service;GLOBAL;true;120;EUR
+PROD-174;Motivational Mockup Manufacture;Other;;service;GLOBAL;true;195;EUR
+PROD-193;Natural Restoration Simple (NR-S);Other;;service;GLOBAL;true;258.75;EUR
+PROD-643;Optimizing Clinical Outcomes with Kois & Coachman Course: Exhibit space  - Bronze Package - Miami, March 2025;Clinic Fee;;service;GLOBAL;true;5000;EUR
+PROD-1231;Optimizing Clinical Outcomes with Kois & Coachman March 2025;Clinic Fee;;service;GLOBAL;true;3400;EUR
+PROD-645;Ortho Planning + TPS;Planning;;service;GLOBAL;true;632;EUR
+PROD-1227;Ortho Quality Control;Other;;service;GLOBAL;true;82.5;EUR
+PROD-345;Ortho TPS;Other;;service;GLOBAL;true;292.5;EUR
+PROD-1225;Ortho TPS Comprehensive;Other;;service;GLOBAL;true;536.25;EUR
+PROD-161;Ortho TPS Lite;Other;;service;GLOBAL;true;292.5;EUR
+PROD-1101;PC Product Discounts for DSD Clinics 2025  - Agnieszka Misiejuk;Clinic Fee;;service;GLOBAL;true;8333.55;EUR
+PROD-1102;PC Product Discounts for DSD Clinics 2025  - Ahmed Hamada - Village Dental of New England;Clinic Fee;;service;GLOBAL;true;11327.25;EUR
+PROD-1103;PC Product Discounts for DSD Clinics 2025  - Albert Lee;Clinic Fee;;service;GLOBAL;true;20887.5;EUR
+PROD-1104;PC Product Discounts for DSD Clinics 2025  - Alexander Boeck;Clinic Fee;;service;GLOBAL;true;17045.44;EUR
+PROD-1105;PC Product Discounts for DSD Clinics 2025  - Alistair Graham;Clinic Fee;;service;GLOBAL;true;1338.19;EUR
+PROD-1106;PC Product Discounts for DSD Clinics 2025  - Alvin Babu - Smile Oasis;Clinic Fee;;service;GLOBAL;true;4680;EUR
+PROD-1107;PC Product Discounts for DSD Clinics 2025  - Andrew Doig;Clinic Fee;;service;GLOBAL;true;1164.15;EUR
+PROD-1108;PC Product Discounts for DSD Clinics 2025  - Andrew Jorgensen - Pine Grove Dental Arts;Clinic Fee;;service;GLOBAL;true;9462.5;EUR
+PROD-1109;PC Product Discounts for DSD Clinics 2025  - Angelo Ioanides;Clinic Fee;;service;GLOBAL;true;5063.56;EUR
+PROD-1110;PC Product Discounts for DSD Clinics 2025  - Assey Dental Associates, PA;Clinic Fee;;service;GLOBAL;true;780;EUR
+PROD-1111;PC Product Discounts for DSD Clinics 2025  - Basil Moukarim- Dental Illusions;Clinic Fee;;service;GLOBAL;true;1145;EUR
+PROD-1112;PC Product Discounts for DSD Clinics 2025  - Bauer Dental Center VIORELA BAUER;Clinic Fee;;service;GLOBAL;true;16626.25;EUR
+PROD-1113;PC Product Discounts for DSD Clinics 2025  - Bella Dentaire;Clinic Fee;;service;GLOBAL;true;4020;EUR
+PROD-1114;PC Product Discounts for DSD Clinics 2025  - Caroline Laporte - Pure Dentistrie;Clinic Fee;;service;GLOBAL;true;8210;EUR
+PROD-1115;PC Product Discounts for DSD Clinics 2025  - Chad Kasperowski DMD - Champions For Oral Health;Clinic Fee;;service;GLOBAL;true;883.75;EUR
+PROD-1116;PC Product Discounts for DSD Clinics 2025  - Charles Regalado;Clinic Fee;;service;GLOBAL;true;4475;EUR
+PROD-1117;PC Product Discounts for DSD Clinics 2025  - Christina Becker;Clinic Fee;;service;GLOBAL;true;6396.98;EUR
+PROD-1118;PC Product Discounts for DSD Clinics 2025  - Christine Oh - Smile with Dr. Oh;Clinic Fee;;service;GLOBAL;true;54087.5;EUR
+PROD-1119;PC Product Discounts for DSD Clinics 2025  - Clareo Inc.;Clinic Fee;;service;GLOBAL;true;30597.25;EUR
+PROD-1120;PC Product Discounts for DSD Clinics 2025  - Cobus Verster;Clinic Fee;;service;GLOBAL;true;8255.56;EUR
+PROD-1121;PC Product Discounts for DSD Clinics 2025  - DANIEL FERNANDEZ DE LA BALLINA;Clinic Fee;;service;GLOBAL;true;4562.88;EUR
+PROD-1122;PC Product Discounts for DSD Clinics 2025  - David Alfi - Alfi Oral Surgery;Clinic Fee;;service;GLOBAL;true;375;EUR
+PROD-1123;PC Product Discounts for DSD Clinics 2025  - Diana Torres - Artful Dentistry;Clinic Fee;;service;GLOBAL;true;3755.5;EUR
+PROD-1124;PC Product Discounts for DSD Clinics 2025  - Douglas Walker - Dental Wellness;Clinic Fee;;service;GLOBAL;true;100;EUR
+PROD-1125;PC Product Discounts for DSD Clinics 2025  - Dr. Monika Chaba;Clinic Fee;;service;GLOBAL;true;276.41;EUR
+PROD-1126;PC Product Discounts for DSD Clinics 2025  - Dr. Raquel Reis;Clinic Fee;;service;GLOBAL;true;3509;EUR
+PROD-1127;PC Product Discounts for DSD Clinics 2025  - Dr. Suzanne Tack - Lux Dental;Clinic Fee;;service;GLOBAL;true;780;EUR
+PROD-1128;PC Product Discounts for DSD Clinics 2025  - Dwayne Bodie;Clinic Fee;;service;GLOBAL;true;8559.9;EUR
+PROD-1129;PC Product Discounts for DSD Clinics 2025  - Elaine Halley;Clinic Fee;;service;GLOBAL;true;329.06;EUR
+PROD-1130;PC Product Discounts for DSD Clinics 2025  - Fadi Yassmin;Clinic Fee;;service;GLOBAL;true;2103.08;EUR
+PROD-1131;PC Product Discounts for DSD Clinics 2025  - Gustavo de Oliveira - Lake Lucerne Lifestyle Dentistry;Clinic Fee;;service;GLOBAL;true;1710;EUR
+PROD-1132;PC Product Discounts for DSD Clinics 2025  - Ilona P Fotek DMD PLLC;Clinic Fee;;service;GLOBAL;true;8105;EUR
+PROD-1133;PC Product Discounts for DSD Clinics 2025  - Ironwood Dental;Clinic Fee;;service;GLOBAL;true;34140;EUR
+PROD-1134;PC Product Discounts for DSD Clinics 2025  - Jacqueline Lo;Clinic Fee;;service;GLOBAL;true;1422.5;EUR
+PROD-1135;PC Product Discounts for DSD Clinics 2025  - Jade Gan - Genuine Smiles;Clinic Fee;;service;GLOBAL;true;917.5;EUR
+PROD-1136;PC Product Discounts for DSD Clinics 2025  - Jameel Gardee;Clinic Fee;;service;GLOBAL;true;2182.05;EUR
+PROD-1137;PC Product Discounts for DSD Clinics 2025  - Jan Kielhorn;Clinic Fee;;service;GLOBAL;true;2922.08;EUR
+PROD-1138;PC Product Discounts for DSD Clinics 2025  - Jeanette Garner;Clinic Fee;;service;GLOBAL;true;8650.69;EUR
+PROD-1139;PC Product Discounts for DSD Clinics 2025  - Jimmi Patel;Clinic Fee;;service;GLOBAL;true;5765.18;EUR
+PROD-1140;PC Product Discounts for DSD Clinics 2025  - Jo Tan;Clinic Fee;;service;GLOBAL;true;4539.1;EUR
+PROD-1141;PC Product Discounts for DSD Clinics 2025  - Jose Menacho;Clinic Fee;;service;GLOBAL;true;368.55;EUR
+PROD-1142;PC Product Discounts for DSD Clinics 2025  - JOSEPH FIELD - PCCD;Clinic Fee;;service;GLOBAL;true;860;EUR
+PROD-1143;PC Product Discounts for DSD Clinics 2025  - Karen Baghdasaryn - Viva Smile;Clinic Fee;;service;GLOBAL;true;11030.9;EUR
+PROD-1144;PC Product Discounts for DSD Clinics 2025  - Karla Soto - Smile Institute;Clinic Fee;;service;GLOBAL;true;1639.75;EUR
+PROD-1145;PC Product Discounts for DSD Clinics 2025  - KATHRINE Trelles;Clinic Fee;;service;GLOBAL;true;696.15;EUR
+PROD-1146;PC Product Discounts for DSD Clinics 2025  - Katie To DDS Pllc;Clinic Fee;;service;GLOBAL;true;35568;EUR
+PROD-1147;PC Product Discounts for DSD Clinics 2025  - Keith Cohen;Clinic Fee;;service;GLOBAL;true;5802.62;EUR
+PROD-1148;PC Product Discounts for DSD Clinics 2025  - Kenneth Hovden;Clinic Fee;;service;GLOBAL;true;8579.45;EUR
+PROD-1149;PC Product Discounts for DSD Clinics 2025  - Kristen Donohue;Clinic Fee;;service;GLOBAL;true;1325;EUR
+PROD-1150;PC Product Discounts for DSD Clinics 2025  - Kristen Ritzau - Shoreline Dental Studio;Clinic Fee;;service;GLOBAL;true;1375;EUR
+PROD-1151;PC Product Discounts for DSD Clinics 2025  - Lennard Bertram;Clinic Fee;;service;GLOBAL;true;30550.16;EUR
+PROD-1152;PC Product Discounts for DSD Clinics 2025  - Linty John-Varghese - Ohio Holistic Dental Center;Clinic Fee;;service;GLOBAL;true;780;EUR
+PROD-1153;PC Product Discounts for DSD Clinics 2025  - Lynelle Zabel - Highlands Ranch Dental Care;Clinic Fee;;service;GLOBAL;true;984;EUR
+PROD-1154;PC Product Discounts for DSD Clinics 2025  - Mackenzie Naylor - Confluence Dental;Clinic Fee;;service;GLOBAL;true;890;EUR
+PROD-1155;PC Product Discounts for DSD Clinics 2025  - Maria Cárdenas DMD;Clinic Fee;;service;GLOBAL;true;31580;EUR
+PROD-1156;PC Product Discounts for DSD Clinics 2025  - Marten Jan Lindeman;Clinic Fee;;service;GLOBAL;true;10999.46;EUR
+PROD-1157;PC Product Discounts for DSD Clinics 2025  - Martin Martma;Clinic Fee;;service;GLOBAL;true;6872.14;EUR
+PROD-1158;PC Product Discounts for DSD Clinics 2025  - Matt O'Shea;Clinic Fee;;service;GLOBAL;true;2840;EUR
+PROD-1159;PC Product Discounts for DSD Clinics 2025  - Mauricio Figueredo - Clinica PEBE;Clinic Fee;;service;GLOBAL;true;328.55;EUR
+PROD-1160;PC Product Discounts for DSD Clinics 2025  - Meadowbrook Dental Care;Clinic Fee;;service;GLOBAL;true;23357;EUR
+PROD-1161;PC Product Discounts for DSD Clinics 2025  - Meggie Graham - Lake Park Dental;Clinic Fee;;service;GLOBAL;true;1560;EUR
+PROD-1162;PC Product Discounts for DSD Clinics 2025  - Melinda Cheung;Clinic Fee;;service;GLOBAL;true;22532.74;EUR
+PROD-1163;PC Product Discounts for DSD Clinics 2025  - Michael Katsaros;Clinic Fee;;service;GLOBAL;true;1687.5;EUR
+PROD-1164;PC Product Discounts for DSD Clinics 2025  - My Dentist for Life - Saba Rizvi;Clinic Fee;;service;GLOBAL;true;195;EUR
+PROD-1165;PC Product Discounts for DSD Clinics 2025  - NARCISO CARRERO DE CASTRO;Clinic Fee;;service;GLOBAL;true;6597.41;EUR
+PROD-1166;PC Product Discounts for DSD Clinics 2025  - Navin Vithal;Clinic Fee;;service;GLOBAL;true;7403.77;EUR
+PROD-1167;PC Product Discounts for DSD Clinics 2025  - OLIVIER DUPONT;Clinic Fee;;service;GLOBAL;true;35152.65;EUR
+PROD-1168;PC Product Discounts for DSD Clinics 2025  - Priyank Taneja - Back Bay Dental Associates;Clinic Fee;;service;GLOBAL;true;2340;EUR
+PROD-1169;PC Product Discounts for DSD Clinics 2025  - Publio Silfa - Silfa Dental Aesthetic;Clinic Fee;;service;GLOBAL;true;19910;EUR
+PROD-1170;PC Product Discounts for DSD Clinics 2025  - Ramesh Kare - Westford Smiles Dental Center;Clinic Fee;;service;GLOBAL;true;5110;EUR
+PROD-1171;PC Product Discounts for DSD Clinics 2025  - Reynolds Lawnin - Tanglewood Dental Associates;Clinic Fee;;service;GLOBAL;true;5953.75;EUR
+PROD-1172;PC Product Discounts for DSD Clinics 2025  - Ryan Braden - Braden Dental;Clinic Fee;;service;GLOBAL;true;4572.25;EUR
+PROD-1173;PC Product Discounts for DSD Clinics 2025  - Salathe Dental;Clinic Fee;;service;GLOBAL;true;2092.5;EUR
+PROD-1174;PC Product Discounts for DSD Clinics 2025  - Sanju Jose - Columbia Center;Clinic Fee;;service;GLOBAL;true;160;EUR
+PROD-1175;PC Product Discounts for DSD Clinics 2025  - Shahram Bahrami - Supertooth;Clinic Fee;;service;GLOBAL;true;5300;EUR
+PROD-1176;PC Product Discounts for DSD Clinics 2025  - Shawn Anderson - Willow Dental Group;Clinic Fee;;service;GLOBAL;true;10711.5;EUR
+PROD-1177;PC Product Discounts for DSD Clinics 2025  - Silvia Collado Vega;Clinic Fee;;service;GLOBAL;true;27278.55;EUR
+PROD-1178;PC Product Discounts for DSD Clinics 2025  - Simon Bate;Clinic Fee;;service;GLOBAL;true;42444.38;EUR
+PROD-1179;PC Product Discounts for DSD Clinics 2025  - Souvik Sarkar - Main Street Dental;Clinic Fee;;service;GLOBAL;true;224.75;EUR
+PROD-1180;PC Product Discounts for DSD Clinics 2025  - Stephan Eckrich;Clinic Fee;;service;GLOBAL;true;30038.29;EUR
+PROD-1181;PC Product Discounts for DSD Clinics 2025  - Stephan Hinz;Clinic Fee;;service;GLOBAL;true;3717.68;EUR
+PROD-1182;PC Product Discounts for DSD Clinics 2025  - Steve Truong - Dental 32;Clinic Fee;;service;GLOBAL;true;14637;EUR
+PROD-1183;PC Product Discounts for DSD Clinics 2025  - Stuart lutton;Clinic Fee;;service;GLOBAL;true;5276.7;EUR
+PROD-1184;PC Product Discounts for DSD Clinics 2025  - Susan Latimer - Dental Arts;Clinic Fee;;service;GLOBAL;true;933.75;EUR
+PROD-1185;PC Product Discounts for DSD Clinics 2025  - Tâm Phan - Centre Dentaire NP;Clinic Fee;;service;GLOBAL;true;780;EUR
+PROD-1186;PC Product Discounts for DSD Clinics 2025  - Thomas Fiege;Clinic Fee;;service;GLOBAL;true;11623.95;EUR
+PROD-1187;PC Product Discounts for DSD Clinics 2025  - Tiffany Moncrieffe - Palm Beach Dentistry;Clinic Fee;;service;GLOBAL;true;15403.25;EUR
+PROD-1188;PC Product Discounts for DSD Clinics 2025  - Todd Scheyer - Perio Health Professionals;Clinic Fee;;service;GLOBAL;true;1670;EUR
+PROD-1189;PC Product Discounts for DSD Clinics 2025  - Tran Han - Mint Dental Loft;Clinic Fee;;service;GLOBAL;true;20977.5;EUR
+PROD-1190;PC Product Discounts for DSD Clinics 2025  - Vanila Choudry - Guru Dentistry;Clinic Fee;;service;GLOBAL;true;2340;EUR
+PROD-1191;PC Product Discounts for DSD Clinics 2025  - Victoria Holden;Clinic Fee;;service;GLOBAL;true;29017.17;EUR
+PROD-1192;PC Product Discounts for DSD Clinics 2025  - Vitaliya Genieva - The Dental Bar;Clinic Fee;;service;GLOBAL;true;7757.75;EUR
+PROD-1193;PC Product Discounts for DSD Clinics 2025  - Vivek Mehta - Welcome Smiles;Clinic Fee;;service;GLOBAL;true;3371;EUR
+PROD-1194;PC Product Discounts for DSD Clinics 2025  - Yetunde Abayomi -Forever Smiles Dental (Onyx Dental);Clinic Fee;;service;GLOBAL;true;7490;EUR
+PROD-1195;PC Product Discounts for DSD Clinics 2025  - Yusuf Surtee;Clinic Fee;;service;GLOBAL;true;6318;EUR
+PROD-1196;PC Product Discounts for DSD Clinics 2025  - ZahnÃ¤rzte im Kaisersaal;Clinic Fee;;service;GLOBAL;true;6617.81;EUR
+PROD-1197;Prep Kit Design;Other;;service;GLOBAL;true;100;EUR
+PROD-375;Prep Kit Manufacture;Other;;service;GLOBAL;true;262.5;EUR
+PROD-374;Qlone 2 licenses Annual;Other;;service;GLOBAL;true;300;EUR
+PROD-366;Reschedule Fee third party courses;Course;;service;GLOBAL;true;1200;EUR
+PROD-367;Restorative & Surgical Planning;Planning;;service;GLOBAL;true;0;EUR
+PROD-1401;TEST ANGEL EXPLICACION LOOM;Other;;service;GLOBAL;true;0;EUR
+PROD-1402;Test Event;Other;;service;GLOBAL;true;10;EUR
+PROD-363;TEST_DSD Anterior Deprogrammer Design;Other;;service;GLOBAL;true;146.25;EUR
+PROD-364;TEST_DSD Clic Guide Design;Other;;service;GLOBAL;true;600;EUR
+PROD-365;TEST_DSD Crown Lengthening Guide Design;Other;;service;GLOBAL;true;235;EUR
+PROD-378;TEST_DSD Direct Injected Design;Other;;service;GLOBAL;true;300;EUR
+PROD-165;TEST_DSD Interdisciplinary;Other;;service;GLOBAL;true;0;EUR
+PROD-380;TEST_DSD Lower;Other;;service;GLOBAL;true;277.5;EUR
+PROD-166;TEST_DSD Perio Analysis;Other;;service;GLOBAL;true;127.5;EUR
+PROD-362;TEST_DSD TAD Guide Design;Other;;service;GLOBAL;true;292.5;EUR
+PROD-360;TEST_DSD Upper & Lower;Other;;service;GLOBAL;true;321.75;EUR
+PROD-1348;TEST_DSD Upper and Lower;Other;;service;GLOBAL;true;54.55;EUR
+PROD-1349;TEST_Motivational;Other;;service;GLOBAL;true;0;EUR
+PROD-361;TEST_Ortho Planning + TPS;Planning;;service;GLOBAL;true;652.5;EUR
+PROD-1346;TEST_Single Unit - DSD NR Manufacture;Other;;service;GLOBAL;true;150.55;EUR
+PROD-1406;The Visionary Dentist Summit March 2026;Other;;service;GLOBAL;true;2000;EUR
+PROD-1409;TPS Service;Other;;service;GLOBAL;true;250;EUR
+PROD-369;Update Interdisciplinary Design;Other;;service;GLOBAL;true;825;EUR
+PROD-368;Update Ortho Planning design + TPS;Planning;;service;GLOBAL;true;459;EUR
+PROD-370;Update Upper & Lower design;Other;;service;GLOBAL;true;191.25;EUR
+PROD-167;Update Upper or Lower design;Other;;service;GLOBAL;true;270;EUR
+PROD-1413;VITA Easyshade® V, 5V  - 1 unit;Other;;service;GLOBAL;true;999;EUR
+PROD-1412;WatchDSD All Access Pass - 12-month - SBOE;Other;;service;GLOBAL;true;25;EUR

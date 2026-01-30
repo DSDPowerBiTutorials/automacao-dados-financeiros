@@ -1,1022 +1,423 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { supabase } from "@/lib/supabase";
 import {
   TrendingUp,
   TrendingDown,
   DollarSign,
   Download,
   Calendar,
+  Building2,
+  Layers,
+  ChevronDown,
+  ChevronRight,
+  RefreshCw,
+  Filter,
 } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { useGlobalScope } from "@/contexts/global-scope-context";
+import { formatCurrency } from "@/lib/formatters";
 
-interface Department {
-  name: string;
+interface DRELine {
   code: string;
-  subDepartments: SubDepartment[];
-}
-
-interface SubDepartment {
   name: string;
-  code: string;
-  personalAssignment: number;
-}
-
-interface LineItem {
-  category: string;
-  description: string;
-  isSubtotal?: boolean;
-  isPercentage?: boolean;
-  values: {
-    [key: string]: {
-      budget: number;
-      incurred: number;
-    };
-  };
+  type: "revenue" | "expense" | "subtotal" | "total";
+  level: number;
+  budget: number;
+  actual: number;
+  variance: number;
+  variancePercent: number;
+  children?: DRELine[];
 }
 
 export default function PnLReport() {
-  const [selectedPeriod, setSelectedPeriod] = useState("2024-Q1");
+  const { selectedScope } = useGlobalScope();
+  const [loading, setLoading] = useState(true);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+    new Set(["101.0", "102.0", "103.0", "104.0", "105.0", "201.0", "202.0"])
+  );
 
-  // Estrutura de departamentos e sub-departamentos com Personal Assignment
-  const departments: Department[] = [
+  // Date filters
+  const [startDate, setStartDate] = useState(() => {
+    const d = new Date();
+    d.setMonth(0, 1);
+    return d.toISOString().split("T")[0];
+  });
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+
+  // Revenue structure based on chart of accounts
+  const revenueStructure: DRELine[] = [
     {
-      name: "Education",
-      code: "1.0.0",
-      subDepartments: [
-        { name: "Education", code: "1.1.0", personalAssignment: 12 },
-        { name: "Labour Growth", code: "202.1", personalAssignment: 8 },
+      code: "101.0", name: "Growth (Education)", type: "revenue", level: 0,
+      budget: 850000, actual: 892000, variance: 42000, variancePercent: 4.9,
+      children: [
+        { code: "101.1", name: "DSD Courses", type: "revenue", level: 1, budget: 350000, actual: 378000, variance: 28000, variancePercent: 8.0 },
+        { code: "101.2", name: "Others Courses", type: "revenue", level: 1, budget: 120000, actual: 115000, variance: -5000, variancePercent: -4.2 },
+        { code: "101.3", name: "Mastership", type: "revenue", level: 1, budget: 180000, actual: 195000, variance: 15000, variancePercent: 8.3 },
+        { code: "101.4", name: "PC Membership", type: "revenue", level: 1, budget: 100000, actual: 104000, variance: 4000, variancePercent: 4.0 },
+        { code: "101.5", name: "Partnerships", type: "revenue", level: 1, budget: 80000, actual: 78000, variance: -2000, variancePercent: -2.5 },
+        { code: "101.6", name: "Level 2 Allocation", type: "revenue", level: 1, budget: 20000, actual: 22000, variance: 2000, variancePercent: 10.0 },
       ],
     },
     {
-      name: "Lab",
-      code: "2.0.0",
-      subDepartments: [
-        { name: "Lab", code: "2.1.0", personalAssignment: 15 },
-        { name: "Planning Center", code: "2.1.1", personalAssignment: 10 },
-        { name: "Delight", code: "2.1.2", personalAssignment: 8 },
-        { name: "Labour LAB", code: "202.4", personalAssignment: 12 },
+      code: "102.0", name: "Delight (Clinic Services)", type: "revenue", level: 0,
+      budget: 1200000, actual: 1285000, variance: 85000, variancePercent: 7.1,
+      children: [
+        { code: "102.1", name: "Contracted ROW", type: "revenue", level: 1, budget: 450000, actual: 478000, variance: 28000, variancePercent: 6.2 },
+        { code: "102.2", name: "Contracted AMEX", type: "revenue", level: 1, budget: 280000, actual: 295000, variance: 15000, variancePercent: 5.4 },
+        { code: "102.3", name: "Level 3 New ROW", type: "revenue", level: 1, budget: 180000, actual: 192000, variance: 12000, variancePercent: 6.7 },
+        { code: "102.4", name: "Level 3 New AMEX", type: "revenue", level: 1, budget: 120000, actual: 130000, variance: 10000, variancePercent: 8.3 },
+        { code: "102.5", name: "Consultancies", type: "revenue", level: 1, budget: 95000, actual: 105000, variance: 10000, variancePercent: 10.5 },
+        { code: "102.6", name: "Marketing Coaching", type: "revenue", level: 1, budget: 45000, actual: 52000, variance: 7000, variancePercent: 15.6 },
+        { code: "102.7", name: "Others", type: "revenue", level: 1, budget: 30000, actual: 33000, variance: 3000, variancePercent: 10.0 },
       ],
     },
     {
-      name: "Corporate",
-      code: "3.0.0",
-      subDepartments: [
-        { name: "Corporate", code: "3.1.0", personalAssignment: 18 },
-        { name: "Finance", code: "3.1.1", personalAssignment: 6 },
-        { name: "Marketing", code: "3.1.2", personalAssignment: 5 },
-        { name: "Labour Corporate", code: "202.5", personalAssignment: 14 },
+      code: "103.0", name: "Planning Center", type: "revenue", level: 0,
+      budget: 680000, actual: 712000, variance: 32000, variancePercent: 4.7,
+      children: [
+        { code: "103.1", name: "Level 3 ROW", type: "revenue", level: 1, budget: 180000, actual: 188000, variance: 8000, variancePercent: 4.4 },
+        { code: "103.2", name: "Level 3 AMEX", type: "revenue", level: 1, budget: 120000, actual: 128000, variance: 8000, variancePercent: 6.7 },
+        { code: "103.5", name: "Level 2", type: "revenue", level: 1, budget: 150000, actual: 158000, variance: 8000, variancePercent: 5.3 },
+        { code: "103.6", name: "Level 1", type: "revenue", level: 1, budget: 130000, actual: 138000, variance: 8000, variancePercent: 6.2 },
+        { code: "103.7", name: "Not a Subscriber", type: "revenue", level: 1, budget: 100000, actual: 100000, variance: 0, variancePercent: 0 },
+      ],
+    },
+    {
+      code: "104.0", name: "LAB (Manufacture)", type: "revenue", level: 0,
+      budget: 520000, actual: 545000, variance: 25000, variancePercent: 4.8,
+      children: [
+        { code: "104.1", name: "Level 3 ROW", type: "revenue", level: 1, budget: 140000, actual: 148000, variance: 8000, variancePercent: 5.7 },
+        { code: "104.2", name: "Level 3 AMEX", type: "revenue", level: 1, budget: 100000, actual: 105000, variance: 5000, variancePercent: 5.0 },
+        { code: "104.5", name: "Level 2", type: "revenue", level: 1, budget: 120000, actual: 128000, variance: 8000, variancePercent: 6.7 },
+        { code: "104.6", name: "Level 1", type: "revenue", level: 1, budget: 100000, actual: 104000, variance: 4000, variancePercent: 4.0 },
+        { code: "104.7", name: "Not a Subscriber", type: "revenue", level: 1, budget: 60000, actual: 60000, variance: 0, variancePercent: 0 },
+      ],
+    },
+    {
+      code: "105.0", name: "Other Income", type: "revenue", level: 0,
+      budget: 150000, actual: 162000, variance: 12000, variancePercent: 8.0,
+      children: [
+        { code: "105.1", name: "Level 1 Subscriptions", type: "revenue", level: 1, budget: 80000, actual: 88000, variance: 8000, variancePercent: 10.0 },
+        { code: "105.2", name: "CORE Partnerships", type: "revenue", level: 1, budget: 40000, actual: 42000, variance: 2000, variancePercent: 5.0 },
+        { code: "105.3", name: "Study Club", type: "revenue", level: 1, budget: 20000, actual: 22000, variance: 2000, variancePercent: 10.0 },
+        { code: "105.4", name: "Other Marketing", type: "revenue", level: 1, budget: 10000, actual: 10000, variance: 0, variancePercent: 0 },
       ],
     },
   ];
 
-  // Dados fictícios do P&L seguindo a estrutura exata
-  const revenueItems: LineItem[] = [
+  // Expense structure
+  const expenseStructure: DRELine[] = [
     {
-      category: "Revenue",
-      description: "Product Sales",
-      values: {
-        "1.1.0": { budget: 450000, incurred: 478000 },
-        "202.1": { budget: 125000, incurred: 132000 },
-        "2.1.0": { budget: 680000, incurred: 695000 },
-        "2.1.1": { budget: 340000, incurred: 355000 },
-        "2.1.2": { budget: 280000, incurred: 295000 },
-        "202.4": { budget: 180000, incurred: 175000 },
-        "3.1.0": { budget: 520000, incurred: 545000 },
-        "3.1.1": { budget: 0, incurred: 0 },
-        "3.1.2": { budget: 0, incurred: 0 },
-        "202.5": { budget: 0, incurred: 0 },
-      },
+      code: "201.0", name: "Cost of Goods Sold (COGS)", type: "expense", level: 0,
+      budget: 680000, actual: 695000, variance: -15000, variancePercent: -2.2,
+      children: [
+        { code: "201.1", name: "COGS Growth", type: "expense", level: 1, budget: 180000, actual: 185000, variance: -5000, variancePercent: -2.8 },
+        { code: "201.2", name: "COGS Delight", type: "expense", level: 1, budget: 220000, actual: 228000, variance: -8000, variancePercent: -3.6 },
+        { code: "201.3", name: "COGS Planning Center", type: "expense", level: 1, budget: 150000, actual: 152000, variance: -2000, variancePercent: -1.3 },
+        { code: "201.4", name: "COGS LAB", type: "expense", level: 1, budget: 130000, actual: 130000, variance: 0, variancePercent: 0 },
+      ],
     },
     {
-      category: "Revenue",
-      description: "Service Revenue",
-      values: {
-        "1.1.0": { budget: 180000, incurred: 195000 },
-        "202.1": { budget: 45000, incurred: 48000 },
-        "2.1.0": { budget: 320000, incurred: 335000 },
-        "2.1.1": { budget: 160000, incurred: 168000 },
-        "2.1.2": { budget: 120000, incurred: 125000 },
-        "202.4": { budget: 85000, incurred: 88000 },
-        "3.1.0": { budget: 240000, incurred: 255000 },
-        "3.1.1": { budget: 0, incurred: 0 },
-        "3.1.2": { budget: 0, incurred: 0 },
-        "202.5": { budget: 0, incurred: 0 },
-      },
+      code: "202.0", name: "Labour", type: "expense", level: 0,
+      budget: 1450000, actual: 1420000, variance: 30000, variancePercent: 2.1,
+      children: [
+        { code: "202.1", name: "Labour Growth", type: "expense", level: 1, budget: 280000, actual: 275000, variance: 5000, variancePercent: 1.8 },
+        { code: "202.2", name: "Labour Marketing", type: "expense", level: 1, budget: 180000, actual: 175000, variance: 5000, variancePercent: 2.8 },
+        { code: "202.3", name: "Labour Planning Center", type: "expense", level: 1, budget: 320000, actual: 315000, variance: 5000, variancePercent: 1.6 },
+        { code: "202.4", name: "Labour LAB", type: "expense", level: 1, budget: 280000, actual: 272000, variance: 8000, variancePercent: 2.9 },
+        { code: "202.5", name: "Labour Corporate", type: "expense", level: 1, budget: 250000, actual: 248000, variance: 2000, variancePercent: 0.8 },
+        { code: "202.6", name: "Labour Delight ROW", type: "expense", level: 1, budget: 80000, actual: 78000, variance: 2000, variancePercent: 2.5 },
+        { code: "202.7", name: "Labour AMEX", type: "expense", level: 1, budget: 40000, actual: 38000, variance: 2000, variancePercent: 5.0 },
+        { code: "202.8", name: "Social Security", type: "expense", level: 1, budget: 20000, actual: 19000, variance: 1000, variancePercent: 5.0 },
+      ],
     },
     {
-      category: "Revenue",
-      description: "Consulting Fees",
-      values: {
-        "1.1.0": { budget: 95000, incurred: 102000 },
-        "202.1": { budget: 28000, incurred: 30000 },
-        "2.1.0": { budget: 145000, incurred: 152000 },
-        "2.1.1": { budget: 75000, incurred: 78000 },
-        "2.1.2": { budget: 65000, incurred: 68000 },
-        "202.4": { budget: 42000, incurred: 45000 },
-        "3.1.0": { budget: 110000, incurred: 118000 },
-        "3.1.1": { budget: 0, incurred: 0 },
-        "3.1.2": { budget: 0, incurred: 0 },
-        "202.5": { budget: 0, incurred: 0 },
-      },
+      code: "203.0", name: "Travels and Meals", type: "expense", level: 0,
+      budget: 180000, actual: 172000, variance: 8000, variancePercent: 4.4,
+      children: [
+        { code: "203.1", name: "T&M Growth", type: "expense", level: 1, budget: 45000, actual: 42000, variance: 3000, variancePercent: 6.7 },
+        { code: "203.2", name: "T&M Marketing", type: "expense", level: 1, budget: 35000, actual: 33000, variance: 2000, variancePercent: 5.7 },
+        { code: "203.5", name: "T&M Corporate", type: "expense", level: 1, budget: 45000, actual: 44000, variance: 1000, variancePercent: 2.2 },
+      ],
     },
+    { code: "204.0", name: "Professional Fees", type: "expense", level: 0, budget: 120000, actual: 118000, variance: 2000, variancePercent: 1.7, children: [] },
+    { code: "205.0", name: "Marketing and Advertising", type: "expense", level: 0, budget: 95000, actual: 92000, variance: 3000, variancePercent: 3.2, children: [] },
+    { code: "206.0", name: "Office", type: "expense", level: 0, budget: 85000, actual: 82000, variance: 3000, variancePercent: 3.5, children: [] },
+    { code: "207.0", name: "Information Technology", type: "expense", level: 0, budget: 75000, actual: 78000, variance: -3000, variancePercent: -4.0, children: [] },
+    { code: "208.0", name: "Research and Development", type: "expense", level: 0, budget: 45000, actual: 42000, variance: 3000, variancePercent: 6.7, children: [] },
+    { code: "209.0", name: "Bank and Financial Fees", type: "expense", level: 0, budget: 35000, actual: 38000, variance: -3000, variancePercent: -8.6, children: [] },
+    { code: "210.0", name: "Miscellaneous", type: "expense", level: 0, budget: 25000, actual: 23000, variance: 2000, variancePercent: 8.0, children: [] },
+    { code: "211.0", name: "Amortization & Depreciation", type: "expense", level: 0, budget: 40000, actual: 40000, variance: 0, variancePercent: 0, children: [] },
+    { code: "300.0", name: "FX Variation", type: "expense", level: 0, budget: 0, actual: -15000, variance: 15000, variancePercent: 0, children: [] },
   ];
 
-  const fixedCostItems: LineItem[] = [
-    {
-      category: "Fixed Cost",
-      description: "Office / Facilities",
-      values: {
-        "1.1.0": { budget: 0, incurred: 0 },
-        "202.1": { budget: 0, incurred: 0 },
-        "2.1.0": { budget: 0, incurred: 0 },
-        "2.1.1": { budget: 0, incurred: 0 },
-        "2.1.2": { budget: 0, incurred: 0 },
-        "202.4": { budget: 0, incurred: 0 },
-        "3.1.0": { budget: 0, incurred: 0 },
-        "3.1.1": { budget: 0, incurred: 0 },
-        "3.1.2": { budget: 0, incurred: 0 },
-        "202.5": { budget: 0, incurred: 0 },
-      },
-    },
-    {
-      category: "Fixed Cost",
-      description: "Office Rent Cost",
-      values: {
-        "1.1.0": { budget: 45000, incurred: 45000 },
-        "202.1": { budget: 12000, incurred: 12000 },
-        "2.1.0": { budget: 68000, incurred: 68000 },
-        "2.1.1": { budget: 34000, incurred: 34000 },
-        "2.1.2": { budget: 28000, incurred: 28000 },
-        "202.4": { budget: 18000, incurred: 18000 },
-        "3.1.0": { budget: 52000, incurred: 52000 },
-        "3.1.1": { budget: 15000, incurred: 15000 },
-        "3.1.2": { budget: 12000, incurred: 12000 },
-        "202.5": { budget: 8000, incurred: 8000 },
-      },
-    },
-    {
-      category: "Fixed Cost",
-      description: "Office Operational Cost Fixed",
-      values: {
-        "1.1.0": { budget: 18000, incurred: 18500 },
-        "202.1": { budget: 5000, incurred: 5200 },
-        "2.1.0": { budget: 28000, incurred: 28800 },
-        "2.1.1": { budget: 14000, incurred: 14400 },
-        "2.1.2": { budget: 11000, incurred: 11300 },
-        "202.4": { budget: 7500, incurred: 7700 },
-        "3.1.0": { budget: 22000, incurred: 22600 },
-        "3.1.1": { budget: 6000, incurred: 6200 },
-        "3.1.2": { budget: 5000, incurred: 5100 },
-        "202.5": { budget: 3500, incurred: 3600 },
-      },
-    },
-    {
-      category: "Fixed Cost",
-      description: "Office Operational Cost General",
-      values: {
-        "1.1.0": { budget: 25000, incurred: 25000 },
-        "202.1": { budget: 7000, incurred: 7000 },
-        "2.1.0": { budget: 38000, incurred: 38000 },
-        "2.1.1": { budget: 19000, incurred: 19000 },
-        "2.1.2": { budget: 15000, incurred: 15000 },
-        "202.4": { budget: 10000, incurred: 10000 },
-        "3.1.0": { budget: 30000, incurred: 30000 },
-        "3.1.1": { budget: 8000, incurred: 8000 },
-        "3.1.2": { budget: 7000, incurred: 7000 },
-        "202.5": { budget: 5000, incurred: 5000 },
-      },
-    },
-  ];
+  // Calculate totals
+  const totals = useMemo(() => {
+    const totalRevenueBudget = revenueStructure.reduce((sum, r) => sum + r.budget, 0);
+    const totalRevenueActual = revenueStructure.reduce((sum, r) => sum + r.actual, 0);
+    const totalExpenseBudget = expenseStructure.reduce((sum, e) => sum + e.budget, 0);
+    const totalExpenseActual = expenseStructure.reduce((sum, e) => sum + e.actual, 0);
 
-  const operationsItems: LineItem[] = [
-    {
-      category: "Operations",
-      description: "Operations (Salaries)",
-      values: {
-        "1.1.0": { budget: 185000, incurred: 185000 },
-        "202.1": { budget: 95000, incurred: 95000 },
-        "2.1.0": { budget: 285000, incurred: 285000 },
-        "2.1.1": { budget: 142000, incurred: 142000 },
-        "2.1.2": { budget: 115000, incurred: 115000 },
-        "202.4": { budget: 165000, incurred: 165000 },
-        "3.1.0": { budget: 225000, incurred: 225000 },
-        "3.1.1": { budget: 125000, incurred: 125000 },
-        "3.1.2": { budget: 95000, incurred: 95000 },
-        "202.5": { budget: 185000, incurred: 185000 },
-      },
-    },
-    {
-      category: "Operations",
-      description: "Marketing",
-      values: {
-        "1.1.0": { budget: 65000, incurred: 72000 },
-        "202.1": { budget: 18000, incurred: 20000 },
-        "2.1.0": { budget: 95000, incurred: 105000 },
-        "2.1.1": { budget: 48000, incurred: 53000 },
-        "2.1.2": { budget: 38000, incurred: 42000 },
-        "202.4": { budget: 25000, incurred: 28000 },
-        "3.1.0": { budget: 125000, incurred: 138000 },
-        "3.1.1": { budget: 8000, incurred: 8800 },
-        "3.1.2": { budget: 85000, incurred: 94000 },
-        "202.5": { budget: 12000, incurred: 13200 },
-      },
-    },
-    {
-      category: "Operations",
-      description: "Department Operational Cost",
-      values: {
-        "1.1.0": { budget: 85000, incurred: 92000 },
-        "202.1": { budget: 22000, incurred: 24000 },
-        "2.1.0": { budget: 145000, incurred: 158000 },
-        "2.1.1": { budget: 72000, incurred: 78000 },
-        "2.1.2": { budget: 58000, incurred: 63000 },
-        "202.4": { budget: 38000, incurred: 41000 },
-        "3.1.0": { budget: 95000, incurred: 103000 },
-        "3.1.1": { budget: 12000, incurred: 13000 },
-        "3.1.2": { budget: 18000, incurred: 19500 },
-        "202.5": { budget: 8000, incurred: 8700 },
-      },
-    },
-  ];
+    const cogsBudget = expenseStructure.find((e) => e.code === "201.0")?.budget || 0;
+    const cogsActual = expenseStructure.find((e) => e.code === "201.0")?.actual || 0;
+    const grossProfitBudget = totalRevenueBudget - cogsBudget;
+    const grossProfitActual = totalRevenueActual - cogsActual;
 
-  const variableCostItems: LineItem[] = [
-    {
-      category: "Variable Cost",
-      description: "Dedicated Cost",
-      values: {
-        "1.1.0": { budget: 131000, incurred: 145000 },
-        "202.1": { budget: 35500, incurred: 39300 },
-        "2.1.0": { budget: 195000, incurred: 215500 },
-        "2.1.1": { budget: 98000, incurred: 108200 },
-        "2.1.2": { budget: 78000, incurred: 86300 },
-        "202.4": { budget: 51000, incurred: 56700 },
-        "3.1.0": { budget: 252000, incurred: 278500 },
-        "3.1.1": { budget: 54000, incurred: 59400 },
-        "3.1.2": { budget: 128000, incurred: 141900 },
-        "202.5": { budget: 26000, incurred: 28800 },
-      },
-    },
-  ];
+    const opexBudget = expenseStructure.filter((e) => e.code !== "201.0" && e.code !== "211.0").reduce((sum, e) => sum + e.budget, 0);
+    const opexActual = expenseStructure.filter((e) => e.code !== "201.0" && e.code !== "211.0").reduce((sum, e) => sum + e.actual, 0);
+    const ebitdaBudget = grossProfitBudget - opexBudget;
+    const ebitdaActual = grossProfitActual - opexActual;
 
-  // Function to calcular totais por sub-departamento
-  const calculateSubDeptTotal = (
-    items: LineItem[],
-    subDeptCode: string,
-    type: "budget" | "incurred",
-  ) => {
-    return items.reduce((sum, item) => {
-      if (item.isSubtotal || item.isPercentage) return sum;
-      return sum + (item.values[subDeptCode]?.[type] || 0);
-    }, 0);
+    const netIncomeBudget = totalRevenueBudget - totalExpenseBudget;
+    const netIncomeActual = totalRevenueActual - totalExpenseActual;
+
+    return {
+      revenue: { budget: totalRevenueBudget, actual: totalRevenueActual },
+      expenses: { budget: totalExpenseBudget, actual: totalExpenseActual },
+      grossProfit: { budget: grossProfitBudget, actual: grossProfitActual },
+      ebitda: { budget: ebitdaBudget, actual: ebitdaActual },
+      netIncome: { budget: netIncomeBudget, actual: netIncomeActual },
+    };
+  }, []);
+
+  useEffect(() => {
+    setTimeout(() => setLoading(false), 500);
+  }, [selectedScope]);
+
+  const toggleSection = (code: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(code)) {
+      newExpanded.delete(code);
+    } else {
+      newExpanded.add(code);
+    }
+    setExpandedSections(newExpanded);
   };
 
-  // Function to calcular totais por departamento
-  const calculateDeptTotal = (
-    items: LineItem[],
-    dept: Department,
-    type: "budget" | "incurred",
-  ) => {
-    return dept.subDepartments.reduce((sum, subDept) => {
-      return sum + calculateSubDeptTotal(items, subDept.code, type);
-    }, 0);
-  };
+  const renderDRELine = (line: DRELine, isChild = false) => {
+    const hasChildren = line.children && line.children.length > 0;
+    const isExpanded = expandedSections.has(line.code);
+    const isPositiveVariance = line.type === "revenue" ? line.variance > 0 : line.variance > 0;
 
-  // Function to calcular grand total
-  const calculateGrandTotal = (
-    items: LineItem[],
-    type: "budget" | "incurred",
-  ) => {
-    return departments.reduce((sum, dept) => {
-      return sum + calculateDeptTotal(items, dept, type);
-    }, 0);
-  };
-
-  // Calcular totais de receita
-  const totalRevenueBudget = calculateGrandTotal(revenueItems, "budget");
-  const totalRevenueIncurred = calculateGrandTotal(revenueItems, "incurred");
-
-  // Calcular totais de custos fixos
-  const totalFixedCostBudget = calculateGrandTotal(fixedCostItems, "budget");
-  const totalFixedCostIncurred = calculateGrandTotal(
-    fixedCostItems,
-    "incurred",
-  );
-
-  // Calcular totais de operações
-  const totalOperationsBudget = calculateGrandTotal(operationsItems, "budget");
-  const totalOperationsIncurred = calculateGrandTotal(
-    operationsItems,
-    "incurred",
-  );
-
-  // Calcular totais de custos variáveis
-  const totalVariableCostBudget = calculateGrandTotal(
-    variableCostItems,
-    "budget",
-  );
-  const totalVariableCostIncurred = calculateGrandTotal(
-    variableCostItems,
-    "incurred",
-  );
-
-  // Calcular total de custos
-  const totalCostsBudget =
-    totalFixedCostBudget + totalOperationsBudget + totalVariableCostBudget;
-  const totalCostsIncurred =
-    totalFixedCostIncurred +
-    totalOperationsIncurred +
-    totalVariableCostIncurred;
-
-  // Calcular custo administrativo (15%)
-  const adminCostBudget = totalCostsBudget * 0.15;
-  const adminCostIncurred = totalCostsIncurred * 0.15;
-
-  // Calcular custo total de operação
-  const totalCostOfOperationBudget = totalCostsBudget + adminCostBudget;
-  const totalCostOfOperationIncurred = totalCostsIncurred + adminCostIncurred;
-
-  // Calcular lucro/deficit
-  const profitDeficitBudget = totalRevenueBudget - totalCostOfOperationBudget;
-  const profitDeficitIncurred =
-    totalRevenueIncurred - totalCostOfOperationIncurred;
-
-  // Calcular margem operacional
-  const operatingMarginBudget =
-    totalRevenueBudget > 0
-      ? (profitDeficitBudget / totalRevenueBudget) * 100
-      : 0;
-  const operatingMarginIncurred =
-    totalRevenueIncurred > 0
-      ? (profitDeficitIncurred / totalRevenueIncurred) * 100
-      : 0;
-
-  const formatCurrency = (value: number) => {
-    const formatted = Math.abs(value).toLocaleString("pt-BR", {
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    });
-    return value < 0 ? `€ (${formatted})` : `€ ${formatted}`;
-  };
-
-  const formatPercentage = (value: number) => {
-    return `${value.toFixed(1)}%`;
-  };
-
-  const getVarianceColor = (budget: number, incurred: number) => {
-    const variance = ((incurred - budget) / budget) * 100;
-    if (Math.abs(variance) < 5) return "text-gray-600 dark:text-gray-400";
-    return variance > 0
-      ? "text-red-600 dark:text-red-400"
-      : "text-green-600 dark:text-green-400";
-  };
-
-  const renderLineItem = (item: LineItem, idx: number) => {
     return (
-      <div
-        key={idx}
-        className="grid grid-cols-[250px_repeat(10,1fr)] gap-0 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-slate-800/50"
-      >
+      <div key={line.code}>
         <div
-          className={`px-4 py-3 text-sm ${item.isSubtotal ? "font-bold" : "font-medium"} text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700`}
+          className={`grid grid-cols-6 gap-4 py-3 px-4 border-b border-gray-700 hover:bg-gray-800/50 transition-colors ${
+            isChild ? "pl-10 bg-gray-800/30" : "bg-gray-900/50"
+          }`}
         >
-          {item.description}
+          <div className="col-span-2 flex items-center gap-2">
+            {hasChildren ? (
+              <button onClick={() => toggleSection(line.code)} className="p-1 hover:bg-gray-700 rounded">
+                {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+              </button>
+            ) : (
+              <div className="w-6" />
+            )}
+            <span className="text-xs text-gray-500 font-mono">{line.code}</span>
+            <span className={`text-sm ${isChild ? "text-gray-400" : "font-medium text-white"}`}>{line.name}</span>
+          </div>
+          <div className="text-right">
+            <span className="text-sm text-gray-300 font-mono">{formatCurrency(line.budget, "EUR")}</span>
+          </div>
+          <div className="text-right">
+            <span className={`text-sm font-mono font-medium ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"}`}>
+              {formatCurrency(line.actual, "EUR")}
+            </span>
+          </div>
+          <div className="text-right">
+            <span className={`text-sm font-mono ${isPositiveVariance ? "text-emerald-400" : "text-red-400"}`}>
+              {line.variance >= 0 ? "+" : ""}{formatCurrency(line.variance, "EUR")}
+            </span>
+          </div>
+          <div className="text-right">
+            <Badge variant="outline" className={`text-xs font-mono ${isPositiveVariance ? "border-emerald-500/50 text-emerald-400 bg-emerald-500/10" : "border-red-500/50 text-red-400 bg-red-500/10"}`}>
+              {line.variancePercent >= 0 ? "+" : ""}{line.variancePercent.toFixed(1)}%
+            </Badge>
+          </div>
         </div>
-        {departments.flatMap((dept) =>
-          dept.subDepartments.map((subDept) => {
-            const data = item.values[subDept.code];
-            const variance =
-              data && data.budget !== 0
-                ? ((data.incurred - data.budget) / data.budget) * 100
-                : 0;
-            return (
-              <div
-                key={subDept.code}
-                className="px-2 py-3 text-right border-r border-gray-200 dark:border-gray-700"
-              >
-                <div className="text-xs text-gray-600 dark:text-gray-400">
-                  {item.isPercentage
-                    ? formatPercentage(data?.budget || 0)
-                    : formatCurrency(data?.budget || 0)}
-                </div>
-                <div
-                  className={`text-xs font-semibold ${getVarianceColor(data?.budget || 0, data?.incurred || 0)}`}
-                >
-                  {item.isPercentage
-                    ? formatPercentage(data?.incurred || 0)
-                    : formatCurrency(data?.incurred || 0)}
-                </div>
-                {data && !item.isPercentage && (
-                  <div
-                    className={`text-xs ${variance > 0 ? "text-red-500" : variance < 0 ? "text-green-500" : "text-gray-400"}`}
-                  >
-                    {variance > 0 ? "+" : ""}
-                    {variance.toFixed(1)}%
-                  </div>
-                )}
-              </div>
-            );
-          }),
-        )}
+        {hasChildren && isExpanded && line.children?.map((child) => renderDRELine(child, true))}
       </div>
     );
   };
 
-  const renderCategorySection = (
-    title: string,
-    items: LineItem[],
-    bgColor: string,
-  ) => {
+  const renderSubtotalRow = (label: string, budget: number, actual: number, isProfit = false) => {
+    const variance = actual - budget;
+    const variancePercent = budget !== 0 ? (variance / budget) * 100 : 0;
+    const isPositive = variance >= 0;
+
     return (
-      <div className="mb-0">
-        <div
-          className={`${bgColor} px-4 py-3 font-bold text-white text-sm sticky top-0 z-10`}
-        >
-          {title}
+      <div className={`grid grid-cols-6 gap-4 py-4 px-4 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y-2 border-blue-500/30" : "bg-gray-800/80 border-y border-gray-600"}`}>
+        <div className="col-span-2 flex items-center gap-2">
+          <div className="w-6" />
+          <span className={`font-semibold ${isProfit ? "text-lg text-blue-300" : "text-white"}`}>{label}</span>
         </div>
-        {items.map((item, idx) => renderLineItem(item, idx))}
+        <div className="text-right"><span className="text-sm text-gray-300 font-mono font-semibold">{formatCurrency(budget, "EUR")}</span></div>
+        <div className="text-right"><span className={`text-sm font-mono font-bold ${isProfit ? "text-blue-300" : actual >= 0 ? "text-emerald-400" : "text-red-400"}`}>{formatCurrency(actual, "EUR")}</span></div>
+        <div className="text-right"><span className={`text-sm font-mono font-semibold ${isPositive ? "text-emerald-400" : "text-red-400"}`}>{variance >= 0 ? "+" : ""}{formatCurrency(variance, "EUR")}</span></div>
+        <div className="text-right">
+          <Badge variant="outline" className={`text-xs font-mono font-semibold ${isPositive ? "border-emerald-500/50 text-emerald-400 bg-emerald-500/10" : "border-red-500/50 text-red-400 bg-red-500/10"}`}>
+            {variancePercent >= 0 ? "+" : ""}{variancePercent.toFixed(1)}%
+          </Badge>
+        </div>
       </div>
     );
   };
 
-  const renderSubtotalRow = (
-    title: string,
-    items: LineItem[],
-    bgColor: string = "bg-gray-100 dark:bg-slate-800",
-  ) => {
+  if (loading) {
     return (
-      <div
-        className={`grid grid-cols-[250px_repeat(10,1fr)] gap-0 ${bgColor} font-bold border-y border-gray-300 dark:border-gray-600`}
-      >
-        <div className="px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-600">
-          {title}
+      <div className="min-h-screen bg-gray-950 p-6">
+        <div className="animate-pulse space-y-4">
+          <div className="h-16 bg-gray-800 rounded-lg"></div>
+          <div className="grid grid-cols-5 gap-4">{[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-800 rounded-lg"></div>)}</div>
+          <div className="h-96 bg-gray-800 rounded-lg"></div>
         </div>
-        {departments.flatMap((dept) =>
-          dept.subDepartments.map((subDept) => {
-            const budget = calculateSubDeptTotal(items, subDept.code, "budget");
-            const incurred = calculateSubDeptTotal(
-              items,
-              subDept.code,
-              "incurred",
-            );
-            const variance =
-              budget > 0 ? ((incurred - budget) / budget) * 100 : 0;
-            return (
-              <div
-                key={subDept.code}
-                className="px-2 py-3 text-right border-r border-gray-300 dark:border-gray-600"
-              >
-                <div className="text-xs text-gray-700 dark:text-gray-300">
-                  {formatCurrency(budget)}
-                </div>
-                <div
-                  className={`text-xs font-bold ${getVarianceColor(budget, incurred)}`}
-                >
-                  {formatCurrency(incurred)}
-                </div>
-                <div
-                  className={`text-xs ${variance > 0 ? "text-red-600" : variance < 0 ? "text-green-600" : "text-gray-500"}`}
-                >
-                  {variance > 0 ? "+" : ""}
-                  {variance.toFixed(1)}%
-                </div>
-              </div>
-            );
-          }),
-        )}
       </div>
     );
-  };
-
-  const renderCalculatedRow = (
-    title: string,
-    budgetValue: number,
-    incurredValue: number,
-    bgColor: string = "bg-white dark:bg-slate-900",
-  ) => {
-    return (
-      <div
-        className={`grid grid-cols-[250px_repeat(10,1fr)] gap-0 ${bgColor} font-bold border-b border-gray-300 dark:border-gray-600`}
-      >
-        <div className="px-4 py-3 text-sm text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-600">
-          {title}
-        </div>
-        {departments.flatMap((dept) =>
-          dept.subDepartments.map((subDept) => {
-            // Para linhas calculadas, distribuímos proporcionalmente
-            const subDeptRevenue = calculateSubDeptTotal(
-              revenueItems,
-              subDept.code,
-              "incurred",
-            );
-            const proportion =
-              totalRevenueIncurred > 0
-                ? subDeptRevenue / totalRevenueIncurred
-                : 0;
-            const budget = budgetValue * proportion;
-            const incurred = incurredValue * proportion;
-            const variance =
-              budget > 0 ? ((incurred - budget) / budget) * 100 : 0;
-            return (
-              <div
-                key={subDept.code}
-                className="px-2 py-3 text-right border-r border-gray-300 dark:border-gray-600"
-              >
-                <div className="text-xs text-gray-700 dark:text-gray-300">
-                  {formatCurrency(budget)}
-                </div>
-                <div
-                  className={`text-xs font-bold ${getVarianceColor(budget, incurred)}`}
-                >
-                  {formatCurrency(incurred)}
-                </div>
-                <div
-                  className={`text-xs ${variance > 0 ? "text-red-600" : variance < 0 ? "text-green-600" : "text-gray-500"}`}
-                >
-                  {variance > 0 ? "+" : ""}
-                  {variance.toFixed(1)}%
-                </div>
-              </div>
-            );
-          }),
-        )}
-      </div>
-    );
-  };
+  }
 
   return (
-    <div className="min-h-screen bg-white">
-
-      <div className="">
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
-          <div className="container mx-auto px-6 py-5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4 md:ml-0 ml-12">
-                <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-[#1a2b4a] to-[#2c3e5f] flex items-center justify-center">
-                  <TrendingUp className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">
-                    DSD Departmental P&L
-                  </h1>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    Profit & Loss Statement by Department
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <Select
-                  value={selectedPeriod}
-                  onValueChange={setSelectedPeriod}
-                >
-                  <SelectTrigger className="w-[180px] border-[#1a2b4a]">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="2024-Q1">2024 Q1</SelectItem>
-                    <SelectItem value="2024-Q2">2024 Q2</SelectItem>
-                    <SelectItem value="2024-Q3">2024 Q3</SelectItem>
-                    <SelectItem value="2024-Q4">2024 Q4</SelectItem>
-                    <SelectItem value="2024-YTD">2024 YTD</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline">Export Report</span>
-                </Button>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gray-950">
+      {/* Dark Header */}
+      <header className="bg-gray-900 border-b border-gray-800 px-6 py-4 sticky top-0 z-20">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-white flex items-center gap-3">
+              <DollarSign className="h-7 w-7 text-emerald-400" />
+              P&L Statement (DRE)
+            </h1>
+            <p className="text-sm text-gray-400 mt-1">Demonstração do Resultado do Exercício • {selectedScope === "GLOBAL" ? "All Regions" : selectedScope}</p>
           </div>
-        </header>
-
-        <div className="container mx-auto px-6 py-8">
-          {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <Card className="shadow-xl border-2 border-[#e5e7eb] dark:border-[#2c3e5f] overflow-hidden">
-              <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 p-6">
-                <CardTitle className="text-sm font-bold text-white/80 mb-2 flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Total Revenue
-                </CardTitle>
-                <div className="text-3xl font-bold text-white mb-1">
-                  {formatCurrency(totalRevenueIncurred)}
-                </div>
-                <div className="text-xs text-white/70">
-                  Budget: {formatCurrency(totalRevenueBudget)}
-                </div>
-                <div
-                  className={`text-xs font-semibold mt-1 ${totalRevenueIncurred > totalRevenueBudget ? "text-white" : "text-white/70"}`}
-                >
-                  {totalRevenueIncurred > totalRevenueBudget ? "+" : ""}
-                  {formatPercentage(
-                    ((totalRevenueIncurred - totalRevenueBudget) /
-                      totalRevenueBudget) *
-                    100,
-                  )}{" "}
-                  vs Budget
-                </div>
-              </div>
-            </Card>
-
-            <Card className="shadow-xl border-2 border-[#e5e7eb] dark:border-[#2c3e5f] overflow-hidden">
-              <div className="bg-gradient-to-br from-red-500 to-red-600 p-6">
-                <CardTitle className="text-sm font-bold text-white/80 mb-2 flex items-center gap-2">
-                  <TrendingDown className="h-4 w-4" />
-                  Total Costs
-                </CardTitle>
-                <div className="text-3xl font-bold text-white mb-1">
-                  {formatCurrency(totalCostOfOperationIncurred)}
-                </div>
-                <div className="text-xs text-white/70">
-                  Budget: {formatCurrency(totalCostOfOperationBudget)}
-                </div>
-                <div
-                  className={`text-xs font-semibold mt-1 ${totalCostOfOperationIncurred < totalCostOfOperationBudget ? "text-white" : "text-white/70"}`}
-                >
-                  {totalCostOfOperationIncurred > totalCostOfOperationBudget
-                    ? "+"
-                    : ""}
-                  {formatPercentage(
-                    ((totalCostOfOperationIncurred -
-                      totalCostOfOperationBudget) /
-                      totalCostOfOperationBudget) *
-                    100,
-                  )}{" "}
-                  vs Budget
-                </div>
-              </div>
-            </Card>
-
-            <Card className="shadow-xl border-2 border-[#e5e7eb] dark:border-[#2c3e5f] overflow-hidden">
-              <div className="bg-gradient-to-br from-[#1a2b4a] to-[#2c3e5f] p-6">
-                <CardTitle className="text-sm font-bold text-white/80 mb-2 flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Profit / Deficit
-                </CardTitle>
-                <div className="text-3xl font-bold text-white mb-1">
-                  {formatCurrency(profitDeficitIncurred)}
-                </div>
-                <div className="text-xs text-white/70">
-                  Budget: {formatCurrency(profitDeficitBudget)}
-                </div>
-                <div
-                  className={`text-xs font-semibold mt-1 ${profitDeficitIncurred > profitDeficitBudget ? "text-white" : "text-white/70"}`}
-                >
-                  {profitDeficitIncurred > profitDeficitBudget ? "+" : ""}
-                  {formatPercentage(
-                    ((profitDeficitIncurred - profitDeficitBudget) /
-                      profitDeficitBudget) *
-                    100,
-                  )}{" "}
-                  vs Budget
-                </div>
-              </div>
-            </Card>
-
-            <Card className="shadow-xl border-2 border-[#e5e7eb] dark:border-[#2c3e5f] overflow-hidden">
-              <div className="bg-gradient-to-br from-[#4fc3f7] to-[#00bcd4] p-6">
-                <CardTitle className="text-sm font-bold text-white/80 mb-2 flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4" />
-                  Operating Margin
-                </CardTitle>
-                <div className="text-3xl font-bold text-white mb-1">
-                  {formatPercentage(operatingMarginIncurred)}
-                </div>
-                <div className="text-xs text-white/70">
-                  Budget: {formatPercentage(operatingMarginBudget)}
-                </div>
-                <div
-                  className={`text-xs font-semibold mt-1 ${operatingMarginIncurred > operatingMarginBudget ? "text-white" : "text-white/70"}`}
-                >
-                  {operatingMarginIncurred > operatingMarginBudget ? "+" : ""}
-                  {(operatingMarginIncurred - operatingMarginBudget).toFixed(1)}
-                  pp vs Budget
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* P&L Table */}
-          <Card className="shadow-xl border-2 border-[#e5e7eb] dark:border-[#2c3e5f] overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
-              <CardTitle className="text-xl">
-                Departmental P&L Statement
-              </CardTitle>
-              <CardDescription className="text-white/80">
-                Budget vs Incurred - {selectedPeriod}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                {/* Header Row - Departments */}
-                <div className="grid grid-cols-[250px_repeat(10,1fr)] gap-0 bg-gradient-to-r from-gray-100 to-gray-200 dark:from-slate-800 dark:to-slate-700 border-b-2 border-gray-300 dark:border-gray-600 sticky top-0 z-20">
-                  <div className="px-4 py-4 font-bold text-sm text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-600">
-                    Category
-                  </div>
-                  {departments.map((dept) => (
-                    <div
-                      key={dept.code}
-                      className={`col-span-${dept.subDepartments.length} text-center border-r border-gray-300 dark:border-gray-600`}
-                    >
-                      <div className="px-2 py-2 font-bold text-sm text-gray-900 dark:text-white border-b border-gray-300 dark:border-gray-600">
-                        {dept.name} ({dept.code})
-                      </div>
-                      <div
-                        className="grid"
-                        style={{
-                          gridTemplateColumns: `repeat(${dept.subDepartments.length}, 1fr)`,
-                        }}
-                      >
-                        {dept.subDepartments.map((subDept) => (
-                          <div
-                            key={subDept.code}
-                            className="px-2 py-2 text-xs font-semibold text-gray-700 dark:text-gray-300 border-r border-gray-200 dark:border-gray-700"
-                          >
-                            {subDept.name}
-                            <div className="text-xs text-gray-500 dark:text-gray-400 font-normal">
-                              ({subDept.code})
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Personal Assignment Row */}
-                <div className="grid grid-cols-[250px_repeat(10,1fr)] gap-0 bg-blue-50 dark:bg-blue-950/30 border-b-2 border-blue-200 dark:border-blue-800">
-                  <div className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white border-r border-blue-200 dark:border-blue-800">
-                    Personal Assignment
-                  </div>
-                  {departments.flatMap((dept) =>
-                    dept.subDepartments.map((subDept) => (
-                      <div
-                        key={subDept.code}
-                        className="px-2 py-3 text-center border-r border-blue-200 dark:border-blue-800"
-                      >
-                        <div className="text-sm font-bold text-blue-700 dark:text-blue-400">
-                          {subDept.personalAssignment}
-                        </div>
-                        <div className="text-xs text-gray-600 dark:text-gray-400">
-                          people
-                        </div>
-                      </div>
-                    )),
-                  )}
-                </div>
-
-                {/* Revenue Section */}
-                {renderCategorySection(
-                  "REVENUE",
-                  revenueItems,
-                  "bg-gradient-to-r from-emerald-500 to-emerald-600",
-                )}
-
-                {/* Fixed Cost Section */}
-                {renderCategorySection(
-                  "FIXED COST",
-                  fixedCostItems,
-                  "bg-gradient-to-r from-blue-500 to-blue-600",
-                )}
-                {renderSubtotalRow("Total", fixedCostItems)}
-
-                {/* Percentage Row */}
-                <div className="grid grid-cols-[250px_repeat(10,1fr)] gap-0 bg-blue-50 dark:bg-blue-950/20 border-b border-gray-300 dark:border-gray-600">
-                  <div className="px-4 py-3 text-sm font-bold text-gray-900 dark:text-white border-r border-gray-300 dark:border-gray-600">
-                    %
-                  </div>
-                  {departments.flatMap((dept) =>
-                    dept.subDepartments.map((subDept) => {
-                      const fixedCostBudget = calculateSubDeptTotal(
-                        fixedCostItems,
-                        subDept.code,
-                        "budget",
-                      );
-                      const fixedCostIncurred = calculateSubDeptTotal(
-                        fixedCostItems,
-                        subDept.code,
-                        "incurred",
-                      );
-                      const revenueBudget = calculateSubDeptTotal(
-                        revenueItems,
-                        subDept.code,
-                        "budget",
-                      );
-                      const revenueIncurred = calculateSubDeptTotal(
-                        revenueItems,
-                        subDept.code,
-                        "incurred",
-                      );
-                      const percentBudget =
-                        revenueBudget > 0
-                          ? (fixedCostBudget / revenueBudget) * 100
-                          : 0;
-                      const percentIncurred =
-                        revenueIncurred > 0
-                          ? (fixedCostIncurred / revenueIncurred) * 100
-                          : 0;
-                      return (
-                        <div
-                          key={subDept.code}
-                          className="px-2 py-3 text-right border-r border-gray-300 dark:border-gray-600"
-                        >
-                          <div className="text-xs text-gray-600 dark:text-gray-400">
-                            {formatPercentage(percentBudget)}
-                          </div>
-                          <div className="text-xs font-bold text-blue-700 dark:text-blue-400">
-                            {formatPercentage(percentIncurred)}
-                          </div>
-                        </div>
-                      );
-                    }),
-                  )}
-                </div>
-
-                {/* Operations Section */}
-                {renderCategorySection(
-                  "OPERATIONS",
-                  operationsItems,
-                  "bg-gradient-to-r from-purple-500 to-purple-600",
-                )}
-                {renderSubtotalRow("Total", operationsItems)}
-
-                {/* Variable Cost Section */}
-                {renderCategorySection(
-                  "VARIABLE COST",
-                  variableCostItems,
-                  "bg-gradient-to-r from-orange-500 to-orange-600",
-                )}
-
-                {/* Total Cost Row */}
-                {renderSubtotalRow(
-                  "TOTAL COST",
-                  [...fixedCostItems, ...operationsItems, ...variableCostItems],
-                  "bg-red-100 dark:bg-red-900/30",
-                )}
-
-                {/* Administrative Cost (15%) */}
-                {renderCalculatedRow(
-                  "Administrative Cost (15%)",
-                  adminCostBudget,
-                  adminCostIncurred,
-                  "bg-orange-50 dark:bg-orange-950/20",
-                )}
-
-                {/* Total Cost of Operation */}
-                {renderCalculatedRow(
-                  "Total Cost of Operation",
-                  totalCostOfOperationBudget,
-                  totalCostOfOperationIncurred,
-                  "bg-red-100 dark:bg-red-900/30",
-                )}
-
-                {/* Profit/Deficit Row */}
-                <div className="grid grid-cols-[250px_repeat(10,1fr)] gap-0 bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white font-bold border-y-2 border-[#1a2b4a]">
-                  <div className="px-4 py-4 text-sm border-r border-white/20">
-                    Profit / Deficit
-                  </div>
-                  {departments.flatMap((dept) =>
-                    dept.subDepartments.map((subDept) => {
-                      const revenueBudget = calculateSubDeptTotal(
-                        revenueItems,
-                        subDept.code,
-                        "budget",
-                      );
-                      const revenueIncurred = calculateSubDeptTotal(
-                        revenueItems,
-                        subDept.code,
-                        "incurred",
-                      );
-                      const costsBudget =
-                        calculateSubDeptTotal(
-                          fixedCostItems,
-                          subDept.code,
-                          "budget",
-                        ) +
-                        calculateSubDeptTotal(
-                          operationsItems,
-                          subDept.code,
-                          "budget",
-                        ) +
-                        calculateSubDeptTotal(
-                          variableCostItems,
-                          subDept.code,
-                          "budget",
-                        );
-                      const costsIncurred =
-                        calculateSubDeptTotal(
-                          fixedCostItems,
-                          subDept.code,
-                          "incurred",
-                        ) +
-                        calculateSubDeptTotal(
-                          operationsItems,
-                          subDept.code,
-                          "incurred",
-                        ) +
-                        calculateSubDeptTotal(
-                          variableCostItems,
-                          subDept.code,
-                          "incurred",
-                        );
-
-                      // Adicionar custo administrativo proporcional
-                      const subDeptRevenue = calculateSubDeptTotal(
-                        revenueItems,
-                        subDept.code,
-                        "incurred",
-                      );
-                      const proportion =
-                        totalRevenueIncurred > 0
-                          ? subDeptRevenue / totalRevenueIncurred
-                          : 0;
-                      const adminBudget = adminCostBudget * proportion;
-                      const adminIncurred = adminCostIncurred * proportion;
-
-                      const profitBudget =
-                        revenueBudget - (costsBudget + adminBudget);
-                      const profitIncurred =
-                        revenueIncurred - (costsIncurred + adminIncurred);
-                      const variance =
-                        profitBudget !== 0
-                          ? ((profitIncurred - profitBudget) /
-                            Math.abs(profitBudget)) *
-                          100
-                          : 0;
-                      return (
-                        <div
-                          key={subDept.code}
-                          className="px-2 py-4 text-right border-r border-white/20"
-                        >
-                          <div className="text-xs text-white/70">
-                            {formatCurrency(profitBudget)}
-                          </div>
-                          <div className="text-xs font-bold">
-                            {formatCurrency(profitIncurred)}
-                          </div>
-                          <div
-                            className={`text-xs ${profitIncurred > profitBudget ? "text-green-300" : profitIncurred < profitBudget ? "text-red-300" : "text-white/50"}`}
-                          >
-                            {variance > 0 ? "+" : ""}
-                            {variance.toFixed(1)}%
-                          </div>
-                        </div>
-                      );
-                    }),
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Legend */}
-          <div className="mt-6 p-4 bg-white dark:bg-slate-900 rounded-lg border-2 border-gray-200 dark:border-gray-700">
-            <h3 className="text-sm font-bold text-gray-900 dark:text-white mb-3">
-              Legend
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              <div>
-                <span className="font-semibold text-gray-700 dark:text-gray-300">
-                  First Line:
-                </span>
-                <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  Budget Amount
-                </span>
-              </div>
-              <div>
-                <span className="font-semibold text-gray-700 dark:text-gray-300">
-                  Second Line:
-                </span>
-                <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  Incurred Amount
-                </span>
-              </div>
-              <div>
-                <span className="font-semibold text-gray-700 dark:text-gray-300">
-                  Third Line:
-                </span>
-                <span className="text-gray-600 dark:text-gray-400 ml-2">
-                  Variance %
-                </span>
-              </div>
-            </div>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800"><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
+            <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800"><Download className="h-4 w-4 mr-2" />Export</Button>
           </div>
         </div>
+      </header>
+
+      <div className="p-6 space-y-6">
+        {/* Date Filters */}
+        <Card className="bg-gray-900 border-gray-800">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-6 flex-wrap">
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-gray-400" />
+                <span className="text-sm font-medium text-gray-300">Period:</span>
+              </div>
+              <div className="flex items-center gap-3">
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40 bg-gray-800 border-gray-700 text-white" />
+                <span className="text-gray-500">to</span>
+                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40 bg-gray-800 border-gray-700 text-white" />
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800" onClick={() => { const d = new Date(); d.setMonth(0, 1); setStartDate(d.toISOString().split("T")[0]); setEndDate(new Date().toISOString().split("T")[0]); }}>YTD</Button>
+                <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800" onClick={() => { const now = new Date(); const firstDay = new Date(now.getFullYear(), now.getMonth(), 1); setStartDate(firstDay.toISOString().split("T")[0]); setEndDate(now.toISOString().split("T")[0]); }}>MTD</Button>
+                <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800" onClick={() => { const now = new Date(); const q = Math.floor(now.getMonth() / 3); const firstDay = new Date(now.getFullYear(), q * 3, 1); setStartDate(firstDay.toISOString().split("T")[0]); setEndDate(now.toISOString().split("T")[0]); }}>QTD</Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* KPI Cards */}
+        <div className="grid grid-cols-5 gap-4">
+          <Card className="bg-gradient-to-br from-emerald-900/40 to-emerald-950/60 border-emerald-800/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2"><TrendingUp className="h-5 w-5 text-emerald-400" /><span className="text-sm font-medium text-emerald-300">Total Revenue</span></div>
+              <p className="text-2xl font-bold text-white">{formatCurrency(totals.revenue.actual, "EUR")}</p>
+              <p className="text-xs text-emerald-400 mt-1">+{formatCurrency(totals.revenue.actual - totals.revenue.budget, "EUR")} vs budget</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-blue-900/40 to-blue-950/60 border-blue-800/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2"><Layers className="h-5 w-5 text-blue-400" /><span className="text-sm font-medium text-blue-300">Gross Profit</span></div>
+              <p className="text-2xl font-bold text-white">{formatCurrency(totals.grossProfit.actual, "EUR")}</p>
+              <p className="text-xs text-blue-400 mt-1">{((totals.grossProfit.actual / totals.revenue.actual) * 100).toFixed(1)}% margin</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-red-900/40 to-red-950/60 border-red-800/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2"><TrendingDown className="h-5 w-5 text-red-400" /><span className="text-sm font-medium text-red-300">Total Expenses</span></div>
+              <p className="text-2xl font-bold text-white">{formatCurrency(totals.expenses.actual, "EUR")}</p>
+              <p className="text-xs text-emerald-400 mt-1">{formatCurrency(totals.expenses.budget - totals.expenses.actual, "EUR")} under budget</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-purple-900/40 to-purple-950/60 border-purple-800/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2"><Building2 className="h-5 w-5 text-purple-400" /><span className="text-sm font-medium text-purple-300">EBITDA</span></div>
+              <p className="text-2xl font-bold text-white">{formatCurrency(totals.ebitda.actual, "EUR")}</p>
+              <p className="text-xs text-purple-400 mt-1">{((totals.ebitda.actual / totals.revenue.actual) * 100).toFixed(1)}% margin</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-gradient-to-br from-amber-900/40 to-amber-950/60 border-amber-800/50">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-2 mb-2"><DollarSign className="h-5 w-5 text-amber-400" /><span className="text-sm font-medium text-amber-300">Net Income</span></div>
+              <p className="text-2xl font-bold text-white">{formatCurrency(totals.netIncome.actual, "EUR")}</p>
+              <p className="text-xs text-amber-400 mt-1">{((totals.netIncome.actual / totals.revenue.actual) * 100).toFixed(1)}% margin</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* DRE Table */}
+        <Card className="bg-gray-900 border-gray-800 overflow-hidden">
+          <CardHeader className="border-b border-gray-800 bg-gray-900/50">
+            <CardTitle className="text-white flex items-center gap-2"><Filter className="h-5 w-5 text-gray-400" />Income Statement Detail</CardTitle>
+          </CardHeader>
+
+          {/* Table Header */}
+          <div className="grid grid-cols-6 gap-4 py-3 px-4 bg-gray-800/80 border-b border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-400">
+            <div className="col-span-2">Account</div>
+            <div className="text-right">Budget</div>
+            <div className="text-right">Actual</div>
+            <div className="text-right">Variance</div>
+            <div className="text-right">Var %</div>
+          </div>
+
+          {/* Revenue Section */}
+          <div className="bg-emerald-900/30 border-b border-emerald-800/50 py-2 px-4">
+            <span className="text-sm font-bold text-emerald-400 uppercase tracking-wider">▼ Revenue</span>
+          </div>
+          {revenueStructure.map((line) => renderDRELine(line))}
+          {renderSubtotalRow("TOTAL REVENUE", totals.revenue.budget, totals.revenue.actual)}
+
+          {/* Expenses Section */}
+          <div className="bg-red-900/30 border-b border-red-800/50 py-2 px-4 mt-2">
+            <span className="text-sm font-bold text-red-400 uppercase tracking-wider">▼ Expenses</span>
+          </div>
+          {expenseStructure.map((line) => renderDRELine(line))}
+          {renderSubtotalRow("TOTAL EXPENSES", totals.expenses.budget, totals.expenses.actual)}
+
+          {/* Subtotals */}
+          {renderSubtotalRow("GROSS PROFIT", totals.grossProfit.budget, totals.grossProfit.actual, true)}
+          {renderSubtotalRow("EBITDA", totals.ebitda.budget, totals.ebitda.actual, true)}
+
+          {/* Net Income */}
+          <div className="bg-gradient-to-r from-amber-900/50 to-orange-900/50 border-y-2 border-amber-500/50 py-5 px-4">
+            <div className="grid grid-cols-6 gap-4">
+              <div className="col-span-2 flex items-center gap-2">
+                <div className="w-6" />
+                <DollarSign className="h-6 w-6 text-amber-400" />
+                <span className="text-xl font-bold text-amber-300">NET INCOME</span>
+              </div>
+              <div className="text-right"><span className="text-lg text-gray-300 font-mono font-semibold">{formatCurrency(totals.netIncome.budget, "EUR")}</span></div>
+              <div className="text-right"><span className="text-xl font-mono font-bold text-amber-300">{formatCurrency(totals.netIncome.actual, "EUR")}</span></div>
+              <div className="text-right">
+                <span className={`text-lg font-mono font-semibold ${totals.netIncome.actual >= totals.netIncome.budget ? "text-emerald-400" : "text-red-400"}`}>
+                  {totals.netIncome.actual >= totals.netIncome.budget ? "+" : ""}{formatCurrency(totals.netIncome.actual - totals.netIncome.budget, "EUR")}
+                </span>
+              </div>
+              <div className="text-right">
+                <Badge className="text-sm font-mono font-semibold bg-amber-500/20 text-amber-300 border-amber-500/50">
+                  {totals.netIncome.budget !== 0 ? `${(((totals.netIncome.actual - totals.netIncome.budget) / totals.netIncome.budget) * 100).toFixed(1)}%` : "N/A"}
+                </Badge>
+              </div>
+            </div>
+          </div>
+        </Card>
       </div>
     </div>
   );
