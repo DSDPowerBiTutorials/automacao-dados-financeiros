@@ -145,6 +145,7 @@ export default function ARInvoicesPage() {
   const [saving, setSaving] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [reconciling, setReconciling] = useState(false);
+  const [bankReconciling, setBankReconciling] = useState(false);
   const [editingInvoice, setEditingInvoice] = useState<Partial<ARInvoice> | null>(null);
   const [manualReconcileDialog, setManualReconcileDialog] = useState(false);
   const [reconcileTarget, setReconcileTarget] = useState<ARInvoice | null>(null);
@@ -491,6 +492,42 @@ export default function ARInvoicesPage() {
       toast({ title: "Error", description: `Reconciliation failed: ${errorMessage}`, variant: "destructive" });
     } finally {
       setReconciling(false);
+    }
+  };
+
+  // Bank reconciliation via disbursement chain (Web Orders → Braintree → Disbursement → Bank)
+  const runBankReconcile = async () => {
+    setBankReconciling(true);
+    try {
+      // Reconciliar EUR e USD em paralelo
+      const [eurResult, usdResult] = await Promise.all([
+        fetch('/api/reconcile/disbursement-chain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dryRun: false, currency: 'EUR' })
+        }).then(r => r.json()),
+        fetch('/api/reconcile/disbursement-chain', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dryRun: false, currency: 'USD' })
+        }).then(r => r.json())
+      ]);
+
+      const totalBankReconciled = (eurResult.stats?.bank_rows_reconciled || 0) + (usdResult.stats?.bank_rows_reconciled || 0);
+      const totalOrdersUpdated = (eurResult.stats?.ar_invoices_updated || 0) + (usdResult.stats?.ar_invoices_updated || 0);
+      const totalChains = (eurResult.summary?.chains_found || 0) + (usdResult.summary?.chains_found || 0);
+
+      toast({
+        title: "Bank Reconciliation Complete",
+        description: `${totalChains} disbursements processed, ${totalBankReconciled} bank rows linked, ${totalOrdersUpdated} orders updated`
+      });
+      loadInvoices();
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : "Unknown error";
+      console.error("Bank reconciliation error:", err);
+      toast({ title: "Error", description: `Bank reconciliation failed: ${errorMessage}`, variant: "destructive" });
+    } finally {
+      setBankReconciling(false);
     }
   };
 
@@ -911,6 +948,10 @@ export default function ARInvoicesPage() {
             <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={runAutoReconcile} disabled={reconciling}>
               {reconciling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
               Reconcile
+            </Button>
+            <Button variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30" onClick={runBankReconcile} disabled={bankReconciling} title="Reconciliar com extrato bancário via Disbursement">
+              {bankReconciling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <DollarSign className="h-4 w-4 mr-1" />}
+              Bank Reconcile
             </Button>
             <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={syncFromHubSpot} disabled={syncing}>
               {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
@@ -1573,8 +1614,8 @@ export default function ARInvoicesPage() {
                   <div>
                     <span className="text-gray-500">Order Status:</span>
                     <span className={`ml-2 px-2 py-0.5 rounded text-xs ${transactionDetails.invoice.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
-                        transactionDetails.invoice.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
-                          'bg-gray-700/50 text-gray-300'
+                      transactionDetails.invoice.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
+                        'bg-gray-700/50 text-gray-300'
                       }`}>{transactionDetails.invoice.order_status || '-'}</span>
                   </div>
                   <div>
@@ -1591,8 +1632,8 @@ export default function ARInvoicesPage() {
                   <div>
                     <span className="text-gray-500">Payment Method:</span>
                     <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${transactionDetails.invoice.payment_method?.toLowerCase().includes('manual') ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-700/50' :
-                        transactionDetails.invoice.payment_method?.toLowerCase().includes('credit') ? 'bg-purple-900/30 text-purple-400 border border-purple-700/50' :
-                          'bg-blue-900/30 text-blue-400 border border-blue-700/50'
+                      transactionDetails.invoice.payment_method?.toLowerCase().includes('credit') ? 'bg-purple-900/30 text-purple-400 border border-purple-700/50' :
+                        'bg-blue-900/30 text-blue-400 border border-blue-700/50'
                       }`}>{transactionDetails.invoice.payment_method || 'Not specified'}</span>
                   </div>
                   <div>
