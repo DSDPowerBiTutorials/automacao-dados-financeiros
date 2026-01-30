@@ -502,23 +502,23 @@ export default function StripeEURPage() {
     };
 
     return (
-        <div className="min-h-full">
+        <div className="min-h-full bg-[#1e1f21] text-white">
             {/* Header */}
-            <header className="page-header-standard">
+            <header className="bg-gradient-to-r from-[#635BFF] to-[#4B44C9] px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/payment-channels">
-                            <Button variant="ghost" size="sm">
+                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 Back
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                <CreditCard className="w-6 h-6 text-[#635BFF]" />
+                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                                <CreditCard className="w-6 h-6 text-white" />
                                 Stripe EUR
                             </h1>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-sm text-white/70">
                                 Transactions em Euro • {rows.length} records
                                 {lastSyncDate && (
                                     <span className="ml-2">
@@ -535,6 +535,7 @@ export default function StripeEURPage() {
                             size="sm"
                             onClick={handleSync}
                             disabled={isSyncing}
+                            className="border-white text-white hover:bg-white/10"
                         >
                             {isSyncing ? (
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -572,408 +573,408 @@ export default function StripeEURPage() {
                     <Alert
                         className={
                             autoReconcileSummary && autoReconcileSummary.startsWith("✅")
-                            ? "bg-green-50 border-green-200"
-                            : "bg-red-50 border-red-200"
-                    }
-                >
-                    <AlertDescription>{autoReconcileSummary}</AlertDescription>
-                </Alert>
-            </div>
-        )
-    }
-
-    {
-        loadError && (
-            <div className="px-6 pt-4">
-                <Alert className="bg-red-50 border-red-200">
-                    <AlertDescription>❌ {loadError}</AlertDescription>
-                </Alert>
-            </div>
-        )
-    }
-
-    {/* Stats Cards */ }
-    <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        <Card>
-            <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <DollarSign className="w-4 h-4" />
-                    Total Sales
+                                ? "bg-green-50 border-green-200"
+                                : "bg-red-50 border-red-200"
+                        }
+                    >
+                        <AlertDescription>{autoReconcileSummary}</AlertDescription>
+                    </Alert>
                 </div>
-                <div className="text-xl font-bold text-green-600">
-                    €{stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </div>
-                <div className="text-xs text-gray-400">{stats.salesCount} transactions</div>
-            </CardContent>
-        </Card>
+            )
+            }
 
-        <Card>
-            <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <DollarSign className="w-4 h-4" />
-                    Refunds
-                </div>
-                <div className="text-xl font-bold text-red-600">
-                    €{stats.totalRefunds.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </div>
-                <div className="text-xs text-gray-400">{stats.refundsCount} transactions</div>
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <DollarSign className="w-4 h-4" />
-                    Net
-                </div>
-                <div className={`text-xl font-bold ${stats.netAmount >= 0 ? "text-green-600" : "text-red-600"}`}>
-                    €{stats.netAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
-                </div>
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <CheckCircle className="w-4 h-4" />
-                    Reconciled
-                </div>
-                <div className="text-xl font-bold text-blue-600">{stats.reconciledCount}</div>
-                <div className="text-xs text-gray-400">{stats.reconciledPercent}% of total</div>
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <XCircle className="w-4 h-4" />
-                    Pending
-                </div>
-                <div className="text-xl font-bold text-orange-600">{stats.pendingCount}</div>
-            </CardContent>
-        </Card>
-
-        <Card>
-            <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-sm text-gray-500">
-                    <Calendar className="w-4 h-4" />
-                    Period
-                </div>
-                <div className="text-sm font-medium">
-                    {dateFilter.start} a {dateFilter.end}
-                </div>
-            </CardContent>
-        </Card>
-    </div>
-
-    {/* Filters */ }
-    <div className="px-6 py-2 flex flex-wrap items-center gap-4 bg-white border-y border-gray-200">
-        <div className="flex items-center gap-2">
-            <Search className="w-4 h-4 text-gray-400" />
-            <Input
-                placeholder="Search by name, email, order ID..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-64"
-            />
-        </div>
-
-        <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-gray-400" />
-            <Input
-                type="date"
-                value={dateFilter.start}
-                onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
-                className="w-36"
-            />
-            <span className="text-gray-400">to</span>
-            <Input
-                type="date"
-                value={dateFilter.end}
-                onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
-                className="w-36"
-            />
-        </div>
-
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-40">
-                <SelectValue placeholder="Status" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="reconciled">Reconciled</SelectItem>
-                <SelectItem value="pending">Pending</SelectItem>
-            </SelectContent>
-        </Select>
-
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-32">
-                <SelectValue placeholder="Type" />
-            </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="sale">Sale</SelectItem>
-                <SelectItem value="refund">Refund</SelectItem>
-                <SelectItem value="invoice">Invoice</SelectItem>
-            </SelectContent>
-        </Select>
-    </div>
-
-    {/* Table */ }
-    <div className="px-6 py-4">
-        <Card>
-            <CardContent className="p-0">
-                {isLoading ? (
-                    <div className="flex items-center justify-center py-20">
-                        <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
-                        <span className="ml-2 text-gray-500">Loading...</span>
+            {
+                loadError && (
+                    <div className="px-6 pt-4">
+                        <Alert className="bg-red-50 border-red-200">
+                            <AlertDescription>❌ {loadError}</AlertDescription>
+                        </Alert>
                     </div>
-                ) : filteredRows.length === 0 ? (
-                    <div className="text-center py-20 text-gray-500">
-                        <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-300" />
-                        <p>No transactions found</p>
-                        <p className="text-sm">Try syncing with the Stripe API</p>
-                    </div>
-                ) : (
-                    <div className="overflow-x-auto">
-                        <table className="table-standard">
-                            <thead>
-                                <tr>
-                                    <th>
-                                        <button
-                                            className="flex items-center gap-1 font-medium hover:text-gray-900"
-                                            onClick={() => handleSort("date")}
-                                        >
-                                            Date
-                                            <ArrowUpDown className="w-3 h-3" />
-                                        </button>
-                                    </th>
-                                    <th>
-                                        Description
-                                    </th>
-                                    <th>
-                                        Customer
-                                    </th>
-                                    <th className="text-right">
-                                        <button
-                                            className="flex items-center gap-1 font-medium hover:text-gray-900 ml-auto"
-                                            onClick={() => handleSort("amount")}
-                                        >
-                                            Amount
-                                            <ArrowUpDown className="w-3 h-3" />
-                                        </button>
-                                    </th>
-                                    <th className="text-center">
-                                        Type
-                                    </th>
-                                    <th className="text-center">
-                                        Method
-                                    </th>
-                                    <th className="text-center">
-                                        Reconciled
-                                    </th>
-                                    <th className="text-center">
-                                        Actions
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {paginatedRows.map((row) => (
-                                    <tr
-                                        key={row.id}
-                                        className={`hover:bg-gray-50 ${row.reconciled ? "bg-green-50/30" : ""
-                                            }`}
-                                    >
-                                        <td className="px-4 py-3 whitespace-nowrap">
-                                            {formatDate(row.date)}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            {editingRow === row.id ? (
-                                                <Input
-                                                    value={editedData.description || ""}
-                                                    onChange={(e) =>
-                                                        setEditedData({
-                                                            ...editedData,
-                                                            description: e.target.value,
-                                                        })
-                                                    }
-                                                    className="w-full"
-                                                />
-                                            ) : (
-                                                <div>
-                                                    <div className="font-medium text-gray-900 truncate max-w-xs">
-                                                        {row.description}
-                                                    </div>
-                                                    {row.order_id && (
-                                                        <div className="text-xs text-gray-400">
-                                                            Order: {row.order_id}
+                )
+            }
+
+            {/* Stats Cards */}
+            <div className="px-6 py-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <DollarSign className="w-4 h-4" />
+                            Total Sales
+                        </div>
+                        <div className="text-xl font-bold text-green-600">
+                            €{stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </div>
+                        <div className="text-xs text-gray-400">{stats.salesCount} transactions</div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <DollarSign className="w-4 h-4" />
+                            Refunds
+                        </div>
+                        <div className="text-xl font-bold text-red-600">
+                            €{stats.totalRefunds.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </div>
+                        <div className="text-xs text-gray-400">{stats.refundsCount} transactions</div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <DollarSign className="w-4 h-4" />
+                            Net
+                        </div>
+                        <div className={`text-xl font-bold ${stats.netAmount >= 0 ? "text-green-600" : "text-red-600"}`}>
+                            €{stats.netAmount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <CheckCircle className="w-4 h-4" />
+                            Reconciled
+                        </div>
+                        <div className="text-xl font-bold text-blue-600">{stats.reconciledCount}</div>
+                        <div className="text-xs text-gray-400">{stats.reconciledPercent}% of total</div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <XCircle className="w-4 h-4" />
+                            Pending
+                        </div>
+                        <div className="text-xl font-bold text-orange-600">{stats.pendingCount}</div>
+                    </CardContent>
+                </Card>
+
+                <Card>
+                    <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 text-sm text-gray-500">
+                            <Calendar className="w-4 h-4" />
+                            Period
+                        </div>
+                        <div className="text-sm font-medium">
+                            {dateFilter.start} a {dateFilter.end}
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+
+            {/* Filters */}
+            <div className="px-6 py-2 flex flex-wrap items-center gap-4 bg-white border-y border-gray-200">
+                <div className="flex items-center gap-2">
+                    <Search className="w-4 h-4 text-gray-400" />
+                    <Input
+                        placeholder="Search by name, email, order ID..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="w-64"
+                    />
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <Input
+                        type="date"
+                        value={dateFilter.start}
+                        onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
+                        className="w-36"
+                    />
+                    <span className="text-gray-400">to</span>
+                    <Input
+                        type="date"
+                        value={dateFilter.end}
+                        onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
+                        className="w-36"
+                    />
+                </div>
+
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <SelectTrigger className="w-40">
+                        <SelectValue placeholder="Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="reconciled">Reconciled</SelectItem>
+                        <SelectItem value="pending">Pending</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-32">
+                        <SelectValue placeholder="Type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        <SelectItem value="sale">Sale</SelectItem>
+                        <SelectItem value="refund">Refund</SelectItem>
+                        <SelectItem value="invoice">Invoice</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
+            {/* Table */}
+            <div className="px-6 py-4">
+                <Card>
+                    <CardContent className="p-0">
+                        {isLoading ? (
+                            <div className="flex items-center justify-center py-20">
+                                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                <span className="ml-2 text-gray-500">Loading...</span>
+                            </div>
+                        ) : filteredRows.length === 0 ? (
+                            <div className="text-center py-20 text-gray-500">
+                                <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                                <p>No transactions found</p>
+                                <p className="text-sm">Try syncing with the Stripe API</p>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="table-standard">
+                                    <thead>
+                                        <tr>
+                                            <th>
+                                                <button
+                                                    className="flex items-center gap-1 font-medium hover:text-gray-900"
+                                                    onClick={() => handleSort("date")}
+                                                >
+                                                    Date
+                                                    <ArrowUpDown className="w-3 h-3" />
+                                                </button>
+                                            </th>
+                                            <th>
+                                                Description
+                                            </th>
+                                            <th>
+                                                Customer
+                                            </th>
+                                            <th className="text-right">
+                                                <button
+                                                    className="flex items-center gap-1 font-medium hover:text-gray-900 ml-auto"
+                                                    onClick={() => handleSort("amount")}
+                                                >
+                                                    Amount
+                                                    <ArrowUpDown className="w-3 h-3" />
+                                                </button>
+                                            </th>
+                                            <th className="text-center">
+                                                Type
+                                            </th>
+                                            <th className="text-center">
+                                                Method
+                                            </th>
+                                            <th className="text-center">
+                                                Reconciled
+                                            </th>
+                                            <th className="text-center">
+                                                Actions
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedRows.map((row) => (
+                                            <tr
+                                                key={row.id}
+                                                className={`hover:bg-gray-50 ${row.reconciled ? "bg-green-50/30" : ""
+                                                    }`}
+                                            >
+                                                <td className="px-4 py-3 whitespace-nowrap">
+                                                    {formatDate(row.date)}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    {editingRow === row.id ? (
+                                                        <Input
+                                                            value={editedData.description || ""}
+                                                            onChange={(e) =>
+                                                                setEditedData({
+                                                                    ...editedData,
+                                                                    description: e.target.value,
+                                                                })
+                                                            }
+                                                            className="w-full"
+                                                        />
+                                                    ) : (
+                                                        <div>
+                                                            <div className="font-medium text-gray-900 truncate max-w-xs">
+                                                                {row.description}
+                                                            </div>
+                                                            {row.order_id && (
+                                                                <div className="text-xs text-gray-400">
+                                                                    Order: {row.order_id}
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center gap-2">
-                                                <User className="w-4 h-4 text-gray-400" />
-                                                <div>
-                                                    <div className="font-medium text-gray-900 text-sm">
-                                                        {row.customer_name || "—"}
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="w-4 h-4 text-gray-400" />
+                                                        <div>
+                                                            <div className="font-medium text-gray-900 text-sm">
+                                                                {row.customer_name || "—"}
+                                                            </div>
+                                                            <div className="text-xs text-gray-400">
+                                                                {row.customer_email || "—"}
+                                                            </div>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-xs text-gray-400">
-                                                        {row.customer_email || "—"}
+                                                </td>
+                                                <td className="px-4 py-3 text-right whitespace-nowrap">
+                                                    {editingRow === row.id ? (
+                                                        <Input
+                                                            type="number"
+                                                            step="0.01"
+                                                            value={editedData.amount || 0}
+                                                            onChange={(e) =>
+                                                                setEditedData({
+                                                                    ...editedData,
+                                                                    amount: parseFloat(e.target.value),
+                                                                })
+                                                            }
+                                                            className="w-24 text-right"
+                                                        />
+                                                    ) : (
+                                                        <span
+                                                            className={`font-medium ${row.amount >= 0
+                                                                ? "text-green-600"
+                                                                : "text-red-600"
+                                                                }`}
+                                                        >
+                                                            €{row.amount.toLocaleString("pt-BR", {
+                                                                minimumFractionDigits: 2,
+                                                            })}
+                                                        </span>
+                                                    )}
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <Badge
+                                                        variant={row.type === "sale" ? "default" : "destructive"}
+                                                        className="text-xs"
+                                                    >
+                                                        {row.type === "sale"
+                                                            ? "Sale"
+                                                            : row.type === "refund"
+                                                                ? "Refund"
+                                                                : row.type}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <span className="text-xs text-gray-500">
+                                                        {row.payment_method || "—"}
+                                                    </span>
+                                                </td>
+                                                <td className="px-4 py-3 text-center">
+                                                    <Checkbox
+                                                        checked={
+                                                            editingRow === row.id
+                                                                ? editedData.reconciled
+                                                                : row.reconciled
+                                                        }
+                                                        onCheckedChange={() => {
+                                                            if (editingRow === row.id) {
+                                                                setEditedData({
+                                                                    ...editedData,
+                                                                    reconciled: !editedData.reconciled,
+                                                                });
+                                                            } else {
+                                                                toggleReconciled(row);
+                                                            }
+                                                        }}
+                                                    />
+                                                </td>
+                                                <td className="px-4 py-3">
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        {editingRow === row.id ? (
+                                                            <>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={saveRow}
+                                                                    disabled={isSaving}
+                                                                >
+                                                                    {isSaving ? (
+                                                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                                                    ) : (
+                                                                        <Save className="w-4 h-4 text-green-600" />
+                                                                    )}
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={cancelEditing}
+                                                                >
+                                                                    <X className="w-4 h-4 text-gray-500" />
+                                                                </Button>
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => startEditing(row)}
+                                                                >
+                                                                    <Edit2 className="w-4 h-4 text-gray-500" />
+                                                                </Button>
+                                                                <Button
+                                                                    variant="ghost"
+                                                                    size="sm"
+                                                                    onClick={() => deleteRow(row.id)}
+                                                                    disabled={isDeleting}
+                                                                >
+                                                                    <Trash2 className="w-4 h-4 text-red-500" />
+                                                                </Button>
+                                                            </>
+                                                        )}
                                                     </div>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-3 text-right whitespace-nowrap">
-                                            {editingRow === row.id ? (
-                                                <Input
-                                                    type="number"
-                                                    step="0.01"
-                                                    value={editedData.amount || 0}
-                                                    onChange={(e) =>
-                                                        setEditedData({
-                                                            ...editedData,
-                                                            amount: parseFloat(e.target.value),
-                                                        })
-                                                    }
-                                                    className="w-24 text-right"
-                                                />
-                                            ) : (
-                                                <span
-                                                    className={`font-medium ${row.amount >= 0
-                                                        ? "text-green-600"
-                                                        : "text-red-600"
-                                                        }`}
-                                                >
-                                                    €{row.amount.toLocaleString("pt-BR", {
-                                                        minimumFractionDigits: 2,
-                                                    })}
-                                                </span>
-                                            )}
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <Badge
-                                                variant={row.type === "sale" ? "default" : "destructive"}
-                                                className="text-xs"
-                                            >
-                                                {row.type === "sale"
-                                                    ? "Sale"
-                                                    : row.type === "refund"
-                                                        ? "Refund"
-                                                        : row.type}
-                                            </Badge>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <span className="text-xs text-gray-500">
-                                                {row.payment_method || "—"}
-                                            </span>
-                                        </td>
-                                        <td className="px-4 py-3 text-center">
-                                            <Checkbox
-                                                checked={
-                                                    editingRow === row.id
-                                                        ? editedData.reconciled
-                                                        : row.reconciled
-                                                }
-                                                onCheckedChange={() => {
-                                                    if (editingRow === row.id) {
-                                                        setEditedData({
-                                                            ...editedData,
-                                                            reconciled: !editedData.reconciled,
-                                                        });
-                                                    } else {
-                                                        toggleReconciled(row);
-                                                    }
-                                                }}
-                                            />
-                                        </td>
-                                        <td className="px-4 py-3">
-                                            <div className="flex items-center justify-center gap-1">
-                                                {editingRow === row.id ? (
-                                                    <>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={saveRow}
-                                                            disabled={isSaving}
-                                                        >
-                                                            {isSaving ? (
-                                                                <Loader2 className="w-4 h-4 animate-spin" />
-                                                            ) : (
-                                                                <Save className="w-4 h-4 text-green-600" />
-                                                            )}
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={cancelEditing}
-                                                        >
-                                                            <X className="w-4 h-4 text-gray-500" />
-                                                        </Button>
-                                                    </>
-                                                ) : (
-                                                    <>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => startEditing(row)}
-                                                        >
-                                                            <Edit2 className="w-4 h-4 text-gray-500" />
-                                                        </Button>
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            onClick={() => deleteRow(row.id)}
-                                                            disabled={isDeleting}
-                                                        >
-                                                            <Trash2 className="w-4 h-4 text-red-500" />
-                                                        </Button>
-                                                    </>
-                                                )}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
-                )}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
-                        <div className="text-sm text-gray-500">
-                            Showing {(currentPage - 1) * rowsPerPage + 1} to{" "}
-                            {Math.min(currentPage * rowsPerPage, filteredRows.length)} of{" "}
-                            {filteredRows.length}
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                            >
-                                Previous
-                            </Button>
-                            <span className="text-sm text-gray-500">
-                                Page {currentPage} of {totalPages}
-                            </span>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                            >
-                                Next
-                            </Button>
-                        </div>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
-    </div>
+                        {/* Pagination */}
+                        {totalPages > 1 && (
+                            <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200">
+                                <div className="text-sm text-gray-500">
+                                    Showing {(currentPage - 1) * rowsPerPage + 1} to{" "}
+                                    {Math.min(currentPage * rowsPerPage, filteredRows.length)} of{" "}
+                                    {filteredRows.length}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                    >
+                                        Previous
+                                    </Button>
+                                    <span className="text-sm text-gray-500">
+                                        Page {currentPage} of {totalPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        Next
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
         </div >
     );
 }

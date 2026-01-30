@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X } from "lucide-react";
+import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X, Eye, ExternalLink } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -119,6 +119,9 @@ export default function ARInvoicesPage() {
   const [reconcileTarget, setReconcileTarget] = useState<ARInvoice | null>(null);
   const [reconcileSource, setReconcileSource] = useState("credit-payment");
   const [reconcileReference, setReconcileReference] = useState("");
+  const [transactionDetailsDialog, setTransactionDetailsDialog] = useState(false);
+  const [transactionDetails, setTransactionDetails] = useState<any>(null);
+  const [loadingTransactionDetails, setLoadingTransactionDetails] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [sortField, setSortField] = useState<string>("invoice_date");
@@ -406,6 +409,87 @@ export default function ARInvoicesPage() {
     }
   };
 
+  // Carregar detalhes da transação reconciliada
+  const loadTransactionDetails = async (invoice: ARInvoice) => {
+    if (!invoice.reconciled || !invoice.reconciled_with) return;
+
+    setLoadingTransactionDetails(true);
+    setTransactionDetailsDialog(true);
+    setTransactionDetails(null);
+
+    try {
+      const [source, transactionId] = invoice.reconciled_with.split(':');
+
+      if (!transactionId || !['braintree', 'gocardless', 'stripe'].includes(source)) {
+        // Mostrar apenas informações básicas para reconciliações manuais
+        setTransactionDetails({
+          type: 'manual',
+          source: source,
+          invoice: invoice,
+          reference: invoice.payment_reference || transactionId || 'N/A'
+        });
+        return;
+      }
+
+      // Buscar transação no csv_rows
+      let query = supabase.from("csv_rows").select("*");
+
+      if (source === 'braintree') {
+        query = query.or(`custom_data->>transaction_id.eq.${transactionId},id.eq.${transactionId}`);
+      } else if (source === 'gocardless') {
+        query = query.or(`custom_data->>gocardless_id.eq.${transactionId},custom_data->>payment_id.eq.${transactionId}`);
+      } else if (source === 'stripe') {
+        query = query.or(`custom_data->>transaction_id.eq.${transactionId},custom_data->>charge_id.eq.${transactionId}`);
+      }
+
+      const { data, error } = await query.limit(1);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        const tx = data[0];
+        setTransactionDetails({
+          type: 'payment',
+          source: source,
+          invoice: invoice,
+          transaction: tx,
+          custom_data: tx.custom_data || {}
+        });
+      } else {
+        setTransactionDetails({
+          type: 'not_found',
+          source: source,
+          invoice: invoice,
+          transactionId: transactionId
+        });
+      }
+    } catch (err) {
+      console.error("Erro ao carregar detalhes:", err);
+      setTransactionDetails({
+        type: 'error',
+        source: invoice.reconciled_with?.split(':')[0],
+        invoice: invoice,
+        error: err instanceof Error ? err.message : 'Erro desconhecido'
+      });
+    } finally {
+      setLoadingTransactionDetails(false);
+    }
+  };
+
+  // Gerar URL para payment source
+  const getPaymentSourceUrl = (source: string, transactionId: string) => {
+    switch (source) {
+      case 'braintree':
+        return `https://www.braintreegateway.com/merchants/YOUR_MERCHANT_ID/transactions/${transactionId}`;
+      case 'gocardless':
+        return `https://manage.gocardless.com/payments/${transactionId}`;
+      case 'stripe':
+        return `https://dashboard.stripe.com/payments/${transactionId}`;
+      default:
+        return null;
+    }
+  };
+
   const handleSave = async () => {
     if (!editingInvoice) return;
     if (!editingInvoice.invoice_number?.trim()) {
@@ -654,8 +738,7 @@ export default function ARInvoicesPage() {
           <div className="w-[100px] flex-shrink-0">Company</div>
           <div className="w-[120px] flex-shrink-0">Client</div>
           <div className="w-[85px] flex-shrink-0 text-right">Total</div>
-          <div className="w-[70px] flex-shrink-0">Rec</div>
-          <div className="w-[65px] flex-shrink-0">Status</div>
+          <div className="w-[100px] flex-shrink-0">Reconciliation</div>
         </div>
       </div>
 
@@ -714,19 +797,16 @@ export default function ARInvoicesPage() {
                   {formatEuropeanNumber(inv.total_amount)}
                 </div>
                 {/* Reconciliation */}
-                <div className="w-[70px] flex-shrink-0">
+                <div className="w-[100px] flex-shrink-0">
                   {inv.reconciled ? (
                     <div className="flex items-center gap-0.5">
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-400 border border-green-700/50">{inv.reconciled_with?.split(':')[0] || 'Yes'}</span>
-                      <button onClick={() => handleRemoveReconciliation(inv)} className="p-0.5 text-gray-600 hover:text-red-400"><X className="h-2.5 w-2.5" /></button>
+                      <button onClick={() => loadTransactionDetails(inv)} className="p-0.5 text-gray-500 hover:text-blue-400" title="Ver detalhes"><Eye className="h-2.5 w-2.5" /></button>
+                      <button onClick={() => handleRemoveReconciliation(inv)} className="p-0.5 text-gray-600 hover:text-red-400" title="Remover"><X className="h-2.5 w-2.5" /></button>
                     </div>
                   ) : (
                     <button onClick={() => openManualReconcile(inv)} className="p-1 text-gray-600 hover:text-purple-400" title="Reconciliar"><Link2 className="h-3 w-3" /></button>
                   )}
-                </div>
-                {/* Status */}
-                <div className="w-[65px] flex-shrink-0">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded ${statusConfig.color}`}>{statusConfig.label}</span>
                 </div>
               </div>
             );
@@ -975,6 +1055,185 @@ export default function ARInvoicesPage() {
             <Button onClick={handleManualReconcile} className="bg-purple-600 hover:bg-purple-700">
               <Link2 className="h-4 w-4 mr-2" />
               Reconciliar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transaction Details Dialog */}
+      <Dialog open={transactionDetailsDialog} onOpenChange={setTransactionDetailsDialog}>
+        <DialogContent className="max-w-2xl bg-[#2a2b2d] border-gray-700 text-white">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Eye className="h-5 w-5 text-blue-400" />
+              Detalhes da Reconciliação
+            </DialogTitle>
+            <DialogDescription className="text-gray-400">
+              {transactionDetails?.invoice && (
+                <span>
+                  Invoice: {transactionDetails.invoice.invoice_number} • {transactionDetails.invoice.client_name}
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingTransactionDetails ? (
+            <div className="py-8 text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-blue-400" />
+              <p className="text-gray-400 mt-2">Carregando detalhes...</p>
+            </div>
+          ) : transactionDetails?.type === 'manual' ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">Reconciliação Manual</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Fonte:</span>
+                    <span className="ml-2 text-white capitalize">{transactionDetails.source}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Referência:</span>
+                    <span className="ml-2 text-white">{transactionDetails.reference}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Valor:</span>
+                    <span className="ml-2 text-green-400">
+                      {transactionDetails.invoice.currency === "EUR" ? "€" : "$"}
+                      {formatEuropeanNumber(transactionDetails.invoice.total_amount)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Data:</span>
+                    <span className="ml-2 text-white">{formatDate(transactionDetails.invoice.reconciled_at)}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : transactionDetails?.type === 'payment' ? (
+            <div className="space-y-4">
+              <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+                <div className="flex items-center justify-between mb-3">
+                  <h4 className="text-sm font-medium text-gray-300">Transação {transactionDetails.source.toUpperCase()}</h4>
+                  {transactionDetails.source === 'braintree' && transactionDetails.custom_data?.transaction_id && (
+                    <a
+                      href={`https://www.braintreegateway.com/merchants/plncntrspdsd/transactions/${transactionDetails.custom_data.transaction_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Abrir no Braintree
+                    </a>
+                  )}
+                  {transactionDetails.source === 'gocardless' && transactionDetails.custom_data?.payment_id && (
+                    <a
+                      href={`https://manage.gocardless.com/payments/${transactionDetails.custom_data.payment_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Abrir no GoCardless
+                    </a>
+                  )}
+                  {transactionDetails.source === 'stripe' && transactionDetails.custom_data?.charge_id && (
+                    <a
+                      href={`https://dashboard.stripe.com/payments/${transactionDetails.custom_data.charge_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                      Abrir no Stripe
+                    </a>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Transaction ID:</span>
+                    <span className="ml-2 text-white font-mono text-xs">
+                      {transactionDetails.custom_data?.transaction_id || transactionDetails.custom_data?.payment_id || transactionDetails.custom_data?.charge_id || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Status:</span>
+                    <span className={`ml-2 px-2 py-0.5 rounded text-xs ${transactionDetails.custom_data?.status === 'settled' || transactionDetails.custom_data?.status === 'confirmed' || transactionDetails.custom_data?.status === 'succeeded'
+                        ? 'bg-green-900/30 text-green-400'
+                        : 'bg-yellow-900/30 text-yellow-400'
+                      }`}>
+                      {transactionDetails.custom_data?.status || 'N/A'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Valor:</span>
+                    <span className="ml-2 text-green-400 font-medium">
+                      {transactionDetails.custom_data?.currency || transactionDetails.transaction?.currency || 'EUR'} {formatEuropeanNumber(parseFloat(transactionDetails.transaction?.amount) || 0)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Data:</span>
+                    <span className="ml-2 text-white">{formatDate(transactionDetails.transaction?.date)}</span>
+                  </div>
+                  {transactionDetails.custom_data?.customer_name && (
+                    <div>
+                      <span className="text-gray-500">Cliente:</span>
+                      <span className="ml-2 text-white">{transactionDetails.custom_data.customer_name}</span>
+                    </div>
+                  )}
+                  {transactionDetails.custom_data?.customer_email && (
+                    <div>
+                      <span className="text-gray-500">Email:</span>
+                      <span className="ml-2 text-gray-300 text-xs">{transactionDetails.custom_data.customer_email}</span>
+                    </div>
+                  )}
+                  {transactionDetails.custom_data?.payment_method && (
+                    <div>
+                      <span className="text-gray-500">Método:</span>
+                      <span className="ml-2 text-white">{transactionDetails.custom_data.payment_method}</span>
+                    </div>
+                  )}
+                  {transactionDetails.custom_data?.order_id && (
+                    <div>
+                      <span className="text-gray-500">Order ID:</span>
+                      <span className="ml-2 text-white font-mono text-xs">{transactionDetails.custom_data.order_id}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Additional Details */}
+              <div className="p-4 bg-gray-800/30 rounded-lg border border-gray-700/50">
+                <h4 className="text-xs font-medium text-gray-400 mb-2">Dados Adicionais</h4>
+                <div className="text-xs text-gray-500 space-y-1 max-h-32 overflow-auto">
+                  {Object.entries(transactionDetails.custom_data || {})
+                    .filter(([key]) => !['transaction_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency'].includes(key))
+                    .slice(0, 10)
+                    .map(([key, value]) => (
+                      <div key={key} className="flex">
+                        <span className="text-gray-600 w-36 flex-shrink-0">{key}:</span>
+                        <span className="text-gray-400 truncate">{String(value)}</span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            </div>
+          ) : transactionDetails?.type === 'not_found' ? (
+            <div className="py-8 text-center">
+              <AlertCircle className="h-8 w-8 mx-auto text-yellow-400" />
+              <p className="text-gray-400 mt-2">Transação não encontrada</p>
+              <p className="text-gray-500 text-sm mt-1">ID: {transactionDetails.transactionId}</p>
+            </div>
+          ) : transactionDetails?.type === 'error' ? (
+            <div className="py-8 text-center">
+              <AlertCircle className="h-8 w-8 mx-auto text-red-400" />
+              <p className="text-gray-400 mt-2">Erro ao carregar detalhes</p>
+              <p className="text-red-400 text-sm mt-1">{transactionDetails.error}</p>
+            </div>
+          ) : null}
+
+          <DialogFooter>
+            <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setTransactionDetailsDialog(false)}>
+              Fechar
             </Button>
           </DialogFooter>
         </DialogContent>
