@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import {
     Dialog,
     DialogContent,
@@ -36,6 +35,7 @@ import {
     Filter,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { ProductSidePanel } from "@/components/app/product-side-panel";
 
 interface Product {
     id: string;
@@ -115,30 +115,15 @@ export default function ProductsPage() {
     // Expanded products (to show merged children)
     const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
 
-    // Dialog states
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    // Side Panel states
+    const [sidePanelOpen, setSidePanelOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
+    // Merge Dialog states
     const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
     const [selectedForMerge, setSelectedForMerge] = useState<Product[]>([]);
     const [mergeTarget, setMergeTarget] = useState<string>("");
     const [syncing, setSyncing] = useState(false);
-
-    // Form state
-    const [formData, setFormData] = useState({
-        code: "",
-        name: "",
-        description: "",
-        default_price: "",
-        currency: "EUR",
-        financial_account_id: "",
-        departmental_account_group_id: "",
-        departmental_account_subgroup_id: "",
-        category: "",
-        product_type: "service",
-        scope: "GLOBAL",
-        is_active: true,
-        alternative_names: "",
-    });
 
     const { toast } = useToast();
 
@@ -241,122 +226,14 @@ export default function ProductsPage() {
         });
     };
 
-    const resetForm = () => {
-        setFormData({
-            code: "",
-            name: "",
-            description: "",
-            default_price: "",
-            currency: "EUR",
-            financial_account_id: "",
-            departmental_account_group_id: "",
-            departmental_account_subgroup_id: "",
-            category: "",
-            product_type: "service",
-            scope: "GLOBAL",
-            is_active: true,
-            alternative_names: "",
-        });
-        setEditingProduct(null);
-    };
-
-    const openEditDialog = (product: Product) => {
+    const openSidePanel = (product: Product | null) => {
         setEditingProduct(product);
-        setFormData({
-            code: product.code,
-            name: product.name,
-            description: product.description || "",
-            default_price: product.default_price?.toString() || "",
-            currency: product.currency,
-            financial_account_id: product.financial_account_id || "",
-            departmental_account_group_id: product.departmental_account_group_id || "",
-            departmental_account_subgroup_id: product.departmental_account_subgroup_id || "",
-            category: product.category || "",
-            product_type: product.product_type,
-            scope: product.scope,
-            is_active: product.is_active,
-            alternative_names: product.alternative_names?.join(", ") || "",
-        });
-        setIsDialogOpen(true);
+        setSidePanelOpen(true);
     };
 
-    const handleSave = async () => {
-        try {
-            if (!formData.name.trim()) {
-                toast({
-                    title: "Error",
-                    description: "Name is required",
-                    variant: "destructive",
-                });
-                return;
-            }
-
-            // Generate code if new
-            let code = formData.code;
-            if (!editingProduct && !code) {
-                const prefix = formData.category?.substring(0, 3).toUpperCase() || "PRD";
-                const { data: existing } = await supabase
-                    .from("products")
-                    .select("code")
-                    .like("code", `DSD-${prefix}%`)
-                    .order("code", { ascending: false })
-                    .limit(1);
-
-                if (existing && existing.length > 0) {
-                    const lastNum = parseInt(existing[0].code.split("-").pop() || "0");
-                    code = `DSD-${prefix}-${String(lastNum + 1).padStart(3, "0")}`;
-                } else {
-                    code = `DSD-${prefix}-001`;
-                }
-            }
-
-            // Get financial account code
-            const fa = financialAccounts.find((f) => f.id === formData.financial_account_id);
-
-            const productData = {
-                code,
-                name: formData.name.trim(),
-                description: formData.description.trim() || null,
-                default_price: formData.default_price ? parseFloat(formData.default_price) : null,
-                currency: formData.currency,
-                financial_account_id: formData.financial_account_id || null,
-                financial_account_code: fa?.code || null,
-                departmental_account_group_id: formData.departmental_account_group_id || null,
-                departmental_account_subgroup_id: formData.departmental_account_subgroup_id || null,
-                category: formData.category || null,
-                product_type: formData.product_type,
-                scope: formData.scope,
-                is_active: formData.is_active,
-                alternative_names: formData.alternative_names
-                    ? formData.alternative_names.split(",").map((n) => n.trim()).filter(Boolean)
-                    : [],
-            };
-
-            if (editingProduct) {
-                const { error } = await supabase
-                    .from("products")
-                    .update(productData)
-                    .eq("id", editingProduct.id);
-
-                if (error) throw error;
-                toast({ title: "Success", description: "Product updated" });
-            } else {
-                const { error } = await supabase.from("products").insert(productData);
-                if (error) throw error;
-                toast({ title: "Success", description: "Product created" });
-            }
-
-            setIsDialogOpen(false);
-            resetForm();
-            loadData();
-        } catch (error: any) {
-            console.error("Error saving product:", error);
-            toast({
-                title: "Error",
-                description: error.message || "Error saving product",
-                variant: "destructive",
-            });
-        }
+    const closeSidePanel = () => {
+        setSidePanelOpen(false);
+        setEditingProduct(null);
     };
 
     const toggleMergeSelection = (product: Product) => {
@@ -508,10 +385,7 @@ export default function ProductsPage() {
                             variant="outline"
                             size="sm"
                             className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
-                            onClick={() => {
-                                resetForm();
-                                setIsDialogOpen(true);
-                            }}
+                            onClick={() => openSidePanel(null)}
                         >
                             <Plus className="h-4 w-4 mr-1" />
                             Add Product
@@ -649,7 +523,7 @@ export default function ProductsPage() {
                                 {/* Edit button */}
                                 <div className="w-[30px] flex-shrink-0">
                                     <button
-                                        onClick={() => openEditDialog(product)}
+                                        onClick={() => openSidePanel(product)}
                                         className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white"
                                     >
                                         <Edit className="h-3.5 w-3.5" />
@@ -796,307 +670,16 @@ export default function ProductsPage() {
                 )}
             </div>
 
-            {/* Product Dialog */}
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="w-[900px] max-w-[95vw] max-h-[85vh] overflow-y-auto bg-[#1e1f21] border-gray-600 text-white p-8">
-                    <DialogHeader className="mb-6">
-                        <DialogTitle className="text-white text-xl">
-                            {editingProduct ? "Edit Product" : "New Product"}
-                        </DialogTitle>
-                        <DialogDescription className="text-gray-400 text-sm">
-                            Fill in the product data. Fields with * are required.
-                        </DialogDescription>
-                    </DialogHeader>
-
-                    <div className="grid gap-6">
-                        {/* Row 1: Code and Name */}
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="code" className="text-gray-300 text-sm font-medium">
-                                    Code
-                                </Label>
-                                <Input
-                                    id="code"
-                                    value={formData.code}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, code: e.target.value })
-                                    }
-                                    placeholder="Auto-generated if empty"
-                                    className="bg-gray-800 border-gray-600 text-white h-10"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="name" className="text-gray-300 text-sm font-medium">
-                                    Name *
-                                </Label>
-                                <Input
-                                    id="name"
-                                    value={formData.name}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, name: e.target.value })
-                                    }
-                                    placeholder="Product name"
-                                    className="bg-gray-800 border-gray-600 text-white h-10"
-                                />
-                            </div>
-                        </div>
-
-                        {/* Row 2: Description */}
-                        <div className="space-y-2">
-                            <Label htmlFor="description" className="text-gray-300 text-sm font-medium">
-                                Description
-                            </Label>
-                            <Textarea
-                                id="description"
-                                value={formData.description}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, description: e.target.value })
-                                }
-                                placeholder="Product description"
-                                rows={3}
-                                className="bg-gray-800 border-gray-600 text-white resize-none"
-                            />
-                        </div>
-
-                        {/* Row 3: Currency, Type, Scope */}
-                        <div className="grid grid-cols-3 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="currency" className="text-gray-300 text-sm font-medium">
-                                    Currency
-                                </Label>
-                                <Select
-                                    value={formData.currency}
-                                    onValueChange={(v) =>
-                                        setFormData({ ...formData, currency: v })
-                                    }
-                                >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="EUR">EUR</SelectItem>
-                                        <SelectItem value="USD">USD</SelectItem>
-                                        <SelectItem value="GBP">GBP</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="product_type" className="text-gray-300 text-sm font-medium">
-                                    Type
-                                </Label>
-                                <Select
-                                    value={formData.product_type}
-                                    onValueChange={(v) =>
-                                        setFormData({ ...formData, product_type: v })
-                                    }
-                                >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {PRODUCT_TYPES.map((t) => (
-                                            <SelectItem key={t.value} value={t.value}>
-                                                {t.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="scope" className="text-gray-300 text-sm font-medium">
-                                    Scope
-                                </Label>
-                                <Select
-                                    value={formData.scope}
-                                    onValueChange={(v) =>
-                                        setFormData({ ...formData, scope: v })
-                                    }
-                                >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
-                                        <SelectValue />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {SCOPES.map((s) => (
-                                            <SelectItem key={s.value} value={s.value}>
-                                                {s.label}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        {/* Row 4: Category and Financial Account */}
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="category" className="text-gray-300 text-sm font-medium">
-                                    Category
-                                </Label>
-                                <Select
-                                    value={formData.category}
-                                    onValueChange={(v) =>
-                                        setFormData({ ...formData, category: v })
-                                    }
-                                >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
-                                        <SelectValue placeholder="Select..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {CATEGORIES.map((cat) => (
-                                            <SelectItem key={cat} value={cat}>
-                                                {cat}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="financial_account" className="text-gray-300 text-sm font-medium">
-                                    Financial Account
-                                </Label>
-                                <Select
-                                    value={formData.financial_account_id}
-                                    onValueChange={(v) =>
-                                        setFormData({ ...formData, financial_account_id: v === "none" ? "" : v })
-                                    }
-                                >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
-                                        <SelectValue placeholder="Select..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">None</SelectItem>
-                                        {financialAccounts.map((fa) => (
-                                            <SelectItem key={fa.id} value={fa.id}>
-                                                {fa.code} - {fa.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        {/* Row 5: Departmental Accounts */}
-                        <div className="grid grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="departmental_group" className="text-gray-300 text-sm font-medium">
-                                    Departmental Group
-                                </Label>
-                                <Select
-                                    value={formData.departmental_account_group_id}
-                                    onValueChange={(v) =>
-                                        setFormData({
-                                            ...formData,
-                                            departmental_account_group_id: v === "none" ? "" : v,
-                                            departmental_account_subgroup_id: "",
-                                        })
-                                    }
-                                >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
-                                        <SelectValue placeholder="Select group..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">None</SelectItem>
-                                        {departmentalAccounts
-                                            .filter((da) => da.level === 1)
-                                            .map((da) => (
-                                                <SelectItem key={da.id} value={da.id}>
-                                                    {da.code} - {da.name}
-                                                </SelectItem>
-                                            ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="departmental_subgroup" className="text-gray-300 text-sm font-medium">
-                                    Departmental Subgroup
-                                </Label>
-                                <Select
-                                    value={formData.departmental_account_subgroup_id}
-                                    onValueChange={(v) =>
-                                        setFormData({
-                                            ...formData,
-                                            departmental_account_subgroup_id: v === "none" ? "" : v,
-                                        })
-                                    }
-                                    disabled={!formData.departmental_account_group_id}
-                                >
-                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white h-10">
-                                        <SelectValue
-                                            placeholder={
-                                                formData.departmental_account_group_id
-                                                    ? "Select subgroup..."
-                                                    : "Select group first"
-                                            }
-                                        />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="none">None</SelectItem>
-                                        {departmentalAccounts
-                                            .filter(
-                                                (da) =>
-                                                    da.level === 2 &&
-                                                    da.parent_id === formData.departmental_account_group_id
-                                            )
-                                            .map((da) => (
-                                                <SelectItem key={da.id} value={da.id}>
-                                                    {da.code} - {da.name}
-                                                </SelectItem>
-                                            ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-
-                        {/* Row 6: Alternative Names */}
-                        <div className="space-y-2">
-                            <Label htmlFor="alternative_names" className="text-gray-300 text-sm font-medium">
-                                Alternative Names (comma separated)
-                            </Label>
-                            <Input
-                                id="alternative_names"
-                                value={formData.alternative_names}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, alternative_names: e.target.value })
-                                }
-                                placeholder="Name 1, Name 2, Name 3..."
-                                className="bg-gray-800 border-gray-600 text-white h-10"
-                            />
-                            <p className="text-xs text-gray-500">
-                                Use to map name variations, typos, etc.
-                            </p>
-                        </div>
-
-                        {/* Row 7: Active checkbox */}
-                        <div className="flex items-center gap-3 pt-2">
-                            <input
-                                type="checkbox"
-                                id="is_active"
-                                checked={formData.is_active}
-                                onChange={(e) =>
-                                    setFormData({ ...formData, is_active: e.target.checked })
-                                }
-                                className="rounded bg-gray-700 border-gray-600 h-5 w-5"
-                            />
-                            <Label htmlFor="is_active" className="cursor-pointer text-gray-300 text-sm">
-                                Active product
-                            </Label>
-                        </div>
-                    </div>
-
-                    <DialogFooter className="mt-6 pt-4 border-t border-gray-700">
-                        <Button
-                            variant="outline"
-                            onClick={() => setIsDialogOpen(false)}
-                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700 h-10 px-6"
-                        >
-                            Cancel
-                        </Button>
-                        <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 h-10 px-6">
-                            {editingProduct ? "Save Changes" : "Create Product"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            {/* Product Side Panel */}
+            <ProductSidePanel
+                open={sidePanelOpen}
+                onClose={closeSidePanel}
+                editingProduct={editingProduct}
+                onSuccess={() => {
+                    closeSidePanel();
+                    loadData();
+                }}
+            />
 
             {/* Merge Dialog */}
             <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
