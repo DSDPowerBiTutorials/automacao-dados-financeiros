@@ -24,6 +24,7 @@ interface ARInvoice {
   order_id: string | null;
   order_date: string | null;
   order_status: string | null;
+  deal_status: string | null;
   invoice_date: string;
   products: string | null;
   company_name: string | null;
@@ -67,7 +68,12 @@ function formatEuropeanNumber(value: number, decimals: number = 2): string {
 
 function formatDate(date: string | null): string {
   if (!date) return "-";
-  return new Date(date).toLocaleDateString("pt-BR");
+  // Usar UTC para evitar conversão de timezone (d-1)
+  const d = new Date(date);
+  const day = String(d.getUTCDate()).padStart(2, '0');
+  const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+  const year = d.getUTCFullYear();
+  return `${day}/${month}/${year}`;
 }
 
 const EMPTY_INVOICE: Partial<ARInvoice> = {
@@ -520,10 +526,11 @@ export default function ARInvoicesPage() {
                       <div className="flex items-center gap-1">Number <ArrowUpDown className="h-3 w-3" /></div>
                     </th>
                     <th className="px-3 py-3 text-left font-medium text-gray-600 cursor-pointer" onClick={() => handleSort("invoice_date")}>
-                      <div className="flex items-center gap-1">Invoice Date <ArrowUpDown className="h-3 w-3" /></div>
+                      <div className="flex items-center gap-1">Order Date <ArrowUpDown className="h-3 w-3" /></div>
                     </th>
                     <th className="px-3 py-3 text-left font-medium text-gray-600">Order</th>
-                    <th className="px-3 py-3 text-left font-medium text-gray-600">Order Status</th>
+                    <th className="px-3 py-3 text-left font-medium text-gray-600">Paid Status</th>
+                    <th className="px-3 py-3 text-left font-medium text-gray-600">Status</th>
                     <th className="px-3 py-3 text-left font-medium text-gray-600">Products</th>
                     <th className="px-3 py-3 text-left font-medium text-gray-600">Company</th>
                     <th className="px-3 py-3 text-left font-medium text-gray-600">Client</th>
@@ -552,6 +559,7 @@ export default function ARInvoicesPage() {
                         <td className="px-3 py-2">{formatDate(inv.invoice_date)}</td>
                         <td className="px-3 py-2 font-mono text-xs">{inv.order_id || "-"}</td>
                         <td className="px-3 py-2">{inv.order_status || "-"}</td>
+                        <td className="px-3 py-2">{inv.deal_status || "-"}</td>
                         <td className="px-3 py-2 max-w-[150px] truncate" title={inv.products || ""}>{inv.products || "-"}</td>
                         <td className="px-3 py-2">{inv.company_name || "-"}</td>
                         <td className="px-3 py-2">

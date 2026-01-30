@@ -18,7 +18,7 @@
  */
 
 export const ENRICHED_HUBSPOT_QUERY = `
-SELECT TOP 3000
+SELECT
   -- =============================================
   -- DEAL (Venda/Pedido)
   -- =============================================
@@ -121,7 +121,7 @@ ORDER BY
  * Esta query é GARANTIDA de funcionar se as tabelas Deal e Contact existirem.
  */
 export const SIMPLE_HUBSPOT_QUERY = `
-SELECT TOP 3000
+SELECT
   d.DealId,
   d.dealname AS order_code,
   d.amount,
@@ -155,6 +155,74 @@ ORDER BY d.closedate DESC
 `;
 
 /**
+ * Query para buscar INVOICES (Faturas) do HubSpot
+ * 
+ * Busca dados da tabela Invoice com JOIN para Deal e Contact
+ * Campos importantes:
+ * - hs_unique_id → Número da fatura (#DSDES38F776D-53596)
+ * - hs_invoice_date → Data de emissão
+ * - hs_external_invoice_id → ID externo
+ * - hs_amount_billed → Valor faturado
+ * - hs_amount_paid → Valor pago
+ * - hs_invoice_status → Status (paid/pending/overdue)
+ */
+export const INVOICE_HUBSPOT_QUERY = `
+SELECT
+  -- INVOICE (Fatura)
+  i.InvoiceId,
+  i.hs_unique_id AS invoice_number,
+  i.hs_external_invoice_id AS external_invoice_id,
+  i.hs_invoice_date AS invoice_date,
+  i.hs_due_date AS due_date,
+  i.hs_amount_billed AS amount_billed,
+  i.hs_amount_paid AS amount_paid,
+  i.hs_invoice_status AS invoice_status,
+  i.hs_payment_date AS payment_date,
+  i.hs_purchase_order_number AS purchase_order_number,
+  i.hs_invoice_latest_contact_email AS contact_email,
+  i.createdate AS invoice_created,
+  i.hs_lastmodifieddate AS invoice_updated,
+  
+  -- DEAL (Venda - se associado)
+  d.DealId,
+  d.dealname AS order_code,
+  d.amount AS deal_amount,
+  d.deal_currency_code AS currency,
+  d.closedate AS date_ordered,
+  d.hs_closed_won_date AS date_paid,
+  d.paid_status,
+  
+  -- CONTACT (Cliente)
+  c.VId AS contact_id,
+  c.email AS customer_email,
+  c.firstname AS customer_firstname,
+  c.lastname AS customer_lastname
+
+FROM Invoice i
+
+-- JOIN com Deal via InvoiceDealAssociations
+LEFT JOIN InvoiceDealAssociations ida ON i.InvoiceId = ida.InvoiceId
+LEFT JOIN Deal d ON d.DealId = ida.DealId
+
+-- JOIN com Contact
+LEFT JOIN DealContactAssociations dca ON d.DealId = dca.DealId
+LEFT JOIN Contact c ON c.VId = dca.VId
+
+WHERE
+  i.hs_invoice_date IS NOT NULL
+  AND i.hs_invoice_date >= @startDate
+
+ORDER BY i.hs_invoice_date DESC
+`;
+
+/**
+ * Query para contar total de Invoices disponíveis
+ */
+export const COUNT_INVOICES_QUERY = `
+SELECT COUNT(*) AS total FROM Invoice WHERE hs_invoice_date IS NOT NULL
+`;
+
+/**
  * Query INTERMEDIÁRIA - Tenta buscar Company e alguns campos de e-commerce
  * sem as subqueries pesadas de LineItem
  * 
@@ -162,7 +230,7 @@ ORDER BY d.closedate DESC
  * que a query simples.
  */
 export const INTERMEDIATE_HUBSPOT_QUERY = `
-SELECT TOP 3000
+SELECT
   -- DEAL (Venda)
   d.DealId,
   d.dealname AS order_code,

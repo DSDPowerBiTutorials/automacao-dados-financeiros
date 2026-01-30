@@ -17,9 +17,8 @@ export async function POST(request: Request) {
         const pool = await getSQLServerConnection();
         console.log('✅ Conectado ao SQL Server');
 
-        // Data de início: buscar deals dos últimos 2 anos
-        const startDate = new Date();
-        startDate.setFullYear(startDate.getFullYear() - 2);
+        // Data de início: buscar deals desde 01/12/2025
+        const startDate = new Date('2025-12-01');
         const startDateStr = startDate.toISOString().split('T')[0];
 
         console.log(`📅 Buscando deals desde: ${startDateStr}`);

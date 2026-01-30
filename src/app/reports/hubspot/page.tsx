@@ -278,7 +278,13 @@ export default function HubSpotReportPage() {
         setFilteredRows(filtered);
     };
 
-    const syncFromSQLServer = async () => {
+    const syncFromSQLServer = async (retryCount = 0) => {
+        // Evitar clique duplo
+        if (syncing) {
+            console.log('⚠️ [HUBSPOT FRONTEND] Sync already in progress, ignoring...');
+            return;
+        }
+
         try {
             console.log('🔄 [HUBSPOT FRONTEND] Starting sync...');
             setSyncing(true);
@@ -293,11 +299,27 @@ export default function HubSpotReportPage() {
             const response = await fetch("/api/hubspot/sync", {
                 method: "POST",
                 signal: controller.signal,
+                headers: {
+                    'Cache-Control': 'no-cache',
+                },
             });
 
             clearTimeout(timeoutId);
 
             console.log('📥 [HUBSPOT FRONTEND] Response received:', response.status);
+
+            // Tratar erro 409 (Conflict) - pode ser request duplicada ou conflito temporário
+            if (response.status === 409) {
+                if (retryCount < 2) {
+                    console.log(`🔄 [HUBSPOT FRONTEND] Got 409, retrying in 3s... (attempt ${retryCount + 1}/3)`);
+                    showAlert("warning", "Conflito detectado, tentando novamente em 3s...");
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    setSyncing(false);
+                    return syncFromSQLServer(retryCount + 1);
+                } else {
+                    throw new Error("Sync em conflito - tente novamente em alguns segundos");
+                }
+            }
 
             if (!response.ok) {
                 const errorText = await response.text();
@@ -318,7 +340,7 @@ export default function HubSpotReportPage() {
         } catch (error: any) {
             console.error('❌ [HUBSPOT FRONTEND] Sync error:', error);
             if (error.name === 'AbortError') {
-                showAlert("error", "Sync cancelled: timeout exceeded (3 min)");
+                showAlert("error", "Sync cancelado: timeout excedido (3 min). Tente novamente.");
             } else {
                 showAlert("error", `Erro ao sincronizar: ${error.message}`);
             }
