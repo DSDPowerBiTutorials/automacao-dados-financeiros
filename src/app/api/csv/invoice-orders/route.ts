@@ -1,0 +1,257 @@
+import { NextRequest, NextResponse } from "next/server";
+import * as XLSX from "xlsx";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+
+/**
+ * API para upload de Invoice Orders via CSV/XLSX
+ * Aceita arquivos com colunas flexíveis, mapeando todas as colunas para custom_data
+ */
+
+export async function POST(request: NextRequest) {
+    try {
+        console.log("🚀 [Invoice Orders] Iniciando processamento...");
+
+        const formData = await request.formData();
+        const file = formData.get("file") as File;
+
+        if (!file) {
+            console.error("❌ Nenhum arquivo enviado");
+            return NextResponse.json(
+                { success: false, error: "Nenhum arquivo foi enviado" },
+                { status: 400 }
+            );
+        }
+
+        const validExtensions = [".csv", ".xlsx", ".xls"];
+        const hasValidExtension = validExtensions.some((ext) =>
+            file.name.toLowerCase().endsWith(ext)
+        );
+
+        if (!hasValidExtension) {
+            console.error("❌ Formato inválido:", file.name);
+            return NextResponse.json(
+                { success: false, error: "Formato inválido. Envie arquivos CSV, XLSX ou XLS" },
+                { status: 400 }
+            );
+        }
+
+        console.log("📁 Arquivo:", file.name, "| Tamanho:", file.size, "bytes");
+
+        const arrayBuffer = await file.arrayBuffer();
+        const workbook = XLSX.read(arrayBuffer, { type: "array" });
+        const sheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
+
+        console.log("📊 Planilha:", sheetName, "| Range:", worksheet["!ref"]);
+
+        // Ler como array de objetos
+        const rawData = XLSX.utils.sheet_to_json(worksheet, {
+            header: 1,
+            raw: true,
+            defval: null
+        }) as unknown[][];
+
+        console.log("📋 Total de linhas:", rawData.length);
+
+        if (rawData.length < 2) {
+            return NextResponse.json(
+                { success: false, error: "Arquivo vazio ou sem dados" },
+                { status: 400 }
+            );
+        }
+
+        // Primeira linha é o header
+        const headers = (rawData[0] as string[]).map((h) =>
+            String(h || "").trim()
+        );
+        console.log("🔑 Headers encontrados:", headers);
+
+        // Identificar colunas importantes
+        const colIndex = {
+            id: headers.findIndex((h) => h.toUpperCase() === "ID"),
+            number: headers.findIndex((h) => h.toUpperCase() === "NUMBER"),
+            date: headers.findIndex((h) =>
+                h.toUpperCase().includes("DATE") || h.toUpperCase().includes("FECHA")
+            ),
+            amount: headers.findIndex((h) =>
+                h.toUpperCase().includes("AMOUNT") ||
+                h.toUpperCase().includes("TOTAL") ||
+                h.toUpperCase().includes("VALOR")
+            ),
+            description: headers.findIndex((h) =>
+                h.toUpperCase().includes("DESCRIPTION") ||
+                h.toUpperCase().includes("DESCRIPCION") ||
+                h.toUpperCase().includes("NAME")
+            ),
+            orderNumber: headers.findIndex((h) =>
+                h.toUpperCase().includes("ORDER") &&
+                (h.toUpperCase().includes("NUMBER") || h.toUpperCase().includes("ID"))
+            )
+        };
+
+        console.log("🗺️ Mapeamento de colunas:");
+        console.log("  ID:", colIndex.id !== -1 ? `Coluna ${colIndex.id}` : "❌");
+        console.log("  Number:", colIndex.number !== -1 ? `Coluna ${colIndex.number}` : "❌");
+        console.log("  Date:", colIndex.date !== -1 ? `Coluna ${colIndex.date}` : "❌");
+        console.log("  Amount:", colIndex.amount !== -1 ? `Coluna ${colIndex.amount}` : "❌");
+        console.log("  Description:", colIndex.description !== -1 ? `Coluna ${colIndex.description}` : "⚠️");
+        console.log("  Order Number:", colIndex.orderNumber !== -1 ? `Coluna ${colIndex.orderNumber}` : "⚠️");
+
+        // Processar linhas de dados
+        const dataRows = rawData.slice(1);
+        let processedCount = 0;
+        let skippedCount = 0;
+
+        const rows = dataRows
+            .map((row, index) => {
+                try {
+                    const rowArr = row as unknown[];
+
+                    // Pegar ID ou Number para identificação
+                    const invoiceId =
+                        colIndex.id !== -1 ? String(rowArr[colIndex.id] || "") : "";
+                    const invoiceNumber =
+                        colIndex.number !== -1 ? String(rowArr[colIndex.number] || "") : invoiceId;
+
+                    // Pular linhas sem identificador
+                    if (!invoiceId && !invoiceNumber) {
+                        skippedCount++;
+                        return null;
+                    }
+
+                    // Date - converter serial Excel se necessário
+                    let dateValue: string | null = null;
+                    if (colIndex.date !== -1 && rowArr[colIndex.date]) {
+                        const rawDate = rowArr[colIndex.date];
+                        if (typeof rawDate === "number") {
+                            // Serial Excel
+                            const parsed = XLSX.SSF.parse_date_code(rawDate);
+                            if (parsed) {
+                                dateValue = `${parsed.y}-${String(parsed.m).padStart(2, "0")}-${String(
+                                    parsed.d
+                                ).padStart(2, "0")}`;
+                            }
+                        } else if (typeof rawDate === "string") {
+                            // Tentar parsear ISO ou dd/mm/yyyy
+                            if (rawDate.match(/^\d{4}-\d{2}-\d{2}/)) {
+                                dateValue = rawDate.substring(0, 10);
+                            } else if (rawDate.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+                                const [day, month, year] = rawDate.split("/");
+                                dateValue = `${year}-${month}-${day}`;
+                            } else {
+                                dateValue = rawDate;
+                            }
+                        }
+                    }
+
+                    // Amount
+                    let amount = 0;
+                    if (colIndex.amount !== -1 && rowArr[colIndex.amount]) {
+                        const rawAmount = rowArr[colIndex.amount];
+                        if (typeof rawAmount === "number") {
+                            amount = rawAmount;
+                        } else if (typeof rawAmount === "string") {
+                            // Parse com vírgula como decimal
+                            amount = parseFloat(rawAmount.replace(",", ".").replace(/[^\d.-]/g, "")) || 0;
+                        }
+                    }
+
+                    // Description
+                    const description =
+                        colIndex.description !== -1
+                            ? String(rowArr[colIndex.description] || "")
+                            : invoiceNumber;
+
+                    // Order Number
+                    const orderNumber =
+                        colIndex.orderNumber !== -1
+                            ? String(rowArr[colIndex.orderNumber] || "")
+                            : null;
+
+                    // Mapear todas as colunas para custom_data
+                    const customData: Record<string, unknown> = {
+                        file_name: file.name,
+                        row_index: index + 2 // +2 para contar header e 0-index
+                    };
+
+                    headers.forEach((header, i) => {
+                        if (header && rowArr[i] !== null && rowArr[i] !== undefined) {
+                            // Normalizar nome da chave (snake_case)
+                            const key = header.replace(/\s+/g, "_").replace(/[^\w]/g, "");
+                            customData[key] = rowArr[i];
+                        }
+                    });
+
+                    processedCount++;
+
+                    return {
+                        source: "invoice-orders",
+                        date: dateValue || new Date().toISOString().split("T")[0],
+                        description: description.substring(0, 500),
+                        amount: amount.toString(),
+                        reconciled: false,
+                        custom_data: customData
+                    };
+                } catch (err) {
+                    console.error(`❌ Erro na linha ${index + 2}:`, err);
+                    skippedCount++;
+                    return null;
+                }
+            })
+            .filter(Boolean);
+
+        console.log(`\n✅ Processadas: ${processedCount} | Ignoradas: ${skippedCount}`);
+
+        if (rows.length === 0) {
+            return NextResponse.json(
+                { success: false, error: "Nenhuma linha válida encontrada no arquivo" },
+                { status: 400 }
+            );
+        }
+
+        // Inserir no Supabase
+        console.log("💾 Salvando no Supabase...");
+
+        // Deletar registros antigos (opcional - para evitar duplicatas)
+        // await supabaseAdmin.from("csv_rows").delete().eq("source", "invoice-orders");
+
+        // Inserir em batches de 500
+        const batchSize = 500;
+        let insertedCount = 0;
+
+        for (let i = 0; i < rows.length; i += batchSize) {
+            const batch = rows.slice(i, i + batchSize);
+
+            const { error: insertError } = await supabaseAdmin.from("csv_rows").insert(batch);
+
+            if (insertError) {
+                console.error("❌ Erro ao inserir batch:", insertError);
+                throw insertError;
+            }
+
+            insertedCount += batch.length;
+            console.log(`📦 Batch ${Math.floor(i / batchSize) + 1}: ${batch.length} registros`);
+        }
+
+        console.log(`🎉 Upload concluído! ${insertedCount} registros salvos`);
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                fileName: file.name,
+                rowCount: insertedCount,
+                skipped: skippedCount,
+                headers: headers
+            }
+        });
+    } catch (error) {
+        console.error("❌ Erro no upload:", error);
+        return NextResponse.json(
+            {
+                success: false,
+                error: error instanceof Error ? error.message : "Erro desconhecido"
+            },
+            { status: 500 }
+        );
+    }
+}
