@@ -155,11 +155,12 @@ export default function ProductsPage() {
                 setMergedProducts(mergedData || []);
             }
 
-            // Load financial accounts
+            // Load financial accounts (REVENUE only for AR products)
             const { data: faData } = await supabase
                 .from("financial_accounts")
-                .select("id, code, name, scope")
+                .select("id, code, name, scope, type")
                 .eq("is_active", true)
+                .eq("type", "revenue")
                 .order("code");
             setFinancialAccounts(faData || []);
 
