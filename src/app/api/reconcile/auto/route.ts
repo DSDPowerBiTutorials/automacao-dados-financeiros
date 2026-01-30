@@ -284,6 +284,7 @@ export async function POST(req: NextRequest) {
                         reconciled: true,
                         reconciled_at: new Date().toISOString(),
                         reconciled_with: `${match.payment_source}:${match.transaction_id}`,
+                        reconciliation_type: 'automatic',
                         payment_reference: match.transaction_id,
                     })
                     .eq('id', match.invoice_id);
