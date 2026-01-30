@@ -1270,13 +1270,57 @@ export default function ARInvoicesPage() {
                 </div>
               )}
 
+              {/* Status History */}
+              {transactionDetails.custom_data?.status_history && Array.isArray(transactionDetails.custom_data.status_history) && transactionDetails.custom_data.status_history.length > 0 && (
+                <div className="p-4 bg-[#1e1f21]/50 rounded-lg border border-gray-700">
+                  <h4 className="text-xs font-medium text-gray-400 mb-3">Status History</h4>
+                  <div className="space-y-2 max-h-40 overflow-y-auto">
+                    {transactionDetails.custom_data.status_history.map((entry: any, idx: number) => (
+                      <div key={idx} className="flex items-start gap-3 text-xs">
+                        <div className="flex-shrink-0 w-2 h-2 mt-1.5 rounded-full bg-blue-400"></div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${entry.status === 'settled' || entry.status === 'confirmed' || entry.status === 'succeeded'
+                                ? 'bg-green-900/50 text-green-400'
+                                : entry.status === 'authorized' || entry.status === 'submitted_for_settlement'
+                                  ? 'bg-blue-900/50 text-blue-400'
+                                  : 'bg-gray-700 text-gray-300'
+                              }`}>
+                              {entry.status?.replace(/_/g, ' ').toUpperCase()}
+                            </span>
+                            {entry.amount && (
+                              <span className="text-gray-400">${entry.amount}</span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 mt-1 text-gray-500">
+                            <span>{entry.timestamp ? new Date(entry.timestamp).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
+                            {entry.user && (
+                              <>
+                                <span>•</span>
+                                <span className="truncate">{entry.user}</span>
+                              </>
+                            )}
+                            {entry.transactionSource && (
+                              <>
+                                <span>•</span>
+                                <span className="text-gray-600">{entry.transactionSource}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Additional Details */}
-              {transactionDetails.custom_data && Object.keys(transactionDetails.custom_data).filter(key => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency', 'created_at', 'customer_id', 'billing_name', 'company_name', 'merchant_account_id'].includes(key)).length > 0 && (
+              {transactionDetails.custom_data && Object.keys(transactionDetails.custom_data).filter(key => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency', 'created_at', 'customer_id', 'billing_name', 'company_name', 'merchant_account_id', 'status_history'].includes(key)).length > 0 && (
                 <div className="p-4 bg-[#1e1f21]/50 rounded-lg border border-gray-700">
                   <h4 className="text-xs font-medium text-gray-400 mb-2">Additional Details</h4>
                   <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                     {Object.entries(transactionDetails.custom_data)
-                      .filter(([key]) => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency', 'created_at', 'customer_id', 'billing_name', 'company_name', 'merchant_account_id'].includes(key))
+                      .filter(([key]) => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency', 'created_at', 'customer_id', 'billing_name', 'company_name', 'merchant_account_id', 'status_history'].includes(key))
                       .slice(0, 6)
                       .map(([key, value]) => (
                         <div key={key} className="flex">
