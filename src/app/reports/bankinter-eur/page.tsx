@@ -952,18 +952,18 @@ export default function BankinterEURPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
+      <div className="h-full flex items-center justify-center bg-[#1e1f21]">
         <Loader2 className="h-8 w-8 animate-spin text-white" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#1e1f21] text-white flex">
+    <div className="h-full flex flex-col bg-[#1e1f21] text-white overflow-hidden">
       {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${selectedRow ? "mr-[450px]" : ""}`}>
+      <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedRow ? "mr-[450px]" : ""}`}>
         {/* Header */}
-        <div className="border-b border-gray-700 px-6 py-4">
+        <div className="flex-shrink-0 border-b border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div className="bg-[#FF7300] p-2 rounded-lg">
@@ -1052,7 +1052,7 @@ export default function BankinterEURPage() {
         </div>
 
         {/* Stats Bar */}
-        <div className="border-b border-gray-700 px-6 py-3 bg-[#252627]">
+        <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-[#252627]">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2">
               <span className="text-gray-400 text-sm">Credits:</span>
@@ -1086,7 +1086,7 @@ export default function BankinterEURPage() {
         </div>
 
         {/* Table Header */}
-        <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
+        <div className="flex-shrink-0 sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
           <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[900px]">
             <div className="w-[60px] flex-shrink-0">Date</div>
             <div className="w-[50px] flex-shrink-0">Key</div>
@@ -1102,7 +1102,7 @@ export default function BankinterEURPage() {
         </div>
 
         {/* Content */}
-        <div className="pb-20 overflow-x-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-auto">
           {groups.map((group) => (
             <div key={group.date} className="border-b border-gray-800">
               <div
@@ -1255,6 +1255,8 @@ export default function BankinterEURPage() {
               <p className="text-sm mt-1">Upload an XLSX file to get started</p>
             </div>
           )}
+          {/* Bottom spacing */}
+          <div className="h-8"></div>
         </div>
       </div>
 
