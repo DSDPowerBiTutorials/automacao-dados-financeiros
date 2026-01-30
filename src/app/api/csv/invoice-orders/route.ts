@@ -66,41 +66,64 @@ export async function POST(request: NextRequest) {
         );
         console.log("🔑 Headers encontrados:", headers);
 
-        // Identificar colunas importantes
+        // Identificar colunas importantes - ordem de prioridade específica
         const colIndex = {
             id: headers.findIndex((h) => h.toUpperCase() === "ID"),
             number: headers.findIndex((h) => h.toUpperCase() === "NUMBER"),
-            date: headers.findIndex((h) =>
-                h.toUpperCase().includes("DATE") || h.toUpperCase().includes("FECHA")
-            ),
-            amount: headers.findIndex((h) =>
-                h.toUpperCase().includes("AMOUNT") ||
-                h.toUpperCase().includes("TOTAL") ||
-                h.toUpperCase().includes("VALOR")
-            ),
-            description: headers.findIndex((h) =>
-                h.toUpperCase().includes("DESCRIPTION") ||
-                h.toUpperCase().includes("DESCRIPCION") ||
-                h.toUpperCase().includes("NAME")
-            ),
-            orderNumber: headers.findIndex((h) =>
-                h.toUpperCase().includes("ORDER") &&
-                (h.toUpperCase().includes("NUMBER") || h.toUpperCase().includes("ID"))
-            )
+            // Invoice Date tem prioridade sobre Order Date
+            date: headers.findIndex((h) => h.toUpperCase() === "INVOICE DATE") !== -1
+                ? headers.findIndex((h) => h.toUpperCase() === "INVOICE DATE")
+                : headers.findIndex((h) =>
+                    h.toUpperCase().includes("DATE") || h.toUpperCase().includes("FECHA")
+                ),
+            // Total é a coluna principal de valor
+            amount: headers.findIndex((h) => h.toUpperCase() === "TOTAL") !== -1
+                ? headers.findIndex((h) => h.toUpperCase() === "TOTAL")
+                : headers.findIndex((h) =>
+                    h.toUpperCase().includes("AMOUNT") ||
+                    h.toUpperCase().includes("TOTAL") ||
+                    h.toUpperCase().includes("VALOR")
+                ),
+            // Products como descrição principal
+            description: headers.findIndex((h) => h.toUpperCase() === "PRODUCTS") !== -1
+                ? headers.findIndex((h) => h.toUpperCase() === "PRODUCTS")
+                : headers.findIndex((h) =>
+                    h.toUpperCase().includes("DESCRIPTION") ||
+                    h.toUpperCase().includes("DESCRIPCION") ||
+                    h.toUpperCase().includes("NAME")
+                ),
+            // Order é a coluna do order ID (não confundir com Order Date/Status)
+            orderNumber: headers.findIndex((h) => h.toUpperCase() === "ORDER"),
+            // Colunas adicionais específicas do CSV de invoices
+            currency: headers.findIndex((h) => h.toUpperCase() === "CURRENCY"),
+            company: headers.findIndex((h) => h.toUpperCase() === "COMPANY"),
+            client: headers.findIndex((h) => h.toUpperCase() === "CLIENT"),
+            email: headers.findIndex((h) => h.toUpperCase() === "EMAIL"),
+            country: headers.findIndex((h) => h.toUpperCase() === "COUNTRY"),
+            paymentMethod: headers.findIndex((h) => h.toUpperCase() === "PAYMENT METHOD"),
+            billingEntity: headers.findIndex((h) => h.toUpperCase() === "BILLING ENTITY"),
+            charged: headers.findIndex((h) => h.toUpperCase() === "CHARGED")
         };
 
         console.log("🗺️ Mapeamento de colunas:");
-        console.log("  ID:", colIndex.id !== -1 ? `Coluna ${colIndex.id}` : "❌");
-        console.log("  Number:", colIndex.number !== -1 ? `Coluna ${colIndex.number}` : "❌");
-        console.log("  Date:", colIndex.date !== -1 ? `Coluna ${colIndex.date}` : "❌");
-        console.log("  Amount:", colIndex.amount !== -1 ? `Coluna ${colIndex.amount}` : "❌");
-        console.log("  Description:", colIndex.description !== -1 ? `Coluna ${colIndex.description}` : "⚠️");
-        console.log("  Order Number:", colIndex.orderNumber !== -1 ? `Coluna ${colIndex.orderNumber}` : "⚠️");
+        console.log("  ID:", colIndex.id !== -1 ? `Coluna ${colIndex.id} (${headers[colIndex.id]})` : "❌");
+        console.log("  Number:", colIndex.number !== -1 ? `Coluna ${colIndex.number} (${headers[colIndex.number]})` : "❌");
+        console.log("  Date:", colIndex.date !== -1 ? `Coluna ${colIndex.date} (${headers[colIndex.date]})` : "❌");
+        console.log("  Amount/Total:", colIndex.amount !== -1 ? `Coluna ${colIndex.amount} (${headers[colIndex.amount]})` : "❌");
+        console.log("  Description/Products:", colIndex.description !== -1 ? `Coluna ${colIndex.description} (${headers[colIndex.description]})` : "⚠️");
+        console.log("  Order:", colIndex.orderNumber !== -1 ? `Coluna ${colIndex.orderNumber} (${headers[colIndex.orderNumber]})` : "⚠️");
+        console.log("  Currency:", colIndex.currency !== -1 ? `Coluna ${colIndex.currency}` : "⚠️");
+        console.log("  Payment Method:", colIndex.paymentMethod !== -1 ? `Coluna ${colIndex.paymentMethod}` : "⚠️");
 
         // Processar linhas de dados
         const dataRows = rawData.slice(1);
         let processedCount = 0;
         let skippedCount = 0;
+
+        // Log da primeira linha para debug
+        if (dataRows.length > 0) {
+            console.log("🔍 Primeira linha de dados:", JSON.stringify(dataRows[0]));
+        }
 
         const rows = dataRows
             .map((row, index) => {
@@ -168,10 +191,22 @@ export async function POST(request: NextRequest) {
                             ? String(rowArr[colIndex.orderNumber] || "")
                             : null;
 
+                    // Currency
+                    const currency =
+                        colIndex.currency !== -1
+                            ? String(rowArr[colIndex.currency] || "EUR")
+                            : "EUR";
+
                     // Mapear todas as colunas para custom_data
                     const customData: Record<string, unknown> = {
                         file_name: file.name,
-                        row_index: index + 2 // +2 para contar header e 0-index
+                        row_index: index + 2, // +2 para contar header e 0-index
+                        // Campos específicos normalizados
+                        ID: invoiceId,
+                        Number: invoiceNumber,
+                        order_id: orderNumber,
+                        order_number: orderNumber,
+                        currency: currency
                     };
 
                     headers.forEach((header, i) => {
@@ -211,6 +246,7 @@ export async function POST(request: NextRequest) {
 
         // Inserir no Supabase
         console.log("💾 Salvando no Supabase...");
+        console.log("📊 Primeiro registro para debug:", JSON.stringify(rows[0], null, 2));
 
         // Deletar registros antigos (opcional - para evitar duplicatas)
         // await supabaseAdmin.from("csv_rows").delete().eq("source", "invoice-orders");
@@ -225,7 +261,7 @@ export async function POST(request: NextRequest) {
             const { error: insertError } = await supabaseAdmin.from("csv_rows").insert(batch);
 
             if (insertError) {
-                console.error("❌ Erro ao inserir batch:", insertError);
+                console.error("❌ Erro ao inserir batch:", JSON.stringify(insertError, null, 2));
                 throw insertError;
             }
 
@@ -246,10 +282,16 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         console.error("❌ Erro no upload:", error);
+        const errorMessage = error instanceof Error
+            ? error.message
+            : typeof error === 'object' && error !== null
+                ? JSON.stringify(error)
+                : "Erro desconhecido";
+        console.error("❌ Detalhes do erro:", errorMessage);
         return NextResponse.json(
             {
                 success: false,
-                error: error instanceof Error ? error.message : "Erro desconhecido"
+                error: errorMessage
             },
             { status: 500 }
         );
