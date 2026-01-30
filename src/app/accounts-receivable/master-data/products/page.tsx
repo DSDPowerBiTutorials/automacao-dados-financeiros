@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/lib/supabase";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,38 +23,17 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
     Package,
     Plus,
     Edit,
-    Trash2,
     Search,
     Merge,
     CheckCircle,
-    XCircle,
     RefreshCw,
-    DollarSign,
-    Building,
-    Tag,
-    Globe,
-    AlertTriangle,
+    ChevronDown,
+    ChevronRight,
+    Loader2,
+    Filter,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -102,17 +80,6 @@ interface DepartmentalAccount {
     full_path: string | null;
 }
 
-const DEPARTMENTS = [
-    "Education",
-    "Marketing",
-    "Sales",
-    "Operations",
-    "Technology",
-    "Support",
-    "Finance",
-    "HR",
-];
-
 const PRODUCT_TYPES = [
     { value: "service", label: "Service" },
     { value: "product", label: "Product" },
@@ -136,6 +103,7 @@ const SCOPES = [
 
 export default function ProductsPage() {
     const [products, setProducts] = useState<Product[]>([]);
+    const [mergedProducts, setMergedProducts] = useState<Product[]>([]);
     const [financialAccounts, setFinancialAccounts] = useState<FinancialAccount[]>([]);
     const [departmentalAccounts, setDepartmentalAccounts] = useState<DepartmentalAccount[]>([]);
     const [loading, setLoading] = useState(true);
@@ -144,13 +112,15 @@ export default function ProductsPage() {
     const [scopeFilter, setScopeFilter] = useState("all");
     const [showInactive, setShowInactive] = useState(false);
 
+    // Expanded products (to show merged children)
+    const [expandedProducts, setExpandedProducts] = useState<Set<string>>(new Set());
+
     // Dialog states
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [isMergeDialogOpen, setIsMergeDialogOpen] = useState(false);
     const [selectedForMerge, setSelectedForMerge] = useState<Product[]>([]);
     const [mergeTarget, setMergeTarget] = useState<string>("");
-    const [deleteConfirm, setDeleteConfirm] = useState<Product | null>(null);
     const [syncing, setSyncing] = useState(false);
 
     // Form state
@@ -179,15 +149,26 @@ export default function ProductsPage() {
     const loadData = async () => {
         setLoading(true);
         try {
-            // Load products
+            // Load main products (not merged into another)
             const { data: productsData, error: productsError } = await supabase
                 .from("products")
                 .select("*")
-                .is("merged_into_id", null) // Don't show merged products
+                .is("merged_into_id", null)
                 .order("name");
 
             if (productsError) throw productsError;
             setProducts(productsData || []);
+
+            // Load merged products (products that were merged into others)
+            const { data: mergedData, error: mergedError } = await supabase
+                .from("products")
+                .select("*")
+                .not("merged_into_id", "is", null)
+                .order("name");
+
+            if (!mergedError) {
+                setMergedProducts(mergedData || []);
+            }
 
             // Load financial accounts
             const { data: faData } = await supabase
@@ -216,6 +197,11 @@ export default function ProductsPage() {
         }
     };
 
+    // Get merged children for a product
+    const getMergedChildren = (productId: string): Product[] => {
+        return mergedProducts.filter((p) => p.merged_into_id === productId);
+    };
+
     // Filtered products
     const filteredProducts = useMemo(() => {
         return products.filter((p) => {
@@ -224,35 +210,36 @@ export default function ProductsPage() {
             if (scopeFilter !== "all" && p.scope !== scopeFilter) return false;
             if (searchTerm) {
                 const search = searchTerm.toLowerCase();
-                return (
+                const matchesMain =
                     p.name.toLowerCase().includes(search) ||
                     p.code.toLowerCase().includes(search) ||
                     p.description?.toLowerCase().includes(search) ||
-                    p.alternative_names?.some((n) => n.toLowerCase().includes(search))
+                    p.alternative_names?.some((n) => n.toLowerCase().includes(search));
+
+                // Also check if any merged children match
+                const children = getMergedChildren(p.id);
+                const matchesChildren = children.some((c) =>
+                    c.name.toLowerCase().includes(search) ||
+                    c.code.toLowerCase().includes(search)
                 );
+
+                return matchesMain || matchesChildren;
             }
             return true;
         });
-    }, [products, searchTerm, categoryFilter, scopeFilter, showInactive]);
+    }, [products, mergedProducts, searchTerm, categoryFilter, scopeFilter, showInactive]);
 
-    // Detect potential duplicates
-    const potentialDuplicates = useMemo(() => {
-        const duplicates: { product: Product; similar: Product[] }[] = [];
-        products.forEach((p, i) => {
-            const similar = products.filter((other, j) => {
-                if (i >= j) return false; // Avoid duplicates
-                const nameYesilar = p.name.toLowerCase().includes(other.name.toLowerCase().substring(0, 5)) ||
-                    other.name.toLowerCase().includes(p.name.toLowerCase().substring(0, 5));
-                const priceYesilar = p.default_price && other.default_price &&
-                    Math.abs(p.default_price - other.default_price) < 100;
-                return nameYesilar || priceYesilar;
-            });
-            if (similar.length > 0) {
-                duplicates.push({ product: p, similar });
+    const toggleProductExpansion = (productId: string) => {
+        setExpandedProducts((prev) => {
+            const next = new Set(prev);
+            if (next.has(productId)) {
+                next.delete(productId);
+            } else {
+                next.add(productId);
             }
+            return next;
         });
-        return duplicates;
-    }, [products]);
+    };
 
     const resetForm = () => {
         setFormData({
@@ -372,28 +359,6 @@ export default function ProductsPage() {
         }
     };
 
-    const handleDelete = async () => {
-        if (!deleteConfirm) return;
-
-        try {
-            const { error } = await supabase
-                .from("products")
-                .delete()
-                .eq("id", deleteConfirm.id);
-
-            if (error) throw error;
-            toast({ title: "Success", description: "Product deleted" });
-            setDeleteConfirm(null);
-            loadData();
-        } catch (error: any) {
-            toast({
-                title: "Error",
-                description: error.message || "Error deleting product",
-                variant: "destructive",
-            });
-        }
-    };
-
     const toggleMergeSelection = (product: Product) => {
         setSelectedForMerge((prev) => {
             const exists = prev.find((p) => p.id === product.id);
@@ -440,14 +405,18 @@ export default function ProductsPage() {
 
             // Record merge history and mark products as merged
             for (const product of toMerge) {
-                // Create merge record
-                await supabase.from("product_merges").insert({
-                    source_product_id: product.id,
-                    source_product_name: product.name,
-                    source_product_code: product.code,
-                    target_product_id: mergeTarget,
-                    notes: `Merged into ${targetProduct.name}`,
-                });
+                // Create merge record (if table exists)
+                try {
+                    await supabase.from("product_merges").insert({
+                        source_product_id: product.id,
+                        source_product_name: product.name,
+                        source_product_code: product.code,
+                        target_product_id: mergeTarget,
+                        notes: `Merged into ${targetProduct.name}`,
+                    });
+                } catch {
+                    // Table might not exist, continue anyway
+                }
 
                 // Mark product as merged (soft delete)
                 await supabase
@@ -478,406 +447,363 @@ export default function ProductsPage() {
         }
     };
 
-    const formatCurrency = (value: number | null, currency = "EUR") => {
-        if (value === null) return "—";
-        return new Intl.NumberFormat("pt-BR", {
-            style: "currency",
-            currency,
-        }).format(value);
-    };
-
     // Stats
     const stats = useMemo(() => {
         const active = products.filter((p) => p.is_active).length;
-        const withPrice = products.filter((p) => p.default_price && p.default_price > 0).length;
         const withFA = products.filter((p) => p.financial_account_id).length;
-        return { total: products.length, active, withPrice, withFA };
-    }, [products]);
+        const withMerged = products.filter((p) => getMergedChildren(p.id).length > 0).length;
+        return { total: products.length, active, withFA, withMerged };
+    }, [products, mergedProducts]);
+
+    // Get financial account display
+    const getFinancialAccountDisplay = (product: Product) => {
+        if (product.financial_account_code) return product.financial_account_code;
+        if (product.financial_account_id) {
+            const fa = financialAccounts.find((f) => f.id === product.financial_account_id);
+            return fa?.code || "—";
+        }
+        return "—";
+    };
+
+    // Get departmental account display
+    const getDepartmentalDisplay = (product: Product) => {
+        if (product.departmental_account_group_id) {
+            const group = departmentalAccounts.find((d) => d.id === product.departmental_account_group_id);
+            const subgroup = product.departmental_account_subgroup_id
+                ? departmentalAccounts.find((d) => d.id === product.departmental_account_subgroup_id)
+                : null;
+            if (group) {
+                return subgroup ? `${group.name} > ${subgroup.name}` : group.name;
+            }
+        }
+        return "—";
+    };
 
     if (loading) {
         return (
-            <div className="min-h-full px-6 flex items-center justify-center">
-                <div className="text-center">
-                    <RefreshCw className="h-8 w-8 animate-spin text-blue-600 mx-auto mb-4" />
-                    <p className="text-gray-600">Loading products...</p>
-                </div>
+            <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
+                <Loader2 className="h-8 w-8 animate-spin text-white" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-full px-6 py-8 space-y-6">
+        <div className="min-h-screen bg-[#1e1f21] text-white">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <header className="page-header-standard">
-                    <h1 className="header-title flex items-center gap-3">
-                        <Package className="h-8 w-8 text-blue-600" />
-                        Products
-                    </h1>
-                    <p className="header-subtitle">
-                        Manage DSD products - registration, unification and financial association
-                    </p>
-                </header>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        onClick={async () => {
-                            setSyncing(true);
-                            try {
-                                const res = await fetch("/api/products/sync");
-                                const data = await res.json();
-                                if (data.success) {
+            <div className="border-b border-gray-700 px-6 py-4">
+                <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                        <Package className="h-6 w-6 text-blue-400" />
+                        <h1 className="text-xl font-semibold">Products</h1>
+                        <span className="text-gray-400">•</span>
+                        <span className="text-gray-400 text-sm">
+                            {stats.total} products • {stats.withMerged} with merged
+                        </span>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+                            onClick={() => {
+                                resetForm();
+                                setIsDialogOpen(true);
+                            }}
+                        >
+                            <Plus className="h-4 w-4 mr-1" />
+                            Add Product
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+                            onClick={async () => {
+                                setSyncing(true);
+                                try {
+                                    const res = await fetch("/api/products/sync");
+                                    const data = await res.json();
+                                    if (data.success) {
+                                        toast({
+                                            title: "Sync completed",
+                                            description: `${data.stats?.inserted || 0} new products imported`,
+                                        });
+                                        loadData();
+                                    } else {
+                                        throw new Error(data.error);
+                                    }
+                                } catch (error: any) {
                                     toast({
-                                        title: "Sync completed",
-                                        description: `${data.stats.inserted} novos produtos importados do HubSpot`,
+                                        title: "Sync error",
+                                        description: error.message,
+                                        variant: "destructive",
                                     });
-                                    if (data.stats.inserted > 0) loadData();
-                                } else {
-                                    throw new Error(data.error);
+                                } finally {
+                                    setSyncing(false);
                                 }
-                            } catch (error: any) {
-                                toast({
-                                    title: "Sync error",
-                                    description: error.message,
-                                    variant: "destructive",
-                                });
-                            } finally {
-                                setSyncing(false);
-                            }
-                        }}
-                        disabled={syncing}
-                        className="gap-2"
-                    >
-                        <RefreshCw className={`h-4 w-4 ${syncing ? "animate-spin" : ""}`} />
-                        {syncing ? "Syncing..." : "Sync HubSpot"}
-                    </Button>
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            setSelectedForMerge([]);
-                            setIsMergeDialogOpen(true);
-                        }}
-                        disabled={selectedForMerge.length < 2}
-                        className="gap-2"
-                    >
-                        <Merge className="h-4 w-4" />
-                        Merge ({selectedForMerge.length})
-                    </Button>
-                    <Button
-                        onClick={() => {
-                            resetForm();
-                            setIsDialogOpen(true);
-                        }}
-                        className="gap-2"
-                    >
-                        <Plus className="h-4 w-4" />
-                        New Product
-                    </Button>
+                            }}
+                            disabled={syncing}
+                        >
+                            <RefreshCw className={`h-4 w-4 mr-1 ${syncing ? "animate-spin" : ""}`} />
+                            {syncing ? "Syncing..." : "Sync HubSpot"}
+                        </Button>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className={`bg-transparent border-gray-600 hover:bg-gray-700 ${selectedForMerge.length >= 2 ? "text-blue-400" : "text-gray-500"
+                                }`}
+                            onClick={() => {
+                                if (selectedForMerge.length >= 2) {
+                                    setMergeTarget(selectedForMerge[0].id);
+                                    setIsMergeDialogOpen(true);
+                                }
+                            }}
+                            disabled={selectedForMerge.length < 2}
+                        >
+                            <Merge className="h-4 w-4 mr-1" />
+                            Merge ({selectedForMerge.length})
+                        </Button>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Input
+                                placeholder="Search..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9 w-64 bg-transparent border-gray-600 text-white placeholder:text-gray-500"
+                            />
+                        </div>
+                        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                            <SelectTrigger className="w-40 bg-transparent border-gray-600 text-white">
+                                <Filter className="h-4 w-4 mr-1" />
+                                <SelectValue placeholder="Category" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Categories</SelectItem>
+                                {CATEGORIES.map((cat) => (
+                                    <SelectItem key={cat} value={cat}>
+                                        {cat}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => setShowInactive(!showInactive)}
+                            className={`bg-transparent border-gray-600 hover:bg-gray-700 ${showInactive ? "text-yellow-400" : "text-white"
+                                }`}
+                        >
+                            <CheckCircle className="h-4 w-4 mr-1" />
+                            {showInactive ? "Hide Inactive" : "Show Inactive"}
+                        </Button>
+                    </div>
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-blue-100 p-2 rounded-lg">
-                                <Package className="h-5 w-5 text-blue-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Total</p>
-                                <p className="text-2xl font-bold">{stats.total}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-green-100 p-2 rounded-lg">
-                                <CheckCircle className="h-5 w-5 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">Active</p>
-                                <p className="text-2xl font-bold">{stats.active}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-purple-100 p-2 rounded-lg">
-                                <DollarSign className="h-5 w-5 text-purple-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">With Price</p>
-                                <p className="text-2xl font-bold">{stats.withPrice}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardContent className="p-4">
-                        <div className="flex items-center gap-3">
-                            <div className="bg-orange-100 p-2 rounded-lg">
-                                <Building className="h-5 w-5 text-orange-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm text-gray-600">With Financial Account</p>
-                                <p className="text-2xl font-bold">{stats.withFA}</p>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Table Header */}
+            <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
+                <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-400 font-medium uppercase">
+                    <div className="w-[30px] flex-shrink-0"></div>
+                    <div className="w-[30px] flex-shrink-0"></div>
+                    <div className="w-[100px] flex-shrink-0">Code</div>
+                    <div className="w-[250px] flex-shrink-0">Name</div>
+                    <div className="w-[120px] flex-shrink-0">Category</div>
+                    <div className="w-[100px] flex-shrink-0">Financial Acc</div>
+                    <div className="w-[180px] flex-shrink-0">Departmental</div>
+                    <div className="w-[80px] flex-shrink-0">Scope</div>
+                    <div className="w-[80px] flex-shrink-0">Status</div>
+                </div>
             </div>
 
-            {/* Duplicates Warning */}
-            {potentialDuplicates.length > 0 && (
-                <Card className="border-orange-200 bg-orange-50">
-                    <CardHeader className="pb-2">
-                        <CardTitle className="text-orange-700 flex items-center gap-2 text-lg">
-                            <AlertTriangle className="h-5 w-5" />
-                            Possible Duplicates Detected
-                        </CardTitle>
-                        <CardDescription className="text-orange-600">
-                            {potentialDuplicates.length} group(s) of similar products found.
-                            Consider merging them.
-                        </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-wrap gap-2">
-                            {potentialDuplicates.slice(0, 5).map(({ product, similar }) => (
-                                <Badge
-                                    key={product.id}
-                                    variant="outline"
-                                    className="bg-white cursor-pointer hover:bg-orange-100"
-                                    onClick={() => {
-                                        setSelectedForMerge([product, ...similar]);
-                                        setMergeTarget(product.id);
-                                        setIsMergeDialogOpen(true);
-                                    }}
-                                >
-                                    {product.name} + {similar.length} similar
-                                </Badge>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
+            {/* Content */}
+            <div className="pb-20">
+                {filteredProducts.map((product) => {
+                    const children = getMergedChildren(product.id);
+                    const hasChildren = children.length > 0;
+                    const isExpanded = expandedProducts.has(product.id);
 
-            {/* Filters */}
-            <Card>
-                <CardContent className="p-4">
-                    <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-                        <div className="md:col-span-2">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input
-                                    placeholder="Search by name, code..."
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Category" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Categories</SelectItem>
-                                    {CATEGORIES.map((cat) => (
-                                        <SelectItem key={cat} value={cat}>
-                                            {cat}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div>
-                            <Select value={scopeFilter} onValueChange={setScopeFilter}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Scope" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Scopes</SelectItem>
-                                    {SCOPES.map((s) => (
-                                        <SelectItem key={s.value} value={s.value}>
-                                            {s.label}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <input
-                                type="checkbox"
-                                id="showInactive"
-                                checked={showInactive}
-                                onChange={(e) => setShowInactive(e.target.checked)}
-                                className="rounded"
-                            />
-                            <Label htmlFor="showInactive" className="text-sm cursor-pointer">
-                                Show inactive
-                            </Label>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
+                    return (
+                        <div key={product.id}>
+                            {/* Main Product Row */}
+                            <div
+                                className={`flex items-center gap-1 px-4 py-2 border-b border-gray-800 hover:bg-gray-800/50 ${selectedForMerge.find((p) => p.id === product.id)
+                                        ? "bg-blue-900/30"
+                                        : ""
+                                    }`}
+                            >
+                                {/* Checkbox for merge */}
+                                <div className="w-[30px] flex-shrink-0">
+                                    <input
+                                        type="checkbox"
+                                        className="rounded bg-gray-700 border-gray-600"
+                                        checked={!!selectedForMerge.find((p) => p.id === product.id)}
+                                        onChange={() => toggleMergeSelection(product)}
+                                    />
+                                </div>
 
-            {/* Products Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle className="text-lg">
-                        Products ({filteredProducts.length})
-                    </CardTitle>
-                    <CardDescription>
-                        Select products to merge by clicking the checkbox
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="overflow-x-auto">
-                        <Table className="table-standard">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead className="w-12">
-                                        <input
-                                            type="checkbox"
-                                            className="rounded"
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setSelectedForMerge(filteredProducts.slice(0, 10));
-                                                } else {
-                                                    setSelectedForMerge([]);
-                                                }
-                                            }}
-                                        />
-                                    </TableHead>
-                                    <TableHead>Code</TableHead>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Category</TableHead>
-                                    <TableHead>Price</TableHead>
-                                    <TableHead>Financial Account</TableHead>
-                                    <TableHead>Department</TableHead>
-                                    <TableHead>Scope</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {filteredProducts.map((product) => (
-                                    <TableRow
-                                        key={product.id}
-                                        className={
-                                            selectedForMerge.find((p) => p.id === product.id)
-                                                ? "bg-blue-50"
-                                                : ""
-                                        }
+                                {/* Edit button */}
+                                <div className="w-[30px] flex-shrink-0">
+                                    <button
+                                        onClick={() => openEditDialog(product)}
+                                        className="p-1 rounded hover:bg-gray-700 text-gray-400 hover:text-white"
                                     >
-                                        <TableCell>
-                                            <input
-                                                type="checkbox"
-                                                className="rounded"
-                                                checked={!!selectedForMerge.find((p) => p.id === product.id)}
-                                                onChange={() => toggleMergeSelection(product)}
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            <code className="text-xs bg-gray-100 px-1 rounded">
-                                                {product.code}
-                                            </code>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div>
-                                                <div className="font-medium">{product.name}</div>
-                                                {product.alternative_names?.length > 0 && (
-                                                    <div className="text-xs text-gray-500">
-                                                        aka: {product.alternative_names.slice(0, 2).join(", ")}
-                                                        {product.alternative_names.length > 2 && "..."}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Badge variant="outline">{product.category || "—"}</Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            {formatCurrency(product.default_price, product.currency)}
-                                        </TableCell>
-                                        <TableCell>
-                                            {product.financial_account_code ? (
-                                                <Badge variant="secondary">
-                                                    {product.financial_account_code}
-                                                </Badge>
+                                        <Edit className="h-3.5 w-3.5" />
+                                    </button>
+                                </div>
+
+                                {/* Code */}
+                                <div className="w-[100px] flex-shrink-0 flex items-center gap-1">
+                                    {hasChildren && (
+                                        <button
+                                            onClick={() => toggleProductExpansion(product.id)}
+                                            className="p-0.5 rounded hover:bg-gray-700"
+                                        >
+                                            {isExpanded ? (
+                                                <ChevronDown className="h-3 w-3 text-gray-400" />
                                             ) : (
-                                                <span className="text-gray-400">—</span>
+                                                <ChevronRight className="h-3 w-3 text-gray-400" />
                                             )}
-                                        </TableCell>
-                                        <TableCell>{product.department || "—"}</TableCell>
-                                        <TableCell>
-                                            <Badge
-                                                variant={
-                                                    product.scope === "GLOBAL"
-                                                        ? "default"
-                                                        : "outline"
-                                                }
-                                            >
-                                                {product.scope}
-                                            </Badge>
-                                        </TableCell>
-                                        <TableCell>
-                                            {product.is_active ? (
-                                                <span className="badge-light-success">
-                                                    Active
+                                        </button>
+                                    )}
+                                    <code className="text-[11px] text-gray-300">{product.code}</code>
+                                    {hasChildren && (
+                                        <Badge
+                                            variant="outline"
+                                            className="text-[9px] px-1 py-0 border-blue-500 text-blue-400"
+                                        >
+                                            +{children.length}
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {/* Name */}
+                                <div className="w-[250px] flex-shrink-0">
+                                    <div className="text-[12px] text-white truncate">{product.name}</div>
+                                    {product.alternative_names?.length > 0 && (
+                                        <div className="text-[10px] text-gray-500 truncate">
+                                            aka: {product.alternative_names.slice(0, 2).join(", ")}
+                                            {product.alternative_names.length > 2 && "..."}
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Category */}
+                                <div className="w-[120px] flex-shrink-0">
+                                    <span className="text-[11px] text-gray-300">
+                                        {product.category || "—"}
+                                    </span>
+                                </div>
+
+                                {/* Financial Account */}
+                                <div className="w-[100px] flex-shrink-0">
+                                    {getFinancialAccountDisplay(product) !== "—" ? (
+                                        <Badge
+                                            variant="outline"
+                                            className="text-[10px] px-1 py-0 border-green-600 text-green-400"
+                                        >
+                                            {getFinancialAccountDisplay(product)}
+                                        </Badge>
+                                    ) : (
+                                        <span className="text-[11px] text-gray-500">—</span>
+                                    )}
+                                </div>
+
+                                {/* Departmental */}
+                                <div className="w-[180px] flex-shrink-0">
+                                    <span className="text-[11px] text-gray-300 truncate block">
+                                        {getDepartmentalDisplay(product)}
+                                    </span>
+                                </div>
+
+                                {/* Scope */}
+                                <div className="w-[80px] flex-shrink-0">
+                                    <Badge
+                                        variant={product.scope === "GLOBAL" ? "default" : "outline"}
+                                        className="text-[10px] px-1 py-0"
+                                    >
+                                        {product.scope}
+                                    </Badge>
+                                </div>
+
+                                {/* Status */}
+                                <div className="w-[80px] flex-shrink-0">
+                                    {product.is_active ? (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-900/50 text-green-400">
+                                            Active
+                                        </span>
+                                    ) : (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/50 text-red-400">
+                                            Inactive
+                                        </span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Merged Children Rows */}
+                            {hasChildren && isExpanded && (
+                                <div className="bg-gray-900/30">
+                                    {children.map((child) => (
+                                        <div
+                                            key={child.id}
+                                            className="flex items-center gap-1 px-4 py-1.5 border-b border-gray-800/50 hover:bg-gray-800/30"
+                                        >
+                                            <div className="w-[30px] flex-shrink-0"></div>
+                                            <div className="w-[30px] flex-shrink-0"></div>
+                                            <div className="w-[100px] flex-shrink-0 pl-4">
+                                                <code className="text-[10px] text-gray-500">{child.code}</code>
+                                            </div>
+                                            <div className="w-[250px] flex-shrink-0">
+                                                <span className="text-[11px] text-gray-400 italic">
+                                                    ↳ {child.name}
                                                 </span>
-                                            ) : (
-                                                <span className="badge-light-danger">Inactive</span>
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <div className="flex justify-end gap-1">
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    onClick={() => openEditDialog(product)}
+                                                <Badge
+                                                    variant="outline"
+                                                    className="ml-2 text-[9px] px-1 py-0 border-orange-500 text-orange-400"
                                                 >
-                                                    <Edit className="h-4 w-4" />
-                                                </Button>
-                                                <Button
-                                                    variant="ghost"
-                                                    size="icon"
-                                                    className="text-red-600 hover:text-red-700"
-                                                    onClick={() => setDeleteConfirm(product)}
-                                                >
-                                                    <Trash2 className="h-4 w-4" />
-                                                </Button>
+                                                    merged
+                                                </Badge>
                                             </div>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {filteredProducts.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={10} className="text-center py-8 text-gray-500">
-                                            No products found
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
+                                            <div className="w-[120px] flex-shrink-0">
+                                                <span className="text-[10px] text-gray-500">
+                                                    {child.category || "—"}
+                                                </span>
+                                            </div>
+                                            <div className="w-[100px] flex-shrink-0"></div>
+                                            <div className="w-[180px] flex-shrink-0"></div>
+                                            <div className="w-[80px] flex-shrink-0"></div>
+                                            <div className="w-[80px] flex-shrink-0">
+                                                <span className="text-[9px] px-1 py-0.5 rounded bg-gray-800 text-gray-500">
+                                                    Merged
+                                                </span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
+
+                {filteredProducts.length === 0 && (
+                    <div className="text-center py-12 text-gray-500">
+                        No products found
                     </div>
-                </CardContent>
-            </Card>
+                )}
+            </div>
 
             {/* Product Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-[#2a2b2d] border-gray-700 text-white">
                     <DialogHeader>
-                        <DialogTitle>
+                        <DialogTitle className="text-white">
                             {editingProduct ? "Edit Product" : "New Product"}
                         </DialogTitle>
-                        <DialogDescription>
+                        <DialogDescription className="text-gray-400">
                             Fill in the product data. Fields with * are required.
                         </DialogDescription>
                     </DialogHeader>
@@ -885,18 +811,23 @@ export default function ProductsPage() {
                     <div className="grid gap-4 py-4">
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="code">Code</Label>
+                                <Label htmlFor="code" className="text-gray-300 text-xs">
+                                    Code
+                                </Label>
                                 <Input
                                     id="code"
                                     value={formData.code}
                                     onChange={(e) =>
                                         setFormData({ ...formData, code: e.target.value })
                                     }
-                                    placeholder="Auto-gerado se vazio"
+                                    placeholder="Auto-generated if empty"
+                                    className="bg-gray-800 border-gray-600 text-white text-sm"
                                 />
                             </div>
                             <div>
-                                <Label htmlFor="name">Name *</Label>
+                                <Label htmlFor="name" className="text-gray-300 text-xs">
+                                    Name *
+                                </Label>
                                 <Input
                                     id="name"
                                     value={formData.name}
@@ -904,12 +835,15 @@ export default function ProductsPage() {
                                         setFormData({ ...formData, name: e.target.value })
                                     }
                                     placeholder="Product name"
+                                    className="bg-gray-800 border-gray-600 text-white text-sm"
                                 />
                             </div>
                         </div>
 
                         <div>
-                            <Label htmlFor="description">Description</Label>
+                            <Label htmlFor="description" className="text-gray-300 text-xs">
+                                Description
+                            </Label>
                             <Textarea
                                 id="description"
                                 value={formData.description}
@@ -918,32 +852,22 @@ export default function ProductsPage() {
                                 }
                                 placeholder="Product description"
                                 rows={2}
+                                className="bg-gray-800 border-gray-600 text-white text-sm"
                             />
                         </div>
 
                         <div className="grid grid-cols-3 gap-4">
                             <div>
-                                <Label htmlFor="default_price">Default Price</Label>
-                                <Input
-                                    id="default_price"
-                                    type="number"
-                                    step="0.01"
-                                    value={formData.default_price}
-                                    onChange={(e) =>
-                                        setFormData({ ...formData, default_price: e.target.value })
-                                    }
-                                    placeholder="0.00"
-                                />
-                            </div>
-                            <div>
-                                <Label htmlFor="currency">Currency</Label>
+                                <Label htmlFor="currency" className="text-gray-300 text-xs">
+                                    Currency
+                                </Label>
                                 <Select
                                     value={formData.currency}
                                     onValueChange={(v) =>
                                         setFormData({ ...formData, currency: v })
                                     }
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -954,14 +878,16 @@ export default function ProductsPage() {
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="product_type">Type</Label>
+                                <Label htmlFor="product_type" className="text-gray-300 text-xs">
+                                    Type
+                                </Label>
                                 <Select
                                     value={formData.product_type}
                                     onValueChange={(v) =>
                                         setFormData({ ...formData, product_type: v })
                                     }
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -973,38 +899,17 @@ export default function ProductsPage() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="category">Category</Label>
-                                <Select
-                                    value={formData.category}
-                                    onValueChange={(v) =>
-                                        setFormData({ ...formData, category: v })
-                                    }
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {CATEGORIES.map((cat) => (
-                                            <SelectItem key={cat} value={cat}>
-                                                {cat}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <Label htmlFor="scope">Scope</Label>
+                                <Label htmlFor="scope" className="text-gray-300 text-xs">
+                                    Scope
+                                </Label>
                                 <Select
                                     value={formData.scope}
                                     onValueChange={(v) =>
                                         setFormData({ ...formData, scope: v })
                                     }
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
                                         <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1020,18 +925,42 @@ export default function ProductsPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="financial_account">Financial Account</Label>
+                                <Label htmlFor="category" className="text-gray-300 text-xs">
+                                    Category
+                                </Label>
                                 <Select
-                                    value={formData.financial_account_id}
+                                    value={formData.category}
                                     onValueChange={(v) =>
-                                        setFormData({ ...formData, financial_account_id: v })
+                                        setFormData({ ...formData, category: v })
                                     }
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
                                         <SelectValue placeholder="Select..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">None</SelectItem>
+                                        {CATEGORIES.map((cat) => (
+                                            <SelectItem key={cat} value={cat}>
+                                                {cat}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div>
+                                <Label htmlFor="financial_account" className="text-gray-300 text-xs">
+                                    Financial Account
+                                </Label>
+                                <Select
+                                    value={formData.financial_account_id}
+                                    onValueChange={(v) =>
+                                        setFormData({ ...formData, financial_account_id: v === "none" ? "" : v })
+                                    }
+                                >
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                        <SelectValue placeholder="Select..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="none">None</SelectItem>
                                         {financialAccounts.map((fa) => (
                                             <SelectItem key={fa.id} value={fa.id}>
                                                 {fa.code} - {fa.name}
@@ -1044,42 +973,65 @@ export default function ProductsPage() {
 
                         <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <Label htmlFor="departmental_group">Departmental Group</Label>
+                                <Label htmlFor="departmental_group" className="text-gray-300 text-xs">
+                                    Departmental Group
+                                </Label>
                                 <Select
                                     value={formData.departmental_account_group_id}
                                     onValueChange={(v) =>
-                                        setFormData({ ...formData, departmental_account_group_id: v, departmental_account_subgroup_id: "" })
+                                        setFormData({
+                                            ...formData,
+                                            departmental_account_group_id: v === "none" ? "" : v,
+                                            departmental_account_subgroup_id: "",
+                                        })
                                     }
                                 >
-                                    <SelectTrigger>
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
                                         <SelectValue placeholder="Select group..." />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">None</SelectItem>
-                                        {departmentalAccounts.filter(da => da.level === 1).map((da) => (
-                                            <SelectItem key={da.id} value={da.id}>
-                                                {da.code} - {da.name}
-                                            </SelectItem>
-                                        ))}
+                                        <SelectItem value="none">None</SelectItem>
+                                        {departmentalAccounts
+                                            .filter((da) => da.level === 1)
+                                            .map((da) => (
+                                                <SelectItem key={da.id} value={da.id}>
+                                                    {da.code} - {da.name}
+                                                </SelectItem>
+                                            ))}
                                     </SelectContent>
                                 </Select>
                             </div>
                             <div>
-                                <Label htmlFor="departmental_subgroup">Departmental Subgroup</Label>
+                                <Label htmlFor="departmental_subgroup" className="text-gray-300 text-xs">
+                                    Departmental Subgroup
+                                </Label>
                                 <Select
                                     value={formData.departmental_account_subgroup_id}
                                     onValueChange={(v) =>
-                                        setFormData({ ...formData, departmental_account_subgroup_id: v })
+                                        setFormData({
+                                            ...formData,
+                                            departmental_account_subgroup_id: v === "none" ? "" : v,
+                                        })
                                     }
                                     disabled={!formData.departmental_account_group_id}
                                 >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder={formData.departmental_account_group_id ? "Select subgroup..." : "Select group first"} />
+                                    <SelectTrigger className="bg-gray-800 border-gray-600 text-white text-sm">
+                                        <SelectValue
+                                            placeholder={
+                                                formData.departmental_account_group_id
+                                                    ? "Select subgroup..."
+                                                    : "Select group first"
+                                            }
+                                        />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="">None</SelectItem>
+                                        <SelectItem value="none">None</SelectItem>
                                         {departmentalAccounts
-                                            .filter(da => da.level === 2 && da.parent_id === formData.departmental_account_group_id)
+                                            .filter(
+                                                (da) =>
+                                                    da.level === 2 &&
+                                                    da.parent_id === formData.departmental_account_group_id
+                                            )
                                             .map((da) => (
                                                 <SelectItem key={da.id} value={da.id}>
                                                     {da.code} - {da.name}
@@ -1091,7 +1043,7 @@ export default function ProductsPage() {
                         </div>
 
                         <div>
-                            <Label htmlFor="alternative_names">
+                            <Label htmlFor="alternative_names" className="text-gray-300 text-xs">
                                 Alternative Names (comma separated)
                             </Label>
                             <Input
@@ -1101,8 +1053,9 @@ export default function ProductsPage() {
                                     setFormData({ ...formData, alternative_names: e.target.value })
                                 }
                                 placeholder="Name 1, Name 2, Name 3..."
+                                className="bg-gray-800 border-gray-600 text-white text-sm"
                             />
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-[10px] text-gray-500 mt-1">
                                 Use to map name variations, typos, etc.
                             </p>
                         </div>
@@ -1115,20 +1068,24 @@ export default function ProductsPage() {
                                 onChange={(e) =>
                                     setFormData({ ...formData, is_active: e.target.checked })
                                 }
-                                className="rounded"
+                                className="rounded bg-gray-700 border-gray-600"
                             />
-                            <Label htmlFor="is_active" className="cursor-pointer">
-                                Produto ativo
+                            <Label htmlFor="is_active" className="cursor-pointer text-gray-300 text-xs">
+                                Active product
                             </Label>
                         </div>
                     </div>
 
                     <DialogFooter>
-                        <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
+                        <Button
+                            variant="outline"
+                            onClick={() => setIsDialogOpen(false)}
+                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+                        >
                             Cancel
                         </Button>
-                        <Button onClick={handleSave}>
-                            {editingProduct ? "Save" : "Criar"}
+                        <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700">
+                            {editingProduct ? "Save" : "Create"}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
@@ -1136,40 +1093,47 @@ export default function ProductsPage() {
 
             {/* Merge Dialog */}
             <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
-                <DialogContent className="max-w-lg">
+                <DialogContent className="max-w-lg bg-[#2a2b2d] border-gray-700 text-white">
                     <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
+                        <DialogTitle className="flex items-center gap-2 text-white">
                             <Merge className="h-5 w-5" />
-                            Unificar Produtos
+                            Merge Products
                         </DialogTitle>
-                        <DialogDescription>
-                            Select the main product. Others will be marked as
-                            &quot;merged&quot; e seus nomes adicionados como alternativos.
+                        <DialogDescription className="text-gray-400">
+                            Select the main product. Others will be marked as &quot;merged&quot;
+                            and their names added as alternatives.
                         </DialogDescription>
                     </DialogHeader>
 
                     <div className="py-4 space-y-4">
                         <div>
-                            <Label>Produtos selecionados ({selectedForMerge.length})</Label>
+                            <Label className="text-gray-300 text-xs">
+                                Selected products ({selectedForMerge.length})
+                            </Label>
                             <div className="mt-2 space-y-2 max-h-48 overflow-y-auto">
                                 {selectedForMerge.map((p) => (
                                     <div
                                         key={p.id}
                                         className={`flex items-center justify-between p-2 rounded border ${mergeTarget === p.id
-                                            ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-200"
+                                                ? "border-blue-500 bg-blue-900/30"
+                                                : "border-gray-600"
                                             }`}
                                     >
                                         <div>
-                                            <div className="font-medium">{p.name}</div>
-                                            <div className="text-xs text-gray-500">{p.code}</div>
+                                            <div className="text-sm text-white">{p.name}</div>
+                                            <div className="text-[10px] text-gray-500">{p.code}</div>
                                         </div>
                                         <Button
                                             variant={mergeTarget === p.id ? "default" : "outline"}
                                             size="sm"
                                             onClick={() => setMergeTarget(p.id)}
+                                            className={
+                                                mergeTarget === p.id
+                                                    ? "bg-blue-600"
+                                                    : "bg-transparent border-gray-600 text-white"
+                                            }
                                         >
-                                            {mergeTarget === p.id ? "Principal" : "Definir"}
+                                            {mergeTarget === p.id ? "Main" : "Set as Main"}
                                         </Button>
                                     </div>
                                 ))}
@@ -1177,10 +1141,10 @@ export default function ProductsPage() {
                         </div>
 
                         {mergeTarget && (
-                            <div className="bg-blue-50 p-3 rounded-lg">
-                                <p className="text-sm text-blue-700">
-                                    <strong>Result:</strong> Os {selectedForMerge.length - 1}{" "}
-                                    product(s) will be merged into &quot;
+                            <div className="bg-blue-900/30 p-3 rounded-lg border border-blue-700">
+                                <p className="text-sm text-blue-300">
+                                    <strong>Result:</strong> {selectedForMerge.length - 1} product(s)
+                                    will be merged into &quot;
                                     {products.find((p) => p.id === mergeTarget)?.name}&quot;
                                 </p>
                             </div>
@@ -1195,40 +1159,20 @@ export default function ProductsPage() {
                                 setSelectedForMerge([]);
                                 setMergeTarget("");
                             }}
+                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
                         >
                             Cancel
                         </Button>
                         <Button
                             onClick={handleMerge}
                             disabled={selectedForMerge.length < 2 || !mergeTarget}
+                            className="bg-blue-600 hover:bg-blue-700"
                         >
-                            Unificar Produtos
+                            Merge Products
                         </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
-
-            {/* Delete Confirmation */}
-            <AlertDialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-                <AlertDialogContent>
-                    <AlertDialogHeader>
-                        <AlertDialogTitle>Delete Product</AlertDialogTitle>
-                        <AlertDialogDescription>
-                            Tem certeza que deseja excluir o produto &quot;{deleteConfirm?.name}
-                            &quot;? This action cannot be undone.
-                        </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                        <AlertDialogAction
-                            className="bg-red-600 hover:bg-red-700"
-                            onClick={handleDelete}
-                        >
-                            Delete
-                        </AlertDialogAction>
-                    </AlertDialogFooter>
-                </AlertDialogContent>
-            </AlertDialog>
         </div>
     );
 }
