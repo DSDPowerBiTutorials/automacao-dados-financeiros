@@ -122,7 +122,9 @@ export async function POST(req: NextRequest) {
         // Criar mapas
         const invoiceByOrderId = new Map<string, any>();
         const invoiceByEmail = new Map<string, any[]>();
+        const invoiceByEmailDomain = new Map<string, any[]>();
         const invoiceByAmountDate = new Map<number, any[]>();
+        const invoiceByCompanyName = new Map<string, any[]>();
 
         invoices.forEach(inv => {
             if (inv.order_id) {
@@ -132,6 +134,19 @@ export async function POST(req: NextRequest) {
                 const email = inv.email.toLowerCase();
                 if (!invoiceByEmail.has(email)) invoiceByEmail.set(email, []);
                 invoiceByEmail.get(email)!.push(inv);
+                
+                // Index por domínio do email
+                const domain = email.split('@')[1];
+                if (domain) {
+                    if (!invoiceByEmailDomain.has(domain)) invoiceByEmailDomain.set(domain, []);
+                    invoiceByEmailDomain.get(domain)!.push(inv);
+                }
+            }
+            // Index por company_name normalizado
+            if (inv.company_name) {
+                const companyKey = inv.company_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+                if (!invoiceByCompanyName.has(companyKey)) invoiceByCompanyName.set(companyKey, []);
+                invoiceByCompanyName.get(companyKey)!.push(inv);
             }
             const amountKey = Math.round(inv.total_amount);
             if (!invoiceByAmountDate.has(amountKey)) invoiceByAmountDate.set(amountKey, []);
@@ -173,8 +188,27 @@ export async function POST(req: NextRequest) {
                 }
             }
 
-            // 3. Match por valor + data (GoCardless)
-            if (!invoice && payment.source === 'gocardless') {
+            // 3. Match por domínio do email + valor + data (mesmo negócio, emails diferentes)
+            if (!invoice && payment.email) {
+                const domain = payment.email.split('@')[1];
+                if (domain) {
+                    const candidates = (invoiceByEmailDomain.get(domain) || [])
+                        .filter(inv => !matchedInvoiceIds.has(inv.id));
+                    const paymentDate = new Date(payment.date);
+                    const domainMatch = candidates.find(inv => {
+                        const invDate = new Date(inv.invoice_date || inv.order_date);
+                        const daysDiff = Math.abs((paymentDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
+                        return daysDiff <= 3 && Math.abs(inv.total_amount - payment.amount) < 1;
+                    });
+                    if (domainMatch) {
+                        invoice = domainMatch;
+                        matchType = 'domain+amount+date';
+                    }
+                }
+            }
+
+            // 4. Match por valor + data (todos os gateways, janela ±3 dias)
+            if (!invoice) {
                 const amountKey = Math.round(payment.amount);
                 const candidates = (invoiceByAmountDate.get(amountKey) || [])
                     .filter(inv => !matchedInvoiceIds.has(inv.id));
@@ -182,7 +216,7 @@ export async function POST(req: NextRequest) {
                 const dateMatch = candidates.find(inv => {
                     const invDate = new Date(inv.invoice_date || inv.order_date);
                     const daysDiff = Math.abs((paymentDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
-                    return daysDiff <= 7 && Math.abs(inv.total_amount - payment.amount) < 1;
+                    return daysDiff <= 3 && Math.abs(inv.total_amount - payment.amount) < 1;
                 });
                 if (dateMatch) {
                     invoice = dateMatch;
