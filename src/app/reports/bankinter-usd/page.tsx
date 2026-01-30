@@ -19,6 +19,7 @@ import {
   Filter,
   Calendar,
   DollarSign,
+  RefreshCw,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
@@ -91,6 +92,7 @@ export default function BankinterUSDPage() {
   const [editedData, setEditedData] = useState<Partial<BankinterUSDRow>>({});
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoReconciling, setIsAutoReconciling] = useState(false);
   const [lastSaved, setLastSaved] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [dateFrom, setDateFrom] = useState<string>("");
@@ -531,6 +533,60 @@ export default function BankinterUSDPage() {
     }
   };
 
+  // Auto-reconcile with disbursements from Braintree, Stripe, GoCardless
+  const handleAutoReconcile = async () => {
+    setIsAutoReconciling(true);
+    try {
+      // First do a dry run
+      const dryResponse = await fetch('/api/reconcile/bank-disbursement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: true, bankSource: 'bankinter-usd' })
+      });
+      const dryResult = await dryResponse.json();
+
+      if (!dryResult.success) {
+        alert(`Error: ${dryResult.error || 'Failed to check reconciliation'}`);
+        return;
+      }
+
+      if (dryResult.summary.matched === 0) {
+        alert('No matches found. No disbursements match pending bank transactions.');
+        return;
+      }
+
+      // Confirm with user
+      const confirmMsg = `Found ${dryResult.summary.matched} matches:\n` +
+        `• Braintree: ${dryResult.summary.bySource.braintree}\n` +
+        `• Stripe: ${dryResult.summary.bySource.stripe}\n` +
+        `• GoCardless: ${dryResult.summary.bySource.gocardless}\n\n` +
+        `Total value: $${dryResult.summary.totalValue.toLocaleString('en-US', { minimumFractionDigits: 2 })}\n\n` +
+        `Apply reconciliation?`;
+
+      if (!confirm(confirmMsg)) return;
+
+      // Apply reconciliation
+      const response = await fetch('/api/reconcile/bank-disbursement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: false, bankSource: 'bankinter-usd' })
+      });
+      const result = await response.json();
+
+      if (result.success) {
+        alert(`✅ Reconciliation Complete: ${result.summary.updated} transactions reconciled`);
+        await loadData();
+      } else {
+        alert(`Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Auto-reconcile error:", error);
+      alert("Failed to auto-reconcile");
+    } finally {
+      setIsAutoReconciling(false);
+    }
+  };
+
   const downloadCSV = () => {
     try {
       const headers = [
@@ -623,15 +679,15 @@ export default function BankinterUSDPage() {
 
     // Ordenar por data (mais antiga primeiro)
     const sortedByDate = [...filteredRows].sort((a, b) => a.date.localeCompare(b.date));
-    
+
     // Usar saldo real do CSV (primeira transação = opening, última = closing)
     const firstRow = sortedByDate[0];
     const lastRow = sortedByDate[sortedByDate.length - 1];
-    
+
     // Opening Balance = saldo da primeira transação MENOS o amount dessa transação
     const firstBalance = (firstRow as any).custom_data?.saldo ?? (firstRow as any).custom_data?.balance ?? 0;
     const openingBalance = firstBalance - firstRow.amount;
-    
+
     // Closing Balance = saldo da última transação (saldo APÓS todas as transações)
     const closingBalance = (lastRow as any).custom_data?.saldo ?? (lastRow as any).custom_data?.balance ?? 0;
 
@@ -645,512 +701,201 @@ export default function BankinterUSDPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-full flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
         <Loader2 className="h-12 w-12 animate-spin text-[#FF7300]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-full">
-
-      <div className="">
-        <header className="page-header-standard">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link href="/">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-white">
-                    Bankinter USD - Bank Statement
-                  </h1>
-                  <div className="flex items-center gap-4 mt-1">
-                    <p className="text-sm text-gray-300">
-                      {rows.length} records ({filteredRows.length} filtered)
-                    </p>
-                    {lastSaved && (
-                      <p className="text-sm text-blue-300 flex items-center gap-1">
-                        <Database className="h-3 w-3" />
-                        Last Saved: {lastSaved}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  className="gap-2 border-white text-white hover:bg-white/10"
-                >
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Button>
-                <Button
-                  onClick={saveAllChanges}
-                  disabled={isSaving || rows.length === 0}
-                  className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Database className="h-4 w-4" />
-                      Save All Changes
-                    </>
-                  )}
-                </Button>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload-bankinter"
-                />
-                <label htmlFor="file-upload-bankinter">
-                  <Button
-                    variant="outline"
-                    className="gap-2 border-black text-black hover:bg-gray-100"
-                    asChild
-                  >
-                    <span>
-                      <Upload className="h-4 w-4" />
-                      Upload CSV
+    <div className="min-h-screen bg-[#1e1f21] text-white">
+      <div className="border-b border-gray-700 px-6 py-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-[#FF7300] p-2 rounded-lg">
+              <Database className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-semibold">Bankinter USD - Bank Statement</h1>
+              <div className="flex items-center gap-4 mt-1">
+                <span className="text-gray-400 text-sm">{rows.length} records ({filteredRows.length} filtered)</span>
+                {lastSaved && (
+                  <>
+                    <span className="text-gray-600">•</span>
+                    <span className="text-blue-400 text-sm flex items-center gap-1">
+                      <Database className="h-3 w-3" />
+                      Last saved: {lastSaved}
                     </span>
-                  </Button>
-                </label>
-                <Button
-                  onClick={downloadCSV}
-                  className="gap-2 bg-black hover:bg-gray-800 text-white"
-                >
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
-                <Button
-                  onClick={handleDeleteAll}
-                  variant="destructive"
-                  className="gap-2"
-                  disabled={isDeleting || rows.length === 0}
-                >
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                  Delete All
-                </Button>
+                  </>
+                )}
               </div>
             </div>
+          </div>
+          <div className="text-right">
+            <p className="text-sm text-gray-400">Current Balance</p>
+            <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
+              ${formatUSD(stats.closingBalance)}
+            </p>
+          </div>
+        </div>
 
-            {/* Filtros de data */}
-            <div className="mt-4 flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <Filter className="h-4 w-4 text-gray-600" />
-                <span className="text-sm font-medium text-gray-700">
-                  Date Filters:
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">From:</label>
-                <Input
-                  type="date"
-                  value={dateFrom}
-                  onChange={(e) => setDateFrom(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-sm text-gray-600">To:</label>
-                <Input
-                  type="date"
-                  value={dateTo}
-                  onChange={(e) => setDateTo(e.target.value)}
-                  className="w-40"
-                />
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setDateFrom("");
-                  setDateTo("");
-                }}
-                className="gap-2"
-              >
-                <X className="h-4 w-4" />
-                Clear Filters
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center gap-2 flex-wrap">
+            <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
+            <label htmlFor="file-upload-bankinter">
+              <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" asChild>
+                <span><Upload className="h-4 w-4 mr-1" />Upload CSV</span>
               </Button>
-            </div>
-
-            {saveSuccess && (
-              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <AlertDescription className="text-emerald-800 font-medium">
-                  ✅ All changes saved successfully to database! Last saved:{" "}
-                  {lastSaved}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {lastSaved && !saveSuccess && (
-              <div className="mt-3 text-sm text-gray-600 flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                <span>Last saved: {lastSaved}</span>
-              </div>
-            )}
+            </label>
+            <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+              <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />Refresh
+            </Button>
+            <Button onClick={handleAutoReconcile} disabled={isAutoReconciling} variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30">
+              {isAutoReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
+              Auto-Reconcile
+            </Button>
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+              <Download className="h-4 w-4 mr-1" />Download
+            </Button>
+            <Button onClick={handleDeleteAll} variant="outline" size="sm" className="bg-transparent border-red-800 text-red-400 hover:bg-red-900/30" disabled={isDeleting || rows.length === 0}>
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Delete All
+            </Button>
           </div>
-        </header>
 
-        {/* 🏦 Account Information Card */}
-        <div className="px-6 py-4">
-          <Card className="bg-gradient-to-r from-[#FF7300] to-[#FF9A3C] border-0 shadow-xl">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg">
-                    <Database className="h-8 w-8 text-white" />
-                  </div>
-                  <div className="text-white">
-                    <h3 className="text-lg font-bold">Bankinter Spain</h3>
-                    <div className="flex items-center gap-4 mt-1 text-sm">
-                      <span className="flex items-center gap-1">
-                        <span className="font-semibold">Account:</span> ES91 0128 0823 3901 0005 8256
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="font-semibold">Currency:</span> USD ($)
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="font-semibold">Branch:</span> 0128
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right text-white">
-                  <p className="text-sm opacity-90">Current Balance</p>
-                  <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-emerald-200" : "text-red-200"}`}>
-                    {formatUSD(stats.closingBalance)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Stats Cards - Opening Balance, Inflows, Outflows, Closing Balance */}
-        <div className="px-6 py-4">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="border-l-4 border-l-blue-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Calendar className="w-4 h-4 text-blue-600" />
-                  Opening Balance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${stats.openingBalance >= 0 ? "text-blue-600" : "text-red-600"}`}>
-                  {formatUSD(stats.openingBalance)}
-                </div>
-                <p className="text-xs text-gray-500">
-                  {stats.oldestDate ? formatDate(stats.oldestDate) : "No data"}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-emerald-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Zap className="w-4 h-4 text-emerald-600" />
-                  Inflows
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-emerald-600">
-                  {formatUSD(stats.totalIncomes)}
-                </div>
-                <p className="text-xs text-gray-500">
-                  {filteredRows.filter(r => r.amount > 0).length} transactions
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-red-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-red-600" />
-                  Outflows
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-600">
-                  {formatUSD(stats.totalExpenses)}
-                </div>
-                <p className="text-xs text-gray-500">
-                  {filteredRows.filter(r => r.amount < 0).length} transactions
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card className="border-l-4 border-l-purple-500">
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-gray-500 flex items-center gap-2">
-                  <Database className="w-4 h-4 text-purple-600" />
-                  Closing Balance
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-purple-600" : "text-red-600"}`}>
-                  {formatUSD(stats.closingBalance)}
-                </div>
-                <p className="text-xs text-gray-500">
-                  {stats.newestDate ? formatDate(stats.newestDate) : "No data"}
-                </p>
-              </CardContent>
-            </Card>
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-gray-400" />
+            <span className="text-sm text-gray-400">From:</span>
+            <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 bg-transparent border-gray-600 text-white" />
+            <span className="text-sm text-gray-400">To:</span>
+            <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 bg-transparent border-gray-600 text-white" />
+            <Button variant="outline" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }} className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+              <X className="h-4 w-4 mr-1" />Clear
+            </Button>
           </div>
         </div>
+      </div>
 
-        <div className="px-6 py-8">
-          <Card className="shadow-xl border-2 border-gray-200">
-            <CardHeader className="bg-[#FF7300] text-white">
-              <CardTitle className="text-white">
-                Bank Statement Details
-              </CardTitle>
-              <CardDescription className="text-white/90">
-                Upload CSV files - Columns: FECHA VALOR → Date | DESCRIPCIÓN →
-                Description | HABER → Amount
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="table-standard">
-                  <thead>
-                    <tr>
-                      <th className="w-24">
-                        ID
-                      </th>
-                      <th>
-                        Date
-                      </th>
-                      <th>
-                        Description
-                      </th>
-                      <th className="text-right">
-                        Amount
-                      </th>
-                      <th className="text-center">
-                        Payment Source
-                      </th>
-                      <th className="text-center">
-                        Payout Reconciliation
-                      </th>
-                      <th className="text-center">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredRows.length === 0 ? (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="py-8 text-center text-gray-500"
-                        >
-                          No data available. Upload a CSV file to get started.
-                        </td>
-                      </tr>
+      {/* Stats Bar */}
+      <div className="border-b border-gray-700 px-6 py-3 bg-[#252627]">
+        <div className="flex items-center gap-8">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-sm">Credits:</span>
+            <span className="text-green-400 font-medium">${formatUSD(stats.totalIncomes)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400 text-sm">Debits:</span>
+            <span className="text-red-400 font-medium">${formatUSD(stats.totalExpenses)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <CheckCircle className="h-4 w-4 text-green-500" />
+            <span className="text-gray-400 text-sm">Reconciled:</span>
+            <span className="text-green-400 font-medium">{stats.reconciledCount}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <XCircle className="h-4 w-4 text-yellow-500" />
+            <span className="text-gray-400 text-sm">Unreconciled:</span>
+            <span className="text-yellow-400 font-medium">{stats.unreconciledCount}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Table Header */}
+      <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
+        <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[900px]">
+          <div className="w-[70px] flex-shrink-0">Date</div>
+          <div className="flex-1 min-w-[200px]">Description</div>
+          <div className="w-[90px] flex-shrink-0 text-right">Debit</div>
+          <div className="w-[90px] flex-shrink-0 text-right">Credit</div>
+          <div className="w-[100px] flex-shrink-0 text-right">Balance</div>
+          <div className="w-[100px] flex-shrink-0 text-center">Source</div>
+          <div className="w-[80px] flex-shrink-0 text-center">Status</div>
+          <div className="w-[70px] flex-shrink-0 text-center">Actions</div>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="pb-20 overflow-x-auto">
+        {filteredRows.map((row) => {
+          const sourceStyle = getPaymentSourceStyle(row.paymentSource);
+          const isDebit = row.amount < 0;
+          const isCredit = row.amount > 0;
+          const customData = row.custom_data || {};
+
+          return (
+            <div
+              key={row.id}
+              className="flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 min-w-[900px]"
+            >
+              <div className="w-[70px] flex-shrink-0 text-[11px] text-gray-300">
+                {formatDate(row.date)}
+              </div>
+              <div className="flex-1 min-w-[200px] text-[11px] text-white truncate" title={row.description}>
+                {row.description}
+              </div>
+              <div className="w-[90px] flex-shrink-0 text-right text-[11px] font-mono">
+                {isDebit ? (
+                  <span className="text-red-400">${formatUSD(Math.abs(row.amount))}</span>
+                ) : (
+                  <span className="text-gray-600">-</span>
+                )}
+              </div>
+              <div className="w-[90px] flex-shrink-0 text-right text-[11px] font-mono">
+                {isCredit ? (
+                  <span className="text-green-400">${formatUSD(row.amount)}</span>
+                ) : (
+                  <span className="text-gray-600">-</span>
+                )}
+              </div>
+              <div className="w-[100px] flex-shrink-0 text-right text-[11px] font-mono font-medium text-white">
+                ${formatUSD(customData.saldo || customData.balance || 0)}
+              </div>
+              <div className="w-[100px] flex-shrink-0 text-center">
+                {row.paymentSource ? (
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded ${sourceStyle.bg} ${sourceStyle.text} border ${sourceStyle.border}`}>
+                    {row.paymentSource}
+                  </span>
+                ) : (
+                  <span className="text-gray-600 text-[10px]">-</span>
+                )}
+              </div>
+              <div className="w-[80px] flex-shrink-0 text-center">
+                {row.conciliado ? (
+                  <div className="flex items-center justify-center gap-1">
+                    {row.reconciliationType === "automatic" ? (
+                      <Zap className="h-3.5 w-3.5 text-green-500" />
                     ) : (
-                      filteredRows.map((row) => {
-                        const sourceStyle = getPaymentSourceStyle(
-                          row.paymentSource,
-                        );
-                        return (
-                          <tr
-                            key={row.id}
-                            className="border-b border-gray-200 hover:bg-gray-50"
-                          >
-                            <td className="py-3 px-4 text-sm font-bold text-black">
-                              {row.id.substring(0, 8)}...
-                            </td>
-                            <td className="py-3 px-4 text-sm text-black">
-                              {editingRow === row.id ? (
-                                <Input
-                                  value={editedData.date || ""}
-                                  onChange={(e) =>
-                                    setEditedData({
-                                      ...editedData,
-                                      date: e.target.value,
-                                    })
-                                  }
-                                  className="w-32"
-                                />
-                              ) : (
-                                row.date
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm max-w-xs truncate text-black">
-                              {editingRow === row.id ? (
-                                <Input
-                                  value={editedData.description || ""}
-                                  onChange={(e) =>
-                                    setEditedData({
-                                      ...editedData,
-                                      description: e.target.value,
-                                    })
-                                  }
-                                  className="w-full"
-                                />
-                              ) : (
-                                row.description
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-right font-bold text-[#FF7300]">
-                              {editingRow === row.id ? (
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={editedData.amount || 0}
-                                  onChange={(e) =>
-                                    setEditedData({
-                                      ...editedData,
-                                      amount: parseFloat(e.target.value),
-                                    })
-                                  }
-                                  className="w-32"
-                                />
-                              ) : (
-                                formatCurrency(row.amount)
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center text-sm">
-                              {editingRow === row.id ? (
-                                <Select
-                                  value={editedData.paymentSource || ""}
-                                  onValueChange={(value) =>
-                                    setEditedData({
-                                      ...editedData,
-                                      paymentSource: value,
-                                    })
-                                  }
-                                >
-                                  <SelectTrigger className="w-full">
-                                    <SelectValue placeholder="Select source" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Braintree EUR">
-                                      Braintree EUR
-                                    </SelectItem>
-                                    <SelectItem value="Braintree USD">
-                                      Braintree USD
-                                    </SelectItem>
-                                    <SelectItem value="Braintree Amex">
-                                      Braintree Amex
-                                    </SelectItem>
-                                    <SelectItem value="Stripe">
-                                      Stripe
-                                    </SelectItem>
-                                    <SelectItem value="GoCardless">
-                                      GoCardless
-                                    </SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : row.paymentSource ? (
-                                <span
-                                  className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${sourceStyle.bg} ${sourceStyle.text} border ${sourceStyle.border}`}
-                                >
-                                  {row.paymentSource}
-                                </span>
-                              ) : (
-                                <span className="text-gray-400 text-xs">
-                                  N/A
-                                </span>
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {row.conciliado ? (
-                                <div className="flex items-center justify-center gap-2">
-                                  {row.reconciliationType === "automatic" ? (
-                                    <div className="relative group">
-                                      <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                        Automatic reconciliation
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <div className="relative group">
-                                      <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
-                                        Manual reconciliation
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              ) : (
-                                <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
-                              )}
-                            </td>
-                            <td className="py-3 px-4 text-center">
-                              {editingRow === row.id ? (
-                                <div className="flex items-center justify-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    onClick={saveEdit}
-                                    className="h-8 w-8 p-0 bg-black hover:bg-gray-800"
-                                  >
-                                    <Save className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={cancelEdit}
-                                    className="h-8 w-8 p-0 border-black text-black"
-                                  >
-                                    <X className="h-4 w-4" />
-                                  </Button>
-                                </div>
-                              ) : (
-                                <div className="flex items-center justify-center gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => startEditing(row)}
-                                    className="h-8 w-8 p-0 text-black hover:bg-gray-100"
-                                    disabled={isDeleting}
-                                  >
-                                    <Edit2 className="h-4 w-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="ghost"
-                                    onClick={() => handleDeleteRow(row.id)}
-                                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700 hover:bg-red-50"
-                                    disabled={isDeleting}
-                                  >
-                                    {isDeleting ? (
-                                      <Loader2 className="h-4 w-4 animate-spin" />
-                                    ) : (
-                                      <Trash2 className="h-4 w-4" />
-                                    )}
-                                  </Button>
-                                </div>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })
+                      <User className="h-3.5 w-3.5 text-blue-500" />
                     )}
-                  </tbody>
-                </table>
+                  </div>
+                ) : (
+                  <XCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
+              <div className="w-[70px] flex-shrink-0 flex items-center justify-center gap-1">
+                {editingRow === row.id ? (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30">
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-400 hover:text-gray-300 hover:bg-gray-700">
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700">
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                    <Button size="sm" variant="ghost" onClick={() => deleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30">
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );

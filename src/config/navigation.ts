@@ -41,6 +41,7 @@ export interface NavItem {
   href: string
   icon: LucideIcon
   children?: NavItem[]
+  underConstruction?: boolean
 }
 
 export interface NavGroup {
@@ -65,17 +66,20 @@ export const NAV: NavGroup[] = [
           {
             title: "Performance Analytics",
             href: "/executive/performance",
-            icon: Activity
+            icon: Activity,
+            underConstruction: true
           },
           {
             title: "P&L",
             href: "/pnl",
-            icon: TrendingUp
+            icon: TrendingUp,
+            underConstruction: true
           },
           {
             title: "Cash Flow Summary",
             href: "/executive/cash-flow",
-            icon: TrendingDown
+            icon: TrendingDown,
+            underConstruction: true
           },
           {
             title: "💰 Cash Flow Real",
@@ -90,17 +94,20 @@ export const NAV: NavGroup[] = [
           {
             title: "KPIs & Ratios",
             href: "/executive/kpis",
-            icon: Target
+            icon: Target,
+            underConstruction: true
           },
           {
             title: "Forecasts",
             href: "/executive/forecasts",
-            icon: LineChart
+            icon: LineChart,
+            underConstruction: true
           },
           {
             title: "Consolidated Reports",
             href: "/executive/reports",
-            icon: FileText
+            icon: FileText,
+            underConstruction: true
           }
         ]
       }
@@ -127,22 +134,26 @@ export const NAV: NavGroup[] = [
           {
             title: "Aging Report",
             href: "/accounts-payable/insights/aging",
-            icon: Clock
+            icon: Clock,
+            underConstruction: true
           },
           {
             title: "Cash Flow Forecast",
             href: "/accounts-payable/insights/cash-flow",
-            icon: TrendingDown
+            icon: TrendingDown,
+            underConstruction: true
           },
           {
             title: "Payment Schedule",
             href: "/accounts-payable/insights/schedule",
-            icon: Calendar
+            icon: Calendar,
+            underConstruction: true
           },
           {
             title: "Reports",
             href: "/accounts-payable/insights/reports",
-            icon: FileText
+            icon: FileText,
+            underConstruction: true
           }
         ]
       },
@@ -164,7 +175,8 @@ export const NAV: NavGroup[] = [
           {
             title: "Bank Accounts",
             href: "/accounts-payable/master-data/bank-accounts",
-            icon: Banknote
+            icon: Banknote,
+            underConstruction: true
           },
           {
             title: "Providers",
@@ -184,7 +196,7 @@ export const NAV: NavGroup[] = [
         icon: DollarSign
       },
       {
-        title: "Invoices",
+        title: "Web Orders",
         href: "/accounts-receivable/invoices",
         icon: FileText
       },
@@ -196,22 +208,26 @@ export const NAV: NavGroup[] = [
           {
             title: "Credit Notes",
             href: "/accounts-receivable/transactions/credit-notes",
-            icon: FileText
+            icon: FileText,
+            underConstruction: true
           },
           {
             title: "Payments",
             href: "/accounts-receivable/transactions/payments",
-            icon: DollarSign
+            icon: DollarSign,
+            underConstruction: true
           },
           {
             title: "Receipts",
             href: "/accounts-receivable/transactions/receipts",
-            icon: CheckCircle2
+            icon: CheckCircle2,
+            underConstruction: true
           },
           {
             title: "Payment Channels",
             href: "/accounts-receivable/transactions/channels",
-            icon: Wallet
+            icon: Wallet,
+            underConstruction: true
           }
         ]
       },
@@ -223,17 +239,20 @@ export const NAV: NavGroup[] = [
           {
             title: "Aging Report",
             href: "/accounts-receivable/insights/aging",
-            icon: Clock
+            icon: Clock,
+            underConstruction: true
           },
           {
             title: "Collection Performance",
             href: "/accounts-receivable/insights/collection",
-            icon: TrendingUp
+            icon: TrendingUp,
+            underConstruction: true
           },
           {
             title: "Reports",
             href: "/accounts-receivable/insights/reports",
-            icon: FileText
+            icon: FileText,
+            underConstruction: true
           }
         ]
       },
@@ -245,17 +264,20 @@ export const NAV: NavGroup[] = [
           {
             title: "Customers",
             href: "/accounts-receivable/master-data/customers",
-            icon: UserCircle
+            icon: UserCircle,
+            underConstruction: true
           },
           {
             title: "Products",
             href: "/accounts-receivable/master-data/products",
-            icon: Package
+            icon: Package,
+            underConstruction: true
           },
           {
             title: "Financial Accounts",
             href: "/accounts-receivable/master-data/financial-accounts",
-            icon: Banknote
+            icon: Banknote,
+            underConstruction: true
           }
         ]
       }

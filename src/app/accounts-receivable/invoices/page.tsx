@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X, Eye, ExternalLink, Globe } from "lucide-react";
+import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X, Eye, ExternalLink, Globe, Filter, ArrowUp, ArrowDown, Ban, Zap, User, CalendarIcon } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +17,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScopeSelector } from "@/components/app/scope-selector";
 import { type ScopeType, matchesScope } from "@/lib/scope-utils";
 import { useGlobalScope } from "@/contexts/global-scope-context";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ARInvoice {
   id: number;
@@ -48,6 +50,8 @@ interface ARInvoice {
   reconciled?: boolean;
   reconciled_at?: string;
   reconciled_with?: string;
+  reconciliation_type?: string;
+  reconciled_by?: string;
   payment_reference?: string;
   created_at: string;
   updated_at: string;
@@ -78,6 +82,33 @@ function formatDate(date: string | null): string {
   const month = String(d.getUTCMonth() + 1).padStart(2, '0');
   const year = d.getUTCFullYear();
   return `${day}/${month}/${year}`;
+}
+
+// Formatar valores dinâmicos para Additional Details (detecta datas ISO)
+function formatDynamicValue(key: string, value: any): string {
+  if (value === null || value === undefined) return '-';
+  if (typeof value === 'object') return JSON.stringify(value);
+  const strValue = String(value);
+  // Detectar datas ISO (2025-12-17T00:00:00.000Z ou 2025-12-17)
+  if (key.toLowerCase().includes('date') || key.toLowerCase().includes('_at') || key.toLowerCase().includes('timestamp')) {
+    const isoMatch = strValue.match(/^\d{4}-\d{2}-\d{2}(T|$)/);
+    if (isoMatch) {
+      const d = new Date(strValue);
+      if (!isNaN(d.getTime())) {
+        const day = String(d.getUTCDate()).padStart(2, '0');
+        const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+        const year = d.getUTCFullYear();
+        // Se tem hora, incluir
+        if (strValue.includes('T') && !strValue.endsWith('T00:00:00.000Z')) {
+          const hours = String(d.getUTCHours()).padStart(2, '0');
+          const mins = String(d.getUTCMinutes()).padStart(2, '0');
+          return `${day}/${month}/${year} ${hours}:${mins}`;
+        }
+        return `${day}/${month}/${year}`;
+      }
+    }
+  }
+  return strValue;
 }
 
 const EMPTY_INVOICE: Partial<ARInvoice> = {
@@ -126,6 +157,11 @@ export default function ARInvoicesPage() {
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [sortField, setSortField] = useState<string>("invoice_date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+
+  // Column filters
+  const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+  const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
+  const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
 
   const loadInvoices = useCallback(async () => {
     setLoading(true);
@@ -230,6 +266,30 @@ export default function ARInvoicesPage() {
 
       console.log(`📦 Após filtros: ${validOrders.length} orders válidas`);
 
+      // INCREMENTAL SYNC: Preservar reconciliações existentes
+      // 1. Buscar todos os registros existentes com suas reconciliações
+      const { data: existingRecords } = await supabase
+        .from("ar_invoices")
+        .select("source_id, reconciled, reconciled_at, reconciled_with, reconciliation_type, reconciled_by, payment_reference")
+        .eq("source", "hubspot");
+
+      // Criar mapa de reconciliações existentes por source_id
+      const existingReconciliations = new Map<string, any>();
+      (existingRecords || []).forEach(rec => {
+        if (rec.reconciled) {
+          existingReconciliations.set(rec.source_id, {
+            reconciled: rec.reconciled,
+            reconciled_at: rec.reconciled_at,
+            reconciled_with: rec.reconciled_with,
+            reconciliation_type: rec.reconciliation_type,
+            reconciled_by: rec.reconciled_by,
+            payment_reference: rec.payment_reference
+          });
+        }
+      });
+
+      console.log(`🔒 Preservando ${existingReconciliations.size} reconciliações existentes`);
+
       // Delete all existing HubSpot records for full sync
       // This prevents 409 conflict error on source_id
       const { error: deleteError } = await supabase
@@ -241,6 +301,63 @@ export default function ARInvoicesPage() {
         console.error("Error deleting old records:", deleteError);
         // Continue even with delete error
       }
+
+      // Mapeamento de dealstage IDs para nomes legíveis
+      const STAGE_MAPPING: Record<string, string> = {
+        'checkout_completed': 'Web Order',
+        'checkout_pending': 'Outstanding Payment',
+        'cancelled': 'Cancelled',
+        'closedwon': 'Web Order',
+        'presentationscheduled': 'New',
+        '108197790': 'New',
+        '108197794': 'Web Order',
+        '206173276': 'Web Order',
+        '1031801652': 'Credit Order',
+        '1031823104': 'Outstanding Payment',
+        '1203581030': 'New',
+        '1203581031': 'New',
+        '1203581032': 'New',
+        '1203581033': 'New',
+        '1203581035': 'Web Order',
+        '1203581036': 'Cancelled',
+        '1067293738': 'Subscription Plan',
+        '1065782346': 'Subscription Plan',
+        '1065782348': 'Outstanding Payment',
+        '1065782349': 'Cancelled',
+        '1065782350': 'Subscription Plan',
+        '1026647932': 'New',
+        '1026592320': 'Web Order',
+        '22796161': 'New',
+      };
+
+      // Helper para calcular deal_status baseado em dealstage e paid_status
+      const getDealStatus = (stageId: string | undefined, paidStatus: string | undefined): string => {
+        if (!stageId) return 'New';
+        const stage = stageId.toString();
+        const paid = (paidStatus || '').toLowerCase();
+
+        // Cancelled stages
+        if (stage === 'cancelled' || stage === '1203581036' || stage === '1065782349') return 'Cancelled';
+
+        // Credit Order - APENAS dealstage específico 1031801652
+        if (stage === '1031801652') return 'Credit Order';
+
+        // Web Order stages (formerly Shipped)
+        if (stage === 'checkout_completed' || stage === 'closedwon' || stage === '108197794' || stage === '206173276' || stage === '1203581035' || stage === '1026592320') return 'Web Order';
+
+        // Outstanding Payment stages
+        if (stage === 'checkout_pending' || stage === '1031823104' || stage === '1065782348') return 'Outstanding Payment';
+
+        // Subscription Plan stages
+        if (stage === '1067293738' || stage === '1065782346' || stage === '1065782350') return 'Subscription Plan';
+
+        // Fallback baseado em paid_status
+        if (paid === 'paid') return 'Web Order';
+        if (paid === 'partial') return 'Outstanding Payment';
+        if (paid === 'unpaid') return 'Outstanding Payment';
+
+        return STAGE_MAPPING[stage] || 'New';
+      };
 
       // Helper para formatar status
       const mapStatus = (paidStatus: string | undefined): string => {
@@ -270,7 +387,7 @@ export default function ARInvoicesPage() {
         return name || null;
       };
 
-      // Criar invoices com mapeamento CORRIGIDO
+      // Criar invoices com mapeamento CORRIGIDO + PRESERVAR RECONCILIAÇÕES
       const invoicesToInsert = validOrders.map((order) => {
         const cd = order.custom_data || {};
         const shortId = String(order.id).replace(/-/g, '').slice(0, 12).toUpperCase();
@@ -282,11 +399,17 @@ export default function ARInvoicesPage() {
         const lastName = cd.customer_lastname || cd.customerLastname || "";
         const clientName = `${firstName} ${lastName}`.trim() || null;
 
-        return {
+        const sourceId = String(order.id);
+
+        // Preservar reconciliação existente se houver
+        const existingRecon = existingReconciliations.get(sourceId);
+
+        const baseRecord = {
           invoice_number: `HS-${shortId}`,
           order_id: orderCode,
           order_date: cd.date_ordered || order.date || null,
           order_status: cd.paid_status || null,
+          deal_status: getDealStatus(cd.dealstage as string, cd.paid_status as string),
           invoice_date: invoiceDate,
           products: productName,
           company_name: cd.company_name || cd.company || null,
@@ -299,21 +422,41 @@ export default function ARInvoicesPage() {
           country_code: "ES",
           scope: "ES",
           source: "hubspot",
-          source_id: String(order.id)
+          source_id: sourceId
         };
+
+        // Se tinha reconciliação, preservar
+        if (existingRecon) {
+          return {
+            ...baseRecord,
+            reconciled: existingRecon.reconciled,
+            reconciled_at: existingRecon.reconciled_at,
+            reconciled_with: existingRecon.reconciled_with,
+            reconciliation_type: existingRecon.reconciliation_type,
+            reconciled_by: existingRecon.reconciled_by,
+            payment_reference: existingRecon.payment_reference
+          };
+        }
+
+        return baseRecord;
       });
 
       // Inserir em batches para evitar timeout
       const BATCH_SIZE = 100;
       let insertedCount = 0;
+      let reconPreserved = 0;
       for (let i = 0; i < invoicesToInsert.length; i += BATCH_SIZE) {
         const batch = invoicesToInsert.slice(i, i + BATCH_SIZE);
         const { error: insertError } = await supabase.from("ar_invoices").insert(batch);
         if (insertError) throw insertError;
         insertedCount += batch.length;
+        reconPreserved += batch.filter((b: any) => b.reconciled).length;
       }
 
-      toast({ title: "Sucesso", description: `${insertedCount} invoices sincronizadas do HubSpot` });
+      toast({
+        title: "Sucesso",
+        description: `${insertedCount} invoices sincronizadas do HubSpot (${reconPreserved} reconciliações preservadas)`
+      });
       loadInvoices();
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
@@ -431,11 +574,14 @@ export default function ARInvoicesPage() {
         return;
       }
 
-      // Fetch transaction from csv_rows
+      // Fetch transaction from csv_rows - use correct source names
       let query = supabase.from("csv_rows").select("*");
 
       if (source === 'braintree') {
-        query = query.or(`custom_data->>transaction_id.eq.${transactionId},id.eq.${transactionId}`);
+        // Braintree uses braintree-api-revenue or braintree-api-fees
+        query = query
+          .in('source', ['braintree-api-revenue', 'braintree-api-fees'])
+          .or(`custom_data->>transaction_id.eq.${transactionId},id.eq.${transactionId}`);
       } else if (source === 'gocardless') {
         query = query.or(`custom_data->>gocardless_id.eq.${transactionId},custom_data->>payment_id.eq.${transactionId}`);
       } else if (source === 'stripe') {
@@ -448,30 +594,76 @@ export default function ARInvoicesPage() {
 
       if (data && data.length > 0) {
         const tx = data[0];
+        const cd = tx.custom_data || {};
 
-        // For Braintree, also fetch settlement/disbursement info
+        // For Braintree, settlement info is already in custom_data
         let settlementInfo = null;
-        if (source === 'braintree' && tx.custom_data?.transaction_id) {
-          const { data: disbursements } = await supabase
-            .from("csv_rows")
-            .select("*")
-            .eq("source", "braintree-api-disbursement")
-            .contains("custom_data", { transaction_ids: [tx.custom_data.transaction_id] })
-            .limit(1);
+        if (source === 'braintree') {
+          const merchantId = cd.merchant_account_id || '';
+          let bankAccount = merchantId;
+          let bankSource = '';
 
-          if (disbursements && disbursements.length > 0) {
-            const d = disbursements[0];
-            settlementInfo = {
-              settlement_date: d.date,
-              disbursement_id: d.custom_data?.disbursement_id,
-              merchant_account_id: d.custom_data?.merchant_account_id,
-              bank_account: d.custom_data?.merchant_account_id?.includes('EUR')
-                ? 'Bankinter EUR'
-                : d.custom_data?.merchant_account_id?.includes('USD')
-                  ? 'Bankinter USD'
-                  : d.custom_data?.merchant_account_id
-            };
+          if (merchantId.toLowerCase().includes('eur') || merchantId === 'digitalsmiledesignEUR') {
+            bankAccount = 'Bankinter EUR (ES91 0128 0380 27 0100038957)';
+            bankSource = 'bankinter-eur';
+          } else if (merchantId.toLowerCase().includes('usd') || merchantId === 'digitalsmiledesignUSD') {
+            bankAccount = 'Bankinter USD (ES84 0128 0380 21 0100039197)';
+            bankSource = 'bankinter-usd';
           }
+
+          // Use dates from transaction custom_data
+          const disbursementDate = cd.disbursement_date;
+          const settlementDate = cd.settlement_date;
+          const settlementAmount = cd.settlement_amount || tx.amount;
+
+          // Buscar match no extrato bancário
+          let bankMatch = null;
+          if (bankSource && disbursementDate) {
+            const disbDate = new Date(disbursementDate);
+            const startDate = new Date(disbDate);
+            startDate.setDate(startDate.getDate() - 3);
+            const endDate = new Date(disbDate);
+            endDate.setDate(endDate.getDate() + 3);
+
+            const { data: bankRows } = await supabase
+              .from("csv_rows")
+              .select("*")
+              .eq("source", bankSource)
+              .gte("date", startDate.toISOString().split('T')[0])
+              .lte("date", endDate.toISOString().split('T')[0])
+              .order("date", { ascending: false })
+              .limit(20);
+
+            if (bankRows && bankRows.length > 0) {
+              const disbAmount = Math.abs(parseFloat(String(settlementAmount)));
+              const matchRow = bankRows.find((row: any) => {
+                const rowAmount = Math.abs(parseFloat(row.amount));
+                const amountMatch = Math.abs(rowAmount - disbAmount) < 0.10;
+                const descMatch = row.description?.toLowerCase().includes('braintree') ||
+                  row.description?.toLowerCase().includes('paypal');
+                return amountMatch || descMatch;
+              });
+              if (matchRow) {
+                bankMatch = {
+                  id: matchRow.id,
+                  date: matchRow.date,
+                  description: matchRow.description,
+                  amount: matchRow.amount,
+                  reconciled: matchRow.reconciled
+                };
+              }
+            }
+          }
+
+          settlementInfo = {
+            settlement_date: settlementDate,
+            disbursement_date: disbursementDate,
+            disbursement_id: cd.disbursement_id || cd.settlement_batch_id,
+            merchant_account_id: merchantId,
+            bank_account: bankAccount,
+            disbursement_amount: settlementAmount,
+            bank_match: bankMatch
+          };
         }
 
         setTransactionDetails({
@@ -479,7 +671,7 @@ export default function ARInvoicesPage() {
           source: source,
           invoice: invoice,
           transaction: tx,
-          custom_data: tx.custom_data || {},
+          custom_data: cd,
           settlement: settlementInfo
         });
       } else {
@@ -592,6 +784,32 @@ export default function ARInvoicesPage() {
       result = result.filter(inv => inv.status === selectedStatus);
     }
 
+    // Apply column filters
+    Object.entries(columnFilters).forEach(([field, filterValue]) => {
+      if (!filterValue) return;
+      const lowerFilter = filterValue.toLowerCase();
+      result = result.filter(inv => {
+        const val = inv[field as keyof ARInvoice];
+        if (val === null || val === undefined) return lowerFilter === '-' || lowerFilter === 'null' || lowerFilter === '';
+        return String(val).toLowerCase().includes(lowerFilter);
+      });
+    });
+
+    // Apply date range filter
+    if (dateRange.from || dateRange.to) {
+      result = result.filter(inv => {
+        if (!inv.invoice_date) return false;
+        const invDate = new Date(inv.invoice_date);
+        if (dateRange.from && invDate < dateRange.from) return false;
+        if (dateRange.to) {
+          const toEnd = new Date(dateRange.to);
+          toEnd.setHours(23, 59, 59, 999);
+          if (invDate > toEnd) return false;
+        }
+        return true;
+      });
+    }
+
     result.sort((a, b) => {
       let aVal: any = a[sortField as keyof ARInvoice];
       let bVal: any = b[sortField as keyof ARInvoice];
@@ -604,7 +822,20 @@ export default function ARInvoicesPage() {
     });
 
     return result;
-  }, [invoices, searchTerm, selectedStatus, sortField, sortDirection, selectedScope]);
+  }, [invoices, searchTerm, selectedStatus, sortField, sortDirection, selectedScope, columnFilters, dateRange]);
+
+  // Valores únicos para filtros dropdown
+  const columnUniqueValues = useMemo(() => {
+    const scopeInvoices = invoices.filter(inv => matchesScope(inv.scope, selectedScope));
+    return {
+      order_status: [...new Set(scopeInvoices.map(i => i.order_status).filter(Boolean))].sort(),
+      deal_status: [...new Set(scopeInvoices.map(i => i.deal_status).filter(Boolean))].sort(),
+      products: [...new Set(scopeInvoices.map(i => i.products).filter(Boolean))].sort(),
+      company_name: [...new Set(scopeInvoices.map(i => i.company_name).filter(Boolean))].sort(),
+      currency: [...new Set(scopeInvoices.map(i => i.currency).filter(Boolean))].sort(),
+      payment_method: [...new Set(scopeInvoices.map(i => i.payment_method).filter(Boolean))].sort(),
+    };
+  }, [invoices, selectedScope]);
 
   // Stats
   const stats = useMemo(() => {
@@ -662,7 +893,7 @@ export default function ARInvoicesPage() {
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "AR Invoices");
+    XLSX.utils.book_append_sheet(wb, ws, "Web Orders");
     XLSX.writeFile(wb, `ar-invoices-${new Date().toISOString().split('T')[0]}.xlsx`);
   }
 
@@ -672,7 +903,7 @@ export default function ARInvoicesPage() {
       <div className="border-b border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">AR Invoices</h1>
+            <h1 className="text-xl font-semibold">Web Orders</h1>
             <span className="text-gray-400">•</span>
             <span className="text-gray-400 text-sm">Contas a Receber</span>
           </div>
@@ -756,17 +987,164 @@ export default function ARInvoicesPage() {
       <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
         <div className="flex items-center gap-1 px-3 py-2 text-[10px] text-gray-400 font-medium uppercase">
           <div className="w-[55px] flex-shrink-0"></div>
-          <div className="w-[100px] flex-shrink-0 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_number")}>Invoice</div>
-          <div className="w-[70px] flex-shrink-0 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_date")}>Date</div>
-          <div className="w-[65px] flex-shrink-0">Order</div>
+          {/* Invoice */}
+          <div className="w-[100px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_number")}>
+              <span>Invoice</span>
+              {sortField === "invoice_number" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Filter className={`h-2.5 w-2.5 ${columnFilters.invoice_number ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'invoice_number' ? null : 'invoice_number'); }} />
+            </div>
+            {activeFilterColumn === 'invoice_number' && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded p-1 z-20">
+                <input type="text" placeholder="Filtrar..." value={columnFilters.invoice_number || ''} onChange={(e) => setColumnFilters({ ...columnFilters, invoice_number: e.target.value })} className="w-24 bg-gray-700 border-none text-white text-[10px] p-1 rounded" autoFocus />
+              </div>
+            )}
+          </div>
+          {/* Date */}
+          <div className="w-[70px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("invoice_date")}>
+              <span>Date</span>
+              {sortField === "invoice_date" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className={`h-2.5 w-2.5 ${(dateRange.from || dateRange.to) ? 'text-blue-400' : 'opacity-30 hover:opacity-100'}`} onClick={(e) => e.stopPropagation()}>
+                    <CalendarIcon className="h-2.5 w-2.5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0 bg-gray-800 border-gray-600" align="start">
+                  <div className="p-2">
+                    <div className="text-xs text-gray-400 mb-2">Selecionar intervalo de datas</div>
+                    <Calendar
+                      mode="range"
+                      selected={{ from: dateRange.from, to: dateRange.to }}
+                      onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
+                      numberOfMonths={2}
+                      className="bg-gray-800 text-white"
+                    />
+                    <div className="flex gap-2 mt-2">
+                      <Button size="sm" variant="outline" className="text-xs h-6" onClick={() => setDateRange({ from: undefined, to: undefined })}>
+                        Limpar
+                      </Button>
+                      {(dateRange.from || dateRange.to) && (
+                        <span className="text-xs text-gray-400 self-center">
+                          {dateRange.from ? formatDate(dateRange.from.toISOString()) : '...'} - {dateRange.to ? formatDate(dateRange.to.toISOString()) : '...'}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+          </div>
+          {/* Order */}
+          <div className="w-[65px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("order_id")}>
+              <span>Order</span>
+              {sortField === "order_id" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Filter className={`h-2.5 w-2.5 ${columnFilters.order_id ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'order_id' ? null : 'order_id'); }} />
+            </div>
+            {activeFilterColumn === 'order_id' && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded p-1 z-20">
+                <input type="text" placeholder="Filtrar..." value={columnFilters.order_id || ''} onChange={(e) => setColumnFilters({ ...columnFilters, order_id: e.target.value })} className="w-20 bg-gray-700 border-none text-white text-[10px] p-1 rounded" autoFocus />
+              </div>
+            )}
+          </div>
+          {/* Web */}
           <div className="w-[30px] flex-shrink-0">Web</div>
-          <div className="w-[55px] flex-shrink-0">Paid</div>
-          <div className="w-[70px] flex-shrink-0">Order Status</div>
-          <div className="w-[140px] flex-shrink-0">Products</div>
-          <div className="w-[100px] flex-shrink-0">Company</div>
-          <div className="w-[120px] flex-shrink-0">Client</div>
-          <div className="w-[85px] flex-shrink-0 text-right">Total</div>
-          <div className="w-[100px] flex-shrink-0">Reconciliation</div>
+          {/* Paid */}
+          <div className="w-[55px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("order_status")}>
+              <span>Paid</span>
+              {sortField === "order_status" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Filter className={`h-2.5 w-2.5 ${columnFilters.order_status ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'order_status' ? null : 'order_status'); }} />
+            </div>
+            {activeFilterColumn === 'order_status' && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded p-1 z-20 min-w-[100px]">
+                <select value={columnFilters.order_status || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, order_status: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-700 text-white text-[10px] p-1 rounded border-none" autoFocus>
+                  <option value="">Todos</option>
+                  {columnUniqueValues.order_status.map(v => <option key={v} value={v || ''}>{v}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {/* Deal Status */}
+          <div className="w-[70px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("deal_status")}>
+              <span>Status</span>
+              {sortField === "deal_status" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Filter className={`h-2.5 w-2.5 ${columnFilters.deal_status ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'deal_status' ? null : 'deal_status'); }} />
+            </div>
+            {activeFilterColumn === 'deal_status' && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded p-1 z-20 min-w-[130px]">
+                <select value={columnFilters.deal_status || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, deal_status: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-700 text-white text-[10px] p-1 rounded border-none" autoFocus>
+                  <option value="">Todos</option>
+                  {columnUniqueValues.deal_status.map(v => <option key={v} value={v || ''}>{v}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {/* Products */}
+          <div className="w-[140px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("products")}>
+              <span>Products</span>
+              {sortField === "products" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Filter className={`h-2.5 w-2.5 ${columnFilters.products ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'products' ? null : 'products'); }} />
+            </div>
+            {activeFilterColumn === 'products' && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded p-1 z-20 min-w-[180px] max-h-[200px] overflow-y-auto">
+                <select value={columnFilters.products || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, products: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-700 text-white text-[10px] p-1 rounded border-none" autoFocus>
+                  <option value="">Todos</option>
+                  {columnUniqueValues.products.map(v => <option key={v} value={v || ''}>{v?.substring(0, 40)}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {/* Company */}
+          <div className="w-[100px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("company_name")}>
+              <span>Company</span>
+              {sortField === "company_name" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Filter className={`h-2.5 w-2.5 ${columnFilters.company_name ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'company_name' ? null : 'company_name'); }} />
+            </div>
+            {activeFilterColumn === 'company_name' && (
+              <div className="absolute top-full left-0 mt-1 bg-gray-800 border border-gray-600 rounded p-1 z-20 min-w-[150px] max-h-[200px] overflow-y-auto">
+                <select value={columnFilters.company_name || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, company_name: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-700 text-white text-[10px] p-1 rounded border-none" autoFocus>
+                  <option value="">Todos</option>
+                  {columnUniqueValues.company_name.map(v => <option key={v} value={v || ''}>{v?.substring(0, 30)}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {/* Client */}
+          <div className="w-[120px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("client_name")}>
+              <span>Client</span>
+              {sortField === "client_name" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Filter className={`h-2.5 w-2.5 ${columnFilters.client_name ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'client_name' ? null : 'client_name'); }} />
+            </div>
+          </div>
+          {/* Total */}
+          <div className="w-[85px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 justify-end cursor-pointer hover:text-white" onClick={() => handleSort("total_amount")}>
+              <span>Total</span>
+              {sortField === "total_amount" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+              <Filter className={`h-2.5 w-2.5 ${columnFilters.total_amount ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'total_amount' ? null : 'total_amount'); }} />
+            </div>
+            {activeFilterColumn === 'total_amount' && (
+              <div className="absolute top-full right-0 mt-1 bg-gray-800 border border-gray-600 rounded p-1 z-20">
+                <input type="text" placeholder="Filtrar..." value={columnFilters.total_amount || ''} onChange={(e) => setColumnFilters({ ...columnFilters, total_amount: e.target.value })} className="w-20 bg-gray-700 border-none text-white text-[10px] p-1 rounded" autoFocus />
+              </div>
+            )}
+          </div>
+          {/* Reconciliation */}
+          <div className="w-[100px] flex-shrink-0 group relative">
+            <div className="flex items-center gap-1 cursor-pointer hover:text-white" onClick={() => handleSort("reconciled")}>
+              <span>Reconciliation</span>
+              {sortField === "reconciled" ? (sortDirection === "asc" ? <ArrowUp className="h-2.5 w-2.5" /> : <ArrowDown className="h-2.5 w-2.5" />) : <ArrowUpDown className="h-2.5 w-2.5 opacity-30" />}
+            </div>
+          </div>
+          {/* Type */}
+          <div className="w-[40px] flex-shrink-0 text-center">Type</div>
         </div>
       </div>
 
@@ -817,12 +1195,16 @@ export default function ARInvoicesPage() {
                     <span className="text-gray-700">-</span>
                   )}
                 </div>
-                {/* Paid Status */}
+                {/* Paid Status - Non-Billable for zero amount */}
                 <div className="w-[55px] flex-shrink-0">
-                  <span className={`text-[9px] px-1.5 py-0.5 rounded ${inv.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
-                    inv.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
-                      'bg-gray-700/50 text-gray-400'
-                    }`}>{inv.order_status || "-"}</span>
+                  {inv.total_amount === 0 ? (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-900/30 text-orange-400">Non-Bill</span>
+                  ) : (
+                    <span className={`text-[9px] px-1.5 py-0.5 rounded ${inv.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
+                      inv.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
+                        'bg-gray-700/50 text-gray-400'
+                      }`}>{inv.order_status || "-"}</span>
+                  )}
                 </div>
                 {/* Deal Status */}
                 <div className="w-[70px] flex-shrink-0 text-gray-500 truncate">{inv.deal_status || "-"}</div>
@@ -840,9 +1222,18 @@ export default function ARInvoicesPage() {
                   <span className={inv.currency === "EUR" ? "text-blue-400" : "text-green-400"}>{inv.currency === "EUR" ? "€" : "$"}</span>
                   {formatEuropeanNumber(inv.total_amount)}
                 </div>
-                {/* Reconciliation */}
+                {/* Reconciliation - Manual payments are NOT reconciled unless matched with bank transaction */}
                 <div className="w-[100px] flex-shrink-0">
-                  {inv.reconciled ? (
+                  {inv.total_amount === 0 ? (
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-orange-900/30 text-orange-400 border border-orange-700/50 flex items-center gap-1">
+                      <Ban className="h-2.5 w-2.5" />Non-Billable
+                    </span>
+                  ) : inv.payment_method?.toLowerCase().includes('manual') && !inv.reconciled_with ? (
+                    <div className="flex items-center gap-0.5">
+                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-yellow-900/30 text-yellow-400 border border-yellow-700/50" title="Manual payment - needs bank reconciliation">Manual</span>
+                      <button onClick={() => openManualReconcile(inv)} className="p-0.5 text-gray-600 hover:text-purple-400" title="Reconcile with bank"><Link2 className="h-2.5 w-2.5" /></button>
+                    </div>
+                  ) : inv.reconciled ? (
                     <div className="flex items-center gap-0.5">
                       <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-900/30 text-green-400 border border-green-700/50">{inv.reconciled_with?.split(':')[0] || 'Yes'}</span>
                       <button onClick={() => loadTransactionDetails(inv)} className="p-0.5 text-gray-500 hover:text-blue-400" title="Ver detalhes"><Eye className="h-2.5 w-2.5" /></button>
@@ -851,6 +1242,17 @@ export default function ARInvoicesPage() {
                   ) : (
                     <button onClick={() => openManualReconcile(inv)} className="p-1 text-gray-600 hover:text-purple-400" title="Reconcile"><Link2 className="h-3 w-3" /></button>
                   )}
+                </div>
+                {/* Type - Auto or Manual reconciliation indicator */}
+                <div className="w-[40px] flex-shrink-0 text-center">
+                  {inv.reconciled && (inv.reconciliation_type === 'automatic' ||
+                    ['braintree', 'stripe', 'gocardless'].some(g => inv.reconciled_with?.toLowerCase().startsWith(g))) ? (
+                    <span title="Automatic"><Zap className="h-3.5 w-3.5 text-green-500 inline" /></span>
+                  ) : inv.reconciled && (inv.reconciliation_type === 'manual' || inv.reconciled_by) ? (
+                    <span title={`Manual${inv.reconciled_by ? ` by ${inv.reconciled_by}` : ''}`}><User className="h-3.5 w-3.5 text-blue-500 inline" /></span>
+                  ) : inv.reconciled ? (
+                    <span title="Reconciled"><CheckCircle2 className="h-3.5 w-3.5 text-gray-500 inline" /></span>
+                  ) : null}
                 </div>
               </div>
             );
@@ -1127,29 +1529,120 @@ export default function ARInvoicesPage() {
               <p className="text-gray-400 mt-2">Loading details...</p>
             </div>
           ) : transactionDetails?.type === 'manual' ? (
-            <div className="p-4 bg-[#1e1f21] rounded-lg border border-gray-600">
-              <h4 className="text-sm font-medium text-gray-300 mb-3">Manual Reconciliation</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-gray-500">Source:</span>
-                  <span className="ml-2 text-white capitalize">{transactionDetails.source}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Reference:</span>
-                  <span className="ml-2 text-white">{transactionDetails.reference}</span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Amount:</span>
-                  <span className="ml-2 text-green-400">
-                    {transactionDetails.invoice.currency === "EUR" ? "€" : "$"}
-                    {formatEuropeanNumber(transactionDetails.invoice.total_amount)}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-500">Date:</span>
-                  <span className="ml-2 text-white">{formatDate(transactionDetails.invoice.reconciled_at)}</span>
+            <div className="space-y-4">
+              {/* Reconciliation Info */}
+              <div className="p-4 bg-[#1e1f21] rounded-lg border border-gray-600">
+                <h4 className="text-sm font-medium text-gray-300 mb-3 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-green-400" />
+                  {transactionDetails.source === 'hubspot-confirmed' ? 'HubSpot Confirmed Payment' :
+                    transactionDetails.source === 'credit-payment' ? 'Credit Payment' :
+                      transactionDetails.source === 'bank-transfer' ? 'Bank Transfer' : 'Manual Reconciliation'}
+                </h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Source:</span>
+                    <span className="ml-2 text-white capitalize">{transactionDetails.source?.replace('-', ' ')}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Reference:</span>
+                    <span className="ml-2 text-white font-mono text-xs">{transactionDetails.reference}</span>
+                  </div>
                 </div>
               </div>
+
+              {/* Invoice Details */}
+              <div className="p-4 bg-[#1e1f21] rounded-lg border border-gray-600">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">Invoice Details</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Invoice Number:</span>
+                    <span className="ml-2 text-white font-mono">{transactionDetails.invoice.invoice_number}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Order ID:</span>
+                    <span className="ml-2 text-white font-mono">{transactionDetails.invoice.order_id || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Amount:</span>
+                    <span className="ml-2 text-green-400 font-medium">
+                      {transactionDetails.invoice.currency === "EUR" ? "€" : "$"}
+                      {formatEuropeanNumber(transactionDetails.invoice.total_amount)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Order Date:</span>
+                    <span className="ml-2 text-white">{formatDate(transactionDetails.invoice.order_date)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Order Status:</span>
+                    <span className={`ml-2 px-2 py-0.5 rounded text-xs ${transactionDetails.invoice.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
+                        transactionDetails.invoice.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
+                          'bg-gray-700/50 text-gray-300'
+                      }`}>{transactionDetails.invoice.order_status || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Deal Status:</span>
+                    <span className="ml-2 text-white">{transactionDetails.invoice.deal_status || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Method Details */}
+              <div className="p-4 bg-[#1e1f21] rounded-lg border border-gray-600">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">Payment Method</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Payment Method:</span>
+                    <span className={`ml-2 px-2 py-0.5 rounded text-xs font-medium ${transactionDetails.invoice.payment_method?.toLowerCase().includes('manual') ? 'bg-yellow-900/30 text-yellow-400 border border-yellow-700/50' :
+                        transactionDetails.invoice.payment_method?.toLowerCase().includes('credit') ? 'bg-purple-900/30 text-purple-400 border border-purple-700/50' :
+                          'bg-blue-900/30 text-blue-400 border border-blue-700/50'
+                      }`}>{transactionDetails.invoice.payment_method || 'Not specified'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Reconciled At:</span>
+                    <span className="ml-2 text-white">{formatDate(transactionDetails.invoice.reconciled_at)}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Payment Reference:</span>
+                    <span className="ml-2 text-white font-mono text-xs">{transactionDetails.invoice.payment_reference || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Currency:</span>
+                    <span className="ml-2 text-white">{transactionDetails.invoice.currency}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer Details */}
+              <div className="p-4 bg-[#1e1f21] rounded-lg border border-gray-600">
+                <h4 className="text-sm font-medium text-gray-300 mb-3">Customer Details</h4>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-gray-500">Client:</span>
+                    <span className="ml-2 text-white">{transactionDetails.invoice.client_name || '-'}</span>
+                  </div>
+                  <div>
+                    <span className="text-gray-500">Company:</span>
+                    <span className="ml-2 text-white">{transactionDetails.invoice.company_name || '-'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Email:</span>
+                    <span className="ml-2 text-blue-400">{transactionDetails.invoice.email || '-'}</span>
+                  </div>
+                  <div className="col-span-2">
+                    <span className="text-gray-500">Products:</span>
+                    <span className="ml-2 text-gray-300">{transactionDetails.invoice.products || '-'}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Note if exists */}
+              {transactionDetails.invoice.note && (
+                <div className="p-4 bg-[#1e1f21] rounded-lg border border-gray-600">
+                  <h4 className="text-sm font-medium text-gray-300 mb-2">Notes</h4>
+                  <p className="text-sm text-gray-400">{transactionDetails.invoice.note}</p>
+                </div>
+              )}
             </div>
           ) : transactionDetails?.type === 'payment' ? (
             <div className="space-y-4">
@@ -1249,7 +1742,7 @@ export default function ARInvoicesPage() {
                 <div className="p-4 bg-[#1e1f21] rounded-lg border border-blue-900/50">
                   <h4 className="text-sm font-medium text-blue-400 mb-3 flex items-center gap-2">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    Settlement Information
+                    Settlement &amp; Bank Reconciliation
                   </h4>
                   <div className="grid grid-cols-2 gap-3 text-sm text-white">
                     <div>
@@ -1257,16 +1750,71 @@ export default function ARInvoicesPage() {
                       <span className="ml-2 text-blue-300 font-medium">{formatDate(transactionDetails.settlement.settlement_date)}</span>
                     </div>
                     <div>
+                      <span className="text-gray-500">Disbursement Date:</span>
+                      <span className="ml-2 text-green-400 font-medium">{formatDate(transactionDetails.settlement.disbursement_date)}</span>
+                    </div>
+                    <div>
                       <span className="text-gray-500">Bank Account:</span>
                       <span className="ml-2 text-blue-300">{transactionDetails.settlement.bank_account}</span>
                     </div>
+                    {transactionDetails.settlement.disbursement_amount && (
+                      <div>
+                        <span className="text-gray-500">Settlement Amount:</span>
+                        <span className="ml-2 text-green-400 font-medium">
+                          {formatEuropeanNumber(parseFloat(transactionDetails.settlement.disbursement_amount), 2)}
+                        </span>
+                      </div>
+                    )}
                     {transactionDetails.settlement.disbursement_id && (
                       <div className="col-span-2">
-                        <span className="text-gray-500">Disbursement ID:</span>
+                        <span className="text-gray-500">Settlement Batch:</span>
                         <span className="ml-2 font-mono text-xs text-gray-300">{transactionDetails.settlement.disbursement_id}</span>
                       </div>
                     )}
                   </div>
+
+                  {/* Bank Statement Match */}
+                  {transactionDetails.settlement.bank_match ? (
+                    <div className="mt-4 pt-3 border-t border-green-900/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <svg className="h-4 w-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-sm font-medium text-green-400">Bank Statement Match Found</span>
+                      </div>
+                      <div className="bg-green-900/20 rounded p-3 text-xs space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Date:</span>
+                          <span className="text-white">{formatDate(transactionDetails.settlement.bank_match.date)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-gray-400">Amount:</span>
+                          <span className="text-green-400 font-medium">{formatEuropeanNumber(parseFloat(transactionDetails.settlement.bank_match.amount), 2)}</span>
+                        </div>
+                        <div className="flex justify-between items-start">
+                          <span className="text-gray-400">Description:</span>
+                          <span className="text-gray-300 text-right max-w-[200px] truncate" title={transactionDetails.settlement.bank_match.description}>
+                            {transactionDetails.settlement.bank_match.description}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center mt-2 pt-2 border-t border-green-900/30">
+                          <span className="text-gray-400">Bank Status:</span>
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${transactionDetails.settlement.bank_match.reconciled ? 'bg-green-900/50 text-green-400' : 'bg-yellow-900/50 text-yellow-400'}`}>
+                            {transactionDetails.settlement.bank_match.reconciled ? 'RECONCILED' : 'PENDING'}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : transactionDetails.settlement.settlement_date && (
+                    <div className="mt-4 pt-3 border-t border-gray-700/50">
+                      <div className="flex items-center gap-2">
+                        <svg className="h-4 w-4 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="text-xs text-yellow-500">No matching bank statement entry found (±3 days)</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -1281,10 +1829,10 @@ export default function ARInvoicesPage() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${entry.status === 'settled' || entry.status === 'confirmed' || entry.status === 'succeeded'
-                                ? 'bg-green-900/50 text-green-400'
-                                : entry.status === 'authorized' || entry.status === 'submitted_for_settlement'
-                                  ? 'bg-blue-900/50 text-blue-400'
-                                  : 'bg-gray-700 text-gray-300'
+                              ? 'bg-green-900/50 text-green-400'
+                              : entry.status === 'authorized' || entry.status === 'submitted_for_settlement'
+                                ? 'bg-blue-900/50 text-blue-400'
+                                : 'bg-gray-700 text-gray-300'
                               }`}>
                               {entry.status?.replace(/_/g, ' ').toUpperCase()}
                             </span>
@@ -1293,7 +1841,15 @@ export default function ARInvoicesPage() {
                             )}
                           </div>
                           <div className="flex items-center gap-2 mt-1 text-gray-500">
-                            <span>{entry.timestamp ? new Date(entry.timestamp).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' }) : ''}</span>
+                            <span>{entry.timestamp ? (() => {
+                              const d = new Date(entry.timestamp);
+                              const day = String(d.getUTCDate()).padStart(2, '0');
+                              const month = String(d.getUTCMonth() + 1).padStart(2, '0');
+                              const year = d.getUTCFullYear();
+                              const hours = String(d.getUTCHours()).padStart(2, '0');
+                              const mins = String(d.getUTCMinutes()).padStart(2, '0');
+                              return `${day}/${month}/${year} ${hours}:${mins}`;
+                            })() : ''}</span>
                             {entry.user && (
                               <>
                                 <span>•</span>
@@ -1325,7 +1881,7 @@ export default function ARInvoicesPage() {
                       .map(([key, value]) => (
                         <div key={key} className="flex">
                           <span className="text-gray-500 w-32 flex-shrink-0">{key}:</span>
-                          <span className="text-gray-400 truncate">{typeof value === 'object' ? JSON.stringify(value) : String(value)}</span>
+                          <span className="text-gray-400 truncate">{formatDynamicValue(key, value)}</span>
                         </div>
                       ))}
                   </div>

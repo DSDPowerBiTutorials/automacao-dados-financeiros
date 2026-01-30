@@ -106,8 +106,8 @@ export default function Sidebar() {
         <div className="space-y-1">
           {items.map((child) => (
             <div key={child.href}>
-              <Link 
-                href={child.href} 
+              <Link
+                href={child.href}
                 className={cn(
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                   isActive(child.href)
@@ -116,7 +116,8 @@ export default function Sidebar() {
                 )}
               >
                 {child.icon && <child.icon className="h-4 w-4" />}
-                <span className="text-sm">{child.title}</span>
+                <span className="text-sm flex-1">{child.title}</span>
+                {child.underConstruction && <span className="text-xs" title="Em construção">🚧</span>}
               </Link>
               {child.children && child.children.length > 0 && (
                 <div className="ml-6 mt-1 space-y-1 border-l border-gray-700 pl-3">
@@ -132,7 +133,8 @@ export default function Sidebar() {
                       )}
                     >
                       {subChild.icon && <subChild.icon className="h-3 w-3" />}
-                      <span>{subChild.title}</span>
+                      <span className="flex-1">{subChild.title}</span>
+                      {subChild.underConstruction && <span className="text-xs" title="Em construção">🚧</span>}
                     </Link>
                   ))}
                 </div>
@@ -302,7 +304,8 @@ export default function Sidebar() {
                               )}
                             >
                               {child.icon && <child.icon className="h-3.5 w-3.5" />}
-                              <span>{child.title}</span>
+                              <span className="flex-1">{child.title}</span>
+                              {child.underConstruction && <span className="text-xs" title="Em construção">🚧</span>}
                             </Link>
                             {child.children && child.children.length > 0 && (
                               <div className="ml-5 mt-1 space-y-1 border-l border-gray-700/50 pl-2">
@@ -318,7 +321,8 @@ export default function Sidebar() {
                                     )}
                                   >
                                     {subChild.icon && <subChild.icon className="h-3 w-3" />}
-                                    <span>{subChild.title}</span>
+                                    <span className="flex-1">{subChild.title}</span>
+                                    {subChild.underConstruction && <span className="text-[10px]" title="Em construção">🚧</span>}
                                   </Link>
                                 ))}
                               </div>

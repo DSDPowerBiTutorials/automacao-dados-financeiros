@@ -108,6 +108,17 @@ aside nav::-webkit-scrollbar-thumb {
   z-index: 20;
 }
 
+/* Dark Mode Header for Bank Statements */
+.page-header-dark {
+  background: #1e1f21;
+  border-bottom: 1px solid #374151;
+  color: white;
+  padding: 0.75rem 1.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
 .page-header-standard .header-title {
   font-size: 1.25rem;
   font-weight: 700;

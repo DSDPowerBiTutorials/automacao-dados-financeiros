@@ -152,6 +152,7 @@ export default function BankinterEURPage() {
   const [editingRow, setEditingRow] = useState<string | null>(null)
   const [editedData, setEditedData] = useState<Partial<BankinterEURRow>>({})
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isAutoReconciling, setIsAutoReconciling] = useState(false)
   const [lastSaved, setLastSaved] = useState<string | null>(null)
   const [searchTerm, setSearchTerm] = useState("")
   const [showReconciled, setShowReconciled] = useState(true)
@@ -436,6 +437,64 @@ export default function BankinterEURPage() {
       alert("Error deleting rows. Please try again.")
     } finally {
       setIsDeleting(false)
+    }
+  }
+
+  // Auto-reconcile with disbursements from Braintree, Stripe, GoCardless
+  const handleAutoReconcile = async () => {
+    setIsAutoReconciling(true)
+    try {
+      // First do a dry run
+      const dryResponse = await fetch('/api/reconcile/bank-disbursement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: true, bankSource: 'bankinter-eur' })
+      })
+      const dryResult = await dryResponse.json()
+
+      if (!dryResult.success) {
+        toast({ title: "Error", description: dryResult.error || "Failed to check reconciliation", variant: "destructive" })
+        return
+      }
+
+      if (dryResult.summary.matched === 0) {
+        toast({ title: "No matches found", description: "No disbursements match pending bank transactions", variant: "default" })
+        return
+      }
+
+      // Confirm with user
+      const confirmMsg = `Found ${dryResult.summary.matched} matches:\n` +
+        `• Braintree: ${dryResult.summary.bySource.braintree}\n` +
+        `• Stripe: ${dryResult.summary.bySource.stripe}\n` +
+        `• GoCardless: ${dryResult.summary.bySource.gocardless}\n\n` +
+        `Total value: €${dryResult.summary.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n\n` +
+        `Apply reconciliation?`
+
+      if (!confirm(confirmMsg)) return
+
+      // Apply reconciliation
+      const response = await fetch('/api/reconcile/bank-disbursement', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ dryRun: false, bankSource: 'bankinter-eur' })
+      })
+      const result = await response.json()
+
+      if (result.success) {
+        toast({
+          title: "Reconciliation Complete",
+          description: `${result.summary.updated} transactions reconciled`,
+          variant: "default"
+        })
+        await loadData()
+      } else {
+        toast({ title: "Error", description: result.error, variant: "destructive" })
+      }
+    } catch (error) {
+      console.error("Auto-reconcile error:", error)
+      toast({ title: "Error", description: "Failed to auto-reconcile", variant: "destructive" })
+    } finally {
+      setIsAutoReconciling(false)
     }
   }
 
@@ -936,6 +995,10 @@ export default function BankinterEURPage() {
               <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
                 <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />Refresh
               </Button>
+              <Button onClick={handleAutoReconcile} disabled={isAutoReconciling || stats.unreconciledCount === 0} variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30">
+                {isAutoReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
+                Auto-Reconcile
+              </Button>
               <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
                 <Download className="h-4 w-4 mr-1" />Download
               </Button>
@@ -1012,23 +1075,23 @@ export default function BankinterEURPage() {
         </div>
 
         {/* Table Header */}
-        <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
-          <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-400 font-medium uppercase">
-            <div className="w-[70px] flex-shrink-0">Date</div>
-            <div className="w-[70px] flex-shrink-0">Key</div>
-            <div className="w-[90px] flex-shrink-0">Reference</div>
-            <div className="flex-1 min-w-[200px]">Description</div>
-            <div className="w-[90px] flex-shrink-0 text-right">Debit</div>
-            <div className="w-[90px] flex-shrink-0 text-right">Credit</div>
-            <div className="w-[100px] flex-shrink-0 text-right">Balance</div>
-            <div className="w-[100px] flex-shrink-0 text-center">Source</div>
-            <div className="w-[80px] flex-shrink-0 text-center">Reconciled</div>
-            <div className="w-[70px] flex-shrink-0 text-center">Actions</div>
+        <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
+          <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[900px]">
+            <div className="w-[60px] flex-shrink-0">Date</div>
+            <div className="w-[50px] flex-shrink-0">Key</div>
+            <div className="w-[70px] flex-shrink-0">Ref</div>
+            <div className="flex-1 min-w-[150px]">Description</div>
+            <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
+            <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
+            <div className="w-[85px] flex-shrink-0 text-right">Balance</div>
+            <div className="w-[80px] flex-shrink-0 text-center">Source</div>
+            <div className="w-[60px] flex-shrink-0 text-center">Status</div>
+            <div className="w-[50px] flex-shrink-0 text-center">Act</div>
           </div>
         </div>
 
         {/* Content */}
-        <div className="pb-20">
+        <div className="pb-20 overflow-x-auto">
           {groups.map((group) => (
             <div key={group.date} className="border-b border-gray-800">
               <div
@@ -1062,31 +1125,31 @@ export default function BankinterEURPage() {
                     return (
                       <div
                         key={row.id}
-                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 group cursor-pointer ${selectedRow?.id === row.id ? "bg-gray-700/50" : ""}`}
+                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 group cursor-pointer min-w-[900px] ${selectedRow?.id === row.id ? "bg-gray-700/50" : ""}`}
                         onClick={() => setSelectedRow(row)}
                       >
                         {/* Date */}
-                        <div className="w-[70px] flex-shrink-0 text-[11px] text-gray-300">
+                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-300">
                           {formatShortDate(row.date)}
                         </div>
 
                         {/* Key */}
-                        <div className="w-[70px] flex-shrink-0 text-[11px] text-gray-500">
+                        <div className="w-[50px] flex-shrink-0 text-[10px] text-gray-500 truncate">
                           {customData.clave || "-"}
                         </div>
 
                         {/* Reference */}
-                        <div className="w-[90px] flex-shrink-0 text-[11px] text-gray-500 truncate">
+                        <div className="w-[70px] flex-shrink-0 text-[10px] text-gray-500 truncate">
                           {customData.referencia || "-"}
                         </div>
 
                         {/* Description */}
-                        <div className="flex-1 min-w-[200px] text-[12px] text-white truncate" title={row.description}>
+                        <div className="flex-1 min-w-[150px] text-[11px] text-white truncate" title={row.description}>
                           {row.description}
                         </div>
 
                         {/* Debit */}
-                        <div className="w-[90px] flex-shrink-0 text-right text-[11px] font-mono">
+                        <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
                           {isDebit ? (
                             <span className="text-red-400">€{formatEuropeanCurrency(Math.abs(row.amount))}</span>
                           ) : (
@@ -1095,7 +1158,7 @@ export default function BankinterEURPage() {
                         </div>
 
                         {/* Credit */}
-                        <div className="w-[90px] flex-shrink-0 text-right text-[11px] font-mono">
+                        <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
                           {isCredit ? (
                             <span className="text-green-400">€{formatEuropeanCurrency(row.amount)}</span>
                           ) : (
@@ -1104,64 +1167,48 @@ export default function BankinterEURPage() {
                         </div>
 
                         {/* Balance */}
-                        <div className="w-[100px] flex-shrink-0 text-right text-[11px] font-mono font-medium text-white">
+                        <div className="w-[85px] flex-shrink-0 text-right text-[10px] font-mono font-medium text-white">
                           €{formatEuropeanCurrency(customData.saldo)}
                         </div>
 
                         {/* Source */}
-                        <div className="w-[100px] flex-shrink-0 text-center">
+                        <div className="w-[80px] flex-shrink-0 text-center">
                           {row.paymentSource ? (
-                            <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${sourceStyle.bg} ${sourceStyle.text} ${sourceStyle.border}`}>
+                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${sourceStyle.bg} ${sourceStyle.text} ${sourceStyle.border}`}>
                               {row.paymentSource}
                             </Badge>
                           ) : (
-                            <span className="text-gray-600 text-[10px]">-</span>
+                            <span className="text-gray-600 text-[9px]">-</span>
                           )}
                         </div>
 
                         {/* Reconciled */}
-                        <div className="w-[80px] flex-shrink-0 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="w-[60px] flex-shrink-0 text-center" onClick={(e) => e.stopPropagation()}>
                           {row.reconciled ? (
-                            <div className="flex flex-col items-center gap-1">
+                            <div className="flex items-center justify-center gap-0.5">
                               {row.isIntercompany ? (
-                                <>
-                                  <ArrowLeftRight className="h-4 w-4 text-orange-500" />
-                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-orange-900/30 text-orange-400 border-orange-700">
-                                    Interco
-                                  </Badge>
-                                </>
+                                <span title="Intercompany"><ArrowLeftRight className="h-3.5 w-3.5 text-orange-500" /></span>
                               ) : row.reconciliationType === "automatic" ? (
-                                <div className="flex items-center gap-1">
-                                  <Zap className="h-4 w-4 text-green-500" />
-                                  <span className="text-[9px] text-green-400">Auto</span>
-                                </div>
+                                <span title="Auto"><Zap className="h-3.5 w-3.5 text-green-500" /></span>
                               ) : (
-                                <div className="flex items-center gap-1">
-                                  <User className="h-4 w-4 text-blue-500" />
-                                  <span className="text-[9px] text-blue-400">Manual</span>
-                                </div>
+                                <span title="Manual"><User className="h-3.5 w-3.5 text-blue-500" /></span>
                               )}
                             </div>
                           ) : (
-                            <div className="flex flex-col items-center gap-1">
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => openReconciliationDialog(row)}
-                                className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30"
-                                title="Find matching invoice"
-                              >
-                                <Link2 className="h-3.5 w-3.5" />
-                              </Button>
-                              <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-yellow-900/30 text-yellow-400 border-yellow-700">
-                                Pending
-                              </Badge>
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => openReconciliationDialog(row)}
+                              className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30"
+                              title="Reconcile"
+                            >
+                              <Link2 className="h-3 w-3" />
+                            </Button>
                           )}
                         </div>
 
                         {/* Actions */}
-                        <div className="w-[70px] flex-shrink-0 flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
+                        <div className="w-[50px] flex-shrink-0 flex items-center justify-center gap-0.5" onClick={(e) => e.stopPropagation()}>
                           {editingRow === row.id ? (
                             <>
                               <Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30">

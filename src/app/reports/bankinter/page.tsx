@@ -314,192 +314,95 @@ export default function BankinterPage() {
   }
 
   return (
-    <div className="min-h-full">
-
-      <div className="">
-        <header className="page-header-standard">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link href="/">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-white">
-                    Bankinter GBP - Bank Statement
-                  </h1>
-                  <div className="flex items-center gap-4 mt-1">
-                    <p className="text-sm text-gray-300">
-                      {rows.length} records
-                    </p>
-                  </div>
-                </div>
+    <div className="min-h-full bg-[#1e1f21]">
+      {/* Dark Header */}
+      <header className="bg-[#1e1f21] border-b border-gray-800/50 px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Link href="/">
+              <Button variant="ghost" size="sm" className="gap-2 text-gray-300 hover:text-white hover:bg-gray-700">
+                <ArrowLeft className="h-4 w-4" />
+                Back
+              </Button>
+            </Link>
+            <div className="flex items-center gap-3">
+              <div className="bg-[#FF7300] p-2 rounded-lg">
+                <Database className="h-5 w-5 text-white" />
               </div>
-              <div className="flex gap-2">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload-bankinter"
-                />
-                <label htmlFor="file-upload-bankinter">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
-                    <span>
-                      <Upload className="h-4 w-4" />
-                      Upload CSV
-                    </span>
-                  </Button>
-                </label>
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
-                <Button
-                  onClick={handleDeleteAll}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-red-300 text-red-200 hover:bg-red-600 hover:text-white hover:border-red-600"
-                  disabled={isDeleting || rows.length === 0}
-                >
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                  Delete All
-                </Button>
+              <div>
+                <h1 className="text-xl font-semibold text-white">Bankinter GBP</h1>
+                <p className="text-sm text-gray-400">{rows.length} records</p>
               </div>
             </div>
           </div>
-        </header>
-
-        {/* 🏦 Account Information Card */}
-        <div className="container mx-auto px-6 py-4">
-          <Card className="bg-gradient-to-r from-[#FF7300] to-[#FF9A3C] border-0 shadow-xl">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg">
-                    <Database className="h-8 w-8 text-white" />
-                  </div>
-                  <div className="text-white">
-                    <h3 className="text-lg font-bold">Bankinter Spain</h3>
-                    <div className="flex items-center gap-4 mt-1 text-sm">
-                      <span className="flex items-center gap-1">
-                        <span className="font-semibold">Account:</span> ES91 0128 0823 3901 0005 8256
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="font-semibold">Currency:</span> GBP (£)
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <span className="font-semibold">Branch:</span> 0128
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="text-right text-white">
-                  <p className="text-sm opacity-90">Current Balance</p>
-                  <p className="text-2xl font-bold">
-                    {rows.length > 0
-                      ? `£${rows.reduce((sum, r) => sum + r.amount, 0).toFixed(2)}`
-                      : "£0.00"
-                    }
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="flex gap-2">
+            <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
+            <label htmlFor="file-upload-bankinter">
+              <Button variant="outline" size="sm" className="gap-2 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white" asChild>
+                <span><Upload className="h-4 w-4" /> Upload</span>
+              </Button>
+            </label>
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white">
+              <Download className="h-4 w-4" /> Download
+            </Button>
+            <Button onClick={handleDeleteAll} variant="outline" size="sm" className="gap-2 border-red-800 text-red-400 hover:bg-red-900/50" disabled={isDeleting || rows.length === 0}>
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete All
+            </Button>
+          </div>
         </div>
+      </header>
 
-        <div className="px-6 py-8">
-          <Card className="shadow-xl">
-            <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
-              <CardTitle>Bankinter Bank Statement</CardTitle>
-              <CardDescription className="text-white/80">
-                CSV import from Bankinter bank statements
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        ID
-                      </th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Date
-                      </th>
-                      <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Description
-                      </th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Amount
-                      </th>
-                      <th className="text-right py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Saldo
-                      </th>
-                      <th className="text-center py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((row) => (
-                      <tr
-                        key={row.id}
-                        className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50"
-                      >
-                        <td className="py-3 px-4 text-sm font-bold">
-                          {row.id}
-                        </td>
-                        <td className="py-3 px-4 text-sm">{row.date}</td>
-                        <td className="py-3 px-4 text-sm max-w-xs truncate">
-                          {row.description}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-right font-bold text-[#4fc3f7]">
-                          €{row.amount.toFixed(2)}
-                        </td>
-                        <td className="py-3 px-4 text-sm text-right font-bold">
-                          €{row.saldo.toFixed(2)}
-                        </td>
-                        <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => startEditing(row)}
-                              className="h-8 w-8 p-0"
-                              disabled={isDeleting}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              onClick={() => handleDeleteRow(row.id)}
-                              className="h-8 w-8 p-0 text-red-600"
-                              disabled={isDeleting}
-                            >
-                              {isDeleting ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Trash2 className="h-4 w-4" />
-                              )}
-                            </Button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+      {/* Stats Bar */}
+      <div className="bg-[#252627] border-b border-gray-700 px-6 py-3">
+        <div className="flex items-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Total:</span>
+            <span className="text-white font-medium">{rows.length}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-gray-400">Balance:</span>
+            <span className="text-[#4fc3f7] font-medium">£{rows.reduce((sum, r) => sum + r.amount, 0).toFixed(2)}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="overflow-x-auto">
+        <div className="min-w-[800px]">
+          {/* Table Header */}
+          <div className="flex items-center bg-[#2a2b2d] border-b border-gray-700 px-4 py-2 text-xs font-medium text-gray-400 uppercase">
+            <div className="w-[80px]">ID</div>
+            <div className="w-[90px]">Date</div>
+            <div className="flex-1">Description</div>
+            <div className="w-[100px] text-right">Amount</div>
+            <div className="w-[100px] text-right">Saldo</div>
+            <div className="w-[80px] text-center">Actions</div>
+          </div>
+
+          {/* Table Rows */}
+          {rows.map((row) => (
+            <div key={row.id} className="flex items-center px-4 py-2 border-b border-gray-800/50 hover:bg-[#252627] text-sm">
+              <div className="w-[80px] text-gray-300 font-mono text-xs">{row.id}</div>
+              <div className="w-[90px] text-gray-300">{row.date}</div>
+              <div className="flex-1 text-gray-200 truncate pr-4">{row.description}</div>
+              <div className="w-[100px] text-right text-[#4fc3f7] font-medium">£{row.amount.toFixed(2)}</div>
+              <div className="w-[100px] text-right text-gray-300">£{row.saldo.toFixed(2)}</div>
+              <div className="w-[80px] flex justify-center gap-1">
+                <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700">
+                  <Edit2 className="h-3 w-3" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30" disabled={isDeleting}>
+                  <Trash2 className="h-3 w-3" />
+                </Button>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          ))}
+
+          {rows.length === 0 && (
+            <div className="flex items-center justify-center py-12 text-gray-500">
+              No records found. Upload a CSV to get started.
+            </div>
+          )}
         </div>
       </div>
     </div>

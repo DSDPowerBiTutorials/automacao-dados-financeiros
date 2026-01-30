@@ -274,6 +274,7 @@ export async function POST(req: NextRequest) {
 
         // Aplicar se não for dry run
         let updated = 0;
+        const errors: string[] = [];
         if (!dryRun && matches.length > 0) {
             for (const match of matches) {
                 const { error } = await supabaseAdmin
@@ -286,7 +287,11 @@ export async function POST(req: NextRequest) {
                         payment_reference: match.transaction_id,
                     })
                     .eq('id', match.invoice_id);
-                if (!error) updated++;
+                if (error) {
+                    errors.push(`${match.invoice_id}: ${error.message}`);
+                } else {
+                    updated++;
+                }
             }
         }
 
@@ -306,7 +311,8 @@ export async function POST(req: NextRequest) {
                 matched: matches.length,
                 bySource: stats,
                 totalValue,
-                updated: dryRun ? 0 : updated
+                updated: dryRun ? 0 : updated,
+                errors: errors.slice(0, 10)
             },
             matches: matches.slice(0, 20) // Limitar amostra
         });
