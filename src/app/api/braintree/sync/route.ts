@@ -91,7 +91,8 @@ function getSettlementDate(transaction: any): string | null {
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json();
+    const parsedBody = await req.json().catch(() => ({}));
+    const body = parsedBody && typeof parsedBody === "object" ? parsedBody : {};
     const {
       // Legacy mode
       startDate,

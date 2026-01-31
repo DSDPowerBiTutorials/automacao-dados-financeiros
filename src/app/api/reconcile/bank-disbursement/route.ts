@@ -139,42 +139,43 @@ async function fetchBraintreeDisbursements(): Promise<DisbursementInfo[]> {
 }
 
 async function fetchStripeDisbursements(): Promise<DisbursementInfo[]> {
-    // Stripe usa payouts - buscar em stripe-eur
+    // Stripe payouts estão em stripe-eur-payouts e stripe-usd-payouts
+    // O payout_id está no campo custom_data->transaction_id (ex: po_1SsYEhIO1Dgqa3TAnKdoz5Fc)
+    // E a data de chegada no banco está em custom_data->arrival_date ou no campo date
     const { data } = await supabaseAdmin
         .from('csv_rows')
         .select('*')
-        .eq('source', 'stripe-eur')
-        .not('custom_data->payout_id', 'is', null)
+        .or('source.eq.stripe-eur-payouts,source.eq.stripe-usd-payouts')
+        .eq('reconciled', false)
         .order('date', { ascending: false })
         .limit(2000);
 
     if (!data) return [];
 
-    // Agrupar por payout_id
-    const grouped = new Map<string, { amount: number; date: string; count: number }>();
-
-    data.forEach(tx => {
+    // Cada payout é um registro individual (não precisa agrupar)
+    return data.map(tx => {
         const cd = tx.custom_data || {};
-        const payoutId = cd.payout_id;
-        const payoutDate = cd.payout_date?.split('T')[0] || tx.date?.split('T')[0];
-        if (!payoutId) return;
+        const payoutId = cd.transaction_id || cd.payout_id || tx.id;
+        const arrivalDate = cd.arrival_date?.split('T')[0] || tx.date?.split('T')[0];
+        const amount = parseFloat(tx.amount || 0);
 
-        if (!grouped.has(payoutId)) {
-            grouped.set(payoutId, { amount: 0, date: payoutDate, count: 0 });
-        }
-        const g = grouped.get(payoutId)!;
-        g.amount += parseFloat(tx.amount || 0);
-        g.count++;
+        // Determinar moeda: stripe-eur-payouts = EUR, stripe-usd-payouts = USD
+        // Mas os payouts USD também caem no Bankinter EUR (convertidos)
+        const currency = cd.currency?.toUpperCase() ||
+            (tx.source?.includes('usd') ? 'USD' : 'EUR');
+
+        return {
+            source: 'stripe',
+            date: arrivalDate,
+            amount: Math.round(amount * 100) / 100,
+            currency: 'EUR', // Todos caem no Bankinter EUR independente da moeda original
+            reference: payoutId,
+            transaction_count: 1,
+            // Extra info
+            original_currency: currency,
+            stripe_account_name: cd.stripe_account_name
+        } as DisbursementInfo;
     });
-
-    return Array.from(grouped.entries()).map(([payoutId, val]) => ({
-        source: 'stripe',
-        date: val.date,
-        amount: Math.round(val.amount * 100) / 100,
-        currency: 'EUR',
-        reference: payoutId,
-        transaction_count: val.count
-    }));
 }
 
 async function fetchGoCardlessDisbursements(): Promise<DisbursementInfo[]> {
@@ -306,18 +307,29 @@ export async function POST(req: NextRequest) {
                 const descPatterns = [
                     { pattern: 'braintree', source: 'braintree' },
                     { pattern: 'paypal braintree', source: 'braintree' },
+                    { pattern: 'stripe technology', source: 'stripe' }, // Trans/stripe technology europ
                     { pattern: 'stripe', source: 'stripe' },
                     { pattern: 'gocardless', source: 'gocardless' }
                 ];
 
                 for (const { pattern, source } of descPatterns) {
                     if (descLower.includes(pattern)) {
-                        // Find closest amount match from that source
+                        // Find closest amount match from that source (tolerance 0.10 for exact payouts)
                         const sourceDisbursements = allDisbursements
                             .filter(d => d.source === source && !matchedDisbRefs.has(d.reference));
-                        const amountMatch = sourceDisbursements.find(d =>
-                            Math.abs(d.amount - bankAmount) < 5
+
+                        // First try exact match
+                        let amountMatch = sourceDisbursements.find(d =>
+                            Math.abs(d.amount - bankAmount) < 0.10
                         );
+
+                        // If no exact match, try looser tolerance for larger amounts
+                        if (!amountMatch) {
+                            amountMatch = sourceDisbursements.find(d =>
+                                Math.abs(d.amount - bankAmount) < 5
+                            );
+                        }
+
                         if (amountMatch) {
                             match = amountMatch;
                             matchType = 'description_amount';

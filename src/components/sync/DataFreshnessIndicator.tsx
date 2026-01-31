@@ -46,6 +46,48 @@ interface DataFreshnessResponse {
     errorCount: number;
 }
 
+function inferCurrencyFromSource(sourceId: string): string {
+    // Expected formats: braintree-eur, braintree-usd, stripe-eur, etc.
+    const lower = sourceId.toLowerCase();
+    if (lower.includes("-eur")) return "EUR";
+    if (lower.includes("-usd")) return "USD";
+    if (lower.includes("-gbp")) return "GBP";
+    if (lower.includes("-aud")) return "AUD";
+    // Special-case known ids
+    if (lower.includes("amex")) return "USD";
+    return "EUR";
+}
+
+function buildSyncRequest(source: DataSourceStatus): RequestInit {
+    const endpoint = source.syncEndpoint || "";
+
+    // Braintree endpoint requires a JSON body (otherwise req.json() or validation fails)
+    if (endpoint.startsWith("/api/braintree/sync")) {
+        const currency = inferCurrencyFromSource(source.source);
+        return {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                daysBack: 14,
+                updateType: "safe",
+                currency,
+                preserveReconciliation: true,
+                skipIfConciliado: true,
+            }),
+        };
+    }
+
+    return { method: "POST" };
+}
+
+async function parseJsonSafely(res: Response): Promise<any | null> {
+    try {
+        return await res.json();
+    } catch {
+        return null;
+    }
+}
+
 function formatRelativeTime(dateStr: string | null): string {
     if (!dateStr) return "Never";
 
@@ -153,22 +195,41 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
     const handleSyncAll = async () => {
         setSyncing(true);
         const autoSources = data?.sources.filter((s) => s.type === "auto" && s.syncEndpoint) || [];
+        const uniqueByEndpoint = new Map<string, DataSourceStatus>();
+        for (const s of autoSources) {
+            if (s.syncEndpoint && !uniqueByEndpoint.has(s.syncEndpoint)) {
+                uniqueByEndpoint.set(s.syncEndpoint, s);
+            }
+        }
+        const sourcesToSync = Array.from(uniqueByEndpoint.values());
 
         toast({
             title: "🔄 Syncing All Sources",
-            description: `Starting sync for ${autoSources.length} automatic sources...`,
+            description: `Starting sync for ${sourcesToSync.length} endpoint(s)...`,
         });
 
         let successCount = 0;
         let errorCount = 0;
+        const failures: Array<{ name: string; details?: string }> = [];
 
-        for (const source of autoSources) {
+        for (const source of sourcesToSync) {
             try {
-                const res = await fetch(source.syncEndpoint!, { method: "POST" });
-                if (res.ok) successCount++;
-                else errorCount++;
+                const res = await fetch(source.syncEndpoint!, buildSyncRequest(source));
+                const payload = await parseJsonSafely(res);
+
+                const isOk = res.ok && (payload?.success !== false);
+                if (isOk) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                    failures.push({
+                        name: source.displayName,
+                        details: payload?.error || payload?.message || `HTTP ${res.status}`,
+                    });
+                }
             } catch {
                 errorCount++;
+                failures.push({ name: source.displayName, details: "Network/timeout" });
             }
         }
 
@@ -176,8 +237,14 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
         await fetchFreshness();
 
         toast({
-            title: successCount === autoSources.length ? "✅ Sync Complete" : "⚠️ Sync Partial",
-            description: `${successCount} succeeded, ${errorCount} failed.`,
+            title: successCount === sourcesToSync.length ? "✅ Sync Complete" : "⚠️ Sync Partial",
+            description:
+                errorCount > 0
+                    ? `${successCount} ok, ${errorCount} falharam. Ex: ${failures
+                        .slice(0, 2)
+                        .map((f) => `${f.name} (${f.details})`)
+                        .join(" • ")}`
+                    : `${successCount} ok, ${errorCount} falharam.`,
             variant: errorCount > 0 ? "destructive" : "default",
         });
     };
@@ -191,20 +258,24 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
         });
 
         try {
-            const res = await fetch(source.syncEndpoint, { method: "POST" });
-            if (res.ok) {
+            const res = await fetch(source.syncEndpoint, buildSyncRequest(source));
+            const payload = await parseJsonSafely(res);
+
+            const isOk = res.ok && (payload?.success !== false);
+            if (isOk) {
                 toast({
                     title: `✅ ${source.displayName} Synced`,
                     description: "Data updated successfully.",
                 });
                 await fetchFreshness();
             } else {
-                throw new Error("Sync failed");
+                const details = payload?.error || payload?.message || `HTTP ${res.status}`;
+                throw new Error(details);
             }
-        } catch {
+        } catch (err) {
             toast({
                 title: `❌ ${source.displayName} Failed`,
-                description: "Unable to sync. Try again later.",
+                description: err instanceof Error ? err.message : "Unable to sync. Try again later.",
                 variant: "destructive",
             });
         }
