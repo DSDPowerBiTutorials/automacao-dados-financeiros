@@ -179,41 +179,33 @@ async function fetchStripeDisbursements(): Promise<DisbursementInfo[]> {
 }
 
 async function fetchGoCardlessDisbursements(): Promise<DisbursementInfo[]> {
-    // GoCardless usa payouts
+    // GoCardless usa payouts - registros com custom_data.type = 'payout'
     const { data } = await supabaseAdmin
         .from('csv_rows')
         .select('*')
         .eq('source', 'gocardless')
-        .not('custom_data->payout_id', 'is', null)
+        .eq('custom_data->>type', 'payout')
+        .eq('reconciled', false)
         .order('date', { ascending: false })
         .limit(2000);
 
     if (!data) return [];
 
-    const grouped = new Map<string, { amount: number; date: string; count: number }>();
-
-    data.forEach(tx => {
+    // Cada registro de payout já é um disbursement individual
+    return (data || []).map(tx => {
         const cd = tx.custom_data || {};
-        const payoutId = cd.payout_id;
-        const payoutDate = cd.payout_date?.split('T')[0] || tx.date?.split('T')[0];
-        if (!payoutId) return;
+        const payoutId = cd.payout_id || cd.gocardless_id || tx.id;
+        const payoutDate = tx.date?.split('T')[0];
 
-        if (!grouped.has(payoutId)) {
-            grouped.set(payoutId, { amount: 0, date: payoutDate, count: 0 });
-        }
-        const g = grouped.get(payoutId)!;
-        g.amount += parseFloat(tx.amount || 0);
-        g.count++;
+        return {
+            source: 'gocardless',
+            date: payoutDate,
+            amount: Math.round(parseFloat(tx.amount || 0) * 100) / 100,
+            currency: cd.currency || 'EUR',
+            reference: payoutId,
+            transaction_count: 1
+        };
     });
-
-    return Array.from(grouped.entries()).map(([payoutId, val]) => ({
-        source: 'gocardless',
-        date: val.date,
-        amount: Math.round(val.amount * 100) / 100,
-        currency: 'EUR',
-        reference: payoutId,
-        transaction_count: val.count
-    }));
 }
 
 export async function POST(req: NextRequest) {
