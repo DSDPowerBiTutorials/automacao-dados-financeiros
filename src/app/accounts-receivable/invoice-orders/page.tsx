@@ -84,6 +84,7 @@ const DEFAULT_COLUMNS: ColumnConfig[] = [
     { key: "order_number", label: "Order #", visible: true, width: "90px" },
     { key: "date", label: "Date", visible: true, width: "90px" },
     { key: "description", label: "Description", visible: true, width: "200px" },
+    { key: "financial_account", label: "Fin. Account", visible: true, width: "120px" },
     { key: "amount", label: "Amount", visible: true, width: "100px" },
     { key: "currency", label: "Currency", visible: true, width: "70px" },
     { key: "reconciled", label: "Status", visible: true, width: "100px" }
@@ -429,6 +430,16 @@ export default function InvoiceOrdersPage() {
                 </span>
             );
         if (colKey === "currency") return row.currency;
+        if (colKey === "financial_account") {
+            const code = row.custom_data?.financial_account_code as string | null;
+            const name = row.custom_data?.financial_account_name as string | null;
+            if (!code) return <span className="text-gray-500">—</span>;
+            return (
+                <Badge className="bg-blue-900/30 text-blue-400 border border-blue-700 text-xs">
+                    {code} {name ? `- ${name}` : ''}
+                </Badge>
+            );
+        }
         if (colKey === "reconciled")
             return row.reconciled ? (
                 <Badge className="bg-green-900/30 text-green-400 border border-green-700">
