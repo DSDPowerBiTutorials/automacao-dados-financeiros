@@ -2,6 +2,135 @@ import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
+// ============================================================
+// 💰 MAPEAMENTO PRODUTO → FINANCIAL ACCOUNT CODE
+// Baseado nas contas de receita designadas para cada produto
+// ============================================================
+function getFinancialAccountCode(productName: string, description: string): { code: string | null; name: string | null } {
+    // Combinar todas as strings para busca
+    const searchText = `${productName} ${description}`.toLowerCase();
+
+    // ====== 101.0 - Growth (Education) ======
+
+    // 101.1 - DSD Courses
+    if (
+        searchText.includes('dsd provider') ||
+        searchText.includes('designing smiles') ||
+        searchText.includes('dsd course') ||
+        searchText.includes('increase case acceptance') ||
+        searchText.includes('case acceptance mastery') ||
+        searchText.includes('ios festival') ||
+        searchText.includes('intraoral scanner') ||
+        searchText.includes('kois & coachman') ||
+        searchText.includes('dsd aligners') ||
+        searchText.includes('dsd clinical') ||
+        searchText.includes('wtd meeting') ||
+        searchText.includes('smile to success') ||
+        searchText.includes('implement and learn') ||
+        searchText.includes('mastering dsd')
+    ) {
+        return { code: '101.1', name: 'DSD Courses' };
+    }
+
+    // 101.3 - Mastership
+    if (
+        searchText.includes('mastership') ||
+        searchText.includes('master ship') ||
+        searchText.includes('residency')
+    ) {
+        return { code: '101.3', name: 'Mastership' };
+    }
+
+    // 101.4 - PC Membership (Provider/Planning Center Membership)
+    if (
+        searchText.includes('provider annual membership') ||
+        searchText.includes('provider membership') ||
+        searchText.includes('pc membership') ||
+        searchText.includes('planning center membership')
+    ) {
+        return { code: '101.4', name: 'PC Membership' };
+    }
+
+    // 101.5 - Partnerships / Sponsorships
+    if (
+        searchText.includes('sponsorship') ||
+        searchText.includes('partnership') ||
+        searchText.includes('sponsor') ||
+        searchText.includes('exhibit space')
+    ) {
+        return { code: '101.5', name: 'Partnerships' };
+    }
+
+    // ====== 102.0 - Delight (Clinic Services) ======
+
+    // 102.5 - Consultancies
+    if (
+        searchText.includes('dsd clinic transformation') ||
+        searchText.includes('clinic transformation') ||
+        searchText.includes('dsd clinic -') ||
+        searchText.includes('consultancy') ||
+        searchText.includes('consulting')
+    ) {
+        return { code: '102.5', name: 'Consultancies' };
+    }
+
+    // 102.6 - Marketing Coaching
+    if (
+        searchText.includes('fractional cmo') ||
+        searchText.includes('marketing coaching') ||
+        searchText.includes('growth hub onboarding')
+    ) {
+        return { code: '102.6', name: 'Marketing Coaching' };
+    }
+
+    // ====== 103.0 - Planning Center ======
+    if (
+        searchText.includes('planning center') ||
+        searchText.includes('prep guide') ||
+        searchText.includes('smile design') ||
+        searchText.includes('planning service')
+    ) {
+        return { code: '103.0', name: 'Planning Center' };
+    }
+
+    // ====== 104.0 - LAB (Manufacture) ======
+    if (
+        searchText.includes('natural restoration') ||
+        searchText.includes('lab ') ||
+        searchText.includes('prosthesis') ||
+        searchText.includes('crown') ||
+        searchText.includes('veneer') ||
+        searchText.includes('surgical guide') ||
+        searchText.includes('abutment')
+    ) {
+        return { code: '104.0', name: 'LAB' };
+    }
+
+    // ====== 105.0 - Other Income ======
+
+    // 105.1 - Level 1 Subscriptions (Growth Hub subscriptions)
+    if (
+        searchText.includes('dsd growth hub') ||
+        searchText.includes('growth hub') ||
+        searchText.includes('monthly subscription') ||
+        searchText.includes('subscription')
+    ) {
+        return { code: '105.1', name: 'Level 1 Subscriptions' };
+    }
+
+    // 105.4 - Other Marketing Revenues
+    if (
+        searchText.includes('cancellation fee') ||
+        searchText.includes('reschedule fee') ||
+        searchText.includes('late fee')
+    ) {
+        return { code: '105.4', name: 'Other Marketing Revenues' };
+    }
+
+    // Fallback: sem mapeamento
+    return { code: null, name: null };
+}
+
 /**
  * API para upload de Invoice Orders via CSV/XLSX
  * Aceita arquivos com colunas flexíveis, mapeando todas as colunas para custom_data
@@ -216,6 +345,11 @@ export async function POST(request: NextRequest) {
                             customData[key] = rowArr[i];
                         }
                     });
+
+                    // 💰 Financial Account: Mapear produto → conta de receita
+                    const financialAccount = getFinancialAccountCode(description, invoiceNumber);
+                    customData.financial_account_code = financialAccount.code;
+                    customData.financial_account_name = financialAccount.name;
 
                     processedCount++;
 
