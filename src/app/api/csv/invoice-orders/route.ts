@@ -68,6 +68,8 @@ function getFinancialAccountCode(productName: string, description: string): { co
         searchText.includes('dsd clinic transformation') ||
         searchText.includes('clinic transformation') ||
         searchText.includes('dsd clinic -') ||
+        searchText.includes('dsd clinic services') ||
+        searchText.includes('monthly fee') ||
         searchText.includes('consultancy') ||
         searchText.includes('consulting')
     ) {
@@ -78,32 +80,61 @@ function getFinancialAccountCode(productName: string, description: string): { co
     if (
         searchText.includes('fractional cmo') ||
         searchText.includes('marketing coaching') ||
-        searchText.includes('growth hub onboarding')
+        searchText.includes('growth hub onboarding') ||
+        searchText.includes('patient attraction')
     ) {
         return { code: '102.6', name: 'Marketing Coaching' };
     }
 
-    // ====== 103.0 - Planning Center ======
+    // ====== 104.0 - LAB (Manufacture) - CHECK BEFORE 103.0 ======
     if (
-        searchText.includes('planning center') ||
-        searchText.includes('prep guide') ||
-        searchText.includes('smile design') ||
-        searchText.includes('planning service')
-    ) {
-        return { code: '103.0', name: 'Planning Center' };
-    }
-
-    // ====== 104.0 - LAB (Manufacture) ======
-    if (
+        searchText.includes('manufacture') ||
         searchText.includes('natural restoration') ||
         searchText.includes('lab ') ||
         searchText.includes('prosthesis') ||
         searchText.includes('crown') ||
         searchText.includes('veneer') ||
         searchText.includes('surgical guide') ||
-        searchText.includes('abutment')
+        searchText.includes('abutment') ||
+        searchText.includes('direct restoration') ||
+        searchText.includes('bridge manufacture') ||
+        searchText.includes('mockup manufacture')
     ) {
         return { code: '104.0', name: 'LAB' };
+    }
+
+    // ====== 103.0 - Planning Center (Design services) ======
+    if (
+        searchText.includes('planning center') ||
+        searchText.includes('prep guide') ||
+        searchText.includes('prep kit') ||
+        searchText.includes('smile design') ||
+        searchText.includes('planning service') ||
+        searchText.includes('dsd upper') ||
+        searchText.includes('dsd lower') ||
+        searchText.includes('dsd diagnostic') ||
+        searchText.includes('diagnostic design') ||
+        searchText.includes('ortho planning') ||
+        searchText.includes('ortho tps') ||
+        searchText.includes('ortho quality') ||
+        searchText.includes('mockup design') ||
+        searchText.includes('motivational mockup') ||
+        searchText.includes('clic guide') ||
+        searchText.includes('update upper') ||
+        searchText.includes('update lower') ||
+        searchText.includes('denture design') ||
+        searchText.includes('deprogrammer design') ||
+        searchText.includes('implant planning') ||
+        searchText.includes('guide design') ||
+        searchText.includes('tad guide') ||
+        searchText.includes('interdisciplinary') ||
+        searchText.includes('restorative planning') ||
+        searchText.includes('injected design') ||
+        searchText.includes('additional design') ||
+        searchText.includes('over prep') ||
+        searchText.includes('invisalign')
+    ) {
+        return { code: '103.0', name: 'Planning Center' };
     }
 
     // ====== 105.0 - Other Income ======
@@ -113,9 +144,18 @@ function getFinancialAccountCode(productName: string, description: string): { co
         searchText.includes('dsd growth hub') ||
         searchText.includes('growth hub') ||
         searchText.includes('monthly subscription') ||
-        searchText.includes('subscription')
+        searchText.includes('subscription') ||
+        searchText.includes('online access') ||
+        searchText.includes('dsd online') ||
+        searchText.includes('level 2 annual') ||
+        searchText.includes('annual plan')
     ) {
         return { code: '105.1', name: 'Level 1 Subscriptions' };
+    }
+
+    // DSD Coaching
+    if (searchText.includes('dsd coaching') || searchText.includes('coaching')) {
+        return { code: '102.6', name: 'Marketing Coaching' };
     }
 
     // 105.4 - Other Marketing Revenues
