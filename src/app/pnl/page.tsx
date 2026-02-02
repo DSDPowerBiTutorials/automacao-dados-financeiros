@@ -97,17 +97,19 @@ export default function PnLReport() {
     const { selectedScope } = useGlobalScope();
     const [loading, setLoading] = useState(true);
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
-        new Set(["101.0", "102.0", "201.0", "202.0"])
+        new Set(["100.0", "101.0", "102.0", "103.0", "104.0", "105.0", "201.0", "202.0"])
     );
     const [selectedYear, setSelectedYear] = useState(2026);
     const [viewMode, setViewMode] = useState<"monthly" | "quarterly" | "annual">("monthly");
     const currentMonth = new Date().getMonth(); // 0-11
 
-    // Estado para dados reais de receita do HubSpot (Web Invoices)
+    // Estado para dados reais de receita
     const [webInvoicesRevenue, setWebInvoicesRevenue] = useState<MonthlyData>(emptyMonthlyData());
+    const [totalRevenue, setTotalRevenue] = useState<MonthlyData>(emptyMonthlyData());
+    const [byFinancialAccount, setByFinancialAccount] = useState<{ [key: string]: MonthlyData }>({});
     const [invoiceCount, setInvoiceCount] = useState<{ [key: string]: number }>({});
 
-    // Buscar dados reais do HubSpot via API
+    // Buscar dados reais via API
     useEffect(() => {
         async function fetchRevenueData() {
             try {
@@ -122,9 +124,11 @@ export default function PnLReport() {
                     return;
                 }
 
-                setWebInvoicesRevenue(result.revenue);
-                setInvoiceCount(result.count);
-                console.log('📊 Receita Web Invoices carregada:', result.revenue);
+                setWebInvoicesRevenue(result.webInvoices?.revenue || emptyMonthlyData());
+                setTotalRevenue(result.totalRevenue || emptyMonthlyData());
+                setByFinancialAccount(result.byFinancialAccount || {});
+                setInvoiceCount(result.webInvoices?.count || {});
+                console.log('📊 Receita carregada:', result);
 
             } catch (err) {
                 console.error('Erro ao carregar receita:', err);
@@ -136,7 +140,10 @@ export default function PnLReport() {
         fetchRevenueData();
     }, [selectedYear]);
 
-    // Revenue structure with REAL data from Web Invoices (HubSpot)
+    // Helper para pegar dados da financial account ou zeros
+    const getFA = (code: string): MonthlyData => byFinancialAccount[code] || emptyMonthlyData();
+
+    // Revenue structure with REAL data from Financial Accounts
     const revenueStructure: DRELineMonthly[] = useMemo(() => [
         {
             code: "100.0", name: "Web Invoices (HubSpot)", type: "revenue", level: 0,
@@ -147,62 +154,81 @@ export default function PnLReport() {
         },
         {
             code: "101.0", name: "Growth (Education)", type: "revenue", level: 0,
-            monthly: generateMonthlyData(892000), budget: generateBudgetData(850000),
+            // Soma das contas 101.x
+            monthly: {
+                jan: getFA("101.1").jan + getFA("101.3").jan,
+                feb: getFA("101.1").feb + getFA("101.3").feb,
+                mar: getFA("101.1").mar + getFA("101.3").mar,
+                apr: getFA("101.1").apr + getFA("101.3").apr,
+                may: getFA("101.1").may + getFA("101.3").may,
+                jun: getFA("101.1").jun + getFA("101.3").jun,
+                jul: getFA("101.1").jul + getFA("101.3").jul,
+                aug: getFA("101.1").aug + getFA("101.3").aug,
+                sep: getFA("101.1").sep + getFA("101.3").sep,
+                oct: getFA("101.1").oct + getFA("101.3").oct,
+                nov: getFA("101.1").nov + getFA("101.3").nov,
+                dec: getFA("101.1").dec + getFA("101.3").dec,
+            }, budget: generateBudgetData(850000),
             children: [
-                { code: "101.1", name: "DSD Courses", type: "revenue", level: 1, monthly: generateMonthlyData(378000), budget: generateBudgetData(350000) },
-                { code: "101.2", name: "Others Courses", type: "revenue", level: 1, monthly: generateMonthlyData(115000), budget: generateBudgetData(120000) },
-                { code: "101.3", name: "Mastership", type: "revenue", level: 1, monthly: generateMonthlyData(195000), budget: generateBudgetData(180000) },
-                { code: "101.4", name: "PC Membership", type: "revenue", level: 1, monthly: generateMonthlyData(104000), budget: generateBudgetData(100000) },
-                { code: "101.5", name: "Partnerships", type: "revenue", level: 1, monthly: generateMonthlyData(78000), budget: generateBudgetData(80000) },
-                { code: "101.6", name: "Level 2 Allocation", type: "revenue", level: 1, monthly: generateMonthlyData(22000), budget: generateBudgetData(20000) },
+                { code: "101.1", name: "DSD Courses", type: "revenue", level: 1, monthly: getFA("101.1"), budget: generateBudgetData(350000) },
+                { code: "101.3", name: "Mastership", type: "revenue", level: 1, monthly: getFA("101.3"), budget: generateBudgetData(180000) },
+                { code: "101.4", name: "PC Membership", type: "revenue", level: 1, monthly: getFA("101.4"), budget: generateBudgetData(100000) },
+                { code: "101.5", name: "Partnerships", type: "revenue", level: 1, monthly: getFA("101.5"), budget: generateBudgetData(80000) },
             ],
         },
         {
             code: "102.0", name: "Delight (Clinic Services)", type: "revenue", level: 0,
-            monthly: generateMonthlyData(1285000), budget: generateBudgetData(1200000),
+            monthly: {
+                jan: getFA("102.5").jan + getFA("102.6").jan,
+                feb: getFA("102.5").feb + getFA("102.6").feb,
+                mar: getFA("102.5").mar + getFA("102.6").mar,
+                apr: getFA("102.5").apr + getFA("102.6").apr,
+                may: getFA("102.5").may + getFA("102.6").may,
+                jun: getFA("102.5").jun + getFA("102.6").jun,
+                jul: getFA("102.5").jul + getFA("102.6").jul,
+                aug: getFA("102.5").aug + getFA("102.6").aug,
+                sep: getFA("102.5").sep + getFA("102.6").sep,
+                oct: getFA("102.5").oct + getFA("102.6").oct,
+                nov: getFA("102.5").nov + getFA("102.6").nov,
+                dec: getFA("102.5").dec + getFA("102.6").dec,
+            }, budget: generateBudgetData(1200000),
             children: [
-                { code: "102.1", name: "Contracted ROW", type: "revenue", level: 1, monthly: generateMonthlyData(478000), budget: generateBudgetData(450000) },
-                { code: "102.2", name: "Contracted AMEX", type: "revenue", level: 1, monthly: generateMonthlyData(295000), budget: generateBudgetData(280000) },
-                { code: "102.3", name: "Level 3 New ROW", type: "revenue", level: 1, monthly: generateMonthlyData(192000), budget: generateBudgetData(180000) },
-                { code: "102.4", name: "Level 3 New AMEX", type: "revenue", level: 1, monthly: generateMonthlyData(130000), budget: generateBudgetData(120000) },
-                { code: "102.5", name: "Consultancies", type: "revenue", level: 1, monthly: generateMonthlyData(105000), budget: generateBudgetData(95000) },
-                { code: "102.6", name: "Marketing Coaching", type: "revenue", level: 1, monthly: generateMonthlyData(52000), budget: generateBudgetData(45000) },
-                { code: "102.7", name: "Others", type: "revenue", level: 1, monthly: generateMonthlyData(33000), budget: generateBudgetData(30000) },
+                { code: "102.5", name: "Consultancies", type: "revenue", level: 1, monthly: getFA("102.5"), budget: generateBudgetData(95000) },
+                { code: "102.6", name: "Marketing Coaching", type: "revenue", level: 1, monthly: getFA("102.6"), budget: generateBudgetData(45000) },
             ],
         },
         {
             code: "103.0", name: "Planning Center", type: "revenue", level: 0,
-            monthly: generateMonthlyData(712000), budget: generateBudgetData(680000),
-            children: [
-                { code: "103.1", name: "Level 3 ROW", type: "revenue", level: 1, monthly: generateMonthlyData(188000), budget: generateBudgetData(180000) },
-                { code: "103.2", name: "Level 3 AMEX", type: "revenue", level: 1, monthly: generateMonthlyData(128000), budget: generateBudgetData(120000) },
-                { code: "103.5", name: "Level 2", type: "revenue", level: 1, monthly: generateMonthlyData(158000), budget: generateBudgetData(150000) },
-                { code: "103.6", name: "Level 1", type: "revenue", level: 1, monthly: generateMonthlyData(138000), budget: generateBudgetData(130000) },
-                { code: "103.7", name: "Not a Subscriber", type: "revenue", level: 1, monthly: generateMonthlyData(100000), budget: generateBudgetData(100000) },
-            ],
+            monthly: getFA("103.0"), budget: generateBudgetData(680000),
+            children: [],
         },
         {
             code: "104.0", name: "LAB (Manufacture)", type: "revenue", level: 0,
-            monthly: generateMonthlyData(545000), budget: generateBudgetData(520000),
-            children: [
-                { code: "104.1", name: "Level 3 ROW", type: "revenue", level: 1, monthly: generateMonthlyData(148000), budget: generateBudgetData(140000) },
-                { code: "104.2", name: "Level 3 AMEX", type: "revenue", level: 1, monthly: generateMonthlyData(105000), budget: generateBudgetData(100000) },
-                { code: "104.5", name: "Level 2", type: "revenue", level: 1, monthly: generateMonthlyData(128000), budget: generateBudgetData(120000) },
-                { code: "104.6", name: "Level 1", type: "revenue", level: 1, monthly: generateMonthlyData(104000), budget: generateBudgetData(100000) },
-                { code: "104.7", name: "Not a Subscriber", type: "revenue", level: 1, monthly: generateMonthlyData(60000), budget: generateBudgetData(60000) },
-            ],
+            monthly: getFA("104.0"), budget: generateBudgetData(520000),
+            children: [],
         },
         {
             code: "105.0", name: "Other Income", type: "revenue", level: 0,
-            monthly: generateMonthlyData(162000), budget: generateBudgetData(150000),
+            monthly: {
+                jan: getFA("105.1").jan + getFA("105.4").jan,
+                feb: getFA("105.1").feb + getFA("105.4").feb,
+                mar: getFA("105.1").mar + getFA("105.4").mar,
+                apr: getFA("105.1").apr + getFA("105.4").apr,
+                may: getFA("105.1").may + getFA("105.4").may,
+                jun: getFA("105.1").jun + getFA("105.4").jun,
+                jul: getFA("105.1").jul + getFA("105.4").jul,
+                aug: getFA("105.1").aug + getFA("105.4").aug,
+                sep: getFA("105.1").sep + getFA("105.4").sep,
+                oct: getFA("105.1").oct + getFA("105.4").oct,
+                nov: getFA("105.1").nov + getFA("105.4").nov,
+                dec: getFA("105.1").dec + getFA("105.4").dec,
+            }, budget: generateBudgetData(150000),
             children: [
-                { code: "105.1", name: "Level 1 Subscriptions", type: "revenue", level: 1, monthly: generateMonthlyData(88000), budget: generateBudgetData(80000) },
-                { code: "105.2", name: "CORE Partnerships", type: "revenue", level: 1, monthly: generateMonthlyData(42000), budget: generateBudgetData(40000) },
-                { code: "105.3", name: "Study Club", type: "revenue", level: 1, monthly: generateMonthlyData(22000), budget: generateBudgetData(20000) },
-                { code: "105.4", name: "Other Marketing", type: "revenue", level: 1, monthly: generateMonthlyData(10000), budget: generateBudgetData(10000) },
+                { code: "105.1", name: "Level 1 Subscriptions", type: "revenue", level: 1, monthly: getFA("105.1"), budget: generateBudgetData(80000) },
+                { code: "105.4", name: "Other Marketing", type: "revenue", level: 1, monthly: getFA("105.4"), budget: generateBudgetData(10000) },
             ],
         },
-    ], [webInvoicesRevenue]);
+    ], [webInvoicesRevenue, byFinancialAccount]);
 
     // Expense structure with monthly data
     const expenseStructure: DRELineMonthly[] = useMemo(() => [
