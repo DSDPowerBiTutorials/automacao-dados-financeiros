@@ -112,15 +112,61 @@ export async function POST(request: Request) {
                 closeDate = new Date(deal.createdate);
             }
 
-            // Cliente
+            // Cliente - com fallback para extrair do orderCode/dealname
             const customerEmail = deal.customer_email || null;
             const customerFirstname = deal.customer_firstname || '';
             const customerLastname = deal.customer_lastname || '';
-            const customerName = `${customerFirstname} ${customerLastname}`.trim() || null;
+            let customerName = `${customerFirstname} ${customerLastname}`.trim() || null;
+
+            // 🔧 FALLBACK: Extrair nome do cliente do dealname quando Contact não está associado
+            // Exemplos de dealname:
+            //   "Smile&Co (Melinda Cheung)- DSD Growth Hub Monthly Subscription"
+            //   "Church View dental (Yusuf Surtee)- DSD Growth Hub Monthly Subscription"
+            //   "CAM- Kalomoira"
+            //   "- Prep Guides + NR Full - Dr. Manuela Barsan"
+            if (!customerName && orderCode && orderCode !== 'N/A') {
+                // Tentar extrair nome entre parênteses: "Company (Nome do Cliente)- Produto"
+                const parenMatch = orderCode.match(/\(([^)]+)\)/);
+                if (parenMatch && parenMatch[1]) {
+                    customerName = parenMatch[1].trim();
+                } else {
+                    // Tentar extrair "Dr. Nome Sobrenome" no final do texto
+                    const drMatch = orderCode.match(/Dr\.?\s+([A-Za-z\s]+?)\s*$/i);
+                    if (drMatch && drMatch[1]) {
+                        customerName = `Dr. ${drMatch[1].trim()}`;
+                    } else {
+                        // Tentar extrair nome após hífen simples: "Prefix- Nome"
+                        const dashMatch = orderCode.match(/^[^-]+[-–]\s*([A-Za-z\s]+?)(?:[-–]|$)/);
+                        if (dashMatch && dashMatch[1] && dashMatch[1].trim().length > 2) {
+                            // Verificar se parece um nome (não é código alfanumérico)
+                            const potentialName = dashMatch[1].trim();
+                            if (!/^[a-f0-9]+$/i.test(potentialName)) {
+                                customerName = potentialName;
+                            }
+                        }
+                    }
+                }
+            }
+
             const customerPhone = deal.customer_phone || null;
 
-            // Empresa
-            const companyName = deal.company_name || null;
+            // Empresa - com fallback para extrair do orderCode
+            let companyName = deal.company_name || null;
+
+            // 🔧 FALLBACK: Extrair empresa do dealname quando Company não está associada
+            // Exemplos: "Smile&Co (Melinda Cheung)- ..." → empresa = "Smile&Co"
+            if (!companyName && orderCode && orderCode !== 'N/A') {
+                // Extrair texto antes do parêntese ou primeiro hífen
+                const companyMatch = orderCode.match(/^([^(–-]+?)(?:\s*\(|[-–])/);
+                if (companyMatch && companyMatch[1]) {
+                    const potentialCompany = companyMatch[1].trim();
+                    // Verificar se não é apenas um código alfanumérico
+                    if (potentialCompany.length > 2 && !/^[a-f0-9]+$/i.test(potentialCompany)) {
+                        companyName = potentialCompany;
+                    }
+                }
+            }
+
             const companyDomain = deal.company_domain || null;
 
             // Produto (agora vindo do LineItem)
@@ -278,55 +324,170 @@ export async function POST(request: Request) {
         console.log(`🛒 ${withEcommOrder} deals com ecomm_order_number (${((withEcommOrder / rows.length) * 100).toFixed(1)}%)`);
         console.log(`🌐 ${withWebsiteOrder} deals com website_order_id (${((withWebsiteOrder / rows.length) * 100).toFixed(1)}%)`);
 
-        // Contar quantos têm email para linkagem
+        // Contar quantos têm email/nome para linkagem
         const withEmail = rows.filter((r: any) => r.customer_email).length;
         const withName = rows.filter((r: any) => r.customer_name).length;
+        const withCompany = rows.filter((r: any) => r.custom_data.company_name).length;
         const withProduct = rows.filter((r: any) => r.custom_data.product_name).length;
+
+        // Contadores de fallback (nomes extraídos do dealname)
+        const withNameFromContact = rows.filter((r: any) => r.custom_data.customer_firstname || r.custom_data.customer_lastname).length;
+        const withNameFromFallback = withName - withNameFromContact;
 
         console.log(`📧 ${withEmail} deals com email (${((withEmail / rows.length) * 100).toFixed(1)}%)`);
         console.log(`👤 ${withName} deals com nome do cliente (${((withName / rows.length) * 100).toFixed(1)}%)`);
+        if (withNameFromFallback > 0) {
+            console.log(`   ↳ ${withNameFromContact} via Contact, ${withNameFromFallback} via fallback (extraído do dealname)`);
+        }
+        console.log(`🏢 ${withCompany} deals com empresa (${((withCompany / rows.length) * 100).toFixed(1)}%)`);
         console.log(`📦 ${withProduct} deals com produto (${((withProduct / rows.length) * 100).toFixed(1)}%)`);
 
-        // Inserir no Supabase (substituir dados existentes do HubSpot)
-        console.log('🗑️ Deletando dados antigos do HubSpot...');
-        const { error: deleteError } = await supabaseAdmin
+        // ============================================================
+        // UPSERT: Preservar reconciliações existentes
+        // ============================================================
+        console.log('🔍 Buscando reconciliações existentes para preservar...');
+        
+        // Buscar todos os registros existentes do HubSpot com suas reconciliações
+        const { data: existingRows, error: fetchError } = await supabaseAdmin
             .from('csv_rows')
-            .delete()
+            .select('id, custom_data, reconciled')
             .eq('source', 'hubspot');
-
-        if (deleteError) {
-            console.error('❌ Erro ao deletar dados antigos:', deleteError);
-            throw deleteError;
+        
+        if (fetchError) {
+            console.error('❌ Erro ao buscar registros existentes:', fetchError);
+            throw fetchError;
         }
-
-        // Inserir em lotes de 500 para evitar timeout
-        const BATCH_SIZE = 500;
-        console.log(`💾 Inserindo ${rows.length} registros em lotes de ${BATCH_SIZE}...`);
-
-        let insertedCount = 0;
-        for (let i = 0; i < rows.length; i += BATCH_SIZE) {
-            const batch = rows.slice(i, i + BATCH_SIZE);
-            const { error: insertError } = await supabaseAdmin
-                .from('csv_rows')
-                .insert(batch);
-
-            if (insertError) {
-                console.error(`❌ Erro ao inserir lote ${Math.floor(i / BATCH_SIZE) + 1}:`, insertError);
-                throw insertError;
+        
+        // Criar mapa de deal_id -> dados de reconciliação
+        const reconciliationMap = new Map<string, { id: string; reconciled: boolean; customData: any }>();
+        for (const row of existingRows || []) {
+            const dealId = row.custom_data?.deal_id;
+            if (dealId) {
+                reconciliationMap.set(String(dealId), {
+                    id: row.id,
+                    reconciled: row.reconciled || false,
+                    customData: row.custom_data
+                });
             }
+        }
+        
+        console.log(`📊 ${reconciliationMap.size} registros existentes encontrados`);
+        const reconciledCount = Array.from(reconciliationMap.values()).filter(r => r.reconciled).length;
+        console.log(`✅ ${reconciledCount} reconciliações serão preservadas`);
+        
+        // Separar em updates e inserts
+        const toUpdate: any[] = [];
+        const toInsert: any[] = [];
+        
+        for (const row of rows) {
+            const dealId = String(row.custom_data?.deal_id);
+            const existing = reconciliationMap.get(dealId);
+            
+            if (existing) {
+                // Preservar reconciliação e campos de linkagem existentes
+                const preservedFields = {
+                    reconciled: existing.reconciled,
+                    // Preservar campos de linkagem Braintree se existirem
+                    braintree_transaction_id: existing.customData?.braintree_transaction_id,
+                    braintree_order_id: existing.customData?.braintree_order_id,
+                    braintree_status: existing.customData?.braintree_status,
+                    braintree_settlement_batch_id: existing.customData?.braintree_settlement_batch_id,
+                    braintree_disbursement_date: existing.customData?.braintree_disbursement_date,
+                    linked_at: existing.customData?.linked_at,
+                    matched_with: existing.customData?.matched_with,
+                };
+                
+                toUpdate.push({
+                    ...row,
+                    id: existing.id, // Manter o mesmo ID
+                    reconciled: preservedFields.reconciled,
+                    custom_data: {
+                        ...row.custom_data,
+                        // Preservar campos de linkagem
+                        braintree_transaction_id: preservedFields.braintree_transaction_id || row.custom_data?.braintree_transaction_id,
+                        braintree_order_id: preservedFields.braintree_order_id || row.custom_data?.braintree_order_id,
+                        braintree_status: preservedFields.braintree_status || row.custom_data?.braintree_status,
+                        braintree_settlement_batch_id: preservedFields.braintree_settlement_batch_id || row.custom_data?.braintree_settlement_batch_id,
+                        braintree_disbursement_date: preservedFields.braintree_disbursement_date || row.custom_data?.braintree_disbursement_date,
+                        linked_at: preservedFields.linked_at || row.custom_data?.linked_at,
+                        matched_with: preservedFields.matched_with || row.custom_data?.matched_with,
+                    }
+                });
+            } else {
+                toInsert.push(row);
+            }
+        }
+        
+        console.log(`📝 ${toUpdate.length} registros para atualizar, ${toInsert.length} novos para inserir`);
 
-            insertedCount += batch.length;
-            console.log(`  ✓ Lote ${Math.floor(i / BATCH_SIZE) + 1}: ${insertedCount}/${rows.length} inseridos`);
+        // Processar updates em lotes
+        const BATCH_SIZE = 500;
+        if (toUpdate.length > 0) {
+            console.log(`🔄 Atualizando ${toUpdate.length} registros existentes...`);
+            for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
+                const batch = toUpdate.slice(i, i + BATCH_SIZE);
+                
+                // Usar upsert com onConflict no id
+                const { error: upsertError } = await supabaseAdmin
+                    .from('csv_rows')
+                    .upsert(batch, { onConflict: 'id' });
+                
+                if (upsertError) {
+                    console.error(`❌ Erro ao atualizar lote:`, upsertError);
+                    throw upsertError;
+                }
+                console.log(`  ✓ ${Math.min(i + BATCH_SIZE, toUpdate.length)}/${toUpdate.length} atualizados`);
+            }
         }
 
-        console.log(`✅ ${rows.length} deals sincronizados com sucesso!`);
+        // Processar inserts em lotes
+        if (toInsert.length > 0) {
+            console.log(`💾 Inserindo ${toInsert.length} novos registros...`);
+            for (let i = 0; i < toInsert.length; i += BATCH_SIZE) {
+                const batch = toInsert.slice(i, i + BATCH_SIZE);
+                const { error: insertError } = await supabaseAdmin
+                    .from('csv_rows')
+                    .insert(batch);
+
+                if (insertError) {
+                    console.error(`❌ Erro ao inserir lote:`, insertError);
+                    throw insertError;
+                }
+                console.log(`  ✓ ${Math.min(i + BATCH_SIZE, toInsert.length)}/${toInsert.length} inseridos`);
+            }
+        }
+        
+        // Remover deals que não existem mais no HubSpot (opcional - deals deletados)
+        const currentDealIds = new Set(rows.map((r: any) => String(r.custom_data?.deal_id)));
+        const toDelete = Array.from(reconciliationMap.entries())
+            .filter(([dealId]) => !currentDealIds.has(dealId))
+            .map(([, data]) => data.id);
+        
+        if (toDelete.length > 0) {
+            console.log(`🗑️ Removendo ${toDelete.length} deals que não existem mais...`);
+            const { error: deleteError } = await supabaseAdmin
+                .from('csv_rows')
+                .delete()
+                .in('id', toDelete);
+            
+            if (deleteError) {
+                console.error('❌ Erro ao deletar deals removidos:', deleteError);
+                // Não lançar erro, apenas logar
+            }
+        }
+
+        console.log(`✅ Sincronização concluída! ${toUpdate.length} atualizados, ${toInsert.length} novos, ${reconciledCount} reconciliações preservadas`);
 
         return NextResponse.json({
             success: true,
-            message: `${rows.length} deals sincronizados com sucesso`,
+            message: `${rows.length} deals sincronizados (${reconciledCount} reconciliações preservadas)`,
             count: rows.length,
             stats: {
                 total: rows.length,
+                updated: toUpdate.length,
+                inserted: toInsert.length,
+                deleted: toDelete.length,
+                reconciliationsPreserved: reconciledCount,
                 withEmail: withEmail,
                 withName: withName,
                 withProduct: withProduct,

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/lib/supabase";
 import {
     TrendingUp,
     TrendingDown,
@@ -14,180 +13,332 @@ import {
     ChevronRight,
     RefreshCw,
     Filter,
+    BarChart3,
+    FileSpreadsheet,
+    Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { formatCurrency } from "@/lib/formatters";
+import { supabase } from "@/lib/supabase";
 
-interface DRELine {
+// Nomes dos meses
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTHS_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+interface MonthlyData {
+    jan: number; feb: number; mar: number; apr: number; may: number; jun: number;
+    jul: number; aug: number; sep: number; oct: number; nov: number; dec: number;
+}
+
+interface DRELineMonthly {
     code: string;
     name: string;
     type: "revenue" | "expense" | "subtotal" | "total";
     level: number;
-    budget: number;
-    actual: number;
-    variance: number;
-    variancePercent: number;
-    children?: DRELine[];
+    monthly: MonthlyData;
+    budget: MonthlyData;
+    children?: DRELineMonthly[];
 }
+
+// Helper: criar dados mensais vazios
+const emptyMonthlyData = (): MonthlyData => ({
+    jan: 0, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
+    jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0,
+});
+
+// Helper: gerar dados mensais simulados (para despesas ainda não integradas)
+const generateMonthlyData = (baseAnnual: number, variance: number = 0.15): MonthlyData => {
+    const monthlyBase = baseAnnual / 12;
+    const seasonality = [0.85, 0.88, 0.95, 1.02, 1.08, 1.12, 0.92, 0.88, 1.05, 1.15, 1.18, 0.92];
+    return {
+        jan: Math.round(monthlyBase * seasonality[0] * (1 + (Math.random() - 0.5) * variance)),
+        feb: Math.round(monthlyBase * seasonality[1] * (1 + (Math.random() - 0.5) * variance)),
+        mar: Math.round(monthlyBase * seasonality[2] * (1 + (Math.random() - 0.5) * variance)),
+        apr: Math.round(monthlyBase * seasonality[3] * (1 + (Math.random() - 0.5) * variance)),
+        may: Math.round(monthlyBase * seasonality[4] * (1 + (Math.random() - 0.5) * variance)),
+        jun: Math.round(monthlyBase * seasonality[5] * (1 + (Math.random() - 0.5) * variance)),
+        jul: Math.round(monthlyBase * seasonality[6] * (1 + (Math.random() - 0.5) * variance)),
+        aug: Math.round(monthlyBase * seasonality[7] * (1 + (Math.random() - 0.5) * variance)),
+        sep: Math.round(monthlyBase * seasonality[8] * (1 + (Math.random() - 0.5) * variance)),
+        oct: Math.round(monthlyBase * seasonality[9] * (1 + (Math.random() - 0.5) * variance)),
+        nov: Math.round(monthlyBase * seasonality[10] * (1 + (Math.random() - 0.5) * variance)),
+        dec: Math.round(monthlyBase * seasonality[11] * (1 + (Math.random() - 0.5) * variance)),
+    };
+};
+
+const generateBudgetData = (baseAnnual: number): MonthlyData => {
+    const monthlyBase = baseAnnual / 12;
+    return {
+        jan: Math.round(monthlyBase), feb: Math.round(monthlyBase), mar: Math.round(monthlyBase),
+        apr: Math.round(monthlyBase), may: Math.round(monthlyBase), jun: Math.round(monthlyBase),
+        jul: Math.round(monthlyBase), aug: Math.round(monthlyBase), sep: Math.round(monthlyBase),
+        oct: Math.round(monthlyBase), nov: Math.round(monthlyBase), dec: Math.round(monthlyBase),
+    };
+};
+
+const sumMonthly = (data: MonthlyData): number => {
+    return data.jan + data.feb + data.mar + data.apr + data.may + data.jun +
+        data.jul + data.aug + data.sep + data.oct + data.nov + data.dec;
+};
+
+const getMonthValue = (data: MonthlyData, month: number): number => {
+    const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
+    return data[keys[month]];
+};
+
+const getYTD = (data: MonthlyData, upToMonth: number): number => {
+    const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
+    return keys.slice(0, upToMonth + 1).reduce((sum, key) => sum + data[key], 0);
+};
 
 export default function PnLReport() {
     const { selectedScope } = useGlobalScope();
     const [loading, setLoading] = useState(true);
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
-        new Set(["101.0", "102.0", "103.0", "104.0", "105.0", "201.0", "202.0"])
+        new Set(["101.0", "102.0", "201.0", "202.0"])
     );
+    const [selectedYear, setSelectedYear] = useState(2026);
+    const [viewMode, setViewMode] = useState<"monthly" | "quarterly" | "annual">("monthly");
+    const currentMonth = new Date().getMonth(); // 0-11
 
-    // Date filters
-    const [startDate, setStartDate] = useState(() => {
-        const d = new Date();
-        d.setMonth(0, 1);
-        return d.toISOString().split("T")[0];
-    });
-    const [endDate, setEndDate] = useState(() => new Date().toISOString().split("T")[0]);
+    // Estado para dados reais de receita do HubSpot (Web Invoices)
+    const [webInvoicesRevenue, setWebInvoicesRevenue] = useState<MonthlyData>(emptyMonthlyData());
+    const [invoiceCount, setInvoiceCount] = useState<{ [key: string]: number }>({});
 
-    // Revenue structure based on chart of accounts
-    const revenueStructure: DRELine[] = [
+    // Buscar dados reais do HubSpot
+    useEffect(() => {
+        async function fetchRevenueData() {
+            try {
+                setLoading(true);
+
+                // Buscar todos os registros do HubSpot para o ano selecionado
+                const startDate = `${selectedYear}-01-01`;
+                const endDate = `${selectedYear}-12-31`;
+
+                const { data, error } = await supabase
+                    .from('csv_rows')
+                    .select('date, amount')
+                    .eq('source', 'hubspot')
+                    .gte('date', startDate)
+                    .lte('date', endDate);
+
+                if (error) {
+                    console.error('Erro ao buscar dados:', error);
+                    return;
+                }
+
+                // Agrupar por mês
+                const monthlyRevenue: MonthlyData = emptyMonthlyData();
+                const countByMonth: { [key: string]: number } = {};
+                const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
+
+                for (const row of data || []) {
+                    if (!row.date) continue;
+                    const monthIndex = new Date(row.date).getMonth(); // 0-11
+                    const monthKey = monthKeys[monthIndex];
+                    monthlyRevenue[monthKey] += row.amount || 0;
+                    countByMonth[monthKey] = (countByMonth[monthKey] || 0) + 1;
+                }
+
+                setWebInvoicesRevenue(monthlyRevenue);
+                setInvoiceCount(countByMonth);
+                console.log('📊 Receita Web Invoices carregada:', monthlyRevenue);
+
+            } catch (err) {
+                console.error('Erro ao carregar receita:', err);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        fetchRevenueData();
+    }, [selectedYear]);
+
+    // Revenue structure with REAL data from Web Invoices (HubSpot)
+    const revenueStructure: DRELineMonthly[] = useMemo(() => [
+        {
+            code: "100.0", name: "Web Invoices (HubSpot)", type: "revenue", level: 0,
+            monthly: webInvoicesRevenue, budget: generateBudgetData(1200000),
+            children: [
+                { code: "100.1", name: "Web Orders", type: "revenue", level: 1, monthly: webInvoicesRevenue, budget: generateBudgetData(1200000) },
+            ],
+        },
         {
             code: "101.0", name: "Growth (Education)", type: "revenue", level: 0,
-            budget: 850000, actual: 892000, variance: 42000, variancePercent: 4.9,
+            monthly: generateMonthlyData(892000), budget: generateBudgetData(850000),
             children: [
-                { code: "101.1", name: "DSD Courses", type: "revenue", level: 1, budget: 350000, actual: 378000, variance: 28000, variancePercent: 8.0 },
-                { code: "101.2", name: "Others Courses", type: "revenue", level: 1, budget: 120000, actual: 115000, variance: -5000, variancePercent: -4.2 },
-                { code: "101.3", name: "Mastership", type: "revenue", level: 1, budget: 180000, actual: 195000, variance: 15000, variancePercent: 8.3 },
-                { code: "101.4", name: "PC Membership", type: "revenue", level: 1, budget: 100000, actual: 104000, variance: 4000, variancePercent: 4.0 },
-                { code: "101.5", name: "Partnerships", type: "revenue", level: 1, budget: 80000, actual: 78000, variance: -2000, variancePercent: -2.5 },
-                { code: "101.6", name: "Level 2 Allocation", type: "revenue", level: 1, budget: 20000, actual: 22000, variance: 2000, variancePercent: 10.0 },
+                { code: "101.1", name: "DSD Courses", type: "revenue", level: 1, monthly: generateMonthlyData(378000), budget: generateBudgetData(350000) },
+                { code: "101.2", name: "Others Courses", type: "revenue", level: 1, monthly: generateMonthlyData(115000), budget: generateBudgetData(120000) },
+                { code: "101.3", name: "Mastership", type: "revenue", level: 1, monthly: generateMonthlyData(195000), budget: generateBudgetData(180000) },
+                { code: "101.4", name: "PC Membership", type: "revenue", level: 1, monthly: generateMonthlyData(104000), budget: generateBudgetData(100000) },
+                { code: "101.5", name: "Partnerships", type: "revenue", level: 1, monthly: generateMonthlyData(78000), budget: generateBudgetData(80000) },
+                { code: "101.6", name: "Level 2 Allocation", type: "revenue", level: 1, monthly: generateMonthlyData(22000), budget: generateBudgetData(20000) },
             ],
         },
         {
             code: "102.0", name: "Delight (Clinic Services)", type: "revenue", level: 0,
-            budget: 1200000, actual: 1285000, variance: 85000, variancePercent: 7.1,
+            monthly: generateMonthlyData(1285000), budget: generateBudgetData(1200000),
             children: [
-                { code: "102.1", name: "Contracted ROW", type: "revenue", level: 1, budget: 450000, actual: 478000, variance: 28000, variancePercent: 6.2 },
-                { code: "102.2", name: "Contracted AMEX", type: "revenue", level: 1, budget: 280000, actual: 295000, variance: 15000, variancePercent: 5.4 },
-                { code: "102.3", name: "Level 3 New ROW", type: "revenue", level: 1, budget: 180000, actual: 192000, variance: 12000, variancePercent: 6.7 },
-                { code: "102.4", name: "Level 3 New AMEX", type: "revenue", level: 1, budget: 120000, actual: 130000, variance: 10000, variancePercent: 8.3 },
-                { code: "102.5", name: "Consultancies", type: "revenue", level: 1, budget: 95000, actual: 105000, variance: 10000, variancePercent: 10.5 },
-                { code: "102.6", name: "Marketing Coaching", type: "revenue", level: 1, budget: 45000, actual: 52000, variance: 7000, variancePercent: 15.6 },
-                { code: "102.7", name: "Others", type: "revenue", level: 1, budget: 30000, actual: 33000, variance: 3000, variancePercent: 10.0 },
+                { code: "102.1", name: "Contracted ROW", type: "revenue", level: 1, monthly: generateMonthlyData(478000), budget: generateBudgetData(450000) },
+                { code: "102.2", name: "Contracted AMEX", type: "revenue", level: 1, monthly: generateMonthlyData(295000), budget: generateBudgetData(280000) },
+                { code: "102.3", name: "Level 3 New ROW", type: "revenue", level: 1, monthly: generateMonthlyData(192000), budget: generateBudgetData(180000) },
+                { code: "102.4", name: "Level 3 New AMEX", type: "revenue", level: 1, monthly: generateMonthlyData(130000), budget: generateBudgetData(120000) },
+                { code: "102.5", name: "Consultancies", type: "revenue", level: 1, monthly: generateMonthlyData(105000), budget: generateBudgetData(95000) },
+                { code: "102.6", name: "Marketing Coaching", type: "revenue", level: 1, monthly: generateMonthlyData(52000), budget: generateBudgetData(45000) },
+                { code: "102.7", name: "Others", type: "revenue", level: 1, monthly: generateMonthlyData(33000), budget: generateBudgetData(30000) },
             ],
         },
         {
             code: "103.0", name: "Planning Center", type: "revenue", level: 0,
-            budget: 680000, actual: 712000, variance: 32000, variancePercent: 4.7,
+            monthly: generateMonthlyData(712000), budget: generateBudgetData(680000),
             children: [
-                { code: "103.1", name: "Level 3 ROW", type: "revenue", level: 1, budget: 180000, actual: 188000, variance: 8000, variancePercent: 4.4 },
-                { code: "103.2", name: "Level 3 AMEX", type: "revenue", level: 1, budget: 120000, actual: 128000, variance: 8000, variancePercent: 6.7 },
-                { code: "103.5", name: "Level 2", type: "revenue", level: 1, budget: 150000, actual: 158000, variance: 8000, variancePercent: 5.3 },
-                { code: "103.6", name: "Level 1", type: "revenue", level: 1, budget: 130000, actual: 138000, variance: 8000, variancePercent: 6.2 },
-                { code: "103.7", name: "Not a Subscriber", type: "revenue", level: 1, budget: 100000, actual: 100000, variance: 0, variancePercent: 0 },
+                { code: "103.1", name: "Level 3 ROW", type: "revenue", level: 1, monthly: generateMonthlyData(188000), budget: generateBudgetData(180000) },
+                { code: "103.2", name: "Level 3 AMEX", type: "revenue", level: 1, monthly: generateMonthlyData(128000), budget: generateBudgetData(120000) },
+                { code: "103.5", name: "Level 2", type: "revenue", level: 1, monthly: generateMonthlyData(158000), budget: generateBudgetData(150000) },
+                { code: "103.6", name: "Level 1", type: "revenue", level: 1, monthly: generateMonthlyData(138000), budget: generateBudgetData(130000) },
+                { code: "103.7", name: "Not a Subscriber", type: "revenue", level: 1, monthly: generateMonthlyData(100000), budget: generateBudgetData(100000) },
             ],
         },
         {
             code: "104.0", name: "LAB (Manufacture)", type: "revenue", level: 0,
-            budget: 520000, actual: 545000, variance: 25000, variancePercent: 4.8,
+            monthly: generateMonthlyData(545000), budget: generateBudgetData(520000),
             children: [
-                { code: "104.1", name: "Level 3 ROW", type: "revenue", level: 1, budget: 140000, actual: 148000, variance: 8000, variancePercent: 5.7 },
-                { code: "104.2", name: "Level 3 AMEX", type: "revenue", level: 1, budget: 100000, actual: 105000, variance: 5000, variancePercent: 5.0 },
-                { code: "104.5", name: "Level 2", type: "revenue", level: 1, budget: 120000, actual: 128000, variance: 8000, variancePercent: 6.7 },
-                { code: "104.6", name: "Level 1", type: "revenue", level: 1, budget: 100000, actual: 104000, variance: 4000, variancePercent: 4.0 },
-                { code: "104.7", name: "Not a Subscriber", type: "revenue", level: 1, budget: 60000, actual: 60000, variance: 0, variancePercent: 0 },
+                { code: "104.1", name: "Level 3 ROW", type: "revenue", level: 1, monthly: generateMonthlyData(148000), budget: generateBudgetData(140000) },
+                { code: "104.2", name: "Level 3 AMEX", type: "revenue", level: 1, monthly: generateMonthlyData(105000), budget: generateBudgetData(100000) },
+                { code: "104.5", name: "Level 2", type: "revenue", level: 1, monthly: generateMonthlyData(128000), budget: generateBudgetData(120000) },
+                { code: "104.6", name: "Level 1", type: "revenue", level: 1, monthly: generateMonthlyData(104000), budget: generateBudgetData(100000) },
+                { code: "104.7", name: "Not a Subscriber", type: "revenue", level: 1, monthly: generateMonthlyData(60000), budget: generateBudgetData(60000) },
             ],
         },
         {
             code: "105.0", name: "Other Income", type: "revenue", level: 0,
-            budget: 150000, actual: 162000, variance: 12000, variancePercent: 8.0,
+            monthly: generateMonthlyData(162000), budget: generateBudgetData(150000),
             children: [
-                { code: "105.1", name: "Level 1 Subscriptions", type: "revenue", level: 1, budget: 80000, actual: 88000, variance: 8000, variancePercent: 10.0 },
-                { code: "105.2", name: "CORE Partnerships", type: "revenue", level: 1, budget: 40000, actual: 42000, variance: 2000, variancePercent: 5.0 },
-                { code: "105.3", name: "Study Club", type: "revenue", level: 1, budget: 20000, actual: 22000, variance: 2000, variancePercent: 10.0 },
-                { code: "105.4", name: "Other Marketing", type: "revenue", level: 1, budget: 10000, actual: 10000, variance: 0, variancePercent: 0 },
+                { code: "105.1", name: "Level 1 Subscriptions", type: "revenue", level: 1, monthly: generateMonthlyData(88000), budget: generateBudgetData(80000) },
+                { code: "105.2", name: "CORE Partnerships", type: "revenue", level: 1, monthly: generateMonthlyData(42000), budget: generateBudgetData(40000) },
+                { code: "105.3", name: "Study Club", type: "revenue", level: 1, monthly: generateMonthlyData(22000), budget: generateBudgetData(20000) },
+                { code: "105.4", name: "Other Marketing", type: "revenue", level: 1, monthly: generateMonthlyData(10000), budget: generateBudgetData(10000) },
             ],
         },
-    ];
+    ], [webInvoicesRevenue]);
 
-    // Expense structure
-    const expenseStructure: DRELine[] = [
+    // Expense structure with monthly data
+    const expenseStructure: DRELineMonthly[] = useMemo(() => [
         {
             code: "201.0", name: "Cost of Goods Sold (COGS)", type: "expense", level: 0,
-            budget: 680000, actual: 695000, variance: -15000, variancePercent: -2.2,
+            monthly: generateMonthlyData(695000), budget: generateBudgetData(680000),
             children: [
-                { code: "201.1", name: "COGS Growth", type: "expense", level: 1, budget: 180000, actual: 185000, variance: -5000, variancePercent: -2.8 },
-                { code: "201.2", name: "COGS Delight", type: "expense", level: 1, budget: 220000, actual: 228000, variance: -8000, variancePercent: -3.6 },
-                { code: "201.3", name: "COGS Planning Center", type: "expense", level: 1, budget: 150000, actual: 152000, variance: -2000, variancePercent: -1.3 },
-                { code: "201.4", name: "COGS LAB", type: "expense", level: 1, budget: 130000, actual: 130000, variance: 0, variancePercent: 0 },
+                { code: "201.1", name: "COGS Growth", type: "expense", level: 1, monthly: generateMonthlyData(185000), budget: generateBudgetData(180000) },
+                { code: "201.2", name: "COGS Delight", type: "expense", level: 1, monthly: generateMonthlyData(228000), budget: generateBudgetData(220000) },
+                { code: "201.3", name: "COGS Planning Center", type: "expense", level: 1, monthly: generateMonthlyData(152000), budget: generateBudgetData(150000) },
+                { code: "201.4", name: "COGS LAB", type: "expense", level: 1, monthly: generateMonthlyData(130000), budget: generateBudgetData(130000) },
             ],
         },
         {
             code: "202.0", name: "Labour", type: "expense", level: 0,
-            budget: 1450000, actual: 1420000, variance: 30000, variancePercent: 2.1,
+            monthly: generateMonthlyData(1420000), budget: generateBudgetData(1450000),
             children: [
-                { code: "202.1", name: "Labour Growth", type: "expense", level: 1, budget: 280000, actual: 275000, variance: 5000, variancePercent: 1.8 },
-                { code: "202.2", name: "Labour Marketing", type: "expense", level: 1, budget: 180000, actual: 175000, variance: 5000, variancePercent: 2.8 },
-                { code: "202.3", name: "Labour Planning Center", type: "expense", level: 1, budget: 320000, actual: 315000, variance: 5000, variancePercent: 1.6 },
-                { code: "202.4", name: "Labour LAB", type: "expense", level: 1, budget: 280000, actual: 272000, variance: 8000, variancePercent: 2.9 },
-                { code: "202.5", name: "Labour Corporate", type: "expense", level: 1, budget: 250000, actual: 248000, variance: 2000, variancePercent: 0.8 },
-                { code: "202.6", name: "Labour Delight ROW", type: "expense", level: 1, budget: 80000, actual: 78000, variance: 2000, variancePercent: 2.5 },
-                { code: "202.7", name: "Labour AMEX", type: "expense", level: 1, budget: 40000, actual: 38000, variance: 2000, variancePercent: 5.0 },
-                { code: "202.8", name: "Social Security", type: "expense", level: 1, budget: 20000, actual: 19000, variance: 1000, variancePercent: 5.0 },
+                { code: "202.1", name: "Labour Growth", type: "expense", level: 1, monthly: generateMonthlyData(275000), budget: generateBudgetData(280000) },
+                { code: "202.2", name: "Labour Marketing", type: "expense", level: 1, monthly: generateMonthlyData(175000), budget: generateBudgetData(180000) },
+                { code: "202.3", name: "Labour Planning Center", type: "expense", level: 1, monthly: generateMonthlyData(315000), budget: generateBudgetData(320000) },
+                { code: "202.4", name: "Labour LAB", type: "expense", level: 1, monthly: generateMonthlyData(272000), budget: generateBudgetData(280000) },
+                { code: "202.5", name: "Labour Corporate", type: "expense", level: 1, monthly: generateMonthlyData(248000), budget: generateBudgetData(250000) },
+                { code: "202.6", name: "Labour Delight ROW", type: "expense", level: 1, monthly: generateMonthlyData(78000), budget: generateBudgetData(80000) },
+                { code: "202.7", name: "Labour AMEX", type: "expense", level: 1, monthly: generateMonthlyData(38000), budget: generateBudgetData(40000) },
+                { code: "202.8", name: "Social Security", type: "expense", level: 1, monthly: generateMonthlyData(19000), budget: generateBudgetData(20000) },
             ],
         },
         {
             code: "203.0", name: "Travels and Meals", type: "expense", level: 0,
-            budget: 180000, actual: 172000, variance: 8000, variancePercent: 4.4,
+            monthly: generateMonthlyData(172000), budget: generateBudgetData(180000),
             children: [
-                { code: "203.1", name: "T&M Growth", type: "expense", level: 1, budget: 45000, actual: 42000, variance: 3000, variancePercent: 6.7 },
-                { code: "203.2", name: "T&M Marketing", type: "expense", level: 1, budget: 35000, actual: 33000, variance: 2000, variancePercent: 5.7 },
-                { code: "203.5", name: "T&M Corporate", type: "expense", level: 1, budget: 45000, actual: 44000, variance: 1000, variancePercent: 2.2 },
+                { code: "203.1", name: "T&M Growth", type: "expense", level: 1, monthly: generateMonthlyData(42000), budget: generateBudgetData(45000) },
+                { code: "203.2", name: "T&M Marketing", type: "expense", level: 1, monthly: generateMonthlyData(33000), budget: generateBudgetData(35000) },
+                { code: "203.5", name: "T&M Corporate", type: "expense", level: 1, monthly: generateMonthlyData(44000), budget: generateBudgetData(45000) },
             ],
         },
-        { code: "204.0", name: "Professional Fees", type: "expense", level: 0, budget: 120000, actual: 118000, variance: 2000, variancePercent: 1.7, children: [] },
-        { code: "205.0", name: "Marketing and Advertising", type: "expense", level: 0, budget: 95000, actual: 92000, variance: 3000, variancePercent: 3.2, children: [] },
-        { code: "206.0", name: "Office", type: "expense", level: 0, budget: 85000, actual: 82000, variance: 3000, variancePercent: 3.5, children: [] },
-        { code: "207.0", name: "Information Technology", type: "expense", level: 0, budget: 75000, actual: 78000, variance: -3000, variancePercent: -4.0, children: [] },
-        { code: "208.0", name: "Research and Development", type: "expense", level: 0, budget: 45000, actual: 42000, variance: 3000, variancePercent: 6.7, children: [] },
-        { code: "209.0", name: "Bank and Financial Fees", type: "expense", level: 0, budget: 35000, actual: 38000, variance: -3000, variancePercent: -8.6, children: [] },
-        { code: "210.0", name: "Miscellaneous", type: "expense", level: 0, budget: 25000, actual: 23000, variance: 2000, variancePercent: 8.0, children: [] },
-        { code: "211.0", name: "Amortization & Depreciation", type: "expense", level: 0, budget: 40000, actual: 40000, variance: 0, variancePercent: 0, children: [] },
-        { code: "300.0", name: "FX Variation", type: "expense", level: 0, budget: 0, actual: -15000, variance: 15000, variancePercent: 0, children: [] },
-    ];
+        { code: "204.0", name: "Professional Fees", type: "expense", level: 0, monthly: generateMonthlyData(118000), budget: generateBudgetData(120000), children: [] },
+        { code: "205.0", name: "Marketing and Advertising", type: "expense", level: 0, monthly: generateMonthlyData(92000), budget: generateBudgetData(95000), children: [] },
+        { code: "206.0", name: "Office", type: "expense", level: 0, monthly: generateMonthlyData(82000), budget: generateBudgetData(85000), children: [] },
+        { code: "207.0", name: "Information Technology", type: "expense", level: 0, monthly: generateMonthlyData(78000), budget: generateBudgetData(75000), children: [] },
+        { code: "208.0", name: "Research and Development", type: "expense", level: 0, monthly: generateMonthlyData(42000), budget: generateBudgetData(45000), children: [] },
+        { code: "209.0", name: "Bank and Financial Fees", type: "expense", level: 0, monthly: generateMonthlyData(38000), budget: generateBudgetData(35000), children: [] },
+        { code: "210.0", name: "Miscellaneous", type: "expense", level: 0, monthly: generateMonthlyData(23000), budget: generateBudgetData(25000), children: [] },
+        { code: "211.0", name: "Amortization & Depreciation", type: "expense", level: 0, monthly: generateMonthlyData(40000), budget: generateBudgetData(40000), children: [] },
+        { code: "300.0", name: "FX Variation", type: "expense", level: 0, monthly: generateMonthlyData(-15000, 0.5), budget: generateBudgetData(0), children: [] },
+    ], []);
 
-    // Calculate totals
-    const totals = useMemo(() => {
-        const totalRevenueBudget = revenueStructure.reduce((sum, r) => sum + r.budget, 0);
-        const totalRevenueActual = revenueStructure.reduce((sum, r) => sum + r.actual, 0);
-        const totalExpenseBudget = expenseStructure.reduce((sum, e) => sum + e.budget, 0);
-        const totalExpenseActual = expenseStructure.reduce((sum, e) => sum + e.actual, 0);
+    // Calculate monthly totals
+    const monthlyTotals = useMemo(() => {
+        const calcMonthlySum = (items: DRELineMonthly[], monthIndex: number) =>
+            items.reduce((sum, item) => sum + getMonthValue(item.monthly, monthIndex), 0);
+        const calcBudgetSum = (items: DRELineMonthly[], monthIndex: number) =>
+            items.reduce((sum, item) => sum + getMonthValue(item.budget, monthIndex), 0);
 
-        const cogsBudget = expenseStructure.find((e) => e.code === "201.0")?.budget || 0;
-        const cogsActual = expenseStructure.find((e) => e.code === "201.0")?.actual || 0;
-        const grossProfitBudget = totalRevenueBudget - cogsBudget;
-        const grossProfitActual = totalRevenueActual - cogsActual;
+        const cogs = expenseStructure.find(e => e.code === "201.0");
+        const opexItems = expenseStructure.filter(e => e.code !== "201.0" && e.code !== "211.0");
+        const amortization = expenseStructure.find(e => e.code === "211.0");
 
-        const opexBudget = expenseStructure.filter((e) => e.code !== "201.0" && e.code !== "211.0").reduce((sum, e) => sum + e.budget, 0);
-        const opexActual = expenseStructure.filter((e) => e.code !== "201.0" && e.code !== "211.0").reduce((sum, e) => sum + e.actual, 0);
-        const ebitdaBudget = grossProfitBudget - opexBudget;
-        const ebitdaActual = grossProfitActual - opexActual;
+        const months = MONTHS.map((_, i) => {
+            const revenue = calcMonthlySum(revenueStructure, i);
+            const revenueBudget = calcBudgetSum(revenueStructure, i);
+            const cogsVal = cogs ? getMonthValue(cogs.monthly, i) : 0;
+            const cogsBudget = cogs ? getMonthValue(cogs.budget, i) : 0;
+            const grossProfit = revenue - cogsVal;
+            const grossProfitBudget = revenueBudget - cogsBudget;
+            const opex = opexItems.reduce((sum, item) => sum + getMonthValue(item.monthly, i), 0);
+            const opexBudget = opexItems.reduce((sum, item) => sum + getMonthValue(item.budget, i), 0);
+            const ebitda = grossProfit - opex;
+            const ebitdaBudget = grossProfitBudget - opexBudget;
+            const totalExpenses = calcMonthlySum(expenseStructure, i);
+            const totalExpensesBudget = calcBudgetSum(expenseStructure, i);
+            const netIncome = revenue - totalExpenses;
+            const netIncomeBudget = revenueBudget - totalExpensesBudget;
 
-        const netIncomeBudget = totalRevenueBudget - totalExpenseBudget;
-        const netIncomeActual = totalRevenueActual - totalExpenseActual;
+            return {
+                revenue, revenueBudget,
+                cogs: cogsVal, cogsBudget,
+                grossProfit, grossProfitBudget,
+                opex, opexBudget,
+                ebitda, ebitdaBudget,
+                totalExpenses, totalExpensesBudget,
+                netIncome, netIncomeBudget,
+            };
+        });
 
-        return {
-            revenue: { budget: totalRevenueBudget, actual: totalRevenueActual },
-            expenses: { budget: totalExpenseBudget, actual: totalExpenseActual },
-            grossProfit: { budget: grossProfitBudget, actual: grossProfitActual },
-            ebitda: { budget: ebitdaBudget, actual: ebitdaActual },
-            netIncome: { budget: netIncomeBudget, actual: netIncomeActual },
+        // Calculate YTD
+        const ytd = {
+            revenue: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.revenue, 0),
+            revenueBudget: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.revenueBudget, 0),
+            grossProfit: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.grossProfit, 0),
+            grossProfitBudget: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.grossProfitBudget, 0),
+            ebitda: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.ebitda, 0),
+            ebitdaBudget: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.ebitdaBudget, 0),
+            totalExpenses: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.totalExpenses, 0),
+            totalExpensesBudget: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.totalExpensesBudget, 0),
+            netIncome: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.netIncome, 0),
+            netIncomeBudget: months.slice(0, currentMonth + 1).reduce((s, m) => s + m.netIncomeBudget, 0),
         };
-    }, []);
 
-    useEffect(() => {
-        setTimeout(() => setLoading(false), 500);
-    }, [selectedScope]);
+        // Full year totals
+        const annual = {
+            revenue: months.reduce((s, m) => s + m.revenue, 0),
+            revenueBudget: months.reduce((s, m) => s + m.revenueBudget, 0),
+            grossProfit: months.reduce((s, m) => s + m.grossProfit, 0),
+            grossProfitBudget: months.reduce((s, m) => s + m.grossProfitBudget, 0),
+            ebitda: months.reduce((s, m) => s + m.ebitda, 0),
+            ebitdaBudget: months.reduce((s, m) => s + m.ebitdaBudget, 0),
+            totalExpenses: months.reduce((s, m) => s + m.totalExpenses, 0),
+            totalExpensesBudget: months.reduce((s, m) => s + m.totalExpensesBudget, 0),
+            netIncome: months.reduce((s, m) => s + m.netIncome, 0),
+            netIncomeBudget: months.reduce((s, m) => s + m.netIncomeBudget, 0),
+        };
+
+        return { months, ytd, annual };
+    }, [revenueStructure, expenseStructure, currentMonth]);
 
     const toggleSection = (code: string) => {
         const newExpanded = new Set(expandedSections);
@@ -199,70 +350,85 @@ export default function PnLReport() {
         setExpandedSections(newExpanded);
     };
 
-    const renderDRELine = (line: DRELine, isChild = false) => {
+    const formatCompact = (value: number): string => {
+        const absVal = Math.abs(value);
+        if (absVal >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+        if (absVal >= 1000) return `${(value / 1000).toFixed(0)}K`;
+        return value.toFixed(0);
+    };
+
+    // Render monthly P&L row
+    const renderMonthlyRow = (line: DRELineMonthly, isChild = false) => {
         const hasChildren = line.children && line.children.length > 0;
         const isExpanded = expandedSections.has(line.code);
-        const isPositiveVariance = line.type === "revenue" ? line.variance > 0 : line.variance > 0;
+        const monthlyValues = MONTHS.map((_, i) => getMonthValue(line.monthly, i));
+        const total = sumMonthly(line.monthly);
+        const ytd = getYTD(line.monthly, currentMonth);
 
         return (
             <div key={line.code}>
-                <div
-                    className={`grid grid-cols-6 gap-4 py-3 px-4 border-b border-gray-700 hover:bg-gray-800/50 transition-colors ${isChild ? "pl-10 bg-gray-800/30" : "bg-gray-900/50"
-                        }`}
-                >
-                    <div className="col-span-2 flex items-center gap-2">
+                <div className={`grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-2 px-3 border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${isChild ? "pl-8 bg-gray-900/30" : "bg-gray-900/60"}`}>
+                    {/* Account name */}
+                    <div className="flex items-center gap-1 min-w-0">
                         {hasChildren ? (
-                            <button onClick={() => toggleSection(line.code)} className="p-1 hover:bg-gray-700 rounded">
-                                {isExpanded ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                            <button onClick={() => toggleSection(line.code)} className="p-0.5 hover:bg-gray-700 rounded shrink-0">
+                                {isExpanded ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
                             </button>
                         ) : (
-                            <div className="w-6" />
+                            <div className="w-4" />
                         )}
-                        <span className="text-xs text-gray-500 font-mono">{line.code}</span>
-                        <span className={`text-sm ${isChild ? "text-gray-400" : "font-medium text-white"}`}>{line.name}</span>
+                        <span className="text-[10px] text-gray-500 font-mono shrink-0">{line.code}</span>
+                        <span className={`text-xs truncate ${isChild ? "text-gray-400" : "font-medium text-white"}`} title={line.name}>{line.name}</span>
                     </div>
-                    <div className="text-right">
-                        <span className="text-sm text-gray-300 font-mono">{formatCurrency(line.budget, "EUR")}</span>
-                    </div>
-                    <div className="text-right">
-                        <span className={`text-sm font-mono font-medium ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"}`}>
-                            {formatCurrency(line.actual, "EUR")}
+
+                    {/* Monthly values */}
+                    {monthlyValues.map((val, i) => (
+                        <div key={i} className={`text-right ${i > currentMonth ? "opacity-40" : ""}`}>
+                            <span className={`text-xs font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"}`}>
+                                {formatCompact(val)}
+                            </span>
+                        </div>
+                    ))}
+
+                    {/* YTD */}
+                    <div className="text-right bg-blue-900/20 px-1 rounded">
+                        <span className={`text-xs font-mono font-semibold ${line.type === "revenue" ? "text-emerald-300" : "text-red-300"}`}>
+                            {formatCompact(ytd)}
                         </span>
                     </div>
-                    <div className="text-right">
-                        <span className={`text-sm font-mono ${isPositiveVariance ? "text-emerald-400" : "text-red-400"}`}>
-                            {line.variance >= 0 ? "+" : ""}{formatCurrency(line.variance, "EUR")}
+
+                    {/* Total */}
+                    <div className="text-right bg-gray-800/50 px-1 rounded">
+                        <span className={`text-xs font-mono font-bold ${line.type === "revenue" ? "text-emerald-300" : "text-red-300"}`}>
+                            {formatCompact(total)}
                         </span>
-                    </div>
-                    <div className="text-right">
-                        <Badge variant="outline" className={`text-xs font-mono ${isPositiveVariance ? "border-emerald-500/50 text-emerald-400 bg-emerald-500/10" : "border-red-500/50 text-red-400 bg-red-500/10"}`}>
-                            {line.variancePercent >= 0 ? "+" : ""}{line.variancePercent.toFixed(1)}%
-                        </Badge>
                     </div>
                 </div>
-                {hasChildren && isExpanded && line.children?.map((child) => renderDRELine(child, true))}
+                {hasChildren && isExpanded && line.children?.map((child) => renderMonthlyRow(child, true))}
             </div>
         );
     };
 
-    const renderSubtotalRow = (label: string, budget: number, actual: number, isProfit = false) => {
-        const variance = actual - budget;
-        const variancePercent = budget !== 0 ? (variance / budget) * 100 : 0;
-        const isPositive = variance >= 0;
-
+    // Subtotal row for monthly view
+    const renderMonthlySubtotal = (label: string, monthlyData: typeof monthlyTotals.months, field: keyof typeof monthlyTotals.months[0], ytd: number, total: number, isProfit = false) => {
         return (
-            <div className={`grid grid-cols-6 gap-4 py-4 px-4 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y-2 border-blue-500/30" : "bg-gray-800/80 border-y border-gray-600"}`}>
-                <div className="col-span-2 flex items-center gap-2">
-                    <div className="w-6" />
-                    <span className={`font-semibold ${isProfit ? "text-lg text-blue-300" : "text-white"}`}>{label}</span>
+            <div className={`grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-3 px-3 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-800/60 border-y border-gray-700"}`}>
+                <div className="flex items-center gap-2">
+                    <div className="w-4" />
+                    <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-white"} text-sm`}>{label}</span>
                 </div>
-                <div className="text-right"><span className="text-sm text-gray-300 font-mono font-semibold">{formatCurrency(budget, "EUR")}</span></div>
-                <div className="text-right"><span className={`text-sm font-mono font-bold ${isProfit ? "text-blue-300" : actual >= 0 ? "text-emerald-400" : "text-red-400"}`}>{formatCurrency(actual, "EUR")}</span></div>
-                <div className="text-right"><span className={`text-sm font-mono font-semibold ${isPositive ? "text-emerald-400" : "text-red-400"}`}>{variance >= 0 ? "+" : ""}{formatCurrency(variance, "EUR")}</span></div>
-                <div className="text-right">
-                    <Badge variant="outline" className={`text-xs font-mono font-semibold ${isPositive ? "border-emerald-500/50 text-emerald-400 bg-emerald-500/10" : "border-red-500/50 text-red-400 bg-red-500/10"}`}>
-                        {variancePercent >= 0 ? "+" : ""}{variancePercent.toFixed(1)}%
-                    </Badge>
+                {monthlyData.map((m, i) => (
+                    <div key={i} className={`text-right ${i > currentMonth ? "opacity-40" : ""}`}>
+                        <span className={`text-xs font-mono font-semibold ${isProfit ? "text-blue-300" : "text-gray-200"}`}>
+                            {formatCompact(m[field] as number)}
+                        </span>
+                    </div>
+                ))}
+                <div className="text-right bg-blue-900/30 px-1 rounded">
+                    <span className={`text-xs font-mono font-bold ${isProfit ? "text-blue-200" : "text-gray-100"}`}>{formatCompact(ytd)}</span>
+                </div>
+                <div className="text-right bg-amber-900/30 px-1 rounded">
+                    <span className={`text-xs font-mono font-bold ${isProfit ? "text-amber-200" : "text-gray-100"}`}>{formatCompact(total)}</span>
                 </div>
             </div>
         );
@@ -282,140 +448,330 @@ export default function PnLReport() {
 
     return (
         <div className="min-h-screen bg-gray-950">
-            {/* Dark Header */}
-            <header className="bg-gray-900 border-b border-gray-800 px-6 py-4 sticky top-0 z-20">
+            {/* Premium Dark Header */}
+            <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-800 px-6 py-5 sticky top-0 z-20">
                 <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                            <DollarSign className="h-7 w-7 text-emerald-400" />
-                            P&L Statement (DRE)
-                        </h1>
-                        <p className="text-sm text-gray-400 mt-1">Demonstração do Resultado do Exercício • {selectedScope === "GLOBAL" ? "All Regions" : selectedScope}</p>
+                    <div className="flex items-center gap-4">
+                        <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-xl border border-emerald-500/30">
+                            <BarChart3 className="h-7 w-7 text-emerald-400" />
+                        </div>
+                        <div>
+                            <h1 className="text-2xl font-bold text-white">
+                                P&L Statement
+                            </h1>
+                            <p className="text-sm text-gray-400 mt-0.5">
+                                Demonstração do Resultado • {selectedYear} • {selectedScope === "GLOBAL" ? "All Regions" : selectedScope}
+                            </p>
+                        </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800"><RefreshCw className="h-4 w-4 mr-2" />Refresh</Button>
-                        <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800"><Download className="h-4 w-4 mr-2" />Export</Button>
+                        <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg p-1 border border-gray-700">
+                            {[2024, 2025, 2026].map((year) => (
+                                <button
+                                    key={year}
+                                    onClick={() => setSelectedYear(year)}
+                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                >
+                                    {year}
+                                </button>
+                            ))}
+                        </div>
+                        <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                            <RefreshCw className="h-4 w-4 mr-2" />Sync
+                        </Button>
+                        <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                            <FileSpreadsheet className="h-4 w-4 mr-2" />Excel
+                        </Button>
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                            <Download className="h-4 w-4 mr-2" />Export PDF
+                        </Button>
                     </div>
                 </div>
             </header>
 
             <div className="p-6 space-y-6">
-                {/* Date Filters */}
-                <Card className="bg-gray-900 border-gray-800">
-                    <CardContent className="pt-6">
-                        <div className="flex items-center gap-6 flex-wrap">
+                {/* Executive Summary KPIs */}
+                <div className="grid grid-cols-6 gap-4">
+                    {/* Revenue Card */}
+                    <Card className="bg-gradient-to-br from-emerald-900/50 to-emerald-950/80 border-emerald-700/50 col-span-1">
+                        <CardContent className="pt-5 pb-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Revenue YTD</span>
+                                <TrendingUp className="h-4 w-4 text-emerald-400" />
+                            </div>
+                            <p className="text-2xl font-bold text-white mb-1">{formatCompact(monthlyTotals.ytd.revenue)}</p>
                             <div className="flex items-center gap-2">
-                                <Calendar className="h-5 w-5 text-gray-400" />
-                                <span className="text-sm font-medium text-gray-300">Period:</span>
+                                <Badge className="text-[10px] bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                                    {((monthlyTotals.ytd.revenue / monthlyTotals.ytd.revenueBudget - 1) * 100).toFixed(1)}% vs Budget
+                                </Badge>
                             </div>
-                            <div className="flex items-center gap-3">
-                                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-40 bg-gray-800 border-gray-700 text-white" />
-                                <span className="text-gray-500">to</span>
-                                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-40 bg-gray-800 border-gray-700 text-white" />
+                            <div className="mt-3 pt-3 border-t border-emerald-800/50">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-emerald-400/70">Full Year</span>
+                                    <span className="text-emerald-300 font-semibold">{formatCompact(monthlyTotals.annual.revenue)}</span>
+                                </div>
                             </div>
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800" onClick={() => { const d = new Date(); d.setMonth(0, 1); setStartDate(d.toISOString().split("T")[0]); setEndDate(new Date().toISOString().split("T")[0]); }}>YTD</Button>
-                                <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800" onClick={() => { const now = new Date(); const firstDay = new Date(now.getFullYear(), now.getMonth(), 1); setStartDate(firstDay.toISOString().split("T")[0]); setEndDate(now.toISOString().split("T")[0]); }}>MTD</Button>
-                                <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800" onClick={() => { const now = new Date(); const q = Math.floor(now.getMonth() / 3); const firstDay = new Date(now.getFullYear(), q * 3, 1); setStartDate(firstDay.toISOString().split("T")[0]); setEndDate(now.toISOString().split("T")[0]); }}>QTD</Button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </CardContent>
+                    </Card>
 
-                {/* KPI Cards */}
-                <div className="grid grid-cols-5 gap-4">
-                    <Card className="bg-gradient-to-br from-emerald-900/40 to-emerald-950/60 border-emerald-800/50">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center gap-2 mb-2"><TrendingUp className="h-5 w-5 text-emerald-400" /><span className="text-sm font-medium text-emerald-300">Total Revenue</span></div>
-                            <p className="text-2xl font-bold text-white">{formatCurrency(totals.revenue.actual, "EUR")}</p>
-                            <p className="text-xs text-emerald-400 mt-1">+{formatCurrency(totals.revenue.actual - totals.revenue.budget, "EUR")} vs budget</p>
+                    {/* Gross Profit Card */}
+                    <Card className="bg-gradient-to-br from-blue-900/50 to-blue-950/80 border-blue-700/50 col-span-1">
+                        <CardContent className="pt-5 pb-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold text-blue-300 uppercase tracking-wider">Gross Profit</span>
+                                <Layers className="h-4 w-4 text-blue-400" />
+                            </div>
+                            <p className="text-2xl font-bold text-white mb-1">{formatCompact(monthlyTotals.ytd.grossProfit)}</p>
+                            <div className="flex items-center gap-2">
+                                <Badge className="text-[10px] bg-blue-500/20 text-blue-300 border-blue-500/30">
+                                    {((monthlyTotals.ytd.grossProfit / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Margin
+                                </Badge>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-blue-800/50">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-blue-400/70">Full Year</span>
+                                    <span className="text-blue-300 font-semibold">{formatCompact(monthlyTotals.annual.grossProfit)}</span>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-gradient-to-br from-blue-900/40 to-blue-950/60 border-blue-800/50">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center gap-2 mb-2"><Layers className="h-5 w-5 text-blue-400" /><span className="text-sm font-medium text-blue-300">Gross Profit</span></div>
-                            <p className="text-2xl font-bold text-white">{formatCurrency(totals.grossProfit.actual, "EUR")}</p>
-                            <p className="text-xs text-blue-400 mt-1">{((totals.grossProfit.actual / totals.revenue.actual) * 100).toFixed(1)}% margin</p>
+
+                    {/* EBITDA Card */}
+                    <Card className="bg-gradient-to-br from-purple-900/50 to-purple-950/80 border-purple-700/50 col-span-1">
+                        <CardContent className="pt-5 pb-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold text-purple-300 uppercase tracking-wider">EBITDA</span>
+                                <Building2 className="h-4 w-4 text-purple-400" />
+                            </div>
+                            <p className="text-2xl font-bold text-white mb-1">{formatCompact(monthlyTotals.ytd.ebitda)}</p>
+                            <div className="flex items-center gap-2">
+                                <Badge className="text-[10px] bg-purple-500/20 text-purple-300 border-purple-500/30">
+                                    {((monthlyTotals.ytd.ebitda / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Margin
+                                </Badge>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-purple-800/50">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-purple-400/70">Full Year</span>
+                                    <span className="text-purple-300 font-semibold">{formatCompact(monthlyTotals.annual.ebitda)}</span>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-gradient-to-br from-red-900/40 to-red-950/60 border-red-800/50">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center gap-2 mb-2"><TrendingDown className="h-5 w-5 text-red-400" /><span className="text-sm font-medium text-red-300">Total Expenses</span></div>
-                            <p className="text-2xl font-bold text-white">{formatCurrency(totals.expenses.actual, "EUR")}</p>
-                            <p className="text-xs text-emerald-400 mt-1">{formatCurrency(totals.expenses.budget - totals.expenses.actual, "EUR")} under budget</p>
+
+                    {/* Expenses Card */}
+                    <Card className="bg-gradient-to-br from-red-900/50 to-red-950/80 border-red-700/50 col-span-1">
+                        <CardContent className="pt-5 pb-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold text-red-300 uppercase tracking-wider">Expenses</span>
+                                <TrendingDown className="h-4 w-4 text-red-400" />
+                            </div>
+                            <p className="text-2xl font-bold text-white mb-1">{formatCompact(monthlyTotals.ytd.totalExpenses)}</p>
+                            <div className="flex items-center gap-2">
+                                <Badge className="text-[10px] bg-red-500/20 text-red-300 border-red-500/30">
+                                    {((1 - monthlyTotals.ytd.totalExpenses / monthlyTotals.ytd.totalExpensesBudget) * 100).toFixed(1)}% Under
+                                </Badge>
+                            </div>
+                            <div className="mt-3 pt-3 border-t border-red-800/50">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-red-400/70">Full Year</span>
+                                    <span className="text-red-300 font-semibold">{formatCompact(monthlyTotals.annual.totalExpenses)}</span>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
-                    <Card className="bg-gradient-to-br from-purple-900/40 to-purple-950/60 border-purple-800/50">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center gap-2 mb-2"><Building2 className="h-5 w-5 text-purple-400" /><span className="text-sm font-medium text-purple-300">EBITDA</span></div>
-                            <p className="text-2xl font-bold text-white">{formatCurrency(totals.ebitda.actual, "EUR")}</p>
-                            <p className="text-xs text-purple-400 mt-1">{((totals.ebitda.actual / totals.revenue.actual) * 100).toFixed(1)}% margin</p>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-gradient-to-br from-amber-900/40 to-amber-950/60 border-amber-800/50">
-                        <CardContent className="pt-6">
-                            <div className="flex items-center gap-2 mb-2"><DollarSign className="h-5 w-5 text-amber-400" /><span className="text-sm font-medium text-amber-300">Net Income</span></div>
-                            <p className="text-2xl font-bold text-white">{formatCurrency(totals.netIncome.actual, "EUR")}</p>
-                            <p className="text-xs text-amber-400 mt-1">{((totals.netIncome.actual / totals.revenue.actual) * 100).toFixed(1)}% margin</p>
+
+                    {/* Net Income Card */}
+                    <Card className="bg-gradient-to-br from-amber-900/50 to-amber-950/80 border-amber-700/50 col-span-2">
+                        <CardContent className="pt-5 pb-4">
+                            <div className="flex items-center justify-between mb-3">
+                                <span className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Net Income YTD</span>
+                                <DollarSign className="h-4 w-4 text-amber-400" />
+                            </div>
+                            <div className="flex items-baseline gap-4">
+                                <p className="text-3xl font-bold text-white">{formatCurrency(monthlyTotals.ytd.netIncome, "EUR")}</p>
+                                <Badge className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30">
+                                    {((monthlyTotals.ytd.netIncome / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Net Margin
+                                </Badge>
+                            </div>
+                            <div className="mt-4 grid grid-cols-3 gap-4 pt-3 border-t border-amber-800/50">
+                                <div>
+                                    <span className="text-[10px] text-amber-400/70 uppercase">vs Budget</span>
+                                    <p className={`text-sm font-semibold ${monthlyTotals.ytd.netIncome >= monthlyTotals.ytd.netIncomeBudget ? "text-emerald-400" : "text-red-400"}`}>
+                                        {monthlyTotals.ytd.netIncome >= monthlyTotals.ytd.netIncomeBudget ? "+" : ""}{formatCompact(monthlyTotals.ytd.netIncome - monthlyTotals.ytd.netIncomeBudget)}
+                                    </p>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] text-amber-400/70 uppercase">Full Year Est.</span>
+                                    <p className="text-sm font-semibold text-amber-300">{formatCompact(monthlyTotals.annual.netIncome)}</p>
+                                </div>
+                                <div>
+                                    <span className="text-[10px] text-amber-400/70 uppercase">Variance %</span>
+                                    <p className={`text-sm font-semibold ${monthlyTotals.ytd.netIncome >= monthlyTotals.ytd.netIncomeBudget ? "text-emerald-400" : "text-red-400"}`}>
+                                        {((monthlyTotals.ytd.netIncome / monthlyTotals.ytd.netIncomeBudget - 1) * 100).toFixed(1)}%
+                                    </p>
+                                </div>
+                            </div>
                         </CardContent>
                     </Card>
                 </div>
 
-                {/* DRE Table */}
+                {/* Monthly P&L Table */}
                 <Card className="bg-gray-900 border-gray-800 overflow-hidden">
-                    <CardHeader className="border-b border-gray-800 bg-gray-900/50">
-                        <CardTitle className="text-white flex items-center gap-2"><Filter className="h-5 w-5 text-gray-400" />Income Statement Detail</CardTitle>
+                    <CardHeader className="border-b border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800/80 py-4">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <CardTitle className="text-white flex items-center gap-2">
+                                    <Calendar className="h-5 w-5 text-gray-400" />
+                                    Monthly Income Statement
+                                </CardTitle>
+                                <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                                    {MONTHS_FULL[currentMonth]} {selectedYear}
+                                </Badge>
+                                <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                                    📊 Web Invoices: Dados Reais
+                                </Badge>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs text-gray-500">
+                                <div className="flex items-center gap-1">
+                                    <div className="w-3 h-3 bg-emerald-500/50 rounded"></div>
+                                    <span>Revenue</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-3 h-3 bg-red-500/50 rounded"></div>
+                                    <span>Expense</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-3 h-3 bg-blue-500/50 rounded"></div>
+                                    <span>YTD</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <div className="w-3 h-3 bg-amber-500/50 rounded"></div>
+                                    <span>Total</span>
+                                </div>
+                            </div>
+                        </div>
                     </CardHeader>
 
                     {/* Table Header */}
-                    <div className="grid grid-cols-6 gap-4 py-3 px-4 bg-gray-800/80 border-b border-gray-700 text-xs font-semibold uppercase tracking-wider text-gray-400">
-                        <div className="col-span-2">Account</div>
-                        <div className="text-right">Budget</div>
-                        <div className="text-right">Actual</div>
-                        <div className="text-right">Variance</div>
-                        <div className="text-right">Var %</div>
+                    <div className="grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-2 px-3 bg-gray-800/80 border-b border-gray-700 text-[10px] font-semibold uppercase tracking-wider text-gray-400 sticky top-[73px] z-10">
+                        <div>Account</div>
+                        {MONTHS.map((m, i) => (
+                            <div key={m} className={`text-right ${i === currentMonth ? "text-emerald-400" : ""} ${i > currentMonth ? "opacity-50" : ""}`}>
+                                {m}
+                            </div>
+                        ))}
+                        <div className="text-right text-blue-400 bg-blue-900/20 px-1 rounded">YTD</div>
+                        <div className="text-right text-amber-400 bg-amber-900/20 px-1 rounded">Total</div>
                     </div>
 
                     {/* Revenue Section */}
-                    <div className="bg-emerald-900/30 border-b border-emerald-800/50 py-2 px-4">
-                        <span className="text-sm font-bold text-emerald-400 uppercase tracking-wider">▼ Revenue</span>
+                    <div className="bg-gradient-to-r from-emerald-900/40 to-emerald-900/20 border-b border-emerald-800/50 py-2 px-3">
+                        <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                            <TrendingUp className="h-3 w-3" />
+                            Revenue
+                        </span>
                     </div>
-                    {revenueStructure.map((line) => renderDRELine(line))}
-                    {renderSubtotalRow("TOTAL REVENUE", totals.revenue.budget, totals.revenue.actual)}
+                    <div className="max-h-[300px] overflow-y-auto">
+                        {revenueStructure.map((line) => renderMonthlyRow(line))}
+                    </div>
+                    {renderMonthlySubtotal("TOTAL REVENUE", monthlyTotals.months, "revenue", monthlyTotals.ytd.revenue, monthlyTotals.annual.revenue)}
 
                     {/* Expenses Section */}
-                    <div className="bg-red-900/30 border-b border-red-800/50 py-2 px-4 mt-2">
-                        <span className="text-sm font-bold text-red-400 uppercase tracking-wider">▼ Expenses</span>
+                    <div className="bg-gradient-to-r from-red-900/40 to-red-900/20 border-b border-red-800/50 py-2 px-3 mt-1">
+                        <span className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                            <TrendingDown className="h-3 w-3" />
+                            Expenses
+                        </span>
                     </div>
-                    {expenseStructure.map((line) => renderDRELine(line))}
-                    {renderSubtotalRow("TOTAL EXPENSES", totals.expenses.budget, totals.expenses.actual)}
+                    <div className="max-h-[300px] overflow-y-auto">
+                        {expenseStructure.map((line) => renderMonthlyRow(line))}
+                    </div>
+                    {renderMonthlySubtotal("TOTAL EXPENSES", monthlyTotals.months, "totalExpenses", monthlyTotals.ytd.totalExpenses, monthlyTotals.annual.totalExpenses)}
 
-                    {/* Subtotals */}
-                    {renderSubtotalRow("GROSS PROFIT", totals.grossProfit.budget, totals.grossProfit.actual, true)}
-                    {renderSubtotalRow("EBITDA", totals.ebitda.budget, totals.ebitda.actual, true)}
+                    {/* Profit Lines */}
+                    {renderMonthlySubtotal("GROSS PROFIT", monthlyTotals.months, "grossProfit", monthlyTotals.ytd.grossProfit, monthlyTotals.annual.grossProfit, true)}
+                    {renderMonthlySubtotal("EBITDA", monthlyTotals.months, "ebitda", monthlyTotals.ytd.ebitda, monthlyTotals.annual.ebitda, true)}
 
-                    {/* Net Income */}
-                    <div className="bg-gradient-to-r from-amber-900/50 to-orange-900/50 border-y-2 border-amber-500/50 py-5 px-4">
-                        <div className="grid grid-cols-6 gap-4">
-                            <div className="col-span-2 flex items-center gap-2">
-                                <div className="w-6" />
-                                <DollarSign className="h-6 w-6 text-amber-400" />
-                                <span className="text-xl font-bold text-amber-300">NET INCOME</span>
+                    {/* Net Income Final Row */}
+                    <div className="bg-gradient-to-r from-amber-900/60 via-orange-900/50 to-amber-900/60 border-y-2 border-amber-500/50 py-4 px-3">
+                        <div className="grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1">
+                            <div className="flex items-center gap-2">
+                                <DollarSign className="h-5 w-5 text-amber-400" />
+                                <span className="text-lg font-bold text-amber-300">NET INCOME</span>
                             </div>
-                            <div className="text-right"><span className="text-lg text-gray-300 font-mono font-semibold">{formatCurrency(totals.netIncome.budget, "EUR")}</span></div>
-                            <div className="text-right"><span className="text-xl font-mono font-bold text-amber-300">{formatCurrency(totals.netIncome.actual, "EUR")}</span></div>
-                            <div className="text-right">
-                                <span className={`text-lg font-mono font-semibold ${totals.netIncome.actual >= totals.netIncome.budget ? "text-emerald-400" : "text-red-400"}`}>
-                                    {totals.netIncome.actual >= totals.netIncome.budget ? "+" : ""}{formatCurrency(totals.netIncome.actual - totals.netIncome.budget, "EUR")}
+                            {monthlyTotals.months.map((m, i) => (
+                                <div key={i} className={`text-right ${i > currentMonth ? "opacity-40" : ""}`}>
+                                    <span className={`text-sm font-mono font-bold ${m.netIncome >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                                        {formatCompact(m.netIncome)}
+                                    </span>
+                                </div>
+                            ))}
+                            <div className="text-right bg-blue-900/40 px-2 rounded-lg py-1">
+                                <span className={`text-sm font-mono font-bold ${monthlyTotals.ytd.netIncome >= 0 ? "text-blue-200" : "text-red-300"}`}>
+                                    {formatCompact(monthlyTotals.ytd.netIncome)}
                                 </span>
                             </div>
-                            <div className="text-right">
-                                <Badge className="text-sm font-mono font-semibold bg-amber-500/20 text-amber-300 border-amber-500/50">
-                                    {totals.netIncome.budget !== 0 ? `${(((totals.netIncome.actual - totals.netIncome.budget) / totals.netIncome.budget) * 100).toFixed(1)}%` : "N/A"}
-                                </Badge>
+                            <div className="text-right bg-amber-900/40 px-2 rounded-lg py-1">
+                                <span className={`text-sm font-mono font-bold ${monthlyTotals.annual.netIncome >= 0 ? "text-amber-200" : "text-red-300"}`}>
+                                    {formatCompact(monthlyTotals.annual.netIncome)}
+                                </span>
                             </div>
                         </div>
                     </div>
+                </Card>
+
+                {/* Budget vs Actual Comparison */}
+                <Card className="bg-gray-900 border-gray-800">
+                    <CardHeader className="border-b border-gray-800 py-4">
+                        <CardTitle className="text-white flex items-center gap-2 text-base">
+                            <Filter className="h-4 w-4 text-gray-400" />
+                            Budget vs Actual Variance Analysis
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-4">
+                        <div className="grid grid-cols-5 gap-4">
+                            {[
+                                { label: "Revenue", ytdActual: monthlyTotals.ytd.revenue, ytdBudget: monthlyTotals.ytd.revenueBudget, color: "emerald" },
+                                { label: "Gross Profit", ytdActual: monthlyTotals.ytd.grossProfit, ytdBudget: monthlyTotals.ytd.grossProfitBudget, color: "blue" },
+                                { label: "EBITDA", ytdActual: monthlyTotals.ytd.ebitda, ytdBudget: monthlyTotals.ytd.ebitdaBudget, color: "purple" },
+                                { label: "Expenses", ytdActual: monthlyTotals.ytd.totalExpenses, ytdBudget: monthlyTotals.ytd.totalExpensesBudget, color: "red", invertVariance: true },
+                                { label: "Net Income", ytdActual: monthlyTotals.ytd.netIncome, ytdBudget: monthlyTotals.ytd.netIncomeBudget, color: "amber" },
+                            ].map((item) => {
+                                const variance = item.ytdActual - item.ytdBudget;
+                                const variancePercent = item.ytdBudget !== 0 ? (variance / item.ytdBudget) * 100 : 0;
+                                const isPositive = item.invertVariance ? variance <= 0 : variance >= 0;
+
+                                return (
+                                    <div key={item.label} className={`bg-${item.color}-900/20 border border-${item.color}-800/40 rounded-lg p-4`}>
+                                        <div className="text-xs font-semibold text-gray-400 mb-3">{item.label}</div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Budget</span>
+                                                <span className="text-gray-300 font-mono">{formatCompact(item.ytdBudget)}</span>
+                                            </div>
+                                            <div className="flex justify-between text-sm">
+                                                <span className="text-gray-500">Actual</span>
+                                                <span className="text-white font-mono font-semibold">{formatCompact(item.ytdActual)}</span>
+                                            </div>
+                                            <div className="border-t border-gray-700 pt-2 mt-2">
+                                                <div className="flex justify-between items-center">
+                                                    <span className="text-xs text-gray-500">Variance</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`text-sm font-mono font-bold ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
+                                                            {variance >= 0 ? "+" : ""}{formatCompact(variance)}
+                                                        </span>
+                                                        <Badge className={`text-[10px] ${isPositive ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"}`}>
+                                                            {variancePercent >= 0 ? "+" : ""}{variancePercent.toFixed(1)}%
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </CardContent>
                 </Card>
             </div>
         </div>

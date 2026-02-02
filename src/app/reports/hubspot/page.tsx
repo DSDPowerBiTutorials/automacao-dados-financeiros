@@ -254,7 +254,21 @@ export default function HubSpotReportPage() {
 
             console.log(`✅ [FETCH] Query completou: ${allData.length} records`);
 
-            setRows(allData);
+            // Mapear dados para preencher customer_name e customer_email do custom_data
+            const mappedData = allData.map((row: any) => {
+                const firstName = row.custom_data?.customer_firstname || '';
+                const lastName = row.custom_data?.customer_lastname || '';
+                const customerName = `${firstName} ${lastName}`.trim() || null;
+                const customerEmail = row.custom_data?.customer_email || null;
+
+                return {
+                    ...row,
+                    customer_name: customerName,
+                    customer_email: customerEmail,
+                };
+            });
+
+            setRows(mappedData);
             console.log('✅ [FETCH] Dados carregados com sucesso!');
         } catch (error: any) {
             console.error('❌ [FETCH] Erro ao carregar dados:', error);
