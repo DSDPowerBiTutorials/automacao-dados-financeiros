@@ -165,7 +165,13 @@ interface HubSpotDeal {
         contact_id?: string;
 
         // ==========================================
-        // 🔗 Linkagem Braintree (preenchido pela app)
+        // � Financial Account (Conta de Receita)
+        // ==========================================
+        financial_account_code?: string;
+        financial_account_name?: string;
+
+        // ==========================================
+        // �🔗 Linkagem Braintree (preenchido pela app)
         // ==========================================
         braintree_order_id?: string;
         braintree_transaction_id?: string;
@@ -931,6 +937,12 @@ ${result.recommendations.join('\n')}
                                     <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
                                         Customer
                                     </th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        Product
+                                    </th>
+                                    <th className="px-4 py-3 text-left text-sm font-medium text-gray-700">
+                                        Financial Account
+                                    </th>
                                     <th className="px-4 py-3 text-center text-sm font-medium text-gray-700">
                                         Paid Status
                                     </th>
@@ -968,6 +980,11 @@ ${result.recommendations.join('\n')}
                                     // Amountes numéricos
                                     const totalPaid = row.custom_data?.total_paid || row.custom_data?.Total_Paid || 0;
                                     const totalAmount = row.amount || row.custom_data?.Total || 0;
+
+                                    // Product e Financial Account
+                                    const productName = row.custom_data?.product_name || row.custom_data?.dealname || '-';
+                                    const financialAccountCode = row.custom_data?.financial_account_code;
+                                    const financialAccountName = row.custom_data?.financial_account_name;
 
                                     return (
                                         <>
@@ -1020,7 +1037,27 @@ ${result.recommendations.join('\n')}
                                                     </a>
                                                 </td>
 
-                                                {/* 5. Paid Status */}
+                                                {/* 5. Product */}
+                                                <td className="px-4 py-3">
+                                                    <span className="text-sm truncate block max-w-[180px]" title={String(productName)}>
+                                                        {String(productName).length > 30
+                                                            ? String(productName).substring(0, 30) + '...'
+                                                            : productName}
+                                                    </span>
+                                                </td>
+
+                                                {/* 6. Financial Account */}
+                                                <td className="px-4 py-3">
+                                                    {financialAccountCode ? (
+                                                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                                                            {financialAccountCode} - {financialAccountName}
+                                                        </Badge>
+                                                    ) : (
+                                                        <span className="text-gray-400 text-sm">-</span>
+                                                    )}
+                                                </td>
+
+                                                {/* 7. Paid Status */}
                                                 <td className="px-4 py-3 text-center">
                                                     <div className="flex items-center justify-center gap-2">
                                                         {getPaidStatusIcon(paidStatus)}
@@ -1030,7 +1067,7 @@ ${result.recommendations.join('\n')}
                                                     </div>
                                                 </td>
 
-                                                {/* 6. Date Paid */}
+                                                {/* 8. Date Paid */}
                                                 <td className="px-4 py-3 text-sm">
                                                     {(() => {
                                                         const datePaid = row.custom_data?.date_paid || row.custom_data?.Date_Paid || row.custom_data?.hs_closed_won_date;
@@ -1048,12 +1085,12 @@ ${result.recommendations.join('\n')}
                                                     })()}
                                                 </td>
 
-                                                {/* 7. Total Paid */}
+                                                {/* 9. Total Paid */}
                                                 <td className="px-4 py-3 text-right">
                                                     <span className="font-medium">{formatCurrency(totalPaid)}</span>
                                                 </td>
 
-                                                {/* 8. Total */}
+                                                {/* 10. Total */}
                                                 <td className="px-4 py-3 text-right">
                                                     <span className="font-medium">{formatCurrency(totalAmount)}</span>
                                                 </td>
