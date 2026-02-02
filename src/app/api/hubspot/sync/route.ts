@@ -5,6 +5,135 @@ import { cleanProductName, extractCurrency } from '@/lib/matching-engine';
 import { ENRICHED_HUBSPOT_QUERY, INTERMEDIATE_HUBSPOT_QUERY, SIMPLE_HUBSPOT_QUERY } from '@/lib/hubspot-queries';
 import crypto from 'crypto';
 
+// ============================================================
+// 💰 MAPEAMENTO PRODUTO → FINANCIAL ACCOUNT CODE
+// Baseado nas contas de receita designadas para cada produto
+// ============================================================
+function getFinancialAccountCode(orderCode: string, productName: string, description: string): { code: string | null; name: string | null } {
+    // Combinar todas as strings para busca
+    const searchText = `${orderCode} ${productName} ${description}`.toLowerCase();
+
+    // ====== 101.0 - Growth (Education) ======
+
+    // 101.1 - DSD Courses
+    if (
+        searchText.includes('dsd provider') ||
+        searchText.includes('designing smiles') ||
+        searchText.includes('dsd course') ||
+        searchText.includes('increase case acceptance') ||
+        searchText.includes('case acceptance mastery') ||
+        searchText.includes('ios festival') ||
+        searchText.includes('intraoral scanner') ||
+        searchText.includes('kois & coachman') ||
+        searchText.includes('dsd aligners') ||
+        searchText.includes('dsd clinical') ||
+        searchText.includes('wtd meeting') ||
+        searchText.includes('smile to success') ||
+        searchText.includes('implement and learn') ||
+        searchText.includes('mastering dsd')
+    ) {
+        return { code: '101.1', name: 'DSD Courses' };
+    }
+
+    // 101.3 - Mastership
+    if (
+        searchText.includes('mastership') ||
+        searchText.includes('master ship') ||
+        searchText.includes('residency')
+    ) {
+        return { code: '101.3', name: 'Mastership' };
+    }
+
+    // 101.4 - PC Membership (Provider/Planning Center Membership)
+    if (
+        searchText.includes('provider annual membership') ||
+        searchText.includes('provider membership') ||
+        searchText.includes('pc membership') ||
+        searchText.includes('planning center membership')
+    ) {
+        return { code: '101.4', name: 'PC Membership' };
+    }
+
+    // 101.5 - Partnerships / Sponsorships
+    if (
+        searchText.includes('sponsorship') ||
+        searchText.includes('partnership') ||
+        searchText.includes('sponsor') ||
+        searchText.includes('exhibit space')
+    ) {
+        return { code: '101.5', name: 'Partnerships' };
+    }
+
+    // ====== 102.0 - Delight (Clinic Services) ======
+
+    // 102.5 - Consultancies
+    if (
+        searchText.includes('dsd clinic transformation') ||
+        searchText.includes('clinic transformation') ||
+        searchText.includes('dsd clinic -') ||  // "DSD Clinic - Name" pattern
+        searchText.includes('consultancy') ||
+        searchText.includes('consulting')
+    ) {
+        return { code: '102.5', name: 'Consultancies' };
+    }
+
+    // 102.6 - Marketing Coaching
+    if (
+        searchText.includes('fractional cmo') ||
+        searchText.includes('marketing coaching') ||
+        searchText.includes('growth hub onboarding')
+    ) {
+        return { code: '102.6', name: 'Marketing Coaching' };
+    }
+
+    // ====== 103.0 - Planning Center ======
+    if (
+        searchText.includes('planning center') ||
+        searchText.includes('prep guide') ||
+        searchText.includes('smile design') ||
+        searchText.includes('planning service')
+    ) {
+        return { code: '103.0', name: 'Planning Center' };
+    }
+
+    // ====== 104.0 - LAB (Manufacture) ======
+    if (
+        searchText.includes('natural restoration') ||
+        searchText.includes('lab ') ||
+        searchText.includes('prosthesis') ||
+        searchText.includes('crown') ||
+        searchText.includes('veneer') ||
+        searchText.includes('surgical guide') ||
+        searchText.includes('abutment')
+    ) {
+        return { code: '104.0', name: 'LAB' };
+    }
+
+    // ====== 105.0 - Other Income ======
+
+    // 105.1 - Level 1 Subscriptions (Growth Hub subscriptions)
+    if (
+        searchText.includes('dsd growth hub') ||
+        searchText.includes('growth hub') ||
+        searchText.includes('monthly subscription') ||
+        searchText.includes('subscription')
+    ) {
+        return { code: '105.1', name: 'Level 1 Subscriptions' };
+    }
+
+    // 105.4 - Other Marketing Revenues
+    if (
+        searchText.includes('cancellation fee') ||
+        searchText.includes('reschedule fee') ||
+        searchText.includes('late fee')
+    ) {
+        return { code: '105.4', name: 'Other Marketing Revenues' };
+    }
+
+    // Fallback: sem mapeamento
+    return { code: null, name: null };
+}
+
 // Rota para sincronizar dados do HubSpot via SQL Server Data Warehouse
 // Configurar timeout maior para evitar erro de loading infinito
 export const maxDuration = 180; // 3 minutos
@@ -198,6 +327,9 @@ export async function POST(request: Request) {
                 description += ` (${customerName})`;
             }
 
+            // 💰 FINANCIAL ACCOUNT: Mapear produto → conta de receita
+            const financialAccount = getFinancialAccountCode(orderCode, productName, description);
+
             return {
                 id: crypto.randomUUID(),
                 file_name: 'hubspot-sync',
@@ -312,6 +444,12 @@ export async function POST(request: Request) {
                     hs_lastmodifieddate: deal.last_updated || null,
                     synced_at: new Date().toISOString(),
                     query_type: usedQuery,
+
+                    // ==========================================
+                    // 💰 Financial Account (Conta de Receita)
+                    // ==========================================
+                    financial_account_code: financialAccount.code,
+                    financial_account_name: financialAccount.name,
                 },
             };
         });
@@ -342,22 +480,34 @@ export async function POST(request: Request) {
         console.log(`🏢 ${withCompany} deals com empresa (${((withCompany / rows.length) * 100).toFixed(1)}%)`);
         console.log(`📦 ${withProduct} deals com produto (${((withProduct / rows.length) * 100).toFixed(1)}%)`);
 
+        // 💰 Contar deals com Financial Account mapeado
+        const withFinancialAccount = rows.filter((r: any) => r.custom_data.financial_account_code).length;
+        console.log(`💰 ${withFinancialAccount} deals com Financial Account (${((withFinancialAccount / rows.length) * 100).toFixed(1)}%)`);
+
+        // Mostrar distribuição por conta
+        const accountDistribution: Record<string, number> = {};
+        rows.forEach((r: any) => {
+            const code = r.custom_data.financial_account_code || 'N/A';
+            accountDistribution[code] = (accountDistribution[code] || 0) + 1;
+        });
+        console.log('   📊 Distribuição por conta:', accountDistribution);
+
         // ============================================================
         // UPSERT: Preservar reconciliações existentes
         // ============================================================
         console.log('🔍 Buscando reconciliações existentes para preservar...');
-        
+
         // Buscar todos os registros existentes do HubSpot com suas reconciliações
         const { data: existingRows, error: fetchError } = await supabaseAdmin
             .from('csv_rows')
             .select('id, custom_data, reconciled')
             .eq('source', 'hubspot');
-        
+
         if (fetchError) {
             console.error('❌ Erro ao buscar registros existentes:', fetchError);
             throw fetchError;
         }
-        
+
         // Criar mapa de deal_id -> dados de reconciliação
         const reconciliationMap = new Map<string, { id: string; reconciled: boolean; customData: any }>();
         for (const row of existingRows || []) {
@@ -370,19 +520,19 @@ export async function POST(request: Request) {
                 });
             }
         }
-        
+
         console.log(`📊 ${reconciliationMap.size} registros existentes encontrados`);
         const reconciledCount = Array.from(reconciliationMap.values()).filter(r => r.reconciled).length;
         console.log(`✅ ${reconciledCount} reconciliações serão preservadas`);
-        
+
         // Separar em updates e inserts
         const toUpdate: any[] = [];
         const toInsert: any[] = [];
-        
+
         for (const row of rows) {
             const dealId = String(row.custom_data?.deal_id);
             const existing = reconciliationMap.get(dealId);
-            
+
             if (existing) {
                 // Preservar reconciliação e campos de linkagem existentes
                 const preservedFields = {
@@ -396,7 +546,7 @@ export async function POST(request: Request) {
                     linked_at: existing.customData?.linked_at,
                     matched_with: existing.customData?.matched_with,
                 };
-                
+
                 toUpdate.push({
                     ...row,
                     id: existing.id, // Manter o mesmo ID
@@ -417,7 +567,7 @@ export async function POST(request: Request) {
                 toInsert.push(row);
             }
         }
-        
+
         console.log(`📝 ${toUpdate.length} registros para atualizar, ${toInsert.length} novos para inserir`);
 
         // Processar updates em lotes
@@ -426,12 +576,12 @@ export async function POST(request: Request) {
             console.log(`🔄 Atualizando ${toUpdate.length} registros existentes...`);
             for (let i = 0; i < toUpdate.length; i += BATCH_SIZE) {
                 const batch = toUpdate.slice(i, i + BATCH_SIZE);
-                
+
                 // Usar upsert com onConflict no id
                 const { error: upsertError } = await supabaseAdmin
                     .from('csv_rows')
                     .upsert(batch, { onConflict: 'id' });
-                
+
                 if (upsertError) {
                     console.error(`❌ Erro ao atualizar lote:`, upsertError);
                     throw upsertError;
@@ -456,20 +606,20 @@ export async function POST(request: Request) {
                 console.log(`  ✓ ${Math.min(i + BATCH_SIZE, toInsert.length)}/${toInsert.length} inseridos`);
             }
         }
-        
+
         // Remover deals que não existem mais no HubSpot (opcional - deals deletados)
         const currentDealIds = new Set(rows.map((r: any) => String(r.custom_data?.deal_id)));
         const toDelete = Array.from(reconciliationMap.entries())
             .filter(([dealId]) => !currentDealIds.has(dealId))
             .map(([, data]) => data.id);
-        
+
         if (toDelete.length > 0) {
             console.log(`🗑️ Removendo ${toDelete.length} deals que não existem mais...`);
             const { error: deleteError } = await supabaseAdmin
                 .from('csv_rows')
                 .delete()
                 .in('id', toDelete);
-            
+
             if (deleteError) {
                 console.error('❌ Erro ao deletar deals removidos:', deleteError);
                 // Não lançar erro, apenas logar
@@ -480,7 +630,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             success: true,
-            message: `${rows.length} deals sincronizados (${reconciledCount} reconciliações preservadas)`,
+            message: `${rows.length} deals sincronizados (${reconciledCount} reconciliações preservadas, ${withFinancialAccount} com Financial Account)`,
             count: rows.length,
             stats: {
                 total: rows.length,
@@ -491,6 +641,8 @@ export async function POST(request: Request) {
                 withEmail: withEmail,
                 withName: withName,
                 withProduct: withProduct,
+                withFinancialAccount: withFinancialAccount,
+                financialAccountDistribution: accountDistribution,
                 queryType: usedQuery,
             },
         });
