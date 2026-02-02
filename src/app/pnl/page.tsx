@@ -22,7 +22,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { formatCurrency } from "@/lib/formatters";
-import { supabase } from "@/lib/supabase";
 
 // Nomes dos meses
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -108,44 +107,24 @@ export default function PnLReport() {
     const [webInvoicesRevenue, setWebInvoicesRevenue] = useState<MonthlyData>(emptyMonthlyData());
     const [invoiceCount, setInvoiceCount] = useState<{ [key: string]: number }>({});
 
-    // Buscar dados reais do HubSpot
+    // Buscar dados reais do HubSpot via API
     useEffect(() => {
         async function fetchRevenueData() {
             try {
                 setLoading(true);
 
-                // Buscar todos os registros do HubSpot para o ano selecionado
-                const startDate = `${selectedYear}-01-01`;
-                const endDate = `${selectedYear}-12-31`;
+                // Buscar dados via API route (usa supabaseAdmin)
+                const response = await fetch(`/api/pnl/revenue?year=${selectedYear}`);
+                const result = await response.json();
 
-                const { data, error } = await supabase
-                    .from('csv_rows')
-                    .select('date, amount')
-                    .eq('source', 'hubspot')
-                    .gte('date', startDate)
-                    .lte('date', endDate);
-
-                if (error) {
-                    console.error('Erro ao buscar dados:', error);
+                if (!response.ok || !result.success) {
+                    console.error('Erro ao buscar dados:', result.error);
                     return;
                 }
 
-                // Agrupar por mês
-                const monthlyRevenue: MonthlyData = emptyMonthlyData();
-                const countByMonth: { [key: string]: number } = {};
-                const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
-
-                for (const row of data || []) {
-                    if (!row.date) continue;
-                    const monthIndex = new Date(row.date).getMonth(); // 0-11
-                    const monthKey = monthKeys[monthIndex];
-                    monthlyRevenue[monthKey] += row.amount || 0;
-                    countByMonth[monthKey] = (countByMonth[monthKey] || 0) + 1;
-                }
-
-                setWebInvoicesRevenue(monthlyRevenue);
-                setInvoiceCount(countByMonth);
-                console.log('📊 Receita Web Invoices carregada:', monthlyRevenue);
+                setWebInvoicesRevenue(result.revenue);
+                setInvoiceCount(result.count);
+                console.log('📊 Receita Web Invoices carregada:', result.revenue);
 
             } catch (err) {
                 console.error('Erro ao carregar receita:', err);
@@ -350,11 +329,14 @@ export default function PnLReport() {
         setExpandedSections(newExpanded);
     };
 
+    // Formato completo sem abreviação: 100.000
+    const formatNumber = (value: number): string => {
+        return Math.round(value).toLocaleString('pt-PT');
+    };
+
+    // Formato compacto para células da tabela (sem abreviação)
     const formatCompact = (value: number): string => {
-        const absVal = Math.abs(value);
-        if (absVal >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
-        if (absVal >= 1000) return `${(value / 1000).toFixed(0)}K`;
-        return value.toFixed(0);
+        return Math.round(value).toLocaleString('pt-PT');
     };
 
     // Render monthly P&L row
