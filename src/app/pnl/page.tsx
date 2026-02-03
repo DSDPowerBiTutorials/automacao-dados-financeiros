@@ -865,7 +865,7 @@ export default function PnLReport() {
 
             {/* Drill-down Modal */}
             <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && closeDrilldown()}>
-                <DialogContent 
+                <DialogContent
                     className="max-w-none max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col"
                     style={{ width: '80vw' }}
                 >
