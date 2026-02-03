@@ -296,12 +296,14 @@ export default function PnLReport() {
         count: 0,
     });
 
-    // Lógica correta: mês "aceso" = último mês fechado (M-1) apenas para ano atual
+    // Lógica correta: último mês fechado
+    // - Para anos passados: todos os 12 meses fechados (índice 11 = dezembro)
+    // - Para ano atual: mês anterior ao atual (-1 se estamos em Janeiro = nenhum fechado)
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
-    const currentMonthIndex = currentDate.getMonth(); // 0-11
-    // Para ano atual: mostrar até mês anterior (M-1). Para anos passados: mostrar todos (11 = dezembro)
-    const lastClosedMonth = selectedYear < currentYear ? 11 : Math.max(0, currentMonthIndex - 1);
+    const currentMonthIndex = currentDate.getMonth(); // 0-11 (Fev=1)
+    // lastClosedMonth = índice do último mês FECHADO (inclusive), ou -1 se nenhum
+    const lastClosedMonth = selectedYear < currentYear ? 11 : currentMonthIndex - 1;
 
     // Estado para dados reais de receita
     const [totalRevenue, setTotalRevenue] = useState<MonthlyData>(emptyMonthlyData());
@@ -601,9 +603,10 @@ export default function PnLReport() {
     const renderMonthlyRow = (line: DRELineMonthly, isChild = false) => {
         const hasChildren = line.children && line.children.length > 0;
         const isExpanded = expandedSections.has(line.code);
-        // Para ano atual: meses >= lastClosedMonth mostram 0 (não fechados)
-        const monthlyValues = MONTHS.map((_, i) => i >= lastClosedMonth ? 0 : getMonthValue(line.monthly, i));
-        const total = getYTD(line.monthly, lastClosedMonth - 1); // Total = soma até mês fechado
+        // Meses não fechados: i > lastClosedMonth (meses APÓS o último fechado)
+        const monthlyValues = MONTHS.map((_, i) => i > lastClosedMonth ? 0 : getMonthValue(line.monthly, i));
+        // Total = soma até o último mês fechado (inclusive), ou 0 se nenhum fechado
+        const total = lastClosedMonth >= 0 ? getYTD(line.monthly, lastClosedMonth) : 0;
         const isClickable = line.type === "revenue" && !line.code.endsWith('.0');
 
         return (
@@ -625,7 +628,7 @@ export default function PnLReport() {
                     {/* Monthly values - CLICKABLE for drill-down */}
                     {monthlyValues.map((val, i) => {
                         const realVal = getMonthValue(line.monthly, i);
-                        const isNotClosed = i >= lastClosedMonth;
+                        const isNotClosed = i > lastClosedMonth; // Mês não fechado se APÓS o último fechado
                         return (
                             <div
                                 key={i}
@@ -661,7 +664,7 @@ export default function PnLReport() {
                     <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-white"} text-xs`}>{label}</span>
                 </div>
                 {monthlyData.map((m, i) => {
-                    const isNotClosed = i >= lastClosedMonth;
+                    const isNotClosed = i > lastClosedMonth; // Mês não fechado se APÓS o último fechado
                     return (
                         <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>
                             <span className={`text-[10px] font-mono font-semibold ${isProfit ? "text-blue-300" : "text-gray-200"}`}>
@@ -868,7 +871,7 @@ export default function PnLReport() {
                                     Monthly Income Statement
                                 </CardTitle>
                                 <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
-                                    {MONTHS_FULL[lastClosedMonth]} {selectedYear}
+                                    {lastClosedMonth >= 0 ? `${MONTHS_FULL[lastClosedMonth]} ${selectedYear}` : `Nenhum mês fechado`}
                                 </Badge>
                                 <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
                                     📊 Invoice Orders: Dados Reais
@@ -895,7 +898,7 @@ export default function PnLReport() {
                     <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 bg-gray-800/80 border-b border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-400 sticky top-[73px] z-10">
                         <div>Account</div>
                         {MONTHS.map((m, i) => (
-                            <div key={m} className={`text-right ${i === lastClosedMonth - 1 ? "text-emerald-400" : ""} ${i >= lastClosedMonth ? "opacity-40" : ""}`}>
+                            <div key={m} className={`text-right ${i === lastClosedMonth ? "text-emerald-400" : ""} ${i > lastClosedMonth ? "opacity-40" : ""}`}>
                                 {m}
                             </div>
                         ))}
@@ -938,7 +941,7 @@ export default function PnLReport() {
                                 <span className="text-sm font-bold text-amber-300">NET INCOME</span>
                             </div>
                             {monthlyTotals.months.map((m, i) => {
-                                const isNotClosed = i >= lastClosedMonth;
+                                const isNotClosed = i > lastClosedMonth; // Mês não fechado se APÓS o último fechado
                                 const displayValue = isNotClosed ? 0 : m.netIncome;
                                 return (
                                     <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>
