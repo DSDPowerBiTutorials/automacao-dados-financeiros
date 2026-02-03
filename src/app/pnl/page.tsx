@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import {
     TrendingUp,
     TrendingDown,
@@ -16,12 +16,36 @@ import {
     BarChart3,
     FileSpreadsheet,
     Loader2,
+    X,
+    ExternalLink,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { formatCurrency } from "@/lib/formatters";
+
+// Tipos para drill-down
+interface DrilldownTransaction {
+    id: string;
+    date: string;
+    description: string;
+    amount: number;
+    customer: string;
+    orderType: string;
+}
+
+interface DrilldownState {
+    isOpen: boolean;
+    loading: boolean;
+    faCode: string;
+    faName: string;
+    month: number;
+    transactions: DrilldownTransaction[];
+    total: number;
+    count: number;
+}
 
 // Nomes dos meses
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -102,6 +126,18 @@ export default function PnLReport() {
     const [selectedYear, setSelectedYear] = useState(2025);
     const [viewMode, setViewMode] = useState<"monthly" | "quarterly" | "annual">("monthly");
 
+    // Drill-down state
+    const [drilldown, setDrilldown] = useState<DrilldownState>({
+        isOpen: false,
+        loading: false,
+        faCode: "",
+        faName: "",
+        month: 0,
+        transactions: [],
+        total: 0,
+        count: 0,
+    });
+
     // Lógica correta: mês "aceso" = último mês fechado (M-1) apenas para ano atual
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
@@ -141,6 +177,50 @@ export default function PnLReport() {
 
         fetchRevenueData();
     }, [selectedYear]);
+
+    // Função para abrir drill-down
+    const openDrilldown = useCallback(async (faCode: string, faName: string, monthIndex: number) => {
+        if (faCode.endsWith('.0')) return; // Não abrir para totais (categorias)
+
+        setDrilldown(prev => ({
+            ...prev,
+            isOpen: true,
+            loading: true,
+            faCode,
+            faName,
+            month: monthIndex,
+            transactions: [],
+            total: 0,
+            count: 0,
+        }));
+
+        try {
+            const response = await fetch(
+                `/api/pnl/drilldown?fa=${faCode}&month=${monthIndex}&year=${selectedYear}`
+            );
+            const result = await response.json();
+
+            if (result.success) {
+                setDrilldown(prev => ({
+                    ...prev,
+                    loading: false,
+                    transactions: result.transactions || [],
+                    total: result.transactions?.reduce((s: number, t: DrilldownTransaction) => s + t.amount, 0) || 0,
+                    count: result.pagination?.total || result.transactions?.length || 0,
+                }));
+            } else {
+                console.error('Erro drill-down:', result.error);
+                setDrilldown(prev => ({ ...prev, loading: false }));
+            }
+        } catch (err) {
+            console.error('Erro ao buscar drill-down:', err);
+            setDrilldown(prev => ({ ...prev, loading: false }));
+        }
+    }, [selectedYear]);
+
+    const closeDrilldown = useCallback(() => {
+        setDrilldown(prev => ({ ...prev, isOpen: false }));
+    }, []);
 
     // Helper para pegar dados da financial account ou zeros
     const getFA = (code: string): MonthlyData => byFinancialAccount[code] || emptyMonthlyData();
@@ -366,6 +446,7 @@ export default function PnLReport() {
         const monthlyValues = MONTHS.map((_, i) => getMonthValue(line.monthly, i));
         const total = sumMonthly(line.monthly);
         const ytd = getYTD(line.monthly, lastClosedMonth);
+        const isClickable = line.type === "revenue" && !line.code.endsWith('.0');
 
         return (
             <div key={line.code}>
@@ -383,10 +464,15 @@ export default function PnLReport() {
                         <span className={`text-xs truncate ${isChild ? "text-gray-400" : "font-medium text-white"}`} title={line.name}>{line.name}</span>
                     </div>
 
-                    {/* Monthly values */}
+                    {/* Monthly values - CLICKABLE for drill-down */}
                     {monthlyValues.map((val, i) => (
-                        <div key={i} className={`text-right ${i > lastClosedMonth ? "opacity-40" : ""}`}>
-                            <span className={`text-xs font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"}`}>
+                        <div
+                            key={i}
+                            className={`text-right ${i > lastClosedMonth ? "opacity-40" : ""} ${isClickable && val > 0 ? "cursor-pointer hover:bg-emerald-900/30 rounded transition-colors" : ""}`}
+                            onClick={isClickable && val > 0 ? () => openDrilldown(line.code, line.name, i) : undefined}
+                            title={isClickable && val > 0 ? `Clique para ver detalhes de ${line.name} em ${MONTHS[i]}` : undefined}
+                        >
+                            <span className={`text-xs font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"} ${isClickable && val > 0 ? "underline decoration-dotted underline-offset-2" : ""}`}>
                                 {formatCompact(val)}
                             </span>
                         </div>
@@ -776,6 +862,90 @@ export default function PnLReport() {
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Drill-down Modal */}
+            <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && closeDrilldown()}>
+                <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden bg-gray-900 border-gray-700">
+                    <DialogHeader className="border-b border-gray-700 pb-4">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <DialogTitle className="text-xl text-white flex items-center gap-2">
+                                    <BarChart3 className="h-5 w-5 text-emerald-400" />
+                                    Drill-Down: {drilldown.faName}
+                                </DialogTitle>
+                                <p className="text-sm text-gray-400 mt-1">
+                                    <span className="font-mono text-emerald-400">{drilldown.faCode}</span>
+                                    {" • "}
+                                    <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
+                                    {" • "}
+                                    <span className="text-emerald-300">{drilldown.count} transações</span>
+                                </p>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={closeDrilldown} className="text-gray-400 hover:text-white">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="overflow-y-auto max-h-[60vh] mt-4">
+                        {drilldown.loading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+                                <span className="ml-3 text-gray-400">Carregando transações...</span>
+                            </div>
+                        ) : drilldown.transactions.length === 0 ? (
+                            <div className="text-center py-12 text-gray-500">
+                                Nenhuma transação encontrada para este período.
+                            </div>
+                        ) : (
+                            <table className="w-full">
+                                <thead className="bg-gray-800 sticky top-0">
+                                    <tr>
+                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3">Data</th>
+                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3">Cliente</th>
+                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3">Descrição</th>
+                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3">Tipo</th>
+                                        <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3">Valor</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {drilldown.transactions.map((tx, idx) => (
+                                        <tr key={tx.id} className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""}`}>
+                                            <td className="px-4 py-3 text-sm text-gray-300 font-mono">
+                                                {new Date(tx.date).toLocaleDateString('pt-PT')}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-white max-w-[200px] truncate" title={tx.customer}>
+                                                {tx.customer}
+                                            </td>
+                                            <td className="px-4 py-3 text-sm text-gray-400 max-w-[250px] truncate" title={tx.description}>
+                                                {tx.description}
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                                                    {tx.orderType}
+                                                </Badge>
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-sm font-mono text-emerald-400 font-semibold">
+                                                {formatCurrency(tx.amount, "EUR")}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                                <tfoot className="bg-gray-800">
+                                    <tr>
+                                        <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
+                                            Total ({drilldown.count} transações)
+                                        </td>
+                                        <td className="px-4 py-3 text-right text-lg font-mono text-emerald-300 font-bold">
+                                            {formatCurrency(drilldown.total, "EUR")}
+                                        </td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
