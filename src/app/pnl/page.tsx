@@ -589,14 +589,14 @@ export default function PnLReport() {
         setExpandedSections(newExpanded);
     };
 
-    // Formato completo sem abreviação: 100.000
+    // Formato forçado: 1.000.000 (ponto como separador de milhar)
     const formatNumber = (value: number): string => {
-        return Math.round(value).toLocaleString('pt-PT');
+        return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     };
 
     // Formato compacto para células da tabela (sem abreviação)
     const formatCompact = (value: number): string => {
-        return Math.round(value).toLocaleString('pt-PT');
+        return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     };
 
     // Render monthly P&L row
