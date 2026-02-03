@@ -865,8 +865,8 @@ export default function PnLReport() {
 
             {/* Drill-down Modal */}
             <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && closeDrilldown()}>
-                <DialogContent className="max-w-5xl max-h-[85vh] overflow-hidden bg-gray-900 border-gray-700">
-                    <DialogHeader className="border-b border-gray-700 pb-4">
+                <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col">
+                    <DialogHeader className="border-b border-gray-700 pb-4 flex-shrink-0">
                         <div className="flex items-center justify-between">
                             <div>
                                 <DialogTitle className="text-xl text-white flex items-center gap-2">
@@ -887,7 +887,7 @@ export default function PnLReport() {
                         </div>
                     </DialogHeader>
 
-                    <div className="overflow-y-auto max-h-[60vh] mt-4">
+                    <div className="flex-1 overflow-auto mt-4">
                         {drilldown.loading ? (
                             <div className="flex items-center justify-center py-12">
                                 <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
@@ -898,50 +898,52 @@ export default function PnLReport() {
                                 Nenhuma transação encontrada para este período.
                             </div>
                         ) : (
-                            <table className="w-full">
-                                <thead className="bg-gray-800 sticky top-0">
-                                    <tr>
-                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3">Data</th>
-                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3">Cliente</th>
-                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3">Descrição</th>
-                                        <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3">Tipo</th>
-                                        <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3">Valor</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {drilldown.transactions.map((tx, idx) => (
-                                        <tr key={tx.id} className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""}`}>
-                                            <td className="px-4 py-3 text-sm text-gray-300 font-mono">
-                                                {new Date(tx.date).toLocaleDateString('pt-PT')}
+                            <div className="overflow-x-auto">
+                                <table className="w-full min-w-[800px]">
+                                    <thead className="bg-gray-800 sticky top-0 z-10">
+                                        <tr>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Data</th>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Cliente</th>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Descrição</th>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Tipo</th>
+                                            <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {drilldown.transactions.map((tx, idx) => (
+                                            <tr key={tx.id} className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""}`}>
+                                                <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
+                                                    {new Date(tx.date).toLocaleDateString('pt-PT')}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm text-white" title={tx.customer}>
+                                                    {tx.customer}
+                                                </td>
+                                                <td className="px-4 py-2 text-sm text-gray-400" title={tx.description}>
+                                                    {tx.description}
+                                                </td>
+                                                <td className="px-4 py-2 whitespace-nowrap">
+                                                    <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                                                        {tx.orderType}
+                                                    </Badge>
+                                                </td>
+                                                <td className="px-4 py-2 text-right text-sm font-mono text-emerald-400 font-semibold whitespace-nowrap">
+                                                    {formatCurrency(tx.amount, "EUR")}
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                    <tfoot className="bg-gray-800 sticky bottom-0">
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
+                                                Total ({drilldown.count} transações)
                                             </td>
-                                            <td className="px-4 py-3 text-sm text-white max-w-[200px] truncate" title={tx.customer}>
-                                                {tx.customer}
-                                            </td>
-                                            <td className="px-4 py-3 text-sm text-gray-400 max-w-[250px] truncate" title={tx.description}>
-                                                {tx.description}
-                                            </td>
-                                            <td className="px-4 py-3">
-                                                <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
-                                                    {tx.orderType}
-                                                </Badge>
-                                            </td>
-                                            <td className="px-4 py-3 text-right text-sm font-mono text-emerald-400 font-semibold">
-                                                {formatCurrency(tx.amount, "EUR")}
+                                            <td className="px-4 py-3 text-right text-lg font-mono text-emerald-300 font-bold whitespace-nowrap">
+                                                {formatCurrency(drilldown.total, "EUR")}
                                             </td>
                                         </tr>
-                                    ))}
-                                </tbody>
-                                <tfoot className="bg-gray-800">
-                                    <tr>
-                                        <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
-                                            Total ({drilldown.count} transações)
-                                        </td>
-                                        <td className="px-4 py-3 text-right text-lg font-mono text-emerald-300 font-bold">
-                                            {formatCurrency(drilldown.total, "EUR")}
-                                        </td>
-                                    </tr>
-                                </tfoot>
-                            </table>
+                                    </tfoot>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </DialogContent>
