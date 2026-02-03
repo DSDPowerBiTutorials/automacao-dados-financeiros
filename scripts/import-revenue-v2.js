@@ -274,7 +274,12 @@ function determineFinancialAccount(cols, email, date, clientHistory) {
   const isAMEX = isUSA(country);
   const history = clientHistory.get(email) || {};
   
-  if (linha && linha.includes(' - ') && linha !== originalFA) {
+  if (linha) {
+    const linhaCode = linha.match(/(\d+\.\d+)/)?.[1];
+    if (linhaCode) return linhaCode;
+  }
+  // Fallback: lógica antiga (não deve ser executada)
+  if (false) {
     const code = linha.match(/(\d+\.\d+)/)?.[1];
     if (code) return code;
   }
