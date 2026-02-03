@@ -601,14 +601,14 @@ export default function PnLReport() {
     const renderMonthlyRow = (line: DRELineMonthly, isChild = false) => {
         const hasChildren = line.children && line.children.length > 0;
         const isExpanded = expandedSections.has(line.code);
-        const monthlyValues = MONTHS.map((_, i) => getMonthValue(line.monthly, i));
-        const total = sumMonthly(line.monthly);
-        const ytd = getYTD(line.monthly, lastClosedMonth);
+        // Para ano atual: meses >= lastClosedMonth mostram 0 (não fechados)
+        const monthlyValues = MONTHS.map((_, i) => i >= lastClosedMonth ? 0 : getMonthValue(line.monthly, i));
+        const total = getYTD(line.monthly, lastClosedMonth - 1); // Total = soma até mês fechado
         const isClickable = line.type === "revenue" && !line.code.endsWith('.0');
 
         return (
             <div key={line.code}>
-                <div className={`grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-2 px-3 border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${isChild ? "pl-8 bg-gray-900/30" : "bg-gray-900/60"}`}>
+                <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-1.5 px-2 border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${isChild ? "pl-6 bg-gray-900/30" : "bg-gray-900/60"}`}>
                     {/* Account name */}
                     <div className="flex items-center gap-1 min-w-0">
                         {hasChildren ? (
@@ -616,36 +616,33 @@ export default function PnLReport() {
                                 {isExpanded ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
                             </button>
                         ) : (
-                            <div className="w-4" />
+                            <div className="w-3" />
                         )}
-                        <span className="text-[10px] text-gray-500 font-mono shrink-0">{line.code}</span>
-                        <span className={`text-xs truncate ${isChild ? "text-gray-400" : "font-medium text-white"}`} title={line.name}>{line.name}</span>
+                        <span className="text-[9px] text-gray-500 font-mono shrink-0">{line.code}</span>
+                        <span className={`text-[11px] truncate ${isChild ? "text-gray-400" : "font-medium text-white"}`} title={line.name}>{line.name}</span>
                     </div>
 
                     {/* Monthly values - CLICKABLE for drill-down */}
-                    {monthlyValues.map((val, i) => (
-                        <div
-                            key={i}
-                            className={`text-right ${i > lastClosedMonth ? "opacity-40" : ""} ${isClickable && val > 0 ? "cursor-pointer hover:bg-emerald-900/30 rounded transition-colors" : ""}`}
-                            onClick={isClickable && val > 0 ? () => openDrilldown(line.code, line.name, i) : undefined}
-                            title={isClickable && val > 0 ? `Clique para ver detalhes de ${line.name} em ${MONTHS[i]}` : undefined}
-                        >
-                            <span className={`text-xs font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"} ${isClickable && val > 0 ? "underline decoration-dotted underline-offset-2" : ""}`}>
-                                {formatCompact(val)}
-                            </span>
-                        </div>
-                    ))}
-
-                    {/* YTD */}
-                    <div className="text-right bg-blue-900/20 px-1 rounded">
-                        <span className={`text-xs font-mono font-semibold ${line.type === "revenue" ? "text-emerald-300" : "text-red-300"}`}>
-                            {formatCompact(ytd)}
-                        </span>
-                    </div>
+                    {monthlyValues.map((val, i) => {
+                        const realVal = getMonthValue(line.monthly, i);
+                        const isNotClosed = i >= lastClosedMonth;
+                        return (
+                            <div
+                                key={i}
+                                className={`text-right ${isNotClosed ? "opacity-30" : ""} ${isClickable && realVal > 0 && !isNotClosed ? "cursor-pointer hover:bg-emerald-900/30 rounded transition-colors" : ""}`}
+                                onClick={isClickable && realVal > 0 && !isNotClosed ? () => openDrilldown(line.code, line.name, i) : undefined}
+                                title={isClickable && realVal > 0 && !isNotClosed ? `Clique para ver detalhes de ${line.name} em ${MONTHS[i]}` : undefined}
+                            >
+                                <span className={`text-[10px] font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"} ${isClickable && realVal > 0 && !isNotClosed ? "underline decoration-dotted underline-offset-2" : ""}`}>
+                                    {isNotClosed ? "-" : formatCompact(val)}
+                                </span>
+                            </div>
+                        );
+                    })}
 
                     {/* Total */}
                     <div className="text-right bg-gray-800/50 px-1 rounded">
-                        <span className={`text-xs font-mono font-bold ${line.type === "revenue" ? "text-emerald-300" : "text-red-300"}`}>
+                        <span className={`text-[10px] font-mono font-bold ${line.type === "revenue" ? "text-emerald-300" : "text-red-300"}`}>
                             {formatCompact(total)}
                         </span>
                     </div>
@@ -656,25 +653,25 @@ export default function PnLReport() {
     };
 
     // Subtotal row for monthly view
-    const renderMonthlySubtotal = (label: string, monthlyData: typeof monthlyTotals.months, field: keyof typeof monthlyTotals.months[0], ytd: number, total: number, isProfit = false) => {
+    const renderMonthlySubtotal = (label: string, monthlyData: typeof monthlyTotals.months, field: keyof typeof monthlyTotals.months[0], _ytd: number, total: number, isProfit = false) => {
         return (
-            <div className={`grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-3 px-3 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-800/60 border-y border-gray-700"}`}>
+            <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-800/60 border-y border-gray-700"}`}>
                 <div className="flex items-center gap-2">
-                    <div className="w-4" />
-                    <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-white"} text-sm`}>{label}</span>
+                    <div className="w-3" />
+                    <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-white"} text-xs`}>{label}</span>
                 </div>
-                {monthlyData.map((m, i) => (
-                    <div key={i} className={`text-right ${i > lastClosedMonth ? "opacity-40" : ""}`}>
-                        <span className={`text-xs font-mono font-semibold ${isProfit ? "text-blue-300" : "text-gray-200"}`}>
-                            {formatCompact(m[field] as number)}
-                        </span>
-                    </div>
-                ))}
-                <div className="text-right bg-blue-900/30 px-1 rounded">
-                    <span className={`text-xs font-mono font-bold ${isProfit ? "text-blue-200" : "text-gray-100"}`}>{formatCompact(ytd)}</span>
-                </div>
+                {monthlyData.map((m, i) => {
+                    const isNotClosed = i >= lastClosedMonth;
+                    return (
+                        <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>
+                            <span className={`text-[10px] font-mono font-semibold ${isProfit ? "text-blue-300" : "text-gray-200"}`}>
+                                {isNotClosed ? "-" : formatCompact(m[field] as number)}
+                            </span>
+                        </div>
+                    );
+                })}
                 <div className="text-right bg-amber-900/30 px-1 rounded">
-                    <span className={`text-xs font-mono font-bold ${isProfit ? "text-amber-200" : "text-gray-100"}`}>{formatCompact(total)}</span>
+                    <span className={`text-[10px] font-mono font-bold ${isProfit ? "text-amber-200" : "text-gray-100"}`}>{formatCompact(total)}</span>
                 </div>
             </div>
         );
@@ -887,10 +884,6 @@ export default function PnLReport() {
                                     <span>Expense</span>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <div className="w-3 h-3 bg-blue-500/50 rounded"></div>
-                                    <span>YTD</span>
-                                </div>
-                                <div className="flex items-center gap-1">
                                     <div className="w-3 h-3 bg-amber-500/50 rounded"></div>
                                     <span>Total</span>
                                 </div>
@@ -899,14 +892,13 @@ export default function PnLReport() {
                     </CardHeader>
 
                     {/* Table Header */}
-                    <div className="grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-2 px-3 bg-gray-800/80 border-b border-gray-700 text-[10px] font-semibold uppercase tracking-wider text-gray-400 sticky top-[73px] z-10">
+                    <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 bg-gray-800/80 border-b border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-400 sticky top-[73px] z-10">
                         <div>Account</div>
                         {MONTHS.map((m, i) => (
-                            <div key={m} className={`text-right ${i === lastClosedMonth ? "text-emerald-400" : ""} ${i > lastClosedMonth ? "opacity-50" : ""}`}>
+                            <div key={m} className={`text-right ${i === lastClosedMonth - 1 ? "text-emerald-400" : ""} ${i >= lastClosedMonth ? "opacity-40" : ""}`}>
                                 {m}
                             </div>
                         ))}
-                        <div className="text-right text-blue-400 bg-blue-900/20 px-1 rounded">YTD</div>
                         <div className="text-right text-amber-400 bg-amber-900/20 px-1 rounded">Total</div>
                     </div>
 
@@ -939,27 +931,26 @@ export default function PnLReport() {
                     {renderMonthlySubtotal("EBITDA", monthlyTotals.months, "ebitda", monthlyTotals.ytd.ebitda, monthlyTotals.annual.ebitda, true)}
 
                     {/* Net Income Final Row */}
-                    <div className="bg-gradient-to-r from-amber-900/60 via-orange-900/50 to-amber-900/60 border-y-2 border-amber-500/50 py-4 px-3">
-                        <div className="grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1">
+                    <div className="bg-gradient-to-r from-amber-900/60 via-orange-900/50 to-amber-900/60 border-y-2 border-amber-500/50 py-3 px-2">
+                        <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1">
                             <div className="flex items-center gap-2">
-                                <DollarSign className="h-5 w-5 text-amber-400" />
-                                <span className="text-lg font-bold text-amber-300">NET INCOME</span>
+                                <DollarSign className="h-4 w-4 text-amber-400" />
+                                <span className="text-sm font-bold text-amber-300">NET INCOME</span>
                             </div>
-                            {monthlyTotals.months.map((m, i) => (
-                                <div key={i} className={`text-right ${i > lastClosedMonth ? "opacity-40" : ""}`}>
-                                    <span className={`text-sm font-mono font-bold ${m.netIncome >= 0 ? "text-emerald-300" : "text-red-300"}`}>
-                                        {formatCompact(m.netIncome)}
-                                    </span>
-                                </div>
-                            ))}
-                            <div className="text-right bg-blue-900/40 px-2 rounded-lg py-1">
-                                <span className={`text-sm font-mono font-bold ${monthlyTotals.ytd.netIncome >= 0 ? "text-blue-200" : "text-red-300"}`}>
+                            {monthlyTotals.months.map((m, i) => {
+                                const isNotClosed = i >= lastClosedMonth;
+                                const displayValue = isNotClosed ? 0 : m.netIncome;
+                                return (
+                                    <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>
+                                        <span className={`text-[11px] font-mono font-bold ${displayValue >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                                            {isNotClosed ? "-" : formatCompact(displayValue)}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                            <div className="text-right bg-amber-900/40 px-1 rounded-lg py-1">
+                                <span className={`text-[11px] font-mono font-bold ${monthlyTotals.ytd.netIncome >= 0 ? "text-amber-200" : "text-red-300"}`}>
                                     {formatCompact(monthlyTotals.ytd.netIncome)}
-                                </span>
-                            </div>
-                            <div className="text-right bg-amber-900/40 px-2 rounded-lg py-1">
-                                <span className={`text-sm font-mono font-bold ${monthlyTotals.annual.netIncome >= 0 ? "text-amber-200" : "text-red-300"}`}>
-                                    {formatCompact(monthlyTotals.annual.netIncome)}
                                 </span>
                             </div>
                         </div>

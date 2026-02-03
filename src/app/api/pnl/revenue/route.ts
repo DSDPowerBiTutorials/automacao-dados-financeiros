@@ -102,13 +102,13 @@ export async function GET(request: NextRequest) {
         // Total por mês (todas as receitas)
         const totalRevenue: MonthlyData = emptyMonthly();
 
-        // Processar cada linha
+        // Processar cada linha - INCLUINDO credit notes (valores negativos) para P&L líquido
         for (const row of allData || []) {
             if (!row.date) continue;
 
-            // Valores positivos = receita
+            // Incluir TODOS os valores (positivos e negativos) - credit notes abatidas automaticamente
             const amount = row.amount || 0;
-            if (amount <= 0) continue;
+            if (amount === 0) continue; // Apenas ignorar zeros
 
             const monthIndex = new Date(row.date).getMonth();
             const monthKey = monthKeys[monthIndex];
