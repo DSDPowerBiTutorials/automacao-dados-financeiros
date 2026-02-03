@@ -6,6 +6,10 @@
 import { createClient } from "@supabase/supabase-js";
 import * as fs from "fs";
 import * as path from "path";
+import * as dotenv from "dotenv";
+
+// Carregar variáveis de ambiente
+dotenv.config({ path: ".env.local" });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -83,15 +87,19 @@ async function main() {
         if (!invoiceDate) continue;
 
         const amount = parseEuropeanNumber(cols[10] || "0");
-        const faString = cols[3]?.trim() || "";
+
+        // IMPORTANTE: O FA detalhado está na coluna 4 (LINHA), não na coluna 3
+        // cols[3] = "Financial Account" contém a categoria (ex: "104.0 - LAB")
+        // cols[4] = "LINHA" contém o FA detalhado (ex: "   104.5 - Level 2")
+        const faString = cols[4]?.trim() || cols[3]?.trim() || "";
         const faCode = extractFACode(faString);
 
         rows.push({
             invoice_date: invoiceDate,
             financial_dimension: financialDimension,
-            customer_name: cols[2]?.trim() || "",
+            customer_name: cols[6]?.trim() || "", // Client Name está na col 6, não col 2
             financial_account: faCode || "",
-            description: cols[4]?.trim() || "",
+            description: cols[7]?.trim() || "", // Products - Clean está na col 7
             amount,
             invoice_number: cols[17]?.trim() || "",
             order_type: cols[6]?.trim() || "",
