@@ -865,7 +865,7 @@ export default function PnLReport() {
 
             {/* Drill-down Modal */}
             <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && closeDrilldown()}>
-                <DialogContent className="max-w-7xl w-[95vw] max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col">
+                <DialogContent className="w-[80vw] max-w-none max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col">
                     <DialogHeader className="border-b border-gray-700 pb-4 flex-shrink-0">
                         <div className="flex items-center justify-between">
                             <div>
