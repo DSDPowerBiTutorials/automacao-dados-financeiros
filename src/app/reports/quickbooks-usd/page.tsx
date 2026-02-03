@@ -136,7 +136,7 @@ export default function QuickBooksUSDPage() {
     const [sortField, setSortField] = useState<string>("date");
     const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
     const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 50;
+    const rowsPerPage = 150;
 
     // Carregar dados
     useEffect(() => {

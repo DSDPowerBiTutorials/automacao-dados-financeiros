@@ -1300,7 +1300,7 @@ export default function ARInvoicesPage() {
 
       {/* Edit/Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-[#2a2b2d] border-gray-700 text-white">
+        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-[#2a2b2d] border-gray-700 text-white" style={{ width: '80vw' }}>
           <DialogHeader>
             <DialogTitle className="text-white">{editingInvoice?.id ? "Editar Invoice" : "Nova Invoice"}</DialogTitle>
             <DialogDescription className="text-gray-400">Campos do relatório HubSpot/Backend</DialogDescription>
@@ -1546,7 +1546,7 @@ export default function ARInvoicesPage() {
 
       {/* Transaction Details Dialog */}
       <Dialog open={transactionDetailsDialog} onOpenChange={setTransactionDetailsDialog}>
-        <DialogContent className="sm:max-w-[700px] max-h-[85vh] overflow-y-auto !bg-[#2a2b2d] !border-gray-600 [&>button]:text-white">
+        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto !bg-[#2a2b2d] !border-gray-600 [&>button]:text-white" style={{ width: '80vw' }}>
           <DialogHeader>
             <DialogTitle className="text-white flex items-center gap-2">
               <Eye className="h-5 w-5 text-blue-400" />

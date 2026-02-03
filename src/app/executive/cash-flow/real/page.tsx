@@ -171,7 +171,7 @@ export default function RealCashFlowPage() {
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 50;
+    const pageSize = 150;
 
     // Handler simples para datas - só atualiza estado local
     const handleDateChange = useCallback((field: 'start' | 'end', value: string) => {

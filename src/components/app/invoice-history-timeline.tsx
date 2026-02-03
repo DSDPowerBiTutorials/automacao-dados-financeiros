@@ -165,7 +165,7 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="bg-[#1e1f21] border-gray-700 text-white w-[600px] max-w-[90vw] min-h-[400px]">
+            <DialogContent className="max-w-none max-h-[90vh] bg-[#1e1f21] border-gray-700 text-white min-h-[400px]" style={{ width: '80vw' }}>
                 <DialogHeader className="pb-4 border-b border-gray-700">
                     <DialogTitle className="flex items-center gap-3 text-white text-xl">
                         <Clock className="h-6 w-6 text-yellow-500" />

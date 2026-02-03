@@ -868,7 +868,7 @@ export default function ProductsPage() {
 
             {/* Merge Dialog */}
             <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
-                <DialogContent className="max-w-lg bg-[#2a2b2d] border-gray-700 text-white">
+                <DialogContent className="max-w-none max-h-[90vh] bg-[#2a2b2d] border-gray-700 text-white" style={{ width: '80vw' }}>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-white">
                             <Merge className="h-5 w-5" />

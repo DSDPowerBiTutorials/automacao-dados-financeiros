@@ -356,7 +356,7 @@ export function InvoiceFormModal({
     if (loadingMasterData && open) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-4xl bg-white">
+                <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
                     <div className="flex items-center justify-center py-12">
                         <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                     </div>

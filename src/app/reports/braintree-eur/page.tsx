@@ -230,7 +230,7 @@ export default function BraintreeEURPage() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 50;
+  const rowsPerPage = 150;
 
   // Server-side fetch (incremental)
   const SERVER_PAGE_SIZE = 1000;

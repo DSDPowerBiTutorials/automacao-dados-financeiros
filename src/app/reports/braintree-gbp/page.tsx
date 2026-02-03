@@ -250,7 +250,7 @@ export default function BraintreeGBPPage() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 50;
+  const rowsPerPage = 150;
 
   // Webhook tracking
   const [mostRecentWebhookTransaction, setMostRecentWebhookTransaction] = useState<BraintreeGBPRow | null>(null);

@@ -148,7 +148,7 @@ export default function GoCardlessPage() {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const rowsPerPage = 50;
+  const rowsPerPage = 150;
 
   // Webhook tracking
   const [mostRecentWebhookTransaction, setMostRecentWebhookTransaction] = useState<GoCardlessRow | null>(null);

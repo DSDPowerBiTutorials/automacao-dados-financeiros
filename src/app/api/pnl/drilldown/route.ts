@@ -28,6 +28,8 @@ export async function GET(request: NextRequest) {
 
         // Buscar TODAS as transações do mês e filtrar por FA code
         // Usar ilike para filtrar diretamente no JSONB
+        // Incluir credit notes (amount < 0) mas excluir zeros
+        // Credit notes serão destacadas em vermelho no drill-down
         const { data, error } = await supabaseAdmin
             .from("csv_rows")
             .select("id, date, description, amount, custom_data, source")
@@ -35,7 +37,7 @@ export async function GET(request: NextRequest) {
             .gte("date", startStr)
             .lte("date", endStr)
             .ilike("custom_data->>financial_account_code", faCode)
-            .gt("amount", 0)
+            .neq("amount", 0)
             .order("amount", { ascending: false })
             .limit(500);
 

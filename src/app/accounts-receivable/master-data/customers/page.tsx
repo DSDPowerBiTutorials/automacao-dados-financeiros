@@ -270,7 +270,7 @@ export default function CustomersPage() {
                             Add Customer
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto" style={{ width: '80vw' }}>
                         <DialogHeader>
                             <DialogTitle>{editingCustomer ? "Edit Customer" : "New Customer"}</DialogTitle>
                         </DialogHeader>

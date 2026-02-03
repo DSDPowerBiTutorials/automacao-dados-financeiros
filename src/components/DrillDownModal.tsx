@@ -48,7 +48,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
         try {
             const res = await fetch(`/api/pnl/drilldown?fa=${faCode}&year=${year}&month=${month}&page=${pageNum}&limit=15`);
             const data = await res.json();
-            
+
             if (data.success) {
                 setTransactions(data.transactions);
                 setTotalPages(data.pagination.totalPages);
@@ -64,7 +64,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
 
     const sortedTransactions = [...transactions].sort((a, b) => {
         if (sortBy === "date") {
-            return sortDesc 
+            return sortDesc
                 ? new Date(b.date).getTime() - new Date(a.date).getTime()
                 : new Date(a.date).getTime() - new Date(b.date).getTime();
         } else {
@@ -92,7 +92,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-            <DialogContent className="max-w-4xl max-h-[85vh] bg-gray-900 border-gray-700 text-white overflow-hidden flex flex-col">
+            <DialogContent className="max-w-none max-h-[90vh] bg-gray-900 border-gray-700 text-white overflow-hidden flex flex-col" style={{ width: '80vw' }}>
                 <DialogHeader className="flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <DialogTitle className="text-xl font-bold text-emerald-400">
@@ -120,7 +120,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                         <table className="w-full text-sm">
                             <thead className="bg-gray-800/80 sticky top-0">
                                 <tr>
-                                    <th 
+                                    <th
                                         className="text-left px-3 py-2 text-gray-400 font-medium cursor-pointer hover:text-white"
                                         onClick={() => { setSortBy("date"); setSortDesc(sortBy === "date" ? !sortDesc : true); }}
                                     >
@@ -131,7 +131,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                                     <th className="text-left px-3 py-2 text-gray-400 font-medium">Descrição</th>
                                     <th className="text-left px-3 py-2 text-gray-400 font-medium">Cliente</th>
                                     <th className="text-left px-3 py-2 text-gray-400 font-medium">Tipo</th>
-                                    <th 
+                                    <th
                                         className="text-right px-3 py-2 text-gray-400 font-medium cursor-pointer hover:text-white"
                                         onClick={() => { setSortBy("amount"); setSortDesc(sortBy === "amount" ? !sortDesc : true); }}
                                     >
@@ -143,8 +143,8 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                             </thead>
                             <tbody>
                                 {sortedTransactions.map((t, idx) => (
-                                    <tr 
-                                        key={t.id} 
+                                    <tr
+                                        key={t.id}
                                         className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""}`}
                                     >
                                         <td className="px-3 py-2 text-gray-300 whitespace-nowrap">{formatDate(t.date)}</td>

@@ -93,7 +93,7 @@ export default function StripeEURPage() {
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const rowsPerPage = 50;
+    const rowsPerPage = 150;
 
     // Filters
     const [searchTerm, setSearchTerm] = useState("");

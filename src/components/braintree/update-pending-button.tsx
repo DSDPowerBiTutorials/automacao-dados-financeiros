@@ -235,7 +235,7 @@ export default function BraintreeUpdatePendingButton() {
                             <Info className="h-4 w-4" />
                         </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-none max-h-[90vh]" style={{ width: '80vw' }}>
                         <DialogHeader>
                             <DialogTitle>Update Strategies Explained</DialogTitle>
                         </DialogHeader>

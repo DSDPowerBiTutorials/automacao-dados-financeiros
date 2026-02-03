@@ -84,7 +84,7 @@ export default function FinancialAccountsPage() {
         title: "Error",
         description: "Failed to load financial accounts",
         variant: "destructive",
-        
+
       });
     } finally {
       setLoading(false);
@@ -146,7 +146,7 @@ export default function FinancialAccountsPage() {
           title: "Validation Error",
           description: "Code and Name are required",
           variant: "destructive",
-          
+
         });
         return;
       }
@@ -171,7 +171,7 @@ export default function FinancialAccountsPage() {
         toast({
           title: "Success",
           description: "Financial account updated successfully",
-          
+
         });
       } else {
         // Create new account
@@ -191,7 +191,7 @@ export default function FinancialAccountsPage() {
         toast({
           title: "Success",
           description: "Financial account created successfully",
-          
+
         });
       }
 
@@ -203,7 +203,7 @@ export default function FinancialAccountsPage() {
         title: "Error",
         description: "Failed to save financial account",
         variant: "destructive",
-        
+
       });
     }
   };
@@ -221,7 +221,7 @@ export default function FinancialAccountsPage() {
       toast({
         title: "Success",
         description: "Financial account deleted successfully",
-        
+
       });
       loadAccounts();
     } catch (error) {
@@ -230,7 +230,7 @@ export default function FinancialAccountsPage() {
         title: "Error",
         description: "Failed to delete financial account",
         variant: "destructive",
-        
+
       });
     }
   };
@@ -251,12 +251,12 @@ export default function FinancialAccountsPage() {
             Manage Chart of Accounts (hierarchical structure up to 5 levels)
           </p>
         </div>
-        <Button 
+        <Button
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
             handleOpenDialog();
-          }} 
+          }}
           className="bg-blue-600 hover:bg-blue-700"
           type="button"
         >
@@ -415,7 +415,7 @@ export default function FinancialAccountsPage() {
 
       {/* Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto rounded-2xl bg-white">
+        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto rounded-2xl bg-white" style={{ width: '80vw' }}>
           <DialogHeader className="border-b border-gray-200 pb-3">
             <DialogTitle className="text-xl font-semibold">
               {editingAccount ? "Edit Financial Account" : "New Financial Account"}
@@ -563,15 +563,15 @@ export default function FinancialAccountsPage() {
           </div>
 
           <DialogFooter className="border-t border-gray-200 pt-3 gap-2">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={() => setIsDialogOpen(false)}
               className="px-4 h-9 text-sm rounded-lg"
             >
               Cancel
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               className="bg-blue-600 hover:bg-blue-700 px-4 h-9 text-sm rounded-lg"
             >
               {editingAccount ? "Update Account" : "Create Account"}

@@ -151,7 +151,7 @@ export default function BankCashFlowPage() {
 
     // Pagination
     const [currentPage, setCurrentPage] = useState(1);
-    const pageSize = 50;
+    const pageSize = 150;
 
     // Match bank transactions with gateway transactions
     const matchTransactions = useCallback((

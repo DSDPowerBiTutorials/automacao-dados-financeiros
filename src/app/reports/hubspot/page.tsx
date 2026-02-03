@@ -204,7 +204,7 @@ export default function HubSpotReportPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [filterStatus, setFilterStatus] = useState<string>("all"); // all, paid, unpaid
     const [currentPage, setCurrentPage] = useState(1);
-    const [pageSize] = useState(50);
+    const [pageSize] = useState(150);
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
     const [orderDetailsDialog, setOrderDetailsDialog] = useState<HubSpotDeal | null>(null);
     const [alert, setAlert] = useState<{

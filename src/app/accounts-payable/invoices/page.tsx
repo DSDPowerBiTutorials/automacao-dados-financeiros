@@ -201,7 +201,7 @@ export default function InvoicesPage() {
   const [entryTypes, setEntryTypes] = useState<any[]>([]);
   const [financialAccounts, setFinancialAccounts] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
-  
+
   // View mode: separate automatic vs manual invoices
   const [invoiceViewMode, setInvoiceViewMode] = useState<"all" | "automatic" | "manual">("all");
 
@@ -1400,7 +1400,7 @@ export default function InvoicesPage() {
             )}
           </div>
           <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogContent className="max-w-[95vw] w-[900px] max-h-[90vh] overflow-y-auto bg-white p-8">
+            <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white p-8" style={{ width: '80vw' }}>
               <DialogHeader className="pb-4 border-b">
                 <DialogTitle className="text-2xl">{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
                 <DialogDescription className="text-base mt-2">
@@ -1840,7 +1840,7 @@ export default function InvoicesPage() {
 
           {/* Provider Creation Dialog */}
           <Dialog open={providerDialogOpen} onOpenChange={setProviderDialogOpen}>
-            <DialogContent className="max-w-2xl bg-white">
+            <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
               <DialogHeader>
                 <DialogTitle>Create New Provider</DialogTitle>
                 <DialogDescription>Add a new provider to the system</DialogDescription>
@@ -1942,7 +1942,7 @@ export default function InvoicesPage() {
 
           {/* Financial Account Creation Dialog */}
           <Dialog open={financialAccountDialogOpen} onOpenChange={setFinancialAccountDialogOpen}>
-            <DialogContent className="max-w-2xl bg-white">
+            <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
               <DialogHeader>
                 <DialogTitle>Create New Financial Account</DialogTitle>
                 <DialogDescription>Add a new account to the chart of accounts</DialogDescription>
@@ -2036,7 +2036,7 @@ export default function InvoicesPage() {
 
           {/* Split Invoice Configuration Dialog */}
           <Dialog open={splitDialogOpen} onOpenChange={setSplitDialogOpen}>
-            <DialogContent className="max-w-[800px] max-h-[90vh] overflow-y-auto bg-white">
+            <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
               <DialogHeader>
                 <DialogTitle>Split Invoice</DialogTitle>
                 <DialogDescription>
@@ -2348,7 +2348,7 @@ export default function InvoicesPage() {
 
           {/* View Splits Dialog */}
           <Dialog open={viewSplitsDialogOpen} onOpenChange={setViewSplitsDialogOpen}>
-            <DialogContent className="max-w-[900px] max-h-[90vh] overflow-y-auto bg-white">
+            <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
               <DialogHeader>
                 <DialogTitle>Split Invoice Details</DialogTitle>
                 <DialogDescription>

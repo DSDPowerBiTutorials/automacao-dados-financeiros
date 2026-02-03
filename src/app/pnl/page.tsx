@@ -18,6 +18,7 @@ import {
     Loader2,
     X,
     ExternalLink,
+    AlertCircle,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -25,6 +26,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { formatCurrency } from "@/lib/formatters";
+import { usePagination } from "@/hooks/use-pagination";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 
 // Tipos para drill-down
 interface DrilldownTransaction {
@@ -116,6 +119,161 @@ const getYTD = (data: MonthlyData, upToMonth: number): number => {
     const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
     return keys.slice(0, upToMonth + 1).reduce((sum, key) => sum + data[key], 0);
 };
+
+// Componente de Modal de Drill-Down com paginação e destaque de credit notes
+interface DrilldownModalProps {
+    drilldown: DrilldownState;
+    selectedYear: number;
+    onClose: () => void;
+}
+
+function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProps) {
+    const {
+        currentPage,
+        totalPages,
+        paginatedData,
+        pageInfo,
+        goToPage,
+        nextPage,
+        prevPage,
+        firstPage,
+        lastPage,
+        canGoNext,
+        canGoPrev,
+    } = usePagination(drilldown.transactions, { pageSize: 150 });
+
+    // Calcular totais separados
+    const creditNoteCount = drilldown.transactions.filter(tx => tx.amount < 0).length;
+    const creditNoteTotal = drilldown.transactions.filter(tx => tx.amount < 0).reduce((s, tx) => s + tx.amount, 0);
+
+    return (
+        <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && onClose()}>
+            <DialogContent
+                className="max-w-none max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col"
+                style={{ width: '80vw' }}
+            >
+                <DialogHeader className="border-b border-gray-700 pb-4 flex-shrink-0">
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <DialogTitle className="text-xl text-white flex items-center gap-2">
+                                <BarChart3 className="h-5 w-5 text-emerald-400" />
+                                Drill-Down: {drilldown.faName}
+                            </DialogTitle>
+                            <div className="flex items-center gap-3 mt-1">
+                                <p className="text-sm text-gray-400">
+                                    <span className="font-mono text-emerald-400">{drilldown.faCode}</span>
+                                    {" • "}
+                                    <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
+                                    {" • "}
+                                    <span className="text-emerald-300">{drilldown.count} transações</span>
+                                </p>
+                                {creditNoteCount > 0 && (
+                                    <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">
+                                        <AlertCircle className="h-3 w-3 mr-1" />
+                                        {creditNoteCount} Credit Notes ({formatCurrency(creditNoteTotal, "EUR")})
+                                    </Badge>
+                                )}
+                            </div>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                </DialogHeader>
+
+                <div className="flex-1 overflow-auto mt-4">
+                    {drilldown.loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+                            <span className="ml-3 text-gray-400">Carregando transações...</span>
+                        </div>
+                    ) : drilldown.transactions.length === 0 ? (
+                        <div className="text-center py-12 text-gray-500">
+                            Nenhuma transação encontrada para este período.
+                        </div>
+                    ) : (
+                        <div className="flex flex-col h-full">
+                            <div className="overflow-x-auto flex-1">
+                                <table className="w-full min-w-[800px]">
+                                    <thead className="bg-gray-800 sticky top-0 z-10">
+                                        <tr>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Data</th>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Cliente</th>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Descrição</th>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Tipo</th>
+                                            <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {paginatedData.map((tx, idx) => {
+                                            const isCreditNote = tx.amount < 0;
+                                            return (
+                                                <tr
+                                                    key={tx.id}
+                                                    className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
+                                                >
+                                                    <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
+                                                        {new Date(tx.date).toLocaleDateString('pt-PT')}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-sm text-white" title={tx.customer}>
+                                                        {tx.customer}
+                                                    </td>
+                                                    <td className="px-4 py-2 text-sm text-gray-400" title={tx.description}>
+                                                        {tx.description}
+                                                    </td>
+                                                    <td className="px-4 py-2 whitespace-nowrap">
+                                                        <div className="flex items-center gap-2">
+                                                            <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                                                                {tx.orderType}
+                                                            </Badge>
+                                                            {isCreditNote && (
+                                                                <Badge className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">
+                                                                    Credit Note
+                                                                </Badge>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                    <td className={`px-4 py-2 text-right text-sm font-mono font-semibold whitespace-nowrap ${isCreditNote ? "text-red-400" : "text-emerald-400"}`}>
+                                                        {formatCurrency(tx.amount, "EUR")}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                    <tfoot className="bg-gray-800">
+                                        <tr>
+                                            <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
+                                                Total ({drilldown.count} transações)
+                                            </td>
+                                            <td className="px-4 py-3 text-right text-lg font-mono text-emerald-300 font-bold whitespace-nowrap">
+                                                {formatCurrency(drilldown.total, "EUR")}
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            {/* Paginação */}
+                            {totalPages > 1 && (
+                                <PaginationControls
+                                    currentPage={currentPage}
+                                    totalPages={totalPages}
+                                    pageInfo={pageInfo}
+                                    onFirstPage={firstPage}
+                                    onPrevPage={prevPage}
+                                    onNextPage={nextPage}
+                                    onLastPage={lastPage}
+                                    canGoNext={canGoNext}
+                                    canGoPrev={canGoPrev}
+                                />
+                            )}
+                        </div>
+                    )}
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export default function PnLReport() {
     const { selectedScope } = useGlobalScope();
@@ -864,93 +1022,11 @@ export default function PnLReport() {
             </div>
 
             {/* Drill-down Modal */}
-            <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && closeDrilldown()}>
-                <DialogContent
-                    className="max-w-none max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col"
-                    style={{ width: '80vw' }}
-                >
-                    <DialogHeader className="border-b border-gray-700 pb-4 flex-shrink-0">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <DialogTitle className="text-xl text-white flex items-center gap-2">
-                                    <BarChart3 className="h-5 w-5 text-emerald-400" />
-                                    Drill-Down: {drilldown.faName}
-                                </DialogTitle>
-                                <p className="text-sm text-gray-400 mt-1">
-                                    <span className="font-mono text-emerald-400">{drilldown.faCode}</span>
-                                    {" • "}
-                                    <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
-                                    {" • "}
-                                    <span className="text-emerald-300">{drilldown.count} transações</span>
-                                </p>
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={closeDrilldown} className="text-gray-400 hover:text-white">
-                                <X className="h-4 w-4" />
-                            </Button>
-                        </div>
-                    </DialogHeader>
-
-                    <div className="flex-1 overflow-auto mt-4">
-                        {drilldown.loading ? (
-                            <div className="flex items-center justify-center py-12">
-                                <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
-                                <span className="ml-3 text-gray-400">Carregando transações...</span>
-                            </div>
-                        ) : drilldown.transactions.length === 0 ? (
-                            <div className="text-center py-12 text-gray-500">
-                                Nenhuma transação encontrada para este período.
-                            </div>
-                        ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full min-w-[800px]">
-                                    <thead className="bg-gray-800 sticky top-0 z-10">
-                                        <tr>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Data</th>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Cliente</th>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Descrição</th>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Tipo</th>
-                                            <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Valor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {drilldown.transactions.map((tx, idx) => (
-                                            <tr key={tx.id} className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""}`}>
-                                                <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
-                                                    {new Date(tx.date).toLocaleDateString('pt-PT')}
-                                                </td>
-                                                <td className="px-4 py-2 text-sm text-white" title={tx.customer}>
-                                                    {tx.customer}
-                                                </td>
-                                                <td className="px-4 py-2 text-sm text-gray-400" title={tx.description}>
-                                                    {tx.description}
-                                                </td>
-                                                <td className="px-4 py-2 whitespace-nowrap">
-                                                    <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
-                                                        {tx.orderType}
-                                                    </Badge>
-                                                </td>
-                                                <td className="px-4 py-2 text-right text-sm font-mono text-emerald-400 font-semibold whitespace-nowrap">
-                                                    {formatCurrency(tx.amount, "EUR")}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                    <tfoot className="bg-gray-800 sticky bottom-0">
-                                        <tr>
-                                            <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
-                                                Total ({drilldown.count} transações)
-                                            </td>
-                                            <td className="px-4 py-3 text-right text-lg font-mono text-emerald-300 font-bold whitespace-nowrap">
-                                                {formatCurrency(drilldown.total, "EUR")}
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-                        )}
-                    </div>
-                </DialogContent>
-            </Dialog>
+            <DrilldownModal
+                drilldown={drilldown}
+                selectedYear={selectedYear}
+                onClose={closeDrilldown}
+            />
         </div>
     );
 }

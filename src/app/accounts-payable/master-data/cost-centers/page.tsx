@@ -334,7 +334,7 @@ export default function CostCentersPage() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto bg-white">
+        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
           <DialogHeader className="border-b pb-4">
             <DialogTitle className="text-2xl font-semibold">
               {editingCostCenter ? "Edit Cost Center" : "New Cost Center"}
