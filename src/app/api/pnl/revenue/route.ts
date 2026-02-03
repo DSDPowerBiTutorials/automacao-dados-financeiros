@@ -58,17 +58,46 @@ export async function GET(request: NextRequest) {
         const invoiceOrdersRevenue: MonthlyData = emptyMonthly();
         const invoiceOrdersCount: MonthlyData = emptyMonthly();
 
-        // Por Financial Account (dados reais)
+        // Por Financial Account (dados reais) - TODOS os códigos usados pelo P&L
         const byFinancialAccount: { [key: string]: MonthlyData } = {
+            // 101.0 Growth
             "101.1": emptyMonthly(), // DSD Courses
+            "101.2": emptyMonthly(), // Others Courses
             "101.3": emptyMonthly(), // Mastership
             "101.4": emptyMonthly(), // PC Membership
             "101.5": emptyMonthly(), // Partnerships
+            "101.6": emptyMonthly(), // Level 2 Allocation
+            // 102.0 Delight
+            "102.1": emptyMonthly(), // Contracted ROW
+            "102.2": emptyMonthly(), // Contracted AMEX
+            "102.3": emptyMonthly(), // Level 3 New ROW
+            "102.4": emptyMonthly(), // Level 3 New AMEX
             "102.5": emptyMonthly(), // Consultancies
             "102.6": emptyMonthly(), // Marketing Coaching
-            "103.0": emptyMonthly(), // Planning Center
-            "104.0": emptyMonthly(), // LAB
+            "102.7": emptyMonthly(), // Others
+            // 103.0 Planning Center
+            "103.0": emptyMonthly(),
+            "103.1": emptyMonthly(), // Level 3 ROW
+            "103.2": emptyMonthly(), // Level 3 AMEX
+            "103.3": emptyMonthly(), // Level 3 New ROW
+            "103.4": emptyMonthly(), // Level 3 New AMEX
+            "103.5": emptyMonthly(), // Level 2
+            "103.6": emptyMonthly(), // Level 1
+            "103.7": emptyMonthly(), // Not a Subscriber
+            "103.8": emptyMonthly(), // Level 2 Allocation
+            "103.9": emptyMonthly(), // Level 3 Allocation
+            // 104.0 LAB
+            "104.0": emptyMonthly(),
+            "104.1": emptyMonthly(), // Level 3 ROW
+            "104.2": emptyMonthly(), // Level 3 AMEX
+            "104.3": emptyMonthly(), // Level 3 New ROW
+            "104.4": emptyMonthly(), // Level 3 New AMEX
+            "104.5": emptyMonthly(), // Level 2
+            "104.6": emptyMonthly(), // Level 1
+            "104.7": emptyMonthly(), // Not a Subscriber
+            // 105.0 Other Income
             "105.1": emptyMonthly(), // Level 1 Subscriptions
+            "105.2": emptyMonthly(), // Other
             "105.4": emptyMonthly(), // Other Marketing
         };
 

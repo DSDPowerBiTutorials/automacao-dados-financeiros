@@ -201,6 +201,9 @@ export default function InvoicesPage() {
   const [entryTypes, setEntryTypes] = useState<any[]>([]);
   const [financialAccounts, setFinancialAccounts] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
+  
+  // View mode: separate automatic vs manual invoices
+  const [invoiceViewMode, setInvoiceViewMode] = useState<"all" | "automatic" | "manual">("all");
 
   const [formData, setFormData] = useState({
     invoice_date: getCurrentDateForDB(),
