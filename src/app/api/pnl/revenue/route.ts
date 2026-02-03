@@ -22,28 +22,42 @@ export async function GET(request: NextRequest) {
         const endDate = `${year}-12-31`;
 
         // Buscar todos os dados de receita (HubSpot + Invoice Orders + outras fontes)
-        const { data: allData, error } = await supabaseAdmin
-            .from("csv_rows")
-            .select("source, date, amount, custom_data")
-            .gte("date", startDate)
-            .lte("date", endDate);
+        // IMPORTANTE: usar range para pegar todos os registros (limite padrão é 1000)
+        let allData: any[] = [];
+        let offset = 0;
+        const pageSize = 1000;
 
-        if (error) {
-            console.error("Erro ao buscar dados:", error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+        while (true) {
+            const { data, error } = await supabaseAdmin
+                .from("csv_rows")
+                .select("source, date, amount, custom_data")
+                .gte("date", startDate)
+                .lte("date", endDate)
+                .range(offset, offset + pageSize - 1);
+
+            if (error) {
+                console.error("Erro ao buscar dados:", error);
+                return NextResponse.json({ error: error.message }, { status: 500 });
+            }
+
+            if (!data || data.length === 0) break;
+
+            allData = allData.concat(data);
+            offset += pageSize;
+
+            // Se retornou menos que o pageSize, não há mais dados
+            if (data.length < pageSize) break;
         }
 
-        // Fontes de receita (excluir despesas como braintree-api-fees, quickbooks-expenses)
-        const revenueSources = [
-            "hubspot", "invoice-orders", "stripe-eur", "stripe-usd", 
-            "braintree-api-revenue", "gocardless", "quickbooks-invoices",
-            "quickbooks-deposits", "quickbooks-payments"
-        ];
+        console.log(`📊 Total de registros carregados: ${allData.length}`);
 
-        // Total mensal geral (Web Invoices = HubSpot)
-        const webInvoicesRevenue: MonthlyData = emptyMonthly();
-        const webInvoicesCount: MonthlyData = emptyMonthly();
-        
+        // Fonte de receita: apenas Invoice Orders
+        const revenueSources = ["invoice-orders"];
+
+        // Total mensal Invoice Orders
+        const invoiceOrdersRevenue: MonthlyData = emptyMonthly();
+        const invoiceOrdersCount: MonthlyData = emptyMonthly();
+
         // Por Financial Account (dados reais)
         const byFinancialAccount: { [key: string]: MonthlyData } = {
             "101.1": emptyMonthly(), // DSD Courses
@@ -57,7 +71,7 @@ export async function GET(request: NextRequest) {
             "105.1": emptyMonthly(), // Level 1 Subscriptions
             "105.4": emptyMonthly(), // Other Marketing
         };
-        
+
         const byFinancialAccountCount: { [key: string]: MonthlyData } = {};
         for (const fa of Object.keys(byFinancialAccount)) {
             byFinancialAccountCount[fa] = emptyMonthly();
@@ -68,36 +82,36 @@ export async function GET(request: NextRequest) {
 
         for (const row of allData || []) {
             if (!row.date || !row.source) continue;
-            
+
             // Apenas receitas positivas
             const amount = row.amount || 0;
             if (amount < 0) continue;
-            
+
             const monthIndex = new Date(row.date).getMonth();
             const monthKey = monthKeys[monthIndex];
-            
+
             // Apenas fontes de receita
             if (!revenueSources.includes(row.source)) continue;
-            
-            // Web Invoices (HubSpot)
-            if (row.source === "hubspot") {
-                webInvoicesRevenue[monthKey] += amount;
-                webInvoicesCount[monthKey]++;
+
+            // Invoice Orders
+            if (row.source === "invoice-orders") {
+                invoiceOrdersRevenue[monthKey] += amount;
+                invoiceOrdersCount[monthKey]++;
             }
-            
+
             // Por Financial Account
             const fa = row.custom_data?.financial_account_code;
             if (fa && byFinancialAccount[fa]) {
                 byFinancialAccount[fa][monthKey] += amount;
                 byFinancialAccountCount[fa][monthKey]++;
             }
-            
+
             // Total geral
             totalRevenue[monthKey] += amount;
         }
 
         console.log(`📊 P&L API - Ano ${year}:`, {
-            webInvoices: webInvoicesRevenue,
+            invoiceOrders: invoiceOrdersRevenue,
             totalRevenue,
             financialAccounts: Object.keys(byFinancialAccount).map(fa => ({
                 fa,
@@ -108,9 +122,9 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
             success: true,
             year,
-            webInvoices: {
-                revenue: webInvoicesRevenue,
-                count: webInvoicesCount,
+            invoiceOrders: {
+                revenue: invoiceOrdersRevenue,
+                count: invoiceOrdersCount,
             },
             totalRevenue,
             byFinancialAccount,

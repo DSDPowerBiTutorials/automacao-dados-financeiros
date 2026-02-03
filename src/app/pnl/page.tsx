@@ -103,8 +103,8 @@ export default function PnLReport() {
     const [viewMode, setViewMode] = useState<"monthly" | "quarterly" | "annual">("monthly");
     const currentMonth = new Date().getMonth(); // 0-11
 
-    // Estado para dados reais de receita
-    const [webInvoicesRevenue, setWebInvoicesRevenue] = useState<MonthlyData>(emptyMonthlyData());
+    // Estado para dados reais de receita (Invoice Orders apenas)
+    const [invoiceOrdersRevenue, setInvoiceOrdersRevenue] = useState<MonthlyData>(emptyMonthlyData());
     const [totalRevenue, setTotalRevenue] = useState<MonthlyData>(emptyMonthlyData());
     const [byFinancialAccount, setByFinancialAccount] = useState<{ [key: string]: MonthlyData }>({});
     const [invoiceCount, setInvoiceCount] = useState<{ [key: string]: number }>({});
@@ -124,10 +124,10 @@ export default function PnLReport() {
                     return;
                 }
 
-                setWebInvoicesRevenue(result.webInvoices?.revenue || emptyMonthlyData());
+                setInvoiceOrdersRevenue(result.invoiceOrders?.revenue || emptyMonthlyData());
                 setTotalRevenue(result.totalRevenue || emptyMonthlyData());
                 setByFinancialAccount(result.byFinancialAccount || {});
-                setInvoiceCount(result.webInvoices?.count || {});
+                setInvoiceCount(result.invoiceOrders?.count || {});
                 console.log('📊 Receita carregada:', result);
 
             } catch (err) {
@@ -143,68 +143,65 @@ export default function PnLReport() {
     // Helper para pegar dados da financial account ou zeros
     const getFA = (code: string): MonthlyData => byFinancialAccount[code] || emptyMonthlyData();
 
-    // Revenue structure with REAL data from Financial Accounts
+    // Helper para somar múltiplas financial accounts
+    const sumFA = (...codes: string[]): MonthlyData => {
+        const result = emptyMonthlyData();
+        const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
+        for (const key of keys) {
+            result[key] = codes.reduce((sum, code) => sum + (getFA(code)[key] || 0), 0);
+        }
+        return result;
+    };
+
+    // Revenue structure - Estrutura exata conforme template do cliente
     const revenueStructure: DRELineMonthly[] = useMemo(() => [
         {
-            code: "100.0", name: "Web Invoices (HubSpot)", type: "revenue", level: 0,
-            monthly: webInvoicesRevenue, budget: generateBudgetData(1200000),
-            children: [
-                { code: "100.1", name: "Web Orders", type: "revenue", level: 1, monthly: webInvoicesRevenue, budget: generateBudgetData(1200000) },
-            ],
-        },
-        {
-            code: "101.0", name: "Growth (Education)", type: "revenue", level: 0,
-            // Soma das contas 101.x
-            monthly: {
-                jan: getFA("101.1").jan + getFA("101.3").jan,
-                feb: getFA("101.1").feb + getFA("101.3").feb,
-                mar: getFA("101.1").mar + getFA("101.3").mar,
-                apr: getFA("101.1").apr + getFA("101.3").apr,
-                may: getFA("101.1").may + getFA("101.3").may,
-                jun: getFA("101.1").jun + getFA("101.3").jun,
-                jul: getFA("101.1").jul + getFA("101.3").jul,
-                aug: getFA("101.1").aug + getFA("101.3").aug,
-                sep: getFA("101.1").sep + getFA("101.3").sep,
-                oct: getFA("101.1").oct + getFA("101.3").oct,
-                nov: getFA("101.1").nov + getFA("101.3").nov,
-                dec: getFA("101.1").dec + getFA("101.3").dec,
-            }, budget: generateBudgetData(850000),
+            code: "101.0", name: "Growth", type: "revenue", level: 0,
+            monthly: sumFA("101.1", "101.2", "101.3", "101.4", "101.5", "101.6"),
+            budget: generateBudgetData(850000),
             children: [
                 { code: "101.1", name: "DSD Courses", type: "revenue", level: 1, monthly: getFA("101.1"), budget: generateBudgetData(350000) },
+                { code: "101.2", name: "Others Courses", type: "revenue", level: 1, monthly: getFA("101.2"), budget: generateBudgetData(50000) },
                 { code: "101.3", name: "Mastership", type: "revenue", level: 1, monthly: getFA("101.3"), budget: generateBudgetData(180000) },
                 { code: "101.4", name: "PC Membership", type: "revenue", level: 1, monthly: getFA("101.4"), budget: generateBudgetData(100000) },
                 { code: "101.5", name: "Partnerships", type: "revenue", level: 1, monthly: getFA("101.5"), budget: generateBudgetData(80000) },
+                { code: "101.6", name: "Level 2 Allocation", type: "revenue", level: 1, monthly: getFA("101.6"), budget: generateBudgetData(90000) },
             ],
         },
         {
-            code: "102.0", name: "Delight (Clinic Services)", type: "revenue", level: 0,
-            monthly: {
-                jan: getFA("102.5").jan + getFA("102.6").jan,
-                feb: getFA("102.5").feb + getFA("102.6").feb,
-                mar: getFA("102.5").mar + getFA("102.6").mar,
-                apr: getFA("102.5").apr + getFA("102.6").apr,
-                may: getFA("102.5").may + getFA("102.6").may,
-                jun: getFA("102.5").jun + getFA("102.6").jun,
-                jul: getFA("102.5").jul + getFA("102.6").jul,
-                aug: getFA("102.5").aug + getFA("102.6").aug,
-                sep: getFA("102.5").sep + getFA("102.6").sep,
-                oct: getFA("102.5").oct + getFA("102.6").oct,
-                nov: getFA("102.5").nov + getFA("102.6").nov,
-                dec: getFA("102.5").dec + getFA("102.6").dec,
-            }, budget: generateBudgetData(1200000),
+            code: "102.0", name: "Delight", type: "revenue", level: 0,
+            monthly: sumFA("102.1", "102.2", "102.3", "102.4", "102.5", "102.6", "102.7"),
+            budget: generateBudgetData(1200000),
             children: [
+                { code: "102.1", name: "Contracted ROW", type: "revenue", level: 1, monthly: getFA("102.1"), budget: generateBudgetData(250000) },
+                { code: "102.2", name: "Contracted AMEX", type: "revenue", level: 1, monthly: getFA("102.2"), budget: generateBudgetData(150000) },
+                { code: "102.3", name: "Level 3 New ROW", type: "revenue", level: 1, monthly: getFA("102.3"), budget: generateBudgetData(200000) },
+                { code: "102.4", name: "Level 3 New AMEX", type: "revenue", level: 1, monthly: getFA("102.4"), budget: generateBudgetData(180000) },
                 { code: "102.5", name: "Consultancies", type: "revenue", level: 1, monthly: getFA("102.5"), budget: generateBudgetData(95000) },
                 { code: "102.6", name: "Marketing Coaching", type: "revenue", level: 1, monthly: getFA("102.6"), budget: generateBudgetData(45000) },
+                { code: "102.7", name: "Others", type: "revenue", level: 1, monthly: getFA("102.7"), budget: generateBudgetData(80000) },
             ],
         },
         {
             code: "103.0", name: "Planning Center", type: "revenue", level: 0,
-            monthly: getFA("103.0"), budget: generateBudgetData(680000),
-            children: [],
+            monthly: sumFA("103.0", "103.1", "103.2", "103.3", "103.4", "103.5", "103.6", "103.7", "103.8", "103.9"),
+            budget: generateBudgetData(680000),
+            children: [
+                { code: "103.1", name: "Level 3 ROW", type: "revenue", level: 1, monthly: getFA("103.1"), budget: generateBudgetData(120000) },
+                { code: "103.2", name: "Level 3 AMEX", type: "revenue", level: 1, monthly: getFA("103.2"), budget: generateBudgetData(100000) },
+                { code: "103.3", name: "Level 3 New ROW", type: "revenue", level: 1, monthly: getFA("103.3"), budget: generateBudgetData(80000) },
+                { code: "103.4", name: "Level 3 New AMEX", type: "revenue", level: 1, monthly: getFA("103.4"), budget: generateBudgetData(70000) },
+                { code: "103.5", name: "Level 2", type: "revenue", level: 1, monthly: getFA("103.5"), budget: generateBudgetData(90000) },
+                { code: "103.6", name: "Level 1", type: "revenue", level: 1, monthly: getFA("103.6"), budget: generateBudgetData(60000) },
+                { code: "103.7", name: "Not a Subscriber", type: "revenue", level: 1, monthly: getFA("103.7"), budget: generateBudgetData(50000) },
+                { code: "103.8", name: "Level 2 Allocation", type: "revenue", level: 1, monthly: getFA("103.8"), budget: generateBudgetData(55000) },
+                { code: "103.9", name: "Level 3 Allocation", type: "revenue", level: 1, monthly: getFA("103.9"), budget: generateBudgetData(55000) },
+            ],
         },
         {
-            code: "104.0", name: "LAB (Manufacture)", type: "revenue", level: 0,
-            monthly: getFA("104.0"), budget: generateBudgetData(520000),
+            code: "104.0", name: "LAB", type: "revenue", level: 0,
+            monthly: sumFA("104.0", "104.1", "104.2", "104.3", "104.4", "104.5", "104.6", "104.7"),
+            budget: generateBudgetData(520000),
             children: [],
         },
         {
@@ -228,7 +225,7 @@ export default function PnLReport() {
                 { code: "105.4", name: "Other Marketing", type: "revenue", level: 1, monthly: getFA("105.4"), budget: generateBudgetData(10000) },
             ],
         },
-    ], [webInvoicesRevenue, byFinancialAccount]);
+    ], [invoiceOrdersRevenue, byFinancialAccount]);
 
     // Expense structure with monthly data
     const expenseStructure: DRELineMonthly[] = useMemo(() => [
@@ -355,14 +352,14 @@ export default function PnLReport() {
         setExpandedSections(newExpanded);
     };
 
-    // Formato completo sem abreviação: 100.000
+    // Formato completo com ponto como separador de milhar: 1.000.000
     const formatNumber = (value: number): string => {
-        return Math.round(value).toLocaleString('pt-PT');
+        return Math.round(value).toLocaleString('de-DE');
     };
 
-    // Formato compacto para células da tabela (sem abreviação)
+    // Formato compacto para células da tabela (com ponto: 1.000.000)
     const formatCompact = (value: number): string => {
-        return Math.round(value).toLocaleString('pt-PT');
+        return Math.round(value).toLocaleString('de-DE');
     };
 
     // Render monthly P&L row
@@ -375,7 +372,7 @@ export default function PnLReport() {
 
         return (
             <div key={line.code}>
-                <div className={`grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-2 px-3 border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${isChild ? "pl-8 bg-gray-900/30" : "bg-gray-900/60"}`}>
+                <div className={`grid grid-cols-[140px_repeat(12,minmax(48px,1fr))_55px_55px] gap-1 py-2 px-3 border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${isChild ? "pl-8 bg-gray-900/30" : "bg-gray-900/60"}`}>
                     {/* Account name */}
                     <div className="flex items-center gap-1 min-w-0">
                         {hasChildren ? (
@@ -420,7 +417,7 @@ export default function PnLReport() {
     // Subtotal row for monthly view
     const renderMonthlySubtotal = (label: string, monthlyData: typeof monthlyTotals.months, field: keyof typeof monthlyTotals.months[0], ytd: number, total: number, isProfit = false) => {
         return (
-            <div className={`grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-3 px-3 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-800/60 border-y border-gray-700"}`}>
+            <div className={`grid grid-cols-[140px_repeat(12,minmax(48px,1fr))_55px_55px] gap-1 py-3 px-3 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-800/60 border-y border-gray-700"}`}>
                 <div className="flex items-center gap-2">
                     <div className="w-4" />
                     <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-white"} text-sm`}>{label}</span>
@@ -661,7 +658,7 @@ export default function PnLReport() {
                     </CardHeader>
 
                     {/* Table Header */}
-                    <div className="grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1 py-2 px-3 bg-gray-800/80 border-b border-gray-700 text-[10px] font-semibold uppercase tracking-wider text-gray-400 sticky top-[73px] z-10">
+                    <div className="grid grid-cols-[140px_repeat(12,minmax(48px,1fr))_55px_55px] gap-1 py-2 px-3 bg-gray-800/80 border-b border-gray-700 text-[10px] font-semibold uppercase tracking-wider text-gray-400 sticky top-[73px] z-10">
                         <div>Account</div>
                         {MONTHS.map((m, i) => (
                             <div key={m} className={`text-right ${i === currentMonth ? "text-emerald-400" : ""} ${i > currentMonth ? "opacity-50" : ""}`}>
@@ -702,7 +699,7 @@ export default function PnLReport() {
 
                     {/* Net Income Final Row */}
                     <div className="bg-gradient-to-r from-amber-900/60 via-orange-900/50 to-amber-900/60 border-y-2 border-amber-500/50 py-4 px-3">
-                        <div className="grid grid-cols-[200px_repeat(12,minmax(70px,1fr))_80px_80px] gap-1">
+                        <div className="grid grid-cols-[140px_repeat(12,minmax(48px,1fr))_55px_55px] gap-1">
                             <div className="flex items-center gap-2">
                                 <DollarSign className="h-5 w-5 text-amber-400" />
                                 <span className="text-lg font-bold text-amber-300">NET INCOME</span>
