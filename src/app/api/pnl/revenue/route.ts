@@ -13,6 +13,45 @@ const emptyMonthly = (): MonthlyData => ({
 
 const monthKeys = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
 
+// Lista de Financial Accounts (sem Allocations - são apenas ajustes internos)
+const ALL_FINANCIAL_ACCOUNTS = [
+    // 101.0 Growth
+    "101.1", // DSD Courses
+    "101.2", // Others Courses
+    "101.3", // Mastership
+    "101.4", // PC Membership
+    "101.5", // Partnerships
+    // 102.0 Delight (lógica de Clinics: ROW vs AMEX, Contracted vs New)
+    "102.1", // Contracted ROW
+    "102.2", // Contracted AMEX
+    "102.3", // Level 3 New ROW
+    "102.4", // Level 3 New AMEX
+    "102.5", // Consultancies
+    "102.6", // Marketing Coaching
+    "102.7", // Others
+    // 103.0 Planning Center (lógica de Clinics: Level 3/2/1 e ROW vs AMEX)
+    "103.1", // Level 3 ROW
+    "103.2", // Level 3 AMEX
+    "103.3", // Level 3 New ROW
+    "103.4", // Level 3 New AMEX
+    "103.5", // Level 2
+    "103.6", // Level 1
+    "103.7", // Not a Subscriber
+    // 104.0 LAB (lógica de Clinics: Level 3/2/1 e ROW vs AMEX)
+    "104.1", // Level 3 ROW
+    "104.2", // Level 3 AMEX
+    "104.3", // Level 3 New ROW
+    "104.4", // Level 3 New AMEX
+    "104.5", // Level 2
+    "104.6", // Level 1
+    "104.7", // Not a Subscriber
+    // 105.0 Other Income
+    "105.1", // Level 1 (subscriptions)
+    "105.2", // CORE Partnerships
+    "105.3", // Study Club
+    "105.4", // Other Marketing Revenues
+];
+
 export async function GET(request: NextRequest) {
     try {
         const { searchParams } = new URL(request.url);
@@ -21,7 +60,7 @@ export async function GET(request: NextRequest) {
         const startDate = `${year}-01-01`;
         const endDate = `${year}-12-31`;
 
-        // Buscar todos os dados de receita (HubSpot + Invoice Orders + outras fontes)
+        // Buscar dados APENAS de invoice-orders (fonte principal de receita)
         // IMPORTANTE: usar range para pegar todos os registros (limite padrão é 1000)
         let allData: any[] = [];
         let offset = 0;
@@ -31,6 +70,7 @@ export async function GET(request: NextRequest) {
             const { data, error } = await supabaseAdmin
                 .from("csv_rows")
                 .select("source, date, amount, custom_data")
+                .eq("source", "invoice-orders")
                 .gte("date", startDate)
                 .lte("date", endDate)
                 .range(offset, offset + pageSize - 1);
@@ -49,84 +89,29 @@ export async function GET(request: NextRequest) {
             if (data.length < pageSize) break;
         }
 
-        console.log(`📊 Total de registros carregados: ${allData.length}`);
+        console.log(`📊 Total de registros invoice-orders carregados: ${allData.length}`);
 
-        // Fonte de receita: apenas Invoice Orders
-        const revenueSources = ["invoice-orders"];
-
-        // Total mensal Invoice Orders
-        const invoiceOrdersRevenue: MonthlyData = emptyMonthly();
-        const invoiceOrdersCount: MonthlyData = emptyMonthly();
-
-        // Por Financial Account (dados reais) - TODOS os códigos usados pelo P&L
-        const byFinancialAccount: { [key: string]: MonthlyData } = {
-            // 101.0 Growth
-            "101.1": emptyMonthly(), // DSD Courses
-            "101.2": emptyMonthly(), // Others Courses
-            "101.3": emptyMonthly(), // Mastership
-            "101.4": emptyMonthly(), // PC Membership
-            "101.5": emptyMonthly(), // Partnerships
-            "101.6": emptyMonthly(), // Level 2 Allocation
-            // 102.0 Delight
-            "102.1": emptyMonthly(), // Contracted ROW
-            "102.2": emptyMonthly(), // Contracted AMEX
-            "102.3": emptyMonthly(), // Level 3 New ROW
-            "102.4": emptyMonthly(), // Level 3 New AMEX
-            "102.5": emptyMonthly(), // Consultancies
-            "102.6": emptyMonthly(), // Marketing Coaching
-            "102.7": emptyMonthly(), // Others
-            // 103.0 Planning Center
-            "103.0": emptyMonthly(),
-            "103.1": emptyMonthly(), // Level 3 ROW
-            "103.2": emptyMonthly(), // Level 3 AMEX
-            "103.3": emptyMonthly(), // Level 3 New ROW
-            "103.4": emptyMonthly(), // Level 3 New AMEX
-            "103.5": emptyMonthly(), // Level 2
-            "103.6": emptyMonthly(), // Level 1
-            "103.7": emptyMonthly(), // Not a Subscriber
-            "103.8": emptyMonthly(), // Level 2 Allocation
-            "103.9": emptyMonthly(), // Level 3 Allocation
-            // 104.0 LAB
-            "104.0": emptyMonthly(),
-            "104.1": emptyMonthly(), // Level 3 ROW
-            "104.2": emptyMonthly(), // Level 3 AMEX
-            "104.3": emptyMonthly(), // Level 3 New ROW
-            "104.4": emptyMonthly(), // Level 3 New AMEX
-            "104.5": emptyMonthly(), // Level 2
-            "104.6": emptyMonthly(), // Level 1
-            "104.7": emptyMonthly(), // Not a Subscriber
-            // 105.0 Other Income
-            "105.1": emptyMonthly(), // Level 1 Subscriptions
-            "105.2": emptyMonthly(), // Other
-            "105.4": emptyMonthly(), // Other Marketing
-        };
-
+        // Inicializar todas as Financial Accounts
+        const byFinancialAccount: { [key: string]: MonthlyData } = {};
         const byFinancialAccountCount: { [key: string]: MonthlyData } = {};
-        for (const fa of Object.keys(byFinancialAccount)) {
+        for (const fa of ALL_FINANCIAL_ACCOUNTS) {
+            byFinancialAccount[fa] = emptyMonthly();
             byFinancialAccountCount[fa] = emptyMonthly();
         }
 
         // Total por mês (todas as receitas)
         const totalRevenue: MonthlyData = emptyMonthly();
 
+        // Processar cada linha
         for (const row of allData || []) {
-            if (!row.date || !row.source) continue;
+            if (!row.date) continue;
 
-            // Apenas receitas positivas
+            // Valores positivos = receita
             const amount = row.amount || 0;
-            if (amount < 0) continue;
+            if (amount <= 0) continue;
 
             const monthIndex = new Date(row.date).getMonth();
             const monthKey = monthKeys[monthIndex];
-
-            // Apenas fontes de receita
-            if (!revenueSources.includes(row.source)) continue;
-
-            // Invoice Orders
-            if (row.source === "invoice-orders") {
-                invoiceOrdersRevenue[monthKey] += amount;
-                invoiceOrdersCount[monthKey]++;
-            }
 
             // Por Financial Account
             const fa = row.custom_data?.financial_account_code;
@@ -139,26 +124,28 @@ export async function GET(request: NextRequest) {
             totalRevenue[monthKey] += amount;
         }
 
+        // Log das estatísticas por categoria principal
+        const categoryTotals: { [key: string]: number } = {};
+        for (const fa of ALL_FINANCIAL_ACCOUNTS) {
+            const category = fa.split('.')[0] + '.0';
+            const total = Object.values(byFinancialAccount[fa]).reduce((a, b) => a + b, 0);
+            categoryTotals[category] = (categoryTotals[category] || 0) + total;
+        }
+
         console.log(`📊 P&L API - Ano ${year}:`, {
-            invoiceOrders: invoiceOrdersRevenue,
-            totalRevenue,
-            financialAccounts: Object.keys(byFinancialAccount).map(fa => ({
-                fa,
-                total: Object.values(byFinancialAccount[fa]).reduce((a, b) => a + b, 0)
-            }))
+            totalRecords: allData.length,
+            totalRevenue: Object.values(totalRevenue).reduce((a, b) => a + b, 0),
+            categoryTotals
         });
 
         return NextResponse.json({
             success: true,
             year,
-            invoiceOrders: {
-                revenue: invoiceOrdersRevenue,
-                count: invoiceOrdersCount,
-            },
             totalRevenue,
             byFinancialAccount,
             byFinancialAccountCount,
             totalRecords: allData?.length || 0,
+            categories: categoryTotals,
         });
     } catch (error) {
         console.error("Erro na API de receita:", error);
