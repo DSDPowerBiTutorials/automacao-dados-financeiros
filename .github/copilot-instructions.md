@@ -52,6 +52,25 @@ description: DESCRIPCIÓN
 amount: (HABER - DEBE)  // subtract debe from haber
 ```
 
+### Number Parsing (European Format)
+**CRITICAL:** Excel CSVs use European number format (`.` = thousands, `,` = decimal).
+```typescript
+// ❌ WRONG - treats dot as decimal
+parseFloat(value.replace(',', '.'))  // "4.000,50" → 4
+
+// ✅ CORRECT - removes dots, converts comma
+function parseEuropeanNumber(str: string): number {
+    return parseFloat(str.replace(/\./g, '').replace(',', '.')) || 0;
+}
+// "4.000,50" → 4000.50
+```
+
+### Revenue Data Validation
+- See [docs/REVENUE-DATA-VALIDATION.md](docs/REVENUE-DATA-VALIDATION.md) for complete rules
+- Always run `node scripts/validate-revenue-data.js [year]` after CSV imports
+- Check for duplicate invoices/credit notes in source data
+- Use pagination when querying Supabase (limit 1000 per query)
+
 ### Supabase Client Usage
 - Import from `@/lib/supabase`: `supabase` (public, RLS-aware) and `supabaseAdmin` (server-side only)
 - Never expose keys; rely on environment variables (`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`)

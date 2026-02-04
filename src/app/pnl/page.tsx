@@ -281,7 +281,8 @@ export default function PnLReport() {
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
         new Set(["101.0", "102.0", "103.0", "104.0", "105.0", "201.0", "202.0"])
     );
-    const [selectedYear, setSelectedYear] = useState(2025);
+    // Usar ano atual dinamicamente (2026 em Feb 2026)
+    const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [viewMode, setViewMode] = useState<"monthly" | "quarterly" | "annual">("monthly");
 
     // Drill-down state
