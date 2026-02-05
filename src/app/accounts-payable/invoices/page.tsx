@@ -3117,7 +3117,7 @@ export default function InvoicesPage() {
                                   value={editValue}
                                   onValueChange={setEditValue}
                                 >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent className="bg-white max-h-[300px]">
@@ -3179,14 +3179,14 @@ export default function InvoicesPage() {
                               </div>
                             ) : (
                               <div className="flex items-center justify-center gap-1">
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
                                   {getNameByCode(providers, invoice.provider_code)}
                                 </Badge>
                                 <button
                                   onClick={() => startInlineEdit(invoice.id, "provider_code", invoice.provider_code)}
                                   className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                 >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
                                 </button>
                               </div>
                             )}
@@ -3231,7 +3231,7 @@ export default function InvoicesPage() {
                                   onClick={() => startInlineEdit(invoice.id, "description", invoice.description)}
                                   className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
                                 >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
                                 </button>
                               </div>
                             )}
@@ -3331,7 +3331,7 @@ export default function InvoicesPage() {
                                   onClick={() => startInlineEdit(invoice.id, "invoice_amount", invoice.invoice_amount.toString())}
                                   className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                 >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
                                 </button>
                               </div>
                             )}
@@ -3341,7 +3341,7 @@ export default function InvoicesPage() {
                         {/* Currency */}
                         {visibleColumns.has('currency') && (
                           <td className="px-2 py-1 text-center">
-                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-white">{invoice.currency}</Badge>
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-gray-700/50 text-gray-200 border-gray-600">{invoice.currency}</Badge>
                           </td>
                         )}
 
@@ -3354,7 +3354,7 @@ export default function InvoicesPage() {
                                   value={editValue}
                                   onValueChange={setEditValue}
                                 >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent className="bg-white max-h-[300px]">
@@ -3416,14 +3416,14 @@ export default function InvoicesPage() {
                               </div>
                             ) : (
                               <div className="flex items-center gap-1">
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 max-w-[180px] truncate bg-white" title={financialAccount?.name}>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 max-w-[180px] truncate bg-gray-700/50 text-gray-200 border-gray-600" title={financialAccount?.name}>
                                   {financialAccount?.name || invoice.financial_account_code}
                                 </Badge>
                                 <button
                                   onClick={() => startInlineEdit(invoice.id, "financial_account_code", invoice.financial_account_code)}
                                   className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
                                 >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
                                 </button>
                               </div>
                             )}
@@ -3439,7 +3439,7 @@ export default function InvoicesPage() {
                                   value={editValue}
                                   onValueChange={setEditValue}
                                 >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent className="bg-white max-h-[300px]">
@@ -3491,7 +3491,7 @@ export default function InvoicesPage() {
                             ) : (
                               <div className="flex items-center gap-1">
                                 {invoice.cost_center_code ? (
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
                                     {getNameByCode(costCenters, invoice.cost_center_code)}
                                   </Badge>
                                 ) : (
@@ -3501,7 +3501,7 @@ export default function InvoicesPage() {
                                   onClick={() => startInlineEdit(invoice.id, "cost_center_code", invoice.cost_center_code)}
                                   className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                 >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
                                 </button>
                               </div>
                             )}
@@ -3512,7 +3512,7 @@ export default function InvoicesPage() {
                         {visibleColumns.has('sub_department') && (
                           <td className="px-2 py-1 text-center">
                             {invoice.sub_department_code ? (
-                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-100 text-purple-800 border-purple-300">
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-900/30 text-purple-400 border-purple-700">
                                 {subDepartments.find(sd => sd.code === invoice.sub_department_code)?.name || invoice.sub_department_code}
                               </Badge>
                             ) : (
@@ -3530,7 +3530,7 @@ export default function InvoicesPage() {
                                   value={editValue}
                                   onValueChange={setEditValue}
                                 >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent className="bg-white max-h-[300px]">
@@ -3582,7 +3582,7 @@ export default function InvoicesPage() {
                             ) : (
                               <div className="flex items-center gap-1">
                                 {invoice.cost_type_code ? (
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
                                     {getNameByCode(costTypes, invoice.cost_type_code)}
                                   </Badge>
                                 ) : (
@@ -3592,7 +3592,7 @@ export default function InvoicesPage() {
                                   onClick={() => startInlineEdit(invoice.id, "cost_type_code", invoice.cost_type_code)}
                                   className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                 >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
                                 </button>
                               </div>
                             )}
@@ -3608,7 +3608,7 @@ export default function InvoicesPage() {
                                   value={editValue}
                                   onValueChange={setEditValue}
                                 >
-                                  <SelectTrigger className="h-6 text-[10px] bg-white">
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
                                     <SelectValue />
                                   </SelectTrigger>
                                   <SelectContent className="bg-white max-h-[300px]">
@@ -3660,7 +3660,7 @@ export default function InvoicesPage() {
                             ) : (
                               <div className="flex items-center gap-1">
                                 {invoice.dep_cost_type_code ? (
-                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-white">
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
                                     {getNameByCode(depCostTypes, invoice.dep_cost_type_code)}
                                   </Badge>
                                 ) : (
@@ -3670,7 +3670,7 @@ export default function InvoicesPage() {
                                   onClick={() => startInlineEdit(invoice.id, "dep_cost_type_code", invoice.dep_cost_type_code)}
                                   className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                 >
-                                  <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
                                 </button>
                               </div>
                             )}
@@ -3682,7 +3682,7 @@ export default function InvoicesPage() {
                           <td className="px-2 py-1 text-center">
                             <Badge
                               variant={paymentStatus === 'PAID' ? 'default' : paymentStatus === 'OVERDUE' ? 'destructive' : 'outline'}
-                              className="text-[10px] px-1.5 py-0 bg-white"
+                              className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600"
                             >
                               {paymentStatus.replace('_', ' ')}
                             </Badge>
@@ -3693,7 +3693,7 @@ export default function InvoicesPage() {
                         {visibleColumns.has('payment_method') && (
                           <td className="px-2 py-1 text-center">
                             {invoice.payment_method_code ? (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
                                 {getNameByCode(paymentMethods, invoice.payment_method_code)}
                               </Badge>
                             ) : <span className="text-gray-400">-</span>}
@@ -3704,7 +3704,7 @@ export default function InvoicesPage() {
                         {visibleColumns.has('bank_account') && (
                           <td className="px-2 py-1 text-center">
                             {invoice.bank_account_code ? (
-                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-white">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
                                 {getNameByCode(bankAccounts, invoice.bank_account_code)}
                               </Badge>
                             ) : <span className="text-gray-400">-</span>}
