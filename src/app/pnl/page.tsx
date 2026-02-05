@@ -220,7 +220,8 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                     className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
                                                 >
                                                     <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
-                                                        {new Date(tx.date).toLocaleDateString('pt-PT')}
+                                                        {/* Formatação manual sem conversão de timezone: YYYY-MM-DD → DD/MM/YYYY */}
+                                                        {tx.date ? `${tx.date.substring(8,10)}/${tx.date.substring(5,7)}/${tx.date.substring(0,4)}` : "-"}
                                                     </td>
                                                     <td className="px-4 py-2 text-sm text-white" title={tx.customer}>
                                                         {tx.customer}
