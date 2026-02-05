@@ -215,7 +215,7 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // Build variations list
+        // Build variations list - ONLY include clinics with significant lifecycle events
         const variations: ClinicVariation[] = [];
 
         for (const customerName of allCustomers) {
@@ -235,29 +235,28 @@ export async function GET(request: NextRequest) {
             const existsInAnyClinicNow = allCurrentClinicCustomers.has(customerName);
             const existedInAnyClinicBefore = allPrevClinicCustomers.has(customerName);
 
-            // isNew: no revenue in previous for THIS FA code, AND didn't exist in any clinic FA code before
+            // isNew: no revenue in previous month (for THIS FA code), positive revenue now
+            // AND didn't exist in any clinic FA code before (truly new customer)
             const isNew = prevData.revenue === 0 && currentData.revenue > 0 && !existedInAnyClinicBefore;
 
-            // isChurned: had revenue in previous for THIS FA code, no revenue now, AND doesn't exist in any clinic FA code now
-            const isChurned = prevData.revenue > 0 && currentData.revenue === 0 && !existsInAnyClinicNow;
+            // isChurned: had positive revenue before, now has zero or negative (credit note/refund)
+            // AND doesn't exist in any clinic FA code now
+            const isChurned = prevData.revenue > 0 && currentData.revenue <= 0 && !existsInAnyClinicNow;
 
-            // isLevelChange: had revenue before, no revenue in THIS FA code now, but exists in another clinic FA code
-            const isLevelChange = prevData.revenue > 0 && currentData.revenue === 0 && existsInAnyClinicNow;
-
-            // Get event from events table
+            // Get event from events table (manually set)
             const clinicEvent = clinicId ? eventsMap.get(clinicId) : null;
             let eventType = clinicEvent?.event_type || null;
             const eventConfirmed = clinicEvent?.confirmed ?? false;
 
-            // Auto-detect event type if not set
+            // Auto-detect event type if not manually set
             if (!eventType) {
                 if (isNew) eventType = "New";
                 else if (isChurned) eventType = "Churn";
-                // Don't auto-detect for level changes - they moved to another level, not churned
             }
 
-            // Only include customers with activity in THIS FA code (skip level changes unless they have an event)
-            if (currentData.revenue > 0 || (prevData.revenue > 0 && !isLevelChange) || eventType) {
+            // ONLY include clinics that have an actual event (New, Churn, Pause, Return)
+            // Skip clinics that are just continuing normally (no event)
+            if (eventType) {
                 variations.push({
                     clinic_id: clinicId,
                     customer_name: customerName,
