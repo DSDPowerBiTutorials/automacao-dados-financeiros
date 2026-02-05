@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye } from "lucide-react";
+import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -485,6 +485,7 @@ export default function InvoicesPage() {
       cost_type_code: "",
       dep_cost_type_code: "",
       cost_center_code: "",
+      sub_department_code: "",
       description: "",
       invoice_number: "",
       country_code: "ES",
@@ -1194,6 +1195,7 @@ export default function InvoicesPage() {
       cost_type_code: invoice.cost_type_code || "",
       dep_cost_type_code: invoice.dep_cost_type_code || "",
       cost_center_code: invoice.cost_center_code || "",
+      sub_department_code: invoice.sub_department_code || "",
       description: invoice.description || "",
       invoice_number: invoice.invoice_number || "",
       country_code: invoice.country_code,
@@ -1201,7 +1203,7 @@ export default function InvoicesPage() {
       dre_impact: invoice.dre_impact,
       cash_impact: invoice.cash_impact,
       is_intercompany: invoice.is_intercompany,
-      notes: invoice.notes || ""
+      notes: invoice.notes || "",
     });
     setSidePanelOpen(true);
   }
@@ -1232,8 +1234,8 @@ export default function InvoicesPage() {
     });
   }
 
-  function handleScopeChange(scope: ScopeType) {
-    setSelectedScopes(new Set([scope]));
+  function handleScopeChange(_scope: ScopeType) {
+    // Scope is managed by global context, no local state needed
   }
 
   function handleFormScopeChange(scope: ScopeType) {
@@ -1334,6 +1336,17 @@ export default function InvoicesPage() {
     return filtered;
   }, [invoices, selectedType, selectedCountry, searchTerm, sortField, sortDirection, selectedScope, columnFilters, multiSelectFilters, dateFilters, amountFilter]);
 
+  // Separate manual vs automatic invoices (BOT- prefix = automatic/BOTella)
+  const manualInvoices = useMemo(() =>
+    filteredInvoices.filter(inv => !inv.invoice_number?.startsWith("BOT-")),
+    [filteredInvoices]
+  );
+
+  const automaticInvoices = useMemo(() =>
+    filteredInvoices.filter(inv => inv.invoice_number?.startsWith("BOT-")),
+    [filteredInvoices]
+  );
+
   const stats = useMemo(() => {
     const incurred = invoices.filter(i => i.invoice_type === "INCURRED");
     const budget = invoices.filter(i => i.invoice_type === "BUDGET");
@@ -1366,10 +1379,9 @@ export default function InvoicesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-full px-6 py-6">
-        <Breadcrumbs />
+      <div className="min-h-screen bg-[#1e1f21] px-6 py-6">
         <div className="flex items-center justify-center h-64">
-          <p className="text-muted-foreground">Loading invoices...</p>
+          <p className="text-gray-400">Loading invoices...</p>
         </div>
       </div>
     );
@@ -1377,13 +1389,19 @@ export default function InvoicesPage() {
 
   return (
     <>
-      {/* Fixed Header and Cards - always visible, no horizontal scroll */}
-      <div className="min-h-full px-6 py-6 pb-0">
-        <div className="flex justify-between items-center mb-4">
-          <Breadcrumbs />
+      {/* Fixed Header and Cards - Dark Theme */}
+      <div className="min-h-screen bg-[#1e1f21] text-white px-6 py-6 pb-0">
+        <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
+          <div className="flex items-center gap-4">
+            <h1 className="text-xl font-semibold text-white">Invoices</h1>
+            <span className="text-gray-500">•</span>
+            <span className="text-gray-400 text-sm">{SCOPE_CONFIG[selectedScope].label}</span>
+          </div>
           <div className="flex items-center gap-2">
             <Button
               disabled={selectedScope === "GLOBAL"}
+              variant="outline"
+              className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
               onClick={() => {
                 setEditingInvoice(null);
                 resetForm();
@@ -2015,10 +2033,9 @@ export default function InvoicesPage() {
                 <div className="space-y-2">
                   <Label>Scope *</Label>
                   <ScopeSelector
-                    selectedScopes={new Set([newAccountData.scope])}
-                    onScopeChange={(scope) => setNewAccountData({ ...newAccountData, scope })}
+                    value={newAccountData.scope}
+                    onValueChange={(scope: ScopeType) => setNewAccountData({ ...newAccountData, scope })}
                     label=""
-                    multiSelect={false}
                   />
                 </div>
 
@@ -2425,6 +2442,7 @@ export default function InvoicesPage() {
                                     cost_center_code: splitPart.cost_center_code || "",
                                     cost_type_code: splitPart.cost_type_code || "",
                                     dep_cost_type_code: splitPart.dep_cost_type_code || "",
+                                    sub_department_code: splitPart.sub_department_code || "",
                                     bank_account_code: splitPart.bank_account_code || "",
                                     payment_method_code: splitPart.payment_method_code || "",
                                     entry_type: splitPart.entry_type,
@@ -2441,7 +2459,9 @@ export default function InvoicesPage() {
                                     cash_impact: splitPart.cash_impact,
                                     is_intercompany: splitPart.is_intercompany,
                                     notes: splitPart.notes || "",
-                                    course_code: splitPart.course_code || ""
+                                    course_code: splitPart.course_code || "",
+                                    paid_amount: splitPart.paid_amount?.toString() || "",
+                                    paid_currency: splitPart.paid_currency || ""
                                   });
                                   setViewSplitsDialogOpen(false);
                                   setSidePanelOpen(true);
@@ -2679,13 +2699,13 @@ export default function InvoicesPage() {
                 </Dialog>
 
                 {/* Export to Excel */}
-                <Button variant="outline" size="sm" onClick={exportToExcel}>
+                <Button variant="outline" size="sm" onClick={exportToExcel} className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Export Excel
                 </Button>
 
                 {/* Export to PDF */}
-                <Button variant="outline" size="sm" onClick={exportToPDF}>
+                <Button variant="outline" size="sm" onClick={exportToPDF} className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
                   <Download className="h-4 w-4 mr-2" />
                   Export PDF
                 </Button>
@@ -2693,12 +2713,12 @@ export default function InvoicesPage() {
 
               <div className="flex-1">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
                     placeholder="Search by invoice number, provider, description..."
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 bg-white"
+                    className="pl-9 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-400"
                   />
                 </div>
               </div>
@@ -2706,19 +2726,19 @@ export default function InvoicesPage() {
 
             {/* Table */}
             {error ? (
-              <div className="text-center py-8 text-destructive">{error}</div>
+              <div className="text-center py-8 text-red-400">{error}</div>
             ) : filteredInvoices.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
+              <div className="text-center py-12 text-gray-400">
                 <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
                 <p>No invoices found</p>
                 <p className="text-sm">Create your first invoice to get started</p>
               </div>
             ) : (
-              <div className="border rounded-lg overflow-hidden">
+              <div className="border border-gray-700 rounded-lg overflow-hidden">
                 <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
                   <table className="w-full text-xs">
-                    <thead className="sticky top-0 z-10 bg-white shadow-sm">
-                      <tr className="border-b bg-white">
+                    <thead className="sticky top-0 z-10 bg-[#2a2b2d] shadow-sm">
+                      <tr className="border-b border-gray-700 bg-[#2a2b2d]">
                         {visibleColumns.has('actions') && (
                           <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-20 bg-white">Actions</th>
                         )}
@@ -2992,15 +3012,16 @@ export default function InvoicesPage() {
                         )}
                       </tr>
                     </thead>
-                    <tbody className="divide-y">
+                    <tbody className="divide-y divide-gray-700">
                       {filteredInvoices.map((invoice) => {
                         const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
                         const Icon = config.icon;
                         const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
                         const paymentStatus = invoice.payment_status || 'NOT_SCHEDULED';
+                        const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
 
                         return (
-                          <tr key={invoice.id} className="hover:bg-muted/30 group">
+                          <tr key={invoice.id} className={`hover:bg-gray-800/30 group ${isBotInvoice ? 'bg-purple-900/10' : ''}`}>
                             {/* Actions */}
                             {visibleColumns.has('actions') && (
                               <td className="px-2 py-1 text-center">
@@ -3276,6 +3297,11 @@ export default function InvoicesPage() {
                                   </div>
                                 ) : (
                                   <div className="flex items-center gap-1">
+                                    {isBotInvoice && (
+                                      <span title="Created by BOTella">
+                                        <Zap className="h-3 w-3 text-purple-400" />
+                                      </span>
+                                    )}
                                     <span
                                       className="text-[11px] font-mono max-w-[100px] truncate inline-block cursor-default"
                                       title={invoice.invoice_number || ""}
@@ -3286,7 +3312,7 @@ export default function InvoicesPage() {
                                       onClick={() => startInlineEdit(invoice.id, "invoice_number", invoice.invoice_number)}
                                       className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                     >
-                                      <Pencil className="h-3 w-3 text-muted-foreground hover:text-primary" />
+                                      <Pencil className="h-3 w-3 text-gray-400 hover:text-white" />
                                     </button>
                                   </div>
                                 )}

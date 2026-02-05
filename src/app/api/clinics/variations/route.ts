@@ -118,10 +118,12 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Filter by exact FA code for this view
-        const currentFiltered = (currentTx || []).filter(
-            (tx) => tx.custom_data?.financial_account_code === faCode
-        );
+        // Filter by FA code for this view (case-insensitive, same as drilldown API)
+        const faLower = faCode.toLowerCase();
+        const currentFiltered = (currentTx || []).filter((tx) => {
+            const fa = (tx.custom_data?.financial_account_code || "").toLowerCase();
+            return fa === faLower || fa.startsWith(faLower);
+        });
 
         // Also get ALL clinic transactions (102.x, 103.x, 104.x) to check if customer is still active in another level
         const allCurrentClinicCustomers = new Set<string>();
@@ -149,10 +151,11 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Filter previous by same FA code
-        const prevFiltered = (prevTx || []).filter(
-            (tx) => tx.custom_data?.financial_account_code === faCode
-        );
+        // Filter previous by same FA code (case-insensitive)
+        const prevFiltered = (prevTx || []).filter((tx) => {
+            const fa = (tx.custom_data?.financial_account_code || "").toLowerCase();
+            return fa === faLower || fa.startsWith(faLower);
+        });
 
         // Also get ALL previous clinic customers to detect true churns
         const allPrevClinicCustomers = new Set<string>();
@@ -162,6 +165,47 @@ export async function GET(request: NextRequest) {
                 const customerName = tx.custom_data?.customer_name || "";
                 if (customerName) allPrevClinicCustomers.add(customerName);
             }
+        }
+
+        // 3-MONTH LOOKBACK for churn detection (handles quarterly billing)
+        // Calculate 3-month lookback period (for monthly mode only)
+        let lookbackClinicCustomers = new Set<string>();
+        if (!ytd) {
+            // Go back 3 months from current month
+            const lookbackMonths: { startDate: string; endDate: string }[] = [];
+            for (let i = 1; i <= 3; i++) {
+                let lbMonth = month - i;
+                let lbYear = year;
+                while (lbMonth <= 0) {
+                    lbMonth += 12;
+                    lbYear -= 1;
+                }
+                const lbStartDate = `${lbYear}-${String(lbMonth).padStart(2, "0")}-01`;
+                const lbEndDate = getLastDayOfMonth(lbYear, lbMonth);
+                lookbackMonths.push({ startDate: lbStartDate, endDate: lbEndDate });
+            }
+
+            // Query last 3 months for clinic customers
+            const firstMonth = lookbackMonths[lookbackMonths.length - 1];
+            const lastMonth = lookbackMonths[0];
+            const { data: lookbackTx } = await supabaseAdmin
+                .from("csv_rows")
+                .select("id, date, amount, custom_data")
+                .eq("source", "invoice-orders")
+                .gte("date", firstMonth.startDate)
+                .lte("date", lastMonth.endDate);
+
+            // Build set of customers who had ANY clinic transaction in last 3 months
+            for (const tx of lookbackTx || []) {
+                const fa = tx.custom_data?.financial_account_code || "";
+                if (fa.startsWith("102.") || fa.startsWith("103.") || fa.startsWith("104.")) {
+                    const customerName = tx.custom_data?.customer_name || "";
+                    if (customerName) lookbackClinicCustomers.add(customerName);
+                }
+            }
+        } else {
+            // For YTD mode, use the previous period customers
+            lookbackClinicCustomers = allPrevClinicCustomers;
         }
 
         // Aggregate current period by customer_name
@@ -232,7 +276,7 @@ export async function GET(request: NextRequest) {
             // Check if had/has revenue in THIS specific FA code
             const hadRevenueInThisFABefore = prevData.revenue > 0;
             const hasRevenueInThisFANow = currentData.revenue > 0;
-            
+
             // No change in this FA code = skip (not a lifecycle event for this line)
             if (hadRevenueInThisFABefore === hasRevenueInThisFANow) continue;
 
@@ -247,6 +291,8 @@ export async function GET(request: NextRequest) {
             // Check if customer exists in ANY clinic FA code (102.1-102.4)
             const existsInAnyClinicNow = allCurrentClinicCustomers.has(customerName);
             const existedInAnyClinicBefore = allPrevClinicCustomers.has(customerName);
+            // Use 3-month lookback for churn detection (handles quarterly billing)
+            const existedInClinicLast3Months = lookbackClinicCustomers.has(customerName);
 
             let eventType: string | null = null;
 
@@ -261,11 +307,11 @@ export async function GET(request: NextRequest) {
 
             // LEFT this FA code this month  
             if (hadRevenueInThisFABefore && !hasRevenueInThisFANow) {
-                if (!existsInAnyClinicNow) {
-                    // Truly churned from DSD Clinics (not in ANY clinic line now)
+                if (!existsInAnyClinicNow && !existedInClinicLast3Months) {
+                    // Truly churned from DSD Clinics (not in ANY clinic line now AND no activity in last 3 months)
                     eventType = "Churn";
                 }
-                // If still exists in another clinic line, don't show (level change, not churn)
+                // If still exists in another clinic line OR had activity in last 3 months, don't show as churn
             }
 
             // Get manual event override from events table
