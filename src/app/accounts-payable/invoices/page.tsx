@@ -1336,16 +1336,18 @@ export default function InvoicesPage() {
     return filtered;
   }, [invoices, selectedType, selectedCountry, searchTerm, sortField, sortDirection, selectedScope, columnFilters, multiSelectFilters, dateFilters, amountFilter]);
 
-  // Separate manual vs automatic invoices (BOT- prefix = automatic/BOTella)
-  const manualInvoices = useMemo(() =>
-    filteredInvoices.filter(inv => !inv.invoice_number?.startsWith("BOT-")),
-    [filteredInvoices]
-  );
+  // Filtro Created
+  const [createdFilter, setCreatedFilter] = useState<'all' | 'bot' | 'manual'>('all');
 
-  const automaticInvoices = useMemo(() =>
-    filteredInvoices.filter(inv => inv.invoice_number?.startsWith("BOT-")),
-    [filteredInvoices]
-  );
+  const filteredByCreated = useMemo(() => {
+    if (createdFilter === 'bot') {
+      return filteredInvoices.filter(inv => inv.invoice_number?.startsWith("BOT-"));
+    }
+    if (createdFilter === 'manual') {
+      return filteredInvoices.filter(inv => !inv.invoice_number?.startsWith("BOT-"));
+    }
+    return filteredInvoices;
+  }, [filteredInvoices, createdFilter]);
 
   const stats = useMemo(() => {
     const incurred = invoices.filter(i => i.invoice_type === "INCURRED");
@@ -2679,75 +2681,20 @@ export default function InvoicesPage() {
           )}
         </div>
 
-        {/* Table */}
-        {error ? (
-          <div className="text-center py-8 text-red-400">{error}</div>
-        ) : filteredInvoices.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
-            <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-            <p>No invoices found</p>
-            <p className="text-sm">Create your first invoice to get started</p>
-          </div>
-        ) : (
-          <div className="border border-gray-700 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
-              <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10 bg-[#2a2b2d] shadow-sm">
-                  <tr className="border-b border-gray-700 bg-[#2a2b2d]">
-                    {visibleColumns.has('actions') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Actions</th>
-                    )}
-                    {visibleColumns.has('split') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Split</th>
-                    )}
-                    {/* Created By column - between Split and Scope */}
-                    <th className="px-2 py-1.5 text-center font-semibold text-gray-300 w-14 bg-[#2a2b2d]" title="Created by user or BOTella automation">
-                      Created
-                    </th>
-                    {visibleColumns.has('scope') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">
-                        <div className="flex items-center justify-center gap-1">
-                          Scope
-                        </div>
-                      </th>
-                    )}
-                    {visibleColumns.has('impact') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">
-                        <div className="flex items-center justify-center gap-1">
-                          Impact
-                        </div>
-                      </th>
-                    )}
-                    {visibleColumns.has('type') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => handleSort("invoice_type")} className="flex items-center gap-1 hover:text-primary">
-                            Type
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
-                          <button
-                            onClick={(e) => openFilterPopover("invoice_type", e)}
-                            className="hover:text-primary"
-                            title="Filter by Type"
-                          >
-                            <Filter className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </th>
-                    )}
-                    {visibleColumns.has('input_date') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-                        <div className="flex items-center gap-1">
-                          <button onClick={() => handleSort("input_date")} className="flex items-center gap-1 hover:text-primary">
-                            Input Date
-                            <ArrowUpDown className="h-3 w-3" />
-                          </button>
-                          <button onClick={(e) => openFilterPopover("input_date", e)} className="hover:text-primary" title="Filter by Input Date">
-                            <Filter className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </th>
-                    )}
+        {/* Filtro Created */}
+        <div className="flex items-center gap-2 mb-2">
+          <Label className="text-sm text-gray-300">Created:</Label>
+          <Select value={createdFilter} onValueChange={setCreatedFilter}>
+            <SelectTrigger className="h-7 text-xs bg-[#2a2b2d] text-gray-200 border-gray-600 w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent className="bg-[#2a2b2d] text-gray-200 border-gray-600">
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="bot">Automáticas (BOTella)</SelectItem>
+              <SelectItem value="manual">Manuais (Usuário)</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
                     {visibleColumns.has('invoice_date') && (
                       <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
@@ -2972,7 +2919,7 @@ export default function InvoicesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
-                  {filteredInvoices.map((invoice) => {
+                  {filteredByCreated.map((invoice) => {
                     const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
                     const Icon = config.icon;
                     const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
