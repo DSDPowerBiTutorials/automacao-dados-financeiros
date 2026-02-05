@@ -2917,7 +2917,7 @@ export default function InvoicesPage() {
           </th>
         )}
       </tr>
-    </thead >
+    </thead>
       <tbody className="divide-y divide-gray-700">
         {filteredByCreated.map((invoice) => {
           const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];

@@ -36,7 +36,7 @@ import {
   type LucideIcon
 } from "lucide-react"
 
-// Helper para sobrescrever href e adicionar ícone de construção
+// Helper para sobrescrever href de itens under construction
 function withUnderConstruction(nav: any): any {
   if (Array.isArray(nav)) {
     return nav.map(withUnderConstruction);
@@ -48,7 +48,6 @@ function withUnderConstruction(nav: any): any {
       ...nav,
       href: isUC ? "/under-construction" : nav.href,
       children,
-      icon: isUC ? ((props: any) => <span style={{display:'inline-flex',alignItems:'center',gap:4}}><nav.icon {...props} /><AlertCircle className="text-yellow-400 ml-1" style={{height:16,width:16}} /></span>) : nav.icon
     };
   }
   return nav;
