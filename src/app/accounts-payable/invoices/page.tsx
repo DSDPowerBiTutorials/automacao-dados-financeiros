@@ -2695,8 +2695,66 @@ export default function InvoicesPage() {
             </SelectContent>
           </Select>
         </div>
-        {visibleColumns.has('invoice_date') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+
+        {/* Table */}
+        {error ? (
+          <div className="text-center py-8 text-red-400">{error}</div>
+        ) : filteredByCreated.length === 0 ? (
+          <div className="text-center py-12 text-gray-400">
+            <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>No invoices found</p>
+            <p className="text-sm">Create your first invoice to get started</p>
+          </div>
+        ) : (
+          <div className="border border-gray-700 rounded-lg overflow-hidden">
+            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead className="sticky top-0 z-10 bg-[#2a2b2d] shadow-sm">
+                  <tr className="border-b border-gray-700 bg-[#2a2b2d]">
+                    {visibleColumns.has('actions') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Actions</th>
+                    )}
+                    {visibleColumns.has('split') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Split</th>
+                    )}
+                    {/* Created By column */}
+                    <th className="px-2 py-1.5 text-center font-semibold text-gray-300 w-14 bg-[#2a2b2d]" title="Created by user or BOTella automation">
+                      Created
+                    </th>
+                    {visibleColumns.has('scope') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Scope</th>
+                    )}
+                    {visibleColumns.has('impact') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Impact</th>
+                    )}
+                    {visibleColumns.has('type') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleSort("invoice_type")} className="flex items-center gap-1 hover:text-primary">
+                            Type
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button onClick={(e) => openFilterPopover("invoice_type", e)} className="hover:text-primary" title="Filter by Type">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('input_date') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleSort("input_date")} className="flex items-center gap-1 hover:text-primary">
+                            Input Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button onClick={(e) => openFilterPopover("input_date", e)} className="hover:text-primary" title="Filter by Input Date">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('invoice_date') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
             <div className="flex items-center gap-1">
               <button onClick={() => handleSort("invoice_date")} className="flex items-center gap-1 hover:text-primary">
                 Invoice Date
@@ -2915,11 +2973,11 @@ export default function InvoicesPage() {
               <ArrowUpDown className="h-3 w-3" />
             </button>
           </th>
-        )}
-      </tr>
-    </thead>
-      <tbody className="divide-y divide-gray-700">
-        {filteredByCreated.map((invoice) => {
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-700">
+                  {filteredByCreated.map((invoice) => {
           const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
           const Icon = config.icon;
           const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
