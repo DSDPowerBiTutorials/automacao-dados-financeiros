@@ -30,9 +30,13 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const isDryRun = process.argv.includes("--dry-run");
 
 // Helpers
-function formatYearMonth(date) {
-    const d = new Date(date);
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+function formatYearMonth(dateStr) {
+    // Parsing manual sem conversão de timezone: extrai YYYY-MM da string diretamente
+    if (!dateStr) return null;
+    const str = String(dateStr).split("T")[0]; // Remove parte de hora se existir
+    const [year, month] = str.split("-");
+    if (!year || !month) return null;
+    return `${year}-${month}`;
 }
 
 function parseEuropeanNumber(str) {
@@ -196,32 +200,43 @@ async function populateClinics() {
 
     const events = [];
     const sortedMonths = Array.from(new Set(Array.from(monthlyStatsMap.values()).map(s => s.year_month))).sort();
+    
+    // Find the latest month in the dataset (use this as reference, not current date)
+    const latestMonth = sortedMonths[sortedMonths.length - 1] || formatYearMonth(new Date().toISOString().split("T")[0]);
+    const [latestYear, latestMonthNum] = latestMonth.split("-").map(Number);
+    // Calculate 2 months before the latest data
+    const refDate = new Date(latestYear, latestMonthNum - 1, 1); // Month is 0-indexed
+    refDate.setMonth(refDate.getMonth() - 2);
 
     for (const [customerName, clinic] of clinicsMap) {
         // Detect NEW event (first month)
         const firstMonth = formatYearMonth(clinic.first_transaction_date);
-        events.push({
-            customerName,
-            event_type: "New",
-            event_date: clinic.first_transaction_date,
-            year_month: firstMonth,
-            previous_status: null,
-            new_status: "active",
-            is_auto_detected: true,
-            confirmed: true, // New is always confirmed automatically
-        });
+        if (firstMonth) {
+            events.push({
+                customerName,
+                event_type: "New",
+                event_date: clinic.first_transaction_date,
+                year_month: firstMonth,
+                previous_status: null,
+                new_status: "active",
+                is_auto_detected: true,
+                confirmed: true, // New is always confirmed automatically
+            });
+        }
 
-        // Detect potential CHURN (last transaction > 2 months ago)
-        const lastTxDate = new Date(clinic.last_transaction_date);
-        const twoMonthsAgo = new Date();
-        twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+        // Detect potential CHURN (last transaction > 2 months before latest data)
+        const lastTxStr = String(clinic.last_transaction_date).split("T")[0];
+        const [lastYear, lastMonthStr] = lastTxStr.split("-").map(Number);
+        const lastTxDate = new Date(lastYear, lastMonthStr - 1, 1);
 
-        if (lastTxDate < twoMonthsAgo) {
-            const churnMonth = formatYearMonth(new Date(lastTxDate.getFullYear(), lastTxDate.getMonth() + 1, 1));
+        if (lastTxDate < refDate) {
+            // Calculate churn month (month after last transaction)
+            const churnDate = new Date(lastYear, lastMonthStr, 1); // Next month after last tx
+            const churnMonth = `${churnDate.getFullYear()}-${String(churnDate.getMonth() + 1).padStart(2, "0")}`;
             events.push({
                 customerName,
                 event_type: "Churn",
-                event_date: new Date(lastTxDate.getFullYear(), lastTxDate.getMonth() + 1, 1).toISOString().split("T")[0],
+                event_date: `${churnDate.getFullYear()}-${String(churnDate.getMonth() + 1).padStart(2, "0")}-01`,
                 year_month: churnMonth,
                 previous_status: "active",
                 new_status: "churned",

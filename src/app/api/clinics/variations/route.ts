@@ -45,6 +45,12 @@ function deriveLevel(faCode: string): string | null {
     return null;
 }
 
+// Helper: Get last day of month (avoid invalid dates like Feb 31)
+function getLastDayOfMonth(year: number, month: number): string {
+    const lastDay = new Date(year, month, 0).getDate(); // month is 1-indexed here
+    return `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+}
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const yearMonth = searchParams.get("month"); // Format: YYYY-MM
@@ -84,16 +90,16 @@ export async function GET(request: NextRequest) {
         if (ytd) {
             // YTD: Jan 1 to end of target month
             currentStartDate = `${year}-01-01`;
-            currentEndDate = `${year}-${String(month).padStart(2, "0")}-31`;
+            currentEndDate = getLastDayOfMonth(year, month);
             // Previous year same period
             prevStartDate = `${year - 1}-01-01`;
-            prevEndDate = `${year - 1}-${String(month).padStart(2, "0")}-31`;
+            prevEndDate = getLastDayOfMonth(year - 1, month);
         } else {
             // Monthly: just the target month vs previous month
             currentStartDate = `${year}-${String(month).padStart(2, "0")}-01`;
-            currentEndDate = `${year}-${String(month).padStart(2, "0")}-31`;
+            currentEndDate = getLastDayOfMonth(year, month);
             prevStartDate = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
-            prevEndDate = `${prevYear}-${String(prevMonth).padStart(2, "0")}-31`;
+            prevEndDate = getLastDayOfMonth(prevYear, prevMonth);
         }
 
         // Fetch current period transactions with specific FA code
@@ -235,13 +241,24 @@ export async function GET(request: NextRequest) {
             const existsInAnyClinicNow = allCurrentClinicCustomers.has(customerName);
             const existedInAnyClinicBefore = allPrevClinicCustomers.has(customerName);
 
-            // isNew: no revenue in previous month (for THIS FA code), positive revenue now
-            // AND didn't exist in any clinic FA code before (truly new customer)
-            const isNew = prevData.revenue === 0 && currentData.revenue > 0 && !existedInAnyClinicBefore;
+            // Check if this is truly a new customer (first ever transaction is this month)
+            const clinicFirstDate = clinic?.first_transaction_date || "";
+            const isReallyFirstTime = clinicFirstDate.startsWith(currentYearMonth) || !existedInAnyClinicBefore;
 
-            // isChurned: had positive revenue before, now has zero or negative (credit note/refund)
-            // AND doesn't exist in any clinic FA code now
+            // isNew: first time ever appearing (not just in this FA code)
+            const isNew = prevData.revenue === 0 && currentData.revenue > 0 && isReallyFirstTime;
+
+            // isChurned: had positive revenue before, now has zero or negative
+            // AND doesn't exist in any clinic FA code now (completely gone)
             const isChurned = prevData.revenue > 0 && currentData.revenue <= 0 && !existsInAnyClinicNow;
+
+            // isPause: had revenue in previous month, no revenue now, but still exists in another FA code
+            // (e.g., moved from Level 3 to Level 2, or temporarily paused)
+            const isPause = prevData.revenue > 0 && currentData.revenue <= 0 && existsInAnyClinicNow;
+
+            // isReturn: had no revenue in previous month, has revenue now, BUT existed before
+            // (not a new customer, returning after pause/churn)
+            const isReturn = prevData.revenue === 0 && currentData.revenue > 0 && existedInAnyClinicBefore && !isReallyFirstTime;
 
             // Get event from events table (manually set)
             const clinicEvent = clinicId ? eventsMap.get(clinicId) : null;
@@ -252,6 +269,8 @@ export async function GET(request: NextRequest) {
             if (!eventType) {
                 if (isNew) eventType = "New";
                 else if (isChurned) eventType = "Churn";
+                else if (isPause) eventType = "Pause";
+                else if (isReturn) eventType = "Return";
             }
 
             // ONLY include clinics that have an actual event (New, Churn, Pause, Return)

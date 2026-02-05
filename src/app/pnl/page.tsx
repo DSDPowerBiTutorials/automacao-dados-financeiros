@@ -221,7 +221,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                 >
                                                     <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
                                                         {/* Formatação manual sem conversão de timezone: YYYY-MM-DD → DD/MM/YYYY */}
-                                                        {tx.date ? `${tx.date.substring(8,10)}/${tx.date.substring(5,7)}/${tx.date.substring(0,4)}` : "-"}
+                                                        {tx.date ? `${tx.date.substring(8, 10)}/${tx.date.substring(5, 7)}/${tx.date.substring(0, 4)}` : "-"}
                                                     </td>
                                                     <td className="px-4 py-2 text-sm text-white" title={tx.customer}>
                                                         {tx.customer}
