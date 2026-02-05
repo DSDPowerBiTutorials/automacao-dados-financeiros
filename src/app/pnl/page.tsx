@@ -28,6 +28,13 @@ import { useGlobalScope } from "@/contexts/global-scope-context";
 import { formatCurrency } from "@/lib/formatters";
 import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/ui/pagination-controls";
+import { ClinicVariationsTable } from "@/components/clinic-variations-table";
+import { Separator } from "@/components/ui/separator";
+
+// Helper: Check if FA code is for clinics (102.x, 103.x, 104.x)
+const isClinicsFACode = (code: string): boolean => {
+    return code.startsWith("102.") || code.startsWith("103.") || code.startsWith("104.");
+};
 
 // Tipos para drill-down
 interface DrilldownTransaction {
@@ -266,6 +273,45 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                     canGoNext={canGoNext}
                                     canGoPrev={canGoPrev}
                                 />
+                            )}
+
+                            {/* Clinic Variations - só aparece para FA codes de clinics */}
+                            {isClinicsFACode(drilldown.faCode) && (
+                                <>
+                                    <Separator className="my-6 bg-gray-700" />
+
+                                    {/* Variações do Mês */}
+                                    <div className="px-4">
+                                        <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                            <Building2 className="h-4 w-4 text-emerald-400" />
+                                            Alterações de Contratos - {MONTHS_FULL[drilldown.month]} {selectedYear}
+                                        </h3>
+                                        <ClinicVariationsTable
+                                            mode="monthly"
+                                            yearMonth={`${selectedYear}-${String(drilldown.month + 1).padStart(2, "0")}`}
+                                            faCode={drilldown.faCode}
+                                            title={`Variações do Mês (${MONTHS_FULL[drilldown.month]})`}
+                                            maxItems={30}
+                                        />
+                                    </div>
+
+                                    <Separator className="my-6 bg-gray-700" />
+
+                                    {/* Variações YTD */}
+                                    <div className="px-4 pb-4">
+                                        <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                            <Calendar className="h-4 w-4 text-blue-400" />
+                                            Alterações YTD - Janeiro a {MONTHS_FULL[drilldown.month]} {selectedYear}
+                                        </h3>
+                                        <ClinicVariationsTable
+                                            mode="ytd"
+                                            yearMonth={`${selectedYear}-${String(drilldown.month + 1).padStart(2, "0")}`}
+                                            faCode={drilldown.faCode}
+                                            title={`Variações Year-to-Date (Jan - ${MONTHS[drilldown.month]})`}
+                                            maxItems={50}
+                                        />
+                                    </div>
+                                </>
                             )}
                         </div>
                     )}
