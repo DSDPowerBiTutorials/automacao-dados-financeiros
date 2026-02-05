@@ -105,40 +105,12 @@ export async function POST(request: NextRequest) {
 
         const statusChange = statusMap[event_type];
 
-        // Check if event already exists
-        const { data: existing } = await supabaseAdmin
+        // Delete any existing events for this clinic in this month (to allow changing event type)
+        await supabaseAdmin
             .from("clinic_events")
-            .select("id")
+            .delete()
             .eq("clinic_id", clinic_id)
-            .eq("year_month", year_month)
-            .eq("event_type", event_type)
-            .single();
-
-        if (existing) {
-            // Update existing event
-            const { data, error } = await supabaseAdmin
-                .from("clinic_events")
-                .update({
-                    event_date: event_date || `${year_month}-01`,
-                    notes,
-                    previous_mrr,
-                    new_mrr,
-                    confirmed: true,
-                    is_auto_detected: false,
-                })
-                .eq("id", existing.id)
-                .select()
-                .single();
-
-            if (error) {
-                return NextResponse.json(
-                    { error: "Erro ao atualizar evento: " + error.message },
-                    { status: 500 }
-                );
-            }
-
-            return NextResponse.json({ success: true, event: data, action: "updated" });
-        }
+            .eq("year_month", year_month);
 
         // Insert new event
         const { data, error } = await supabaseAdmin
@@ -198,7 +170,7 @@ export async function PUT(request: NextRequest) {
         }
 
         const updateData: Record<string, unknown> = {};
-        
+
         if (event_type !== undefined) {
             const validEventTypes = ["New", "Pause", "Return", "Churn"];
             if (!validEventTypes.includes(event_type)) {
@@ -208,7 +180,7 @@ export async function PUT(request: NextRequest) {
                 );
             }
             updateData.event_type = event_type;
-            
+
             // Update status based on new event type
             const statusMap: Record<string, string> = {
                 New: "active",

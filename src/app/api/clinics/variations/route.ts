@@ -112,10 +112,20 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Filter by exact FA code
+        // Filter by exact FA code for this view
         const currentFiltered = (currentTx || []).filter(
             (tx) => tx.custom_data?.financial_account_code === faCode
         );
+
+        // Also get ALL clinic transactions (102.x, 103.x, 104.x) to check if customer is still active in another level
+        const allCurrentClinicCustomers = new Set<string>();
+        for (const tx of currentTx || []) {
+            const fa = tx.custom_data?.financial_account_code || "";
+            if (fa.startsWith("102.") || fa.startsWith("103.") || fa.startsWith("104.")) {
+                const customerName = tx.custom_data?.customer_name || "";
+                if (customerName) allCurrentClinicCustomers.add(customerName);
+            }
+        }
 
         // Fetch previous period transactions
         const { data: prevTx, error: prevError } = await supabaseAdmin
@@ -137,6 +147,16 @@ export async function GET(request: NextRequest) {
         const prevFiltered = (prevTx || []).filter(
             (tx) => tx.custom_data?.financial_account_code === faCode
         );
+
+        // Also get ALL previous clinic customers to detect true churns
+        const allPrevClinicCustomers = new Set<string>();
+        for (const tx of prevTx || []) {
+            const fa = tx.custom_data?.financial_account_code || "";
+            if (fa.startsWith("102.") || fa.startsWith("103.") || fa.startsWith("104.")) {
+                const customerName = tx.custom_data?.customer_name || "";
+                if (customerName) allPrevClinicCustomers.add(customerName);
+            }
+        }
 
         // Aggregate current period by customer_name
         const currentMap = new Map<string, { revenue: number; count: number }>();
@@ -211,9 +231,18 @@ export async function GET(request: NextRequest) {
             const clinic = clinicByName.get(customerName);
             const clinicId = clinic?.id || 0;
 
-            // Determine if new (no previous revenue) or churned (no current revenue)
-            const isNew = prevData.revenue === 0 && currentData.revenue > 0;
-            const isChurned = prevData.revenue > 0 && currentData.revenue === 0;
+            // Check if customer exists in ANY clinic FA code (102.x, 103.x, 104.x)
+            const existsInAnyClinicNow = allCurrentClinicCustomers.has(customerName);
+            const existedInAnyClinicBefore = allPrevClinicCustomers.has(customerName);
+
+            // isNew: no revenue in previous for THIS FA code, AND didn't exist in any clinic FA code before
+            const isNew = prevData.revenue === 0 && currentData.revenue > 0 && !existedInAnyClinicBefore;
+
+            // isChurned: had revenue in previous for THIS FA code, no revenue now, AND doesn't exist in any clinic FA code now
+            const isChurned = prevData.revenue > 0 && currentData.revenue === 0 && !existsInAnyClinicNow;
+
+            // isLevelChange: had revenue before, no revenue in THIS FA code now, but exists in another clinic FA code
+            const isLevelChange = prevData.revenue > 0 && currentData.revenue === 0 && existsInAnyClinicNow;
 
             // Get event from events table
             const clinicEvent = clinicId ? eventsMap.get(clinicId) : null;
@@ -224,10 +253,11 @@ export async function GET(request: NextRequest) {
             if (!eventType) {
                 if (isNew) eventType = "New";
                 else if (isChurned) eventType = "Churn";
+                // Don't auto-detect for level changes - they moved to another level, not churned
             }
 
-            // Only include customers with activity or events
-            if (currentData.revenue > 0 || prevData.revenue > 0 || eventType) {
+            // Only include customers with activity in THIS FA code (skip level changes unless they have an event)
+            if (currentData.revenue > 0 || (prevData.revenue > 0 && !isLevelChange) || eventType) {
                 variations.push({
                     clinic_id: clinicId,
                     customer_name: customerName,

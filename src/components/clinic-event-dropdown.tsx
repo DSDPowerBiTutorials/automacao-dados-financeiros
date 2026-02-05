@@ -98,18 +98,7 @@ export function ClinicEventDropdown({
         );
     }
 
-    // If New is auto-detected and confirmed, show as badge
-    if (isNew && selectedEvent === "New") {
-        return (
-            <Badge
-                variant="outline"
-                className="bg-green-900/30 text-green-400 border-green-700"
-            >
-                New
-            </Badge>
-        );
-    }
-
+    // Always show editable dropdown to allow changes
     const colors = selectedEvent ? eventColors[selectedEvent] : null;
 
     return (
@@ -120,8 +109,8 @@ export function ClinicEventDropdown({
         >
             <SelectTrigger
                 className={`w-24 h-8 text-xs border ${colors
-                        ? `${colors.bg} ${colors.text} ${colors.border}`
-                        : "bg-gray-800 text-gray-400 border-gray-600"
+                    ? `${colors.bg} ${colors.text} ${colors.border}`
+                    : "bg-gray-800 text-gray-400 border-gray-600"
                     }`}
             >
                 <SelectValue placeholder="-" />
