@@ -80,19 +80,19 @@ type Invoice = {
 const INVOICE_TYPE_CONFIG = {
   INCURRED: {
     label: "Incurred",
-    color: "bg-blue-100 text-blue-800 border border-blue-300",
+    color: "bg-blue-900/30 text-blue-400 border border-blue-700",
     icon: DollarSign,
     description: "Actual expenses - impacts DRE and Cash Flow"
   },
   BUDGET: {
     label: "Budget",
-    color: "bg-amber-100 text-amber-800 border border-amber-300",
+    color: "bg-amber-900/30 text-amber-400 border border-amber-700",
     icon: TrendingUp,
     description: "Planned expenses - for budget tracking only"
   },
   ADJUSTMENT: {
     label: "Adjustments",
-    color: "bg-gray-100 text-gray-800 border border-gray-300",
+    color: "bg-gray-700/50 text-gray-300 border border-gray-600",
     icon: RefreshCw,
     description: "Balance adjustments - affects cash but not DRE"
   }
@@ -2500,46 +2500,10 @@ export default function InvoicesPage() {
             </DialogContent>
           </Dialog>
         </div>
-
-        {/* Stats Cards - Fixed width, always visible */}
-        <div className="grid grid-cols-3 gap-4 mb-4 max-w-[calc(100vw-3rem)]">
-          {Object.entries(INVOICE_TYPE_CONFIG).map(([type, config]) => {
-            const Icon = config.icon;
-            const statKey = type === "INCURRED" ? "incurred" : type === "BUDGET" ? "budget" : "adjustments";
-            const stat = stats[statKey as keyof typeof stats];
-            return (
-              <Card key={type} className="cursor-pointer hover:shadow-md transition-shadow" onClick={() => setSelectedType(selectedType === type ? "ALL" : type as InvoiceType)}>
-                <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
-                      <CardTitle className="text-sm font-medium">{config.label}</CardTitle>
-                    </div>
-                    {selectedType === type && <Badge variant="secondary" className="text-xs bg-white">Active</Badge>}
-                  </div>
-                </CardHeader>
-                <CardContent className="pb-3">
-                  <div className="text-xl font-bold">€{formatEuropeanNumber(stat.total)}</div>
-                  <p className="text-xs text-muted-foreground mt-1">{stat.count} {stat.count === 1 ? "invoice" : "invoices"}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
       </div>
 
-      {/* Main Content - No Card wrapper, clean layout like Payments page */}
+      {/* Main Content */}
       <div className="px-6">
-        {/* Header - Title + Scope inline */}
-        <div className="flex items-center gap-3 mb-6">
-          <h1 className="text-xl font-semibold text-white">Invoices</h1>
-          <span className="text-gray-500">•</span>
-          <span className="text-gray-400">{SCOPE_CONFIG[selectedScope].label}</span>
-          {selectedScope === "GLOBAL" && (
-            <span className="text-xs text-gray-500">(Consolidated: ES + US - View Only)</span>
-          )}
-        </div>
-
         {/* Action Bar */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-2">
@@ -3019,18 +2983,18 @@ export default function InvoicesPage() {
                     const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
 
                     return (
-                      <tr key={invoice.id} className={`hover:bg-gray-800/30 group ${isBotInvoice ? 'bg-purple-900/10' : ''}`}>
+                      <tr key={invoice.id} className="hover:bg-gray-800/50 group">
                         {/* Actions */}
                         {visibleColumns.has('actions') && (
                           <td className="px-2 py-1 text-center">
                             <div className="flex items-center justify-center gap-1">
-                              <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0" title="Split Invoice">
-                                <Split className="h-3 w-3 text-blue-600" />
+                              <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700" title="Split Invoice">
+                                <Split className="h-3 w-3 text-blue-400" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0">
-                                <Edit2 className="h-3 w-3" />
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700">
+                                <Edit2 className="h-3 w-3 text-gray-400" />
                               </Button>
-                              <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-700">
                                 <Trash2 className="h-3 w-3" />
                               </Button>
                             </div>
@@ -3041,15 +3005,15 @@ export default function InvoicesPage() {
                         {visibleColumns.has('split') && (
                           <td className="px-2 py-1 text-center">
                             {invoice.is_split && invoice.parent_invoice_id && (
-                              <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0" title={`Part ${invoice.split_number}/${invoice.total_splits}`}>
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-100 text-blue-800">
+                              <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0 hover:bg-gray-700" title={`Part ${invoice.split_number}/${invoice.total_splits}`}>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-900/30 text-blue-400 border border-blue-700">
                                   {invoice.split_number}/{invoice.total_splits}
                                 </Badge>
                               </Button>
                             )}
                             {invoice.is_split && !invoice.parent_invoice_id && (
                               <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0" title="View splits">
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-100 text-green-800 cursor-pointer hover:bg-green-200">
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-900/30 text-green-400 border border-green-700 cursor-pointer hover:bg-green-900/50">
                                   <Eye className="h-3 w-3 mr-1 inline" />
                                   {invoice.total_splits}
                                 </Badge>
@@ -3781,157 +3745,238 @@ export default function InvoicesPage() {
               {(() => {
                 const field = filterPopoverOpen.field;
 
-              // Date filters
-              if (['input_date', 'invoice_date', 'benefit_date'].includes(field)) {
-                const presets = ["This Week", "Last Week", "Next Week", "This Month", "Last Month", "Next Year"];
-                return (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-2">
-                      {presets.map(preset => (
-                        <Button
-                          key={preset}
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            const range = getDatePreset(preset);
-                            setDateFilters(prev => ({ ...prev, [field]: range }));
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: preset, label: `${field}: ${preset}` }];
-                            });
-                            closeFilterPopover();
-                          }}
-                          className="text-xs"
-                        >
-                          {preset}
-                        </Button>
-                      ))}
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs">Custom Range:</Label>
+                // Date filters
+                if (['input_date', 'invoice_date', 'benefit_date'].includes(field)) {
+                  const presets = ["This Week", "Last Week", "Next Week", "This Month", "Last Month", "Next Year"];
+                  return (
+                    <div className="space-y-3">
                       <div className="grid grid-cols-2 gap-2">
-                        <div>
-                          <Label className="text-xs">From:</Label>
-                          <Input type="date" className="h-8 text-xs" id="date-start" />
-                        </div>
-                        <div>
-                          <Label className="text-xs">To:</Label>
-                          <Input type="date" className="h-8 text-xs" id="date-end" />
-                        </div>
-                      </div>
-                      <Button
-                        size="sm"
-                        className="w-full"
-                        onClick={() => {
-                          const start = (document.getElementById('date-start') as HTMLInputElement).value;
-                          const end = (document.getElementById('date-end') as HTMLInputElement).value;
-                          if (start || end) {
-                            setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }}
-                      >
-                        Apply Custom Range
-                      </Button>
-                    </div>
-                  </div>
-                );
-              }
-
-              // Amount filter
-              if (field === 'invoice_amount') {
-                return (
-                  <div className="space-y-3">
-                    <div className="space-y-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          const value = prompt("Less than:");
-                          if (value) {
-                            setAmountFilter({ operator: 'lt', value1: parseFloat(value) });
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `< ${value}`, label: `Amount: < ${value}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }}
-                      >
-                        Less than (-)
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          const value = prompt("Greater than:");
-                          if (value) {
-                            setAmountFilter({ operator: 'gt', value1: parseFloat(value) });
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `> ${value}`, label: `Amount: > ${value}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }}
-                      >
-                        Greater than (+)
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          const value = prompt("Exact value:");
-                          if (value) {
-                            setAmountFilter({ operator: 'eq', value1: parseFloat(value) });
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `= ${value}`, label: `Amount: = ${value}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }}
-                      >
-                        Exact value (=)
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        onClick={() => {
-                          const min = prompt("Minimum value:");
-                          if (min) {
-                            const max = prompt("Maximum value:");
-                            if (max) {
-                              setAmountFilter({ operator: 'between', value1: parseFloat(min), value2: parseFloat(max) });
+                        {presets.map(preset => (
+                          <Button
+                            key={preset}
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const range = getDatePreset(preset);
+                              setDateFilters(prev => ({ ...prev, [field]: range }));
                               setAppliedFilters(prev => {
                                 const filtered = prev.filter(f => f.field !== field);
-                                return [...filtered, { field, value: `${min} - ${max}`, label: `Amount: ${min} - ${max}` }];
+                                return [...filtered, { field, value: preset, label: `${field}: ${preset}` }];
+                              });
+                              closeFilterPopover();
+                            }}
+                            className="text-xs"
+                          >
+                            {preset}
+                          </Button>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs">Custom Range:</Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <Label className="text-xs">From:</Label>
+                            <Input type="date" className="h-8 text-xs" id="date-start" />
+                          </div>
+                          <div>
+                            <Label className="text-xs">To:</Label>
+                            <Input type="date" className="h-8 text-xs" id="date-end" />
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={() => {
+                            const start = (document.getElementById('date-start') as HTMLInputElement).value;
+                            const end = (document.getElementById('date-end') as HTMLInputElement).value;
+                            if (start || end) {
+                              setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
+                              setAppliedFilters(prev => {
+                                const filtered = prev.filter(f => f.field !== field);
+                                return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
                               });
                               closeFilterPopover();
                             }
-                          }
-                        }}
-                      >
-                        Between (range)
-                      </Button>
+                          }}
+                        >
+                          Apply Custom Range
+                        </Button>
+                      </div>
                     </div>
-                  </div>
-                );
-              }
+                  );
+                }
 
-              // Invoice Number filter
-              if (field === 'invoice_number') {
-                const availableInvoiceNumbers = Array.from(new Set(
-                  filteredInvoices.map(inv => inv.invoice_number).filter(Boolean)
-                )) as string[];
+                // Amount filter
+                if (field === 'invoice_amount') {
+                  return (
+                    <div className="space-y-3">
+                      <div className="space-y-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const value = prompt("Less than:");
+                            if (value) {
+                              setAmountFilter({ operator: 'lt', value1: parseFloat(value) });
+                              setAppliedFilters(prev => {
+                                const filtered = prev.filter(f => f.field !== field);
+                                return [...filtered, { field, value: `< ${value}`, label: `Amount: < ${value}` }];
+                              });
+                              closeFilterPopover();
+                            }
+                          }}
+                        >
+                          Less than (-)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const value = prompt("Greater than:");
+                            if (value) {
+                              setAmountFilter({ operator: 'gt', value1: parseFloat(value) });
+                              setAppliedFilters(prev => {
+                                const filtered = prev.filter(f => f.field !== field);
+                                return [...filtered, { field, value: `> ${value}`, label: `Amount: > ${value}` }];
+                              });
+                              closeFilterPopover();
+                            }
+                          }}
+                        >
+                          Greater than (+)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const value = prompt("Exact value:");
+                            if (value) {
+                              setAmountFilter({ operator: 'eq', value1: parseFloat(value) });
+                              setAppliedFilters(prev => {
+                                const filtered = prev.filter(f => f.field !== field);
+                                return [...filtered, { field, value: `= ${value}`, label: `Amount: = ${value}` }];
+                              });
+                              closeFilterPopover();
+                            }
+                          }}
+                        >
+                          Exact value (=)
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                          onClick={() => {
+                            const min = prompt("Minimum value:");
+                            if (min) {
+                              const max = prompt("Maximum value:");
+                              if (max) {
+                                setAmountFilter({ operator: 'between', value1: parseFloat(min), value2: parseFloat(max) });
+                                setAppliedFilters(prev => {
+                                  const filtered = prev.filter(f => f.field !== field);
+                                  return [...filtered, { field, value: `${min} - ${max}`, label: `Amount: ${min} - ${max}` }];
+                                });
+                                closeFilterPopover();
+                              }
+                            }
+                          }}
+                        >
+                          Between (range)
+                        </Button>
+                      </div>
+                    </div>
+                  );
+                }
+
+                // Invoice Number filter
+                if (field === 'invoice_number') {
+                  const availableInvoiceNumbers = Array.from(new Set(
+                    filteredInvoices.map(inv => inv.invoice_number).filter(Boolean)
+                  )) as string[];
+
+                  return (
+                    <>
+                      <Input
+                        placeholder="Search..."
+                        value={filterSearchTerm}
+                        onChange={(e) => setFilterSearchTerm(e.target.value)}
+                        className="h-9"
+                      />
+                      <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                        {availableInvoiceNumbers
+                          .filter(num => num.toLowerCase().includes(filterSearchTerm.toLowerCase()))
+                          .map(num => (
+                            <div
+                              key={num}
+                              className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                              onClick={() => toggleFilterOption(num)}
+                            >
+                              <span className="text-sm">{num}</span>
+                              {tempFilterSelection.includes(num) && (
+                                <Check className="h-4 w-4 text-green-600" />
+                              )}
+                            </div>
+                          ))}
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={closeFilterPopover}>
+                          <X className="h-3 w-3 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={() => applyMultiSelectFilter(field)}>
+                          <Check className="h-3 w-3 mr-1" />
+                          OK ({tempFilterSelection.length})
+                        </Button>
+                      </div>
+                    </>
+                  );
+                }
+
+                // Multi-select filters with cascade (only show available options)
+                let options: { value: string, label: string }[] = [];
+
+                if (field === "provider_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.provider_code));
+                  options = providers.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
+                } else if (field === "financial_account_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.financial_account_code));
+                  options = financialAccounts.filter(acc => acc.level >= 2 && availableCodes.has(acc.code)).map(acc => ({ value: acc.code, label: acc.name }));
+                } else if (field === "cost_center_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_center_code).filter(Boolean));
+                  options = costCenters.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                } else if (field === "cost_type_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_type_code).filter(Boolean));
+                  options = costTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                } else if (field === "dep_cost_type_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.dep_cost_type_code).filter(Boolean));
+                  options = depCostTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                } else if (field === "bank_account_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.bank_account_code).filter(Boolean));
+                  options = bankAccounts.filter(b => availableCodes.has(b.code)).map(b => ({ value: b.code, label: b.name }));
+                } else if (field === "payment_method_code") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.payment_method_code).filter(Boolean));
+                  options = paymentMethods.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
+                } else if (field === "entry_type") {
+                  const availableCodes = new Set(filteredInvoices.map(inv => inv.entry_type));
+                  options = entryTypes.filter(e => availableCodes.has(e.code)).map(e => ({ value: e.code, label: e.name }));
+                } else if (field === "invoice_type") {
+                  const availableTypes = new Set(filteredInvoices.map(inv => inv.invoice_type));
+                  options = [
+                    { value: "INCURRED", label: "Incurred" },
+                    { value: "BUDGET", label: "Budget" },
+                    { value: "ADJUSTMENT", label: "Adjustments" }
+                  ].filter(opt => availableTypes.has(opt.value as InvoiceType));
+                } else if (field === "currency") {
+                  const availableCurrencies = new Set(filteredInvoices.map(i => i.currency));
+                  options = Array.from(availableCurrencies).map(c => ({ value: c, label: c }));
+                }
+
+                const filtered = options.filter(opt =>
+                  opt.label.toLowerCase().includes(filterSearchTerm.toLowerCase())
+                );
 
                 return (
                   <>
@@ -3942,20 +3987,18 @@ export default function InvoicesPage() {
                       className="h-9"
                     />
                     <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                      {availableInvoiceNumbers
-                        .filter(num => num.toLowerCase().includes(filterSearchTerm.toLowerCase()))
-                        .map(num => (
-                          <div
-                            key={num}
-                            className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
-                            onClick={() => toggleFilterOption(num)}
-                          >
-                            <span className="text-sm">{num}</span>
-                            {tempFilterSelection.includes(num) && (
-                              <Check className="h-4 w-4 text-green-600" />
-                            )}
-                          </div>
-                        ))}
+                      {filtered.map(opt => (
+                        <div
+                          key={opt.value}
+                          className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                          onClick={() => toggleFilterOption(opt.value)}
+                        >
+                          <span className="text-sm">{opt.label}</span>
+                          {tempFilterSelection.includes(opt.value) && (
+                            <Check className="h-4 w-4 text-green-600" />
+                          )}
+                        </div>
+                      ))}
                     </div>
                     <div className="flex justify-end gap-2 pt-2">
                       <Button variant="outline" size="sm" onClick={closeFilterPopover}>
@@ -3969,109 +4012,30 @@ export default function InvoicesPage() {
                     </div>
                   </>
                 );
-              }
+              })()}
+            </div>
+          </DialogContent>
+        </Dialog>
+      )
+      }
 
-              // Multi-select filters with cascade (only show available options)
-              let options: { value: string, label: string }[] = [];
-
-              if (field === "provider_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.provider_code));
-                options = providers.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
-              } else if (field === "financial_account_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.financial_account_code));
-                options = financialAccounts.filter(acc => acc.level >= 2 && availableCodes.has(acc.code)).map(acc => ({ value: acc.code, label: acc.name }));
-              } else if (field === "cost_center_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_center_code).filter(Boolean));
-                options = costCenters.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-              } else if (field === "cost_type_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_type_code).filter(Boolean));
-                options = costTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-              } else if (field === "dep_cost_type_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.dep_cost_type_code).filter(Boolean));
-                options = depCostTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-              } else if (field === "bank_account_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.bank_account_code).filter(Boolean));
-                options = bankAccounts.filter(b => availableCodes.has(b.code)).map(b => ({ value: b.code, label: b.name }));
-              } else if (field === "payment_method_code") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.payment_method_code).filter(Boolean));
-                options = paymentMethods.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
-              } else if (field === "entry_type") {
-                const availableCodes = new Set(filteredInvoices.map(inv => inv.entry_type));
-                options = entryTypes.filter(e => availableCodes.has(e.code)).map(e => ({ value: e.code, label: e.name }));
-              } else if (field === "invoice_type") {
-                const availableTypes = new Set(filteredInvoices.map(inv => inv.invoice_type));
-                options = [
-                  { value: "INCURRED", label: "Incurred" },
-                  { value: "BUDGET", label: "Budget" },
-                  { value: "ADJUSTMENT", label: "Adjustments" }
-                ].filter(opt => availableTypes.has(opt.value as InvoiceType));
-              } else if (field === "currency") {
-                const availableCurrencies = new Set(filteredInvoices.map(i => i.currency));
-                options = Array.from(availableCurrencies).map(c => ({ value: c, label: c }));
-              }
-
-              const filtered = options.filter(opt =>
-                opt.label.toLowerCase().includes(filterSearchTerm.toLowerCase())
-              );
-
-              return (
-                <>
-                  <Input
-                    placeholder="Search..."
-                    value={filterSearchTerm}
-                    onChange={(e) => setFilterSearchTerm(e.target.value)}
-                    className="h-9"
-                  />
-                  <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                    {filtered.map(opt => (
-                      <div
-                        key={opt.value}
-                        className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
-                        onClick={() => toggleFilterOption(opt.value)}
-                      >
-                        <span className="text-sm">{opt.label}</span>
-                        {tempFilterSelection.includes(opt.value) && (
-                          <Check className="h-4 w-4 text-green-600" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" size="sm" onClick={closeFilterPopover}>
-                      <X className="h-3 w-3 mr-1" />
-                      Cancel
-                    </Button>
-                    <Button size="sm" onClick={() => applyMultiSelectFilter(field)}>
-                      <Check className="h-3 w-3 mr-1" />
-                      OK ({tempFilterSelection.length})
-                    </Button>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </DialogContent>
-      </Dialog>
-    )
-  }
-
-  {/* Invoice Side Panel */ }
-  <InvoiceSidePanel
-    open={sidePanelOpen}
-    onClose={() => {
-      setSidePanelOpen(false);
-      setEditingInvoice(null);
-      resetForm();
-    }}
-    editingInvoice={editingInvoice}
-    defaultScope={selectedScope as ScopeType}
-    onSuccess={() => {
-      loadInvoices();
-      setSidePanelOpen(false);
-      setEditingInvoice(null);
-      resetForm();
-    }}
-  />
+      {/* Invoice Side Panel */}
+      <InvoiceSidePanel
+        open={sidePanelOpen}
+        onClose={() => {
+          setSidePanelOpen(false);
+          setEditingInvoice(null);
+          resetForm();
+        }}
+        editingInvoice={editingInvoice}
+        defaultScope={selectedScope as ScopeType}
+        onSuccess={() => {
+          loadInvoices();
+          setSidePanelOpen(false);
+          setEditingInvoice(null);
+          resetForm();
+        }}
+      />
     </>
   );
 }
