@@ -2875,7 +2875,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('description') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               Description
                               <button
