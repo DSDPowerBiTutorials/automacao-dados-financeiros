@@ -110,7 +110,9 @@ export async function GET(request: NextRequest) {
             const amount = row.amount || 0;
             if (amount === 0) continue; // Apenas ignorar zeros
 
-            const monthIndex = new Date(row.date).getMonth();
+            // CRÍTICO: Parsing manual da string de data para evitar conversão de timezone
+            // row.date é string "YYYY-MM-DD", extraímos o mês diretamente sem usar Date object
+            const monthIndex = parseInt(row.date.substring(5, 7), 10) - 1;
             const monthKey = monthKeys[monthIndex];
 
             // Por Financial Account
