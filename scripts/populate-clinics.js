@@ -106,8 +106,10 @@ async function populateClinics() {
         const customerName = (tx.custom_data?.customer_name || "").trim();
         if (!customerName) continue;
 
-        const txDate = new Date(tx.date);
-        const yearMonth = formatYearMonth(txDate);
+        // Usar a string de data diretamente, não Date object
+        const yearMonth = formatYearMonth(tx.date);
+        if (!yearMonth) continue; // Skip if date is invalid
+        
         const amount = parseEuropeanNumber(tx.amount);
 
         // Determine region from FA code
