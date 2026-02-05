@@ -105,12 +105,12 @@ async function populateClinics() {
         const txDate = new Date(tx.date);
         const yearMonth = formatYearMonth(txDate);
         const amount = parseEuropeanNumber(tx.amount);
-        
+
         // Determine region from FA code
         const faCode = tx.custom_data?.financial_account_code || "";
         const isAmex = faCode.endsWith(".2") || faCode.endsWith(".4"); // AMEX codes end in .2 or .4
         const region = isAmex ? "AMEX" : "ROW";
-        
+
         // Determine level from FA code
         let level = null;
         if (faCode.includes(".1") || faCode.includes(".2")) level = "Level 3"; // Contracted

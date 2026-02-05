@@ -275,39 +275,39 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                 />
                             )}
 
-                            {/* Clinic Variations - só aparece para FA codes de clinics */}
+                            {/* Clinic Variations - only for clinic FA codes */}
                             {isClinicsFACode(drilldown.faCode) && (
                                 <>
                                     <Separator className="my-6 bg-gray-700" />
 
-                                    {/* Variações do Mês */}
+                                    {/* Monthly Changes */}
                                     <div className="px-4">
                                         <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
                                             <Building2 className="h-4 w-4 text-emerald-400" />
-                                            Alterações de Contratos - {MONTHS_FULL[drilldown.month]} {selectedYear}
+                                            Contract Changes - {MONTHS_FULL[drilldown.month]} {selectedYear}
                                         </h3>
                                         <ClinicVariationsTable
                                             mode="monthly"
                                             yearMonth={`${selectedYear}-${String(drilldown.month + 1).padStart(2, "0")}`}
                                             faCode={drilldown.faCode}
-                                            title={`Variações do Mês (${MONTHS_FULL[drilldown.month]})`}
+                                            title={`Monthly Changes (${MONTHS_FULL[drilldown.month]})`}
                                             maxItems={30}
                                         />
                                     </div>
 
                                     <Separator className="my-6 bg-gray-700" />
 
-                                    {/* Variações YTD */}
+                                    {/* YTD Changes */}
                                     <div className="px-4 pb-4">
                                         <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
                                             <Calendar className="h-4 w-4 text-blue-400" />
-                                            Alterações YTD - Janeiro a {MONTHS_FULL[drilldown.month]} {selectedYear}
+                                            YTD Changes - January to {MONTHS_FULL[drilldown.month]} {selectedYear}
                                         </h3>
                                         <ClinicVariationsTable
                                             mode="ytd"
                                             yearMonth={`${selectedYear}-${String(drilldown.month + 1).padStart(2, "0")}`}
                                             faCode={drilldown.faCode}
-                                            title={`Variações Year-to-Date (Jan - ${MONTHS[drilldown.month]})`}
+                                            title={`Year-to-Date Changes (Jan - ${MONTHS[drilldown.month]})`}
                                             maxItems={50}
                                         />
                                     </div>

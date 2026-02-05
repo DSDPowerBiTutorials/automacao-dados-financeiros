@@ -24,10 +24,10 @@ interface ClinicEventDropdownProps {
 }
 
 const eventColors: Record<string, { bg: string; text: string; border: string }> = {
-    New: { bg: "bg-green-100", text: "text-green-700", border: "border-green-300" },
-    Pause: { bg: "bg-yellow-100", text: "text-yellow-700", border: "border-yellow-300" },
-    Return: { bg: "bg-blue-100", text: "text-blue-700", border: "border-blue-300" },
-    Churn: { bg: "bg-red-100", text: "text-red-700", border: "border-red-300" },
+    New: { bg: "bg-green-900/50", text: "text-green-400", border: "border-green-600" },
+    Pause: { bg: "bg-yellow-900/50", text: "text-yellow-400", border: "border-yellow-600" },
+    Return: { bg: "bg-blue-900/50", text: "text-blue-400", border: "border-blue-600" },
+    Churn: { bg: "bg-red-900/50", text: "text-red-400", border: "border-red-600" },
 };
 
 export function ClinicEventDropdown({
@@ -48,9 +48,9 @@ export function ClinicEventDropdown({
     // show disabled "Churn" badge
     if (isChurned && currentEvent !== "Churn") {
         return (
-            <Badge 
-                variant="outline" 
-                className="bg-red-50 text-red-600 border-red-200 opacity-60"
+            <Badge
+                variant="outline"
+                className="bg-red-900/30 text-red-400 border-red-700 opacity-60"
             >
                 Churned
             </Badge>
@@ -63,7 +63,7 @@ export function ClinicEventDropdown({
         setLoading(true);
 
         try {
-            if (newEvent) {
+            if (newEvent && clinicId > 0) {
                 // Save event via API
                 const response = await fetch("/api/clinics/events", {
                     method: "POST",
@@ -101,9 +101,9 @@ export function ClinicEventDropdown({
     // If New is auto-detected and confirmed, show as badge
     if (isNew && selectedEvent === "New") {
         return (
-            <Badge 
-                variant="outline" 
-                className="bg-green-50 text-green-700 border-green-300"
+            <Badge
+                variant="outline"
+                className="bg-green-900/30 text-green-400 border-green-700"
             >
                 New
             </Badge>
@@ -118,29 +118,28 @@ export function ClinicEventDropdown({
             onValueChange={handleChange}
             disabled={disabled}
         >
-            <SelectTrigger 
-                className={`w-24 h-8 text-xs ${
-                    colors 
-                        ? `${colors.bg} ${colors.text} ${colors.border}` 
-                        : "bg-gray-50 text-gray-500"
-                }`}
+            <SelectTrigger
+                className={`w-24 h-8 text-xs border ${colors
+                        ? `${colors.bg} ${colors.text} ${colors.border}`
+                        : "bg-gray-800 text-gray-400 border-gray-600"
+                    }`}
             >
-                <SelectValue placeholder="Event" />
+                <SelectValue placeholder="-" />
             </SelectTrigger>
-            <SelectContent>
-                <SelectItem value="none" className="text-gray-400">
+            <SelectContent className="bg-gray-800 border-gray-600">
+                <SelectItem value="none" className="text-gray-400 focus:bg-gray-700 focus:text-gray-200">
                     -
                 </SelectItem>
-                <SelectItem value="New" className="text-green-700">
+                <SelectItem value="New" className="text-green-400 focus:bg-gray-700 focus:text-green-400">
                     New
                 </SelectItem>
-                <SelectItem value="Pause" className="text-yellow-700">
+                <SelectItem value="Pause" className="text-yellow-400 focus:bg-gray-700 focus:text-yellow-400">
                     Pause
                 </SelectItem>
-                <SelectItem value="Return" className="text-blue-700">
+                <SelectItem value="Return" className="text-blue-400 focus:bg-gray-700 focus:text-blue-400">
                     Return
                 </SelectItem>
-                <SelectItem value="Churn" className="text-red-700">
+                <SelectItem value="Churn" className="text-red-400 focus:bg-gray-700 focus:text-red-400">
                     Churn
                 </SelectItem>
             </SelectContent>
@@ -149,11 +148,11 @@ export function ClinicEventDropdown({
 }
 
 // Badge-only version for display in tables
-export function ClinicEventBadge({ 
-    eventType, 
-    isAutoDetected = false 
-}: { 
-    eventType: ClinicEventType; 
+export function ClinicEventBadge({
+    eventType,
+    isAutoDetected = false
+}: {
+    eventType: ClinicEventType;
     isAutoDetected?: boolean;
 }) {
     if (!eventType) return null;
@@ -163,9 +162,8 @@ export function ClinicEventBadge({
     return (
         <Badge
             variant="outline"
-            className={`${colors.bg} ${colors.text} ${colors.border} ${
-                isAutoDetected ? "opacity-70 border-dashed" : ""
-            }`}
+            className={`${colors.bg} ${colors.text} ${colors.border} ${isAutoDetected ? "opacity-70 border-dashed" : ""
+                }`}
         >
             {eventType}
             {isAutoDetected && " ?"}

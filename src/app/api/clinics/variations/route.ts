@@ -3,9 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 interface ClinicVariation {
     clinic_id: number;
-    email: string;
-    name: string;
-    company_name: string | null;
+    customer_name: string;
     region: string | null;
     level: string | null;
     previous_revenue: number;
@@ -18,15 +16,51 @@ interface ClinicVariation {
     is_churned: boolean;
 }
 
+// Parse European number format (dots = thousands, comma = decimal)
+function parseEuropeanNumber(value: unknown): number {
+    if (typeof value === "number") return value;
+    if (!value) return 0;
+    const str = String(value);
+    return parseFloat(str.replace(/\./g, "").replace(",", ".")) || 0;
+}
+
+// Derive region from FA code
+function deriveRegion(faCode: string): string {
+    // 102.x = ROW, 103.x = Planning Center, 104.x = LAB (AMEX)
+    if (faCode.startsWith("102.")) return "ROW";
+    if (faCode.startsWith("103.")) return "ROW"; // Planning Center is ROW
+    if (faCode.startsWith("104.")) return "AMEX";
+    return "Unknown";
+}
+
+// Derive level from FA code subcode
+function deriveLevel(faCode: string): string | null {
+    const parts = faCode.split(".");
+    if (parts.length < 2) return null;
+    const subcode = parseInt(parts[1]);
+    // 1-3 = Level mapping
+    if (subcode === 1) return "Level 3"; // Contracted
+    if (subcode === 2) return "Level 2";
+    if (subcode === 3) return "Level 1";
+    return null;
+}
+
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const yearMonth = searchParams.get("month"); // Format: YYYY-MM
     const ytd = searchParams.get("ytd"); // Format: YYYY-MM (get all months up to this one)
-    const faCode = searchParams.get("fa"); // Financial account code filter
+    const faCode = searchParams.get("fa"); // Financial account code filter (e.g., "102.1")
 
     if (!yearMonth && !ytd) {
         return NextResponse.json(
-            { error: "month ou ytd são obrigatórios (formato: YYYY-MM)" },
+            { error: "month or ytd required (format: YYYY-MM)" },
+            { status: 400 }
+        );
+    }
+
+    if (!faCode) {
+        return NextResponse.json(
+            { error: "fa (financial account code) required" },
             { status: 400 }
         );
     }
@@ -35,230 +69,192 @@ export async function GET(request: NextRequest) {
         const targetMonth = (ytd || yearMonth) as string;
         const [year, month] = targetMonth.split("-").map(Number);
 
-        // Calculate previous month
+        // Calculate periods
+        const currentYearMonth = `${year}-${String(month).padStart(2, "0")}`;
         const prevMonth = month === 1 ? 12 : month - 1;
         const prevYear = month === 1 ? year - 1 : year;
         const prevYearMonth = `${prevYear}-${String(prevMonth).padStart(2, "0")}`;
-        const currentYearMonth = `${year}-${String(month).padStart(2, "0")}`;
 
-        // Fetch monthly stats for comparison
-        let currentStatsQuery = supabaseAdmin
-            .from("clinic_monthly_stats")
-            .select(`
-                clinic_id,
-                year_month,
-                revenue,
-                transaction_count,
-                level,
-                region,
-                clinics (
-                    id,
-                    email,
-                    name,
-                    company_name,
-                    status,
-                    first_transaction_date
-                )
-            `);
-
-        let prevStatsQuery = supabaseAdmin
-            .from("clinic_monthly_stats")
-            .select(`
-                clinic_id,
-                year_month,
-                revenue,
-                transaction_count
-            `);
+        // Build date ranges for queries
+        let currentStartDate: string;
+        let currentEndDate: string;
+        let prevStartDate: string;
+        let prevEndDate: string;
 
         if (ytd) {
-            // Get all months from January to the target month
-            const startYearMonth = `${year}-01`;
-            currentStatsQuery = currentStatsQuery
-                .gte("year_month", startYearMonth)
-                .lte("year_month", currentYearMonth);
-            
-            // Previous year for comparison (same period)
-            const prevStartYearMonth = `${year - 1}-01`;
-            const prevEndYearMonth = `${year - 1}-${String(month).padStart(2, "0")}`;
-            prevStatsQuery = prevStatsQuery
-                .gte("year_month", prevStartYearMonth)
-                .lte("year_month", prevEndYearMonth);
+            // YTD: Jan 1 to end of target month
+            currentStartDate = `${year}-01-01`;
+            currentEndDate = `${year}-${String(month).padStart(2, "0")}-31`;
+            // Previous year same period
+            prevStartDate = `${year - 1}-01-01`;
+            prevEndDate = `${year - 1}-${String(month).padStart(2, "0")}-31`;
         } else {
-            // Single month comparison
-            currentStatsQuery = currentStatsQuery.eq("year_month", currentYearMonth);
-            prevStatsQuery = prevStatsQuery.eq("year_month", prevYearMonth);
+            // Monthly: just the target month vs previous month
+            currentStartDate = `${year}-${String(month).padStart(2, "0")}-01`;
+            currentEndDate = `${year}-${String(month).padStart(2, "0")}-31`;
+            prevStartDate = `${prevYear}-${String(prevMonth).padStart(2, "0")}-01`;
+            prevEndDate = `${prevYear}-${String(prevMonth).padStart(2, "0")}-31`;
         }
 
-        const [currentResult, prevResult, eventsResult] = await Promise.all([
-            currentStatsQuery,
-            prevStatsQuery,
-            ytd
-                ? supabaseAdmin
-                      .from("clinic_events")
-                      .select("*")
-                      .gte("year_month", `${year}-01`)
-                      .lte("year_month", currentYearMonth)
-                : supabaseAdmin
-                      .from("clinic_events")
-                      .select("*")
-                      .eq("year_month", currentYearMonth),
-        ]);
+        // Fetch current period transactions with specific FA code
+        const { data: currentTx, error: currentError } = await supabaseAdmin
+            .from("csv_rows")
+            .select("id, date, amount, custom_data")
+            .eq("source", "invoice-orders")
+            .gte("date", currentStartDate)
+            .lte("date", currentEndDate);
 
-        if (currentResult.error) {
-            console.error("Error fetching current stats:", currentResult.error);
+        if (currentError) {
+            console.error("Error fetching current transactions:", currentError);
             return NextResponse.json(
-                { error: "Erro ao buscar dados atuais: " + currentResult.error.message },
+                { error: "Failed to fetch current data: " + currentError.message },
                 { status: 500 }
             );
         }
 
-        // Build maps for quick lookup
-        const prevRevenueMap = new Map<number, number>();
-        if (prevResult.data) {
-            for (const stat of prevResult.data) {
-                const current = prevRevenueMap.get(stat.clinic_id) || 0;
-                prevRevenueMap.set(stat.clinic_id, current + (stat.revenue || 0));
-            }
+        // Filter by exact FA code
+        const currentFiltered = (currentTx || []).filter(
+            (tx) => tx.custom_data?.financial_account_code === faCode
+        );
+
+        // Fetch previous period transactions
+        const { data: prevTx, error: prevError } = await supabaseAdmin
+            .from("csv_rows")
+            .select("id, date, amount, custom_data")
+            .eq("source", "invoice-orders")
+            .gte("date", prevStartDate)
+            .lte("date", prevEndDate);
+
+        if (prevError) {
+            console.error("Error fetching previous transactions:", prevError);
+            return NextResponse.json(
+                { error: "Failed to fetch previous data: " + prevError.message },
+                { status: 500 }
+            );
         }
 
-        // Events map: clinic_id -> { event_type, confirmed, year_month }[]
-        const eventsMap = new Map<number, Array<{ event_type: string; confirmed: boolean; year_month: string }>>();
-        if (eventsResult.data) {
-            for (const event of eventsResult.data) {
-                const existing = eventsMap.get(event.clinic_id) || [];
-                existing.push({
-                    event_type: event.event_type,
-                    confirmed: event.confirmed,
-                    year_month: event.year_month,
-                });
-                eventsMap.set(event.clinic_id, existing);
-            }
+        // Filter previous by same FA code
+        const prevFiltered = (prevTx || []).filter(
+            (tx) => tx.custom_data?.financial_account_code === faCode
+        );
+
+        // Aggregate current period by customer_name
+        const currentMap = new Map<string, { revenue: number; count: number }>();
+        for (const tx of currentFiltered) {
+            const customerName = tx.custom_data?.customer_name || "Unknown";
+            const amount = parseEuropeanNumber(tx.amount);
+            const existing = currentMap.get(customerName) || { revenue: 0, count: 0 };
+            existing.revenue += amount;
+            existing.count += 1;
+            currentMap.set(customerName, existing);
         }
 
-        // Aggregate current stats by clinic
-        const clinicStatsMap = new Map<number, {
-            revenue: number;
-            clinic: unknown;
-            level: string | null;
-            region: string | null;
-        }>();
+        // Aggregate previous period by customer_name
+        const prevMap = new Map<string, { revenue: number; count: number }>();
+        for (const tx of prevFiltered) {
+            const customerName = tx.custom_data?.customer_name || "Unknown";
+            const amount = parseEuropeanNumber(tx.amount);
+            const existing = prevMap.get(customerName) || { revenue: 0, count: 0 };
+            existing.revenue += amount;
+            existing.count += 1;
+            prevMap.set(customerName, existing);
+        }
 
-        if (currentResult.data) {
-            for (const stat of currentResult.data) {
-                const existing = clinicStatsMap.get(stat.clinic_id);
-                if (existing) {
-                    existing.revenue += stat.revenue || 0;
-                } else {
-                    clinicStatsMap.set(stat.clinic_id, {
-                        revenue: stat.revenue || 0,
-                        clinic: stat.clinics,
-                        level: stat.level,
-                        region: stat.region,
-                    });
-                }
-            }
+        // Get all unique customers from both periods
+        const allCustomers = new Set([...currentMap.keys(), ...prevMap.keys()]);
+
+        // Fetch clinic records for events and IDs
+        const { data: clinics } = await supabaseAdmin
+            .from("clinics")
+            .select("id, name, email, status, first_transaction_date");
+
+        const clinicByName = new Map(
+            (clinics || []).map((c) => [c.name, c])
+        );
+
+        // Fetch events for the period
+        const eventsQuery = ytd
+            ? supabaseAdmin
+                .from("clinic_events")
+                .select("*")
+                .gte("year_month", `${year}-01`)
+                .lte("year_month", currentYearMonth)
+            : supabaseAdmin
+                .from("clinic_events")
+                .select("*")
+                .eq("year_month", currentYearMonth);
+
+        const { data: events } = await eventsQuery;
+
+        // Map events by clinic_id
+        const eventsMap = new Map<number, { event_type: string; confirmed: boolean }>();
+        for (const e of events || []) {
+            eventsMap.set(e.clinic_id, {
+                event_type: e.event_type,
+                confirmed: e.confirmed,
+            });
         }
 
         // Build variations list
         const variations: ClinicVariation[] = [];
 
-        for (const [clinicId, stats] of clinicStatsMap) {
-            const clinic = stats.clinic as {
-                id: number;
-                email: string;
-                name: string;
-                company_name: string | null;
-                status: string;
-                first_transaction_date: string;
-            };
+        for (const customerName of allCustomers) {
+            const currentData = currentMap.get(customerName) || { revenue: 0, count: 0 };
+            const prevData = prevMap.get(customerName) || { revenue: 0, count: 0 };
 
-            if (!clinic) continue;
+            const change = currentData.revenue - prevData.revenue;
+            const changePercent = prevData.revenue > 0
+                ? (change / prevData.revenue) * 100
+                : currentData.revenue > 0 ? 100 : 0;
 
-            const previousRevenue = prevRevenueMap.get(clinicId) || 0;
-            const currentRevenue = stats.revenue;
-            const change = currentRevenue - previousRevenue;
-            const changePercent = previousRevenue > 0 
-                ? ((change / previousRevenue) * 100) 
-                : (currentRevenue > 0 ? 100 : 0);
+            // Get clinic record if exists
+            const clinic = clinicByName.get(customerName);
+            const clinicId = clinic?.id || 0;
 
-            // Get most recent event for this clinic in the period
-            const clinicEvents = eventsMap.get(clinicId) || [];
-            const latestEvent = clinicEvents.sort((a, b) => 
-                b.year_month.localeCompare(a.year_month)
-            )[0];
+            // Determine if new (no previous revenue) or churned (no current revenue)
+            const isNew = prevData.revenue === 0 && currentData.revenue > 0;
+            const isChurned = prevData.revenue > 0 && currentData.revenue === 0;
 
-            // Determine if this is a new clinic (first transaction in this period)
-            const firstTxMonth = clinic.first_transaction_date?.substring(0, 7);
-            const isNew = ytd 
-                ? firstTxMonth >= `${year}-01` && firstTxMonth <= currentYearMonth
-                : firstTxMonth === currentYearMonth;
+            // Get event from events table
+            const clinicEvent = clinicId ? eventsMap.get(clinicId) : null;
+            let eventType = clinicEvent?.event_type || null;
+            const eventConfirmed = clinicEvent?.confirmed ?? false;
 
-            // Check if churned
-            const isChurned = clinicEvents.some(e => e.event_type === "Churn");
+            // Auto-detect event type if not set
+            if (!eventType) {
+                if (isNew) eventType = "New";
+                else if (isChurned) eventType = "Churn";
+            }
 
-            variations.push({
-                clinic_id: clinicId,
-                email: clinic.email,
-                name: clinic.name || clinic.email,
-                company_name: clinic.company_name,
-                region: stats.region,
-                level: stats.level,
-                previous_revenue: previousRevenue,
-                current_revenue: currentRevenue,
-                change,
-                change_percent: changePercent,
-                event_type: latestEvent?.event_type || (isNew ? "New" : null),
-                event_confirmed: latestEvent?.confirmed ?? isNew,
-                is_new: isNew,
-                is_churned: isChurned,
-            });
-        }
-
-        // If YTD mode, also include churned clinics that don't have current revenue
-        if (ytd) {
-            const churnedEvents = eventsResult.data?.filter(e => e.event_type === "Churn") || [];
-            for (const event of churnedEvents) {
-                // Check if this clinic is already in variations
-                if (!variations.some(v => v.clinic_id === event.clinic_id)) {
-                    // Fetch clinic info
-                    const { data: clinic } = await supabaseAdmin
-                        .from("clinics")
-                        .select("*")
-                        .eq("id", event.clinic_id)
-                        .single();
-
-                    if (clinic) {
-                        variations.push({
-                            clinic_id: clinic.id,
-                            email: clinic.email,
-                            name: clinic.name || clinic.email,
-                            company_name: clinic.company_name,
-                            region: clinic.region,
-                            level: clinic.level,
-                            previous_revenue: prevRevenueMap.get(clinic.id) || clinic.mrr || 0,
-                            current_revenue: 0,
-                            change: -(prevRevenueMap.get(clinic.id) || clinic.mrr || 0),
-                            change_percent: -100,
-                            event_type: "Churn",
-                            event_confirmed: event.confirmed,
-                            is_new: false,
-                            is_churned: true,
-                        });
-                    }
-                }
+            // Only include customers with activity or events
+            if (currentData.revenue > 0 || prevData.revenue > 0 || eventType) {
+                variations.push({
+                    clinic_id: clinicId,
+                    customer_name: customerName,
+                    region: deriveRegion(faCode),
+                    level: deriveLevel(faCode),
+                    previous_revenue: prevData.revenue,
+                    current_revenue: currentData.revenue,
+                    change,
+                    change_percent: changePercent,
+                    event_type: eventType,
+                    event_confirmed: eventConfirmed,
+                    is_new: isNew,
+                    is_churned: isChurned,
+                });
             }
         }
 
-        // Sort by absolute change (largest changes first)
+        // Sort by absolute change (largest first)
         variations.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
 
         // Calculate summary
         const summary = {
             total_clinics: variations.length,
-            new_clinics: variations.filter(v => v.is_new).length,
-            churned_clinics: variations.filter(v => v.is_churned).length,
-            paused_clinics: variations.filter(v => v.event_type === "Pause").length,
-            returned_clinics: variations.filter(v => v.event_type === "Return").length,
+            new_clinics: variations.filter((v) => v.is_new).length,
+            churned_clinics: variations.filter((v) => v.is_churned).length,
+            paused_clinics: variations.filter((v) => v.event_type === "Pause").length,
+            returned_clinics: variations.filter((v) => v.event_type === "Return").length,
             total_current_revenue: variations.reduce((sum, v) => sum + v.current_revenue, 0),
             total_previous_revenue: variations.reduce((sum, v) => sum + v.previous_revenue, 0),
             total_change: variations.reduce((sum, v) => sum + v.change, 0),
@@ -267,6 +263,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({
             success: true,
             mode: ytd ? "ytd" : "monthly",
+            faCode,
             period: ytd ? `${year}-01 to ${currentYearMonth}` : currentYearMonth,
             comparison_period: ytd ? `${year - 1}-01 to ${prevYearMonth}` : prevYearMonth,
             variations,
@@ -275,7 +272,7 @@ export async function GET(request: NextRequest) {
     } catch (err) {
         console.error("Clinic variations API error:", err);
         return NextResponse.json(
-            { error: "Erro interno do servidor" },
+            { error: "Internal server error" },
             { status: 500 }
         );
     }

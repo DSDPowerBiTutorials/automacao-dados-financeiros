@@ -9,7 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, TrendingUp, TrendingDown, Minus, Users, UserPlus, UserMinus, RotateCcw } from "lucide-react";
 import { ClinicEventDropdown, ClinicEventType } from "./clinic-event-dropdown";
@@ -17,9 +17,7 @@ import { formatCurrency } from "@/lib/formatters";
 
 interface ClinicVariation {
     clinic_id: number;
-    email: string;
-    name: string;
-    company_name: string | null;
+    customer_name: string;
     region: string | null;
     level: string | null;
     previous_revenue: number;
@@ -83,7 +81,7 @@ export function ClinicVariationsTable({
                 const response = await fetch(`/api/clinics/variations?${params.toString()}`);
 
                 if (!response.ok) {
-                    throw new Error("Falha ao carregar variações");
+                    throw new Error("Failed to load variations");
                 }
 
                 const data = await response.json();
@@ -93,17 +91,19 @@ export function ClinicVariationsTable({
                     setSummary(data.summary);
                     setPeriod(data.period);
                 } else {
-                    throw new Error(data.error || "Erro desconhecido");
+                    throw new Error(data.error || "Unknown error");
                 }
             } catch (err) {
                 console.error("Error fetching clinic variations:", err);
-                setError(err instanceof Error ? err.message : "Erro ao carregar dados");
+                setError(err instanceof Error ? err.message : "Failed to load data");
             } finally {
                 setLoading(false);
             }
         }
 
-        fetchVariations();
+        if (faCode) {
+            fetchVariations();
+        }
     }, [mode, yearMonth, faCode, maxItems]);
 
     const handleEventChange = (clinicId: number, newEvent: ClinicEventType) => {
@@ -128,21 +128,25 @@ export function ClinicVariationsTable({
         const percentStr = percent.toFixed(1);
 
         return (
-            <span className={change >= 0 ? "text-green-600" : "text-red-600"}>
+            <span className={change >= 0 ? "text-green-500" : "text-red-500"}>
                 {sign}{change >= 0 ? changeStr : `-${changeStr}`} ({sign}{percentStr}%)
             </span>
         );
     };
 
     const defaultTitle = mode === "monthly"
-        ? `Alterações do Mês (${yearMonth})`
-        : `Alterações YTD (Jan - ${yearMonth})`;
+        ? `Monthly Changes (${yearMonth})`
+        : `YTD Changes (Jan - ${yearMonth})`;
+
+    if (!faCode) {
+        return null;
+    }
 
     if (loading) {
         return (
-            <Card className="mt-4">
+            <Card className="mt-4 bg-gray-800/50 border-gray-700">
                 <CardHeader className="py-3">
-                    <CardTitle className="text-sm font-medium">{title || defaultTitle}</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-200">{title || defaultTitle}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex justify-center py-8">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
@@ -153,9 +157,9 @@ export function ClinicVariationsTable({
 
     if (error) {
         return (
-            <Card className="mt-4 border-red-200 bg-red-50">
+            <Card className="mt-4 border-red-700 bg-red-900/20">
                 <CardContent className="py-4">
-                    <p className="text-sm text-red-600">{error}</p>
+                    <p className="text-sm text-red-400">{error}</p>
                 </CardContent>
             </Card>
         );
@@ -163,45 +167,45 @@ export function ClinicVariationsTable({
 
     if (variations.length === 0) {
         return (
-            <Card className="mt-4">
+            <Card className="mt-4 bg-gray-800/50 border-gray-700">
                 <CardHeader className="py-3">
-                    <CardTitle className="text-sm font-medium">{title || defaultTitle}</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-200">{title || defaultTitle}</CardTitle>
                 </CardHeader>
                 <CardContent className="py-4">
-                    <p className="text-sm text-gray-500">Nenhuma variação encontrada para este período.</p>
+                    <p className="text-sm text-gray-400">No changes found for this period.</p>
                 </CardContent>
             </Card>
         );
     }
 
     return (
-        <Card className="mt-4">
+        <Card className="mt-4 bg-gray-800/50 border-gray-700">
             <CardHeader className="py-3">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-sm font-medium">{title || defaultTitle}</CardTitle>
-                        <CardDescription className="text-xs">{period}</CardDescription>
+                        <CardTitle className="text-sm font-medium text-gray-200">{title || defaultTitle}</CardTitle>
+                        <p className="text-xs text-gray-400">{period}</p>
                     </div>
                     {summary && (
                         <div className="flex items-center gap-4 text-xs">
-                            <div className="flex items-center gap-1">
+                            <div className="flex items-center gap-1 text-gray-300">
                                 <Users className="h-4 w-4 text-gray-400" />
                                 <span>{summary.total_clinics}</span>
                             </div>
                             {summary.new_clinics > 0 && (
-                                <div className="flex items-center gap-1 text-green-600">
+                                <div className="flex items-center gap-1 text-green-500">
                                     <UserPlus className="h-4 w-4" />
                                     <span>+{summary.new_clinics}</span>
                                 </div>
                             )}
                             {summary.churned_clinics > 0 && (
-                                <div className="flex items-center gap-1 text-red-600">
+                                <div className="flex items-center gap-1 text-red-500">
                                     <UserMinus className="h-4 w-4" />
                                     <span>-{summary.churned_clinics}</span>
                                 </div>
                             )}
                             {summary.returned_clinics > 0 && (
-                                <div className="flex items-center gap-1 text-blue-600">
+                                <div className="flex items-center gap-1 text-blue-500">
                                     <RotateCcw className="h-4 w-4" />
                                     <span>{summary.returned_clinics}</span>
                                 </div>
@@ -213,55 +217,37 @@ export function ClinicVariationsTable({
             <CardContent className="px-0 py-0">
                 <div className="max-h-80 overflow-auto">
                     <Table>
-                        <TableHeader className="sticky top-0 bg-white z-10">
-                            <TableRow>
-                                <TableHead className="text-xs w-[180px]">Clinic</TableHead>
-                                <TableHead className="text-xs w-[80px]">Region</TableHead>
-                                <TableHead className="text-xs w-[80px]">Level</TableHead>
-                                <TableHead className="text-xs text-right w-[100px]">Anterior</TableHead>
-                                <TableHead className="text-xs text-right w-[100px]">Atual</TableHead>
-                                <TableHead className="text-xs text-right w-[140px]">Variação</TableHead>
-                                <TableHead className="text-xs w-[100px]">Event</TableHead>
+                        <TableHeader className="sticky top-0 bg-gray-800 z-10">
+                            <TableRow className="border-gray-700">
+                                <TableHead className="text-xs text-gray-300 w-[200px]">Clinic</TableHead>
+                                <TableHead className="text-xs text-gray-300 w-[80px]">Level</TableHead>
+                                <TableHead className="text-xs text-gray-300 text-right w-[120px]">Monthly Revenue</TableHead>
+                                <TableHead className="text-xs text-gray-300 text-right w-[140px]">Change</TableHead>
+                                <TableHead className="text-xs text-gray-300 w-[100px]">Event</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {variations.map((v) => (
+                            {variations.map((v, idx) => (
                                 <TableRow
-                                    key={v.clinic_id}
-                                    className={
-                                        v.is_churned ? "bg-red-50/50" :
-                                            v.is_new ? "bg-green-50/50" :
-                                                v.event_type === "Pause" ? "bg-yellow-50/50" :
-                                                    v.event_type === "Return" ? "bg-blue-50/50" :
+                                    key={v.clinic_id || idx}
+                                    className={`border-gray-700 ${v.is_churned ? "bg-red-900/20" :
+                                            v.is_new ? "bg-green-900/20" :
+                                                v.event_type === "Pause" ? "bg-yellow-900/20" :
+                                                    v.event_type === "Return" ? "bg-blue-900/20" :
                                                         ""
-                                    }
+                                        }`}
                                 >
                                     <TableCell className="py-2">
-                                        <div className="flex flex-col">
-                                            <span className="text-xs font-medium truncate max-w-[160px]" title={v.name}>
-                                                {v.name}
-                                            </span>
-                                            <span className="text-[10px] text-gray-400 truncate max-w-[160px]" title={v.email}>
-                                                {v.email}
-                                            </span>
-                                        </div>
-                                    </TableCell>
-                                    <TableCell className="py-2">
-                                        {v.region && (
-                                            <Badge variant="outline" className="text-[10px]">
-                                                {v.region}
-                                            </Badge>
-                                        )}
+                                        <span className="text-xs font-medium text-gray-200 truncate max-w-[180px] block" title={v.customer_name}>
+                                            {v.customer_name}
+                                        </span>
                                     </TableCell>
                                     <TableCell className="py-2">
                                         {v.level && (
-                                            <span className="text-xs text-gray-600">{v.level}</span>
+                                            <span className="text-xs text-gray-400">{v.level}</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="py-2 text-right text-xs text-gray-500">
-                                        {formatCurrency(v.previous_revenue, "EUR")}
-                                    </TableCell>
-                                    <TableCell className="py-2 text-right text-xs font-medium">
+                                    <TableCell className="py-2 text-right text-xs font-medium text-gray-200">
                                         {formatCurrency(v.current_revenue, "EUR")}
                                     </TableCell>
                                     <TableCell className="py-2 text-right text-xs">
@@ -288,18 +274,18 @@ export function ClinicVariationsTable({
 
                 {/* Summary footer */}
                 {summary && (
-                    <div className="border-t bg-gray-50 px-4 py-2 flex items-center justify-between text-xs">
-                        <span className="text-gray-500">
+                    <div className="border-t border-gray-700 bg-gray-800 px-4 py-2 flex items-center justify-between text-xs">
+                        <span className="text-gray-400">
                             Total: {summary.total_clinics} clinics
                         </span>
                         <div className="flex items-center gap-4">
-                            <span className="text-gray-500">
-                                Anterior: {formatCurrency(summary.total_previous_revenue, "EUR")}
+                            <span className="text-gray-400">
+                                Previous: {formatCurrency(summary.total_previous_revenue, "EUR")}
                             </span>
-                            <span className="font-medium">
-                                Atual: {formatCurrency(summary.total_current_revenue, "EUR")}
+                            <span className="font-medium text-gray-200">
+                                Current: {formatCurrency(summary.total_current_revenue, "EUR")}
                             </span>
-                            <span className={summary.total_change >= 0 ? "text-green-600" : "text-red-600"}>
+                            <span className={summary.total_change >= 0 ? "text-green-500" : "text-red-500"}>
                                 {summary.total_change >= 0 ? "+" : ""}{formatCurrency(summary.total_change, "EUR")}
                             </span>
                         </div>
