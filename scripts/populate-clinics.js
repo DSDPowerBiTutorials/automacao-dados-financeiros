@@ -79,10 +79,10 @@ async function populateClinics() {
 
     console.log(`   Found ${allTransactions.length} total transactions`);
 
-    // Filter only clinics (is_clinic = true/Yes)
+    // Filter only clinics by financial_account_code (102.x, 103.x, 104.x)
     const clinicTransactions = allTransactions.filter((tx) => {
-        const isClinic = tx.custom_data?.is_clinic;
-        return isClinic === true || isClinic === "Yes" || isClinic === "yes" || isClinic === "TRUE";
+        const faCode = tx.custom_data?.financial_account_code || "";
+        return faCode.startsWith("102.") || faCode.startsWith("103.") || faCode.startsWith("104.");
     });
 
     console.log(`   Found ${clinicTransactions.length} clinic transactions`);
@@ -92,29 +92,41 @@ async function populateClinics() {
         return;
     }
 
-    // Step 2: Aggregate by email to create unique clinics
-    console.log("\n📊 Step 2: Aggregating by email...");
+    // Step 2: Aggregate by customer_name to create unique clinics
+    console.log("\n📊 Step 2: Aggregating by customer_name...");
 
     const clinicsMap = new Map();
-    const monthlyStatsMap = new Map(); // key: email|year_month
+    const monthlyStatsMap = new Map(); // key: customerName|year_month
 
     for (const tx of clinicTransactions) {
-        const email = (tx.custom_data?.email || "").toLowerCase().trim();
-        if (!email) continue;
+        const customerName = (tx.custom_data?.customer_name || "").trim();
+        if (!customerName) continue;
 
         const txDate = new Date(tx.date);
         const yearMonth = formatYearMonth(txDate);
         const amount = parseEuropeanNumber(tx.amount);
+        
+        // Determine region from FA code
+        const faCode = tx.custom_data?.financial_account_code || "";
+        const isAmex = faCode.endsWith(".2") || faCode.endsWith(".4"); // AMEX codes end in .2 or .4
+        const region = isAmex ? "AMEX" : "ROW";
+        
+        // Determine level from FA code
+        let level = null;
+        if (faCode.includes(".1") || faCode.includes(".2")) level = "Level 3"; // Contracted
+        else if (faCode.includes(".3") || faCode.includes(".4")) level = "Level 3 New";
+        else if (faCode.includes(".5")) level = "Level 2";
+        else if (faCode.includes(".6")) level = "Level 1";
 
         // Aggregate clinic master data
-        if (!clinicsMap.has(email)) {
-            clinicsMap.set(email, {
-                email,
-                name: tx.custom_data?.customer_name || tx.custom_data?.client_name || null,
+        if (!clinicsMap.has(customerName)) {
+            clinicsMap.set(customerName, {
+                email: customerName.toLowerCase().replace(/[^a-z0-9]/g, "_") + "@clinic.local", // Generate pseudo-email
+                name: customerName,
                 company_name: tx.custom_data?.company_name || null,
                 country: tx.custom_data?.country || null,
-                region: tx.custom_data?.region || null,
-                level: tx.custom_data?.level || null,
+                region: region,
+                level: level,
                 first_transaction_date: tx.date,
                 last_transaction_date: tx.date,
                 total_revenue: 0,
@@ -123,7 +135,7 @@ async function populateClinics() {
             });
         }
 
-        const clinic = clinicsMap.get(email);
+        const clinic = clinicsMap.get(customerName);
         clinic.total_revenue += amount;
         clinic.transaction_count++;
         clinic.months.add(yearMonth);
@@ -136,21 +148,16 @@ async function populateClinics() {
             clinic.last_transaction_date = tx.date;
         }
 
-        // Update name if we have a better one
-        if (!clinic.name && tx.custom_data?.customer_name) {
-            clinic.name = tx.custom_data.customer_name;
-        }
-
         // Monthly stats
-        const monthKey = `${email}|${yearMonth}`;
+        const monthKey = `${customerName}|${yearMonth}`;
         if (!monthlyStatsMap.has(monthKey)) {
             monthlyStatsMap.set(monthKey, {
-                email,
+                customerName,
                 year_month: yearMonth,
                 revenue: 0,
                 transaction_count: 0,
-                level: tx.custom_data?.level || null,
-                region: tx.custom_data?.region || null,
+                level: level,
+                region: region,
             });
         }
 
@@ -165,7 +172,7 @@ async function populateClinics() {
     // Step 3: Calculate MRR (average of last 3 months with transactions)
     console.log("\n📊 Step 3: Calculating MRR...");
 
-    for (const [email, clinic] of clinicsMap) {
+    for (const [customerName, clinic] of clinicsMap) {
         const monthsArray = Array.from(clinic.months).sort().reverse();
         const lastMonths = monthsArray.slice(0, 3);
 
@@ -173,7 +180,7 @@ async function populateClinics() {
         let mrrCount = 0;
 
         for (const ym of lastMonths) {
-            const stats = monthlyStatsMap.get(`${email}|${ym}`);
+            const stats = monthlyStatsMap.get(`${customerName}|${ym}`);
             if (stats) {
                 mrrSum += stats.revenue;
                 mrrCount++;
@@ -190,11 +197,11 @@ async function populateClinics() {
     const events = [];
     const sortedMonths = Array.from(new Set(Array.from(monthlyStatsMap.values()).map(s => s.year_month))).sort();
 
-    for (const [email, clinic] of clinicsMap) {
+    for (const [customerName, clinic] of clinicsMap) {
         // Detect NEW event (first month)
         const firstMonth = formatYearMonth(clinic.first_transaction_date);
         events.push({
-            email,
+            customerName,
             event_type: "New",
             event_date: clinic.first_transaction_date,
             year_month: firstMonth,
@@ -212,7 +219,7 @@ async function populateClinics() {
         if (lastTxDate < twoMonthsAgo) {
             const churnMonth = formatYearMonth(new Date(lastTxDate.getFullYear(), lastTxDate.getMonth() + 1, 1));
             events.push({
-                email,
+                customerName,
                 event_type: "Churn",
                 event_date: new Date(lastTxDate.getFullYear(), lastTxDate.getMonth() + 1, 1).toISOString().split("T")[0],
                 year_month: churnMonth,
@@ -283,21 +290,22 @@ async function populateClinics() {
     console.log("\n📊 Step 6: Fetching clinic IDs...");
     const { data: insertedClinics, error: fetchError } = await supabase
         .from("clinics")
-        .select("id, email");
+        .select("id, email, name");
 
     if (fetchError) {
         console.error("❌ Error fetching clinic IDs:", fetchError.message);
         return;
     }
 
-    const emailToId = new Map(insertedClinics.map(c => [c.email, c.id]));
-    console.log(`   Fetched ${emailToId.size} clinic IDs`);
+    // Map by name (customerName) since that's our unique key
+    const nameToId = new Map(insertedClinics.map(c => [c.name, c.id]));
+    console.log(`   Fetched ${nameToId.size} clinic IDs`);
 
     // Insert monthly stats
     console.log("\n📊 Step 7: Inserting monthly stats...");
     const statsToInsert = Array.from(monthlyStatsMap.values())
         .map(s => ({
-            clinic_id: emailToId.get(s.email),
+            clinic_id: nameToId.get(s.customerName),
             year_month: s.year_month,
             revenue: s.revenue,
             transaction_count: s.transaction_count,
@@ -320,7 +328,7 @@ async function populateClinics() {
     console.log("\n📊 Step 8: Inserting events...");
     const eventsToInsert = events
         .map(e => ({
-            clinic_id: emailToId.get(e.email),
+            clinic_id: nameToId.get(e.customerName),
             event_type: e.event_type,
             event_date: e.event_date,
             year_month: e.year_month,
