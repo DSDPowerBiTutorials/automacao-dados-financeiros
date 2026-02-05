@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap } from "lucide-react";
+import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap, User } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -2529,20 +2529,20 @@ export default function InvoicesPage() {
       </div>
 
       <div className="px-6">
-        <Card>
+        <Card className="bg-[#2a2b2d] border-gray-700">
           <CardHeader>
-            <CardTitle className="text-lg">Invoices & Financial Entries</CardTitle>
+            <CardTitle className="text-lg text-white">Invoices & Financial Entries</CardTitle>
           </CardHeader>
           <CardContent>
             {/* Filters - Not sticky, just normal flow */}
-            <div className="bg-white pb-4 mb-4 border-b flex items-center gap-2">
-              <span className="text-sm font-semibold text-gray-500">Current View:</span>
+            <div className="pb-4 mb-4 border-b border-gray-700 flex items-center gap-2">
+              <span className="text-sm font-semibold text-gray-400">Current View:</span>
               <span className="text-lg">{SCOPE_CONFIG[selectedScope].icon}</span>
-              <span className="text-sm font-semibold">{SCOPE_CONFIG[selectedScope].label}</span>
+              <span className="text-sm font-semibold text-white">{SCOPE_CONFIG[selectedScope].label}</span>
               {selectedScope === "GLOBAL" ? (
-                <span className="text-xs text-gray-500">(Consolidated: ES + US - View Only)</span>
+                <span className="text-xs text-gray-400">(Consolidated: ES + US - View Only)</span>
               ) : (
-                <span className="text-xs text-gray-500">({SCOPE_CONFIG[selectedScope].description})</span>
+                <span className="text-xs text-gray-400">({SCOPE_CONFIG[selectedScope].description})</span>
               )}
             </div>
 
@@ -2740,27 +2740,31 @@ export default function InvoicesPage() {
                     <thead className="sticky top-0 z-10 bg-[#2a2b2d] shadow-sm">
                       <tr className="border-b border-gray-700 bg-[#2a2b2d]">
                         {visibleColumns.has('actions') && (
-                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-20 bg-white">Actions</th>
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Actions</th>
                         )}
                         {visibleColumns.has('split') && (
-                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-16 bg-white">Split</th>
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Split</th>
                         )}
+                        {/* Created By column - between Split and Scope */}
+                        <th className="px-2 py-1.5 text-center font-semibold text-gray-300 w-14 bg-[#2a2b2d]" title="Created by user or BOTella automation">
+                          Created
+                        </th>
                         {visibleColumns.has('scope') && (
-                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-14 bg-white">
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center justify-center gap-1">
                               Scope
                             </div>
                           </th>
                         )}
                         {visibleColumns.has('impact') && (
-                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-24 bg-white">
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center justify-center gap-1">
                               Impact
                             </div>
                           </th>
                         )}
                         {visibleColumns.has('type') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-32 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleSort("invoice_type")} className="flex items-center gap-1 hover:text-primary">
                                 Type
@@ -2777,7 +2781,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('input_date') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-24 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleSort("input_date")} className="flex items-center gap-1 hover:text-primary">
                                 Input Date
@@ -2790,7 +2794,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('invoice_date') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleSort("invoice_date")} className="flex items-center gap-1 hover:text-primary">
                                 Invoice Date
@@ -2803,7 +2807,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('benefit_date') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleSort("benefit_date")} className="flex items-center gap-1 hover:text-primary">
                                 Benefit Date
@@ -2816,7 +2820,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('due_date') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleSort("due_date")} className="flex items-center gap-1 hover:text-primary">
                                 Due Date
@@ -2829,7 +2833,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('schedule_date') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleSort("schedule_date")} className="flex items-center gap-1 hover:text-primary">
                                 Schedule Date
@@ -2842,7 +2846,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('provider') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-32 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleSort("provider_code")} className="flex items-center gap-1 hover:text-primary">
                                 Provider
@@ -2888,7 +2892,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('invoice_number') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               <button onClick={() => handleSort("invoice_number")} className="flex items-center gap-1 hover:text-primary">
                                 Invoice ID
@@ -2901,7 +2905,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('amount') && (
-                          <th className="px-2 py-1.5 text-right font-semibold text-gray-700 w-24 bg-white">
+                          <th className="px-2 py-1.5 text-right font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center justify-end gap-1">
                               <button onClick={() => handleSort("invoice_amount")} className="flex items-center gap-1 hover:text-primary ml-auto">
                                 Amount
@@ -2930,7 +2934,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('currency') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-20 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               Currency
                               <button onClick={(e) => openFilterPopover("currency", e)}
@@ -2943,7 +2947,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('financial_account') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-48 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               Financial Account
                               <button
@@ -2957,7 +2961,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('cost_center') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               Department
                               <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Department">
@@ -2967,14 +2971,14 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('sub_department') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               Sub-Department
                             </div>
                           </th>
                         )}
                         {visibleColumns.has('cost_type') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               Cost Type
                               <button onClick={(e) => openFilterPopover("cost_type_code", e)} className="hover:text-primary" title="Filter by Cost Type">
@@ -2984,7 +2988,7 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('dep_cost_type') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <div className="flex items-center gap-1">
                               Dep Cost Type
                               <button onClick={(e) => openFilterPopover("dep_cost_type_code", e)} className="hover:text-primary" title="Filter by Dep Cost Type">
@@ -2994,16 +2998,16 @@ export default function InvoicesPage() {
                           </th>
                         )}
                         {visibleColumns.has('payment_status') && (
-                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Payment Status</th>
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Status</th>
                         )}
                         {visibleColumns.has('payment_method') && (
-                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Payment Method</th>
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Method</th>
                         )}
                         {visibleColumns.has('bank_account') && (
-                          <th className="px-2 py-1.5 text-center font-semibold text-gray-700 w-28 bg-white">Bank Account</th>
+                          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Bank Account</th>
                         )}
                         {visibleColumns.has('payment_date') && (
-                          <th className="px-2 py-1.5 text-left font-semibold text-gray-700 w-28 bg-white">
+                          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
                             <button onClick={() => handleSort("payment_date")} className="flex items-center gap-1 hover:text-primary">
                               Payment Date
                               <ArrowUpDown className="h-3 w-3" />
@@ -3063,6 +3067,19 @@ export default function InvoicesPage() {
                               </td>
                             )}
 
+                            {/* Created By - Manual (User) or Automatic (BOTella) */}
+                            <td className="px-2 py-1 text-center">
+                              {isBotInvoice ? (
+                                <span title="Created automatically by BOTella" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-purple-900/30">
+                                  <Zap className="h-3.5 w-3.5 text-purple-400" />
+                                </span>
+                              ) : (
+                                <span title="Created manually by user" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-blue-900/30">
+                                  <User className="h-3.5 w-3.5 text-blue-400" />
+                                </span>
+                              )}
+                            </td>
+
                             {/* Scope */}
                             {visibleColumns.has('scope') && (
                               <td className="px-2 py-1 text-center">
@@ -3087,9 +3104,9 @@ export default function InvoicesPage() {
                             {visibleColumns.has('impact') && (
                               <td className="px-2 py-1">
                                 <div className="flex gap-1 justify-center">
-                                  {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-white">DRE</Badge>}
-                                  {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-white">Cash</Badge>}
-                                  {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 bg-white">IC</Badge>}
+                                  {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-700 text-gray-200">DRE</Badge>}
+                                  {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-700 text-gray-200">Cash</Badge>}
+                                  {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 border-gray-600 text-gray-300">IC</Badge>}
                                 </div>
                               </td>
                             )}
