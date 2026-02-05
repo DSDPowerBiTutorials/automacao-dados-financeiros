@@ -17,14 +17,13 @@ export async function GET(request: NextRequest) {
     }
 
     try {
-        // Calcular range de datas para o mês
-        const startDate = new Date(year, month, 1);
-        const endDate = new Date(year, month + 1, 0); // Último dia do mês
+        // Calcular range de datas para o mês (sem timezone issues)
+        const monthStr = String(month + 1).padStart(2, "0");
+        const startStr = `${year}-${monthStr}-01`;
+        const lastDay = new Date(year, month + 1, 0).getDate();
+        const endStr = `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
 
-        const startStr = startDate.toISOString().split("T")[0];
-        const endStr = endDate.toISOString().split("T")[0];
-
-        console.log(`📊 Drill-down: FA=${faCode}, Mês=${month}, Ano=${year}, Range=${startStr} a ${endStr}`);
+        console.log(`📊 Drill-down: FA=${faCode}, Mês=${month + 1}, Ano=${year}, Range=${startStr} a ${endStr}`);
 
         // Buscar TODAS as transações do mês e filtrar por FA code
         // Usar ilike para filtrar diretamente no JSONB
