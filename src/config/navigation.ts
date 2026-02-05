@@ -36,6 +36,24 @@ import {
   type LucideIcon
 } from "lucide-react"
 
+// Helper para sobrescrever href e adicionar ícone de construção
+function withUnderConstruction(nav: any): any {
+  if (Array.isArray(nav)) {
+    return nav.map(withUnderConstruction);
+  }
+  if (nav && typeof nav === 'object') {
+    const isUC = nav.underConstruction;
+    const children = nav.children ? withUnderConstruction(nav.children) : undefined;
+    return {
+      ...nav,
+      href: isUC ? "/under-construction" : nav.href,
+      children,
+      icon: isUC ? ((props: any) => <span style={{display:'inline-flex',alignItems:'center',gap:4}}><nav.icon {...props} /><AlertCircle className="text-yellow-400 ml-1" style={{height:16,width:16}} /></span>) : nav.icon
+    };
+  }
+  return nav;
+}
+
 export interface NavItem {
   title: string
   href: string
@@ -49,7 +67,7 @@ export interface NavGroup {
   items: NavItem[]
 }
 
-export const NAV: NavGroup[] = [
+export const NAV: NavGroup[] = withUnderConstruction([
   {
     label: "Executive Insights",
     items: [
@@ -519,4 +537,4 @@ export const NAV: NavGroup[] = [
       }
     ]
   }
-]
+])
