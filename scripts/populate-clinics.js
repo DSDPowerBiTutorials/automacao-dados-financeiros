@@ -109,7 +109,7 @@ async function populateClinics() {
         // Usar a string de data diretamente, não Date object
         const yearMonth = formatYearMonth(tx.date);
         if (!yearMonth) continue; // Skip if date is invalid
-        
+
         const amount = parseEuropeanNumber(tx.amount);
 
         // Determine region from FA code
@@ -202,7 +202,7 @@ async function populateClinics() {
 
     const events = [];
     const sortedMonths = Array.from(new Set(Array.from(monthlyStatsMap.values()).map(s => s.year_month))).sort();
-    
+
     // Find the latest month in the dataset (use this as reference, not current date)
     const latestMonth = sortedMonths[sortedMonths.length - 1] || formatYearMonth(new Date().toISOString().split("T")[0]);
     const [latestYear, latestMonthNum] = latestMonth.split("-").map(Number);

@@ -221,60 +221,61 @@ export async function GET(request: NextRequest) {
             });
         }
 
-        // Build variations list - ONLY include clinics with significant lifecycle events
+        // Build variations list - ONLY include REAL lifecycle events
+        // Real events: New (first time in ANY clinic line) or Churn (left ALL clinic lines)
         const variations: ClinicVariation[] = [];
 
         for (const customerName of allCustomers) {
             const currentData = currentMap.get(customerName) || { revenue: 0, count: 0 };
             const prevData = prevMap.get(customerName) || { revenue: 0, count: 0 };
 
+            // Check if had/has revenue in THIS specific FA code
+            const hadRevenueInThisFABefore = prevData.revenue > 0;
+            const hasRevenueInThisFANow = currentData.revenue > 0;
+            
+            // No change in this FA code = skip (not a lifecycle event for this line)
+            if (hadRevenueInThisFABefore === hasRevenueInThisFANow) continue;
+
             const change = currentData.revenue - prevData.revenue;
             const changePercent = prevData.revenue > 0
                 ? (change / prevData.revenue) * 100
                 : currentData.revenue > 0 ? 100 : 0;
 
-            // Get clinic record if exists
             const clinic = clinicByName.get(customerName);
             const clinicId = clinic?.id || 0;
 
-            // Check if customer exists in ANY clinic FA code (102.x, 103.x, 104.x)
+            // Check if customer exists in ANY clinic FA code (102.1-102.4)
             const existsInAnyClinicNow = allCurrentClinicCustomers.has(customerName);
             const existedInAnyClinicBefore = allPrevClinicCustomers.has(customerName);
 
-            // Check if this is truly a new customer (first ever transaction is this month)
-            const clinicFirstDate = clinic?.first_transaction_date || "";
-            const isReallyFirstTime = clinicFirstDate.startsWith(currentYearMonth) || !existedInAnyClinicBefore;
+            let eventType: string | null = null;
 
-            // isNew: first time ever appearing (not just in this FA code)
-            const isNew = prevData.revenue === 0 && currentData.revenue > 0 && isReallyFirstTime;
-
-            // isChurned: had positive revenue before, now has zero or negative
-            // AND doesn't exist in any clinic FA code now (completely gone)
-            const isChurned = prevData.revenue > 0 && currentData.revenue <= 0 && !existsInAnyClinicNow;
-
-            // isPause: had revenue in previous month, no revenue now, but still exists in another FA code
-            // (e.g., moved from Level 3 to Level 2, or temporarily paused)
-            const isPause = prevData.revenue > 0 && currentData.revenue <= 0 && existsInAnyClinicNow;
-
-            // isReturn: had no revenue in previous month, has revenue now, BUT existed before
-            // (not a new customer, returning after pause/churn)
-            const isReturn = prevData.revenue === 0 && currentData.revenue > 0 && existedInAnyClinicBefore && !isReallyFirstTime;
-
-            // Get event from events table (manually set)
-            const clinicEvent = clinicId ? eventsMap.get(clinicId) : null;
-            let eventType = clinicEvent?.event_type || null;
-            const eventConfirmed = clinicEvent?.confirmed ?? false;
-
-            // Auto-detect event type if not manually set
-            if (!eventType) {
-                if (isNew) eventType = "New";
-                else if (isChurned) eventType = "Churn";
-                else if (isPause) eventType = "Pause";
-                else if (isReturn) eventType = "Return";
+            // ENTERED this FA code this month
+            if (!hadRevenueInThisFABefore && hasRevenueInThisFANow) {
+                if (!existedInAnyClinicBefore) {
+                    // Truly new to DSD Clinics (not in ANY clinic line before)
+                    eventType = "New";
+                }
+                // If existed in another clinic line before, don't show (level change, not new customer)
             }
 
-            // ONLY include clinics that have an actual event (New, Churn, Pause, Return)
-            // Skip clinics that are just continuing normally (no event)
+            // LEFT this FA code this month  
+            if (hadRevenueInThisFABefore && !hasRevenueInThisFANow) {
+                if (!existsInAnyClinicNow) {
+                    // Truly churned from DSD Clinics (not in ANY clinic line now)
+                    eventType = "Churn";
+                }
+                // If still exists in another clinic line, don't show (level change, not churn)
+            }
+
+            // Get manual event override from events table
+            const clinicEvent = clinicId ? eventsMap.get(clinicId) : null;
+            if (clinicEvent?.event_type) {
+                eventType = clinicEvent.event_type;
+            }
+            const eventConfirmed = clinicEvent?.confirmed ?? false;
+
+            // ONLY include if there's a real lifecycle event
             if (eventType) {
                 variations.push({
                     clinic_id: clinicId,
@@ -287,8 +288,8 @@ export async function GET(request: NextRequest) {
                     change_percent: changePercent,
                     event_type: eventType,
                     event_confirmed: eventConfirmed,
-                    is_new: isNew,
-                    is_churned: isChurned,
+                    is_new: eventType === "New",
+                    is_churned: eventType === "Churn",
                 });
             }
         }
