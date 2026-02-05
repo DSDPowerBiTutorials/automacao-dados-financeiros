@@ -2500,10 +2500,7 @@ export default function InvoicesPage() {
             </DialogContent>
           </Dialog>
         </div>
-      </div>
 
-      {/* Main Content */}
-      <div className="px-6">
         {/* Action Bar */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-2">
@@ -3729,7 +3726,7 @@ export default function InvoicesPage() {
           </div>
         )}
 
-        <div className="mt-4 text-sm text-gray-400">
+        <div className="mt-4 pb-6 text-sm text-gray-400">
           Showing {filteredInvoices.length} of {invoices.length} invoices
         </div>
       </div>
