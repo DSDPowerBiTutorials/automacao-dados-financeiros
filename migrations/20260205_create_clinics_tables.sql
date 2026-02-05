@@ -108,6 +108,22 @@ ALTER TABLE clinics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinic_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE clinic_monthly_stats ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies first (idempotent)
+DROP POLICY IF EXISTS "Allow authenticated read clinics" ON clinics;
+DROP POLICY IF EXISTS "Allow authenticated insert clinics" ON clinics;
+DROP POLICY IF EXISTS "Allow authenticated update clinics" ON clinics;
+DROP POLICY IF EXISTS "Service role full access clinics" ON clinics;
+
+DROP POLICY IF EXISTS "Allow authenticated read clinic_events" ON clinic_events;
+DROP POLICY IF EXISTS "Allow authenticated insert clinic_events" ON clinic_events;
+DROP POLICY IF EXISTS "Allow authenticated update clinic_events" ON clinic_events;
+DROP POLICY IF EXISTS "Service role full access clinic_events" ON clinic_events;
+
+DROP POLICY IF EXISTS "Allow authenticated read clinic_monthly_stats" ON clinic_monthly_stats;
+DROP POLICY IF EXISTS "Allow authenticated insert clinic_monthly_stats" ON clinic_monthly_stats;
+DROP POLICY IF EXISTS "Allow authenticated update clinic_monthly_stats" ON clinic_monthly_stats;
+DROP POLICY IF EXISTS "Service role full access clinic_monthly_stats" ON clinic_monthly_stats;
+
 -- Allow authenticated users to read
 CREATE POLICY "Allow authenticated read clinics" ON clinics
     FOR SELECT TO authenticated USING (true);
