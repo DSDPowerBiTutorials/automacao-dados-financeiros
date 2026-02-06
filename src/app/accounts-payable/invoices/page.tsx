@@ -154,7 +154,8 @@ export default function InvoicesPage() {
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
   const [calendarRange, setCalendarRange] = useState<DateRange | undefined>(undefined);
 
-  // Date and amount filters
+  // Year filter (server-side) and date/amount filters (client-side)
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
   const [dateFilters, setDateFilters] = useState<Record<string, { start?: string, end?: string }>>({});
   const [amountFilter, setAmountFilter] = useState<{ operator: 'lt' | 'gt' | 'eq' | 'between', value1: number, value2?: number } | null>(null);
 
@@ -242,7 +243,7 @@ export default function InvoicesPage() {
 
   useEffect(() => {
     loadInvoices();
-  }, []);
+  }, [selectedYear]);
 
   useEffect(() => {
     loadMasterData();
@@ -309,7 +310,8 @@ export default function InvoicesPage() {
     setError(null);
     try {
       // Fetch via server-side API route (uses supabaseAdmin, no 1000-row limit)
-      const res = await fetch("/api/invoices/list");
+      const yearParam = selectedYear !== "ALL" ? `?year=${selectedYear}` : "";
+      const res = await fetch(`/api/invoices/list${yearParam}`);
       const json = await res.json();
       if (json.error) throw new Error(json.error);
 
@@ -2645,6 +2647,18 @@ export default function InvoicesPage() {
             </Button>
           </div>
 
+          {/* Year Filter (server-side) */}
+          <select
+            value={selectedYear}
+            onChange={(e) => setSelectedYear(e.target.value)}
+            className="h-9 rounded-md border border-gray-700 bg-transparent px-3 text-sm text-white"
+          >
+            <option value="ALL" className="bg-gray-900">All Years</option>
+            {[2026, 2025, 2024, 2023].map(y => (
+              <option key={y} value={String(y)} className="bg-gray-900">{y}</option>
+            ))}
+          </select>
+
           {/* Search */}
           <div className="flex-1 max-w-md">
             <div className="relative">
@@ -3743,7 +3757,7 @@ export default function InvoicesPage() {
         }
 
         <div className="mt-4 pb-6 text-sm text-gray-400">
-          Showing {filteredInvoices.length} of {invoices.length} invoices
+          Showing {filteredInvoices.length} of {invoices.length} invoices{selectedYear !== "ALL" ? ` (${selectedYear})` : " (all years)"}
         </div>
       </div >
 
