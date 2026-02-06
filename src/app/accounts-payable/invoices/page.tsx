@@ -2662,12 +2662,12 @@ export default function InvoicesPage() {
           {/* Search */}
           <div className="flex-1 max-w-md">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
               <Input
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 bg-transparent border-gray-700 text-white placeholder:text-gray-500"
+                className="pl-8 bg-transparent border-gray-700 text-white placeholder:text-gray-500 text-sm"
               />
             </div>
           </div>
