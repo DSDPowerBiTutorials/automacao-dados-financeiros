@@ -2681,21 +2681,6 @@ export default function InvoicesPage() {
           )}
         </div>
 
-        {/* Filtro Created */}
-        <div className="flex items-center gap-2 mb-2">
-          <Label className="text-sm text-gray-300">Created:</Label>
-          <Select value={createdFilter} onValueChange={setCreatedFilter}>
-            <SelectTrigger className="h-7 text-xs bg-[#2a2b2d] text-gray-200 border-gray-600 w-32">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent className="bg-[#2a2b2d] text-gray-200 border-gray-600">
-              <SelectItem value="all">Todos</SelectItem>
-              <SelectItem value="bot">Automáticas (BOTella)</SelectItem>
-              <SelectItem value="manual">Manuais (Usuário)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
         {/* Table */}
         {error ? (
           <div className="text-center py-8 text-red-400">{error}</div>
@@ -2719,7 +2704,29 @@ export default function InvoicesPage() {
                     )}
                     {/* Created By column */}
                     <th className="px-2 py-1.5 text-center font-semibold text-gray-300 w-14 bg-[#2a2b2d]" title="Created by user or BOTella automation">
-                      Created
+                      <div className="flex items-center justify-center gap-1">
+                        Created
+                        <button
+                          onClick={(e) => openFilterPopover("created_by", e)}
+                          className={`hover:text-primary ${createdFilter !== 'all' ? 'text-green-400' : ''}`}
+                          title="Filter by Created"
+                        >
+                          <Filter className={`h-3 w-3 ${createdFilter !== 'all' ? 'fill-green-400' : ''}`} />
+                        </button>
+                        {createdFilter !== 'all' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCreatedFilter('all');
+                              setAppliedFilters(prev => prev.filter(f => f.field !== 'created_by'));
+                            }}
+                            className="hover:text-destructive"
+                            title="Clear filter"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        )}
+                      </div>
                     </th>
                     {visibleColumns.has('scope') && (
                       <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Scope</th>
@@ -2755,1291 +2762,1328 @@ export default function InvoicesPage() {
                     )}
                     {visibleColumns.has('invoice_date') && (
                       <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              <button onClick={() => handleSort("invoice_date")} className="flex items-center gap-1 hover:text-primary">
-                Invoice Date
-                <ArrowUpDown className="h-3 w-3" />
-              </button>
-              <button onClick={(e) => openFilterPopover("invoice_date", e)} className="hover:text-primary" title="Filter by Invoice Date">
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('benefit_date') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              <button onClick={() => handleSort("benefit_date")} className="flex items-center gap-1 hover:text-primary">
-                Benefit Date
-                <ArrowUpDown className="h-3 w-3" />
-              </button>
-              <button onClick={(e) => openFilterPopover("benefit_date", e)} className="hover:text-primary" title="Filter by Benefit Date">
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('due_date') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              <button onClick={() => handleSort("due_date")} className="flex items-center gap-1 hover:text-primary">
-                Due Date
-                <ArrowUpDown className="h-3 w-3" />
-              </button>
-              <button onClick={(e) => openFilterPopover("due_date", e)} className="hover:text-primary" title="Filter by Due Date">
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('schedule_date') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              <button onClick={() => handleSort("schedule_date")} className="flex items-center gap-1 hover:text-primary">
-                Schedule Date
-                <ArrowUpDown className="h-3 w-3" />
-              </button>
-              <button onClick={(e) => openFilterPopover("schedule_date", e)} className="hover:text-primary" title="Filter by Schedule Date">
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('provider') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              <button onClick={() => handleSort("provider_code")} className="flex items-center gap-1 hover:text-primary">
-                Provider
-                <ArrowUpDown className="h-3 w-3" />
-              </button>
-              <button
-                onClick={(e) => openFilterPopover("provider_code", e)}
-                className={`hover:text-primary ${isColumnFiltered('provider_code') ? 'text-green-600' : ''}`}
-                title="Filter by Provider"
-              >
-                <Filter className={`h-3 w-3 ${isColumnFiltered('provider_code') ? 'fill-green-600' : ''}`} />
-              </button>
-              {isColumnFiltered('provider_code') && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFilter('provider_code');
-                  }}
-                  className="hover:text-destructive"
-                  title="Clear filter"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('description') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              Description
-              <button
-                onClick={() => {
-                  const value = prompt("Filter by Description:");
-                  if (value) addColumnFilter("description", value, value);
-                }}
-                className="hover:text-primary"
-                title="Filter by Description"
-              >
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('invoice_number') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              <button onClick={() => handleSort("invoice_number")} className="flex items-center gap-1 hover:text-primary">
-                Invoice ID
-                <ArrowUpDown className="h-3 w-3" />
-              </button>
-              <button onClick={(e) => openFilterPopover("invoice_number", e)} className="hover:text-primary" title="Filter by Invoice ID">
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('amount') && (
-          <th className="px-2 py-1.5 text-right font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center justify-end gap-1">
-              <button onClick={() => handleSort("invoice_amount")} className="flex items-center gap-1 hover:text-primary ml-auto">
-                Amount
-                <ArrowUpDown className="h-3 w-3" />
-              </button>
-              <button
-                onClick={(e) => openFilterPopover("invoice_amount", e)}
-                className={`hover:text-primary ${isColumnFiltered('invoice_amount') ? 'text-green-600' : ''}`}
-                title="Filter by Amount"
-              >
-                <Filter className={`h-3 w-3 ${isColumnFiltered('invoice_amount') ? 'fill-green-600' : ''}`} />
-              </button>
-              {isColumnFiltered('invoice_amount') && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeFilter('invoice_amount');
-                  }}
-                  className="hover:text-destructive"
-                  title="Clear filter"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('currency') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              Currency
-              <button onClick={(e) => openFilterPopover("currency", e)}
-                className="hover:text-primary"
-                title="Filter by Currency"
-              >
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('financial_account') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              Financial Account
-              <button
-                onClick={(e) => openFilterPopover("financial_account_code", e)}
-                className="hover:text-primary"
-                title="Filter by Financial Account"
-              >
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('cost_center') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              Department
-              <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Department">
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('sub_department') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              Sub-Department
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('cost_type') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              Cost Type
-              <button onClick={(e) => openFilterPopover("cost_type_code", e)} className="hover:text-primary" title="Filter by Cost Type">
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('dep_cost_type') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <div className="flex items-center gap-1">
-              Dep Cost Type
-              <button onClick={(e) => openFilterPopover("dep_cost_type_code", e)} className="hover:text-primary" title="Filter by Dep Cost Type">
-                <Filter className="h-3 w-3" />
-              </button>
-            </div>
-          </th>
-        )}
-        {visibleColumns.has('payment_status') && (
-          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Status</th>
-        )}
-        {visibleColumns.has('payment_method') && (
-          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Method</th>
-        )}
-        {visibleColumns.has('bank_account') && (
-          <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Bank Account</th>
-        )}
-        {visibleColumns.has('payment_date') && (
-          <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
-            <button onClick={() => handleSort("payment_date")} className="flex items-center gap-1 hover:text-primary">
-              Payment Date
-              <ArrowUpDown className="h-3 w-3" />
-            </button>
-          </th>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleSort("invoice_date")} className="flex items-center gap-1 hover:text-primary">
+                            Invoice Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button onClick={(e) => openFilterPopover("invoice_date", e)} className="hover:text-primary" title="Filter by Invoice Date">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('benefit_date') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleSort("benefit_date")} className="flex items-center gap-1 hover:text-primary">
+                            Benefit Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button onClick={(e) => openFilterPopover("benefit_date", e)} className="hover:text-primary" title="Filter by Benefit Date">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('due_date') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleSort("due_date")} className="flex items-center gap-1 hover:text-primary">
+                            Due Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button onClick={(e) => openFilterPopover("due_date", e)} className="hover:text-primary" title="Filter by Due Date">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('schedule_date') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleSort("schedule_date")} className="flex items-center gap-1 hover:text-primary">
+                            Schedule Date
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button onClick={(e) => openFilterPopover("schedule_date", e)} className="hover:text-primary" title="Filter by Schedule Date">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('provider') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleSort("provider_code")} className="flex items-center gap-1 hover:text-primary">
+                            Provider
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => openFilterPopover("provider_code", e)}
+                            className={`hover:text-primary ${isColumnFiltered('provider_code') ? 'text-green-600' : ''}`}
+                            title="Filter by Provider"
+                          >
+                            <Filter className={`h-3 w-3 ${isColumnFiltered('provider_code') ? 'fill-green-600' : ''}`} />
+                          </button>
+                          {isColumnFiltered('provider_code') && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeFilter('provider_code');
+                              }}
+                              className="hover:text-destructive"
+                              title="Clear filter"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('description') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          Description
+                          <button
+                            onClick={() => {
+                              const value = prompt("Filter by Description:");
+                              if (value) addColumnFilter("description", value, value);
+                            }}
+                            className="hover:text-primary"
+                            title="Filter by Description"
+                          >
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('invoice_number') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => handleSort("invoice_number")} className="flex items-center gap-1 hover:text-primary">
+                            Invoice ID
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button onClick={(e) => openFilterPopover("invoice_number", e)} className="hover:text-primary" title="Filter by Invoice ID">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('amount') && (
+                      <th className="px-2 py-1.5 text-right font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center justify-end gap-1">
+                          <button onClick={() => handleSort("invoice_amount")} className="flex items-center gap-1 hover:text-primary ml-auto">
+                            Amount
+                            <ArrowUpDown className="h-3 w-3" />
+                          </button>
+                          <button
+                            onClick={(e) => openFilterPopover("invoice_amount", e)}
+                            className={`hover:text-primary ${isColumnFiltered('invoice_amount') ? 'text-green-600' : ''}`}
+                            title="Filter by Amount"
+                          >
+                            <Filter className={`h-3 w-3 ${isColumnFiltered('invoice_amount') ? 'fill-green-600' : ''}`} />
+                          </button>
+                          {isColumnFiltered('invoice_amount') && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                removeFilter('invoice_amount');
+                              }}
+                              className="hover:text-destructive"
+                              title="Clear filter"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('currency') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          Currency
+                          <button onClick={(e) => openFilterPopover("currency", e)}
+                            className="hover:text-primary"
+                            title="Filter by Currency"
+                          >
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('financial_account') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          Financial Account
+                          <button
+                            onClick={(e) => openFilterPopover("financial_account_code", e)}
+                            className="hover:text-primary"
+                            title="Filter by Financial Account"
+                          >
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('cost_center') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          Department
+                          <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Department">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('sub_department') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          Sub-Department
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('cost_type') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          Cost Type
+                          <button onClick={(e) => openFilterPopover("cost_type_code", e)} className="hover:text-primary" title="Filter by Cost Type">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('dep_cost_type') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <div className="flex items-center gap-1">
+                          Dep Cost Type
+                          <button onClick={(e) => openFilterPopover("dep_cost_type_code", e)} className="hover:text-primary" title="Filter by Dep Cost Type">
+                            <Filter className="h-3 w-3" />
+                          </button>
+                        </div>
+                      </th>
+                    )}
+                    {visibleColumns.has('payment_status') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Status</th>
+                    )}
+                    {visibleColumns.has('payment_method') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Method</th>
+                    )}
+                    {visibleColumns.has('bank_account') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Bank Account</th>
+                    )}
+                    {visibleColumns.has('payment_date') && (
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                        <button onClick={() => handleSort("payment_date")} className="flex items-center gap-1 hover:text-primary">
+                          Payment Date
+                          <ArrowUpDown className="h-3 w-3" />
+                        </button>
+                      </th>
                     )}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-700">
                   {filteredByCreated.map((invoice) => {
-          const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
-          const Icon = config.icon;
-          const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
-          const paymentStatus = invoice.payment_status || 'NOT_SCHEDULED';
-          const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
+                    const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
+                    const Icon = config.icon;
+                    const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
+                    const paymentStatus = invoice.payment_status || 'NOT_SCHEDULED';
+                    const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
 
-          return (
-            <tr key={invoice.id} className="hover:bg-gray-800/50 group">
-              {/* Actions */}
-              {visibleColumns.has('actions') && (
-                <td className="px-2 py-1 text-center">
-                  <div className="flex items-center justify-center gap-1">
-                    <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700" title="Split Invoice">
-                      <Split className="h-3 w-3 text-blue-400" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700">
-                      <Edit2 className="h-3 w-3 text-gray-400" />
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-700">
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
-                </td>
-              )}
+                    return (
+                      <tr key={invoice.id} className="hover:bg-gray-800/50 group">
+                        {/* Actions */}
+                        {visibleColumns.has('actions') && (
+                          <td className="px-2 py-1 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700" title="Split Invoice">
+                                <Split className="h-3 w-3 text-blue-400" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700">
+                                <Edit2 className="h-3 w-3 text-gray-400" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-700">
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </td>
+                        )}
 
-              {/* Split Status */}
-              {visibleColumns.has('split') && (
-                <td className="px-2 py-1 text-center">
-                  {invoice.is_split && invoice.parent_invoice_id && (
-                    <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0 hover:bg-gray-700" title={`Part ${invoice.split_number}/${invoice.total_splits}`}>
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-900/30 text-blue-400 border border-blue-700">
-                        {invoice.split_number}/{invoice.total_splits}
-                      </Badge>
-                    </Button>
-                  )}
-                  {invoice.is_split && !invoice.parent_invoice_id && (
-                    <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0" title="View splits">
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-900/30 text-green-400 border border-green-700 cursor-pointer hover:bg-green-900/50">
-                        <Eye className="h-3 w-3 mr-1 inline" />
-                        {invoice.total_splits}
-                      </Badge>
-                    </Button>
-                  )}
-                  {!invoice.is_split && (
-                    <span className="text-gray-300">-</span>
-                  )}
-                </td>
-              )}
+                        {/* Split Status */}
+                        {visibleColumns.has('split') && (
+                          <td className="px-2 py-1 text-center">
+                            {invoice.is_split && invoice.parent_invoice_id && (
+                              <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0 hover:bg-gray-700" title={`Part ${invoice.split_number}/${invoice.total_splits}`}>
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-900/30 text-blue-400 border border-blue-700">
+                                  {invoice.split_number}/{invoice.total_splits}
+                                </Badge>
+                              </Button>
+                            )}
+                            {invoice.is_split && !invoice.parent_invoice_id && (
+                              <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0" title="View splits">
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-green-900/30 text-green-400 border border-green-700 cursor-pointer hover:bg-green-900/50">
+                                  <Eye className="h-3 w-3 mr-1 inline" />
+                                  {invoice.total_splits}
+                                </Badge>
+                              </Button>
+                            )}
+                            {!invoice.is_split && (
+                              <span className="text-gray-300">-</span>
+                            )}
+                          </td>
+                        )}
 
-              {/* Created By - Manual (User) or Automatic (BOTella) */}
-              <td className="px-2 py-1 text-center">
-                {isBotInvoice ? (
-                  <span title="Created automatically by BOTella" className="inline-flex items-center justify-center">
-                    <Zap className="h-4 w-4 text-yellow-400" />
-                  </span>
-                ) : (
-                  <span title="Created manually by user" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-700">
-                    <User className="h-3.5 w-3.5 text-gray-300" />
-                  </span>
-                )}
-              </td>
+                        {/* Created By - Manual (User) or Automatic (BOTella) */}
+                        <td className="px-2 py-1 text-center">
+                          {isBotInvoice ? (
+                            <span title="Created automatically by BOTella" className="inline-flex items-center justify-center">
+                              <Zap className="h-4 w-4 text-yellow-400" />
+                            </span>
+                          ) : (
+                            <span title="Created manually by user" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-700">
+                              <User className="h-3.5 w-3.5 text-gray-300" />
+                            </span>
+                          )}
+                        </td>
 
-              {/* Scope */}
-              {visibleColumns.has('scope') && (
-                <td className="px-2 py-1 text-center">
-                  <span
-                    className="cursor-help inline-block"
-                    title={SCOPE_CONFIG[getRecordScope(invoice) as ScopeType].description}
-                  >
-                    {getRecordScope(invoice) === ("ES" as ScopeType) && (
-                      <Image src="/spain.svg" alt="Spain" width={20} height={15} className="rounded" />
-                    )}
-                    {getRecordScope(invoice) === ("US" as ScopeType) && (
-                      <Image src="/united-states.svg" alt="USA" width={20} height={15} className="rounded" />
-                    )}
-                    {getRecordScope(invoice) === ("GLOBAL" as ScopeType) && (
-                      <Image src="/globe.svg" alt="Global" width={18} height={18} className="rounded" />
-                    )}
-                  </span>
-                </td>
-              )}
-
-              {/* Impact */}
-              {visibleColumns.has('impact') && (
-                <td className="px-2 py-1">
-                  <div className="flex gap-1 justify-center">
-                    {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-700 text-gray-200">DRE</Badge>}
-                    {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-700 text-gray-200">Cash</Badge>}
-                    {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 border-gray-600 text-gray-300">IC</Badge>}
-                  </div>
-                </td>
-              )}
-
-              {/* Type */}
-              {visibleColumns.has('type') && (
-                <td className="px-2 py-1">
-                  <Badge className={`text-[10px] px-1.5 py-0 ${config.color}`}>
-                    {config.label}
-                  </Badge>
-                </td>
-              )}
-
-              {/* Input Date */}
-              {visibleColumns.has('input_date') && (
-                <td className="px-2 py-1 text-[11px]">{new Date(invoice.input_date).toLocaleDateString('pt-BR')}</td>
-              )}
-
-              {/* Invoice Date */}
-              {visibleColumns.has('invoice_date') && (
-                <td className="px-2 py-1 text-[11px] font-medium">{new Date(invoice.invoice_date).toLocaleDateString('pt-BR')}</td>
-              )}
-
-              {/* Benefit Date */}
-              {visibleColumns.has('benefit_date') && (
-                <td className="px-2 py-1 text-[11px]">{new Date(invoice.benefit_date).toLocaleDateString('pt-BR')}</td>
-              )}
-
-              {/* Due Date */}
-              {visibleColumns.has('due_date') && (
-                <td className="px-2 py-1 text-[11px]">
-                  {invoice.due_date ? (
-                    <Badge variant={new Date(invoice.due_date) < new Date() ? "destructive" : "outline"} className="text-[10px] px-1.5 py-0">
-                      {new Date(invoice.due_date).toLocaleDateString('pt-BR')}
-                    </Badge>
-                  ) : '-'}
-                </td>
-              )}
-
-              {/* Schedule Date */}
-              {visibleColumns.has('schedule_date') && (
-                <td className="px-2 py-1 text-[11px]">
-                  {invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('pt-BR') : '-'}
-                </td>
-              )}
-
-              {/* Provider */}
-              {visibleColumns.has('provider') && (
-                <td className="px-2 py-1 text-center group/cell relative">
-                  {editingCell?.invoiceId === invoice.id && editingCell?.field === "provider_code" ? (
-                    <div className="flex items-center gap-1">
-                      <Select
-                        value={editValue}
-                        onValueChange={setEditValue}
-                      >
-                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white max-h-[300px]">
-                          <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
-                            <Input
-                              placeholder="Search providers..."
-                              value={selectSearchTerm}
-                              onChange={(e) => setSelectSearchTerm(e.target.value)}
-                              className="h-7 text-xs"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="w-full h-7 text-xs"
-                              onClick={() => {
-                                setProviderDialogOpen(true);
-                              }}
+                        {/* Scope */}
+                        {visibleColumns.has('scope') && (
+                          <td className="px-2 py-1 text-center">
+                            <span
+                              className="cursor-help inline-block"
+                              title={SCOPE_CONFIG[getRecordScope(invoice) as ScopeType].description}
                             >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Add New Provider
-                            </Button>
-                          </div>
-                          <div className="max-h-[150px] overflow-y-auto">
-                            {providers
-                              .filter(p =>
-                                p.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                p.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                              )
-                              .map(p => (
-                                <SelectItem key={p.code} value={p.code} className="cursor-pointer hover:bg-gray-100">{p.name}</SelectItem>
-                              ))}
-                          </div>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          saveInlineEdit(invoice.id, "provider_code");
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          cancelInlineEdit();
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <X className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-center gap-1">
-                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
-                        {getNameByCode(providers, invoice.provider_code)}
-                      </Badge>
-                      <button
-                        onClick={() => startInlineEdit(invoice.id, "provider_code", invoice.provider_code)}
-                        className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                      >
-                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              )}
+                              {getRecordScope(invoice) === ("ES" as ScopeType) && (
+                                <Image src="/spain.svg" alt="Spain" width={20} height={15} className="rounded" />
+                              )}
+                              {getRecordScope(invoice) === ("US" as ScopeType) && (
+                                <Image src="/united-states.svg" alt="USA" width={20} height={15} className="rounded" />
+                              )}
+                              {getRecordScope(invoice) === ("GLOBAL" as ScopeType) && (
+                                <Image src="/globe.svg" alt="Global" width={18} height={18} className="rounded" />
+                              )}
+                            </span>
+                          </td>
+                        )}
 
-              {/* Description */}
-              {visibleColumns.has('description') && (
-                <td className="px-2 py-1 group/cell relative">
-                  {editingCell?.invoiceId === invoice.id && editingCell?.field === "description" ? (
-                    <div className="flex items-center gap-1">
-                      <Textarea
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        className="h-20 text-xs w-full"
-                        autoFocus
-                        onFocus={(e) => e.target.select()}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => saveInlineEdit(invoice.id, "description")}
-                        className="h-6 w-6 p-0"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={cancelInlineEdit}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <div className="text-[11px] max-w-xs truncate hover:whitespace-normal hover:absolute hover:bg-popover hover:border hover:p-2 hover:rounded hover:shadow-lg hover:z-10" title={invoice.description || ""}>
-                        {invoice.description || "-"}
-                      </div>
-                      <button
-                        onClick={() => startInlineEdit(invoice.id, "description", invoice.description)}
-                        className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
-                      >
-                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              )}
+                        {/* Impact */}
+                        {visibleColumns.has('impact') && (
+                          <td className="px-2 py-1">
+                            <div className="flex gap-1 justify-center">
+                              {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-700 text-gray-200">DRE</Badge>}
+                              {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-700 text-gray-200">Cash</Badge>}
+                              {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 border-gray-600 text-gray-300">IC</Badge>}
+                            </div>
+                          </td>
+                        )}
 
-              {/* Invoice ID */}
-              {visibleColumns.has('invoice_number') && (
-                <td className="px-2 py-1 group/cell relative">
-                  {editingCell?.invoiceId === invoice.id && editingCell?.field === "invoice_number" ? (
-                    <div className="flex items-center gap-1">
-                      <Input
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        className="h-6 text-xs w-full"
-                        autoFocus
-                        onFocus={(e) => e.target.select()}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => saveInlineEdit(invoice.id, "invoice_number")}
-                        className="h-6 w-6 p-0"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={cancelInlineEdit}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      {isBotInvoice && (
-                        <span title="Created by BOTella">
-                          <Zap className="h-3 w-3 text-purple-400" />
-                        </span>
-                      )}
-                      <span
-                        className="text-[11px] font-mono max-w-[100px] truncate inline-block cursor-default"
-                        title={invoice.invoice_number || ""}
-                      >
-                        {invoice.invoice_number || "-"}
-                      </span>
-                      <button
-                        onClick={() => startInlineEdit(invoice.id, "invoice_number", invoice.invoice_number)}
-                        className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                      >
-                        <Pencil className="h-3 w-3 text-gray-400 hover:text-white" />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              )}
+                        {/* Type */}
+                        {visibleColumns.has('type') && (
+                          <td className="px-2 py-1">
+                            <Badge className={`text-[10px] px-1.5 py-0 ${config.color}`}>
+                              {config.label}
+                            </Badge>
+                          </td>
+                        )}
 
-              {/* Amount */}
-              {visibleColumns.has('amount') && (
-                <td className="px-2 py-1 text-right font-semibold group/cell relative">
-                  {editingCell?.invoiceId === invoice.id && editingCell?.field === "invoice_amount" ? (
-                    <div className="flex items-center gap-1 justify-end">
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={editValue}
-                        onChange={(e) => setEditValue(e.target.value)}
-                        className="h-6 text-xs w-24 text-right"
-                        autoFocus
-                        onFocus={(e) => e.target.select()}
-                      />
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => saveInlineEdit(invoice.id, "invoice_amount")}
-                        className="h-6 w-6 p-0"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={cancelInlineEdit}
-                        className="h-6 w-6 p-0"
-                      >
-                        <X className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center justify-end gap-1">
-                      <span className="text-[11px]">
-                        {formatEuropeanNumber(invoice.invoice_amount)}
-                      </span>
-                      <button
-                        onClick={() => startInlineEdit(invoice.id, "invoice_amount", invoice.invoice_amount.toString())}
-                        className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                      >
-                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              )}
+                        {/* Input Date */}
+                        {visibleColumns.has('input_date') && (
+                          <td className="px-2 py-1 text-[11px]">{new Date(invoice.input_date).toLocaleDateString('pt-BR')}</td>
+                        )}
 
-              {/* Currency */}
-              {visibleColumns.has('currency') && (
-                <td className="px-2 py-1 text-center">
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-gray-700/50 text-gray-200 border-gray-600">{invoice.currency}</Badge>
-                </td>
-              )}
+                        {/* Invoice Date */}
+                        {visibleColumns.has('invoice_date') && (
+                          <td className="px-2 py-1 text-[11px] font-medium">{new Date(invoice.invoice_date).toLocaleDateString('pt-BR')}</td>
+                        )}
 
-              {/* Financial Account */}
-              {visibleColumns.has('financial_account') && (
-                <td className="px-2 py-1 group/cell relative">
-                  {editingCell?.invoiceId === invoice.id && editingCell?.field === "financial_account_code" ? (
-                    <div className="flex items-center gap-1">
-                      <Select
-                        value={editValue}
-                        onValueChange={setEditValue}
-                      >
-                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white max-h-[300px]">
-                          <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
-                            <Input
-                              placeholder="Search accounts..."
-                              value={selectSearchTerm}
-                              onChange={(e) => setSelectSearchTerm(e.target.value)}
-                              className="h-7 text-xs"
-                            />
-                            <Button
-                              type="button"
-                              size="sm"
-                              className="w-full h-7 text-xs"
-                              onClick={() => {
-                                setFinancialAccountDialogOpen(true);
-                              }}
+                        {/* Benefit Date */}
+                        {visibleColumns.has('benefit_date') && (
+                          <td className="px-2 py-1 text-[11px]">{new Date(invoice.benefit_date).toLocaleDateString('pt-BR')}</td>
+                        )}
+
+                        {/* Due Date */}
+                        {visibleColumns.has('due_date') && (
+                          <td className="px-2 py-1 text-[11px]">
+                            {invoice.due_date ? (
+                              <Badge variant={new Date(invoice.due_date) < new Date() ? "destructive" : "outline"} className="text-[10px] px-1.5 py-0">
+                                {new Date(invoice.due_date).toLocaleDateString('pt-BR')}
+                              </Badge>
+                            ) : '-'}
+                          </td>
+                        )}
+
+                        {/* Schedule Date */}
+                        {visibleColumns.has('schedule_date') && (
+                          <td className="px-2 py-1 text-[11px]">
+                            {invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('pt-BR') : '-'}
+                          </td>
+                        )}
+
+                        {/* Provider */}
+                        {visibleColumns.has('provider') && (
+                          <td className="px-2 py-1 text-center group/cell relative">
+                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "provider_code" ? (
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={editValue}
+                                  onValueChange={setEditValue}
+                                >
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white max-h-[300px]">
+                                    <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
+                                      <Input
+                                        placeholder="Search providers..."
+                                        value={selectSearchTerm}
+                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                        className="h-7 text-xs"
+                                      />
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className="w-full h-7 text-xs"
+                                        onClick={() => {
+                                          setProviderDialogOpen(true);
+                                        }}
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add New Provider
+                                      </Button>
+                                    </div>
+                                    <div className="max-h-[150px] overflow-y-auto">
+                                      {providers
+                                        .filter(p =>
+                                          p.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                          p.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                        )
+                                        .map(p => (
+                                          <SelectItem key={p.code} value={p.code} className="cursor-pointer hover:bg-gray-100">{p.name}</SelectItem>
+                                        ))}
+                                    </div>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    saveInlineEdit(invoice.id, "provider_code");
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    cancelInlineEdit();
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                  {getNameByCode(providers, invoice.provider_code)}
+                                </Badge>
+                                <button
+                                  onClick={() => startInlineEdit(invoice.id, "provider_code", invoice.provider_code)}
+                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                >
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Description */}
+                        {visibleColumns.has('description') && (
+                          <td className="px-2 py-1 group/cell relative">
+                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "description" ? (
+                              <div className="flex items-center gap-1">
+                                <Textarea
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  className="h-20 text-xs w-full"
+                                  autoFocus
+                                  onFocus={(e) => e.target.select()}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => saveInlineEdit(invoice.id, "description")}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={cancelInlineEdit}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <div className="text-[11px] max-w-xs truncate hover:whitespace-normal hover:absolute hover:bg-popover hover:border hover:p-2 hover:rounded hover:shadow-lg hover:z-10" title={invoice.description || ""}>
+                                  {invoice.description || "-"}
+                                </div>
+                                <button
+                                  onClick={() => startInlineEdit(invoice.id, "description", invoice.description)}
+                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
+                                >
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Invoice ID */}
+                        {visibleColumns.has('invoice_number') && (
+                          <td className="px-2 py-1 group/cell relative">
+                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "invoice_number" ? (
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  className="h-6 text-xs w-full"
+                                  autoFocus
+                                  onFocus={(e) => e.target.select()}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => saveInlineEdit(invoice.id, "invoice_number")}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={cancelInlineEdit}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                {isBotInvoice && (
+                                  <span title="Created by BOTella">
+                                    <Zap className="h-3 w-3 text-purple-400" />
+                                  </span>
+                                )}
+                                <span
+                                  className="text-[11px] font-mono max-w-[100px] truncate inline-block cursor-default"
+                                  title={invoice.invoice_number || ""}
+                                >
+                                  {invoice.invoice_number || "-"}
+                                </span>
+                                <button
+                                  onClick={() => startInlineEdit(invoice.id, "invoice_number", invoice.invoice_number)}
+                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                >
+                                  <Pencil className="h-3 w-3 text-gray-400 hover:text-white" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Amount */}
+                        {visibleColumns.has('amount') && (
+                          <td className="px-2 py-1 text-right font-semibold group/cell relative">
+                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "invoice_amount" ? (
+                              <div className="flex items-center gap-1 justify-end">
+                                <Input
+                                  type="number"
+                                  step="0.01"
+                                  value={editValue}
+                                  onChange={(e) => setEditValue(e.target.value)}
+                                  className="h-6 text-xs w-24 text-right"
+                                  autoFocus
+                                  onFocus={(e) => e.target.select()}
+                                />
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => saveInlineEdit(invoice.id, "invoice_amount")}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={cancelInlineEdit}
+                                  className="h-6 w-6 p-0"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center justify-end gap-1">
+                                <span className="text-[11px]">
+                                  {formatEuropeanNumber(invoice.invoice_amount)}
+                                </span>
+                                <button
+                                  onClick={() => startInlineEdit(invoice.id, "invoice_amount", invoice.invoice_amount.toString())}
+                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                >
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Currency */}
+                        {visibleColumns.has('currency') && (
+                          <td className="px-2 py-1 text-center">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-gray-700/50 text-gray-200 border-gray-600">{invoice.currency}</Badge>
+                          </td>
+                        )}
+
+                        {/* Financial Account */}
+                        {visibleColumns.has('financial_account') && (
+                          <td className="px-2 py-1 group/cell relative">
+                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "financial_account_code" ? (
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={editValue}
+                                  onValueChange={setEditValue}
+                                >
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white max-h-[300px]">
+                                    <div className="p-2 space-y-2 sticky top-0 bg-white border-b z-10">
+                                      <Input
+                                        placeholder="Search accounts..."
+                                        value={selectSearchTerm}
+                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                        className="h-7 text-xs"
+                                      />
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        className="w-full h-7 text-xs"
+                                        onClick={() => {
+                                          setFinancialAccountDialogOpen(true);
+                                        }}
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add New Account
+                                      </Button>
+                                    </div>
+                                    <div className="max-h-[150px] overflow-y-auto">
+                                      {financialAccounts
+                                        .filter(a =>
+                                          a.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                          a.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                        )
+                                        .map(a => (
+                                          <SelectItem key={a.code} value={a.code}>{a.code} - {a.name}</SelectItem>
+                                        ))}
+                                    </div>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    saveInlineEdit(invoice.id, "financial_account_code");
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    cancelInlineEdit();
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 max-w-[180px] truncate bg-gray-700/50 text-gray-200 border-gray-600" title={financialAccount?.name}>
+                                  {financialAccount?.name || invoice.financial_account_code}
+                                </Badge>
+                                <button
+                                  onClick={() => startInlineEdit(invoice.id, "financial_account_code", invoice.financial_account_code)}
+                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
+                                >
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Department */}
+                        {visibleColumns.has('cost_center') && (
+                          <td className="px-2 py-1 text-center group/cell relative">
+                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_center_code" ? (
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={editValue}
+                                  onValueChange={setEditValue}
+                                >
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white max-h-[300px]">
+                                    <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                      <Input
+                                        placeholder="Search departments..."
+                                        value={selectSearchTerm}
+                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="max-h-[150px] overflow-y-auto">
+                                      {costCenters
+                                        .filter(c =>
+                                          c.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                          c.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                        )
+                                        .map(c => (
+                                          <SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>
+                                        ))}
+                                    </div>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    saveInlineEdit(invoice.id, "cost_center_code");
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    cancelInlineEdit();
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                {invoice.cost_center_code ? (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                    {getNameByCode(costCenters, invoice.cost_center_code)}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                                <button
+                                  onClick={() => startInlineEdit(invoice.id, "cost_center_code", invoice.cost_center_code)}
+                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                >
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Sub-Department */}
+                        {visibleColumns.has('sub_department') && (
+                          <td className="px-2 py-1 text-center">
+                            {invoice.sub_department_code ? (
+                              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-900/30 text-purple-400 border-purple-700">
+                                {subDepartments.find(sd => sd.code === invoice.sub_department_code)?.name || invoice.sub_department_code}
+                              </Badge>
+                            ) : (
+                              <span className="text-gray-400">-</span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Cost Type */}
+                        {visibleColumns.has('cost_type') && (
+                          <td className="px-2 py-1 text-center group/cell relative">
+                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_type_code" ? (
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={editValue}
+                                  onValueChange={setEditValue}
+                                >
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white max-h-[300px]">
+                                    <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                      <Input
+                                        placeholder="Search cost types..."
+                                        value={selectSearchTerm}
+                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="max-h-[150px] overflow-y-auto">
+                                      {costTypes
+                                        .filter(t =>
+                                          t.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                          t.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                        )
+                                        .map(t => (
+                                          <SelectItem key={t.code} value={t.code}>{t.code} - {t.name}</SelectItem>
+                                        ))}
+                                    </div>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    saveInlineEdit(invoice.id, "cost_type_code");
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    cancelInlineEdit();
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                {invoice.cost_type_code ? (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                    {getNameByCode(costTypes, invoice.cost_type_code)}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                                <button
+                                  onClick={() => startInlineEdit(invoice.id, "cost_type_code", invoice.cost_type_code)}
+                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                >
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Dep Cost Type */}
+                        {visibleColumns.has('dep_cost_type') && (
+                          <td className="px-2 py-1 text-center group/cell relative">
+                            {editingCell?.invoiceId === invoice.id && editingCell?.field === "dep_cost_type_code" ? (
+                              <div className="flex items-center gap-1">
+                                <Select
+                                  value={editValue}
+                                  onValueChange={setEditValue}
+                                >
+                                  <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-white max-h-[300px]">
+                                    <div className="p-2 sticky top-0 bg-white border-b z-10">
+                                      <Input
+                                        placeholder="Search dep cost types..."
+                                        value={selectSearchTerm}
+                                        onChange={(e) => setSelectSearchTerm(e.target.value)}
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="max-h-[150px] overflow-y-auto">
+                                      {depCostTypes
+                                        .filter(d =>
+                                          d.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
+                                          d.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
+                                        )
+                                        .map(d => (
+                                          <SelectItem key={d.code} value={d.code}>{d.code} - {d.name}</SelectItem>
+                                        ))}
+                                    </div>
+                                  </SelectContent>
+                                </Select>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    saveInlineEdit(invoice.id, "dep_cost_type_code");
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <Check className="h-3 w-3 text-green-600" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    cancelInlineEdit();
+                                  }}
+                                  className="h-6 w-6 p-0 flex-shrink-0"
+                                >
+                                  <X className="h-3 w-3 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1">
+                                {invoice.dep_cost_type_code ? (
+                                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                    {getNameByCode(depCostTypes, invoice.dep_cost_type_code)}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-gray-400">-</span>
+                                )}
+                                <button
+                                  onClick={() => startInlineEdit(invoice.id, "dep_cost_type_code", invoice.dep_cost_type_code)}
+                                  className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
+                                >
+                                  <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                </button>
+                              </div>
+                            )}
+                          </td>
+                        )}
+
+                        {/* Payment Status */}
+                        {visibleColumns.has('payment_status') && (
+                          <td className="px-2 py-1 text-center">
+                            <Badge
+                              variant={paymentStatus === 'PAID' ? 'default' : paymentStatus === 'OVERDUE' ? 'destructive' : 'outline'}
+                              className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600"
                             >
-                              <Plus className="h-3 w-3 mr-1" />
-                              Add New Account
-                            </Button>
-                          </div>
-                          <div className="max-h-[150px] overflow-y-auto">
-                            {financialAccounts
-                              .filter(a =>
-                                a.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                a.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                              )
-                              .map(a => (
-                                <SelectItem key={a.code} value={a.code}>{a.code} - {a.name}</SelectItem>
-                              ))}
-                          </div>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          saveInlineEdit(invoice.id, "financial_account_code");
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          cancelInlineEdit();
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <X className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 max-w-[180px] truncate bg-gray-700/50 text-gray-200 border-gray-600" title={financialAccount?.name}>
-                        {financialAccount?.name || invoice.financial_account_code}
-                      </Badge>
-                      <button
-                        onClick={() => startInlineEdit(invoice.id, "financial_account_code", invoice.financial_account_code)}
-                        className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
-                      >
-                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              )}
+                              {paymentStatus.replace('_', ' ')}
+                            </Badge>
+                          </td>
+                        )}
 
-              {/* Department */}
-              {visibleColumns.has('cost_center') && (
-                <td className="px-2 py-1 text-center group/cell relative">
-                  {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_center_code" ? (
-                    <div className="flex items-center gap-1">
-                      <Select
-                        value={editValue}
-                        onValueChange={setEditValue}
-                      >
-                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white max-h-[300px]">
-                          <div className="p-2 sticky top-0 bg-white border-b z-10">
-                            <Input
-                              placeholder="Search departments..."
-                              value={selectSearchTerm}
-                              onChange={(e) => setSelectSearchTerm(e.target.value)}
-                              className="h-7 text-xs"
-                            />
-                          </div>
-                          <div className="max-h-[150px] overflow-y-auto">
-                            {costCenters
-                              .filter(c =>
-                                c.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                c.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                              )
-                              .map(c => (
-                                <SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>
-                              ))}
-                          </div>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          saveInlineEdit(invoice.id, "cost_center_code");
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          cancelInlineEdit();
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <X className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      {invoice.cost_center_code ? (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
-                          {getNameByCode(costCenters, invoice.cost_center_code)}
-                        </Badge>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                      <button
-                        onClick={() => startInlineEdit(invoice.id, "cost_center_code", invoice.cost_center_code)}
-                        className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                      >
-                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              )}
+                        {/* Payment Method - NO INLINE EDIT (set by reconciliation) */}
+                        {visibleColumns.has('payment_method') && (
+                          <td className="px-2 py-1 text-center">
+                            {invoice.payment_method_code ? (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                {getNameByCode(paymentMethods, invoice.payment_method_code)}
+                              </Badge>
+                            ) : <span className="text-gray-400">-</span>}
+                          </td>
+                        )}
 
-              {/* Sub-Department */}
-              {visibleColumns.has('sub_department') && (
-                <td className="px-2 py-1 text-center">
-                  {invoice.sub_department_code ? (
-                    <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-purple-900/30 text-purple-400 border-purple-700">
-                      {subDepartments.find(sd => sd.code === invoice.sub_department_code)?.name || invoice.sub_department_code}
-                    </Badge>
-                  ) : (
-                    <span className="text-gray-400">-</span>
-                  )}
-                </td>
-              )}
+                        {/* Bank Account - NO INLINE EDIT (set by reconciliation) */}
+                        {visibleColumns.has('bank_account') && (
+                          <td className="px-2 py-1 text-center">
+                            {invoice.bank_account_code ? (
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                {getNameByCode(bankAccounts, invoice.bank_account_code)}
+                              </Badge>
+                            ) : <span className="text-gray-400">-</span>}
+                          </td>
+                        )}
 
-              {/* Cost Type */}
-              {visibleColumns.has('cost_type') && (
-                <td className="px-2 py-1 text-center group/cell relative">
-                  {editingCell?.invoiceId === invoice.id && editingCell?.field === "cost_type_code" ? (
-                    <div className="flex items-center gap-1">
-                      <Select
-                        value={editValue}
-                        onValueChange={setEditValue}
-                      >
-                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white max-h-[300px]">
-                          <div className="p-2 sticky top-0 bg-white border-b z-10">
-                            <Input
-                              placeholder="Search cost types..."
-                              value={selectSearchTerm}
-                              onChange={(e) => setSelectSearchTerm(e.target.value)}
-                              className="h-7 text-xs"
-                            />
-                          </div>
-                          <div className="max-h-[150px] overflow-y-auto">
-                            {costTypes
-                              .filter(t =>
-                                t.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                t.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                              )
-                              .map(t => (
-                                <SelectItem key={t.code} value={t.code}>{t.code} - {t.name}</SelectItem>
-                              ))}
-                          </div>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          saveInlineEdit(invoice.id, "cost_type_code");
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          cancelInlineEdit();
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <X className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      {invoice.cost_type_code ? (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
-                          {getNameByCode(costTypes, invoice.cost_type_code)}
-                        </Badge>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                      <button
-                        onClick={() => startInlineEdit(invoice.id, "cost_type_code", invoice.cost_type_code)}
-                        className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                      >
-                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              )}
-
-              {/* Dep Cost Type */}
-              {visibleColumns.has('dep_cost_type') && (
-                <td className="px-2 py-1 text-center group/cell relative">
-                  {editingCell?.invoiceId === invoice.id && editingCell?.field === "dep_cost_type_code" ? (
-                    <div className="flex items-center gap-1">
-                      <Select
-                        value={editValue}
-                        onValueChange={setEditValue}
-                      >
-                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white max-h-[300px]">
-                          <div className="p-2 sticky top-0 bg-white border-b z-10">
-                            <Input
-                              placeholder="Search dep cost types..."
-                              value={selectSearchTerm}
-                              onChange={(e) => setSelectSearchTerm(e.target.value)}
-                              className="h-7 text-xs"
-                            />
-                          </div>
-                          <div className="max-h-[150px] overflow-y-auto">
-                            {depCostTypes
-                              .filter(d =>
-                                d.name.toLowerCase().includes(selectSearchTerm.toLowerCase()) ||
-                                d.code.toLowerCase().includes(selectSearchTerm.toLowerCase())
-                              )
-                              .map(d => (
-                                <SelectItem key={d.code} value={d.code}>{d.code} - {d.name}</SelectItem>
-                              ))}
-                          </div>
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          saveInlineEdit(invoice.id, "dep_cost_type_code");
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <Check className="h-3 w-3 text-green-600" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          cancelInlineEdit();
-                        }}
-                        className="h-6 w-6 p-0 flex-shrink-0"
-                      >
-                        <X className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-1">
-                      {invoice.dep_cost_type_code ? (
-                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
-                          {getNameByCode(depCostTypes, invoice.dep_cost_type_code)}
-                        </Badge>
-                      ) : (
-                        <span className="text-gray-400">-</span>
-                      )}
-                      <button
-                        onClick={() => startInlineEdit(invoice.id, "dep_cost_type_code", invoice.dep_cost_type_code)}
-                        className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
-                      >
-                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
-                      </button>
-                    </div>
-                  )}
-                </td>
-              )}
-
-              {/* Payment Status */}
-              {visibleColumns.has('payment_status') && (
-                <td className="px-2 py-1 text-center">
-                  <Badge
-                    variant={paymentStatus === 'PAID' ? 'default' : paymentStatus === 'OVERDUE' ? 'destructive' : 'outline'}
-                    className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600"
-                  >
-                    {paymentStatus.replace('_', ' ')}
-                  </Badge>
-                </td>
-              )}
-
-              {/* Payment Method - NO INLINE EDIT (set by reconciliation) */}
-              {visibleColumns.has('payment_method') && (
-                <td className="px-2 py-1 text-center">
-                  {invoice.payment_method_code ? (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
-                      {getNameByCode(paymentMethods, invoice.payment_method_code)}
-                    </Badge>
-                  ) : <span className="text-gray-400">-</span>}
-                </td>
-              )}
-
-              {/* Bank Account - NO INLINE EDIT (set by reconciliation) */}
-              {visibleColumns.has('bank_account') && (
-                <td className="px-2 py-1 text-center">
-                  {invoice.bank_account_code ? (
-                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
-                      {getNameByCode(bankAccounts, invoice.bank_account_code)}
-                    </Badge>
-                  ) : <span className="text-gray-400">-</span>}
-                </td>
-              )}
-
-              {/* Payment Date - NO INLINE EDIT (set by reconciliation) */}
-              {visibleColumns.has('payment_date') && (
-                <td className="px-2 py-1 text-[11px]">
-                  {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-400">-</span>}
-                </td>
-              )}
-            </tr>
-          );
-        })}
-      </tbody>
+                        {/* Payment Date - NO INLINE EDIT (set by reconciliation) */}
+                        {visibleColumns.has('payment_date') && (
+                          <td className="px-2 py-1 text-[11px]">
+                            {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-400">-</span>}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
               </table >
             </div >
           </div >
         )
-}
+        }
 
-<div className="mt-4 pb-6 text-sm text-gray-400">
-  Showing {filteredInvoices.length} of {invoices.length} invoices
-</div>
+        <div className="mt-4 pb-6 text-sm text-gray-400">
+          Showing {filteredInvoices.length} of {invoices.length} invoices
+        </div>
       </div >
 
-  {/* Multi-Select Filter Dialog */ }
-{
-  filterPopoverOpen && (
-    <Dialog open={!!filterPopoverOpen} onOpenChange={() => closeFilterPopover()}>
-      <DialogContent className="max-w-md bg-white">
-        <DialogHeader>
-          <DialogTitle>Filter by {filterPopoverOpen.field.replace(/_/g, ' ')}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          {(() => {
-            const field = filterPopoverOpen.field;
+      {/* Multi-Select Filter Dialog */}
+      {
+        filterPopoverOpen && (
+          <Dialog open={!!filterPopoverOpen} onOpenChange={() => closeFilterPopover()}>
+            <DialogContent className="max-w-md bg-white">
+              <DialogHeader>
+                <DialogTitle>Filter by {filterPopoverOpen.field.replace(/_/g, ' ')}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3">
+                {(() => {
+                  const field = filterPopoverOpen.field;
 
-            // Date filters
-            if (['input_date', 'invoice_date', 'benefit_date'].includes(field)) {
-              const presets = ["This Week", "Last Week", "Next Week", "This Month", "Last Month", "Next Year"];
-              return (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    {presets.map(preset => (
-                      <Button
-                        key={preset}
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          const range = getDatePreset(preset);
-                          setDateFilters(prev => ({ ...prev, [field]: range }));
-                          setAppliedFilters(prev => {
-                            const filtered = prev.filter(f => f.field !== field);
-                            return [...filtered, { field, value: preset, label: `${field}: ${preset}` }];
-                          });
-                          closeFilterPopover();
-                        }}
-                        className="text-xs"
-                      >
-                        {preset}
-                      </Button>
-                    ))}
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Custom Range:</Label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <Label className="text-xs">From:</Label>
-                        <Input type="date" className="h-8 text-xs" id="date-start" />
-                      </div>
-                      <div>
-                        <Label className="text-xs">To:</Label>
-                        <Input type="date" className="h-8 text-xs" id="date-end" />
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={() => {
-                        const start = (document.getElementById('date-start') as HTMLInputElement).value;
-                        const end = (document.getElementById('date-end') as HTMLInputElement).value;
-                        if (start || end) {
-                          setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
-                          setAppliedFilters(prev => {
-                            const filtered = prev.filter(f => f.field !== field);
-                            return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
-                          });
-                          closeFilterPopover();
-                        }
-                      }}
-                    >
-                      Apply Custom Range
-                    </Button>
-                  </div>
-                </div>
-              );
-            }
-
-            // Amount filter
-            if (field === 'invoice_amount') {
-              return (
-                <div className="space-y-3">
-                  <div className="space-y-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        const value = prompt("Less than:");
-                        if (value) {
-                          setAmountFilter({ operator: 'lt', value1: parseFloat(value) });
-                          setAppliedFilters(prev => {
-                            const filtered = prev.filter(f => f.field !== field);
-                            return [...filtered, { field, value: `< ${value}`, label: `Amount: < ${value}` }];
-                          });
-                          closeFilterPopover();
-                        }
-                      }}
-                    >
-                      Less than (-)
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        const value = prompt("Greater than:");
-                        if (value) {
-                          setAmountFilter({ operator: 'gt', value1: parseFloat(value) });
-                          setAppliedFilters(prev => {
-                            const filtered = prev.filter(f => f.field !== field);
-                            return [...filtered, { field, value: `> ${value}`, label: `Amount: > ${value}` }];
-                          });
-                          closeFilterPopover();
-                        }
-                      }}
-                    >
-                      Greater than (+)
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        const value = prompt("Exact value:");
-                        if (value) {
-                          setAmountFilter({ operator: 'eq', value1: parseFloat(value) });
-                          setAppliedFilters(prev => {
-                            const filtered = prev.filter(f => f.field !== field);
-                            return [...filtered, { field, value: `= ${value}`, label: `Amount: = ${value}` }];
-                          });
-                          closeFilterPopover();
-                        }
-                      }}
-                    >
-                      Exact value (=)
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start"
-                      onClick={() => {
-                        const min = prompt("Minimum value:");
-                        if (min) {
-                          const max = prompt("Maximum value:");
-                          if (max) {
-                            setAmountFilter({ operator: 'between', value1: parseFloat(min), value2: parseFloat(max) });
-                            setAppliedFilters(prev => {
-                              const filtered = prev.filter(f => f.field !== field);
-                              return [...filtered, { field, value: `${min} - ${max}`, label: `Amount: ${min} - ${max}` }];
-                            });
-                            closeFilterPopover();
-                          }
-                        }
-                      }}
-                    >
-                      Between (range)
-                    </Button>
-                  </div>
-                </div>
-              );
-            }
-
-            // Invoice Number filter
-            if (field === 'invoice_number') {
-              const availableInvoiceNumbers = Array.from(new Set(
-                filteredInvoices.map(inv => inv.invoice_number).filter(Boolean)
-              )) as string[];
-
-              return (
-                <>
-                  <Input
-                    placeholder="Search..."
-                    value={filterSearchTerm}
-                    onChange={(e) => setFilterSearchTerm(e.target.value)}
-                    className="h-9"
-                  />
-                  <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                    {availableInvoiceNumbers
-                      .filter(num => num.toLowerCase().includes(filterSearchTerm.toLowerCase()))
-                      .map(num => (
-                        <div
-                          key={num}
-                          className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
-                          onClick={() => toggleFilterOption(num)}
-                        >
-                          <span className="text-sm">{num}</span>
-                          {tempFilterSelection.includes(num) && (
-                            <Check className="h-4 w-4 text-green-600" />
-                          )}
+                  // Date filters
+                  if (['input_date', 'invoice_date', 'benefit_date'].includes(field)) {
+                    const presets = ["This Week", "Last Week", "Next Week", "This Month", "Last Month", "Next Year"];
+                    return (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-2">
+                          {presets.map(preset => (
+                            <Button
+                              key={preset}
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const range = getDatePreset(preset);
+                                setDateFilters(prev => ({ ...prev, [field]: range }));
+                                setAppliedFilters(prev => {
+                                  const filtered = prev.filter(f => f.field !== field);
+                                  return [...filtered, { field, value: preset, label: `${field}: ${preset}` }];
+                                });
+                                closeFilterPopover();
+                              }}
+                              className="text-xs"
+                            >
+                              {preset}
+                            </Button>
+                          ))}
                         </div>
-                      ))}
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" size="sm" onClick={closeFilterPopover}>
-                      <X className="h-3 w-3 mr-1" />
-                      Cancel
-                    </Button>
-                    <Button size="sm" onClick={() => applyMultiSelectFilter(field)}>
-                      <Check className="h-3 w-3 mr-1" />
-                      OK ({tempFilterSelection.length})
-                    </Button>
-                  </div>
-                </>
-              );
-            }
+                        <div className="space-y-2">
+                          <Label className="text-xs">Custom Range:</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">From:</Label>
+                              <Input type="date" className="h-8 text-xs" id="date-start" />
+                            </div>
+                            <div>
+                              <Label className="text-xs">To:</Label>
+                              <Input type="date" className="h-8 text-xs" id="date-end" />
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            className="w-full"
+                            onClick={() => {
+                              const start = (document.getElementById('date-start') as HTMLInputElement).value;
+                              const end = (document.getElementById('date-end') as HTMLInputElement).value;
+                              if (start || end) {
+                                setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
+                                setAppliedFilters(prev => {
+                                  const filtered = prev.filter(f => f.field !== field);
+                                  return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
+                                });
+                                closeFilterPopover();
+                              }
+                            }}
+                          >
+                            Apply Custom Range
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
 
-            // Multi-select filters with cascade (only show available options)
-            let options: { value: string, label: string }[] = [];
+                  // Amount filter
+                  if (field === 'invoice_amount') {
+                    return (
+                      <div className="space-y-3">
+                        <div className="space-y-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              const value = prompt("Less than:");
+                              if (value) {
+                                setAmountFilter({ operator: 'lt', value1: parseFloat(value) });
+                                setAppliedFilters(prev => {
+                                  const filtered = prev.filter(f => f.field !== field);
+                                  return [...filtered, { field, value: `< ${value}`, label: `Amount: < ${value}` }];
+                                });
+                                closeFilterPopover();
+                              }
+                            }}
+                          >
+                            Less than (-)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              const value = prompt("Greater than:");
+                              if (value) {
+                                setAmountFilter({ operator: 'gt', value1: parseFloat(value) });
+                                setAppliedFilters(prev => {
+                                  const filtered = prev.filter(f => f.field !== field);
+                                  return [...filtered, { field, value: `> ${value}`, label: `Amount: > ${value}` }];
+                                });
+                                closeFilterPopover();
+                              }
+                            }}
+                          >
+                            Greater than (+)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              const value = prompt("Exact value:");
+                              if (value) {
+                                setAmountFilter({ operator: 'eq', value1: parseFloat(value) });
+                                setAppliedFilters(prev => {
+                                  const filtered = prev.filter(f => f.field !== field);
+                                  return [...filtered, { field, value: `= ${value}`, label: `Amount: = ${value}` }];
+                                });
+                                closeFilterPopover();
+                              }
+                            }}
+                          >
+                            Exact value (=)
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full justify-start"
+                            onClick={() => {
+                              const min = prompt("Minimum value:");
+                              if (min) {
+                                const max = prompt("Maximum value:");
+                                if (max) {
+                                  setAmountFilter({ operator: 'between', value1: parseFloat(min), value2: parseFloat(max) });
+                                  setAppliedFilters(prev => {
+                                    const filtered = prev.filter(f => f.field !== field);
+                                    return [...filtered, { field, value: `${min} - ${max}`, label: `Amount: ${min} - ${max}` }];
+                                  });
+                                  closeFilterPopover();
+                                }
+                              }
+                            }}
+                          >
+                            Between (range)
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  }
 
-            if (field === "provider_code") {
-              const availableCodes = new Set(filteredInvoices.map(inv => inv.provider_code));
-              options = providers.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
-            } else if (field === "financial_account_code") {
-              const availableCodes = new Set(filteredInvoices.map(inv => inv.financial_account_code));
-              options = financialAccounts.filter(acc => acc.level >= 2 && availableCodes.has(acc.code)).map(acc => ({ value: acc.code, label: acc.name }));
-            } else if (field === "cost_center_code") {
-              const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_center_code).filter(Boolean));
-              options = costCenters.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-            } else if (field === "cost_type_code") {
-              const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_type_code).filter(Boolean));
-              options = costTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-            } else if (field === "dep_cost_type_code") {
-              const availableCodes = new Set(filteredInvoices.map(inv => inv.dep_cost_type_code).filter(Boolean));
-              options = depCostTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-            } else if (field === "bank_account_code") {
-              const availableCodes = new Set(filteredInvoices.map(inv => inv.bank_account_code).filter(Boolean));
-              options = bankAccounts.filter(b => availableCodes.has(b.code)).map(b => ({ value: b.code, label: b.name }));
-            } else if (field === "payment_method_code") {
-              const availableCodes = new Set(filteredInvoices.map(inv => inv.payment_method_code).filter(Boolean));
-              options = paymentMethods.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
-            } else if (field === "entry_type") {
-              const availableCodes = new Set(filteredInvoices.map(inv => inv.entry_type));
-              options = entryTypes.filter(e => availableCodes.has(e.code)).map(e => ({ value: e.code, label: e.name }));
-            } else if (field === "invoice_type") {
-              const availableTypes = new Set(filteredInvoices.map(inv => inv.invoice_type));
-              options = [
-                { value: "INCURRED", label: "Incurred" },
-                { value: "BUDGET", label: "Budget" },
-                { value: "ADJUSTMENT", label: "Adjustments" }
-              ].filter(opt => availableTypes.has(opt.value as InvoiceType));
-            } else if (field === "currency") {
-              const availableCurrencies = new Set(filteredInvoices.map(i => i.currency));
-              options = Array.from(availableCurrencies).map(c => ({ value: c, label: c }));
-            }
+                  // Created By filter
+                  if (field === 'created_by') {
+                    const createdOptions = [
+                      { value: 'all', label: 'Todos' },
+                      { value: 'bot', label: 'Automáticas (BOTella)' },
+                      { value: 'manual', label: 'Manuais (Usuário)' },
+                    ];
+                    return (
+                      <div className="space-y-1">
+                        {createdOptions.map(opt => (
+                          <div
+                            key={opt.value}
+                            className={`flex items-center justify-between p-2 rounded cursor-pointer hover:bg-gray-100 ${createdFilter === opt.value ? 'bg-blue-50 border border-blue-200' : ''
+                              }`}
+                            onClick={() => {
+                              setCreatedFilter(opt.value as 'all' | 'bot' | 'manual');
+                              if (opt.value === 'all') {
+                                setAppliedFilters(prev => prev.filter(f => f.field !== 'created_by'));
+                              } else {
+                                setAppliedFilters(prev => {
+                                  const filtered = prev.filter(f => f.field !== 'created_by');
+                                  return [...filtered, { field: 'created_by', value: opt.value, label: `Created: ${opt.label}` }];
+                                });
+                              }
+                              closeFilterPopover();
+                            }}
+                          >
+                            <span className="text-sm">{opt.label}</span>
+                            {createdFilter === opt.value && (
+                              <Check className="h-4 w-4 text-green-600" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    );
+                  }
 
-            const filtered = options.filter(opt =>
-              opt.label.toLowerCase().includes(filterSearchTerm.toLowerCase())
-            );
+                  // Invoice Number filter
+                  if (field === 'invoice_number') {
+                    const availableInvoiceNumbers = Array.from(new Set(
+                      filteredInvoices.map(inv => inv.invoice_number).filter(Boolean)
+                    )) as string[];
 
-            return (
-              <>
-                <Input
-                  placeholder="Search..."
-                  value={filterSearchTerm}
-                  onChange={(e) => setFilterSearchTerm(e.target.value)}
-                  className="h-9"
-                />
-                <div className="max-h-[300px] overflow-y-auto border rounded-md">
-                  {filtered.map(opt => (
-                    <div
-                      key={opt.value}
-                      className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
-                      onClick={() => toggleFilterOption(opt.value)}
-                    >
-                      <span className="text-sm">{opt.label}</span>
-                      {tempFilterSelection.includes(opt.value) && (
-                        <Check className="h-4 w-4 text-green-600" />
-                      )}
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-end gap-2 pt-2">
-                  <Button variant="outline" size="sm" onClick={closeFilterPopover}>
-                    <X className="h-3 w-3 mr-1" />
-                    Cancel
-                  </Button>
-                  <Button size="sm" onClick={() => applyMultiSelectFilter(field)}>
-                    <Check className="h-3 w-3 mr-1" />
-                    OK ({tempFilterSelection.length})
-                  </Button>
-                </div>
-              </>
-            );
-          })()}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
+                    return (
+                      <>
+                        <Input
+                          placeholder="Search..."
+                          value={filterSearchTerm}
+                          onChange={(e) => setFilterSearchTerm(e.target.value)}
+                          className="h-9"
+                        />
+                        <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                          {availableInvoiceNumbers
+                            .filter(num => num.toLowerCase().includes(filterSearchTerm.toLowerCase()))
+                            .map(num => (
+                              <div
+                                key={num}
+                                className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                                onClick={() => toggleFilterOption(num)}
+                              >
+                                <span className="text-sm">{num}</span>
+                                {tempFilterSelection.includes(num) && (
+                                  <Check className="h-4 w-4 text-green-600" />
+                                )}
+                              </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button variant="outline" size="sm" onClick={closeFilterPopover}>
+                            <X className="h-3 w-3 mr-1" />
+                            Cancel
+                          </Button>
+                          <Button size="sm" onClick={() => applyMultiSelectFilter(field)}>
+                            <Check className="h-3 w-3 mr-1" />
+                            OK ({tempFilterSelection.length})
+                          </Button>
+                        </div>
+                      </>
+                    );
+                  }
 
-{/* Invoice Side Panel */ }
-<InvoiceSidePanel
-  open={sidePanelOpen}
-  onClose={() => {
-    setSidePanelOpen(false);
-    setEditingInvoice(null);
-    resetForm();
-  }}
-  editingInvoice={editingInvoice}
-  defaultScope={selectedScope as ScopeType}
-  onSuccess={() => {
-    loadInvoices();
-    setSidePanelOpen(false);
-    setEditingInvoice(null);
-    resetForm();
-  }}
-/>
+                  // Multi-select filters with cascade (only show available options)
+                  let options: { value: string, label: string }[] = [];
+
+                  if (field === "provider_code") {
+                    const availableCodes = new Set(filteredInvoices.map(inv => inv.provider_code));
+                    options = providers.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
+                  } else if (field === "financial_account_code") {
+                    const availableCodes = new Set(filteredInvoices.map(inv => inv.financial_account_code));
+                    options = financialAccounts.filter(acc => acc.level >= 2 && availableCodes.has(acc.code)).map(acc => ({ value: acc.code, label: acc.name }));
+                  } else if (field === "cost_center_code") {
+                    const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_center_code).filter(Boolean));
+                    options = costCenters.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                  } else if (field === "cost_type_code") {
+                    const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_type_code).filter(Boolean));
+                    options = costTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                  } else if (field === "dep_cost_type_code") {
+                    const availableCodes = new Set(filteredInvoices.map(inv => inv.dep_cost_type_code).filter(Boolean));
+                    options = depCostTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
+                  } else if (field === "bank_account_code") {
+                    const availableCodes = new Set(filteredInvoices.map(inv => inv.bank_account_code).filter(Boolean));
+                    options = bankAccounts.filter(b => availableCodes.has(b.code)).map(b => ({ value: b.code, label: b.name }));
+                  } else if (field === "payment_method_code") {
+                    const availableCodes = new Set(filteredInvoices.map(inv => inv.payment_method_code).filter(Boolean));
+                    options = paymentMethods.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
+                  } else if (field === "entry_type") {
+                    const availableCodes = new Set(filteredInvoices.map(inv => inv.entry_type));
+                    options = entryTypes.filter(e => availableCodes.has(e.code)).map(e => ({ value: e.code, label: e.name }));
+                  } else if (field === "invoice_type") {
+                    const availableTypes = new Set(filteredInvoices.map(inv => inv.invoice_type));
+                    options = [
+                      { value: "INCURRED", label: "Incurred" },
+                      { value: "BUDGET", label: "Budget" },
+                      { value: "ADJUSTMENT", label: "Adjustments" }
+                    ].filter(opt => availableTypes.has(opt.value as InvoiceType));
+                  } else if (field === "currency") {
+                    const availableCurrencies = new Set(filteredInvoices.map(i => i.currency));
+                    options = Array.from(availableCurrencies).map(c => ({ value: c, label: c }));
+                  }
+
+                  const filtered = options.filter(opt =>
+                    opt.label.toLowerCase().includes(filterSearchTerm.toLowerCase())
+                  );
+
+                  return (
+                    <>
+                      <Input
+                        placeholder="Search..."
+                        value={filterSearchTerm}
+                        onChange={(e) => setFilterSearchTerm(e.target.value)}
+                        className="h-9"
+                      />
+                      <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                        {filtered.map(opt => (
+                          <div
+                            key={opt.value}
+                            className="flex items-center justify-between p-2 hover:bg-gray-100 cursor-pointer"
+                            onClick={() => toggleFilterOption(opt.value)}
+                          >
+                            <span className="text-sm">{opt.label}</span>
+                            {tempFilterSelection.includes(opt.value) && (
+                              <Check className="h-4 w-4 text-green-600" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-end gap-2 pt-2">
+                        <Button variant="outline" size="sm" onClick={closeFilterPopover}>
+                          <X className="h-3 w-3 mr-1" />
+                          Cancel
+                        </Button>
+                        <Button size="sm" onClick={() => applyMultiSelectFilter(field)}>
+                          <Check className="h-3 w-3 mr-1" />
+                          OK ({tempFilterSelection.length})
+                        </Button>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            </DialogContent>
+          </Dialog>
+        )
+      }
+
+      {/* Invoice Side Panel */}
+      <InvoiceSidePanel
+        open={sidePanelOpen}
+        onClose={() => {
+          setSidePanelOpen(false);
+          setEditingInvoice(null);
+          resetForm();
+        }}
+        editingInvoice={editingInvoice}
+        defaultScope={selectedScope as ScopeType}
+        onSuccess={() => {
+          loadInvoices();
+          setSidePanelOpen(false);
+          setEditingInvoice(null);
+          resetForm();
+        }}
+      />
     </>
   );
 }
