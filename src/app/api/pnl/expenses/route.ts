@@ -16,7 +16,7 @@ const monthKeys = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep"
 // All expense FA codes used in the P&L structure
 const ALL_EXPENSE_FA_CODES = [
     // 201 - COGS
-    "201.1", "201.2", "201.3", "201.4", "201.5", "201.6",
+    "201.1", "201.2", "201.3", "201.4", "201.5",
     // 202 - Labour
     "202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7",
     // 203 - Travels & Meals

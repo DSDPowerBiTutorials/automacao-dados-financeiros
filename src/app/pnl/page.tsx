@@ -539,15 +539,14 @@ export default function PnLReport() {
     const expenseStructure: DRELineMonthly[] = useMemo(() => [
         {
             code: "201.0", name: "Cost of Goods Sold (COGS)", type: "expense", level: 0,
-            monthly: sumExpFA("201.1", "201.2", "201.3", "201.4", "201.5", "201.6"),
-            budget: sumExpBudgetFA("201.1", "201.2", "201.3", "201.4", "201.5", "201.6"),
+            monthly: sumExpFA("201.1", "201.2", "201.3", "201.4", "201.5"),
+            budget: sumExpBudgetFA("201.1", "201.2", "201.3", "201.4", "201.5"),
             children: [
                 { code: "201.1", name: "COGS Growth", type: "expense", level: 1, monthly: getExpFA("201.1"), budget: getExpBudgetFA("201.1") },
                 { code: "201.2", name: "COGS Delight", type: "expense", level: 1, monthly: getExpFA("201.2"), budget: getExpBudgetFA("201.2") },
                 { code: "201.3", name: "COGS Planning Center", type: "expense", level: 1, monthly: getExpFA("201.3"), budget: getExpBudgetFA("201.3") },
                 { code: "201.4", name: "COGS LAB", type: "expense", level: 1, monthly: getExpFA("201.4"), budget: getExpBudgetFA("201.4") },
-                { code: "201.5", name: "COGS DSD App", type: "expense", level: 1, monthly: getExpFA("201.5"), budget: getExpBudgetFA("201.5") },
-                { code: "201.6", name: "COGS Corporate", type: "expense", level: 1, monthly: getExpFA("201.6"), budget: getExpBudgetFA("201.6") },
+                { code: "201.5", name: "COGS Other Income", type: "expense", level: 1, monthly: getExpFA("201.5"), budget: getExpBudgetFA("201.5") },
             ],
         },
         {
