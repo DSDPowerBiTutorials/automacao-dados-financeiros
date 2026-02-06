@@ -3,16 +3,16 @@ import { supabaseAdmin } from "@/lib/supabase-admin";
 
 export async function GET() {
     try {
-        // Use supabaseAdmin (service role) to bypass the 1000-row API limit
+        // Supabase API max_rows is 1000 — must paginate in batches of 1000
         let allData: any[] = [];
         let offset = 0;
-        const pageSize = 5000;
+        const pageSize = 1000;
 
         while (true) {
             const { data, error } = await supabaseAdmin
                 .from("invoices")
                 .select("*")
-                .order("invoice_date", { ascending: false })
+                .order("id", { ascending: true })
                 .range(offset, offset + pageSize - 1);
 
             if (error) {
