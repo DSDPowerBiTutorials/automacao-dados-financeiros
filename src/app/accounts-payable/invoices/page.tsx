@@ -308,17 +308,13 @@ export default function InvoicesPage() {
     setLoading(true);
     setError(null);
     try {
-      // Explicit range to bypass Supabase default 1000-row limit (single call)
-      const { data, error } = await supabase
-        .from("invoices")
-        .select("*")
-        .order("invoice_date", { ascending: false })
-        .range(0, 49999);
-
-      if (error) throw error;
+      // Fetch via server-side API route (uses supabaseAdmin, no 1000-row limit)
+      const res = await fetch("/api/invoices/list");
+      const json = await res.json();
+      if (json.error) throw new Error(json.error);
 
       // Map invoice_amount to amount for compatibility
-      const mappedData = (data || []).map(invoice => ({
+      const mappedData = (json.data || []).map((invoice: any) => ({
         ...invoice,
         amount: invoice.invoice_amount,
         scope: invoice.country_code // Map country_code to scope for backward compatibility
