@@ -308,14 +308,29 @@ export default function InvoicesPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase
-        .from("invoices")
-        .select("*")
-        .order("invoice_date", { ascending: false });
+      // Paginate to bypass Supabase default 1000-row limit
+      let allData: any[] = [];
+      let offset = 0;
+      const pageSize = 1000;
 
-      if (error) throw error;
+      while (true) {
+        const { data, error } = await supabase
+          .from("invoices")
+          .select("*")
+          .order("invoice_date", { ascending: false })
+          .range(offset, offset + pageSize - 1);
+
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+
+        allData = allData.concat(data);
+        offset += pageSize;
+
+        if (data.length < pageSize) break;
+      }
+
       // Map invoice_amount to amount for compatibility
-      const mappedData = (data || []).map(invoice => ({
+      const mappedData = allData.map(invoice => ({
         ...invoice,
         amount: invoice.invoice_amount,
         scope: invoice.country_code // Map country_code to scope for backward compatibility
