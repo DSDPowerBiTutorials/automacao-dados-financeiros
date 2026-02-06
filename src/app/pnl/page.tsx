@@ -82,26 +82,7 @@ const emptyMonthlyData = (): MonthlyData => ({
     jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0,
 });
 
-// Helper: gerar dados mensais simulados (para despesas ainda não integradas)
-const generateMonthlyData = (baseAnnual: number, variance: number = 0.15): MonthlyData => {
-    const monthlyBase = baseAnnual / 12;
-    const seasonality = [0.85, 0.88, 0.95, 1.02, 1.08, 1.12, 0.92, 0.88, 1.05, 1.15, 1.18, 0.92];
-    return {
-        jan: Math.round(monthlyBase * seasonality[0] * (1 + (Math.random() - 0.5) * variance)),
-        feb: Math.round(monthlyBase * seasonality[1] * (1 + (Math.random() - 0.5) * variance)),
-        mar: Math.round(monthlyBase * seasonality[2] * (1 + (Math.random() - 0.5) * variance)),
-        apr: Math.round(monthlyBase * seasonality[3] * (1 + (Math.random() - 0.5) * variance)),
-        may: Math.round(monthlyBase * seasonality[4] * (1 + (Math.random() - 0.5) * variance)),
-        jun: Math.round(monthlyBase * seasonality[5] * (1 + (Math.random() - 0.5) * variance)),
-        jul: Math.round(monthlyBase * seasonality[6] * (1 + (Math.random() - 0.5) * variance)),
-        aug: Math.round(monthlyBase * seasonality[7] * (1 + (Math.random() - 0.5) * variance)),
-        sep: Math.round(monthlyBase * seasonality[8] * (1 + (Math.random() - 0.5) * variance)),
-        oct: Math.round(monthlyBase * seasonality[9] * (1 + (Math.random() - 0.5) * variance)),
-        nov: Math.round(monthlyBase * seasonality[10] * (1 + (Math.random() - 0.5) * variance)),
-        dec: Math.round(monthlyBase * seasonality[11] * (1 + (Math.random() - 0.5) * variance)),
-    };
-};
-
+// Helper: gerar dados mensais de budget uniformes (para receita - ainda hardcoded)
 const generateBudgetData = (baseAnnual: number): MonthlyData => {
     const monthlyBase = baseAnnual / 12;
     return {
@@ -357,33 +338,48 @@ export default function PnLReport() {
     const [totalRevenue, setTotalRevenue] = useState<MonthlyData>(emptyMonthlyData());
     const [byFinancialAccount, setByFinancialAccount] = useState<{ [key: string]: MonthlyData }>({});
 
-    // Buscar dados reais via API
+    // Estado para dados reais de despesas (Accounts Payable)
+    const [byExpenseAccount, setByExpenseAccount] = useState<{ [key: string]: MonthlyData }>({});
+    const [byExpenseBudget, setByExpenseBudget] = useState<{ [key: string]: MonthlyData }>({});
+
+    // Buscar dados reais via API (receita + despesas em paralelo)
     useEffect(() => {
-        async function fetchRevenueData() {
+        async function fetchPnLData() {
             try {
                 setLoading(true);
 
-                // Buscar dados via API route (usa supabaseAdmin)
-                const response = await fetch(`/api/pnl/revenue?year=${selectedYear}`);
-                const result = await response.json();
+                const [revenueRes, expensesRes] = await Promise.all([
+                    fetch(`/api/pnl/revenue?year=${selectedYear}`),
+                    fetch(`/api/pnl/expenses?year=${selectedYear}`),
+                ]);
 
-                if (!response.ok || !result.success) {
-                    console.error('Erro ao buscar dados:', result.error);
-                    return;
+                const revenueResult = await revenueRes.json();
+                const expensesResult = await expensesRes.json();
+
+                if (revenueRes.ok && revenueResult.success) {
+                    setTotalRevenue(revenueResult.totalRevenue || emptyMonthlyData());
+                    setByFinancialAccount(revenueResult.byFinancialAccount || {});
+                    console.log('📊 Receita carregada:', revenueResult.totalRecords, 'registros');
+                } else {
+                    console.error('Erro ao buscar receita:', revenueResult.error);
                 }
 
-                setTotalRevenue(result.totalRevenue || emptyMonthlyData());
-                setByFinancialAccount(result.byFinancialAccount || {});
-                console.log('📊 Receita carregada:', result);
+                if (expensesRes.ok && expensesResult.success) {
+                    setByExpenseAccount(expensesResult.byExpenseAccount || {});
+                    setByExpenseBudget(expensesResult.byExpenseBudget || {});
+                    console.log('📊 Despesas carregadas:', expensesResult.actualCount, 'actual,', expensesResult.budgetCount, 'budget');
+                } else {
+                    console.error('Erro ao buscar despesas:', expensesResult.error);
+                }
 
             } catch (err) {
-                console.error('Erro ao carregar receita:', err);
+                console.error('Erro ao carregar P&L:', err);
             } finally {
                 setLoading(false);
             }
         }
 
-        fetchRevenueData();
+        fetchPnLData();
     }, [selectedYear]);
 
     // Função para abrir drill-down
@@ -433,12 +429,38 @@ export default function PnLReport() {
     // Helper para pegar dados da financial account ou zeros
     const getFA = (code: string): MonthlyData => byFinancialAccount[code] || emptyMonthlyData();
 
-    // Helper para somar múltiplas financial accounts
+    // Helper para somar múltiplas financial accounts (receita)
     const sumFA = (...codes: string[]): MonthlyData => {
         const result = emptyMonthlyData();
         const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
         for (const key of keys) {
             result[key] = codes.reduce((sum, code) => sum + (getFA(code)[key] || 0), 0);
+        }
+        return result;
+    };
+
+    // Helper para pegar dados de despesa (actual) da financial account
+    const getExpFA = (code: string): MonthlyData => byExpenseAccount[code] || emptyMonthlyData();
+
+    // Helper para pegar dados de budget de despesa
+    const getExpBudgetFA = (code: string): MonthlyData => byExpenseBudget[code] || emptyMonthlyData();
+
+    // Helper para somar múltiplas financial accounts de despesa (actual)
+    const sumExpFA = (...codes: string[]): MonthlyData => {
+        const result = emptyMonthlyData();
+        const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
+        for (const key of keys) {
+            result[key] = codes.reduce((sum, code) => sum + (getExpFA(code)[key] || 0), 0);
+        }
+        return result;
+    };
+
+    // Helper para somar múltiplas financial accounts de budget de despesa
+    const sumExpBudgetFA = (...codes: string[]): MonthlyData => {
+        const result = emptyMonthlyData();
+        const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
+        for (const key of keys) {
+            result[key] = codes.reduce((sum, code) => sum + (getExpBudgetFA(code)[key] || 0), 0);
         }
         return result;
     };
@@ -512,51 +534,85 @@ export default function PnLReport() {
         },
     ], [byFinancialAccount]);
 
-    // Expense structure with monthly data
+    // Expense structure with REAL data from AP invoices
     const expenseStructure: DRELineMonthly[] = useMemo(() => [
         {
             code: "201.0", name: "Cost of Goods Sold (COGS)", type: "expense", level: 0,
-            monthly: generateMonthlyData(695000), budget: generateBudgetData(680000),
+            monthly: sumExpFA("201.1", "201.2", "201.3", "201.4", "201.5", "201.6"),
+            budget: sumExpBudgetFA("201.1", "201.2", "201.3", "201.4", "201.5", "201.6"),
             children: [
-                { code: "201.1", name: "COGS Growth", type: "expense", level: 1, monthly: generateMonthlyData(185000), budget: generateBudgetData(180000) },
-                { code: "201.2", name: "COGS Delight", type: "expense", level: 1, monthly: generateMonthlyData(228000), budget: generateBudgetData(220000) },
-                { code: "201.3", name: "COGS Planning Center", type: "expense", level: 1, monthly: generateMonthlyData(152000), budget: generateBudgetData(150000) },
-                { code: "201.4", name: "COGS LAB", type: "expense", level: 1, monthly: generateMonthlyData(130000), budget: generateBudgetData(130000) },
+                { code: "201.1", name: "COGS Growth", type: "expense", level: 1, monthly: getExpFA("201.1"), budget: getExpBudgetFA("201.1") },
+                { code: "201.2", name: "COGS Delight", type: "expense", level: 1, monthly: getExpFA("201.2"), budget: getExpBudgetFA("201.2") },
+                { code: "201.3", name: "COGS Planning Center", type: "expense", level: 1, monthly: getExpFA("201.3"), budget: getExpBudgetFA("201.3") },
+                { code: "201.4", name: "COGS LAB", type: "expense", level: 1, monthly: getExpFA("201.4"), budget: getExpBudgetFA("201.4") },
+                { code: "201.5", name: "COGS DSD App", type: "expense", level: 1, monthly: getExpFA("201.5"), budget: getExpBudgetFA("201.5") },
+                { code: "201.6", name: "COGS Corporate", type: "expense", level: 1, monthly: getExpFA("201.6"), budget: getExpBudgetFA("201.6") },
             ],
         },
         {
             code: "202.0", name: "Labour", type: "expense", level: 0,
-            monthly: generateMonthlyData(1420000), budget: generateBudgetData(1450000),
+            monthly: sumExpFA("202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7"),
+            budget: sumExpBudgetFA("202.1", "202.2", "202.3", "202.4", "202.5", "202.6", "202.7"),
             children: [
-                { code: "202.1", name: "Labour Growth", type: "expense", level: 1, monthly: generateMonthlyData(275000), budget: generateBudgetData(280000) },
-                { code: "202.2", name: "Labour Marketing", type: "expense", level: 1, monthly: generateMonthlyData(175000), budget: generateBudgetData(180000) },
-                { code: "202.3", name: "Labour Planning Center", type: "expense", level: 1, monthly: generateMonthlyData(315000), budget: generateBudgetData(320000) },
-                { code: "202.4", name: "Labour LAB", type: "expense", level: 1, monthly: generateMonthlyData(272000), budget: generateBudgetData(280000) },
-                { code: "202.5", name: "Labour Corporate", type: "expense", level: 1, monthly: generateMonthlyData(248000), budget: generateBudgetData(250000) },
-                { code: "202.6", name: "Labour Delight ROW", type: "expense", level: 1, monthly: generateMonthlyData(78000), budget: generateBudgetData(80000) },
-                { code: "202.7", name: "Labour AMEX", type: "expense", level: 1, monthly: generateMonthlyData(38000), budget: generateBudgetData(40000) },
-                { code: "202.8", name: "Social Security", type: "expense", level: 1, monthly: generateMonthlyData(19000), budget: generateBudgetData(20000) },
+                { code: "202.1", name: "Labour Growth", type: "expense", level: 1, monthly: getExpFA("202.1"), budget: getExpBudgetFA("202.1") },
+                { code: "202.2", name: "Labour Marketing", type: "expense", level: 1, monthly: getExpFA("202.2"), budget: getExpBudgetFA("202.2") },
+                { code: "202.3", name: "Labour Planning Center", type: "expense", level: 1, monthly: getExpFA("202.3"), budget: getExpBudgetFA("202.3") },
+                { code: "202.4", name: "Labour LAB", type: "expense", level: 1, monthly: getExpFA("202.4"), budget: getExpBudgetFA("202.4") },
+                { code: "202.5", name: "Labour Corporate", type: "expense", level: 1, monthly: getExpFA("202.5"), budget: getExpBudgetFA("202.5") },
+                { code: "202.6", name: "Labour Delight ROW", type: "expense", level: 1, monthly: getExpFA("202.6"), budget: getExpBudgetFA("202.6") },
+                { code: "202.7", name: "Labour AMEX", type: "expense", level: 1, monthly: getExpFA("202.7"), budget: getExpBudgetFA("202.7") },
             ],
         },
         {
             code: "203.0", name: "Travels and Meals", type: "expense", level: 0,
-            monthly: generateMonthlyData(172000), budget: generateBudgetData(180000),
+            monthly: sumExpFA("203.1", "203.2", "203.3", "203.4", "203.5", "203.6", "203.7"),
+            budget: sumExpBudgetFA("203.1", "203.2", "203.3", "203.4", "203.5", "203.6", "203.7"),
             children: [
-                { code: "203.1", name: "T&M Growth", type: "expense", level: 1, monthly: generateMonthlyData(42000), budget: generateBudgetData(45000) },
-                { code: "203.2", name: "T&M Marketing", type: "expense", level: 1, monthly: generateMonthlyData(33000), budget: generateBudgetData(35000) },
-                { code: "203.5", name: "T&M Corporate", type: "expense", level: 1, monthly: generateMonthlyData(44000), budget: generateBudgetData(45000) },
+                { code: "203.1", name: "T&M Growth", type: "expense", level: 1, monthly: getExpFA("203.1"), budget: getExpBudgetFA("203.1") },
+                { code: "203.2", name: "T&M Marketing", type: "expense", level: 1, monthly: getExpFA("203.2"), budget: getExpBudgetFA("203.2") },
+                { code: "203.3", name: "T&M Planning Center", type: "expense", level: 1, monthly: getExpFA("203.3"), budget: getExpBudgetFA("203.3") },
+                { code: "203.4", name: "T&M LAB", type: "expense", level: 1, monthly: getExpFA("203.4"), budget: getExpBudgetFA("203.4") },
+                { code: "203.5", name: "T&M Corporate", type: "expense", level: 1, monthly: getExpFA("203.5"), budget: getExpBudgetFA("203.5") },
+                { code: "203.6", name: "T&M Delight ROW", type: "expense", level: 1, monthly: getExpFA("203.6"), budget: getExpBudgetFA("203.6") },
+                { code: "203.7", name: "T&M AMEX", type: "expense", level: 1, monthly: getExpFA("203.7"), budget: getExpBudgetFA("203.7") },
             ],
         },
-        { code: "204.0", name: "Professional Fees", type: "expense", level: 0, monthly: generateMonthlyData(118000), budget: generateBudgetData(120000), children: [] },
-        { code: "205.0", name: "Marketing and Advertising", type: "expense", level: 0, monthly: generateMonthlyData(92000), budget: generateBudgetData(95000), children: [] },
-        { code: "206.0", name: "Office", type: "expense", level: 0, monthly: generateMonthlyData(82000), budget: generateBudgetData(85000), children: [] },
-        { code: "207.0", name: "Information Technology", type: "expense", level: 0, monthly: generateMonthlyData(78000), budget: generateBudgetData(75000), children: [] },
-        { code: "208.0", name: "Research and Development", type: "expense", level: 0, monthly: generateMonthlyData(42000), budget: generateBudgetData(45000), children: [] },
-        { code: "209.0", name: "Bank and Financial Fees", type: "expense", level: 0, monthly: generateMonthlyData(38000), budget: generateBudgetData(35000), children: [] },
-        { code: "210.0", name: "Miscellaneous", type: "expense", level: 0, monthly: generateMonthlyData(23000), budget: generateBudgetData(25000), children: [] },
-        { code: "211.0", name: "Amortization & Depreciation", type: "expense", level: 0, monthly: generateMonthlyData(40000), budget: generateBudgetData(40000), children: [] },
-        { code: "300.0", name: "FX Variation", type: "expense", level: 0, monthly: generateMonthlyData(-15000, 0.5), budget: generateBudgetData(0), children: [] },
-    ], []);
+        {
+            code: "204.0", name: "Professional Fees", type: "expense", level: 0,
+            monthly: sumExpFA("204.1", "204.2"),
+            budget: sumExpBudgetFA("204.1", "204.2"),
+            children: [
+                { code: "204.1", name: "Professional Fees - General", type: "expense", level: 1, monthly: getExpFA("204.1"), budget: getExpBudgetFA("204.1") },
+                { code: "204.2", name: "Professional Fees - Consulting", type: "expense", level: 1, monthly: getExpFA("204.2"), budget: getExpBudgetFA("204.2") },
+            ],
+        },
+        { code: "205.0", name: "Marketing and Advertising", type: "expense", level: 0, monthly: getExpFA("205.0"), budget: getExpBudgetFA("205.0"), children: [] },
+        {
+            code: "206.0", name: "Office", type: "expense", level: 0,
+            monthly: sumExpFA("206.1", "206.1.1", "206.2"),
+            budget: sumExpBudgetFA("206.1", "206.1.1", "206.2"),
+            children: [
+                { code: "206.1", name: "Office - Rent & Facilities", type: "expense", level: 1, monthly: getExpFA("206.1"), budget: getExpBudgetFA("206.1") },
+                { code: "206.1.1", name: "Office - Supplies", type: "expense", level: 1, monthly: getExpFA("206.1.1"), budget: getExpBudgetFA("206.1.1") },
+                { code: "206.2", name: "Office - Other", type: "expense", level: 1, monthly: getExpFA("206.2"), budget: getExpBudgetFA("206.2") },
+            ],
+        },
+        { code: "207.0", name: "Information Technology", type: "expense", level: 0, monthly: getExpFA("207.0"), budget: getExpBudgetFA("207.0"), children: [] },
+        { code: "208.0", name: "Research and Development", type: "expense", level: 0, monthly: getExpFA("208.0"), budget: getExpBudgetFA("208.0"), children: [] },
+        {
+            code: "209.0", name: "Bank and Financial Fees", type: "expense", level: 0,
+            monthly: sumExpFA("209.1", "209.2"),
+            budget: sumExpBudgetFA("209.1", "209.2"),
+            children: [
+                { code: "209.1", name: "Bank Fees", type: "expense", level: 1, monthly: getExpFA("209.1"), budget: getExpBudgetFA("209.1") },
+                { code: "209.2", name: "Financial Fees", type: "expense", level: 1, monthly: getExpFA("209.2"), budget: getExpBudgetFA("209.2") },
+            ],
+        },
+        { code: "210.0", name: "Miscellaneous", type: "expense", level: 0, monthly: getExpFA("210.0"), budget: getExpBudgetFA("210.0"), children: [] },
+        { code: "211.0", name: "Amortization & Depreciation", type: "expense", level: 0, monthly: getExpFA("211.0"), budget: getExpBudgetFA("211.0"), children: [] },
+        { code: "300.0", name: "FX Variation", type: "expense", level: 0, monthly: getExpFA("300.0"), budget: getExpBudgetFA("300.0"), children: [] },
+        { code: "400.0", name: "Taxes & Other", type: "expense", level: 0, monthly: getExpFA("400.0"), budget: getExpBudgetFA("400.0"), children: [] },
+    ], [byExpenseAccount, byExpenseBudget]);
 
     // Calculate monthly totals
     const monthlyTotals = useMemo(() => {
@@ -655,7 +711,7 @@ export default function PnLReport() {
         const monthlyValues = MONTHS.map((_, i) => i > lastClosedMonth ? 0 : getMonthValue(line.monthly, i));
         // Total = soma até o último mês fechado (inclusive), ou 0 se nenhum fechado
         const total = lastClosedMonth >= 0 ? getYTD(line.monthly, lastClosedMonth) : 0;
-        const isClickable = line.type === "revenue" && !line.code.endsWith('.0');
+        const isClickable = !line.code.endsWith('.0');
 
         return (
             <div key={line.code}>
@@ -680,11 +736,11 @@ export default function PnLReport() {
                         return (
                             <div
                                 key={i}
-                                className={`text-right ${isNotClosed ? "opacity-30" : ""} ${isClickable && realVal > 0 && !isNotClosed ? "cursor-pointer hover:bg-emerald-900/30 rounded transition-colors" : ""}`}
-                                onClick={isClickable && realVal > 0 && !isNotClosed ? () => openDrilldown(line.code, line.name, i) : undefined}
-                                title={isClickable && realVal > 0 && !isNotClosed ? `Clique para ver detalhes de ${line.name} em ${MONTHS[i]}` : undefined}
+                                className={`text-right ${isNotClosed ? "opacity-30" : ""} ${isClickable && realVal !== 0 && !isNotClosed ? `cursor-pointer hover:${line.type === "revenue" ? "bg-emerald-900/30" : "bg-red-900/30"} rounded transition-colors` : ""}`}
+                                onClick={isClickable && realVal !== 0 && !isNotClosed ? () => openDrilldown(line.code, line.name, i) : undefined}
+                                title={isClickable && realVal !== 0 && !isNotClosed ? `Clique para ver detalhes de ${line.name} em ${MONTHS[i]}` : undefined}
                             >
-                                <span className={`text-[10px] font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"} ${isClickable && realVal > 0 && !isNotClosed ? "underline decoration-dotted underline-offset-2" : ""}`}>
+                                <span className={`text-[10px] font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"} ${isClickable && realVal !== 0 && !isNotClosed ? "underline decoration-dotted underline-offset-2" : ""}`}>
                                     {isNotClosed ? "-" : formatCompact(val)}
                                 </span>
                             </div>
