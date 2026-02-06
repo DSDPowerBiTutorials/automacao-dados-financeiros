@@ -62,10 +62,10 @@ export async function GET(request: NextRequest) {
         while (true) {
             const { data, error } = await supabaseAdmin
                 .from("invoices")
-                .select("invoice_date, invoice_amount, financial_account_code, invoice_type")
+                .select("benefit_date, invoice_amount, financial_account_code, invoice_type")
                 .eq("dre_impact", true)
-                .gte("invoice_date", startDate)
-                .lte("invoice_date", endDate)
+                .gte("benefit_date", startDate)
+                .lte("benefit_date", endDate)
                 .range(offset, offset + pageSize - 1);
 
             if (error) {
@@ -97,13 +97,13 @@ export async function GET(request: NextRequest) {
         let budgetCount = 0;
 
         for (const row of allData) {
-            if (!row.invoice_date || !row.financial_account_code) continue;
+            if (!row.benefit_date || !row.financial_account_code) continue;
 
             const amount = row.invoice_amount || 0;
             if (amount === 0) continue;
 
             // Extract month from date string "YYYY-MM-DD"
-            const monthIndex = parseInt(row.invoice_date.substring(5, 7), 10) - 1;
+            const monthIndex = parseInt(row.benefit_date.substring(5, 7), 10) - 1;
             if (monthIndex < 0 || monthIndex > 11) continue;
             const monthKey = monthKeys[monthIndex];
 

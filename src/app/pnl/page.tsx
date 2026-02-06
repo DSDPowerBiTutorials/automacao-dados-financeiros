@@ -133,6 +133,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
     // Calcular totais separados
     const creditNoteCount = drilldown.transactions.filter(tx => tx.amount < 0).length;
     const creditNoteTotal = drilldown.transactions.filter(tx => tx.amount < 0).reduce((s, tx) => s + tx.amount, 0);
+    const isExpense = !drilldown.faCode.startsWith("1");
 
     return (
         <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -144,16 +145,16 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                     <div className="flex items-center justify-between">
                         <div>
                             <DialogTitle className="text-xl text-white flex items-center gap-2">
-                                <BarChart3 className="h-5 w-5 text-emerald-400" />
+                                <BarChart3 className={`h-5 w-5 ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
                                 Drill-Down: {drilldown.faName}
                             </DialogTitle>
                             <div className="flex items-center gap-3 mt-1">
                                 <p className="text-sm text-gray-400">
-                                    <span className="font-mono text-emerald-400">{drilldown.faCode}</span>
+                                    <span className={`font-mono ${isExpense ? "text-red-400" : "text-emerald-400"}`}>{drilldown.faCode}</span>
                                     {" • "}
                                     <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
                                     {" • "}
-                                    <span className="text-emerald-300">{drilldown.count} transações</span>
+                                    <span className={isExpense ? "text-red-300" : "text-emerald-300"}>{drilldown.count} transações</span>
                                 </p>
                                 {creditNoteCount > 0 && (
                                     <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">
@@ -172,7 +173,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                 <div className="flex-1 overflow-auto mt-4">
                     {drilldown.loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="h-8 w-8 animate-spin text-emerald-400" />
+                            <Loader2 className={`h-8 w-8 animate-spin ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
                             <span className="ml-3 text-gray-400">Carregando transações...</span>
                         </div>
                     ) : drilldown.transactions.length === 0 ? (
@@ -186,7 +187,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                     <thead className="bg-gray-800 sticky top-0 z-10">
                                         <tr>
                                             <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Data</th>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Cliente</th>
+                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">{isExpense ? "Fornecedor" : "Cliente"}</th>
                                             <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Descrição</th>
                                             <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Tipo</th>
                                             <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Valor</th>
@@ -222,7 +223,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                             )}
                                                         </div>
                                                     </td>
-                                                    <td className={`px-4 py-2 text-right text-sm font-mono font-semibold whitespace-nowrap ${isCreditNote ? "text-red-400" : "text-emerald-400"}`}>
+                                                    <td className={`px-4 py-2 text-right text-sm font-mono font-semibold whitespace-nowrap ${(isExpense || isCreditNote) ? "text-red-400" : "text-emerald-400"}`}>
                                                         {formatCurrency(tx.amount, "EUR")}
                                                     </td>
                                                 </tr>
@@ -234,7 +235,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                             <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
                                                 Total ({drilldown.count} transações)
                                             </td>
-                                            <td className="px-4 py-3 text-right text-lg font-mono text-emerald-300 font-bold whitespace-nowrap">
+                                            <td className={`px-4 py-3 text-right text-lg font-mono ${isExpense ? "text-red-300" : "text-emerald-300"} font-bold whitespace-nowrap`}>
                                                 {formatCurrency(drilldown.total, "EUR")}
                                             </td>
                                         </tr>

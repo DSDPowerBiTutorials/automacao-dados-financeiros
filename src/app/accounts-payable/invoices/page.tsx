@@ -23,6 +23,8 @@ import { toast } from "@/hooks/use-toast";
 import { Breadcrumbs } from "@/components/app/breadcrumbs";
 import { supabase } from "@/lib/supabase";
 import { Badge } from "@/components/ui/badge";
+import { Calendar } from "@/components/ui/calendar";
+import type { DateRange } from "react-day-picker";
 import { ScopeSelector } from "@/components/app/scope-selector";
 import { type ScopeType, getRecordScope, getScopeIcon, matchesScope, scopeToFields, SCOPE_CONFIG } from "@/lib/scope-utils";
 import { useGlobalScope } from "@/contexts/global-scope-context";
@@ -150,6 +152,7 @@ export default function InvoicesPage() {
   const [filterPopoverOpen, setFilterPopoverOpen] = useState<{ field: string, anchor: HTMLElement } | null>(null);
   const [tempFilterSelection, setTempFilterSelection] = useState<string[]>([]);
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
+  const [calendarRange, setCalendarRange] = useState<DateRange | undefined>(undefined);
 
   // Date and amount filters
   const [dateFilters, setDateFilters] = useState<Record<string, { start?: string, end?: string }>>({});
@@ -843,6 +846,7 @@ export default function InvoicesPage() {
     const currentFilters = multiSelectFilters[field] || [];
     setTempFilterSelection(currentFilters);
     setFilterSearchTerm("");
+    setCalendarRange(undefined);
     setFilterPopoverOpen({ field, anchor: event.currentTarget });
   }
 
@@ -3748,7 +3752,7 @@ export default function InvoicesPage() {
       {
         filterPopoverOpen && (
           <Dialog open={!!filterPopoverOpen} onOpenChange={() => closeFilterPopover()}>
-            <DialogContent className="max-w-md bg-white">
+            <DialogContent className={`bg-white ${['input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date'].includes(filterPopoverOpen.field) ? 'max-w-fit' : 'max-w-md'}`}>
               <DialogHeader>
                 <DialogTitle>Filter by {filterPopoverOpen.field.replace(/_/g, ' ')}</DialogTitle>
               </DialogHeader>
@@ -3757,7 +3761,7 @@ export default function InvoicesPage() {
                   const field = filterPopoverOpen.field;
 
                   // Date filters
-                  if (['input_date', 'invoice_date', 'benefit_date'].includes(field)) {
+                  if (['input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date'].includes(field)) {
                     const presets = ["This Week", "Last Week", "Next Week", "This Month", "Last Month", "Next Year"];
                     return (
                       <div className="space-y-3">
@@ -3783,35 +3787,42 @@ export default function InvoicesPage() {
                           ))}
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs">Custom Range:</Label>
-                          <div className="grid grid-cols-2 gap-2">
-                            <div>
-                              <Label className="text-xs">From:</Label>
-                              <Input type="date" className="h-8 text-xs" id="date-start" />
-                            </div>
-                            <div>
-                              <Label className="text-xs">To:</Label>
-                              <Input type="date" className="h-8 text-xs" id="date-end" />
-                            </div>
+                          <Label className="text-xs font-medium">Selecionar intervalo:</Label>
+                          <Calendar
+                            mode="range"
+                            selected={calendarRange}
+                            onSelect={setCalendarRange}
+                            numberOfMonths={2}
+                            className="rounded-md border border-gray-200 p-0"
+                          />
+                          <div className="flex items-center justify-between">
+                            {calendarRange?.from ? (
+                              <span className="text-xs text-gray-600">
+                                {calendarRange.from.toLocaleDateString('pt-PT')}
+                                {calendarRange.to ? ` → ${calendarRange.to.toLocaleDateString('pt-PT')}` : " → ..."}
+                              </span>
+                            ) : (
+                              <span className="text-xs text-gray-400">Clique para selecionar datas</span>
+                            )}
+                            <Button
+                              size="sm"
+                              disabled={!calendarRange?.from || !calendarRange?.to}
+                              onClick={() => {
+                                if (calendarRange?.from && calendarRange?.to) {
+                                  const start = calendarRange.from.toISOString().split('T')[0];
+                                  const end = calendarRange.to.toISOString().split('T')[0];
+                                  setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
+                                  setAppliedFilters(prev => {
+                                    const filtered = prev.filter(f => f.field !== field);
+                                    return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
+                                  });
+                                  closeFilterPopover();
+                                }
+                              }}
+                            >
+                              Aplicar
+                            </Button>
                           </div>
-                          <Button
-                            size="sm"
-                            className="w-full"
-                            onClick={() => {
-                              const start = (document.getElementById('date-start') as HTMLInputElement).value;
-                              const end = (document.getElementById('date-end') as HTMLInputElement).value;
-                              if (start || end) {
-                                setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
-                                setAppliedFilters(prev => {
-                                  const filtered = prev.filter(f => f.field !== field);
-                                  return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
-                                });
-                                closeFilterPopover();
-                              }
-                            }}
-                          >
-                            Apply Custom Range
-                          </Button>
                         </div>
                       </div>
                     );

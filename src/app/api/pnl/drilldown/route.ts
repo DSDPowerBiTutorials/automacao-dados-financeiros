@@ -41,12 +41,12 @@ export async function GET(request: NextRequest) {
 
             const { data, error } = await supabaseAdmin
                 .from("invoices")
-                .select("id, invoice_date, description, invoice_amount, provider_code, financial_account_name, invoice_type, invoice_number")
+                .select("id, benefit_date, description, invoice_amount, provider_code, financial_account_name, invoice_type, invoice_number")
                 .in("financial_account_code", faCodes)
                 .eq("dre_impact", true)
                 .neq("invoice_type", "BUDGET")
-                .gte("invoice_date", startStr)
-                .lte("invoice_date", endStr)
+                .gte("benefit_date", startStr)
+                .lte("benefit_date", endStr)
                 .neq("invoice_amount", 0)
                 .order("invoice_amount", { ascending: false })
                 .limit(500);
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
 
             transactions = paginatedData.map((row) => ({
                 id: row.id,
-                date: row.invoice_date,
+                date: row.benefit_date,
                 description: row.description || row.financial_account_name || "-",
                 amount: row.invoice_amount,
                 customer: row.provider_code || "-",
