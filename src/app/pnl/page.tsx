@@ -732,14 +732,18 @@ export default function PnLReport() {
                     {monthlyValues.map((val, i) => {
                         const realVal = getMonthValue(line.monthly, i);
                         const isNotClosed = i > lastClosedMonth; // Mês não fechado se APÓS o último fechado
+                        const canClick = isClickable && realVal !== 0 && !isNotClosed;
+                        const hoverClass = line.type === "revenue"
+                            ? "cursor-pointer hover:bg-emerald-900/30 rounded transition-colors"
+                            : "cursor-pointer hover:bg-red-900/30 rounded transition-colors";
                         return (
                             <div
                                 key={i}
-                                className={`text-right ${isNotClosed ? "opacity-30" : ""} ${isClickable && realVal !== 0 && !isNotClosed ? `cursor-pointer hover:${line.type === "revenue" ? "bg-emerald-900/30" : "bg-red-900/30"} rounded transition-colors` : ""}`}
-                                onClick={isClickable && realVal !== 0 && !isNotClosed ? () => openDrilldown(line.code, line.name, i) : undefined}
-                                title={isClickable && realVal !== 0 && !isNotClosed ? `Clique para ver detalhes de ${line.name} em ${MONTHS[i]}` : undefined}
+                                className={`text-right ${isNotClosed ? "opacity-30" : ""} ${canClick ? hoverClass : ""}`}
+                                onClick={canClick ? () => openDrilldown(line.code, line.name, i) : undefined}
+                                title={canClick ? `Clique para ver detalhes de ${line.name} em ${MONTHS[i]}` : undefined}
                             >
-                                <span className={`text-[10px] font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"} ${isClickable && realVal !== 0 && !isNotClosed ? "underline decoration-dotted underline-offset-2" : ""}`}>
+                                <span className={`text-[10px] font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"} ${canClick ? "underline decoration-dotted underline-offset-2" : ""}`}>
                                     {isNotClosed ? "-" : formatCompact(val)}
                                 </span>
                             </div>
