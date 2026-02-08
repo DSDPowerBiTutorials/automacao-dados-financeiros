@@ -384,9 +384,14 @@ function generateProviderCode(name) {
 
 function parseEuropeanNumber(str) {
     if (!str) return 0;
-    const cleaned = str.trim().replace(/\./g, '').replace(',', '.');
+    let s = str.trim();
+    // Accounting notation: (1.000,0) = -1000.0
+    const isNegative = s.startsWith('(') && s.endsWith(')');
+    if (isNegative) s = s.slice(1, -1).trim();
+    const cleaned = s.replace(/\./g, '').replace(',', '.');
     const val = parseFloat(cleaned);
-    return isNaN(val) ? 0 : val;
+    if (isNaN(val)) return 0;
+    return isNegative ? -val : val;
 }
 
 function parseDate(dateStr) {
@@ -694,7 +699,7 @@ async function main() {
             entry_type: ENTRY_TYPE_MAP[row.group] || 'INCURRED',
             financial_account_code: faCode,
             financial_account_name: row.subGroup,
-            invoice_amount: Math.abs(row.amount),
+            invoice_amount: row.amount,
             currency: row.currency || 'EUR',
             eur_exchange: row.currency === 'EUR' ? 1.0 : 1.0,
             provider_code: providerCode || 'UNKNOWN',
