@@ -43,7 +43,25 @@ export async function GET(request: NextRequest) {
 
             let query = supabaseAdmin
                 .from("invoices")
-                .select("id, benefit_date, invoice_date, due_date, schedule_date, payment_date, description, invoice_amount, currency, provider_code, financial_account_name, financial_account_code, invoice_type, invoice_number, bank_account_code, payment_method_code, cost_center_code, cost_type_code, dep_cost_type_code, notes, dre_impact, cash_impact, is_intercompany, paid_amount, paid_currency, eur_exchange")
+                .select(`
+                    id, benefit_date, invoice_date, due_date, schedule_date, payment_date, input_date,
+                    description, invoice_amount, currency, provider_code, financial_account_name,
+                    financial_account_code, invoice_type, invoice_number, entry_type,
+                    bank_account_code, payment_method_code, cost_center_code, cost_type_code,
+                    dep_cost_type_code, course_code, sub_department_code,
+                    notes, dre_impact, cash_impact, is_intercompany,
+                    paid_amount, paid_currency, eur_exchange,
+                    payment_status, finance_payment_status, invoice_status, scope, country_code,
+                    providers:provider_code(name),
+                    bank_accounts:bank_account_code(name),
+                    payment_methods:payment_method_code(name),
+                    cost_centers:cost_center_code(name),
+                    cost_types:cost_type_code(name),
+                    dep_cost_types:dep_cost_type_code(name),
+                    financial_accounts:financial_account_code(name),
+                    courses:course_code(name),
+                    sub_departments:sub_department_code(name)
+                `)
                 .eq("dre_impact", true)
                 .neq("invoice_type", "BUDGET")
                 .gte("benefit_date", startStr)
@@ -78,6 +96,14 @@ export async function GET(request: NextRequest) {
             const startIndex = (page - 1) * limit;
             const paginatedData = (data || []).slice(startIndex, startIndex + limit);
 
+            // Helper to safely extract name from joined relation
+            const getName = (rel: any): string | null => {
+                if (!rel) return null;
+                if (typeof rel === 'string') return rel;
+                if (Array.isArray(rel)) return rel[0]?.name || null;
+                return rel.name || null;
+            };
+
             transactions = paginatedData.map((row) => ({
                 id: row.id,
                 date: row.benefit_date,
@@ -88,26 +114,45 @@ export async function GET(request: NextRequest) {
                 source: "invoices",
                 invoiceNumber: row.invoice_number,
                 faCode: row.financial_account_code,
-                // Full invoice details for detail popup
+                // Full invoice details
                 invoiceDate: row.invoice_date,
                 benefitDate: row.benefit_date,
+                inputDate: row.input_date,
                 dueDate: row.due_date,
                 scheduleDate: row.schedule_date,
                 paymentDate: row.payment_date,
                 currency: row.currency || "EUR",
+                entryType: row.entry_type,
+                scope: row.scope || row.country_code,
+                // Codes + resolved names
                 bankAccountCode: row.bank_account_code,
+                bankAccountName: getName(row.bank_accounts),
                 paymentMethodCode: row.payment_method_code,
+                paymentMethodName: getName(row.payment_methods),
                 costCenterCode: row.cost_center_code,
+                costCenterName: getName(row.cost_centers),
                 costTypeCode: row.cost_type_code,
+                costTypeName: getName(row.cost_types),
                 depCostTypeCode: row.dep_cost_type_code,
+                depCostTypeName: getName(row.dep_cost_types),
+                courseCode: row.course_code,
+                courseName: getName(row.courses),
+                subDepartmentCode: row.sub_department_code,
+                subDepartmentName: getName(row.sub_departments),
+                providerName: getName(row.providers),
+                financialAccountName: row.financial_account_name || getName(row.financial_accounts),
+                // Notes & flags
                 notes: row.notes,
                 dreImpact: row.dre_impact,
                 cashImpact: row.cash_impact,
                 isIntercompany: row.is_intercompany,
+                // Payment
                 paidAmount: row.paid_amount,
                 paidCurrency: row.paid_currency,
                 eurExchange: row.eur_exchange,
-                financialAccountName: row.financial_account_name,
+                paymentStatus: row.payment_status,
+                financePaymentStatus: row.finance_payment_status,
+                invoiceStatus: row.invoice_status,
             }));
         } else {
             // ── REVENUE DRILL-DOWN: query csv_rows table (existing logic) ──

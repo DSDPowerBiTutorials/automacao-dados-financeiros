@@ -53,25 +53,44 @@ interface DrilldownTransaction {
     invoiceNumber?: string;
     invoiceDate?: string;
     benefitDate?: string;
+    inputDate?: string;
     dueDate?: string;
     scheduleDate?: string;
     paymentDate?: string;
     currency?: string;
+    entryType?: string;
+    scope?: string;
+    // Codes + resolved names
     bankAccountCode?: string;
+    bankAccountName?: string;
     paymentMethodCode?: string;
+    paymentMethodName?: string;
     costCenterCode?: string;
+    costCenterName?: string;
     costTypeCode?: string;
+    costTypeName?: string;
     depCostTypeCode?: string;
+    depCostTypeName?: string;
+    courseCode?: string;
+    courseName?: string;
+    subDepartmentCode?: string;
+    subDepartmentName?: string;
+    providerName?: string;
+    financialAccountName?: string;
+    faCode?: string;
+    source?: string;
+    // Flags
     notes?: string;
     dreImpact?: boolean;
     cashImpact?: boolean;
     isIntercompany?: boolean;
+    // Payment
     paidAmount?: number;
     paidCurrency?: string;
     eurExchange?: number;
-    financialAccountName?: string;
-    faCode?: string;
-    source?: string;
+    paymentStatus?: string;
+    financePaymentStatus?: string;
+    invoiceStatus?: string;
 }
 
 interface DrilldownState {
@@ -136,7 +155,7 @@ const getYTD = (data: MonthlyData, upToMonth: number): number => {
     return keys.slice(0, upToMonth + 1).reduce((sum, key) => sum + data[key], 0);
 };
 
-// ── Invoice Detail Popup (dark theme, similar to payment scheduled panel) ──
+// ── Invoice Detail Popup (dark theme, full-width like the drilldown popup) ──
 function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransaction; onClose: () => void }) {
     const [attachments, setAttachments] = useState<{ id: number; file_name: string; url: string }[]>([]);
     const [loadingAttachments, setLoadingAttachments] = useState(false);
@@ -160,204 +179,289 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
         }
     }
 
-    const formatDate = (d?: string | null) => {
+    const fmt = (d?: string | null) => {
         if (!d) return "-";
         return `${d.substring(8, 10)}/${d.substring(5, 7)}/${d.substring(0, 4)}`;
     };
 
-    const getCurrencySymbol = (c?: string) => {
-        if (c === "USD") return "$";
-        if (c === "GBP") return "£";
-        return "€";
-    };
+    const currSym = (c?: string) => (c === "USD" ? "$" : c === "GBP" ? "£" : "€");
+
+    // Determine payment/reconciliation status
+    const isPaid = !!(invoice.paymentDate || (invoice.paidAmount && invoice.paidAmount !== 0));
+    const isScheduled = !isPaid && !!invoice.scheduleDate;
+
+    const paymentStatusLabel = invoice.paymentStatus
+        || invoice.financePaymentStatus
+        || (isPaid ? "PAID" : isScheduled ? "SCHEDULED" : "NOT_SCHEDULED");
+
+    const paymentStatusColor = paymentStatusLabel.toLowerCase().includes("paid")
+        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+        : paymentStatusLabel.toLowerCase().includes("scheduled")
+            ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
+            : "bg-gray-600/30 text-gray-400 border-gray-500/30";
+
+    // Field display helper
+    const Field = ({ label, value, highlight, mono }: { label: string; value?: string | null; highlight?: string; mono?: boolean }) => (
+        <div>
+            <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+            <p className={`text-sm ${highlight || "text-white"} ${mono ? "font-mono" : ""}`}>{value || "-"}</p>
+        </div>
+    );
 
     return (
         <Dialog open onOpenChange={(open) => !open && onClose()}>
-            <DialogContent className="max-w-[500px] p-0 bg-[#1e1f21] border-gray-700 overflow-hidden">
-                {/* Header */}
-                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+            <DialogContent
+                className="max-w-none max-h-[90vh] p-0 bg-[#1e1f21] border-gray-700 flex flex-col overflow-hidden"
+                style={{ width: '80vw' }}
+            >
+                {/* ── Header ── */}
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 flex-shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
+                        <div className="h-9 w-9 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
                             <FileText className="h-4 w-4 text-gray-400" />
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-base font-semibold text-white truncate">{invoice.customer}</h3>
+                            <h3 className="text-lg font-semibold text-white truncate">
+                                {invoice.providerName || invoice.customer}
+                            </h3>
+                            <p className="text-xs text-gray-500">
+                                {invoice.financialAccountName || invoice.description}
+                                {invoice.faCode && <span className="ml-2 font-mono text-gray-600">({invoice.faCode})</span>}
+                            </p>
                         </div>
                     </div>
-                    <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white h-8 w-8 p-0">
-                        <X className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-2 flex-shrink-0">
+                        <Badge className={`text-xs ${paymentStatusColor}`}>
+                            {paymentStatusLabel.replace(/_/g, " ")}
+                        </Badge>
+                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white h-8 w-8 p-0">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
                 </div>
 
-                {/* Sub-header */}
-                <div className="px-5 py-2 border-b border-gray-800">
-                    <p className="text-xs text-gray-500">
-                        Payments & Invoice Control • {invoice.financialAccountName || invoice.description}
-                    </p>
-                </div>
+                {/* ── Scrollable Content ── */}
+                <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
 
-                {/* Invoice Details */}
-                <div className="px-5 py-4 space-y-4 border-b border-gray-800 max-h-[60vh] overflow-y-auto">
-                    {/* Row 1: Invoice Date + Invoice Nº */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center gap-3">
-                            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                            <div>
-                                <p className="text-xs text-gray-500">Invoice Date</p>
-                                <p className="text-sm text-white">{formatDate(invoice.invoiceDate)}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                            <div>
-                                <p className="text-xs text-gray-500">Invoice Nº</p>
-                                <p className="text-sm text-white font-mono">{invoice.invoiceNumber || "-"}</p>
-                            </div>
+                    {/* ═══ Section: Invoice Identification ═══ */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <FileText className="h-3.5 w-3.5" /> Invoice Identification
+                        </h4>
+                        <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
+                            <Field label="Invoice Nº" value={invoice.invoiceNumber} mono />
+                            <Field label="Invoice Type" value={invoice.orderType} />
+                            <Field label="Entry Type" value={invoice.entryType} />
+                            <Field label="Scope" value={invoice.scope} />
                         </div>
                     </div>
 
-                    {/* Row 2: Total Amount + Currency */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center gap-3">
-                            <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                            <div>
-                                <p className="text-xs text-gray-500">Total Amount</p>
-                                <p className="text-sm text-white font-medium">{formatCurrency(invoice.amount, invoice.currency || "EUR")}</p>
-                            </div>
+                    {/* ═══ Section: Dates ═══ */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Calendar className="h-3.5 w-3.5" /> Dates
+                        </h4>
+                        <div className="grid grid-cols-6 gap-4 bg-[#252627] rounded-lg p-4">
+                            <Field label="Input Date" value={fmt(invoice.inputDate)} />
+                            <Field label="Invoice Date" value={fmt(invoice.invoiceDate)} />
+                            <Field label="Benefit Date" value={fmt(invoice.benefitDate)} />
+                            <Field label="Due Date" value={fmt(invoice.dueDate)} />
+                            <Field label="Schedule Date" value={fmt(invoice.scheduleDate)} highlight={isScheduled && !isPaid ? "text-blue-300" : "text-white"} />
+                            <Field label="Payment Date" value={fmt(invoice.paymentDate)} highlight={isPaid ? "text-emerald-400" : "text-white"} />
                         </div>
-                        <div className="flex items-center gap-3">
-                            <DollarSign className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    </div>
+
+                    {/* ═══ Section: Amount ═══ */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <DollarSign className="h-3.5 w-3.5" /> Amount
+                        </h4>
+                        <div className="grid grid-cols-5 gap-4 bg-[#252627] rounded-lg p-4">
                             <div>
-                                <p className="text-xs text-gray-500">Currency</p>
-                                <span className="inline-flex items-center justify-center h-7 w-7 rounded bg-blue-600 text-white text-sm font-bold">
-                                    {getCurrencySymbol(invoice.currency)}
+                                <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
+                                <p className="text-lg text-white font-bold font-mono">{formatCurrency(invoice.amount, invoice.currency || "EUR")}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-0.5">Currency</p>
+                                <span className="inline-flex items-center justify-center h-7 w-7 rounded bg-blue-600 text-white text-sm font-bold mt-0.5">
+                                    {currSym(invoice.currency)}
                                 </span>
                             </div>
+                            <Field label="Paid Amount" value={invoice.paidAmount ? formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR") : "-"} highlight={invoice.paidAmount ? "text-emerald-400 font-medium" : "text-white"} />
+                            <Field label="Paid Currency" value={invoice.paidCurrency || "-"} />
+                            <Field label="EUR Exchange" value={invoice.eurExchange ? String(invoice.eurExchange) : "-"} mono />
                         </div>
                     </div>
 
-                    {/* Row 3: Benefit Date + Due Date */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center gap-3">
-                            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                    {/* ═══ Section: Provider & Account ═══ */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Building2 className="h-3.5 w-3.5" /> Provider & Financial Account
+                        </h4>
+                        <div className="grid grid-cols-3 gap-4 bg-[#252627] rounded-lg p-4">
                             <div>
-                                <p className="text-xs text-gray-500">Benefit Date</p>
-                                <p className="text-sm text-white">{formatDate(invoice.benefitDate)}</p>
+                                <p className="text-xs text-gray-500 mb-0.5">Provider</p>
+                                <p className="text-sm text-white font-medium">{invoice.providerName || invoice.customer}</p>
+                                {invoice.customer && invoice.providerName && invoice.customer !== invoice.providerName && (
+                                    <p className="text-xs text-gray-600 font-mono">{invoice.customer}</p>
+                                )}
                             </div>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
                             <div>
-                                <p className="text-xs text-gray-500">Due Date</p>
-                                <p className="text-sm text-white">{formatDate(invoice.dueDate)}</p>
+                                <p className="text-xs text-gray-500 mb-0.5">Financial Account</p>
+                                <p className="text-sm text-white">{invoice.financialAccountName || "-"}</p>
+                                {invoice.faCode && <p className="text-xs text-gray-600 font-mono">{invoice.faCode}</p>}
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-0.5">Course</p>
+                                <p className="text-sm text-white">{invoice.courseName || invoice.courseCode || "-"}</p>
                             </div>
                         </div>
                     </div>
 
-                    {/* PAYMENT CONTROL */}
-                    <div className="bg-[#252627] rounded-lg p-4 space-y-3">
-                        <div className="flex items-center gap-2 mb-3">
-                            <CreditCard className="h-4 w-4 text-gray-400" />
-                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment Control</h4>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
+                    {/* ═══ Section: Classification ═══ */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Layers className="h-3.5 w-3.5" /> Classification
+                        </h4>
+                        <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
                             <div>
-                                <p className="text-xs text-gray-500">Schedule Date</p>
-                                <p className="text-sm text-white">{formatDate(invoice.scheduleDate)}</p>
+                                <p className="text-xs text-gray-500 mb-0.5">Department</p>
+                                <p className="text-sm text-white">{invoice.costCenterName || invoice.costCenterCode || "-"}</p>
+                                {invoice.costCenterCode && invoice.costCenterName && <p className="text-xs text-gray-600 font-mono">{invoice.costCenterCode}</p>}
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500">Payment Date</p>
-                                <p className="text-sm text-white">{formatDate(invoice.paymentDate)}</p>
+                                <p className="text-xs text-gray-500 mb-0.5">Sub-Department</p>
+                                <p className="text-sm text-white">{invoice.subDepartmentName || invoice.subDepartmentCode || "-"}</p>
                             </div>
-                            {invoice.paidAmount != null && invoice.paidAmount !== 0 && (
-                                <>
-                                    <div>
-                                        <p className="text-xs text-gray-500">Paid Amount</p>
-                                        <p className="text-sm text-emerald-400 font-medium">{formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR")}</p>
-                                    </div>
-                                    <div>
-                                        <p className="text-xs text-gray-500">Paid Currency</p>
-                                        <p className="text-sm text-white">{invoice.paidCurrency || invoice.currency || "EUR"}</p>
-                                    </div>
-                                </>
-                            )}
-                            {invoice.bankAccountCode && (
-                                <div>
-                                    <p className="text-xs text-gray-500">Bank Account</p>
-                                    <p className="text-sm text-white">{invoice.bankAccountCode}</p>
-                                </div>
-                            )}
-                            {invoice.paymentMethodCode && (
-                                <div>
-                                    <p className="text-xs text-gray-500">Payment Method</p>
-                                    <p className="text-sm text-white">{invoice.paymentMethodCode}</p>
-                                </div>
-                            )}
+                            <div>
+                                <p className="text-xs text-gray-500 mb-0.5">Cost Type</p>
+                                <p className="text-sm text-white">{invoice.costTypeName || invoice.costTypeCode || "-"}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500 mb-0.5">Dep Cost Type</p>
+                                <p className="text-sm text-white">{invoice.depCostTypeName || invoice.depCostTypeCode || "-"}</p>
+                            </div>
                         </div>
-                    </div>
-
-                    {/* Classification */}
-                    <div className="bg-[#252627] rounded-lg p-4 space-y-3">
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Classification</h4>
-                        <div className="flex flex-wrap gap-2">
-                            <Badge className="text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">{invoice.orderType}</Badge>
-                            {invoice.faCode && <Badge className="text-xs bg-gray-600/30 text-gray-300 border-gray-500/30 font-mono">{invoice.faCode}</Badge>}
-                            {invoice.costCenterCode && <Badge className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">{invoice.costCenterCode}</Badge>}
-                            {invoice.costTypeCode && <Badge className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30">{invoice.costTypeCode}</Badge>}
-                            {invoice.dreImpact && <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">DRE</Badge>}
-                            {invoice.cashImpact && <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Cash</Badge>}
+                        <div className="flex flex-wrap gap-2 mt-3">
+                            {invoice.dreImpact && <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">DRE Impact</Badge>}
+                            {invoice.cashImpact && <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Cash Impact</Badge>}
                             {invoice.isIntercompany && <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">Intercompany</Badge>}
                         </div>
                     </div>
 
-                    {/* Description / Notes */}
+                    {/* ═══ Section: Payment & Reconciliation ═══ */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <CreditCard className="h-3.5 w-3.5" /> Payment & Reconciliation
+                        </h4>
+                        <div className="bg-[#252627] rounded-lg p-4 space-y-4">
+                            <div className="grid grid-cols-4 gap-4">
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Bank Account</p>
+                                    <p className="text-sm text-white font-medium">{invoice.bankAccountName || invoice.bankAccountCode || "-"}</p>
+                                    {invoice.bankAccountCode && invoice.bankAccountName && <p className="text-xs text-gray-600 font-mono">{invoice.bankAccountCode}</p>}
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Payment Method</p>
+                                    <p className="text-sm text-white">{invoice.paymentMethodName || invoice.paymentMethodCode || "-"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Payment Status</p>
+                                    <Badge className={`text-xs ${paymentStatusColor}`}>
+                                        {paymentStatusLabel.replace(/_/g, " ")}
+                                    </Badge>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Invoice Status</p>
+                                    <p className="text-sm text-white">{invoice.invoiceStatus?.replace(/_/g, " ") || "-"}</p>
+                                </div>
+                            </div>
+
+                            {/* Reconciliation Summary */}
+                            <div className="border-t border-gray-700 pt-3">
+                                <div className="flex items-center gap-3">
+                                    {isPaid ? (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400"></div>
+                                            <span className="text-sm text-emerald-300 font-medium">
+                                                Paid {invoice.bankAccountName ? `via ${invoice.bankAccountName}` : ""} {invoice.paymentDate ? `on ${fmt(invoice.paymentDate)}` : ""}
+                                            </span>
+                                            {invoice.paidAmount ? (
+                                                <span className="text-sm text-emerald-400 font-mono font-bold ml-2">
+                                                    {formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR")}
+                                                </span>
+                                            ) : null}
+                                        </div>
+                                    ) : isScheduled ? (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                                            <div className="h-2.5 w-2.5 rounded-full bg-blue-400"></div>
+                                            <span className="text-sm text-blue-300 font-medium">
+                                                Scheduled for {fmt(invoice.scheduleDate)} {invoice.bankAccountName ? `via ${invoice.bankAccountName}` : ""}
+                                            </span>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg">
+                                            <div className="h-2.5 w-2.5 rounded-full bg-gray-500"></div>
+                                            <span className="text-sm text-gray-400">No payment scheduled</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* ═══ Section: Description & Notes ═══ */}
                     {(invoice.description || invoice.notes) && (
-                        <div className="bg-[#2a2b2d] rounded-lg p-4 space-y-2">
-                            {invoice.description && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Description</p>
-                                    <p className="text-sm text-gray-300">{invoice.description}</p>
-                                </div>
-                            )}
-                            {invoice.notes && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Notes</p>
-                                    <p className="text-sm text-gray-300">{invoice.notes}</p>
-                                </div>
-                            )}
+                        <div>
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Description & Notes</h4>
+                            <div className="bg-[#2a2b2d] rounded-lg p-4 space-y-3">
+                                {invoice.description && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Description</p>
+                                        <p className="text-sm text-gray-300">{invoice.description}</p>
+                                    </div>
+                                )}
+                                {invoice.notes && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Internal Notes</p>
+                                        <p className="text-sm text-gray-300">{invoice.notes}</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
-                    {/* Attachments / PDF Links */}
-                    <div className="bg-[#252627] rounded-lg p-4 space-y-2">
-                        <div className="flex items-center gap-2 mb-2">
-                            <Paperclip className="h-4 w-4 text-gray-400" />
-                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Attachments</h4>
+                    {/* ═══ Section: Attachments ═══ */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <Paperclip className="h-3.5 w-3.5" /> Attachments & Documents
+                        </h4>
+                        <div className="bg-[#252627] rounded-lg p-4">
+                            {loadingAttachments ? (
+                                <div className="flex items-center gap-2 py-2">
+                                    <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                                    <span className="text-xs text-gray-500">Loading attachments...</span>
+                                </div>
+                            ) : attachments.length > 0 ? (
+                                <div className="grid grid-cols-2 gap-2">
+                                    {attachments.map((att) => (
+                                        <a
+                                            key={att.id}
+                                            href={att.url}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="flex items-center gap-2 px-3 py-2.5 bg-[#1e1f21] rounded-lg hover:bg-gray-700 transition-colors group"
+                                        >
+                                            <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                                            <span className="text-sm text-blue-300 group-hover:text-blue-200 truncate flex-1">{att.file_name}</span>
+                                            <ExternalLink className="h-3 w-3 text-gray-500 group-hover:text-blue-400 flex-shrink-0" />
+                                        </a>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs text-gray-500 py-1">No attachments found</p>
+                            )}
                         </div>
-                        {loadingAttachments ? (
-                            <div className="flex items-center gap-2 py-2">
-                                <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
-                                <span className="text-xs text-gray-500">Loading...</span>
-                            </div>
-                        ) : attachments.length > 0 ? (
-                            <div className="space-y-2">
-                                {attachments.map((att) => (
-                                    <a
-                                        key={att.id}
-                                        href={att.url}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="flex items-center gap-2 px-3 py-2 bg-[#1e1f21] rounded hover:bg-gray-700 transition-colors group"
-                                    >
-                                        <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                                        <span className="text-sm text-blue-300 group-hover:text-blue-200 truncate flex-1">{att.file_name}</span>
-                                        <ExternalLink className="h-3 w-3 text-gray-500 group-hover:text-blue-400 flex-shrink-0" />
-                                    </a>
-                                ))}
-                            </div>
-                        ) : (
-                            <p className="text-xs text-gray-500 py-1">No attachments found</p>
-                        )}
                     </div>
                 </div>
             </DialogContent>
