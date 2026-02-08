@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -64,7 +63,7 @@ interface HomogenizationStats {
     name_conflicts: number;
     email_conflicts: number;
     cross_ref_enriched: number;
-    hubspot_records_checked: number;
+    external_records_checked: number;
     customers_without_email: number;
 }
 
@@ -109,12 +108,10 @@ export default function CustomersPage() {
     async function loadCustomers() {
         try {
             setLoading(true);
-            const { data, error } = await supabase
-                .from("customers")
-                .select("*")
-                .order("name");
-            if (error) throw error;
-            setCustomers(data || []);
+            const res = await fetch("/api/customers");
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error);
+            setCustomers(result.data || []);
         } catch (error: any) {
             toast({ title: "Error", description: error.message, variant: "destructive" });
         } finally {
@@ -185,24 +182,8 @@ export default function CustomersPage() {
                 return;
             }
 
-            let code = formData.code;
-            if (!editingCustomer) {
-                const { data: existing } = await supabase
-                    .from("customers")
-                    .select("code")
-                    .like("code", `${formData.country}-CU%`)
-                    .order("code", { ascending: false })
-                    .limit(1);
-                if (existing && existing.length > 0) {
-                    const lastNumber = parseInt(existing[0].code.split("-CU")[1]) || 0;
-                    code = `${formData.country}-CU${String(lastNumber + 1).padStart(5, "0")}`;
-                } else {
-                    code = `${formData.country}-CU00001`;
-                }
-            }
-
             const customerData = {
-                code,
+                code: editingCustomer?.code || "",
                 name: formData.name,
                 tax_id: formData.tax_id || null,
                 email: formData.email || null,
@@ -215,19 +196,16 @@ export default function CustomersPage() {
                 payment_terms: formData.payment_terms,
                 credit_limit: formData.credit_limit ? parseFloat(formData.credit_limit) : null,
                 notes: formData.notes || null,
-                is_active: true,
-                updated_at: new Date().toISOString(),
             };
 
-            if (editingCustomer) {
-                const { error } = await supabase.from("customers").update(customerData).eq("code", editingCustomer.code);
-                if (error) throw error;
-                toast({ title: "Customer updated successfully" });
-            } else {
-                const { error } = await supabase.from("customers").insert(customerData);
-                if (error) throw error;
-                toast({ title: "Customer created successfully" });
-            }
+            const res = await fetch("/api/customers", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ customer: customerData, isUpdate: !!editingCustomer }),
+            });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error);
+            toast({ title: editingCustomer ? "Customer updated successfully" : "Customer created successfully" });
             setIsFormOpen(false);
             loadCustomers();
         } catch (error: any) {
@@ -238,8 +216,9 @@ export default function CustomersPage() {
     async function handleDelete(customer: Customer) {
         if (!confirm(`Delete customer ${customer.name}?`)) return;
         try {
-            const { error } = await supabase.from("customers").delete().eq("code", customer.code);
-            if (error) throw error;
+            const res = await fetch(`/api/customers?code=${encodeURIComponent(customer.code)}`, { method: "DELETE" });
+            const result = await res.json();
+            if (!result.success) throw new Error(result.error);
             toast({ title: "Customer deleted successfully" });
             loadCustomers();
         } catch (error: any) {
@@ -350,14 +329,14 @@ export default function CustomersPage() {
                         </div>
                         {analysisResult.stats.cross_ref_enriched > 0 && (
                             <div className="flex items-center gap-2">
-                                <span className="text-gray-400">Enriched via HubSpot:</span>
+                                <span className="text-gray-400">Enriched via Cross-Ref:</span>
                                 <span className="text-green-400 font-medium">{analysisResult.stats.cross_ref_enriched}</span>
                             </div>
                         )}
-                        {analysisResult.stats.hubspot_records_checked > 0 && (
+                        {analysisResult.stats.external_records_checked > 0 && (
                             <div className="flex items-center gap-2">
-                                <span className="text-gray-400">Web Orders checked:</span>
-                                <span className="text-blue-400 font-medium">{analysisResult.stats.hubspot_records_checked}</span>
+                                <span className="text-gray-400">External records checked:</span>
+                                <span className="text-blue-400 font-medium">{analysisResult.stats.external_records_checked.toLocaleString()}</span>
                             </div>
                         )}
                         {analysisResult.stats.customers_without_email > 0 && (

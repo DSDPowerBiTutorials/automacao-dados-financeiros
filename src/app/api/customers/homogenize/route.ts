@@ -238,11 +238,20 @@ export async function GET() {
         }
 
         // ──────────────────────────────────────────────────
-        // CROSS-REFERENCE: Enrich from ar_invoices (HubSpot Web Orders)
-        // HubSpot data reliably has customer_email — use it to fill gaps
+        // CROSS-REFERENCE: Enrich from ALL revenue sources
+        // Sources: ar_invoices, braintree-api-revenue, hubspot, stripe-eur, stripe-usd
+        // These sources reliably have customer_email — use them to fill gaps
         // ──────────────────────────────────────────────────
         let crossRefEnriched = 0;
-        const arInvoices: { client_name: string | null; email: string | null; company_name: string | null }[] = [];
+        let totalExternalRecords = 0;
+
+        // Build unified lookup: normalized name → raw email
+        const externalEmailByName = new Map<string, string>();
+        const externalEmailByCompany = new Map<string, string>();
+        // Also keep raw email for display
+        const rawEmailLookup = new Map<string, string>();
+
+        // 1. ar_invoices table (HubSpot Web Orders → ar_invoices)
         {
             let arFrom = 0;
             const arBatch = 1000;
@@ -253,77 +262,105 @@ export async function GET() {
                     .not("email", "is", null)
                     .neq("email", "")
                     .range(arFrom, arFrom + arBatch - 1);
-                if (error) {
-                    console.error("Cross-reference ar_invoices error:", error);
-                    break;
-                }
+                if (error) { console.error("Cross-ref ar_invoices error:", error); break; }
                 if (!data || data.length === 0) break;
-                arInvoices.push(...data);
+                for (const ar of data) {
+                    if (!ar.email) continue;
+                    const normE = normalizeEmail(ar.email);
+                    rawEmailLookup.set(normE, ar.email);
+                    if (ar.client_name) {
+                        const normN = normalizeName(ar.client_name);
+                        if (normN && !externalEmailByName.has(normN)) externalEmailByName.set(normN, normE);
+                    }
+                    if (ar.company_name) {
+                        const normC = normalizeName(ar.company_name);
+                        if (normC && !externalEmailByCompany.has(normC)) externalEmailByCompany.set(normC, normE);
+                    }
+                }
+                totalExternalRecords += data.length;
                 if (data.length < arBatch) break;
                 arFrom += arBatch;
             }
         }
 
-        // Build a lookup: normalized name → email (from HubSpot/ar_invoices)
-        const hubspotEmailByName = new Map<string, string>();
-        const hubspotEmailByCompany = new Map<string, string>();
-        for (const ar of arInvoices) {
-            if (ar.email) {
-                const normE = normalizeEmail(ar.email);
-                if (ar.client_name) {
-                    const normN = normalizeName(ar.client_name);
-                    if (normN && !hubspotEmailByName.has(normN)) {
-                        hubspotEmailByName.set(normN, normE);
+        // 2. csv_rows from revenue sources with customer_email
+        const emailSources = ["braintree-api-revenue", "hubspot", "stripe-eur", "stripe-usd", "quickbooks-payments"];
+        for (const src of emailSources) {
+            let srcFrom = 0;
+            const srcBatch = 1000;
+            while (true) {
+                const { data, error } = await supabaseAdmin
+                    .from("csv_rows")
+                    .select("custom_data")
+                    .eq("source", src)
+                    .not("custom_data->>customer_email", "is", null)
+                    .neq("custom_data->>customer_email", "")
+                    .range(srcFrom, srcFrom + srcBatch - 1);
+                if (error) { console.error(`Cross-ref ${src} error:`, error); break; }
+                if (!data || data.length === 0) break;
+                for (const row of data) {
+                    const cd = row.custom_data || {};
+                    const email = String(cd.customer_email || cd.email || "").trim();
+                    if (!email) continue;
+                    const normE = normalizeEmail(email);
+                    rawEmailLookup.set(normE, email);
+                    const name = String(cd.customer_name || cd.customer_firstname && cd.customer_lastname
+                        ? `${cd.customer_firstname} ${cd.customer_lastname}`.trim()
+                        : cd.dealname || "").trim();
+                    if (name) {
+                        const normN = normalizeName(name);
+                        if (normN && !externalEmailByName.has(normN)) externalEmailByName.set(normN, normE);
+                    }
+                    const company = String(cd.company_name || cd.company || "").trim();
+                    if (company) {
+                        const normC = normalizeName(company);
+                        if (normC && !externalEmailByCompany.has(normC)) externalEmailByCompany.set(normC, normE);
                     }
                 }
-                if (ar.company_name) {
-                    const normC = normalizeName(ar.company_name);
-                    if (normC && !hubspotEmailByCompany.has(normC)) {
-                        hubspotEmailByCompany.set(normC, normE);
-                    }
-                }
+                totalExternalRecords += data.length;
+                if (data.length < srcBatch) break;
+                srcFrom += srcBatch;
             }
         }
 
-        // Enrich noEmailNameMap groups with HubSpot emails (exact match first)
+        console.log(`📧 Cross-reference: loaded ${externalEmailByName.size} name→email and ${externalEmailByCompany.size} company→email mappings from ${totalExternalRecords} external records`);
+
+        // Enrich noEmailNameMap groups with external emails
         const noEmailKeys = [...noEmailNameMap.keys()];
         for (const normName of noEmailKeys) {
             const group = noEmailNameMap.get(normName)!;
             let foundEmail: string | null = null;
 
             // 1. Exact normalized name match
-            if (hubspotEmailByName.has(normName)) {
-                foundEmail = hubspotEmailByName.get(normName)!;
+            if (externalEmailByName.has(normName)) {
+                foundEmail = externalEmailByName.get(normName)!;
             }
 
             // 2. Try company name match
             if (!foundEmail) {
                 for (const [rawN] of group.rawNames) {
                     const normC = normalizeName(rawN);
-                    if (hubspotEmailByCompany.has(normC)) {
-                        foundEmail = hubspotEmailByCompany.get(normC)!;
+                    if (externalEmailByCompany.has(normC)) {
+                        foundEmail = externalEmailByCompany.get(normC)!;
                         break;
                     }
                 }
             }
 
-            // 3. Fuzzy name match against HubSpot names (>= 85%)
+            // 3. Fuzzy name match (>= 85%)
             if (!foundEmail) {
                 let bestScore = 0;
-                for (const [hubName, hubEmail] of hubspotEmailByName) {
-                    const score = nameSimilarity(normName, hubName);
+                for (const [extName, extEmail] of externalEmailByName) {
+                    const score = nameSimilarity(normName, extName);
                     if (score > bestScore && score >= 85) {
                         bestScore = score;
-                        foundEmail = hubEmail;
+                        foundEmail = extEmail;
                     }
                 }
             }
 
             if (foundEmail) {
-                // Move this group to emailMap with the found email
-                const rawEmailStr = arInvoices.find(
-                    ar => normalizeEmail(ar.email) === foundEmail
-                )?.email || foundEmail;
+                const rawEmailStr = rawEmailLookup.get(foundEmail) || foundEmail;
 
                 if (!emailMap.has(foundEmail)) {
                     emailMap.set(foundEmail, {
@@ -344,10 +381,7 @@ export async function GET() {
             }
         }
 
-        // Also enrich emailMap groups that have email but check if HubSpot has a better name
-        // (skip this for now - email is the priority)
-
-        console.log(`📧 Cross-reference: enriched ${crossRefEnriched} customers with HubSpot emails. AR invoices checked: ${arInvoices.length}`);
+        console.log(`📧 Cross-reference: enriched ${crossRefEnriched} customers with emails from ${totalExternalRecords} external records`);
 
         // Build final customer groups
         const customerGroups: CustomerGroup[] = [];
@@ -423,7 +457,7 @@ export async function GET() {
                 name_conflicts: nameConflicts.length,
                 email_conflicts: emailConflicts.length,
                 cross_ref_enriched: crossRefEnriched,
-                hubspot_records_checked: arInvoices.length,
+                external_records_checked: totalExternalRecords,
                 customers_without_email: withoutEmail.length,
             },
             customers: customerGroups,

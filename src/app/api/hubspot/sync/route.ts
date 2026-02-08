@@ -668,6 +668,13 @@ export async function POST(request: Request) {
 
         console.log(`✅ Sincronização concluída! ${toUpdate.length} atualizados, ${toInsert.length} novos, ${reconciledCount} reconciliações preservadas`);
 
+        // Trigger customer master data sync after successful web orders sync
+        try {
+            const custUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/customers/sync`;
+            fetch(custUrl, { method: "POST" }).catch(() => { }); // Fire and forget
+            console.log("👥 Customer sync triggered after HubSpot sync");
+        } catch (_) { /* non-blocking */ }
+
         return NextResponse.json({
             success: true,
             message: `${rows.length} deals sincronizados (${reconciledCount} reconciliações preservadas, ${withFinancialAccount} com Financial Account)`,

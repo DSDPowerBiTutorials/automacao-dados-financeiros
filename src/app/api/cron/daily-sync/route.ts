@@ -8,6 +8,8 @@
  * 2. GoCardless - Últimos 30 dias
  * 3. HubSpot - Deals desde 2024
  * 4. Products - Novos produtos do HubSpot
+ * 4b. AR Invoices from HubSpot
+ * 4c. Customer Master Data Sync (cross-ref all sources)
  * 5. Stripe (EUR + USD) - Últimos 7 dias
  * 6. QuickBooks (USD) - Últimos 30 dias (Escopo EUA)
  * 7. Reconciliação Automática - AR Invoices x Braintree/Stripe/GoCardless
@@ -270,6 +272,33 @@ export async function GET(req: NextRequest) {
     } catch (error: any) {
         results.push({
             name: "AR Invoices from HubSpot",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // 4c. CUSTOMER MASTER DATA SYNC
+    // ============================================
+    try {
+        const custStart = Date.now();
+        console.log("\n👥 [4c] Syncing Customer Master Data...");
+        const custUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/customers/sync`;
+        const response = await fetch(custUrl, { method: "POST" });
+        const result = await response.json();
+        results.push({
+            name: "Customer Sync",
+            success: result.success === true,
+            message: result.success ? result.message : result.error,
+            count: (result.stats?.customers_created || 0) + (result.stats?.customers_updated || 0),
+            duration_ms: Date.now() - custStart,
+            error: result.error,
+        });
+    } catch (error: any) {
+        results.push({
+            name: "Customer Sync",
             success: false,
             message: "Failed",
             duration_ms: Date.now() - startTime,
