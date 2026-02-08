@@ -24,7 +24,14 @@ import {
     Hash,
     CreditCard,
     Paperclip,
+    Pencil,
+    Save,
+    XCircle,
+    History,
+    ArrowLeft,
+    Check,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -156,13 +163,53 @@ const getYTD = (data: MonthlyData, upToMonth: number): number => {
 };
 
 // ── Invoice Detail Popup (dark theme, full-width like the drilldown popup) ──
-function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransaction; onClose: () => void }) {
+// Provider history invoice type
+interface ProviderHistoryInvoice {
+    id: string;
+    invoiceDate: string | null;
+    benefitDate: string | null;
+    dueDate: string | null;
+    scheduleDate: string | null;
+    paymentDate: string | null;
+    description: string;
+    amount: number;
+    currency: string;
+    invoiceNumber: string | null;
+    invoiceType: string | null;
+    faCode: string | null;
+    faName: string | null;
+    bankAccountCode: string | null;
+    bankAccountName: string | null;
+    paymentStatus: string | null;
+    paidAmount: number | null;
+    paidCurrency: string | null;
+    dreImpact: boolean | null;
+    cashImpact: boolean | null;
+}
+
+function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: DrilldownTransaction; onClose: () => void }) {
+    const [invoice, setInvoice] = useState(initialInvoice);
     const [attachments, setAttachments] = useState<{ id: number; file_name: string; url: string }[]>([]);
     const [loadingAttachments, setLoadingAttachments] = useState(false);
+
+    // Edit mode
+    const [isEditing, setIsEditing] = useState(false);
+    const [editFields, setEditFields] = useState<Record<string, string | number | boolean | null>>({});
+    const [saving, setSaving] = useState(false);
+    const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+    // Provider history
+    const [providerHistory, setProviderHistory] = useState<ProviderHistoryInvoice[]>([]);
+    const [loadingHistory, setLoadingHistory] = useState(false);
+    const [showHistory, setShowHistory] = useState(false);
+    const [historyViewInvoice, setHistoryViewInvoice] = useState<ProviderHistoryInvoice | null>(null);
 
     useEffect(() => {
         if (invoice.source === "invoices" && invoice.id) {
             loadAttachments();
+        }
+        if (invoice.customer) {
+            loadProviderHistory();
         }
     }, [invoice.id]);
 
@@ -176,6 +223,120 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
             console.error("Failed to load attachments:", e);
         } finally {
             setLoadingAttachments(false);
+        }
+    }
+
+    async function loadProviderHistory() {
+        if (!invoice.customer) return;
+        setLoadingHistory(true);
+        try {
+            const res = await fetch(`/api/pnl/provider-history?provider=${encodeURIComponent(invoice.customer)}`);
+            const data = await res.json();
+            if (data.invoices) setProviderHistory(data.invoices);
+        } catch (e) {
+            console.error("Failed to load provider history:", e);
+        } finally {
+            setLoadingHistory(false);
+        }
+    }
+
+    // ── Edit helpers ──
+    function startEditing() {
+        setEditFields({
+            invoiceNumber: invoice.invoiceNumber || "",
+            invoiceDate: invoice.invoiceDate || "",
+            benefitDate: invoice.benefitDate || "",
+            dueDate: invoice.dueDate || "",
+            scheduleDate: invoice.scheduleDate || "",
+            paymentDate: invoice.paymentDate || "",
+            invoiceAmount: invoice.amount || 0,
+            currency: invoice.currency || "EUR",
+            paidAmount: invoice.paidAmount || 0,
+            paidCurrency: invoice.paidCurrency || "",
+            eurExchange: invoice.eurExchange || 0,
+            description: invoice.description || "",
+            notes: invoice.notes || "",
+            providerCode: invoice.customer || "",
+            bankAccountCode: invoice.bankAccountCode || "",
+            paymentMethodCode: invoice.paymentMethodCode || "",
+            costCenterCode: invoice.costCenterCode || "",
+            costTypeCode: invoice.costTypeCode || "",
+            depCostTypeCode: invoice.depCostTypeCode || "",
+            courseCode: invoice.courseCode || "",
+            financialAccountCode: invoice.faCode || "",
+            financialAccountName: invoice.financialAccountName || "",
+            entryType: invoice.entryType || "",
+            dreImpact: invoice.dreImpact ?? false,
+            cashImpact: invoice.cashImpact ?? false,
+            isIntercompany: invoice.isIntercompany ?? false,
+            paymentStatus: invoice.paymentStatus || "",
+        });
+        setIsEditing(true);
+        setSaveMessage(null);
+    }
+
+    function cancelEditing() {
+        setIsEditing(false);
+        setEditFields({});
+        setSaveMessage(null);
+    }
+
+    function updateField(key: string, value: string | number | boolean | null) {
+        setEditFields(prev => ({ ...prev, [key]: value }));
+    }
+
+    async function saveChanges() {
+        setSaving(true);
+        setSaveMessage(null);
+        try {
+            const res = await fetch("/api/pnl/invoice-update", {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ id: invoice.id, ...editFields }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                // Update local invoice state with new values
+                setInvoice(prev => ({
+                    ...prev,
+                    invoiceNumber: String(editFields.invoiceNumber || ""),
+                    invoiceDate: String(editFields.invoiceDate || ""),
+                    benefitDate: String(editFields.benefitDate || ""),
+                    dueDate: String(editFields.dueDate || ""),
+                    scheduleDate: String(editFields.scheduleDate || ""),
+                    paymentDate: String(editFields.paymentDate || ""),
+                    amount: Number(editFields.invoiceAmount) || prev.amount,
+                    currency: String(editFields.currency || "EUR"),
+                    paidAmount: Number(editFields.paidAmount) || undefined,
+                    paidCurrency: String(editFields.paidCurrency || ""),
+                    eurExchange: Number(editFields.eurExchange) || undefined,
+                    description: String(editFields.description || ""),
+                    notes: String(editFields.notes || ""),
+                    customer: String(editFields.providerCode || prev.customer),
+                    bankAccountCode: String(editFields.bankAccountCode || ""),
+                    paymentMethodCode: String(editFields.paymentMethodCode || ""),
+                    costCenterCode: String(editFields.costCenterCode || ""),
+                    costTypeCode: String(editFields.costTypeCode || ""),
+                    depCostTypeCode: String(editFields.depCostTypeCode || ""),
+                    courseCode: String(editFields.courseCode || ""),
+                    faCode: String(editFields.financialAccountCode || prev.faCode),
+                    financialAccountName: String(editFields.financialAccountName || prev.financialAccountName),
+                    entryType: String(editFields.entryType || ""),
+                    dreImpact: Boolean(editFields.dreImpact),
+                    cashImpact: Boolean(editFields.cashImpact),
+                    isIntercompany: Boolean(editFields.isIntercompany),
+                    paymentStatus: String(editFields.paymentStatus || ""),
+                }));
+                setIsEditing(false);
+                setSaveMessage({ type: "success", text: "Invoice atualizada com sucesso!" });
+                setTimeout(() => setSaveMessage(null), 3000);
+            } else {
+                setSaveMessage({ type: "error", text: data.error || "Erro ao salvar" });
+            }
+        } catch (e) {
+            setSaveMessage({ type: "error", text: "Erro de conexão" });
+        } finally {
+            setSaving(false);
         }
     }
 
@@ -200,13 +361,159 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
             ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
             : "bg-gray-600/30 text-gray-400 border-gray-500/30";
 
-    // Field display helper
-    const Field = ({ label, value, highlight, mono }: { label: string; value?: string | null; highlight?: string; mono?: boolean }) => (
-        <div>
-            <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-            <p className={`text-sm ${highlight || "text-white"} ${mono ? "font-mono" : ""}`}>{value || "-"}</p>
-        </div>
-    );
+    // Field display helper (supports editing)
+    const Field = ({ label, value, fieldKey, highlight, mono, type }: { label: string; value?: string | null; fieldKey?: string; highlight?: string; mono?: boolean; type?: "text" | "date" | "number" }) => {
+        if (isEditing && fieldKey) {
+            const inputType = type || "text";
+            return (
+                <div>
+                    <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+                    <Input
+                        type={inputType}
+                        value={String(editFields[fieldKey] ?? "")}
+                        onChange={(e) => updateField(fieldKey, inputType === "number" ? parseFloat(e.target.value) || 0 : e.target.value)}
+                        className="h-8 text-sm bg-[#1e1f21] border-gray-600 text-white focus:border-blue-500"
+                    />
+                </div>
+            );
+        }
+        return (
+            <div>
+                <p className="text-xs text-gray-500 mb-0.5">{label}</p>
+                <p className={`text-sm ${highlight || "text-white"} ${mono ? "font-mono" : ""}`}>{value || "-"}</p>
+            </div>
+        );
+    };
+
+    // Toggle field helper for booleans
+    const ToggleField = ({ label, fieldKey, value }: { label: string; fieldKey: string; value?: boolean }) => {
+        if (isEditing) {
+            const isActive = Boolean(editFields[fieldKey]);
+            return (
+                <button
+                    onClick={() => updateField(fieldKey, !isActive)}
+                    className={`text-xs px-2.5 py-1.5 rounded border transition-colors ${isActive
+                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                        : "bg-gray-700/50 text-gray-500 border-gray-600"
+                        }`}
+                >
+                    {isActive && <Check className="h-3 w-3 inline mr-1" />}
+                    {label}
+                </button>
+            );
+        }
+        if (!value) return null;
+        return (
+            <Badge className={`text-xs ${label === "DRE Impact" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                : label === "Cash Impact" ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
+                    : "bg-red-500/20 text-red-300 border-red-500/30"
+                }`}>{label}</Badge>
+        );
+    };
+
+    // ── History detail view for a historical invoice ──
+    if (historyViewInvoice) {
+        return (
+            <Dialog open onOpenChange={(open) => !open && onClose()}>
+                <DialogContent
+                    className="max-w-none max-h-[90vh] p-0 bg-[#1e1f21] border-gray-700 flex flex-col overflow-hidden"
+                    style={{ width: '80vw' }}
+                >
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 flex-shrink-0">
+                        <div className="flex items-center gap-3">
+                            <button onClick={() => setHistoryViewInvoice(null)} className="text-gray-400 hover:text-white transition-colors">
+                                <ArrowLeft className="h-5 w-5" />
+                            </button>
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">Invoice do Histórico</h3>
+                                <p className="text-xs text-gray-500">
+                                    {historyViewInvoice.invoiceNumber || "Sem número"} • {historyViewInvoice.faName || historyViewInvoice.faCode || "-"}
+                                </p>
+                            </div>
+                        </div>
+                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white h-8 w-8 p-0">
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                    <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
+                        {/* Dates */}
+                        <div>
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <Calendar className="h-3.5 w-3.5" /> Dates
+                            </h4>
+                            <div className="grid grid-cols-5 gap-4 bg-[#252627] rounded-lg p-4">
+                                <div><p className="text-xs text-gray-500 mb-0.5">Invoice Date</p><p className="text-sm text-white">{fmt(historyViewInvoice.invoiceDate)}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-0.5">Benefit Date</p><p className="text-sm text-white">{fmt(historyViewInvoice.benefitDate)}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-0.5">Due Date</p><p className="text-sm text-white">{fmt(historyViewInvoice.dueDate)}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-0.5">Schedule Date</p><p className="text-sm text-white">{fmt(historyViewInvoice.scheduleDate)}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-0.5">Payment Date</p><p className="text-sm text-white font-medium">{fmt(historyViewInvoice.paymentDate)}</p></div>
+                            </div>
+                        </div>
+                        {/* Amount */}
+                        <div>
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <DollarSign className="h-3.5 w-3.5" /> Amount
+                            </h4>
+                            <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
+                                    <p className="text-lg text-white font-bold font-mono">{formatCurrency(historyViewInvoice.amount, historyViewInvoice.currency || "EUR")}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Currency</p>
+                                    <span className="inline-flex items-center justify-center h-7 w-7 rounded bg-blue-600 text-white text-sm font-bold mt-0.5">
+                                        {currSym(historyViewInvoice.currency)}
+                                    </span>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Paid Amount</p>
+                                    <p className="text-sm text-emerald-400 font-medium">{historyViewInvoice.paidAmount ? formatCurrency(historyViewInvoice.paidAmount, historyViewInvoice.paidCurrency || "EUR") : "-"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Payment Status</p>
+                                    <p className="text-sm text-white">{historyViewInvoice.paymentStatus?.replace(/_/g, " ") || "-"}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {/* Classification */}
+                        <div>
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <Layers className="h-3.5 w-3.5" /> Classification
+                            </h4>
+                            <div className="grid grid-cols-3 gap-4 bg-[#252627] rounded-lg p-4">
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Type</p>
+                                    <p className="text-sm text-white">{historyViewInvoice.invoiceType || "-"}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Financial Account</p>
+                                    <p className="text-sm text-white">{historyViewInvoice.faName || "-"}</p>
+                                    {historyViewInvoice.faCode && <p className="text-xs text-gray-600 font-mono">{historyViewInvoice.faCode}</p>}
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Bank Account</p>
+                                    <p className="text-sm text-white">{historyViewInvoice.bankAccountName || historyViewInvoice.bankAccountCode || "-"}</p>
+                                </div>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {historyViewInvoice.dreImpact && <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">DRE Impact</Badge>}
+                                {historyViewInvoice.cashImpact && <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Cash Impact</Badge>}
+                            </div>
+                        </div>
+                        {/* Description */}
+                        {historyViewInvoice.description && (
+                            <div>
+                                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Description</h4>
+                                <div className="bg-[#2a2b2d] rounded-lg p-4">
+                                    <p className="text-sm text-gray-300">{historyViewInvoice.description}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </DialogContent>
+            </Dialog>
+        );
+    }
 
     return (
         <Dialog open onOpenChange={(open) => !open && onClose()}>
@@ -231,6 +538,38 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
                         </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Save message */}
+                        {saveMessage && (
+                            <span className={`text-xs px-2 py-1 rounded ${saveMessage.type === "success" ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"}`}>
+                                {saveMessage.text}
+                            </span>
+                        )}
+                        {/* Edit / Save / Cancel buttons */}
+                        {invoice.source === "invoices" && !isEditing && (
+                            <Button variant="ghost" size="sm" onClick={startEditing} className="text-gray-400 hover:text-blue-400 gap-1.5 text-xs">
+                                <Pencil className="h-3.5 w-3.5" /> Editar
+                            </Button>
+                        )}
+                        {isEditing && (
+                            <>
+                                <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-gray-400 hover:text-red-400 gap-1 text-xs">
+                                    <XCircle className="h-3.5 w-3.5" /> Cancelar
+                                </Button>
+                                <Button size="sm" onClick={saveChanges} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white gap-1 text-xs">
+                                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                    Salvar
+                                </Button>
+                            </>
+                        )}
+                        {/* History toggle */}
+                        <Button
+                            variant="ghost" size="sm"
+                            onClick={() => setShowHistory(!showHistory)}
+                            className={`gap-1.5 text-xs ${showHistory ? "text-blue-400" : "text-gray-400 hover:text-blue-400"}`}
+                        >
+                            <History className="h-3.5 w-3.5" />
+                            Histórico ({providerHistory.length})
+                        </Button>
                         <Badge className={`text-xs ${paymentStatusColor}`}>
                             {paymentStatusLabel.replace(/_/g, " ")}
                         </Badge>
@@ -249,9 +588,9 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
                             <FileText className="h-3.5 w-3.5" /> Invoice Identification
                         </h4>
                         <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
-                            <Field label="Invoice Nº" value={invoice.invoiceNumber} mono />
+                            <Field label="Invoice Nº" value={invoice.invoiceNumber} fieldKey="invoiceNumber" mono />
                             <Field label="Invoice Type" value={invoice.orderType} />
-                            <Field label="Entry Type" value={invoice.entryType} />
+                            <Field label="Entry Type" value={invoice.entryType} fieldKey="entryType" />
                             <Field label="Scope" value={invoice.scope} />
                         </div>
                     </div>
@@ -263,11 +602,11 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
                         </h4>
                         <div className="grid grid-cols-6 gap-4 bg-[#252627] rounded-lg p-4">
                             <Field label="Input Date" value={fmt(invoice.inputDate)} />
-                            <Field label="Invoice Date" value={fmt(invoice.invoiceDate)} />
-                            <Field label="Benefit Date" value={fmt(invoice.benefitDate)} />
-                            <Field label="Due Date" value={fmt(invoice.dueDate)} />
-                            <Field label="Schedule Date" value={fmt(invoice.scheduleDate)} highlight={isScheduled && !isPaid ? "text-blue-300" : "text-white"} />
-                            <Field label="Payment Date" value={fmt(invoice.paymentDate)} highlight={isPaid ? "text-emerald-400" : "text-white"} />
+                            <Field label="Invoice Date" value={isEditing ? undefined : fmt(invoice.invoiceDate)} fieldKey="invoiceDate" type="date" />
+                            <Field label="Benefit Date" value={isEditing ? undefined : fmt(invoice.benefitDate)} fieldKey="benefitDate" type="date" />
+                            <Field label="Due Date" value={isEditing ? undefined : fmt(invoice.dueDate)} fieldKey="dueDate" type="date" />
+                            <Field label="Schedule Date" value={isEditing ? undefined : fmt(invoice.scheduleDate)} fieldKey="scheduleDate" type="date" highlight={isScheduled && !isPaid ? "text-blue-300" : "text-white"} />
+                            <Field label="Payment Date" value={isEditing ? undefined : fmt(invoice.paymentDate)} fieldKey="paymentDate" type="date" highlight={isPaid ? "text-emerald-400" : "text-white"} />
                         </div>
                     </div>
 
@@ -277,19 +616,22 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
                             <DollarSign className="h-3.5 w-3.5" /> Amount
                         </h4>
                         <div className="grid grid-cols-5 gap-4 bg-[#252627] rounded-lg p-4">
-                            <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
-                                <p className="text-lg text-white font-bold font-mono">{formatCurrency(invoice.amount, invoice.currency || "EUR")}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Currency</p>
-                                <span className="inline-flex items-center justify-center h-7 w-7 rounded bg-blue-600 text-white text-sm font-bold mt-0.5">
-                                    {currSym(invoice.currency)}
-                                </span>
-                            </div>
-                            <Field label="Paid Amount" value={invoice.paidAmount ? formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR") : "-"} highlight={invoice.paidAmount ? "text-emerald-400 font-medium" : "text-white"} />
-                            <Field label="Paid Currency" value={invoice.paidCurrency || "-"} />
-                            <Field label="EUR Exchange" value={invoice.eurExchange ? String(invoice.eurExchange) : "-"} mono />
+                            {isEditing ? (
+                                <Field label="Total Amount" fieldKey="invoiceAmount" type="number" />
+                            ) : (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
+                                    <p className="text-lg text-white font-bold font-mono">{formatCurrency(invoice.amount, invoice.currency || "EUR")}</p>
+                                </div>
+                            )}
+                            <Field label="Currency" value={invoice.currency || "EUR"} fieldKey="currency" />
+                            {isEditing ? (
+                                <Field label="Paid Amount" fieldKey="paidAmount" type="number" />
+                            ) : (
+                                <Field label="Paid Amount" value={invoice.paidAmount ? formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR") : "-"} highlight={invoice.paidAmount ? "text-emerald-400 font-medium" : "text-white"} />
+                            )}
+                            <Field label="Paid Currency" value={invoice.paidCurrency || "-"} fieldKey="paidCurrency" />
+                            <Field label="EUR Exchange" value={isEditing ? undefined : (invoice.eurExchange ? String(invoice.eurExchange) : "-")} fieldKey="eurExchange" type="number" mono />
                         </div>
                     </div>
 
@@ -298,23 +640,38 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
                         <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Building2 className="h-3.5 w-3.5" /> Provider & Financial Account
                         </h4>
-                        <div className="grid grid-cols-3 gap-4 bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
                             <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Provider</p>
-                                <p className="text-sm text-white font-medium">{invoice.providerName || invoice.customer}</p>
-                                {invoice.customer && invoice.providerName && invoice.customer !== invoice.providerName && (
-                                    <p className="text-xs text-gray-600 font-mono">{invoice.customer}</p>
+                                {isEditing ? (
+                                    <Field label="Provider Code" fieldKey="providerCode" />
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-gray-500 mb-0.5">Provider</p>
+                                        <p className="text-sm text-white font-medium">{invoice.providerName || invoice.customer}</p>
+                                        {invoice.customer && invoice.providerName && invoice.customer !== invoice.providerName && (
+                                            <p className="text-xs text-gray-600 font-mono">{invoice.customer}</p>
+                                        )}
+                                    </>
                                 )}
                             </div>
                             <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Financial Account</p>
-                                <p className="text-sm text-white">{invoice.financialAccountName || "-"}</p>
-                                {invoice.faCode && <p className="text-xs text-gray-600 font-mono">{invoice.faCode}</p>}
+                                {isEditing ? (
+                                    <>
+                                        <Field label="FA Code" fieldKey="financialAccountCode" />
+                                        <div className="mt-1">
+                                            <Field label="FA Name" fieldKey="financialAccountName" />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        <p className="text-xs text-gray-500 mb-0.5">Financial Account</p>
+                                        <p className="text-sm text-white">{invoice.financialAccountName || "-"}</p>
+                                        {invoice.faCode && <p className="text-xs text-gray-600 font-mono">{invoice.faCode}</p>}
+                                    </>
+                                )}
                             </div>
-                            <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Course</p>
-                                <p className="text-sm text-white">{invoice.courseName || invoice.courseCode || "-"}</p>
-                            </div>
+                            <Field label="Course" value={isEditing ? undefined : (invoice.courseName || invoice.courseCode || "-")} fieldKey="courseCode" />
+                            <Field label="Bank Account" value={isEditing ? undefined : (invoice.bankAccountName || invoice.bankAccountCode || "-")} fieldKey="bankAccountCode" />
                         </div>
                     </div>
 
@@ -324,28 +681,15 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
                             <Layers className="h-3.5 w-3.5" /> Classification
                         </h4>
                         <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
-                            <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Department</p>
-                                <p className="text-sm text-white">{invoice.costCenterName || invoice.costCenterCode || "-"}</p>
-                                {invoice.costCenterCode && invoice.costCenterName && <p className="text-xs text-gray-600 font-mono">{invoice.costCenterCode}</p>}
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Sub-Department</p>
-                                <p className="text-sm text-white">{invoice.subDepartmentName || invoice.subDepartmentCode || "-"}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Cost Type</p>
-                                <p className="text-sm text-white">{invoice.costTypeName || invoice.costTypeCode || "-"}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-gray-500 mb-0.5">Dep Cost Type</p>
-                                <p className="text-sm text-white">{invoice.depCostTypeName || invoice.depCostTypeCode || "-"}</p>
-                            </div>
+                            <Field label="Department" value={isEditing ? undefined : (invoice.costCenterName || invoice.costCenterCode || "-")} fieldKey="costCenterCode" />
+                            <Field label="Sub-Department" value={isEditing ? undefined : (invoice.subDepartmentName || invoice.subDepartmentCode || "-")} />
+                            <Field label="Cost Type" value={isEditing ? undefined : (invoice.costTypeName || invoice.costTypeCode || "-")} fieldKey="costTypeCode" />
+                            <Field label="Dep Cost Type" value={isEditing ? undefined : (invoice.depCostTypeName || invoice.depCostTypeCode || "-")} fieldKey="depCostTypeCode" />
                         </div>
                         <div className="flex flex-wrap gap-2 mt-3">
-                            {invoice.dreImpact && <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">DRE Impact</Badge>}
-                            {invoice.cashImpact && <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Cash Impact</Badge>}
-                            {invoice.isIntercompany && <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">Intercompany</Badge>}
+                            <ToggleField label="DRE Impact" fieldKey="dreImpact" value={invoice.dreImpact} />
+                            <ToggleField label="Cash Impact" fieldKey="cashImpact" value={invoice.cashImpact} />
+                            <ToggleField label="Intercompany" fieldKey="isIntercompany" value={invoice.isIntercompany} />
                         </div>
                     </div>
 
@@ -357,75 +701,107 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
                         <div className="bg-[#252627] rounded-lg p-4 space-y-4">
                             <div className="grid grid-cols-4 gap-4">
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-0.5">Bank Account</p>
-                                    <p className="text-sm text-white font-medium">{invoice.bankAccountName || invoice.bankAccountCode || "-"}</p>
-                                    {invoice.bankAccountCode && invoice.bankAccountName && <p className="text-xs text-gray-600 font-mono">{invoice.bankAccountCode}</p>}
+                                    {isEditing ? (
+                                        <Field label="Payment Method" fieldKey="paymentMethodCode" />
+                                    ) : (
+                                        <>
+                                            <p className="text-xs text-gray-500 mb-0.5">Payment Method</p>
+                                            <p className="text-sm text-white">{invoice.paymentMethodName || invoice.paymentMethodCode || "-"}</p>
+                                        </>
+                                    )}
                                 </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-0.5">Payment Method</p>
-                                    <p className="text-sm text-white">{invoice.paymentMethodName || invoice.paymentMethodCode || "-"}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-0.5">Payment Status</p>
-                                    <Badge className={`text-xs ${paymentStatusColor}`}>
-                                        {paymentStatusLabel.replace(/_/g, " ")}
-                                    </Badge>
-                                </div>
+                                <Field label="Payment Status" value={isEditing ? undefined : paymentStatusLabel.replace(/_/g, " ")} fieldKey="paymentStatus" />
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Invoice Status</p>
                                     <p className="text-sm text-white">{invoice.invoiceStatus?.replace(/_/g, " ") || "-"}</p>
                                 </div>
-                            </div>
-
-                            {/* Reconciliation Summary */}
-                            <div className="border-t border-gray-700 pt-3">
-                                <div className="flex items-center gap-3">
-                                    {isPaid ? (
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                                            <div className="h-2.5 w-2.5 rounded-full bg-emerald-400"></div>
-                                            <span className="text-sm text-emerald-300 font-medium">
-                                                Paid {invoice.bankAccountName ? `via ${invoice.bankAccountName}` : ""} {invoice.paymentDate ? `on ${fmt(invoice.paymentDate)}` : ""}
-                                            </span>
-                                            {invoice.paidAmount ? (
-                                                <span className="text-sm text-emerald-400 font-mono font-bold ml-2">
-                                                    {formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR")}
-                                                </span>
-                                            ) : null}
-                                        </div>
-                                    ) : isScheduled ? (
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                                            <div className="h-2.5 w-2.5 rounded-full bg-blue-400"></div>
-                                            <span className="text-sm text-blue-300 font-medium">
-                                                Scheduled for {fmt(invoice.scheduleDate)} {invoice.bankAccountName ? `via ${invoice.bankAccountName}` : ""}
-                                            </span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg">
-                                            <div className="h-2.5 w-2.5 rounded-full bg-gray-500"></div>
-                                            <span className="text-sm text-gray-400">No payment scheduled</span>
-                                        </div>
+                                <div>
+                                    {!isEditing && (
+                                        <>
+                                            <p className="text-xs text-gray-500 mb-0.5">Bank Account</p>
+                                            <p className="text-sm text-white font-medium">{invoice.bankAccountName || invoice.bankAccountCode || "-"}</p>
+                                            {invoice.bankAccountCode && invoice.bankAccountName && <p className="text-xs text-gray-600 font-mono">{invoice.bankAccountCode}</p>}
+                                        </>
                                     )}
                                 </div>
                             </div>
+
+                            {/* Reconciliation Summary */}
+                            {!isEditing && (
+                                <div className="border-t border-gray-700 pt-3">
+                                    <div className="flex items-center gap-3">
+                                        {isPaid ? (
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
+                                                <div className="h-2.5 w-2.5 rounded-full bg-emerald-400"></div>
+                                                <span className="text-sm text-emerald-300 font-medium">
+                                                    Paid {invoice.bankAccountName ? `via ${invoice.bankAccountName}` : ""} {invoice.paymentDate ? `on ${fmt(invoice.paymentDate)}` : ""}
+                                                </span>
+                                                {invoice.paidAmount ? (
+                                                    <span className="text-sm text-emerald-400 font-mono font-bold ml-2">
+                                                        {formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR")}
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                        ) : isScheduled ? (
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                                                <div className="h-2.5 w-2.5 rounded-full bg-blue-400"></div>
+                                                <span className="text-sm text-blue-300 font-medium">
+                                                    Scheduled for {fmt(invoice.scheduleDate)} {invoice.bankAccountName ? `via ${invoice.bankAccountName}` : ""}
+                                                </span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg">
+                                                <div className="h-2.5 w-2.5 rounded-full bg-gray-500"></div>
+                                                <span className="text-sm text-gray-400">No payment scheduled</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 
                     {/* ═══ Section: Description & Notes ═══ */}
-                    {(invoice.description || invoice.notes) && (
+                    {(invoice.description || invoice.notes || isEditing) && (
                         <div>
                             <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Description & Notes</h4>
                             <div className="bg-[#2a2b2d] rounded-lg p-4 space-y-3">
-                                {invoice.description && (
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-1">Description</p>
-                                        <p className="text-sm text-gray-300">{invoice.description}</p>
-                                    </div>
-                                )}
-                                {invoice.notes && (
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-1">Internal Notes</p>
-                                        <p className="text-sm text-gray-300">{invoice.notes}</p>
-                                    </div>
+                                {isEditing ? (
+                                    <>
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Description</p>
+                                            <textarea
+                                                value={String(editFields.description || "")}
+                                                onChange={(e) => updateField("description", e.target.value)}
+                                                rows={2}
+                                                className="w-full text-sm bg-[#1e1f21] border border-gray-600 text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
+                                            />
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-500 mb-1">Internal Notes</p>
+                                            <textarea
+                                                value={String(editFields.notes || "")}
+                                                onChange={(e) => updateField("notes", e.target.value)}
+                                                rows={2}
+                                                className="w-full text-sm bg-[#1e1f21] border border-gray-600 text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
+                                            />
+                                        </div>
+                                    </>
+                                ) : (
+                                    <>
+                                        {invoice.description && (
+                                            <div>
+                                                <p className="text-xs text-gray-500 mb-1">Description</p>
+                                                <p className="text-sm text-gray-300">{invoice.description}</p>
+                                            </div>
+                                        )}
+                                        {invoice.notes && (
+                                            <div>
+                                                <p className="text-xs text-gray-500 mb-1">Internal Notes</p>
+                                                <p className="text-sm text-gray-300">{invoice.notes}</p>
+                                            </div>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         </div>
@@ -463,6 +839,98 @@ function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransactio
                             )}
                         </div>
                     </div>
+
+                    {/* ═══ Section: Provider Invoice History ═══ */}
+                    {showHistory && (
+                        <div>
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                                <History className="h-3.5 w-3.5" /> Provider Invoice History — {invoice.providerName || invoice.customer}
+                                <span className="text-gray-600 font-normal normal-case">({providerHistory.length} invoices)</span>
+                            </h4>
+                            <div className="bg-[#252627] rounded-lg overflow-hidden">
+                                {loadingHistory ? (
+                                    <div className="flex items-center justify-center py-8">
+                                        <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                                        <span className="ml-2 text-sm text-gray-500">Carregando histórico...</span>
+                                    </div>
+                                ) : providerHistory.length === 0 ? (
+                                    <p className="text-xs text-gray-500 p-4">Nenhuma invoice encontrada para este fornecedor.</p>
+                                ) : (
+                                    <>
+                                        {/* Summary bar */}
+                                        <div className="flex items-center gap-4 px-4 py-3 bg-[#2a2b2d] border-b border-gray-700">
+                                            <span className="text-xs text-gray-400">
+                                                Total: <span className="text-white font-medium">{providerHistory.length}</span> invoices
+                                            </span>
+                                            <span className="text-xs text-gray-400">
+                                                Spend total: <span className="text-red-400 font-mono font-medium">
+                                                    {formatCurrency(providerHistory.reduce((s, i) => s + (i.amount || 0), 0), "EUR")}
+                                                </span>
+                                            </span>
+                                        </div>
+                                        {/* History table */}
+                                        <div className="max-h-[300px] overflow-y-auto">
+                                            <table className="w-full">
+                                                <thead className="bg-[#1e1f21] sticky top-0 z-10">
+                                                    <tr>
+                                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2"></th>
+                                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2">Date</th>
+                                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2">Nº</th>
+                                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2">Description</th>
+                                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2">FA</th>
+                                                        <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2">Status</th>
+                                                        <th className="text-right text-[10px] font-semibold text-gray-500 uppercase px-3 py-2">Amount</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {providerHistory.map((hi, idx) => {
+                                                        const isCurrentInvoice = hi.id === invoice.id;
+                                                        const hiPaid = !!hi.paymentDate || (hi.paidAmount && hi.paidAmount !== 0);
+                                                        return (
+                                                            <tr
+                                                                key={hi.id}
+                                                                className={`border-b border-gray-800 hover:bg-gray-700/30 transition-colors ${isCurrentInvoice ? "bg-blue-500/10 border-l-2 border-l-blue-500" : idx % 2 === 0 ? "bg-[#252627]" : "bg-[#2a2b2d]"}`}
+                                                            >
+                                                                <td className="px-3 py-2">
+                                                                    {!isCurrentInvoice && (
+                                                                        <button
+                                                                            onClick={() => setHistoryViewInvoice(hi)}
+                                                                            className="text-gray-500 hover:text-blue-400 transition-colors"
+                                                                            title="View invoice details"
+                                                                        >
+                                                                            <Eye className="h-3.5 w-3.5" />
+                                                                        </button>
+                                                                    )}
+                                                                    {isCurrentInvoice && (
+                                                                        <span className="text-blue-400 text-[10px] font-medium">ATUAL</span>
+                                                                    )}
+                                                                </td>
+                                                                <td className="px-3 py-2 text-xs text-gray-300 font-mono">{fmt(hi.benefitDate || hi.invoiceDate)}</td>
+                                                                <td className="px-3 py-2 text-xs text-gray-400 font-mono">{hi.invoiceNumber || "-"}</td>
+                                                                <td className="px-3 py-2 text-xs text-gray-400 truncate max-w-[200px]" title={hi.description}>{hi.description || "-"}</td>
+                                                                <td className="px-3 py-2 text-xs text-gray-500 font-mono">{hi.faCode || "-"}</td>
+                                                                <td className="px-3 py-2">
+                                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${hiPaid
+                                                                        ? "bg-emerald-500/20 text-emerald-300"
+                                                                        : hi.scheduleDate
+                                                                            ? "bg-blue-500/20 text-blue-300"
+                                                                            : "bg-gray-600/30 text-gray-500"
+                                                                        }`}>
+                                                                        {hiPaid ? "PAID" : hi.scheduleDate ? "SCHED" : "OPEN"}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="px-3 py-2 text-right text-xs font-mono text-red-400">{formatCurrency(hi.amount, hi.currency || "EUR")}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </DialogContent>
         </Dialog>
