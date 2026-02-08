@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // ============================================================
 // 🔗 CROSS-REFERENCE: AR Invoices ↔ Web Orders (csv_rows hubspot)

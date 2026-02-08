@@ -263,8 +263,25 @@ export async function POST(request: Request) {
             console.log('  - company_name:', firstDeal.company_name);
         }
 
+        // 🔧 DEDUPLICAR por DealId: JOINs com Contact/Company podem gerar múltiplas linhas por Deal
+        // Manter a primeira ocorrência (que tem os dados mais completos)
+        const deduped = new Map<string, any>();
+        for (const deal of result.recordset) {
+            const did = String(deal.DealId);
+            if (!deduped.has(did)) {
+                deduped.set(did, deal);
+            } else {
+                // Se a linha anterior não tinha email/company e esta tem, preferir esta
+                const existing = deduped.get(did)!;
+                if (!existing.customer_email && deal.customer_email) deduped.set(did, deal);
+                else if (!existing.company_name && deal.company_name) deduped.set(did, { ...existing, company_name: deal.company_name, company_id: deal.company_id, company_domain: deal.company_domain, company_industry: deal.company_industry, company_city: deal.company_city, company_country: deal.company_country });
+            }
+        }
+        const uniqueDeals = Array.from(deduped.values());
+        console.log(`🔧 Deduplicados: ${result.recordset.length} → ${uniqueDeals.length} deals únicos`);
+
         // Transformar dados para o formato csv_rows
-        const rows = result.recordset.map((deal: any) => {
+        const rows = uniqueDeals.map((deal: any) => {
             // ==========================================
             // MAPEAMENTO COMPLETO - Espelha Backend
             // ==========================================
