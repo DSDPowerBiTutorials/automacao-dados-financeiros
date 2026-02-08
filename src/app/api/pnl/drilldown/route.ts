@@ -37,13 +37,13 @@ export async function GET(request: NextRequest) {
         if (isExpenseFA(faCode)) {
             // ── EXPENSE DRILL-DOWN: query invoices table ──
             // For parent codes ending in .0, query all sub-codes (e.g., 202.0 → 202.%)
-            // For 210.0 (Miscellaneous), also include FA code "0000" (unassigned)
+            // For 210.0 (Balance Adjustments), also include FA code "0000" (unassigned)
             const isParentCode = faCode.endsWith('.0');
             const prefix = faCode.replace(/\.0$/, '');
 
             let query = supabaseAdmin
                 .from("invoices")
-                .select("id, benefit_date, description, invoice_amount, provider_code, financial_account_name, financial_account_code, invoice_type, invoice_number")
+                .select("id, benefit_date, invoice_date, due_date, schedule_date, payment_date, description, invoice_amount, currency, provider_code, financial_account_name, financial_account_code, invoice_type, invoice_number, bank_account_code, payment_method_code, cost_center_code, cost_type_code, dep_cost_type_code, notes, dre_impact, cash_impact, is_intercompany, paid_amount, paid_currency, eur_exchange")
                 .eq("dre_impact", true)
                 .neq("invoice_type", "BUDGET")
                 .gte("benefit_date", startStr)
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
                 .limit(500);
 
             if (faCode === "210.0") {
-                // Miscellaneous: include 210.0 and unassigned "0000"
+                // Balance Adjustments: include 210.0 and unassigned "0000"
                 query = query.or(`financial_account_code.eq.210.0,financial_account_code.eq.0000,financial_account_code.like.210.%`);
             } else if (isParentCode) {
                 // Parent code: query all sub-codes (e.g., 202.% matches 202.0, 202.1, 202.2, ...)
@@ -88,6 +88,26 @@ export async function GET(request: NextRequest) {
                 source: "invoices",
                 invoiceNumber: row.invoice_number,
                 faCode: row.financial_account_code,
+                // Full invoice details for detail popup
+                invoiceDate: row.invoice_date,
+                benefitDate: row.benefit_date,
+                dueDate: row.due_date,
+                scheduleDate: row.schedule_date,
+                paymentDate: row.payment_date,
+                currency: row.currency || "EUR",
+                bankAccountCode: row.bank_account_code,
+                paymentMethodCode: row.payment_method_code,
+                costCenterCode: row.cost_center_code,
+                costTypeCode: row.cost_type_code,
+                depCostTypeCode: row.dep_cost_type_code,
+                notes: row.notes,
+                dreImpact: row.dre_impact,
+                cashImpact: row.cash_impact,
+                isIntercompany: row.is_intercompany,
+                paidAmount: row.paid_amount,
+                paidCurrency: row.paid_currency,
+                eurExchange: row.eur_exchange,
+                financialAccountName: row.financial_account_name,
             }));
         } else {
             // ── REVENUE DRILL-DOWN: query csv_rows table (existing logic) ──

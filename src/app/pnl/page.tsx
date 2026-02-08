@@ -19,6 +19,11 @@ import {
     X,
     ExternalLink,
     AlertCircle,
+    Eye,
+    FileText,
+    Hash,
+    CreditCard,
+    Paperclip,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +49,29 @@ interface DrilldownTransaction {
     amount: number;
     customer: string;
     orderType: string;
+    // Full invoice details
+    invoiceNumber?: string;
+    invoiceDate?: string;
+    benefitDate?: string;
+    dueDate?: string;
+    scheduleDate?: string;
+    paymentDate?: string;
+    currency?: string;
+    bankAccountCode?: string;
+    paymentMethodCode?: string;
+    costCenterCode?: string;
+    costTypeCode?: string;
+    depCostTypeCode?: string;
+    notes?: string;
+    dreImpact?: boolean;
+    cashImpact?: boolean;
+    isIntercompany?: boolean;
+    paidAmount?: number;
+    paidCurrency?: string;
+    eurExchange?: number;
+    financialAccountName?: string;
+    faCode?: string;
+    source?: string;
 }
 
 interface DrilldownState {
@@ -108,6 +136,235 @@ const getYTD = (data: MonthlyData, upToMonth: number): number => {
     return keys.slice(0, upToMonth + 1).reduce((sum, key) => sum + data[key], 0);
 };
 
+// ── Invoice Detail Popup (dark theme, similar to payment scheduled panel) ──
+function InvoiceDetailPopup({ invoice, onClose }: { invoice: DrilldownTransaction; onClose: () => void }) {
+    const [attachments, setAttachments] = useState<{ id: number; file_name: string; url: string }[]>([]);
+    const [loadingAttachments, setLoadingAttachments] = useState(false);
+
+    useEffect(() => {
+        if (invoice.source === "invoices" && invoice.id) {
+            loadAttachments();
+        }
+    }, [invoice.id]);
+
+    async function loadAttachments() {
+        setLoadingAttachments(true);
+        try {
+            const res = await fetch(`/api/attachments?entity_type=ap_invoice&entity_id=${invoice.id}`);
+            const data = await res.json();
+            if (data.attachments) setAttachments(data.attachments);
+        } catch (e) {
+            console.error("Failed to load attachments:", e);
+        } finally {
+            setLoadingAttachments(false);
+        }
+    }
+
+    const formatDate = (d?: string | null) => {
+        if (!d) return "-";
+        return `${d.substring(8, 10)}/${d.substring(5, 7)}/${d.substring(0, 4)}`;
+    };
+
+    const getCurrencySymbol = (c?: string) => {
+        if (c === "USD") return "$";
+        if (c === "GBP") return "£";
+        return "€";
+    };
+
+    return (
+        <Dialog open onOpenChange={(open) => !open && onClose()}>
+            <DialogContent className="max-w-[500px] p-0 bg-[#1e1f21] border-gray-700 overflow-hidden">
+                {/* Header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-700">
+                    <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <FileText className="h-4 w-4 text-gray-400" />
+                        </div>
+                        <div className="min-w-0">
+                            <h3 className="text-base font-semibold text-white truncate">{invoice.customer}</h3>
+                        </div>
+                    </div>
+                    <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white h-8 w-8 p-0">
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+
+                {/* Sub-header */}
+                <div className="px-5 py-2 border-b border-gray-800">
+                    <p className="text-xs text-gray-500">
+                        Payments & Invoice Control • {invoice.financialAccountName || invoice.description}
+                    </p>
+                </div>
+
+                {/* Invoice Details */}
+                <div className="px-5 py-4 space-y-4 border-b border-gray-800 max-h-[60vh] overflow-y-auto">
+                    {/* Row 1: Invoice Date + Invoice Nº */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-3">
+                            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs text-gray-500">Invoice Date</p>
+                                <p className="text-sm text-white">{formatDate(invoice.invoiceDate)}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs text-gray-500">Invoice Nº</p>
+                                <p className="text-sm text-white font-mono">{invoice.invoiceNumber || "-"}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 2: Total Amount + Currency */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-3">
+                            <Hash className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs text-gray-500">Total Amount</p>
+                                <p className="text-sm text-white font-medium">{formatCurrency(invoice.amount, invoice.currency || "EUR")}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <DollarSign className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs text-gray-500">Currency</p>
+                                <span className="inline-flex items-center justify-center h-7 w-7 rounded bg-blue-600 text-white text-sm font-bold">
+                                    {getCurrencySymbol(invoice.currency)}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Row 3: Benefit Date + Due Date */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-3">
+                            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs text-gray-500">Benefit Date</p>
+                                <p className="text-sm text-white">{formatDate(invoice.benefitDate)}</p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                            <Calendar className="h-4 w-4 text-gray-500 flex-shrink-0" />
+                            <div>
+                                <p className="text-xs text-gray-500">Due Date</p>
+                                <p className="text-sm text-white">{formatDate(invoice.dueDate)}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* PAYMENT CONTROL */}
+                    <div className="bg-[#252627] rounded-lg p-4 space-y-3">
+                        <div className="flex items-center gap-2 mb-3">
+                            <CreditCard className="h-4 w-4 text-gray-400" />
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Payment Control</h4>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <p className="text-xs text-gray-500">Schedule Date</p>
+                                <p className="text-sm text-white">{formatDate(invoice.scheduleDate)}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Payment Date</p>
+                                <p className="text-sm text-white">{formatDate(invoice.paymentDate)}</p>
+                            </div>
+                            {invoice.paidAmount != null && invoice.paidAmount !== 0 && (
+                                <>
+                                    <div>
+                                        <p className="text-xs text-gray-500">Paid Amount</p>
+                                        <p className="text-sm text-emerald-400 font-medium">{formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR")}</p>
+                                    </div>
+                                    <div>
+                                        <p className="text-xs text-gray-500">Paid Currency</p>
+                                        <p className="text-sm text-white">{invoice.paidCurrency || invoice.currency || "EUR"}</p>
+                                    </div>
+                                </>
+                            )}
+                            {invoice.bankAccountCode && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Bank Account</p>
+                                    <p className="text-sm text-white">{invoice.bankAccountCode}</p>
+                                </div>
+                            )}
+                            {invoice.paymentMethodCode && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Payment Method</p>
+                                    <p className="text-sm text-white">{invoice.paymentMethodCode}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Classification */}
+                    <div className="bg-[#252627] rounded-lg p-4 space-y-3">
+                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Classification</h4>
+                        <div className="flex flex-wrap gap-2">
+                            <Badge className="text-xs bg-blue-500/20 text-blue-300 border-blue-500/30">{invoice.orderType}</Badge>
+                            {invoice.faCode && <Badge className="text-xs bg-gray-600/30 text-gray-300 border-gray-500/30 font-mono">{invoice.faCode}</Badge>}
+                            {invoice.costCenterCode && <Badge className="text-xs bg-purple-500/20 text-purple-300 border-purple-500/30">{invoice.costCenterCode}</Badge>}
+                            {invoice.costTypeCode && <Badge className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30">{invoice.costTypeCode}</Badge>}
+                            {invoice.dreImpact && <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">DRE</Badge>}
+                            {invoice.cashImpact && <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Cash</Badge>}
+                            {invoice.isIntercompany && <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">Intercompany</Badge>}
+                        </div>
+                    </div>
+
+                    {/* Description / Notes */}
+                    {(invoice.description || invoice.notes) && (
+                        <div className="bg-[#2a2b2d] rounded-lg p-4 space-y-2">
+                            {invoice.description && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Description</p>
+                                    <p className="text-sm text-gray-300">{invoice.description}</p>
+                                </div>
+                            )}
+                            {invoice.notes && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Notes</p>
+                                    <p className="text-sm text-gray-300">{invoice.notes}</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* Attachments / PDF Links */}
+                    <div className="bg-[#252627] rounded-lg p-4 space-y-2">
+                        <div className="flex items-center gap-2 mb-2">
+                            <Paperclip className="h-4 w-4 text-gray-400" />
+                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Attachments</h4>
+                        </div>
+                        {loadingAttachments ? (
+                            <div className="flex items-center gap-2 py-2">
+                                <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
+                                <span className="text-xs text-gray-500">Loading...</span>
+                            </div>
+                        ) : attachments.length > 0 ? (
+                            <div className="space-y-2">
+                                {attachments.map((att) => (
+                                    <a
+                                        key={att.id}
+                                        href={att.url}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex items-center gap-2 px-3 py-2 bg-[#1e1f21] rounded hover:bg-gray-700 transition-colors group"
+                                    >
+                                        <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
+                                        <span className="text-sm text-blue-300 group-hover:text-blue-200 truncate flex-1">{att.file_name}</span>
+                                        <ExternalLink className="h-3 w-3 text-gray-500 group-hover:text-blue-400 flex-shrink-0" />
+                                    </a>
+                                ))}
+                            </div>
+                        ) : (
+                            <p className="text-xs text-gray-500 py-1">No attachments found</p>
+                        )}
+                    </div>
+                </div>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 // Componente de Modal de Drill-Down com paginação e destaque de credit notes
 interface DrilldownModalProps {
     drilldown: DrilldownState;
@@ -116,6 +373,7 @@ interface DrilldownModalProps {
 }
 
 function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProps) {
+    const [selectedInvoice, setSelectedInvoice] = useState<DrilldownTransaction | null>(null);
     const {
         currentPage,
         totalPages,
@@ -136,171 +394,191 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
     const isExpense = !drilldown.faCode.startsWith("1");
 
     return (
-        <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && onClose()}>
-            <DialogContent
-                className="max-w-none max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col"
-                style={{ width: '80vw' }}
-            >
-                <DialogHeader className="border-b border-gray-700 pb-4 flex-shrink-0">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <DialogTitle className="text-xl text-white flex items-center gap-2">
-                                <BarChart3 className={`h-5 w-5 ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
-                                Drill-Down: {drilldown.faName}
-                            </DialogTitle>
-                            <div className="flex items-center gap-3 mt-1">
-                                <p className="text-sm text-gray-400">
-                                    <span className={`font-mono ${isExpense ? "text-red-400" : "text-emerald-400"}`}>{drilldown.faCode}</span>
-                                    {" • "}
-                                    <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
-                                    {" • "}
-                                    <span className={isExpense ? "text-red-300" : "text-emerald-300"}>{drilldown.count} transações</span>
-                                </p>
-                                {creditNoteCount > 0 && (
-                                    <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">
-                                        <AlertCircle className="h-3 w-3 mr-1" />
-                                        {creditNoteCount} Credit Notes ({formatCurrency(creditNoteTotal, "EUR")})
-                                    </Badge>
+        <>
+            <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && onClose()}>
+                <DialogContent
+                    className="max-w-none max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col"
+                    style={{ width: '80vw' }}
+                >
+                    <DialogHeader className="border-b border-gray-700 pb-4 flex-shrink-0">
+                        <div className="flex items-center justify-between">
+                            <div>
+                                <DialogTitle className="text-xl text-white flex items-center gap-2">
+                                    <BarChart3 className={`h-5 w-5 ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
+                                    Drill-Down: {drilldown.faName}
+                                </DialogTitle>
+                                <div className="flex items-center gap-3 mt-1">
+                                    <p className="text-sm text-gray-400">
+                                        <span className={`font-mono ${isExpense ? "text-red-400" : "text-emerald-400"}`}>{drilldown.faCode}</span>
+                                        {" • "}
+                                        <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
+                                        {" • "}
+                                        <span className={isExpense ? "text-red-300" : "text-emerald-300"}>{drilldown.count} transações</span>
+                                    </p>
+                                    {creditNoteCount > 0 && (
+                                        <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">
+                                            <AlertCircle className="h-3 w-3 mr-1" />
+                                            {creditNoteCount} Credit Notes ({formatCurrency(creditNoteTotal, "EUR")})
+                                        </Badge>
+                                    )}
+                                </div>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="flex-1 overflow-auto mt-4">
+                        {drilldown.loading ? (
+                            <div className="flex items-center justify-center py-12">
+                                <Loader2 className={`h-8 w-8 animate-spin ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
+                                <span className="ml-3 text-gray-400">Carregando transações...</span>
+                            </div>
+                        ) : drilldown.transactions.length === 0 ? (
+                            <div className="text-center py-12 text-gray-500">
+                                Nenhuma transação encontrada para este período.
+                            </div>
+                        ) : (
+                            <div className="flex flex-col h-full">
+                                <div className="overflow-x-auto flex-1">
+                                    <table className="w-full min-w-[800px]">
+                                        <thead className="bg-gray-800 sticky top-0 z-10">
+                                            <tr>
+                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Data</th>
+                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">{isExpense ? "Fornecedor" : "Cliente"}</th>
+                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Descrição</th>
+                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Tipo</th>
+                                                <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Valor</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {paginatedData.map((tx, idx) => {
+                                                const isCreditNote = tx.amount < 0;
+                                                return (
+                                                    <tr
+                                                        key={tx.id}
+                                                        className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
+                                                    >
+                                                        <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
+                                                            <div className="flex items-center gap-2">
+                                                                {isExpense && tx.source === "invoices" && (
+                                                                    <button
+                                                                        onClick={() => setSelectedInvoice(tx)}
+                                                                        className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
+                                                                        title="View invoice details"
+                                                                    >
+                                                                        <Eye className="h-3.5 w-3.5" />
+                                                                    </button>
+                                                                )}
+                                                                {tx.date ? `${tx.date.substring(8, 10)}/${tx.date.substring(5, 7)}/${tx.date.substring(0, 4)}` : "-"}
+                                                            </div>
+                                                        </td>
+                                                        <td className="px-4 py-2 text-sm text-white" title={tx.customer}>
+                                                            {tx.customer}
+                                                        </td>
+                                                        <td className="px-4 py-2 text-sm text-gray-400" title={tx.description}>
+                                                            {tx.description}
+                                                        </td>
+                                                        <td className="px-4 py-2 whitespace-nowrap">
+                                                            <div className="flex items-center gap-2">
+                                                                <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                                                                    {tx.orderType}
+                                                                </Badge>
+                                                                {isCreditNote && (
+                                                                    <Badge className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">
+                                                                        Credit Note
+                                                                    </Badge>
+                                                                )}
+                                                            </div>
+                                                        </td>
+                                                        <td className={`px-4 py-2 text-right text-sm font-mono font-semibold whitespace-nowrap ${(isExpense || isCreditNote) ? "text-red-400" : "text-emerald-400"}`}>
+                                                            {formatCurrency(tx.amount, "EUR")}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                        <tfoot className="bg-gray-800">
+                                            <tr>
+                                                <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
+                                                    Total ({drilldown.count} transações)
+                                                </td>
+                                                <td className={`px-4 py-3 text-right text-lg font-mono ${isExpense ? "text-red-300" : "text-emerald-300"} font-bold whitespace-nowrap`}>
+                                                    {formatCurrency(drilldown.total, "EUR")}
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+
+                                {/* Paginação */}
+                                {totalPages > 1 && (
+                                    <PaginationControls
+                                        currentPage={currentPage}
+                                        totalPages={totalPages}
+                                        pageInfo={pageInfo}
+                                        onFirstPage={firstPage}
+                                        onPrevPage={prevPage}
+                                        onNextPage={nextPage}
+                                        onLastPage={lastPage}
+                                        canGoNext={canGoNext}
+                                        canGoPrev={canGoPrev}
+                                    />
+                                )}
+
+                                {/* Clinic Variations - only for clinic FA codes */}
+                                {isClinicsFACode(drilldown.faCode) && (
+                                    <>
+                                        <Separator className="my-6 bg-gray-700" />
+
+                                        {/* Monthly Changes */}
+                                        <div className="px-4">
+                                            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                                <Building2 className="h-4 w-4 text-emerald-400" />
+                                                Contract Changes - {MONTHS_FULL[drilldown.month]} {selectedYear}
+                                            </h3>
+                                            <ClinicVariationsTable
+                                                mode="monthly"
+                                                yearMonth={`${selectedYear}-${String(drilldown.month + 1).padStart(2, "0")}`}
+                                                faCode={drilldown.faCode}
+                                                title={`Monthly Changes (${MONTHS_FULL[drilldown.month]})`}
+                                                maxItems={30}
+                                            />
+                                        </div>
+
+                                        <Separator className="my-6 bg-gray-700" />
+
+                                        {/* YTD Changes */}
+                                        <div className="px-4 pb-4">
+                                            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                                <Calendar className="h-4 w-4 text-blue-400" />
+                                                YTD Changes - January to {MONTHS_FULL[drilldown.month]} {selectedYear}
+                                            </h3>
+                                            <ClinicVariationsTable
+                                                mode="ytd"
+                                                yearMonth={`${selectedYear}-${String(drilldown.month + 1).padStart(2, "0")}`}
+                                                faCode={drilldown.faCode}
+                                                title={`Year-to-Date Changes (Jan - ${MONTHS[drilldown.month]})`}
+                                                maxItems={50}
+                                            />
+                                        </div>
+                                    </>
                                 )}
                             </div>
-                        </div>
-                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white">
-                            <X className="h-4 w-4" />
-                        </Button>
+                        )}
                     </div>
-                </DialogHeader>
+                </DialogContent>
+            </Dialog>
 
-                <div className="flex-1 overflow-auto mt-4">
-                    {drilldown.loading ? (
-                        <div className="flex items-center justify-center py-12">
-                            <Loader2 className={`h-8 w-8 animate-spin ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
-                            <span className="ml-3 text-gray-400">Carregando transações...</span>
-                        </div>
-                    ) : drilldown.transactions.length === 0 ? (
-                        <div className="text-center py-12 text-gray-500">
-                            Nenhuma transação encontrada para este período.
-                        </div>
-                    ) : (
-                        <div className="flex flex-col h-full">
-                            <div className="overflow-x-auto flex-1">
-                                <table className="w-full min-w-[800px]">
-                                    <thead className="bg-gray-800 sticky top-0 z-10">
-                                        <tr>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Data</th>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">{isExpense ? "Fornecedor" : "Cliente"}</th>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Descrição</th>
-                                            <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Tipo</th>
-                                            <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Valor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {paginatedData.map((tx, idx) => {
-                                            const isCreditNote = tx.amount < 0;
-                                            return (
-                                                <tr
-                                                    key={tx.id}
-                                                    className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
-                                                >
-                                                    <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
-                                                        {/* Formatação manual sem conversão de timezone: YYYY-MM-DD → DD/MM/YYYY */}
-                                                        {tx.date ? `${tx.date.substring(8, 10)}/${tx.date.substring(5, 7)}/${tx.date.substring(0, 4)}` : "-"}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm text-white" title={tx.customer}>
-                                                        {tx.customer}
-                                                    </td>
-                                                    <td className="px-4 py-2 text-sm text-gray-400" title={tx.description}>
-                                                        {tx.description}
-                                                    </td>
-                                                    <td className="px-4 py-2 whitespace-nowrap">
-                                                        <div className="flex items-center gap-2">
-                                                            <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
-                                                                {tx.orderType}
-                                                            </Badge>
-                                                            {isCreditNote && (
-                                                                <Badge className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">
-                                                                    Credit Note
-                                                                </Badge>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                    <td className={`px-4 py-2 text-right text-sm font-mono font-semibold whitespace-nowrap ${(isExpense || isCreditNote) ? "text-red-400" : "text-emerald-400"}`}>
-                                                        {formatCurrency(tx.amount, "EUR")}
-                                                    </td>
-                                                </tr>
-                                            );
-                                        })}
-                                    </tbody>
-                                    <tfoot className="bg-gray-800">
-                                        <tr>
-                                            <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
-                                                Total ({drilldown.count} transações)
-                                            </td>
-                                            <td className={`px-4 py-3 text-right text-lg font-mono ${isExpense ? "text-red-300" : "text-emerald-300"} font-bold whitespace-nowrap`}>
-                                                {formatCurrency(drilldown.total, "EUR")}
-                                            </td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            {/* Paginação */}
-                            {totalPages > 1 && (
-                                <PaginationControls
-                                    currentPage={currentPage}
-                                    totalPages={totalPages}
-                                    pageInfo={pageInfo}
-                                    onFirstPage={firstPage}
-                                    onPrevPage={prevPage}
-                                    onNextPage={nextPage}
-                                    onLastPage={lastPage}
-                                    canGoNext={canGoNext}
-                                    canGoPrev={canGoPrev}
-                                />
-                            )}
-
-                            {/* Clinic Variations - only for clinic FA codes */}
-                            {isClinicsFACode(drilldown.faCode) && (
-                                <>
-                                    <Separator className="my-6 bg-gray-700" />
-
-                                    {/* Monthly Changes */}
-                                    <div className="px-4">
-                                        <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
-                                            <Building2 className="h-4 w-4 text-emerald-400" />
-                                            Contract Changes - {MONTHS_FULL[drilldown.month]} {selectedYear}
-                                        </h3>
-                                        <ClinicVariationsTable
-                                            mode="monthly"
-                                            yearMonth={`${selectedYear}-${String(drilldown.month + 1).padStart(2, "0")}`}
-                                            faCode={drilldown.faCode}
-                                            title={`Monthly Changes (${MONTHS_FULL[drilldown.month]})`}
-                                            maxItems={30}
-                                        />
-                                    </div>
-
-                                    <Separator className="my-6 bg-gray-700" />
-
-                                    {/* YTD Changes */}
-                                    <div className="px-4 pb-4">
-                                        <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
-                                            <Calendar className="h-4 w-4 text-blue-400" />
-                                            YTD Changes - January to {MONTHS_FULL[drilldown.month]} {selectedYear}
-                                        </h3>
-                                        <ClinicVariationsTable
-                                            mode="ytd"
-                                            yearMonth={`${selectedYear}-${String(drilldown.month + 1).padStart(2, "0")}`}
-                                            faCode={drilldown.faCode}
-                                            title={`Year-to-Date Changes (Jan - ${MONTHS[drilldown.month]})`}
-                                            maxItems={50}
-                                        />
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </DialogContent>
-        </Dialog>
+            {/* Invoice Detail Popup */}
+            {selectedInvoice && (
+                <InvoiceDetailPopup
+                    invoice={selectedInvoice}
+                    onClose={() => setSelectedInvoice(null)}
+                />
+            )}
+        </>
     );
 }
 
@@ -607,7 +885,7 @@ export default function PnLReport() {
                 { code: "209.2", name: "Financial Fees", type: "expense", level: 1, monthly: getExpFA("209.2"), budget: getExpBudgetFA("209.2") },
             ],
         },
-        { code: "210.0", name: "Miscellaneous", type: "expense", level: 0, monthly: getExpFA("210.0"), budget: getExpBudgetFA("210.0"), children: [] },
+        { code: "210.0", name: "Balance Adjustments", type: "expense", level: 0, monthly: getExpFA("210.0"), budget: getExpBudgetFA("210.0"), children: [] },
         { code: "211.0", name: "Amortization & Depreciation", type: "expense", level: 0, monthly: getExpFA("211.0"), budget: getExpBudgetFA("211.0"), children: [] },
         { code: "300.0", name: "FX Variation", type: "expense", level: 0, monthly: getExpFA("300.0"), budget: getExpBudgetFA("300.0"), children: [] },
         { code: "400.0", name: "Taxes & Other", type: "expense", level: 0, monthly: getExpFA("400.0"), budget: getExpBudgetFA("400.0"), children: [] },

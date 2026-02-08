@@ -33,7 +33,7 @@ const ALL_EXPENSE_FA_CODES = [
     "208.0",
     // 209 - Bank and Financial Fees
     "209.1", "209.2",
-    // 210 - Miscellaneous
+    // 210 - Balance Adjustments
     "210.0",
     // 211 - Amortization & Depreciation
     "211.0",
@@ -109,7 +109,7 @@ export async function GET(request: NextRequest) {
 
             const fa = row.financial_account_code;
 
-            // Map unassigned FA code "0000" → "210.0" (Miscellaneous)
+            // Map unassigned FA code "0000" → "210.0" (Balance Adjustments)
             const mappedFA = fa === "0000" ? "210.0" : fa;
 
             if (row.invoice_type === "BUDGET") {
