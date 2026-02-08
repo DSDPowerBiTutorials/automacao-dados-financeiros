@@ -2,16 +2,18 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 /**
- * Customer Homogenization API
+ * Customer Homogenization API (v2 - Cross-Reference Enhanced)
  * 
  * GET: Analyze revenue invoices to find duplicate customers
  *   - Same email, different names → groups them
  *   - Same normalized name, different emails → groups them
+ *   - Cross-references with ar_invoices (HubSpot Web Orders) to enrich emails
  * 
  * POST: Execute homogenization
  *   - Sets canonical name per group
  *   - Adds observation notes to affected invoices
  *   - Populates/updates the customers master data table
+ *   - ENFORCES mandatory email for all customers
  */
 
 function normalizeEmail(email: string | null | undefined): string {
@@ -124,8 +126,14 @@ export async function GET() {
 
         for (const row of allRows) {
             const cd = row.custom_data || {};
-            const rawName = String(cd.Client || cd.client || cd.customer_name || cd.Company || cd.company || "").trim();
-            const rawEmail = String(cd.Email || cd.email || "").trim();
+            // Handle ALL casing variants: Client/CLIENT/client, Email/EMAIL/email, customer_name, customer_email
+            const rawName = String(
+                cd.customer_name || cd.Client || cd.CLIENT || cd.client || cd.client_name ||
+                cd.Company || cd.COMPANY || cd.company || cd.company_name || ""
+            ).trim();
+            const rawEmail = String(
+                cd.customer_email || cd.Email || cd.EMAIL || cd.email || ""
+            ).trim();
             const normEmail = normalizeEmail(rawEmail);
             const normName = normalizeName(rawName);
 
@@ -229,6 +237,118 @@ export async function GET() {
             emailMap.delete(merged);
         }
 
+        // ──────────────────────────────────────────────────
+        // CROSS-REFERENCE: Enrich from ar_invoices (HubSpot Web Orders)
+        // HubSpot data reliably has customer_email — use it to fill gaps
+        // ──────────────────────────────────────────────────
+        let crossRefEnriched = 0;
+        const arInvoices: { client_name: string | null; email: string | null; company_name: string | null }[] = [];
+        {
+            let arFrom = 0;
+            const arBatch = 1000;
+            while (true) {
+                const { data, error } = await supabaseAdmin
+                    .from("ar_invoices")
+                    .select("client_name, email, company_name")
+                    .not("email", "is", null)
+                    .neq("email", "")
+                    .range(arFrom, arFrom + arBatch - 1);
+                if (error) {
+                    console.error("Cross-reference ar_invoices error:", error);
+                    break;
+                }
+                if (!data || data.length === 0) break;
+                arInvoices.push(...data);
+                if (data.length < arBatch) break;
+                arFrom += arBatch;
+            }
+        }
+
+        // Build a lookup: normalized name → email (from HubSpot/ar_invoices)
+        const hubspotEmailByName = new Map<string, string>();
+        const hubspotEmailByCompany = new Map<string, string>();
+        for (const ar of arInvoices) {
+            if (ar.email) {
+                const normE = normalizeEmail(ar.email);
+                if (ar.client_name) {
+                    const normN = normalizeName(ar.client_name);
+                    if (normN && !hubspotEmailByName.has(normN)) {
+                        hubspotEmailByName.set(normN, normE);
+                    }
+                }
+                if (ar.company_name) {
+                    const normC = normalizeName(ar.company_name);
+                    if (normC && !hubspotEmailByCompany.has(normC)) {
+                        hubspotEmailByCompany.set(normC, normE);
+                    }
+                }
+            }
+        }
+
+        // Enrich noEmailNameMap groups with HubSpot emails (exact match first)
+        const noEmailKeys = [...noEmailNameMap.keys()];
+        for (const normName of noEmailKeys) {
+            const group = noEmailNameMap.get(normName)!;
+            let foundEmail: string | null = null;
+
+            // 1. Exact normalized name match
+            if (hubspotEmailByName.has(normName)) {
+                foundEmail = hubspotEmailByName.get(normName)!;
+            }
+
+            // 2. Try company name match
+            if (!foundEmail) {
+                for (const [rawN] of group.rawNames) {
+                    const normC = normalizeName(rawN);
+                    if (hubspotEmailByCompany.has(normC)) {
+                        foundEmail = hubspotEmailByCompany.get(normC)!;
+                        break;
+                    }
+                }
+            }
+
+            // 3. Fuzzy name match against HubSpot names (>= 85%)
+            if (!foundEmail) {
+                let bestScore = 0;
+                for (const [hubName, hubEmail] of hubspotEmailByName) {
+                    const score = nameSimilarity(normName, hubName);
+                    if (score > bestScore && score >= 85) {
+                        bestScore = score;
+                        foundEmail = hubEmail;
+                    }
+                }
+            }
+
+            if (foundEmail) {
+                // Move this group to emailMap with the found email
+                const rawEmailStr = arInvoices.find(
+                    ar => normalizeEmail(ar.email) === foundEmail
+                )?.email || foundEmail;
+
+                if (!emailMap.has(foundEmail)) {
+                    emailMap.set(foundEmail, {
+                        rawEmails: new Map([[rawEmailStr, 1]]),
+                        rawNames: group.rawNames,
+                        invoices: group.invoices,
+                    });
+                } else {
+                    const target = emailMap.get(foundEmail)!;
+                    target.rawEmails.set(rawEmailStr, (target.rawEmails.get(rawEmailStr) || 0) + 1);
+                    for (const [n, c] of group.rawNames) {
+                        target.rawNames.set(n, (target.rawNames.get(n) || 0) + c);
+                    }
+                    target.invoices.push(...group.invoices);
+                }
+                noEmailNameMap.delete(normName);
+                crossRefEnriched++;
+            }
+        }
+
+        // Also enrich emailMap groups that have email but check if HubSpot has a better name
+        // (skip this for now - email is the priority)
+
+        console.log(`📧 Cross-reference: enriched ${crossRefEnriched} customers with HubSpot emails. AR invoices checked: ${arInvoices.length}`);
+
         // Build final customer groups
         const customerGroups: CustomerGroup[] = [];
 
@@ -292,6 +412,7 @@ export async function GET() {
         const withVariations = customerGroups.filter((g) => g.homogenization_notes.length > 0);
         const nameConflicts = customerGroups.filter((g) => g.name_variations.length > 1);
         const emailConflicts = customerGroups.filter((g) => g.email_variations.length > 1);
+        const withoutEmail = customerGroups.filter((g) => !g.canonical_email);
 
         return NextResponse.json({
             success: true,
@@ -301,6 +422,9 @@ export async function GET() {
                 customers_with_variations: withVariations.length,
                 name_conflicts: nameConflicts.length,
                 email_conflicts: emailConflicts.length,
+                cross_ref_enriched: crossRefEnriched,
+                hubspot_records_checked: arInvoices.length,
+                customers_without_email: withoutEmail.length,
             },
             customers: customerGroups,
         });
@@ -355,7 +479,7 @@ export async function POST(request: NextRequest) {
                             const updatedCd = {
                                 ...cd,
                                 customer_name: canonicalName,
-                                customer_email: canonicalEmail || cd.Email || cd.email || "",
+                                customer_email: canonicalEmail || cd.customer_email || cd.Email || cd.EMAIL || cd.email || "",
                                 homogenization_applied: true,
                                 homogenization_notes: group.homogenization_notes.join(" | "),
                                 homogenized_at: new Date().toISOString(),

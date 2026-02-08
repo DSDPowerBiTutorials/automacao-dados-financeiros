@@ -63,6 +63,9 @@ interface HomogenizationStats {
     customers_with_variations: number;
     name_conflicts: number;
     email_conflicts: number;
+    cross_ref_enriched: number;
+    hubspot_records_checked: number;
+    customers_without_email: number;
 }
 
 export default function CustomersPage() {
@@ -177,8 +180,8 @@ export default function CustomersPage() {
 
     async function handleSave() {
         try {
-            if (!formData.name || !formData.country) {
-                toast({ title: "Validation Error", description: "Name and Country are required", variant: "destructive" });
+            if (!formData.name || !formData.country || !formData.email) {
+                toast({ title: "Validation Error", description: "Name, Email, and Country are required", variant: "destructive" });
                 return;
             }
 
@@ -328,7 +331,7 @@ export default function CustomersPage() {
                     </div>
 
                     {/* Stats */}
-                    <div className="flex items-center gap-6 text-sm">
+                    <div className="flex items-center gap-6 text-sm flex-wrap">
                         <div className="flex items-center gap-2">
                             <span className="text-gray-400">Total Invoices:</span>
                             <span className="text-white font-medium">{analysisResult.stats.total_invoices.toLocaleString()}</span>
@@ -345,6 +348,24 @@ export default function CustomersPage() {
                             <span className="text-gray-400">Email Conflicts:</span>
                             <span className="text-yellow-400 font-medium">{analysisResult.stats.email_conflicts}</span>
                         </div>
+                        {analysisResult.stats.cross_ref_enriched > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-gray-400">Enriched via HubSpot:</span>
+                                <span className="text-green-400 font-medium">{analysisResult.stats.cross_ref_enriched}</span>
+                            </div>
+                        )}
+                        {analysisResult.stats.hubspot_records_checked > 0 && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-gray-400">Web Orders checked:</span>
+                                <span className="text-blue-400 font-medium">{analysisResult.stats.hubspot_records_checked}</span>
+                            </div>
+                        )}
+                        {analysisResult.stats.customers_without_email > 0 && (
+                            <div className="flex items-center gap-2">
+                                <AlertTriangle className="h-3.5 w-3.5 text-red-400" />
+                                <span className="text-red-400 font-medium">{analysisResult.stats.customers_without_email} without email</span>
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -388,7 +409,13 @@ export default function CustomersPage() {
                                     <span className="text-[13px] text-white font-medium">{group.canonical_name}</span>
                                 </div>
                                 <div className="w-[200px] flex-shrink-0">
-                                    <span className="text-[12px] text-gray-400 truncate block">{group.canonical_email || "\u2014"}</span>
+                                    {group.canonical_email ? (
+                                        <span className="text-[12px] text-gray-400 truncate block">{group.canonical_email}</span>
+                                    ) : (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/30 text-red-400 border border-red-700 inline-flex items-center gap-1">
+                                            <AlertTriangle className="h-3 w-3" /> NO EMAIL
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="w-[80px] flex-shrink-0 text-right">
                                     <span className="text-[12px] text-gray-300">{group.invoice_count}</span>
@@ -531,8 +558,8 @@ export default function CustomersPage() {
                                 key={status}
                                 onClick={() => setStatusFilter(status)}
                                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === status
-                                        ? "bg-blue-600 text-white"
-                                        : "bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-700"
+                                    ? "bg-blue-600 text-white"
+                                    : "bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-700"
                                     }`}
                             >
                                 {status === "ALL" ? "All" : status === "ACTIVE" ? "Active" : "Inactive"}
@@ -609,7 +636,13 @@ export default function CustomersPage() {
                                     <span className="text-[12px] text-gray-400">{customer.tax_id || "\u2014"}</span>
                                 </div>
                                 <div className="w-[200px] flex-shrink-0">
-                                    <span className="text-[12px] text-gray-400 truncate block">{customer.email || "\u2014"}</span>
+                                    {customer.email ? (
+                                        <span className="text-[12px] text-gray-400 truncate block">{customer.email}</span>
+                                    ) : (
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-red-900/30 text-red-400 border border-red-700 inline-flex items-center gap-1">
+                                            <AlertTriangle className="h-3 w-3" /> MISSING
+                                        </span>
+                                    )}
                                 </div>
                                 <div className="w-[80px] flex-shrink-0">
                                     <span className="text-[11px] px-2 py-0.5 rounded border border-gray-600 text-gray-300">{customer.country}</span>
@@ -701,7 +734,7 @@ export default function CustomersPage() {
                             </div>
                         </div>
                         <div className="space-y-1.5">
-                            <Label className="text-[11px] text-gray-400 uppercase font-medium">Email</Label>
+                            <Label className="text-[11px] text-gray-400 uppercase font-medium">Email *</Label>
                             <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-[#2a2b2d] border-gray-600 text-white h-9" placeholder="customer@example.com" />
                         </div>
                         <div className="space-y-1.5">

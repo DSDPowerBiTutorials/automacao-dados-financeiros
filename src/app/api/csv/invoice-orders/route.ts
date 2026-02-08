@@ -386,6 +386,23 @@ export async function POST(request: NextRequest) {
                         }
                     });
 
+                    // Normalize customer fields from any casing variant
+                    // This ensures homogenization API can always find customer_name and customer_email
+                    const custName = String(
+                        customData.Client || customData.CLIENT || customData.client ||
+                        customData.Company || customData.COMPANY || customData.company || ""
+                    ).trim();
+                    const custEmail = String(
+                        customData.Email || customData.EMAIL || customData.email || ""
+                    ).trim();
+                    if (custName) customData.customer_name = custName;
+                    if (custEmail) customData.customer_email = custEmail;
+                    if (customData.Company || customData.COMPANY || customData.company) {
+                        customData.company_name = String(
+                            customData.Company || customData.COMPANY || customData.company || ""
+                        ).trim();
+                    }
+
                     // 💰 Financial Account: Mapear produto → conta de receita
                     const financialAccount = getFinancialAccountCode(description, invoiceNumber);
                     customData.financial_account_code = financialAccount.code;
