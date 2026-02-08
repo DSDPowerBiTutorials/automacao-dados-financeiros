@@ -36,13 +36,14 @@ export async function GET(request: NextRequest) {
 
         if (isExpenseFA(faCode)) {
             // ── EXPENSE DRILL-DOWN: query invoices table ──
+            // For parent codes ending in .0, query all sub-codes (e.g., 202.0 → 202.%)
             // For 210.0 (Miscellaneous), also include FA code "0000" (unassigned)
-            const faCodes = faCode === "210.0" ? ["210.0", "0000"] : [faCode];
+            const isParentCode = faCode.endsWith('.0');
+            const prefix = faCode.replace(/\.0$/, '');
 
-            const { data, error } = await supabaseAdmin
+            let query = supabaseAdmin
                 .from("invoices")
-                .select("id, benefit_date, description, invoice_amount, provider_code, financial_account_name, invoice_type, invoice_number")
-                .in("financial_account_code", faCodes)
+                .select("id, benefit_date, description, invoice_amount, provider_code, financial_account_name, financial_account_code, invoice_type, invoice_number")
                 .eq("dre_impact", true)
                 .neq("invoice_type", "BUDGET")
                 .gte("benefit_date", startStr)
@@ -50,6 +51,18 @@ export async function GET(request: NextRequest) {
                 .neq("invoice_amount", 0)
                 .order("invoice_amount", { ascending: false })
                 .limit(500);
+
+            if (faCode === "210.0") {
+                // Miscellaneous: include 210.0 and unassigned "0000"
+                query = query.or(`financial_account_code.eq.210.0,financial_account_code.eq.0000,financial_account_code.like.210.%`);
+            } else if (isParentCode) {
+                // Parent code: query all sub-codes (e.g., 202.% matches 202.0, 202.1, 202.2, ...)
+                query = query.like("financial_account_code", `${prefix}.%`);
+            } else {
+                query = query.eq("financial_account_code", faCode);
+            }
+
+            const { data, error } = await query;
 
             if (error) {
                 console.error("Erro ao buscar drill-down de despesas:", error);
@@ -74,19 +87,31 @@ export async function GET(request: NextRequest) {
                 orderType: row.invoice_type || "-",
                 source: "invoices",
                 invoiceNumber: row.invoice_number,
+                faCode: row.financial_account_code,
             }));
         } else {
             // ── REVENUE DRILL-DOWN: query csv_rows table (existing logic) ──
-            const { data, error } = await supabaseAdmin
+            // For parent revenue codes ending in .0, query all sub-codes
+            const isRevenueParent = faCode.endsWith('.0');
+            const revenuePrefix = faCode.replace(/\.0$/, '');
+
+            let revQuery = supabaseAdmin
                 .from("csv_rows")
                 .select("id, date, description, amount, custom_data, source")
                 .eq("source", "invoice-orders")
                 .gte("date", startStr)
                 .lte("date", endStr)
-                .ilike("custom_data->>financial_account_code", faCode)
                 .neq("amount", 0)
                 .order("amount", { ascending: false })
                 .limit(500);
+
+            if (isRevenueParent) {
+                revQuery = revQuery.ilike("custom_data->>financial_account_code", `${revenuePrefix}.%`);
+            } else {
+                revQuery = revQuery.ilike("custom_data->>financial_account_code", faCode);
+            }
+
+            const { data, error } = await revQuery;
 
             if (error) {
                 console.error("Erro ao buscar drill-down de receita:", error);

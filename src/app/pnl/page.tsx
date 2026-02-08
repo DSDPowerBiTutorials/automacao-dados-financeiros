@@ -385,7 +385,6 @@ export default function PnLReport() {
 
     // Função para abrir drill-down
     const openDrilldown = useCallback(async (faCode: string, faName: string, monthIndex: number) => {
-        if (faCode.endsWith('.0')) return; // Não abrir para totais (categorias)
 
         setDrilldown(prev => ({
             ...prev,
@@ -711,7 +710,7 @@ export default function PnLReport() {
         const monthlyValues = MONTHS.map((_, i) => i > lastClosedMonth ? 0 : getMonthValue(line.monthly, i));
         // Total = soma até o último mês fechado (inclusive), ou 0 se nenhum fechado
         const total = lastClosedMonth >= 0 ? getYTD(line.monthly, lastClosedMonth) : 0;
-        const isClickable = !line.code.endsWith('.0');
+        const isClickable = true;
 
         return (
             <div key={line.code}>
