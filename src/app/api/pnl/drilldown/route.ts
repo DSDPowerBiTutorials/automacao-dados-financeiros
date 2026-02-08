@@ -51,16 +51,7 @@ export async function GET(request: NextRequest) {
                     dep_cost_type_code, course_code, sub_department_code,
                     notes, dre_impact, cash_impact, is_intercompany,
                     paid_amount, paid_currency, eur_exchange,
-                    payment_status, finance_payment_status, invoice_status, scope, country_code,
-                    providers:provider_code(name),
-                    bank_accounts:bank_account_code(name),
-                    payment_methods:payment_method_code(name),
-                    cost_centers:cost_center_code(name),
-                    cost_types:cost_type_code(name),
-                    dep_cost_types:dep_cost_type_code(name),
-                    financial_accounts:financial_account_code(name),
-                    courses:course_code(name),
-                    sub_departments:sub_department_code(name)
+                    payment_status, finance_payment_status, invoice_status, scope, country_code
                 `)
                 .eq("dre_impact", true)
                 .neq("invoice_type", "BUDGET")
@@ -96,13 +87,42 @@ export async function GET(request: NextRequest) {
             const startIndex = (page - 1) * limit;
             const paginatedData = (data || []).slice(startIndex, startIndex + limit);
 
-            // Helper to safely extract name from joined relation
-            const getName = (rel: any): string | null => {
-                if (!rel) return null;
-                if (typeof rel === 'string') return rel;
-                if (Array.isArray(rel)) return rel[0]?.name || null;
-                return rel.name || null;
+            // Collect unique codes to resolve names in batch
+            const uniqueCodes = {
+                providers: [...new Set(paginatedData.map(r => r.provider_code).filter(Boolean))],
+                bankAccounts: [...new Set(paginatedData.map(r => r.bank_account_code).filter(Boolean))],
+                paymentMethods: [...new Set(paginatedData.map(r => r.payment_method_code).filter(Boolean))],
+                costCenters: [...new Set(paginatedData.map(r => r.cost_center_code).filter(Boolean))],
+                costTypes: [...new Set(paginatedData.map(r => r.cost_type_code).filter(Boolean))],
+                depCostTypes: [...new Set(paginatedData.map(r => r.dep_cost_type_code).filter(Boolean))],
+                courses: [...new Set(paginatedData.map(r => r.course_code).filter(Boolean))],
+                subDepartments: [...new Set(paginatedData.map(r => r.sub_department_code).filter(Boolean))],
             };
+
+            // Resolve names in parallel
+            const nameMap: Record<string, Record<string, string>> = {};
+            const lookups: [string, string, string[]][] = [
+                ["providers", "providers", uniqueCodes.providers],
+                ["bank_accounts", "bankAccounts", uniqueCodes.bankAccounts],
+                ["payment_methods", "paymentMethods", uniqueCodes.paymentMethods],
+                ["cost_centers", "costCenters", uniqueCodes.costCenters],
+                ["cost_types", "costTypes", uniqueCodes.costTypes],
+                ["dep_cost_types", "depCostTypes", uniqueCodes.depCostTypes],
+                ["courses", "courses", uniqueCodes.courses],
+                ["sub_departments", "subDepartments", uniqueCodes.subDepartments],
+            ];
+
+            await Promise.all(lookups.map(async ([table, key, codes]) => {
+                nameMap[key] = {};
+                if (codes.length === 0) return;
+                const { data: rows } = await supabaseAdmin
+                    .from(table)
+                    .select("code, name")
+                    .in("code", codes);
+                if (rows) {
+                    for (const r of rows) nameMap[key][r.code] = r.name;
+                }
+            }));
 
             transactions = paginatedData.map((row) => ({
                 id: row.id,
@@ -126,21 +146,21 @@ export async function GET(request: NextRequest) {
                 scope: row.scope || row.country_code,
                 // Codes + resolved names
                 bankAccountCode: row.bank_account_code,
-                bankAccountName: getName(row.bank_accounts),
+                bankAccountName: nameMap.bankAccounts[row.bank_account_code] || null,
                 paymentMethodCode: row.payment_method_code,
-                paymentMethodName: getName(row.payment_methods),
+                paymentMethodName: nameMap.paymentMethods[row.payment_method_code] || null,
                 costCenterCode: row.cost_center_code,
-                costCenterName: getName(row.cost_centers),
+                costCenterName: nameMap.costCenters[row.cost_center_code] || null,
                 costTypeCode: row.cost_type_code,
-                costTypeName: getName(row.cost_types),
+                costTypeName: nameMap.costTypes[row.cost_type_code] || null,
                 depCostTypeCode: row.dep_cost_type_code,
-                depCostTypeName: getName(row.dep_cost_types),
+                depCostTypeName: nameMap.depCostTypes[row.dep_cost_type_code] || null,
                 courseCode: row.course_code,
-                courseName: getName(row.courses),
+                courseName: nameMap.courses[row.course_code] || null,
                 subDepartmentCode: row.sub_department_code,
-                subDepartmentName: getName(row.sub_departments),
-                providerName: getName(row.providers),
-                financialAccountName: row.financial_account_name || getName(row.financial_accounts),
+                subDepartmentName: nameMap.subDepartments[row.sub_department_code] || null,
+                providerName: nameMap.providers[row.provider_code] || null,
+                financialAccountName: row.financial_account_name,
                 // Notes & flags
                 notes: row.notes,
                 dreImpact: row.dre_impact,
