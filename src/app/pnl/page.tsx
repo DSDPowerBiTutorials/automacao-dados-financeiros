@@ -32,6 +32,7 @@ import {
     Check,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -48,7 +49,7 @@ const isClinicsFACode = (code: string): boolean => {
     return code.startsWith("102.") || code.startsWith("103.") || code.startsWith("104.");
 };
 
-// Tipos para drill-down
+// Types for drill-down
 interface DrilldownTransaction {
     id: string;
     date: string;
@@ -111,9 +112,9 @@ interface DrilldownState {
     count: number;
 }
 
-// Nomes dos meses
+// Month names
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const MONTHS_FULL = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const MONTHS_FULL = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
 interface MonthlyData {
     jan: number; feb: number; mar: number; apr: number; may: number; jun: number;
@@ -130,13 +131,13 @@ interface DRELineMonthly {
     children?: DRELineMonthly[];
 }
 
-// Helper: criar dados mensais vazios
+// Helper: create empty monthly data
 const emptyMonthlyData = (): MonthlyData => ({
     jan: 0, feb: 0, mar: 0, apr: 0, may: 0, jun: 0,
     jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0,
 });
 
-// Helper: gerar dados mensais de budget uniformes (para receita - ainda hardcoded)
+// Helper: generate uniform monthly budget data (for revenue - still hardcoded)
 const generateBudgetData = (baseAnnual: number): MonthlyData => {
     const monthlyBase = baseAnnual / 12;
     return {
@@ -185,6 +186,8 @@ interface ProviderHistoryInvoice {
     paidCurrency: string | null;
     dreImpact: boolean | null;
     cashImpact: boolean | null;
+    customerName?: string | null;
+    source?: string;
 }
 
 function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: DrilldownTransaction; onClose: () => void }) {
@@ -198,11 +201,13 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
     const [saving, setSaving] = useState(false);
     const [saveMessage, setSaveMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-    // Provider history
+    // Provider/Customer history
     const [providerHistory, setProviderHistory] = useState<ProviderHistoryInvoice[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
     const [showHistory, setShowHistory] = useState(false);
     const [historyViewInvoice, setHistoryViewInvoice] = useState<ProviderHistoryInvoice | null>(null);
+    const [historyFAFilter, setHistoryFAFilter] = useState<string>("all");
+    const [uniqueFACodes, setUniqueFACodes] = useState<string[]>([]);
 
     useEffect(() => {
         if (invoice.source === "invoices" && invoice.id) {
@@ -230,11 +235,16 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
         if (!invoice.customer) return;
         setLoadingHistory(true);
         try {
-            const res = await fetch(`/api/pnl/provider-history?provider=${encodeURIComponent(invoice.customer)}`);
+            const isRevenue = invoice.source !== "invoices";
+            const params = isRevenue
+                ? `customer=${encodeURIComponent(invoice.customer)}&type=revenue`
+                : `provider=${encodeURIComponent(invoice.customer)}&type=expense`;
+            const res = await fetch(`/api/pnl/provider-history?${params}`);
             const data = await res.json();
             if (data.invoices) setProviderHistory(data.invoices);
+            if (data.uniqueFACodes) setUniqueFACodes(data.uniqueFACodes);
         } catch (e) {
-            console.error("Failed to load provider history:", e);
+            console.error("Failed to load history:", e);
         } finally {
             setLoadingHistory(false);
         }
@@ -328,13 +338,13 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                     paymentStatus: String(editFields.paymentStatus || ""),
                 }));
                 setIsEditing(false);
-                setSaveMessage({ type: "success", text: "Invoice atualizada com sucesso!" });
+                setSaveMessage({ type: "success", text: "Invoice updated successfully!" });
                 setTimeout(() => setSaveMessage(null), 3000);
             } else {
-                setSaveMessage({ type: "error", text: data.error || "Erro ao salvar" });
+                setSaveMessage({ type: "error", text: data.error || "Error saving" });
             }
         } catch (e) {
-            setSaveMessage({ type: "error", text: "Erro de conexão" });
+            setSaveMessage({ type: "error", text: "Connection error" });
         } finally {
             setSaving(false);
         }
@@ -425,9 +435,9 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 <ArrowLeft className="h-5 w-5" />
                             </button>
                             <div>
-                                <h3 className="text-lg font-semibold text-white">Invoice do Histórico</h3>
+                                <h3 className="text-lg font-semibold text-white">History Invoice Detail</h3>
                                 <p className="text-xs text-gray-500">
-                                    {historyViewInvoice.invoiceNumber || "Sem número"} • {historyViewInvoice.faName || historyViewInvoice.faCode || "-"}
+                                    {historyViewInvoice.invoiceNumber || "No number"} • {historyViewInvoice.faName || historyViewInvoice.faCode || "-"}
                                 </p>
                             </div>
                         </div>
@@ -547,17 +557,17 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         {/* Edit / Save / Cancel buttons */}
                         {invoice.source === "invoices" && !isEditing && (
                             <Button variant="ghost" size="sm" onClick={startEditing} className="text-gray-400 hover:text-blue-400 gap-1.5 text-xs">
-                                <Pencil className="h-3.5 w-3.5" /> Editar
+                                <Pencil className="h-3.5 w-3.5" /> Edit
                             </Button>
                         )}
                         {isEditing && (
                             <>
                                 <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-gray-400 hover:text-red-400 gap-1 text-xs">
-                                    <XCircle className="h-3.5 w-3.5" /> Cancelar
+                                    <XCircle className="h-3.5 w-3.5" /> Cancel
                                 </Button>
                                 <Button size="sm" onClick={saveChanges} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white gap-1 text-xs">
                                     {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                                    Salvar
+                                    Save
                                 </Button>
                             </>
                         )}
@@ -568,7 +578,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                             className={`gap-1.5 text-xs ${showHistory ? "text-blue-400" : "text-gray-400 hover:text-blue-400"}`}
                         >
                             <History className="h-3.5 w-3.5" />
-                            Histórico ({providerHistory.length})
+                            History ({providerHistory.length})
                         </Button>
                         <Badge className={`text-xs ${paymentStatusColor}`}>
                             {paymentStatusLabel.replace(/_/g, " ")}
@@ -840,33 +850,60 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         </div>
                     </div>
 
-                    {/* ═══ Section: Provider Invoice History ═══ */}
+                    {/* ═══ Section: Invoice History ═══ */}
                     {showHistory && (
                         <div>
                             <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                <History className="h-3.5 w-3.5" /> Provider Invoice History — {invoice.providerName || invoice.customer}
+                                <History className="h-3.5 w-3.5" /> {invoice.source === "invoices" ? "Provider" : "Customer"} Invoice History — {invoice.providerName || invoice.customer}
                                 <span className="text-gray-600 font-normal normal-case">({providerHistory.length} invoices)</span>
                             </h4>
                             <div className="bg-[#252627] rounded-lg overflow-hidden">
                                 {loadingHistory ? (
                                     <div className="flex items-center justify-center py-8">
                                         <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
-                                        <span className="ml-2 text-sm text-gray-500">Carregando histórico...</span>
+                                        <span className="ml-2 text-sm text-gray-500">Loading history...</span>
                                     </div>
                                 ) : providerHistory.length === 0 ? (
-                                    <p className="text-xs text-gray-500 p-4">Nenhuma invoice encontrada para este fornecedor.</p>
+                                    <p className="text-xs text-gray-500 p-4">No invoices found for this {invoice.source === "invoices" ? "provider" : "customer"}.</p>
                                 ) : (
                                     <>
-                                        {/* Summary bar */}
-                                        <div className="flex items-center gap-4 px-4 py-3 bg-[#2a2b2d] border-b border-gray-700">
-                                            <span className="text-xs text-gray-400">
-                                                Total: <span className="text-white font-medium">{providerHistory.length}</span> invoices
-                                            </span>
-                                            <span className="text-xs text-gray-400">
-                                                Spend total: <span className="text-red-400 font-mono font-medium">
-                                                    {formatCurrency(providerHistory.reduce((s, i) => s + (i.amount || 0), 0), "EUR")}
+                                        {/* Summary bar + FA filter */}
+                                        <div className="flex items-center justify-between px-4 py-3 bg-[#2a2b2d] border-b border-gray-700">
+                                            <div className="flex items-center gap-4">
+                                                <span className="text-xs text-gray-400">
+                                                    Total: <span className="text-white font-medium">
+                                                        {historyFAFilter === "all" ? providerHistory.length : providerHistory.filter(i => i.faCode === historyFAFilter).length}
+                                                    </span> invoices
                                                 </span>
-                                            </span>
+                                                <span className="text-xs text-gray-400">
+                                                    {invoice.source === "invoices" ? "Total spend" : "Total revenue"}: <span className={`${invoice.source === "invoices" ? "text-red-400" : "text-emerald-400"} font-mono font-medium`}>
+                                                        {formatCurrency(
+                                                            (historyFAFilter === "all" ? providerHistory : providerHistory.filter(i => i.faCode === historyFAFilter))
+                                                                .reduce((s, i) => s + (i.amount || 0), 0),
+                                                            "EUR"
+                                                        )}
+                                                    </span>
+                                                </span>
+                                            </div>
+                                            {/* FA Filter */}
+                                            {uniqueFACodes.length > 1 && (
+                                                <div className="flex items-center gap-2">
+                                                    <Filter className="h-3.5 w-3.5 text-gray-500" />
+                                                    <Select value={historyFAFilter} onValueChange={setHistoryFAFilter}>
+                                                        <SelectTrigger className="h-7 w-[220px] text-xs bg-[#1e1f21] border-gray-600 text-white">
+                                                            <SelectValue placeholder="All Financial Accounts" />
+                                                        </SelectTrigger>
+                                                        <SelectContent className="bg-[#252627] border-gray-600">
+                                                            <SelectItem value="all" className="text-xs text-gray-300">All Financial Accounts</SelectItem>
+                                                            {uniqueFACodes.map(fa => (
+                                                                <SelectItem key={fa} value={fa} className="text-xs text-gray-300">
+                                                                    {fa} ({providerHistory.filter(i => i.faCode === fa).length})
+                                                                </SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                </div>
+                                            )}
                                         </div>
                                         {/* History table */}
                                         <div className="max-h-[300px] overflow-y-auto">
@@ -883,7 +920,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    {providerHistory.map((hi, idx) => {
+                                                    {(historyFAFilter === "all" ? providerHistory : providerHistory.filter(i => i.faCode === historyFAFilter)).map((hi, idx) => {
                                                         const isCurrentInvoice = hi.id === invoice.id;
                                                         const hiPaid = !!hi.paymentDate || (hi.paidAmount && hi.paidAmount !== 0);
                                                         return (
@@ -902,7 +939,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                                         </button>
                                                                     )}
                                                                     {isCurrentInvoice && (
-                                                                        <span className="text-blue-400 text-[10px] font-medium">ATUAL</span>
+                                                                        <span className="text-blue-400 text-[10px] font-medium">CURRENT</span>
                                                                     )}
                                                                 </td>
                                                                 <td className="px-3 py-2 text-xs text-gray-300 font-mono">{fmt(hi.benefitDate || hi.invoiceDate)}</td>
@@ -919,7 +956,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                                         {hiPaid ? "PAID" : hi.scheduleDate ? "SCHED" : "OPEN"}
                                                                     </span>
                                                                 </td>
-                                                                <td className="px-3 py-2 text-right text-xs font-mono text-red-400">{formatCurrency(hi.amount, hi.currency || "EUR")}</td>
+                                                                <td className={`px-3 py-2 text-right text-xs font-mono ${invoice.source === "invoices" ? "text-red-400" : "text-emerald-400"}`}>{formatCurrency(hi.amount, hi.currency || "EUR")}</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -937,7 +974,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
     );
 }
 
-// Componente de Modal de Drill-Down com paginação e destaque de credit notes
+// Drill-Down Modal component with pagination and credit note highlighting
 interface DrilldownModalProps {
     drilldown: DrilldownState;
     selectedYear: number;
@@ -960,7 +997,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
         canGoPrev,
     } = usePagination(drilldown.transactions, { pageSize: 150 });
 
-    // Calcular totais separados
+    // Calculate separate totals
     const creditNoteCount = drilldown.transactions.filter(tx => tx.amount < 0).length;
     const creditNoteTotal = drilldown.transactions.filter(tx => tx.amount < 0).reduce((s, tx) => s + tx.amount, 0);
     const isExpense = !drilldown.faCode.startsWith("1");
@@ -985,7 +1022,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                         {" • "}
                                         <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
                                         {" • "}
-                                        <span className={isExpense ? "text-red-300" : "text-emerald-300"}>{drilldown.count} transações</span>
+                                        <span className={isExpense ? "text-red-300" : "text-emerald-300"}>{drilldown.count} transactions</span>
                                     </p>
                                     {creditNoteCount > 0 && (
                                         <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">
@@ -1005,11 +1042,11 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                         {drilldown.loading ? (
                             <div className="flex items-center justify-center py-12">
                                 <Loader2 className={`h-8 w-8 animate-spin ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
-                                <span className="ml-3 text-gray-400">Carregando transações...</span>
+                                <span className="ml-3 text-gray-400">Loading transactions...</span>
                             </div>
                         ) : drilldown.transactions.length === 0 ? (
                             <div className="text-center py-12 text-gray-500">
-                                Nenhuma transação encontrada para este período.
+                                No transactions found for this period.
                             </div>
                         ) : (
                             <div className="flex flex-col h-full">
@@ -1017,11 +1054,11 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                     <table className="w-full min-w-[800px]">
                                         <thead className="bg-gray-800 sticky top-0 z-10">
                                             <tr>
-                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Data</th>
-                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">{isExpense ? "Fornecedor" : "Cliente"}</th>
-                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Descrição</th>
-                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Tipo</th>
-                                                <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Valor</th>
+                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Date</th>
+                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">{isExpense ? "Provider" : "Customer"}</th>
+                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Description</th>
+                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Type</th>
+                                                <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Amount</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1034,15 +1071,13 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                     >
                                                         <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
                                                             <div className="flex items-center gap-2">
-                                                                {isExpense && tx.source === "invoices" && (
-                                                                    <button
-                                                                        onClick={() => setSelectedInvoice(tx)}
-                                                                        className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
-                                                                        title="View invoice details"
-                                                                    >
-                                                                        <Eye className="h-3.5 w-3.5" />
-                                                                    </button>
-                                                                )}
+                                                                <button
+                                                                    onClick={() => setSelectedInvoice(tx)}
+                                                                    className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
+                                                                    title="View invoice details"
+                                                                >
+                                                                    <Eye className="h-3.5 w-3.5" />
+                                                                </button>
                                                                 {tx.date ? `${tx.date.substring(8, 10)}/${tx.date.substring(5, 7)}/${tx.date.substring(0, 4)}` : "-"}
                                                             </div>
                                                         </td>
@@ -1074,7 +1109,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                         <tfoot className="bg-gray-800">
                                             <tr>
                                                 <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
-                                                    Total ({drilldown.count} transações)
+                                                    Total ({drilldown.count} transactions)
                                                 </td>
                                                 <td className={`px-4 py-3 text-right text-lg font-mono ${isExpense ? "text-red-300" : "text-emerald-300"} font-bold whitespace-nowrap`}>
                                                     {formatCurrency(drilldown.total, "EUR")}
@@ -1084,7 +1119,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                     </table>
                                 </div>
 
-                                {/* Paginação */}
+                                {/* Pagination */}
                                 {totalPages > 1 && (
                                     <PaginationControls
                                         currentPage={currentPage}
@@ -1160,7 +1195,7 @@ export default function PnLReport() {
     const [expandedSections, setExpandedSections] = useState<Set<string>>(
         new Set(["101.0", "102.0", "103.0", "104.0", "105.0", "201.0", "202.0"])
     );
-    // Usar ano atual dinamicamente (2026 em Feb 2026)
+    // Use current year dynamically (2026 in Feb 2026)
     const [selectedYear, setSelectedYear] = useState(() => new Date().getFullYear());
     const [viewMode, setViewMode] = useState<"monthly" | "quarterly" | "annual">("monthly");
 
@@ -1176,24 +1211,24 @@ export default function PnLReport() {
         count: 0,
     });
 
-    // Lógica correta: último mês fechado
-    // - Para anos passados: todos os 12 meses fechados (índice 11 = dezembro)
-    // - Para ano atual: mês anterior ao atual (-1 se estamos em Janeiro = nenhum fechado)
+    // Correct logic: last closed month
+    // - For past years: all 12 months closed (index 11 = December)
+    // - For current year: previous month (-1 if in January = none closed)
     const currentDate = new Date();
     const currentYear = currentDate.getFullYear();
-    const currentMonthIndex = currentDate.getMonth(); // 0-11 (Fev=1)
-    // lastClosedMonth = índice do último mês FECHADO (inclusive), ou -1 se nenhum
+    const currentMonthIndex = currentDate.getMonth(); // 0-11 (Feb=1)
+    // lastClosedMonth = index of last CLOSED month (inclusive), or -1 if none
     const lastClosedMonth = selectedYear < currentYear ? 11 : currentMonthIndex - 1;
 
-    // Estado para dados reais de receita
+    // State for real revenue data
     const [totalRevenue, setTotalRevenue] = useState<MonthlyData>(emptyMonthlyData());
     const [byFinancialAccount, setByFinancialAccount] = useState<{ [key: string]: MonthlyData }>({});
 
-    // Estado para dados reais de despesas (Accounts Payable)
+    // State for real expense data (Accounts Payable)
     const [byExpenseAccount, setByExpenseAccount] = useState<{ [key: string]: MonthlyData }>({});
     const [byExpenseBudget, setByExpenseBudget] = useState<{ [key: string]: MonthlyData }>({});
 
-    // Buscar dados reais via API (receita + despesas em paralelo)
+    // Fetch real data via API (revenue + expenses in parallel)
     useEffect(() => {
         async function fetchPnLData() {
             try {
@@ -1210,21 +1245,21 @@ export default function PnLReport() {
                 if (revenueRes.ok && revenueResult.success) {
                     setTotalRevenue(revenueResult.totalRevenue || emptyMonthlyData());
                     setByFinancialAccount(revenueResult.byFinancialAccount || {});
-                    console.log('📊 Receita carregada:', revenueResult.totalRecords, 'registros');
+                    console.log('📊 Revenue loaded:', revenueResult.totalRecords, 'records');
                 } else {
-                    console.error('Erro ao buscar receita:', revenueResult.error);
+                    console.error('Error fetching revenue:', revenueResult.error);
                 }
 
                 if (expensesRes.ok && expensesResult.success) {
                     setByExpenseAccount(expensesResult.byExpenseAccount || {});
                     setByExpenseBudget(expensesResult.byExpenseBudget || {});
-                    console.log('📊 Despesas carregadas:', expensesResult.actualCount, 'actual,', expensesResult.budgetCount, 'budget');
+                    console.log('📊 Expenses loaded:', expensesResult.actualCount, 'actual,', expensesResult.budgetCount, 'budget');
                 } else {
-                    console.error('Erro ao buscar despesas:', expensesResult.error);
+                    console.error('Error fetching expenses:', expensesResult.error);
                 }
 
             } catch (err) {
-                console.error('Erro ao carregar P&L:', err);
+                console.error('Error loading P&L:', err);
             } finally {
                 setLoading(false);
             }
@@ -1233,7 +1268,7 @@ export default function PnLReport() {
         fetchPnLData();
     }, [selectedYear]);
 
-    // Função para abrir drill-down
+    // Function to open drill-down
     const openDrilldown = useCallback(async (faCode: string, faName: string, monthIndex: number) => {
 
         setDrilldown(prev => ({
@@ -1263,11 +1298,11 @@ export default function PnLReport() {
                     count: result.pagination?.total || result.transactions?.length || 0,
                 }));
             } else {
-                console.error('Erro drill-down:', result.error);
+                console.error('Drill-down error:', result.error);
                 setDrilldown(prev => ({ ...prev, loading: false }));
             }
         } catch (err) {
-            console.error('Erro ao buscar drill-down:', err);
+            console.error('Error fetching drill-down:', err);
             setDrilldown(prev => ({ ...prev, loading: false }));
         }
     }, [selectedYear]);
@@ -1276,10 +1311,10 @@ export default function PnLReport() {
         setDrilldown(prev => ({ ...prev, isOpen: false }));
     }, []);
 
-    // Helper para pegar dados da financial account ou zeros
+    // Helper: get financial account data or zeros
     const getFA = (code: string): MonthlyData => byFinancialAccount[code] || emptyMonthlyData();
 
-    // Helper para somar múltiplas financial accounts (receita)
+    // Helper: sum multiple financial accounts (revenue)
     const sumFA = (...codes: string[]): MonthlyData => {
         const result = emptyMonthlyData();
         const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
@@ -1289,13 +1324,13 @@ export default function PnLReport() {
         return result;
     };
 
-    // Helper para pegar dados de despesa (actual) da financial account
+    // Helper: get expense (actual) data for financial account
     const getExpFA = (code: string): MonthlyData => byExpenseAccount[code] || emptyMonthlyData();
 
-    // Helper para pegar dados de budget de despesa
+    // Helper: get expense budget data
     const getExpBudgetFA = (code: string): MonthlyData => byExpenseBudget[code] || emptyMonthlyData();
 
-    // Helper para somar múltiplas financial accounts de despesa (actual)
+    // Helper: sum multiple expense financial accounts (actual)
     const sumExpFA = (...codes: string[]): MonthlyData => {
         const result = emptyMonthlyData();
         const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
@@ -1305,7 +1340,7 @@ export default function PnLReport() {
         return result;
     };
 
-    // Helper para somar múltiplas financial accounts de budget de despesa
+    // Helper: sum multiple expense budget financial accounts
     const sumExpBudgetFA = (...codes: string[]): MonthlyData => {
         const result = emptyMonthlyData();
         const keys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'] as const;
@@ -1315,7 +1350,7 @@ export default function PnLReport() {
         return result;
     };
 
-    // Revenue structure - Estrutura conforme Excel (sem Allocations)
+    // Revenue structure - based on Excel (without Allocations)
     const revenueStructure: DRELineMonthly[] = useMemo(() => [
         {
             code: "101.0", name: "Growth", type: "revenue", level: 0,
@@ -1501,7 +1536,7 @@ export default function PnLReport() {
             };
         });
 
-        // Calculate YTD (até o último mês fechado)
+        // Calculate YTD (up to last closed month)
         const ytd = {
             revenue: months.slice(0, lastClosedMonth + 1).reduce((s, m) => s + m.revenue, 0),
             revenueBudget: months.slice(0, lastClosedMonth + 1).reduce((s, m) => s + m.revenueBudget, 0),
@@ -1542,12 +1577,12 @@ export default function PnLReport() {
         setExpandedSections(newExpanded);
     };
 
-    // Formato forçado: 1.000.000 (ponto como separador de milhar)
+    // Forced format: 1.000.000 (dot as thousands separator)
     const formatNumber = (value: number): string => {
         return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     };
 
-    // Formato compacto para células da tabela (sem abreviação)
+    // Compact format for table cells (no abbreviation)
     const formatCompact = (value: number): string => {
         return Math.round(value).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
     };
@@ -1556,9 +1591,9 @@ export default function PnLReport() {
     const renderMonthlyRow = (line: DRELineMonthly, isChild = false) => {
         const hasChildren = line.children && line.children.length > 0;
         const isExpanded = expandedSections.has(line.code);
-        // Meses não fechados: i > lastClosedMonth (meses APÓS o último fechado)
+        // Non-closed months: i > lastClosedMonth (months AFTER the last closed)
         const monthlyValues = MONTHS.map((_, i) => i > lastClosedMonth ? 0 : getMonthValue(line.monthly, i));
-        // Total = soma até o último mês fechado (inclusive), ou 0 se nenhum fechado
+        // Total = sum up to last closed month (inclusive), or 0 if none closed
         const total = lastClosedMonth >= 0 ? getYTD(line.monthly, lastClosedMonth) : 0;
         const isClickable = true;
 
@@ -1581,7 +1616,7 @@ export default function PnLReport() {
                     {/* Monthly values - CLICKABLE for drill-down */}
                     {monthlyValues.map((val, i) => {
                         const realVal = getMonthValue(line.monthly, i);
-                        const isNotClosed = i > lastClosedMonth; // Mês não fechado se APÓS o último fechado
+                        const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month
                         const canClick = isClickable && realVal !== 0 && !isNotClosed;
                         const hoverClass = line.type === "revenue"
                             ? "cursor-pointer hover:bg-emerald-900/30 rounded transition-colors"
@@ -1621,7 +1656,7 @@ export default function PnLReport() {
                     <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-white"} text-xs`}>{label}</span>
                 </div>
                 {monthlyData.map((m, i) => {
-                    const isNotClosed = i > lastClosedMonth; // Mês não fechado se APÓS o último fechado
+                    const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month
                     return (
                         <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>
                             <span className={`text-[10px] font-mono font-semibold ${isProfit ? "text-blue-300" : "text-gray-200"}`}>
@@ -1663,7 +1698,7 @@ export default function PnLReport() {
                                 P&L Statement
                             </h1>
                             <p className="text-sm text-gray-400 mt-0.5">
-                                Demonstração do Resultado • {selectedYear} • {selectedScope === "GLOBAL" ? "All Regions" : selectedScope}
+                                Income Statement • {selectedYear} • {selectedScope === "GLOBAL" ? "All Regions" : selectedScope}
                             </p>
                         </div>
                     </div>
@@ -1828,7 +1863,7 @@ export default function PnLReport() {
                                     Monthly Income Statement
                                 </CardTitle>
                                 <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
-                                    {lastClosedMonth >= 0 ? `${MONTHS_FULL[lastClosedMonth]} ${selectedYear}` : `Nenhum mês fechado`}
+                                    {lastClosedMonth >= 0 ? `${MONTHS_FULL[lastClosedMonth]} ${selectedYear}` : `No closed months`}
                                 </Badge>
                                 <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
                                     📊 Invoice Orders: Dados Reais
@@ -1898,7 +1933,7 @@ export default function PnLReport() {
                                 <span className="text-sm font-bold text-amber-300">NET INCOME</span>
                             </div>
                             {monthlyTotals.months.map((m, i) => {
-                                const isNotClosed = i > lastClosedMonth; // Mês não fechado se APÓS o último fechado
+                                const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month
                                 const displayValue = isNotClosed ? 0 : m.netIncome;
                                 return (
                                     <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>

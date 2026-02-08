@@ -69,7 +69,7 @@ export async function GET(request: NextRequest) {
                 .range(offset, offset + pageSize - 1);
 
             if (error) {
-                console.error("Erro ao buscar invoices para P&L:", error);
+                console.error("Error fetching invoices for P&L:", error);
                 return NextResponse.json({ error: error.message }, { status: 500 });
             }
 
@@ -156,9 +156,9 @@ export async function GET(request: NextRequest) {
             categoryBudgetTotals,
         });
     } catch (error) {
-        console.error("Erro na API de expenses P&L:", error);
+        console.error("Error in expenses P&L API:", error);
         return NextResponse.json(
-            { error: "Erro interno ao buscar dados de despesas" },
+            { error: "Internal error fetching expense data" },
             { status: 500 }
         );
     }

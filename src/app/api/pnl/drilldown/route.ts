@@ -16,19 +16,19 @@ export async function GET(request: NextRequest) {
 
     if (!faCode) {
         return NextResponse.json(
-            { error: "financial_account_code (fa) é obrigatório" },
+            { error: "financial_account_code (fa) is required" },
             { status: 400 }
         );
     }
 
     try {
-        // Calcular range de datas para o mês (sem timezone issues)
+        // Calculate date range for the month (no timezone issues)
         const monthStr = String(month + 1).padStart(2, "0");
         const startStr = `${year}-${monthStr}-01`;
         const lastDay = new Date(year, month + 1, 0).getDate();
         const endStr = `${year}-${monthStr}-${String(lastDay).padStart(2, "0")}`;
 
-        console.log(`📊 Drill-down: FA=${faCode}, Mês=${month + 1}, Ano=${year}, Range=${startStr} a ${endStr}`);
+        console.log(`📊 Drill-down: FA=${faCode}, Month=${month + 1}, Year=${year}, Range=${startStr} to ${endStr}`);
 
         let transactions: any[] = [];
         let total = 0;
@@ -74,9 +74,9 @@ export async function GET(request: NextRequest) {
             const { data, error } = await query;
 
             if (error) {
-                console.error("Erro ao buscar drill-down de despesas:", error);
+                console.error("Error fetching expense drill-down:", error);
                 return NextResponse.json(
-                    { error: "Erro ao buscar dados: " + error.message },
+                    { error: "Error fetching data: " + error.message },
                     { status: 500 }
                 );
             }
@@ -199,9 +199,9 @@ export async function GET(request: NextRequest) {
             const { data, error } = await revQuery;
 
             if (error) {
-                console.error("Erro ao buscar drill-down de receita:", error);
+                console.error("Error fetching revenue drill-down:", error);
                 return NextResponse.json(
-                    { error: "Erro ao buscar dados: " + error.message },
+                    { error: "Error fetching data: " + error.message },
                     { status: 500 }
                 );
             }
@@ -223,14 +223,14 @@ export async function GET(request: NextRequest) {
             }));
         }
 
-        console.log(`📊 Drill-down resultado: ${totalFiltered} transações, total €${total.toFixed(2)}`);
+        console.log(`📊 Drill-down result: ${totalFiltered} transactions, total €${total.toFixed(2)}`);
 
         return NextResponse.json({
             success: true,
             faCode,
             year,
             month: month + 1,
-            monthName: new Date(year, month).toLocaleString("pt-BR", { month: "long" }),
+            monthName: new Date(year, month).toLocaleString("en-US", { month: "long" }),
             transactions,
             total,
             pagination: {
@@ -241,9 +241,9 @@ export async function GET(request: NextRequest) {
             },
         });
     } catch (error) {
-        console.error("Erro na API de drill-down:", error);
+        console.error("Error in drill-down API:", error);
         return NextResponse.json(
-            { error: "Erro interno ao buscar dados" },
+            { error: "Internal error fetching data" },
             { status: 500 }
         );
     }

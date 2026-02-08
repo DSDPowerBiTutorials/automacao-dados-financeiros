@@ -8,7 +8,7 @@ export async function PUT(request: NextRequest) {
 
         if (!id) {
             return NextResponse.json(
-                { error: "id é obrigatório" },
+                { error: "id is required" },
                 { status: 400 }
             );
         }
@@ -57,7 +57,7 @@ export async function PUT(request: NextRequest) {
 
         if (Object.keys(updateData).length === 0) {
             return NextResponse.json(
-                { error: "Nenhum campo para atualizar" },
+                { error: "No fields to update" },
                 { status: 400 }
             );
         }
@@ -72,13 +72,13 @@ export async function PUT(request: NextRequest) {
             .single();
 
         if (error) {
-            console.error("Erro ao atualizar invoice:", error);
+            console.error("Error updating invoice:", error);
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
         return NextResponse.json({ success: true, id: data.id });
     } catch (error) {
-        console.error("Erro na API de update invoice:", error);
-        return NextResponse.json({ error: "Erro interno" }, { status: 500 });
+        console.error("Error in invoice update API:", error);
+        return NextResponse.json({ error: "Internal error" }, { status: 500 });
     }
 }

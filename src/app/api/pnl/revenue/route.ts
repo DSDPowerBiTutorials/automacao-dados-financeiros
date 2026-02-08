@@ -13,7 +13,7 @@ const emptyMonthly = (): MonthlyData => ({
 
 const monthKeys = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
 
-// Lista de Financial Accounts (sem Allocations - são apenas ajustes internos)
+// List of Financial Accounts (without Allocations - those are internal adjustments only)
 const ALL_FINANCIAL_ACCOUNTS = [
     // 101.0 Growth
     "101.1", // DSD Courses
@@ -21,7 +21,7 @@ const ALL_FINANCIAL_ACCOUNTS = [
     "101.3", // Mastership
     "101.4", // PC Membership
     "101.5", // Partnerships
-    // 102.0 Delight (lógica de Clinics: ROW vs AMEX, Contracted vs New)
+    // 102.0 Delight (Clinics logic: ROW vs AMEX, Contracted vs New)
     "102.1", // Contracted ROW
     "102.2", // Contracted AMEX
     "102.3", // Level 3 New ROW
@@ -29,7 +29,7 @@ const ALL_FINANCIAL_ACCOUNTS = [
     "102.5", // Consultancies
     "102.6", // Marketing Coaching
     "102.7", // Others
-    // 103.0 Planning Center (lógica de Clinics: Level 3/2/1 e ROW vs AMEX)
+    // 103.0 Planning Center (Clinics logic: Level 3/2/1 and ROW vs AMEX)
     "103.1", // Level 3 ROW
     "103.2", // Level 3 AMEX
     "103.3", // Level 3 New ROW
@@ -37,7 +37,7 @@ const ALL_FINANCIAL_ACCOUNTS = [
     "103.5", // Level 2
     "103.6", // Level 1
     "103.7", // Not a Subscriber
-    // 104.0 LAB (lógica de Clinics: Level 3/2/1 e ROW vs AMEX)
+    // 104.0 LAB (Clinics logic: Level 3/2/1 and ROW vs AMEX)
     "104.1", // Level 3 ROW
     "104.2", // Level 3 AMEX
     "104.3", // Level 3 New ROW
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
         const endDate = `${year}-12-31`;
 
         // Buscar dados APENAS de invoice-orders (fonte principal de receita)
-        // IMPORTANTE: usar range para pegar todos os registros (limite padrão é 1000)
+        // IMPORTANT: use range to fetch all records (default limit is 1000)
         let allData: any[] = [];
         let offset = 0;
         const pageSize = 1000;
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
                 .range(offset, offset + pageSize - 1);
 
             if (error) {
-                console.error("Erro ao buscar dados:", error);
+                console.error("Error fetching data:", error);
                 return NextResponse.json({ error: error.message }, { status: 500 });
             }
 
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
             allData = allData.concat(data);
             offset += pageSize;
 
-            // Se retornou menos que o pageSize, não há mais dados
+            // If returned less than pageSize, no more data
             if (data.length < pageSize) break;
         }
 
@@ -99,10 +99,10 @@ export async function GET(request: NextRequest) {
             byFinancialAccountCount[fa] = emptyMonthly();
         }
 
-        // Total por mês (todas as receitas)
+        // Total per month (all revenue)
         const totalRevenue: MonthlyData = emptyMonthly();
 
-        // Processar cada linha - INCLUINDO credit notes (valores negativos) para P&L líquido
+        // Process each row - INCLUDING credit notes (negative values) for net P&L
         for (const row of allData || []) {
             if (!row.date) continue;
 
@@ -110,8 +110,8 @@ export async function GET(request: NextRequest) {
             const amount = row.amount || 0;
             if (amount === 0) continue; // Apenas ignorar zeros
 
-            // CRÍTICO: Parsing manual da string de data para evitar conversão de timezone
-            // row.date é string "YYYY-MM-DD", extraímos o mês diretamente sem usar Date object
+            // CRITICAL: Manual date string parsing to avoid timezone conversion
+            // row.date is a "YYYY-MM-DD" string, we extract the month directly without using Date object
             const monthIndex = parseInt(row.date.substring(5, 7), 10) - 1;
             const monthKey = monthKeys[monthIndex];
 
@@ -126,7 +126,7 @@ export async function GET(request: NextRequest) {
             totalRevenue[monthKey] += amount;
         }
 
-        // Log das estatísticas por categoria principal
+        // Log statistics by main category
         const categoryTotals: { [key: string]: number } = {};
         for (const fa of ALL_FINANCIAL_ACCOUNTS) {
             const category = fa.split('.')[0] + '.0';
@@ -150,9 +150,9 @@ export async function GET(request: NextRequest) {
             categories: categoryTotals,
         });
     } catch (error) {
-        console.error("Erro na API de receita:", error);
+        console.error("Error in revenue API:", error);
         return NextResponse.json(
-            { error: "Erro interno ao buscar dados de receita" },
+            { error: "Internal error fetching revenue data" },
             { status: 500 }
         );
     }
