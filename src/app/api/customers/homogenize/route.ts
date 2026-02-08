@@ -60,6 +60,15 @@ function nameSimilarity(a: string, b: string): number {
     const nb = normalizeName(b);
     if (!na || !nb) return 0;
     if (na === nb) return 100;
+    // Substring containment: "katie to" inside "katie to dds pllc" → 90%
+    // Only if the shorter string is at least 5 chars (avoid false positives)
+    const shorter = na.length <= nb.length ? na : nb;
+    const longer = na.length <= nb.length ? nb : na;
+    if (shorter.length >= 5 && longer.includes(shorter)) return 90;
+    // Also check if all words of shorter appear in longer
+    const shorterWords = shorter.split(/\s+/);
+    const longerWords = longer.split(/\s+/);
+    if (shorterWords.length >= 2 && shorterWords.every(w => longerWords.some(lw => lw === w || lw.startsWith(w)))) return 88;
     const maxLen = Math.max(na.length, nb.length);
     if (maxLen === 0) return 100;
     const dist = levenshtein(na, nb);

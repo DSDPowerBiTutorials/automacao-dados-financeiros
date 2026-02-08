@@ -1300,189 +1300,234 @@ export default function ARInvoicesPage() {
 
       {/* Edit/Create Dialog */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-[#2a2b2d] border-gray-700 text-white" style={{ width: '80vw' }}>
-          <DialogHeader>
-            <DialogTitle className="text-white">{editingInvoice?.id ? "Editar Invoice" : "Nova Invoice"}</DialogTitle>
-            <DialogDescription className="text-gray-400">Campos do relatório HubSpot/Backend</DialogDescription>
+        <DialogContent className="max-w-[900px] max-h-[90vh] overflow-y-auto bg-[#1e1f21] border-gray-700 text-white p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b border-gray-700">
+            <DialogTitle className="text-white text-lg">{editingInvoice?.id ? "Edit Invoice" : "New Invoice"}</DialogTitle>
+            <DialogDescription className="text-gray-400 text-sm">HubSpot/Backend report fields</DialogDescription>
           </DialogHeader>
 
           {editingInvoice && (
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-gray-300">Invoice Number *</Label>
-                <Input
-                  value={editingInvoice.invoice_number || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, invoice_number: e.target.value })}
-                  placeholder="#DSDFS4F46AC9-53077"
-                  className="bg-gray-800 border-gray-600 text-white"
-                />
+            <div className="px-6 py-5 space-y-5">
+              {/* Row 1: Invoice Number + Order ID */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Invoice Number *</Label>
+                  <Input
+                    value={editingInvoice.invoice_number || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, invoice_number: e.target.value })}
+                    placeholder="#DSDFS4F46AC9-53077"
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Order ID</Label>
+                  <Input
+                    value={editingInvoice.order_id || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, order_id: e.target.value })}
+                    placeholder="4f46ac9"
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-gray-300">Order ID</Label>
-                <Input
-                  value={editingInvoice.order_id || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, order_id: e.target.value })}
-                  placeholder="4f46ac9"
-                  className="bg-gray-800 border-gray-600 text-white"
-                />
+
+              {/* Row 2: Order Date + Invoice Date */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Order Date</Label>
+                  <Input
+                    type="date"
+                    value={editingInvoice.order_date || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, order_date: e.target.value })}
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Invoice Date *</Label>
+                  <Input
+                    type="date"
+                    value={editingInvoice.invoice_date || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, invoice_date: e.target.value })}
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-gray-300">Order Date</Label>
-                <Input
-                  type="date"
-                  value={editingInvoice.order_date || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, order_date: e.target.value })}
-                  className="bg-gray-800 border-gray-600 text-white"
-                />
+
+              {/* Row 3: Order Status + Status */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Order Status</Label>
+                  <Input
+                    value={editingInvoice.order_status || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, order_status: e.target.value })}
+                    placeholder="Subscription Plan, Single Payment..."
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Status</Label>
+                  <Select
+                    value={editingInvoice.status || "pending"}
+                    onValueChange={v => setEditingInvoice({ ...editingInvoice, status: v })}
+                  >
+                    <SelectTrigger className="bg-[#2a2b2d] border-gray-600 text-white h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-[#2a2b2d] border-gray-600">
+                      {Object.entries(STATUS_CONFIG).map(([key, config]) => (
+                        <SelectItem key={key} value={key} className="text-white hover:bg-gray-700">{config.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-gray-300">Invoice Date *</Label>
-                <Input
-                  type="date"
-                  value={editingInvoice.invoice_date || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, invoice_date: e.target.value })}
-                  className="bg-gray-800 border-gray-600 text-white"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Order Status</Label>
-                <Input
-                  value={editingInvoice.order_status || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, order_status: e.target.value })}
-                  placeholder="Subscription Plan, Single Payment..."
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Status</Label>
-                <Select
-                  value={editingInvoice.status || "pending"}
-                  onValueChange={v => setEditingInvoice({ ...editingInvoice, status: v })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                      <SelectItem key={key} value={key}>{config.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Products</Label>
+
+              {/* Row 4: Products (full width) */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] text-gray-400 uppercase font-medium">Products</Label>
                 <Input
                   value={editingInvoice.products || ""}
                   onChange={e => setEditingInvoice({ ...editingInvoice, products: e.target.value })}
                   placeholder="Level 1 Subscription - DO NOT DELETE"
+                  className="bg-[#2a2b2d] border-gray-600 text-white h-9"
                 />
               </div>
-              <div className="space-y-2">
-                <Label>Company</Label>
-                <Input
-                  value={editingInvoice.company_name || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, company_name: e.target.value })}
-                />
+
+              {/* Row 5: Company + Client Name */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Company</Label>
+                  <Input
+                    value={editingInvoice.company_name || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, company_name: e.target.value })}
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Client Name</Label>
+                  <Input
+                    value={editingInvoice.client_name || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, client_name: e.target.value })}
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Client Name</Label>
-                <Input
-                  value={editingInvoice.client_name || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, client_name: e.target.value })}
-                />
+
+              {/* Row 6: Email + Total Amount */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Email</Label>
+                  <Input
+                    type="email"
+                    value={editingInvoice.email || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, email: e.target.value })}
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Total Amount *</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingInvoice.total_amount || 0}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, total_amount: parseFloat(e.target.value) || 0 })}
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Email</Label>
-                <Input
-                  type="email"
-                  value={editingInvoice.email || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, email: e.target.value })}
-                />
+
+              {/* Row 7: Currency + Charged Amount */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Currency</Label>
+                  <Select
+                    value={editingInvoice.currency || "EUR"}
+                    onValueChange={v => setEditingInvoice({ ...editingInvoice, currency: v })}
+                  >
+                    <SelectTrigger className="bg-[#2a2b2d] border-gray-600 text-white h-9"><SelectValue /></SelectTrigger>
+                    <SelectContent className="bg-[#2a2b2d] border-gray-600">
+                      <SelectItem value="EUR" className="text-white hover:bg-gray-700">EUR</SelectItem>
+                      <SelectItem value="USD" className="text-white hover:bg-gray-700">USD</SelectItem>
+                      <SelectItem value="GBP" className="text-white hover:bg-gray-700">GBP</SelectItem>
+                      <SelectItem value="AUD" className="text-white hover:bg-gray-700">AUD</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Charged Amount</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={editingInvoice.charged_amount || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, charged_amount: parseFloat(e.target.value) || null })}
+                    placeholder="Leave empty if not charged"
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Total Amount *</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={editingInvoice.total_amount || 0}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, total_amount: parseFloat(e.target.value) || 0 })}
-                />
+
+              {/* Row 8: Payment Method + Billing Entity */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Payment Method</Label>
+                  <Select
+                    value={editingInvoice.payment_method || ""}
+                    onValueChange={v => setEditingInvoice({ ...editingInvoice, payment_method: v })}
+                  >
+                    <SelectTrigger className="bg-[#2a2b2d] border-gray-600 text-white h-9"><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent className="bg-[#2a2b2d] border-gray-600">
+                      {PAYMENT_METHODS.map(pm => <SelectItem key={pm} value={pm} className="text-white hover:bg-gray-700">{pm}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Billing Entity</Label>
+                  <Select
+                    value={editingInvoice.billing_entity || ""}
+                    onValueChange={v => setEditingInvoice({ ...editingInvoice, billing_entity: v })}
+                  >
+                    <SelectTrigger className="bg-[#2a2b2d] border-gray-600 text-white h-9"><SelectValue placeholder="Select..." /></SelectTrigger>
+                    <SelectContent className="bg-[#2a2b2d] border-gray-600">
+                      {BILLING_ENTITIES.map(be => <SelectItem key={be} value={be} className="text-white hover:bg-gray-700">{be}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Currency</Label>
-                <Select
-                  value={editingInvoice.currency || "EUR"}
-                  onValueChange={v => setEditingInvoice({ ...editingInvoice, currency: v })}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="EUR">EUR</SelectItem>
-                    <SelectItem value="USD">USD</SelectItem>
-                    <SelectItem value="GBP">GBP</SelectItem>
-                    <SelectItem value="AUD">AUD</SelectItem>
-                  </SelectContent>
-                </Select>
+
+              {/* Row 9: Discount Code + Discount Names */}
+              <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Discount Code</Label>
+                  <Input
+                    value={editingInvoice.discount_code || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, discount_code: e.target.value })}
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[11px] text-gray-400 uppercase font-medium">Discount Names</Label>
+                  <Input
+                    value={editingInvoice.discount_names || ""}
+                    onChange={e => setEditingInvoice({ ...editingInvoice, discount_names: e.target.value })}
+                    className="bg-[#2a2b2d] border-gray-600 text-white h-9"
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>Charged Amount</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={editingInvoice.charged_amount || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, charged_amount: parseFloat(e.target.value) || null })}
-                  placeholder="Leave empty if not charged"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Payment Method</Label>
-                <Select
-                  value={editingInvoice.payment_method || ""}
-                  onValueChange={v => setEditingInvoice({ ...editingInvoice, payment_method: v })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map(pm => <SelectItem key={pm} value={pm}>{pm}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Billing Entity</Label>
-                <Select
-                  value={editingInvoice.billing_entity || ""}
-                  onValueChange={v => setEditingInvoice({ ...editingInvoice, billing_entity: v })}
-                >
-                  <SelectTrigger><SelectValue placeholder="Select..." /></SelectTrigger>
-                  <SelectContent>
-                    {BILLING_ENTITIES.map(be => <SelectItem key={be} value={be}>{be}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Discount Code</Label>
-                <Input
-                  value={editingInvoice.discount_code || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, discount_code: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Discount Names</Label>
-                <Input
-                  value={editingInvoice.discount_names || ""}
-                  onChange={e => setEditingInvoice({ ...editingInvoice, discount_names: e.target.value })}
-                />
-              </div>
-              <div className="col-span-2 space-y-2">
-                <Label>Note</Label>
+
+              {/* Row 10: Note (full width) */}
+              <div className="space-y-1.5">
+                <Label className="text-[11px] text-gray-400 uppercase font-medium">Note</Label>
                 <Textarea
                   value={editingInvoice.note || ""}
                   onChange={e => setEditingInvoice({ ...editingInvoice, note: e.target.value })}
                   placeholder="*Exención IVA Artículo 20..."
                   rows={2}
+                  className="bg-[#2a2b2d] border-gray-600 text-white resize-none"
                 />
               </div>
             </div>
           )}
 
-          <DialogFooter>
-            <Button variant="outline" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={() => setDialogOpen(false)}>Cancel</Button>
-            <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700">
+          <DialogFooter className="px-6 py-4 border-t border-gray-700">
+            <Button variant="outline" className="bg-transparent border-gray-600 text-gray-300 hover:bg-gray-700" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSave} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white">
               {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Save
             </Button>
