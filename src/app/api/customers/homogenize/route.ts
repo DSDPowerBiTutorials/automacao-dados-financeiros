@@ -60,15 +60,28 @@ function nameSimilarity(a: string, b: string): number {
     const nb = normalizeName(b);
     if (!na || !nb) return 0;
     if (na === nb) return 100;
-    // Substring containment: "katie to" inside "katie to dds pllc" → 90%
-    // Only if the shorter string is at least 5 chars (avoid false positives)
+
     const shorter = na.length <= nb.length ? na : nb;
     const longer = na.length <= nb.length ? nb : na;
-    if (shorter.length >= 5 && longer.includes(shorter)) return 90;
-    // Also check if all words of shorter appear in longer
-    const shorterWords = shorter.split(/\s+/);
-    const longerWords = longer.split(/\s+/);
-    if (shorterWords.length >= 2 && shorterWords.every(w => longerWords.some(lw => lw === w || lw.startsWith(w)))) return 88;
+
+    // Substring containment: "katie to" inside "katie to dds pllc" → 90%
+    // Require shorter >= 5 chars AND >= 40% of longer length (avoid "align" matching "invisalign")
+    if (shorter.length >= 5 && shorter.length / longer.length >= 0.4 && longer.includes(shorter)) return 90;
+
+    // Word matching: all significant words (>2 chars) of shorter found in longer
+    // Handles "Dr." prefix, suffixes like "Dmd", "Pllc" etc.
+    const shorterWords = shorter.split(/\s+/).filter(w => w.length > 2);
+    const longerWords = longer.split(/\s+/).filter(w => w.length > 2);
+    if (shorterWords.length >= 2 && shorterWords.every(w =>
+        longerWords.some(lw => lw === w || lw.includes(w) || w.includes(lw))
+    )) return 88;
+
+    // Also check if removing spaces makes them match ("westfordsmiles" vs "westford smiles")
+    const shorterNoSpace = shorter.replace(/\s+/g, "");
+    const longerNoSpace = longer.replace(/\s+/g, "");
+    if (shorterNoSpace === longerNoSpace) return 95;
+    if (shorterNoSpace.length >= 5 && shorterNoSpace.length / longerNoSpace.length >= 0.4 && longerNoSpace.includes(shorterNoSpace)) return 88;
+
     const maxLen = Math.max(na.length, nb.length);
     if (maxLen === 0) return 100;
     const dist = levenshtein(na, nb);
@@ -356,7 +369,7 @@ export async function GET() {
                 }
             }
 
-            // 3. Fuzzy name match (>= 85%)
+            // 3. Fuzzy name match against person names (>= 85%)
             if (!foundEmail) {
                 let bestScore = 0;
                 for (const [extName, extEmail] of externalEmailByName) {
@@ -364,6 +377,18 @@ export async function GET() {
                     if (score > bestScore && score >= 85) {
                         bestScore = score;
                         foundEmail = extEmail;
+                    }
+                }
+            }
+
+            // 4. Fuzzy company name match (>= 85%)
+            if (!foundEmail) {
+                let bestScore = 0;
+                for (const [compName, compEmail] of externalEmailByCompany) {
+                    const score = nameSimilarity(normName, compName);
+                    if (score > bestScore && score >= 85) {
+                        bestScore = score;
+                        foundEmail = compEmail;
                     }
                 }
             }
