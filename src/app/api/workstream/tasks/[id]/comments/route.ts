@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
     getComments,
     createComment,
+    updateComment,
+    softDeleteComment,
     getTask,
     getUsers,
     getTaskCollaborators,
@@ -127,6 +129,36 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
         return NextResponse.json({ success: true, data });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Failed to create comment';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
+    }
+}
+
+export async function PATCH(req: NextRequest) {
+    try {
+        const body = await req.json();
+        const { comment_id, content } = body;
+        if (!comment_id || !content?.trim()) {
+            return NextResponse.json({ success: false, error: 'comment_id and content are required' }, { status: 400 });
+        }
+        const data = await updateComment(comment_id, { content: content.trim(), edited_at: new Date().toISOString() });
+        return NextResponse.json({ success: true, data });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to update comment';
+        return NextResponse.json({ success: false, error: message }, { status: 500 });
+    }
+}
+
+export async function DELETE(req: NextRequest) {
+    try {
+        const { searchParams } = new URL(req.url);
+        const commentId = searchParams.get('comment_id');
+        if (!commentId) {
+            return NextResponse.json({ success: false, error: 'comment_id is required' }, { status: 400 });
+        }
+        const data = await softDeleteComment(parseInt(commentId));
+        return NextResponse.json({ success: true, data });
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : 'Failed to delete comment';
         return NextResponse.json({ success: false, error: message }, { status: 500 });
     }
 }

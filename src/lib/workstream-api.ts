@@ -97,7 +97,7 @@ export async function getTask(id: number) {
     return data;
 }
 
-export async function createTask(task: { title: string; section_id: number; project_id: string; status?: string; priority?: string; assignee_id?: string; due_date?: string; description?: string; position?: number; created_by?: string }) {
+export async function createTask(task: { title: string; section_id: number; project_id: string; status?: string; priority?: string; assignee_id?: string; due_date?: string; start_date?: string; description?: string; position?: number; created_by?: string; parent_task_id?: number }) {
     const sb = getAdminClient();
     const { data, error } = await sb.from('ws_tasks').insert(task).select().single();
     if (error) throw error;
@@ -162,6 +162,25 @@ export async function getComments(taskId: number) {
 export async function createComment(comment: { task_id: number; user_id: string | null; content: string }) {
     const sb = getAdminClient();
     const { data, error } = await sb.from('ws_comments').insert(comment).select().single();
+    if (error) throw error;
+    return data;
+}
+
+export async function updateComment(id: number, updates: { content?: string; edited_at?: string }) {
+    const sb = getAdminClient();
+    const { data, error } = await sb.from('ws_comments').update(updates).eq('id', id).select().single();
+    if (error) throw error;
+    return data;
+}
+
+export async function softDeleteComment(id: number) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_comments')
+        .update({ is_deleted: true, content: '[This comment has been deleted]' })
+        .eq('id', id)
+        .select()
+        .single();
     if (error) throw error;
     return data;
 }
@@ -398,4 +417,117 @@ export async function createWSNotification(params: {
         return null;
     }
     return data;
+}
+
+// ============================================================
+// Subtasks
+// ============================================================
+
+export async function getSubtasks(parentTaskId: number) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_tasks')
+        .select('*')
+        .eq('parent_task_id', parentTaskId)
+        .order('position');
+    if (error) throw error;
+    return data;
+}
+
+// ============================================================
+// Task Dependencies
+// ============================================================
+
+export async function getTaskDependencies(taskId: number) {
+    const sb = getAdminClient();
+    // Get both directions: tasks blocking this one, and tasks this one blocks
+    const { data: blocking, error: e1 } = await sb
+        .from('ws_task_dependencies')
+        .select('*')
+        .eq('dependent_task_id', taskId);
+    if (e1) throw e1;
+
+    const { data: dependents, error: e2 } = await sb
+        .from('ws_task_dependencies')
+        .select('*')
+        .eq('blocking_task_id', taskId);
+    if (e2) throw e2;
+
+    return { blockedBy: blocking || [], blocking: dependents || [] };
+}
+
+export async function addTaskDependency(blockingTaskId: number, dependentTaskId: number, dependencyType = 'finish_to_start') {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_task_dependencies')
+        .insert({ blocking_task_id: blockingTaskId, dependent_task_id: dependentTaskId, dependency_type: dependencyType })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function removeTaskDependency(id: number) {
+    const sb = getAdminClient();
+    const { error } = await sb.from('ws_task_dependencies').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// ============================================================
+// Labels
+// ============================================================
+
+export async function getLabels(projectId: string) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_labels')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('name');
+    if (error) throw error;
+    return data;
+}
+
+export async function createLabel(label: { project_id: string; name: string; color: string }) {
+    const sb = getAdminClient();
+    const { data, error } = await sb.from('ws_labels').insert(label).select().single();
+    if (error) throw error;
+    return data;
+}
+
+export async function deleteLabel(id: number) {
+    const sb = getAdminClient();
+    const { error } = await sb.from('ws_labels').delete().eq('id', id);
+    if (error) throw error;
+}
+
+export async function getTaskLabels(taskId: number) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_task_labels')
+        .select('label_id, ws_labels(id, name, color)')
+        .eq('task_id', taskId);
+    if (error) throw error;
+    return data;
+}
+
+export async function addTaskLabel(taskId: number, labelId: number) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_task_labels')
+        .upsert({ task_id: taskId, label_id: labelId }, { onConflict: 'task_id,label_id' })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function removeTaskLabel(taskId: number, labelId: number) {
+    const sb = getAdminClient();
+    const { error } = await sb
+        .from('ws_task_labels')
+        .delete()
+        .eq('task_id', taskId)
+        .eq('label_id', labelId);
+    if (error) throw error;
 }

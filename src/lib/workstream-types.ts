@@ -42,10 +42,12 @@ export interface WSTask {
     priority: TaskPriority;
     assignee_id: string | null;
     due_date: string | null;
+    start_date: string | null;
     completed_at: string | null;
     position: number;
     tags: string[];
     custom_data: Record<string, unknown>;
+    parent_task_id: number | null;
     created_by: string | null;
     created_at: string;
     updated_at: string;
@@ -70,6 +72,8 @@ export interface WSComment {
     content: string;
     parent_id: number | null;
     mentions: string[];
+    edited_at: string | null;
+    is_deleted: boolean;
     created_at: string;
     // Joined field
     user_email?: string;
@@ -144,7 +148,39 @@ export interface WSActivityLog {
 }
 
 // View toggle
-export type ViewMode = 'board' | 'list';
+export type ViewMode = 'board' | 'list' | 'calendar' | 'timeline';
+
+// Dependency type
+export type DependencyType = 'finish_to_start' | 'start_to_start' | 'finish_to_finish' | 'start_to_finish';
+
+export interface WSTaskDependency {
+    id: number;
+    blocking_task_id: number;
+    dependent_task_id: number;
+    dependency_type: DependencyType;
+    created_at: string;
+    // Joined fields
+    blocking_task_title?: string;
+    dependent_task_title?: string;
+}
+
+export interface WSLabel {
+    id: number;
+    project_id: string;
+    name: string;
+    color: string;
+    created_at: string;
+}
+
+export interface WSTaskLabel {
+    task_id: number;
+    label_id: number;
+}
+
+export const LABEL_COLORS = [
+    '#ef4444', '#f97316', '#eab308', '#22c55e', '#14b8a6',
+    '#3b82f6', '#6366f1', '#a855f7', '#ec4899', '#64748b',
+] as const;
 
 // Project with hydrated sections/tasks
 export interface WSProjectFull extends WSProject {
