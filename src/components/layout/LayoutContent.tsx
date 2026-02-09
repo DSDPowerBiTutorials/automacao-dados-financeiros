@@ -20,7 +20,12 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     }
 
     if (isWorkstreamRoute) {
-        return <AuthGuard>{children}</AuthGuard>;
+        return (
+            <AuthGuard>
+                {children}
+                <PlatformChat />
+            </AuthGuard>
+        );
     }
 
     return (

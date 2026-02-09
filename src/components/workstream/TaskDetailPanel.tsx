@@ -43,6 +43,7 @@ import type {
     TaskPriority,
 } from '@/lib/workstream-types';
 import { STATUS_CONFIG, PRIORITY_CONFIG, LABEL_COLORS } from '@/lib/workstream-types';
+import { useAuth } from '@/contexts/auth-context';
 
 interface TaskDetailPanelProps {
     task: WSTask | null;
@@ -65,7 +66,8 @@ export function TaskDetailPanel({
     onUpdate,
     onDelete,
 }: TaskDetailPanelProps) {
-    const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments' | 'activity'>('details');
+    const { profile } = useAuth();
+    const [activeTab, setActiveTab] = useState<'comments' | 'attachments' | 'activity'>('comments');
     const [comments, setComments] = useState<WSComment[]>([]);
     const [activities, setActivities] = useState<WSActivityLog[]>([]);
     const [newComment, setNewComment] = useState('');
@@ -222,10 +224,12 @@ export function TaskDetailPanel({
                 }),
             });
             const json = await res.json();
-            if (json.success) {
+            if (json.success && json.data) {
                 setSubtasks(prev => [...prev, json.data]);
                 setNewSubtaskTitle('');
                 setShowSubtaskInput(false);
+            } else {
+                console.error('Subtask creation failed:', json.error);
             }
         } catch (err) {
             console.error('Failed to create subtask:', err);
@@ -445,7 +449,7 @@ export function TaskDetailPanel({
             const res = await fetch(`/api/workstream/tasks/${task.id}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content, user_id: null }),
+                body: JSON.stringify({ content, user_id: profile?.id || null }),
             });
             const json = await res.json();
             if (json.success) {

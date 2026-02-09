@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/auth-context';
 import {
     LayoutGrid,
     List,
@@ -34,6 +35,7 @@ import type {
 export default function ProjectPage({ params }: { params: Promise<{ projectId: string }> }) {
     const { projectId } = use(params);
     const router = useRouter();
+    const { profile } = useAuth();
 
     const [project, setProject] = useState<WSProject | null>(null);
     const [sections, setSections] = useState<WSSection[]>([]);
@@ -131,6 +133,8 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
     }, [projectId, sections]);
 
     const updateTaskField = useCallback(async (taskId: number, field: string, value: unknown) => {
+        const prevTasks = [...tasks];
+        const prevSelected = selectedTask;
         try {
             // Optimistic update
             setTasks((prev) =>
@@ -142,16 +146,28 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                 prev && prev.id === taskId ? { ...prev, [field]: value } : prev
             );
 
-            await fetch(`/api/workstream/tasks/${taskId}`, {
+            const body: Record<string, unknown> = { [field]: value };
+            if (field === 'assignee_id' && profile?.id) {
+                body.updated_by = profile.id;
+            }
+
+            const res = await fetch(`/api/workstream/tasks/${taskId}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ [field]: value }),
+                body: JSON.stringify(body),
             });
+            const json = await res.json();
+            if (!json.success) {
+                console.error('Task update failed:', json.error);
+                setTasks(prevTasks);
+                setSelectedTask(prevSelected);
+            }
         } catch (err) {
             console.error('Failed to update task:', err);
-            fetchData(); // Rollback
+            setTasks(prevTasks);
+            setSelectedTask(prevSelected);
         }
-    }, []);
+    }, [tasks, selectedTask, profile]);
 
     const deleteTask = useCallback(async (taskId: number) => {
         try {

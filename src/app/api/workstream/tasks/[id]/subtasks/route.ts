@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSubtasks, createTask } from '@/lib/workstream-api';
+import { getSubtasks, createTask, getTask } from '@/lib/workstream-api';
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
     try {
@@ -22,15 +22,24 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
             return NextResponse.json({ success: false, error: 'title is required' }, { status: 400 });
         }
 
+        // Fallback to parent task's section/project if not provided
+        let sectionId = body.section_id;
+        let projectId = body.project_id;
+        if (!sectionId || !projectId) {
+            const parentTask = await getTask(parentTaskId);
+            sectionId = sectionId || parentTask.section_id;
+            projectId = projectId || parentTask.project_id;
+        }
+
         const data = await createTask({
             title: body.title.trim(),
-            section_id: body.section_id,
-            project_id: body.project_id,
+            section_id: sectionId,
+            project_id: projectId,
             parent_task_id: parentTaskId,
             status: 'todo',
             priority: 'medium',
             position: body.position || 0,
-        } as Parameters<typeof createTask>[0] & { parent_task_id: number });
+        });
 
         return NextResponse.json({ success: true, data });
     } catch (error: unknown) {
