@@ -122,7 +122,7 @@ export function TaskDetailPanel({
             const res = await fetch(`/api/workstream/tasks/${task.id}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: newComment.trim(), user_id: 'system' }),
+                body: JSON.stringify({ content: newComment.trim(), user_id: null }),
             });
             const json = await res.json();
             if (json.success) {

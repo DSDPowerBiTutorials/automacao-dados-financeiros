@@ -159,7 +159,7 @@ export async function getComments(taskId: number) {
     return data;
 }
 
-export async function createComment(comment: { task_id: number; user_id: string; content: string }) {
+export async function createComment(comment: { task_id: number; user_id: string | null; content: string }) {
     const sb = getAdminClient();
     const { data, error } = await sb.from('ws_comments').insert(comment).select().single();
     if (error) throw error;

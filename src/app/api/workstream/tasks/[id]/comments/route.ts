@@ -16,10 +16,10 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     try {
         const { id } = await params;
         const body = await req.json();
-        if (!body.content?.trim() || !body.user_id) {
-            return NextResponse.json({ success: false, error: 'content and user_id are required' }, { status: 400 });
+        if (!body.content?.trim()) {
+            return NextResponse.json({ success: false, error: 'content is required' }, { status: 400 });
         }
-        const data = await createComment({ task_id: parseInt(id), user_id: body.user_id, content: body.content });
+        const data = await createComment({ task_id: parseInt(id), user_id: body.user_id || null, content: body.content });
         return NextResponse.json({ success: true, data });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Failed to create comment';
