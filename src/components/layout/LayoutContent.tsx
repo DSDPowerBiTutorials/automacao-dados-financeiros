@@ -12,7 +12,14 @@ export function LayoutContent({ children }: { children: React.ReactNode }) {
     const publicRoutes = ['/login', '/signup', '/forgot-password', '/reset-password'];
     const isPublicRoute = publicRoutes.some(route => pathname?.startsWith(route));
 
+    // Workstream has its own independent layout (no Finance Hub shell)
+    const isWorkstreamRoute = pathname?.startsWith('/workstream');
+
     if (isPublicRoute) {
+        return <AuthGuard>{children}</AuthGuard>;
+    }
+
+    if (isWorkstreamRoute) {
         return <AuthGuard>{children}</AuthGuard>;
     }
 

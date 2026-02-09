@@ -10,7 +10,7 @@ import { NotificationBell } from "@/components/notifications/NotificationBell";
 import { DataFreshnessIndicator } from "@/components/sync/DataFreshnessIndicator";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { SCOPE_CONFIG } from "@/lib/scope-utils";
-import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import { ChevronDown, ChevronUp, Search, KanbanSquare } from "lucide-react";
 
 export function TablerTopbar({
   mobileOpen,
@@ -153,8 +153,31 @@ export function TablerTopbar({
             <span className="small" style={{ color: '#888' }}>{SCOPE_CONFIG[selectedScope].label}</span>
           </div>
 
-          {/* Lado Direito: Mailbox + Avatar */}
+          {/* Lado Direito: Workstream + Mailbox + Avatar */}
           <div className="d-flex align-items-center gap-2">
+            {/* Workstream Link */}
+            <Link
+              href="/workstream"
+              className="d-inline-flex align-items-center gap-1 px-2 py-1 rounded text-decoration-none"
+              style={{
+                background: 'rgba(59,130,246,0.15)',
+                color: '#60a5fa',
+                fontSize: '13px',
+                fontWeight: 500,
+                border: '1px solid rgba(59,130,246,0.25)',
+                transition: 'all 0.15s',
+              }}
+              onMouseEnter={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(59,130,246,0.25)';
+              }}
+              onMouseLeave={(e) => {
+                (e.currentTarget as HTMLElement).style.background = 'rgba(59,130,246,0.15)';
+              }}
+            >
+              <KanbanSquare size={14} />
+              <span className="d-none d-md-inline">Workstream</span>
+            </Link>
+
             {/* Mailbox (Notificações) */}
             <NotificationBell />
 
