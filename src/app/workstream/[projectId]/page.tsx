@@ -12,9 +12,13 @@ import {
     Loader2,
     UserPlus,
     X,
+    Calendar,
+    GanttChart,
 } from 'lucide-react';
 import { BoardView } from '@/components/workstream/BoardView';
 import { ListView } from '@/components/workstream/ListView';
+import { CalendarView } from '@/components/workstream/CalendarView';
+import { TimelineView } from '@/components/workstream/TimelineView';
 import { TaskDetailPanel } from '@/components/workstream/TaskDetailPanel';
 import type {
     WSProject,
@@ -544,6 +548,26 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                                 <List className="h-3.5 w-3.5" />
                                 List
                             </button>
+                            <button
+                                onClick={() => setViewMode('calendar')}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'calendar'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-400 hover:text-white'
+                                    }`}
+                            >
+                                <Calendar className="h-3.5 w-3.5" />
+                                Calendar
+                            </button>
+                            <button
+                                onClick={() => setViewMode('timeline')}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'timeline'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-gray-400 hover:text-white'
+                                    }`}
+                            >
+                                <GanttChart className="h-3.5 w-3.5" />
+                                Timeline
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -565,7 +589,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                         onAddSection={addSection}
                         users={users}
                     />
-                ) : (
+                ) : viewMode === 'list' ? (
                     <ListView
                         sections={sections}
                         tasks={filteredTasks}
@@ -574,6 +598,19 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                         onAddTask={addTask}
                         onToggleTaskStatus={toggleTaskStatus}
                         onUpdateTaskField={updateTaskField}
+                        users={users}
+                    />
+                ) : viewMode === 'calendar' ? (
+                    <CalendarView
+                        tasks={filteredTasks}
+                        onTaskClick={setSelectedTask}
+                        users={users}
+                    />
+                ) : (
+                    <TimelineView
+                        tasks={filteredTasks}
+                        sections={sections}
+                        onTaskClick={setSelectedTask}
                         users={users}
                     />
                 )}
@@ -586,6 +623,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                     customFields={customFields}
                     projectId={projectId}
                     users={users}
+                    allTasks={tasks}
                     onClose={() => setSelectedTask(null)}
                     onUpdate={updateTaskField}
                     onDelete={deleteTask}

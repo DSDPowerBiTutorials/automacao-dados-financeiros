@@ -22,6 +22,12 @@ import {
     Image as ImageIcon,
     Download,
     Users,
+    Plus,
+    MoreHorizontal,
+    Pencil,
+    GitBranch,
+    ArrowRight,
+    Palette,
 } from 'lucide-react';
 import type {
     WSTask,
@@ -31,16 +37,19 @@ import type {
     WSUser,
     WSTaskCollaborator,
     WSAttachment,
+    WSTaskDependency,
+    WSLabel,
     TaskStatus,
     TaskPriority,
 } from '@/lib/workstream-types';
-import { STATUS_CONFIG, PRIORITY_CONFIG } from '@/lib/workstream-types';
+import { STATUS_CONFIG, PRIORITY_CONFIG, LABEL_COLORS } from '@/lib/workstream-types';
 
 interface TaskDetailPanelProps {
     task: WSTask | null;
     customFields: WSCustomField[];
     projectId?: string;
     users?: WSUser[];
+    allTasks?: WSTask[];
     onClose: () => void;
     onUpdate: (taskId: number, field: string, value: unknown) => void;
     onDelete: (taskId: number) => void;
@@ -51,6 +60,7 @@ export function TaskDetailPanel({
     customFields,
     projectId,
     users = [],
+    allTasks = [],
     onClose,
     onUpdate,
     onDelete,
@@ -74,12 +84,28 @@ export function TaskDetailPanel({
     const [taskAttachments, setTaskAttachments] = useState<WSAttachment[]>([]);
     const [uploading, setUploading] = useState(false);
     const [commentFile, setCommentFile] = useState<File | null>(null);
+    // Phase 2 state
+    const [subtasks, setSubtasks] = useState<WSTask[]>([]);
+    const [newSubtaskTitle, setNewSubtaskTitle] = useState('');
+    const [showSubtaskInput, setShowSubtaskInput] = useState(false);
+    const [dependencies, setDependencies] = useState<{ blockedBy: WSTaskDependency[]; blocking: WSTaskDependency[] }>({ blockedBy: [], blocking: [] });
+    const [showDepPicker, setShowDepPicker] = useState(false);
+    const [depSearch, setDepSearch] = useState('');
+    const [taskLabels, setTaskLabels] = useState<WSLabel[]>([]);
+    const [projectLabels, setProjectLabels] = useState<WSLabel[]>([]);
+    const [showLabelPicker, setShowLabelPicker] = useState(false);
+    const [newLabelName, setNewLabelName] = useState('');
+    const [newLabelColor, setNewLabelColor] = useState(LABEL_COLORS[6]);
+    const [editingCommentId, setEditingCommentId] = useState<number | null>(null);
+    const [editCommentValue, setEditCommentValue] = useState('');
     const commentInputRef = useRef<HTMLTextAreaElement>(null);
     const commentFileRef = useRef<HTMLInputElement>(null);
     const mentionListRef = useRef<HTMLDivElement>(null);
     const assigneePickerRef = useRef<HTMLDivElement>(null);
     const collabPickerRef = useRef<HTMLDivElement>(null);
     const taskFileRef = useRef<HTMLInputElement>(null);
+    const depPickerRef = useRef<HTMLDivElement>(null);
+    const labelPickerRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         if (task) {
@@ -89,10 +115,14 @@ export function TaskDetailPanel({
             fetchActivity(task.id);
             fetchCollaborators(task.id);
             fetchAttachments(task.id);
+            fetchSubtasks(task.id);
+            fetchDependencies(task.id);
+            fetchTaskLabels(task.id);
+            if (projectId) fetchProjectLabels(projectId);
         }
     }, [task?.id]);
 
-    // Close assignee picker on click outside
+    // Close pickers on click outside
     useEffect(() => {
         function handleClick(e: MouseEvent) {
             if (assigneePickerRef.current && !assigneePickerRef.current.contains(e.target as Node)) {
@@ -101,10 +131,16 @@ export function TaskDetailPanel({
             if (collabPickerRef.current && !collabPickerRef.current.contains(e.target as Node)) {
                 setShowCollabPicker(false);
             }
+            if (depPickerRef.current && !depPickerRef.current.contains(e.target as Node)) {
+                setShowDepPicker(false);
+            }
+            if (labelPickerRef.current && !labelPickerRef.current.contains(e.target as Node)) {
+                setShowLabelPicker(false);
+            }
         }
-        if (showAssigneePicker || showCollabPicker) document.addEventListener('mousedown', handleClick);
+        if (showAssigneePicker || showCollabPicker || showDepPicker || showLabelPicker) document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
-    }, [showAssigneePicker, showCollabPicker]);
+    }, [showAssigneePicker, showCollabPicker, showDepPicker, showLabelPicker]);
 
     async function fetchComments(taskId: number) {
         try {
@@ -118,9 +154,194 @@ export function TaskDetailPanel({
 
     async function fetchActivity(taskId: number) {
         try {
-            setActivities([]);
+            const res = await fetch(`/api/workstream/tasks/${taskId}/activity`);
+            const json = await res.json();
+            if (json.success) setActivities(json.data || []);
         } catch (err) {
             console.error('Failed to fetch activity:', err);
+        }
+    }
+
+    async function fetchSubtasks(taskId: number) {
+        try {
+            const res = await fetch(`/api/workstream/tasks/${taskId}/subtasks`);
+            const json = await res.json();
+            if (json.success) setSubtasks(json.data || []);
+        } catch (err) {
+            console.error('Failed to fetch subtasks:', err);
+        }
+    }
+
+    async function fetchDependencies(taskId: number) {
+        try {
+            const res = await fetch(`/api/workstream/tasks/${taskId}/dependencies`);
+            const json = await res.json();
+            if (json.success) setDependencies(json.data || { blockedBy: [], blocking: [] });
+        } catch (err) {
+            console.error('Failed to fetch dependencies:', err);
+        }
+    }
+
+    async function fetchTaskLabels(taskId: number) {
+        try {
+            const res = await fetch(`/api/workstream/tasks/${taskId}/labels`);
+            const json = await res.json();
+            if (json.success) {
+                const labels = (json.data || []).map((tl: Record<string, unknown>) => {
+                    const wsLabel = tl.ws_labels as Record<string, unknown> | undefined;
+                    return wsLabel ? { id: wsLabel.id, name: wsLabel.name, color: wsLabel.color, project_id: '', created_at: '' } : null;
+                }).filter(Boolean) as WSLabel[];
+                setTaskLabels(labels);
+            }
+        } catch (err) {
+            console.error('Failed to fetch task labels:', err);
+        }
+    }
+
+    async function fetchProjectLabels(projId: string) {
+        try {
+            const res = await fetch(`/api/workstream/labels?project_id=${projId}`);
+            const json = await res.json();
+            if (json.success) setProjectLabels(json.data || []);
+        } catch (err) {
+            console.error('Failed to fetch project labels:', err);
+        }
+    }
+
+    async function handleCreateSubtask() {
+        if (!task || !newSubtaskTitle.trim()) return;
+        try {
+            const res = await fetch(`/api/workstream/tasks/${task.id}/subtasks`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    title: newSubtaskTitle.trim(),
+                    section_id: task.section_id,
+                    project_id: task.project_id,
+                    position: subtasks.length,
+                }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                setSubtasks(prev => [...prev, json.data]);
+                setNewSubtaskTitle('');
+                setShowSubtaskInput(false);
+            }
+        } catch (err) {
+            console.error('Failed to create subtask:', err);
+        }
+    }
+
+    async function handleToggleSubtask(subtask: WSTask) {
+        const newStatus: TaskStatus = subtask.status === 'done' ? 'todo' : 'done';
+        try {
+            await fetch(`/api/workstream/tasks/${subtask.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status: newStatus, completed_at: newStatus === 'done' ? new Date().toISOString() : null }),
+            });
+            setSubtasks(prev => prev.map(s => s.id === subtask.id ? { ...s, status: newStatus } : s));
+        } catch (err) {
+            console.error('Failed to toggle subtask:', err);
+        }
+    }
+
+    async function handleAddDependency(blockingTaskId: number) {
+        if (!task) return;
+        try {
+            await fetch(`/api/workstream/tasks/${task.id}/dependencies`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ blocking_task_id: blockingTaskId }),
+            });
+            await fetchDependencies(task.id);
+            setShowDepPicker(false);
+            setDepSearch('');
+        } catch (err) {
+            console.error('Failed to add dependency:', err);
+        }
+    }
+
+    async function handleRemoveDependency(depId: number) {
+        if (!task) return;
+        try {
+            await fetch(`/api/workstream/tasks/${task.id}/dependencies?dependency_id=${depId}`, { method: 'DELETE' });
+            await fetchDependencies(task.id);
+        } catch (err) {
+            console.error('Failed to remove dependency:', err);
+        }
+    }
+
+    async function handleAddLabel(labelId: number) {
+        if (!task) return;
+        try {
+            await fetch(`/api/workstream/tasks/${task.id}/labels`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ label_id: labelId }),
+            });
+            await fetchTaskLabels(task.id);
+        } catch (err) {
+            console.error('Failed to add label:', err);
+        }
+    }
+
+    async function handleRemoveLabel(labelId: number) {
+        if (!task) return;
+        try {
+            await fetch(`/api/workstream/tasks/${task.id}/labels?label_id=${labelId}`, { method: 'DELETE' });
+            setTaskLabels(prev => prev.filter(l => l.id !== labelId));
+        } catch (err) {
+            console.error('Failed to remove label:', err);
+        }
+    }
+
+    async function handleCreateLabel() {
+        if (!projectId || !newLabelName.trim()) return;
+        try {
+            const res = await fetch('/api/workstream/labels', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ project_id: projectId, name: newLabelName.trim(), color: newLabelColor }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                setProjectLabels(prev => [...prev, json.data]);
+                setNewLabelName('');
+            }
+        } catch (err) {
+            console.error('Failed to create label:', err);
+        }
+    }
+
+    async function handleEditComment(commentId: number) {
+        if (!editCommentValue.trim()) return;
+        try {
+            const res = await fetch(`/api/workstream/tasks/${task?.id}/comments`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ comment_id: commentId, content: editCommentValue.trim() }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: editCommentValue.trim(), edited_at: new Date().toISOString() } : c));
+                setEditingCommentId(null);
+                setEditCommentValue('');
+            }
+        } catch (err) {
+            console.error('Failed to edit comment:', err);
+        }
+    }
+
+    async function handleDeleteComment(commentId: number) {
+        try {
+            const res = await fetch(`/api/workstream/tasks/${task?.id}/comments?comment_id=${commentId}`, { method: 'DELETE' });
+            const json = await res.json();
+            if (json.success) {
+                setComments(prev => prev.map(c => c.id === commentId ? { ...c, content: '[This comment has been deleted]', is_deleted: true } : c));
+            }
+        } catch (err) {
+            console.error('Failed to delete comment:', err);
         }
     }
 
@@ -582,6 +803,19 @@ export function TaskDetailPanel({
                                 </div>
                             </div>
 
+                            {/* Start Date */}
+                            <div className="flex items-center gap-3">
+                                <label className="text-xs text-gray-500 w-24 flex-shrink-0 flex items-center gap-1">
+                                    <Calendar className="h-3 w-3" /> Start Date
+                                </label>
+                                <input
+                                    type="date"
+                                    value={task.start_date || ''}
+                                    onChange={(e) => onUpdate(task.id, 'start_date', e.target.value || null)}
+                                    className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                />
+                            </div>
+
                             {/* Status */}
                             <div className="flex items-center gap-3">
                                 <label className="text-xs text-gray-500 w-24 flex-shrink-0">Status</label>
@@ -610,7 +844,86 @@ export function TaskDetailPanel({
                                 </select>
                             </div>
 
-                            {/* Tags */}
+                            {/* Labels — Asana-style colored pills */}
+                            <div className="flex items-start gap-3">
+                                <label className="text-xs text-gray-500 w-24 flex-shrink-0 mt-1 flex items-center gap-1">
+                                    <Tag className="h-3 w-3" /> Labels
+                                </label>
+                                <div className="flex-1 relative" ref={labelPickerRef}>
+                                    <div className="flex flex-wrap gap-1">
+                                        {taskLabels.map((label) => (
+                                            <span
+                                                key={label.id}
+                                                className="group px-2 py-0.5 text-xs rounded-full flex items-center gap-1 border"
+                                                style={{ backgroundColor: `${label.color}20`, borderColor: `${label.color}60`, color: label.color }}
+                                            >
+                                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: label.color }} />
+                                                {label.name}
+                                                <button
+                                                    onClick={() => handleRemoveLabel(label.id)}
+                                                    className="hidden group-hover:block hover:text-white ml-0.5"
+                                                >
+                                                    ×
+                                                </button>
+                                            </span>
+                                        ))}
+                                        <button
+                                            onClick={() => setShowLabelPicker(!showLabelPicker)}
+                                            className="px-2 py-0.5 text-xs rounded-full border border-dashed border-gray-600 text-gray-500 hover:text-white hover:border-gray-400 transition-colors"
+                                        >
+                                            + Label
+                                        </button>
+                                    </div>
+                                    {showLabelPicker && (
+                                        <div className="absolute left-0 top-full mt-1 z-30 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl w-64 max-h-72 overflow-hidden">
+                                            <div className="p-2 border-b border-gray-700 text-[10px] text-gray-500 font-semibold uppercase tracking-wider px-3">
+                                                Project Labels
+                                            </div>
+                                            <div className="overflow-y-auto max-h-36">
+                                                {projectLabels.filter(pl => !taskLabels.some(tl => tl.id === pl.id)).map((pl) => (
+                                                    <button
+                                                        key={pl.id}
+                                                        onClick={() => handleAddLabel(pl.id)}
+                                                        className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-left"
+                                                    >
+                                                        <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: pl.color }} />
+                                                        <span className="text-sm text-white">{pl.name}</span>
+                                                    </button>
+                                                ))}
+                                                {projectLabels.filter(pl => !taskLabels.some(tl => tl.id === pl.id)).length === 0 && (
+                                                    <p className="px-3 py-2 text-xs text-gray-500">All labels applied</p>
+                                                )}
+                                            </div>
+                                            <div className="border-t border-gray-700 p-2 space-y-1">
+                                                <div className="flex gap-1">
+                                                    <input
+                                                        value={newLabelName}
+                                                        onChange={(e) => setNewLabelName(e.target.value)}
+                                                        placeholder="New label..."
+                                                        className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                        onKeyDown={(e) => e.key === 'Enter' && handleCreateLabel()}
+                                                    />
+                                                    <button onClick={handleCreateLabel} className="px-2 py-1 bg-blue-600 rounded text-xs text-white hover:bg-blue-500">
+                                                        <Plus className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                                <div className="flex gap-1 flex-wrap">
+                                                    {LABEL_COLORS.map((c) => (
+                                                        <button
+                                                            key={c}
+                                                            onClick={() => setNewLabelColor(c)}
+                                                            className={`w-4 h-4 rounded-full border-2 ${newLabelColor === c ? 'border-white' : 'border-transparent'}`}
+                                                            style={{ backgroundColor: c }}
+                                                        />
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Tags — simple text tags */}
                             <div className="flex items-start gap-3">
                                 <label className="text-xs text-gray-500 w-24 flex-shrink-0 mt-1 flex items-center gap-1">
                                     <Tag className="h-3 w-3" /> Tags
@@ -747,6 +1060,178 @@ export function TaskDetailPanel({
                             )}
                         </div>
 
+                        {/* =============== SUBTASKS =============== */}
+                        <div className="bg-[#252627] rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <CheckCircle2 className="h-3 w-3" />
+                                    Subtasks
+                                    {subtasks.length > 0 && (
+                                        <span className="text-[10px] text-gray-600 normal-case font-normal">
+                                            ({subtasks.filter(s => s.status === 'done').length}/{subtasks.length})
+                                        </span>
+                                    )}
+                                </h4>
+                                <button
+                                    onClick={() => setShowSubtaskInput(true)}
+                                    className="text-xs text-gray-500 hover:text-blue-400 flex items-center gap-0.5 transition-colors"
+                                >
+                                    <Plus className="h-3 w-3" /> Add
+                                </button>
+                            </div>
+                            {subtasks.length > 0 && (
+                                <div className="mb-2 h-1 bg-gray-700 rounded-full overflow-hidden">
+                                    <div
+                                        className="h-full bg-green-500 transition-all duration-300"
+                                        style={{ width: `${(subtasks.filter(s => s.status === 'done').length / subtasks.length) * 100}%` }}
+                                    />
+                                </div>
+                            )}
+                            <div className="space-y-1">
+                                {subtasks.map((sub) => (
+                                    <div key={sub.id} className="flex items-center gap-2 group py-1 px-1 rounded hover:bg-[#1e1f21]">
+                                        <button
+                                            onClick={() => handleToggleSubtask(sub)}
+                                            className={`flex-shrink-0 ${sub.status === 'done' ? 'text-green-400' : 'text-gray-600 hover:text-gray-400'}`}
+                                        >
+                                            {sub.status === 'done' ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                                        </button>
+                                        <span className={`text-sm flex-1 ${sub.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-300'}`}>
+                                            {sub.title}
+                                        </span>
+                                        <button
+                                            onClick={() => {
+                                                if (confirm('Delete subtask?')) {
+                                                    fetch(`/api/workstream/tasks/${sub.id}`, { method: 'DELETE' });
+                                                    setSubtasks(prev => prev.filter(s => s.id !== sub.id));
+                                                }
+                                            }}
+                                            className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity"
+                                        >
+                                            <Trash2 className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                            {showSubtaskInput && (
+                                <div className="flex gap-1.5 mt-2">
+                                    <input
+                                        value={newSubtaskTitle}
+                                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                        placeholder="Subtask title..."
+                                        className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                        autoFocus
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') handleCreateSubtask();
+                                            if (e.key === 'Escape') { setShowSubtaskInput(false); setNewSubtaskTitle(''); }
+                                        }}
+                                    />
+                                    <button onClick={handleCreateSubtask} className="px-2 py-1.5 bg-blue-600 rounded text-sm text-white hover:bg-blue-500">
+                                        <Plus className="h-4 w-4" />
+                                    </button>
+                                </div>
+                            )}
+                            {subtasks.length === 0 && !showSubtaskInput && (
+                                <p className="text-xs text-gray-600 text-center py-2">No subtasks</p>
+                            )}
+                        </div>
+
+                        {/* =============== DEPENDENCIES =============== */}
+                        <div className="bg-[#252627] rounded-lg p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                    <GitBranch className="h-3 w-3" />
+                                    Dependencies
+                                </h4>
+                                <div className="relative" ref={depPickerRef}>
+                                    <button
+                                        onClick={() => setShowDepPicker(!showDepPicker)}
+                                        className="text-xs text-gray-500 hover:text-blue-400 flex items-center gap-0.5 transition-colors"
+                                    >
+                                        <Plus className="h-3 w-3" /> Add
+                                    </button>
+                                    {showDepPicker && (
+                                        <div className="absolute right-0 top-full mt-1 z-30 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl w-72 max-h-60 overflow-hidden">
+                                            <div className="p-2 border-b border-gray-700">
+                                                <input
+                                                    value={depSearch}
+                                                    onChange={(e) => setDepSearch(e.target.value)}
+                                                    placeholder="Search tasks to add as blocker..."
+                                                    className="w-full bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="overflow-y-auto max-h-44">
+                                                {allTasks
+                                                    .filter(t =>
+                                                        t.id !== task.id &&
+                                                        !dependencies.blockedBy.some(d => d.blocking_task_id === t.id) &&
+                                                        (t.title.toLowerCase().includes(depSearch.toLowerCase()) || !depSearch)
+                                                    )
+                                                    .slice(0, 20)
+                                                    .map((t) => (
+                                                        <button
+                                                            key={t.id}
+                                                            onClick={() => handleAddDependency(t.id)}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-left"
+                                                        >
+                                                            <Circle className="h-3 w-3 text-gray-500 flex-shrink-0" />
+                                                            <span className="text-sm text-white truncate">{t.title}</span>
+                                                        </button>
+                                                    ))}
+                                                {allTasks.filter(t => t.id !== task.id).length === 0 && (
+                                                    <p className="px-3 py-2 text-xs text-gray-500">No other tasks</p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            {dependencies.blockedBy.length > 0 && (
+                                <div className="mb-2">
+                                    <p className="text-[10px] text-gray-500 uppercase mb-1">Blocked by</p>
+                                    {dependencies.blockedBy.map((dep) => {
+                                        const bt = allTasks.find(t => t.id === dep.blocking_task_id);
+                                        return (
+                                            <div key={dep.id} className="group flex items-center gap-2 py-1 px-1 rounded hover:bg-[#1e1f21]">
+                                                <AlertCircle className="h-3 w-3 text-red-400 flex-shrink-0" />
+                                                <span className="text-sm text-gray-300 flex-1 truncate">{bt?.title || `Task #${dep.blocking_task_id}`}</span>
+                                                <button
+                                                    onClick={() => handleRemoveDependency(dep.id)}
+                                                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {dependencies.blocking.length > 0 && (
+                                <div>
+                                    <p className="text-[10px] text-gray-500 uppercase mb-1">Blocking</p>
+                                    {dependencies.blocking.map((dep) => {
+                                        const dt = allTasks.find(t => t.id === dep.dependent_task_id);
+                                        return (
+                                            <div key={dep.id} className="group flex items-center gap-2 py-1 px-1 rounded hover:bg-[#1e1f21]">
+                                                <ArrowRight className="h-3 w-3 text-orange-400 flex-shrink-0" />
+                                                <span className="text-sm text-gray-300 flex-1 truncate">{dt?.title || `Task #${dep.dependent_task_id}`}</span>
+                                                <button
+                                                    onClick={() => handleRemoveDependency(dep.id)}
+                                                    className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity"
+                                                >
+                                                    <X className="h-3 w-3" />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {dependencies.blockedBy.length === 0 && dependencies.blocking.length === 0 && (
+                                <p className="text-xs text-gray-600 text-center py-2">No dependencies</p>
+                            )}
+                        </div>
+
                         {/* Tab navigation */}
                         <div className="flex gap-1 border-b border-gray-800">
                             {[
@@ -781,8 +1266,9 @@ export function TaskDetailPanel({
                                 ) : (
                                     comments.map((comment) => {
                                         const commentUser = users.find(u => u.id === comment.user_id);
+                                        const isEditing = editingCommentId === comment.id;
                                         return (
-                                            <div key={comment.id} className="bg-[#2a2b2d] rounded-lg p-3">
+                                            <div key={comment.id} className={`bg-[#2a2b2d] rounded-lg p-3 group ${comment.is_deleted ? 'opacity-50' : ''}`}>
                                                 <div className="flex items-center gap-2 mb-1.5">
                                                     <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
                                                         {commentUser ? (
@@ -804,19 +1290,71 @@ export function TaskDetailPanel({
                                                             minute: '2-digit',
                                                         })}
                                                     </span>
+                                                    {comment.edited_at && !comment.is_deleted && (
+                                                        <span className="text-[10px] text-gray-600">(edited)</span>
+                                                    )}
+                                                    {/* Edit/Delete buttons */}
+                                                    {!comment.is_deleted && !isEditing && (
+                                                        <div className="ml-auto flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <button
+                                                                onClick={() => {
+                                                                    setEditingCommentId(comment.id);
+                                                                    setEditCommentValue(comment.content);
+                                                                }}
+                                                                className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-blue-400"
+                                                                title="Edit"
+                                                            >
+                                                                <Pencil className="h-3 w-3" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => {
+                                                                    if (confirm('Delete this comment?')) handleDeleteComment(comment.id);
+                                                                }}
+                                                                className="p-1 rounded hover:bg-red-900/20 text-gray-500 hover:text-red-400"
+                                                                title="Delete"
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </button>
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <p className="text-sm text-gray-300 whitespace-pre-wrap">
-                                                    {comment.content.split(/(@\w[\w\s]*?)(?=\s@|\s*$|[.,!?;])/).map((part, i) => {
-                                                        if (part.startsWith('@')) {
-                                                            return (
-                                                                <span key={i} className="text-blue-400 font-medium">
-                                                                    {part}
-                                                                </span>
-                                                            );
-                                                        }
-                                                        return part;
-                                                    })}
-                                                </p>
+                                                {isEditing ? (
+                                                    <div className="space-y-1.5">
+                                                        <textarea
+                                                            value={editCommentValue}
+                                                            onChange={(e) => setEditCommentValue(e.target.value)}
+                                                            className="w-full bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 resize-none min-h-[60px]"
+                                                            autoFocus
+                                                        />
+                                                        <div className="flex gap-1.5 justify-end">
+                                                            <button
+                                                                onClick={() => { setEditingCommentId(null); setEditCommentValue(''); }}
+                                                                className="px-2 py-1 text-xs text-gray-400 hover:text-white"
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleEditComment(comment.id)}
+                                                                className="px-2 py-1 text-xs bg-blue-600 rounded text-white hover:bg-blue-500"
+                                                            >
+                                                                Save
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                                                        {comment.content.split(/(@\w[\w\s]*?)(?=\s@|\s*$|[.,!?;])/).map((part, i) => {
+                                                            if (part.startsWith('@')) {
+                                                                return (
+                                                                    <span key={i} className="text-blue-400 font-medium">
+                                                                        {part}
+                                                                    </span>
+                                                                );
+                                                            }
+                                                            return part;
+                                                        })}
+                                                    </p>
+                                                )}
                                             </div>
                                         );
                                     })
@@ -907,8 +1445,49 @@ export function TaskDetailPanel({
 
                         {/* Activity tab */}
                         {activeTab === 'activity' && (
-                            <div className="text-center py-8 text-gray-600 text-sm">
-                                Activity history coming soon
+                            <div className="space-y-2">
+                                {activities.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-600 text-sm">
+                                        No activity recorded yet
+                                    </div>
+                                ) : (
+                                    activities.map((act) => {
+                                        const actUser = users.find(u => u.id === act.user_id);
+                                        return (
+                                            <div key={act.id} className="flex items-start gap-2 py-1.5 px-1">
+                                                <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                    {actUser ? (
+                                                        <span className="text-[8px] text-white font-medium">{actUser.name.charAt(0).toUpperCase()}</span>
+                                                    ) : (
+                                                        <Activity className="h-2.5 w-2.5 text-gray-500" />
+                                                    )}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs text-gray-400">
+                                                        <span className="text-gray-300 font-medium">{actUser?.name || act.user_email || 'System'}</span>
+                                                        {' '}{act.action}
+                                                        {act.field_name && (
+                                                            <span className="text-gray-500"> {act.field_name}</span>
+                                                        )}
+                                                        {act.old_value && act.new_value && (
+                                                            <span className="text-gray-500">
+                                                                {' '}from <span className="text-gray-400">{act.old_value}</span> to <span className="text-gray-300">{act.new_value}</span>
+                                                            </span>
+                                                        )}
+                                                    </p>
+                                                    <p className="text-[10px] text-gray-600">
+                                                        {new Date(act.created_at).toLocaleDateString('en-US', {
+                                                            day: '2-digit',
+                                                            month: 'short',
+                                                            hour: '2-digit',
+                                                            minute: '2-digit',
+                                                        })}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
                             </div>
                         )}
                     </div>
