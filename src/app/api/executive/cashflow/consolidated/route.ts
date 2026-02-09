@@ -2,10 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase-admin";
 
 // ============================================================
-// Consolidated Cashflow API
-// Section 1: Revenue by Financial Account per month (from invoice-orders)
-// Section 2: Cash Inflow by Payment Source per month (from gateway sources)
-// Section 3: Bank Statement Inflows per month (from bank sources)
+// Revenue Cashflow API — Bank-centric reconciled view
+// Shows bank inflows broken down by gateway + FA attribution
 // ============================================================
 
 interface MonthlyData {
@@ -20,7 +18,7 @@ const emptyMonthly = (): MonthlyData => ({
 
 const monthKeys = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"] as const;
 
-// FA account hierarchy for revenue
+// FA account hierarchy
 const REVENUE_GROUPS: { code: string; name: string; children: { code: string; name: string }[] }[] = [
     {
         code: "101.0", name: "Growth",
@@ -79,31 +77,41 @@ const REVENUE_GROUPS: { code: string; name: string; children: { code: string; na
     },
 ];
 
-// Payment/gateway source labels
-const GATEWAY_SOURCES: { source: string; label: string; currency: string }[] = [
-    { source: "braintree-api-revenue", label: "Braintree", currency: "multi" },
-    { source: "stripe-eur", label: "Stripe EUR", currency: "EUR" },
-    { source: "stripe-usd", label: "Stripe USD", currency: "USD" },
-    { source: "gocardless", label: "GoCardless", currency: "EUR" },
-    { source: "quickbooks-payments", label: "QuickBooks Payments", currency: "USD" },
-];
-
-// Bank account sources
-const BANK_SOURCES: { source: string; label: string; currency: string }[] = [
-    { source: "bankinter-eur", label: "Bankinter EUR", currency: "EUR" },
-    { source: "bankinter-usd", label: "Bankinter USD", currency: "USD" },
-    { source: "sabadell-eur", label: "Sabadell EUR", currency: "EUR" },
-];
-
 function parseAmount(value: unknown): number {
     if (typeof value === "number") return value;
     if (!value) return 0;
     const str = String(value);
-    // Handle European format (dots = thousands, comma = decimal)
     if (str.includes(",") && str.includes(".")) {
         return parseFloat(str.replace(/\./g, "").replace(",", ".")) || 0;
     }
     return parseFloat(str.replace(",", ".")) || 0;
+}
+
+const PAGE_SIZE = 1000;
+
+async function fetchAllRows(
+    source: string,
+    startDate: string,
+    endDate: string,
+    fields = "date, amount, reconciled, custom_data",
+) {
+    const rows: any[] = [];
+    let offset = 0;
+    while (true) {
+        const { data, error } = await supabaseAdmin
+            .from("csv_rows")
+            .select(fields)
+            .eq("source", source)
+            .gte("date", startDate)
+            .lte("date", endDate)
+            .range(offset, offset + PAGE_SIZE - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        rows.push(...data);
+        if (data.length < PAGE_SIZE) break;
+        offset += PAGE_SIZE;
+    }
+    return rows;
 }
 
 export async function GET(request: NextRequest) {
@@ -113,202 +121,169 @@ export async function GET(request: NextRequest) {
     const endDate = `${year}-12-31`;
 
     try {
+        // Parallel fetch: bank rows + invoice orders
+        const [bankRows, invoiceRows] = await Promise.all([
+            fetchAllRows("bankinter-eur", startDate, endDate),
+            fetchAllRows("invoice-orders", startDate, endDate, "date, amount, custom_data"),
+        ]);
+
         // ═══════════════════════════════════════════════════
-        // SECTION 1: Revenue by Financial Account
-        // Source: invoice-orders
+        // SECTION 1: Bank Inflows Breakdown by Gateway
+        // ═══════════════════════════════════════════════════
+        const bankInflows = emptyMonthly();
+        const bankOutflows = emptyMonthly();
+        const bankNet = emptyMonthly();
+        const reconByGateway: Record<string, { monthly: MonthlyData; count: number }> = {};
+        const unreconciledInflows = emptyMonthly();
+        const reconciledInflows = emptyMonthly();
+
+        const normalizeGateway = (src: string): string => {
+            const lower = (src || "").toLowerCase();
+            if (lower.includes("braintree")) return "Braintree";
+            if (lower.includes("stripe")) return "Stripe";
+            if (lower.includes("gocardless") || lower.includes("go cardless")) return "GoCardless";
+            if (lower.includes("quickbooks")) return "QuickBooks";
+            return src || "Other";
+        };
+
+        let totalBankRowCount = 0;
+        let reconciledCount = 0;
+
+        for (const row of bankRows) {
+            const amount = parseAmount(row.amount);
+            const monthIdx = new Date(row.date).getMonth();
+            if (monthIdx < 0 || monthIdx > 11) continue;
+            const mk = monthKeys[monthIdx];
+
+            totalBankRowCount++;
+            bankNet[mk] += amount;
+
+            if (amount > 0) {
+                bankInflows[mk] += amount;
+
+                if (row.reconciled && row.custom_data?.paymentSource) {
+                    const gw = normalizeGateway(row.custom_data.paymentSource);
+                    if (!reconByGateway[gw]) {
+                        reconByGateway[gw] = { monthly: emptyMonthly(), count: 0 };
+                    }
+                    reconByGateway[gw].monthly[mk] += amount;
+                    reconByGateway[gw].count++;
+                    reconciledInflows[mk] += amount;
+                    reconciledCount++;
+                } else {
+                    unreconciledInflows[mk] += amount;
+                }
+            } else {
+                bankOutflows[mk] += amount;
+            }
+        }
+
+        // Reconciliation percentage per month
+        const reconPct = emptyMonthly();
+        for (const mk of monthKeys) {
+            reconPct[mk] = bankInflows[mk] > 0
+                ? Math.round((reconciledInflows[mk] / bankInflows[mk]) * 100)
+                : 0;
+        }
+
+        // Sort gateways by total desc
+        const gatewaySorted = Object.entries(reconByGateway)
+            .map(([name, data]) => ({
+                name,
+                monthly: data.monthly,
+                count: data.count,
+                total: monthKeys.reduce((s, k) => s + data.monthly[k], 0),
+            }))
+            .sort((a, b) => b.total - a.total);
+
+        // ═══════════════════════════════════════════════════
+        // SECTION 2: Revenue by Financial Account
         // ═══════════════════════════════════════════════════
         const byFA: Record<string, MonthlyData> = {};
-        const allFACodes = new Set<string>();
         for (const group of REVENUE_GROUPS) {
             for (const child of group.children) {
                 byFA[child.code] = emptyMonthly();
-                allFACodes.add(child.code);
             }
         }
 
-        let offset = 0;
-        const PAGE_SIZE = 1000;
-        let totalInvoiceOrders = 0;
+        let invoiceCount = 0;
+        for (const row of invoiceRows) {
+            const fa = String(row.custom_data?.financial_account_code || "").trim();
+            if (!fa) continue;
+            const monthIdx = new Date(row.date).getMonth();
+            if (monthIdx < 0 || monthIdx > 11) continue;
+            const amount = parseAmount(row.amount);
+            if (amount === 0) continue;
 
-        while (true) {
-            const { data, error } = await supabaseAdmin
-                .from("csv_rows")
-                .select("date, amount, custom_data")
-                .eq("source", "invoice-orders")
-                .gte("date", startDate)
-                .lte("date", endDate)
-                .range(offset, offset + PAGE_SIZE - 1);
-            if (error) throw error;
-            if (!data || data.length === 0) break;
-
-            for (const row of data) {
-                const fa = String(row.custom_data?.financial_account_code || "").trim();
-                if (!fa) continue;
-
-                const monthIdx = new Date(row.date).getMonth();
-                if (monthIdx < 0 || monthIdx > 11) continue;
-
-                const amount = parseAmount(row.amount);
-                if (amount === 0) continue;
-
-                // If exact code exists, use it; otherwise try parent code
-                if (byFA[fa]) {
-                    byFA[fa][monthKeys[monthIdx]] += amount;
-                } else {
-                    // Try matching parent (e.g., "102.0" catches unclassified 102.x)
-                    const prefix = fa.split(".")[0];
-                    const parentCode = `${prefix}.0`;
-                    // Store in a catch-all for the group
-                    if (!byFA[fa]) byFA[fa] = emptyMonthly();
-                    byFA[fa][monthKeys[monthIdx]] += amount;
-                }
-                totalInvoiceOrders++;
-            }
-
-            if (data.length < PAGE_SIZE) break;
-            offset += PAGE_SIZE;
+            if (!byFA[fa]) byFA[fa] = emptyMonthly();
+            byFA[fa][monthKeys[monthIdx]] += amount;
+            invoiceCount++;
         }
 
-        // Build revenue structure with totals
         const revenueGroups = REVENUE_GROUPS.map(group => {
             const groupMonthly = emptyMonthly();
-            const children = group.children.map(child => {
-                const monthly = byFA[child.code] || emptyMonthly();
-                for (const mk of monthKeys) {
-                    groupMonthly[mk] += monthly[mk];
-                }
-                return { code: child.code, name: child.name, monthly };
-            }).filter(c => {
-                // Only include children with data
-                return monthKeys.some(mk => c.monthly[mk] !== 0);
-            });
+            const children = group.children
+                .map(child => {
+                    const monthly = byFA[child.code] || emptyMonthly();
+                    for (const mk of monthKeys) groupMonthly[mk] += monthly[mk];
+                    return { code: child.code, name: child.name, monthly };
+                })
+                .filter(c => monthKeys.some(mk => c.monthly[mk] !== 0));
 
-            // Check for unclassified entries (e.g., "102.0", "103.0" etc.)
             const parentData = byFA[group.code];
             if (parentData && monthKeys.some(mk => parentData[mk] !== 0)) {
                 children.push({ code: group.code, name: "Unclassified", monthly: parentData });
-                for (const mk of monthKeys) {
-                    groupMonthly[mk] += parentData[mk];
-                }
+                for (const mk of monthKeys) groupMonthly[mk] += parentData[mk];
             }
 
             return { code: group.code, name: group.name, monthly: groupMonthly, children };
         });
 
-        // Total revenue
         const totalRevenue = emptyMonthly();
         for (const g of revenueGroups) {
-            for (const mk of monthKeys) {
-                totalRevenue[mk] += g.monthly[mk];
-            }
+            for (const mk of monthKeys) totalRevenue[mk] += g.monthly[mk];
         }
 
         // ═══════════════════════════════════════════════════
-        // SECTION 2: Cash Inflow by Gateway/Payment Source
-        // SECTION 3: Bank Statement Inflows
-        // (parallelized for performance)
+        // Summary
         // ═══════════════════════════════════════════════════
-
-        async function fetchSourceMonthly(source: string, startDate: string, endDate: string) {
-            const monthly = emptyMonthly();
-            const inflows = emptyMonthly();
-            const outflows = emptyMonthly();
-            let count = 0;
-            let srcOffset = 0;
-            while (true) {
-                const { data, error } = await supabaseAdmin
-                    .from("csv_rows")
-                    .select("date, amount")
-                    .eq("source", source)
-                    .gte("date", startDate)
-                    .lte("date", endDate)
-                    .range(srcOffset, srcOffset + PAGE_SIZE - 1);
-                if (error) { console.error(`Error fetching ${source}:`, error); break; }
-                if (!data || data.length === 0) break;
-                for (const row of data) {
-                    const amount = parseAmount(row.amount);
-                    const monthIdx = new Date(row.date).getMonth();
-                    if (monthIdx < 0 || monthIdx > 11) continue;
-                    monthly[monthKeys[monthIdx]] += amount;
-                    if (amount > 0) inflows[monthKeys[monthIdx]] += amount;
-                    else outflows[monthKeys[monthIdx]] += amount;
-                    count++;
-                }
-                if (data.length < PAGE_SIZE) break;
-                srcOffset += PAGE_SIZE;
-            }
-            return { monthly, inflows, outflows, count };
-        }
-
-        // Fetch all gateways & banks in parallel
-        const [gatewayResults, bankResults] = await Promise.all([
-            Promise.all(GATEWAY_SOURCES.map(async (gw) => {
-                const result = await fetchSourceMonthly(gw.source, startDate, endDate);
-                return { ...gw, ...result };
-            })),
-            Promise.all(BANK_SOURCES.map(async (bank) => {
-                const result = await fetchSourceMonthly(bank.source, startDate, endDate);
-                return { ...bank, ...result };
-            })),
-        ]);
-
-        // Gateways — only positive amounts (inflows)
-        const gateways = gatewayResults
-            .filter(gw => gw.count > 0)
-            .map(gw => ({ source: gw.source, label: gw.label, currency: gw.currency, monthly: gw.inflows, count: gw.count }));
-
-        // Gateway totals
-        const totalGateway = emptyMonthly();
-        for (const gw of gateways) {
-            for (const mk of monthKeys) {
-                totalGateway[mk] += gw.monthly[mk];
-            }
-        }
-
-        // Banks — full inflows/outflows/net
-        const banks = bankResults
-            .filter(b => b.count > 0)
-            .map(b => ({
-                source: b.source, label: b.label, currency: b.currency,
-                monthly: b.monthly, inflows: b.inflows, outflows: b.outflows, count: b.count,
-            }));
-
-        // Bank totals
-        const totalBankInflows = emptyMonthly();
-        const totalBankOutflows = emptyMonthly();
-        const totalBankNet = emptyMonthly();
-        for (const b of banks) {
-            for (const mk of monthKeys) {
-                totalBankInflows[mk] += b.inflows[mk];
-                totalBankOutflows[mk] += b.outflows[mk];
-                totalBankNet[mk] += b.monthly[mk];
-            }
-        }
+        const sumM = (m: MonthlyData) => monthKeys.reduce((s, k) => s + m[k], 0);
+        const totalInflowsSum = sumM(bankInflows);
+        const totalReconSum = sumM(reconciledInflows);
 
         return NextResponse.json({
             success: true,
             year,
+            summary: {
+                totalInflows: totalInflowsSum,
+                totalOutflows: sumM(bankOutflows),
+                netFlow: sumM(bankNet),
+                reconciledAmount: totalReconSum,
+                reconciledPct: totalInflowsSum > 0 ? Math.round((totalReconSum / totalInflowsSum) * 100) : 0,
+                totalRevenueInvoiced: sumM(totalRevenue),
+                bankRowCount: totalBankRowCount,
+                reconciledRowCount: reconciledCount,
+                invoiceCount,
+            },
+            bank: {
+                inflows: bankInflows,
+                outflows: bankOutflows,
+                net: bankNet,
+                reconciledInflows,
+                unreconciledInflows,
+                reconPct,
+                gateways: gatewaySorted,
+            },
             revenue: {
                 groups: revenueGroups,
                 total: totalRevenue,
-                invoiceOrdersProcessed: totalInvoiceOrders,
-            },
-            gateways: {
-                sources: gateways,
-                total: totalGateway,
-            },
-            banks: {
-                accounts: banks,
-                totalInflows: totalBankInflows,
-                totalOutflows: totalBankOutflows,
-                totalNet: totalBankNet,
             },
         });
     } catch (err: any) {
-        console.error("Consolidated cashflow API error:", err);
+        console.error("Revenue cashflow API error:", err);
         return NextResponse.json(
             { success: false, error: err.message },
-            { status: 500 }
+            { status: 500 },
         );
     }
 }

@@ -121,7 +121,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
             underConstruction: true
           },
           {
-            title: "📊 Consolidated Cashflow",
+            title: "� Revenue Cashflow",
             href: "/executive/cash-flow/consolidated",
             icon: BarChart3
           },
