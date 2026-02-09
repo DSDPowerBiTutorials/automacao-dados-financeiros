@@ -20,7 +20,7 @@ import { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { BoardColumn } from './BoardColumn';
 import { TaskCard } from './TaskCard';
-import type { WSSection, WSTask } from '@/lib/workstream-types';
+import type { WSSection, WSTask, WSUser } from '@/lib/workstream-types';
 
 interface BoardViewProps {
   sections: WSSection[];
@@ -33,6 +33,7 @@ interface BoardViewProps {
   onDeleteSection: (sectionId: number) => void;
   onRenameSection: (sectionId: number, title: string) => void;
   onAddSection: (title: string) => void;
+  users?: WSUser[];
 }
 
 export function BoardView({
@@ -46,6 +47,7 @@ export function BoardView({
   onDeleteSection,
   onRenameSection,
   onAddSection,
+  users = [],
 }: BoardViewProps) {
   const [activeTask, setActiveTask] = useState<WSTask | null>(null);
   const [isAddingSection, setIsAddingSection] = useState(false);
@@ -179,6 +181,7 @@ export function BoardView({
               onAddTask={onAddTask}
               onDeleteSection={onDeleteSection}
               onRenameSection={onRenameSection}
+              users={users}
             />
           ))}
         </SortableContext>
@@ -189,7 +192,7 @@ export function BoardView({
             <input
               value={newSectionTitle}
               onChange={(e) => setNewSectionTitle(e.target.value)}
-              placeholder="Nome da seção..."
+              placeholder="Section name..."
               className="w-full bg-[#1e1f21] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
               autoFocus
               onKeyDown={(e) => {
@@ -206,7 +209,7 @@ export function BoardView({
                 disabled={!newSectionTitle.trim()}
                 className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-md font-medium disabled:opacity-50"
               >
-                Criar
+                Create
               </button>
               <button
                 onClick={() => {
@@ -215,7 +218,7 @@ export function BoardView({
                 }}
                 className="px-3 py-1 text-gray-400 hover:text-white text-xs rounded-md hover:bg-white/10"
               >
-                Cancelar
+                Cancel
               </button>
             </div>
           </div>
@@ -225,14 +228,14 @@ export function BoardView({
             className="flex-shrink-0 w-[300px] flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-gray-700 hover:border-gray-600 text-gray-500 hover:text-gray-400 transition-colors"
           >
             <Plus className="h-4 w-4" />
-            <span className="text-sm">Adicionar Seção</span>
+            <span className="text-sm">Add Section</span>
           </button>
         )}
       </div>
 
       {/* Drag overlay */}
       <DragOverlay>
-        {activeTask ? <TaskCard task={activeTask} onClick={() => {}} overlay /> : null}
+        {activeTask ? <TaskCard task={activeTask} onClick={() => { }} overlay /> : null}
       </DragOverlay>
     </DndContext>
   );

@@ -56,9 +56,9 @@ export default function WorkstreamHomePage() {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-white">Bem-vindo ao Workstream</h1>
+                        <h1 className="text-2xl font-bold text-white">Welcome to Workstream</h1>
                         <p className="text-gray-400 text-sm mt-1">
-                            Gerencie projetos e tarefas da sua equipe
+                            Manage your team&apos;s projects and tasks
                         </p>
                     </div>
                     <button
@@ -66,7 +66,7 @@ export default function WorkstreamHomePage() {
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
                     >
                         <Plus className="h-4 w-4" />
-                        Novo Projeto
+                        New Project
                     </button>
                 </div>
 
@@ -76,16 +76,16 @@ export default function WorkstreamHomePage() {
                         <div className="w-20 h-20 rounded-2xl bg-[#2a2b2d] flex items-center justify-center mb-6">
                             <FolderKanban className="h-10 w-10 text-gray-600" />
                         </div>
-                        <h2 className="text-xl font-semibold text-white mb-2">Nenhum projeto ainda</h2>
+                        <h2 className="text-xl font-semibold text-white mb-2">No projects yet</h2>
                         <p className="text-gray-400 text-sm mb-6 text-center max-w-md">
-                            Crie seu primeiro projeto para começar a organizar tarefas, acompanhar progresso e colaborar com sua equipe.
+                            Create your first project to start organizing tasks, tracking progress, and collaborating with your team.
                         </p>
                         <button
                             onClick={() => setShowCreateDialog(true)}
                             className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
                         >
                             <Plus className="h-4 w-4" />
-                            Criar Primeiro Projeto
+                            Create First Project
                         </button>
                     </div>
                 ) : (
@@ -95,7 +95,7 @@ export default function WorkstreamHomePage() {
                         <div className="mb-8">
                             <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <Clock className="h-3.5 w-3.5" />
-                                Projetos Recentes
+                                Recent Projects
                             </h2>
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {projects.slice(0, 6).map((project) => (
@@ -135,7 +135,7 @@ export default function WorkstreamHomePage() {
                                     className="flex flex-col items-center justify-center bg-[#2a2b2d]/50 hover:bg-[#2a2b2d] border border-dashed border-gray-700 hover:border-gray-600 rounded-xl p-4 min-h-[100px] transition-all"
                                 >
                                     <Plus className="h-6 w-6 text-gray-600 mb-1" />
-                                    <span className="text-gray-500 text-xs">Novo Projeto</span>
+                                    <span className="text-gray-500 text-xs">New Project</span>
                                 </button>
                             </div>
                         </div>
@@ -144,7 +144,7 @@ export default function WorkstreamHomePage() {
                         {projects.length > 6 && (
                             <div>
                                 <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3">
-                                    Todos os Projetos
+                                    All Projects
                                 </h2>
                                 <div className="space-y-1">
                                     {projects.slice(6).map((project) => (

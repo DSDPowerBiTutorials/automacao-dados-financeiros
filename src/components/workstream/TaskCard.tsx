@@ -3,16 +3,17 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Calendar, User, GripVertical, AlertCircle, Clock, CheckCircle2 } from 'lucide-react';
-import type { WSTask, TaskPriority, TaskStatus } from '@/lib/workstream-types';
+import type { WSTask, TaskPriority, TaskStatus, WSUser } from '@/lib/workstream-types';
 import { PRIORITY_CONFIG, STATUS_CONFIG } from '@/lib/workstream-types';
 
 interface TaskCardProps {
     task: WSTask;
     onClick: (task: WSTask) => void;
     overlay?: boolean;
+    users?: WSUser[];
 }
 
-export function TaskCard({ task, onClick, overlay }: TaskCardProps) {
+export function TaskCard({ task, onClick, overlay, users = [] }: TaskCardProps) {
     const {
         attributes,
         listeners,
@@ -79,7 +80,7 @@ export function TaskCard({ task, onClick, overlay }: TaskCardProps) {
                                     }`}
                             >
                                 <Calendar className="h-2.5 w-2.5" />
-                                {new Date(task.due_date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })}
+                                {new Date(task.due_date).toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
                             </span>
                         )}
 
@@ -97,9 +98,22 @@ export function TaskCard({ task, onClick, overlay }: TaskCardProps) {
                     {/* Assignee */}
                     {task.assignee_id && (
                         <div className="flex items-center gap-1 mt-2">
-                            <div className="w-5 h-5 rounded-full bg-gray-600 flex items-center justify-center">
-                                <User className="h-3 w-3 text-gray-400" />
+                            <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
+                                {(() => {
+                                    const assignee = users.find(u => u.id === task.assignee_id);
+                                    return assignee ? (
+                                        <span className="text-[9px] text-white font-medium">{assignee.name.charAt(0).toUpperCase()}</span>
+                                    ) : (
+                                        <User className="h-3 w-3 text-gray-400" />
+                                    );
+                                })()}
                             </div>
+                            {(() => {
+                                const assignee = users.find(u => u.id === task.assignee_id);
+                                return assignee ? (
+                                    <span className="text-[10px] text-gray-400 truncate max-w-[120px]">{assignee.name}</span>
+                                ) : null;
+                            })()}
                         </div>
                     )}
                 </div>

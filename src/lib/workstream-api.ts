@@ -182,3 +182,74 @@ export async function logActivity(entry: { task_id?: number; project_id?: string
     const { error } = await sb.from('ws_activity_log').insert(entry);
     if (error) throw error;
 }
+
+// ============================================================
+// Users (from system_users table)
+// ============================================================
+
+export async function getUsers() {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('system_users')
+        .select('id, email, name, avatar_url, role, is_active')
+        .eq('is_active', true)
+        .order('name');
+    if (error) throw error;
+    return data;
+}
+
+// ============================================================
+// Project Members
+// ============================================================
+
+export async function getProjectMembers(projectId: string) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_project_members')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('joined_at', { ascending: true });
+    if (error) throw error;
+
+    // Enrich with user info
+    if (data && data.length > 0) {
+        const userIds = data.map((m: Record<string, unknown>) => m.user_id as string);
+        const { data: users } = await sb
+            .from('system_users')
+            .select('id, name, email, avatar_url')
+            .in('id', userIds);
+
+        const userMap = new Map((users || []).map((u: Record<string, unknown>) => [u.id, u]));
+        return data.map((m: Record<string, unknown>) => {
+            const user = userMap.get(m.user_id as string) as Record<string, unknown> | undefined;
+            return {
+                ...m,
+                user_name: user?.name || null,
+                user_email: user?.email || null,
+                user_avatar: user?.avatar_url || null,
+            };
+        });
+    }
+    return data;
+}
+
+export async function addProjectMember(projectId: string, userId: string, role = 'member') {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_project_members')
+        .upsert({ project_id: projectId, user_id: userId, role }, { onConflict: 'project_id,user_id' })
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function removeProjectMember(projectId: string, userId: string) {
+    const sb = getAdminClient();
+    const { error } = await sb
+        .from('ws_project_members')
+        .delete()
+        .eq('project_id', projectId)
+        .eq('user_id', userId);
+    if (error) throw error;
+}

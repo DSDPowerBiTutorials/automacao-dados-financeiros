@@ -11,7 +11,7 @@ import {
     AlertCircle,
     User,
 } from 'lucide-react';
-import type { WSSection, WSTask, TaskStatus, TaskPriority } from '@/lib/workstream-types';
+import type { WSSection, WSTask, TaskStatus, TaskPriority, WSUser } from '@/lib/workstream-types';
 import { STATUS_CONFIG, PRIORITY_CONFIG } from '@/lib/workstream-types';
 
 interface ListViewProps {
@@ -22,6 +22,7 @@ interface ListViewProps {
     onAddTask: (sectionId: number, title: string) => void;
     onToggleTaskStatus: (taskId: number, currentStatus: TaskStatus) => void;
     onUpdateTaskField: (taskId: number, field: string, value: unknown) => void;
+    users?: WSUser[];
 }
 
 export function ListView({
@@ -32,6 +33,7 @@ export function ListView({
     onAddTask,
     onToggleTaskStatus,
     onUpdateTaskField,
+    users = [],
 }: ListViewProps) {
     const [expandedSections, setExpandedSections] = useState<Set<number>>(
         new Set(sections.map((s) => s.id))
@@ -83,11 +85,11 @@ export function ListView({
             {/* Sticky header */}
             <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
                 <div className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-6 py-2">
-                    <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Tarefa</div>
+                    <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Task</div>
                     <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Status</div>
-                    <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Prioridade</div>
-                    <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Responsável</div>
-                    <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Entrega</div>
+                    <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Priority</div>
+                    <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Assignee</div>
+                    <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Due Date</div>
                 </div>
             </div>
 
@@ -198,11 +200,26 @@ export function ListView({
                                                 </div>
 
                                                 {/* Assignee */}
-                                                <div className="flex items-center">
+                                                <div className="flex items-center gap-1.5">
                                                     {task.assignee_id ? (
-                                                        <div className="w-6 h-6 rounded-full bg-gray-600 flex items-center justify-center">
-                                                            <User className="h-3 w-3 text-gray-400" />
-                                                        </div>
+                                                        <>
+                                                            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
+                                                                {(() => {
+                                                                    const assignee = users.find(u => u.id === task.assignee_id);
+                                                                    return assignee ? (
+                                                                        <span className="text-[10px] text-white font-medium">{assignee.name.charAt(0).toUpperCase()}</span>
+                                                                    ) : (
+                                                                        <User className="h-3 w-3 text-gray-400" />
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                            {(() => {
+                                                                const assignee = users.find(u => u.id === task.assignee_id);
+                                                                return assignee ? (
+                                                                    <span className="text-xs text-gray-400 truncate">{assignee.name.split(' ')[0]}</span>
+                                                                ) : null;
+                                                            })()}
+                                                        </>
                                                     ) : (
                                                         <span className="text-xs text-gray-600">—</span>
                                                     )}
@@ -216,7 +233,7 @@ export function ListView({
                                                                 }`}
                                                         >
                                                             <Calendar className="h-3 w-3" />
-                                                            {new Date(task.due_date).toLocaleDateString('pt-BR', {
+                                                            {new Date(task.due_date).toLocaleDateString('en-US', {
                                                                 day: '2-digit',
                                                                 month: 'short',
                                                             })}
@@ -237,7 +254,7 @@ export function ListView({
                                                 <input
                                                     value={newTaskTitle}
                                                     onChange={(e) => setNewTaskTitle(e.target.value)}
-                                                    placeholder="Título da tarefa..."
+                                                    placeholder="Task title..."
                                                     className="flex-1 bg-transparent border-none text-sm text-white placeholder-gray-500 focus:outline-none"
                                                     autoFocus
                                                     onKeyDown={(e) => {
@@ -260,7 +277,7 @@ export function ListView({
                                             className="w-full flex items-center gap-2 px-6 py-2 text-gray-600 hover:text-gray-400 hover:bg-gray-800/20 text-xs transition-colors"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
-                                            Adicionar tarefa...
+                                            Add task...
                                         </button>
                                     )}
                                 </div>

@@ -74,6 +74,27 @@ export interface WSComment {
     user_name?: string;
 }
 
+export interface WSUser {
+    id: string;
+    email: string;
+    name: string;
+    avatar_url?: string;
+    role: string;
+    is_active: boolean;
+}
+
+export interface WSProjectMember {
+    id: number;
+    project_id: string;
+    user_id: string;
+    role: string;
+    joined_at: string;
+    // Joined fields
+    user_name?: string;
+    user_email?: string;
+    user_avatar?: string;
+}
+
 export interface WSActivityLog {
     id: number;
     task_id: number | null;
@@ -100,25 +121,25 @@ export interface WSProjectFull extends WSProject {
 
 // Status display config
 export const STATUS_CONFIG: Record<TaskStatus, { label: string; color: string; bg: string; border: string }> = {
-    todo: { label: 'A Fazer', color: 'text-gray-400', bg: 'bg-gray-900/30', border: 'border-gray-700' },
-    in_progress: { label: 'Em Progresso', color: 'text-blue-400', bg: 'bg-blue-900/30', border: 'border-blue-700' },
-    review: { label: 'Revisão', color: 'text-yellow-400', bg: 'bg-yellow-900/30', border: 'border-yellow-700' },
-    done: { label: 'Concluído', color: 'text-green-400', bg: 'bg-green-900/30', border: 'border-green-700' },
-    blocked: { label: 'Bloqueado', color: 'text-red-400', bg: 'bg-red-900/30', border: 'border-red-700' },
+    todo: { label: 'To Do', color: 'text-gray-400', bg: 'bg-gray-900/30', border: 'border-gray-700' },
+    in_progress: { label: 'In Progress', color: 'text-blue-400', bg: 'bg-blue-900/30', border: 'border-blue-700' },
+    review: { label: 'Review', color: 'text-yellow-400', bg: 'bg-yellow-900/30', border: 'border-yellow-700' },
+    done: { label: 'Done', color: 'text-green-400', bg: 'bg-green-900/30', border: 'border-green-700' },
+    blocked: { label: 'Blocked', color: 'text-red-400', bg: 'bg-red-900/30', border: 'border-red-700' },
 };
 
 export const PRIORITY_CONFIG: Record<TaskPriority, { label: string; color: string; bg: string; border: string }> = {
-    low: { label: 'Baixa', color: 'text-gray-400', bg: 'bg-gray-900/30', border: 'border-gray-700' },
-    medium: { label: 'Média', color: 'text-blue-400', bg: 'bg-blue-900/30', border: 'border-blue-700' },
-    high: { label: 'Alta', color: 'text-orange-400', bg: 'bg-orange-900/30', border: 'border-orange-700' },
-    urgent: { label: 'Urgente', color: 'text-red-400', bg: 'bg-red-900/30', border: 'border-red-700' },
+    low: { label: 'Low', color: 'text-gray-400', bg: 'bg-gray-900/30', border: 'border-gray-700' },
+    medium: { label: 'Medium', color: 'text-blue-400', bg: 'bg-blue-900/30', border: 'border-blue-700' },
+    high: { label: 'High', color: 'text-orange-400', bg: 'bg-orange-900/30', border: 'border-orange-700' },
+    urgent: { label: 'Urgent', color: 'text-red-400', bg: 'bg-red-900/30', border: 'border-red-700' },
 };
 
 export const PROJECT_TYPE_CONFIG: Record<ProjectType, { label: string; icon: string }> = {
-    general: { label: 'Geral', icon: 'folder' },
-    financial: { label: 'Financeiro', icon: 'dollar-sign' },
-    engineering: { label: 'Engenharia', icon: 'code' },
+    general: { label: 'General', icon: 'folder' },
+    financial: { label: 'Financial', icon: 'dollar-sign' },
+    engineering: { label: 'Engineering', icon: 'code' },
     marketing: { label: 'Marketing', icon: 'megaphone' },
-    operations: { label: 'Operações', icon: 'settings' },
-    hr: { label: 'Recursos Humanos', icon: 'users' },
+    operations: { label: 'Operations', icon: 'settings' },
+    hr: { label: 'Human Resources', icon: 'users' },
 };

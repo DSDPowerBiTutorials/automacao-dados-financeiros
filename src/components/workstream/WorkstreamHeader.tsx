@@ -76,7 +76,7 @@ export function WorkstreamHeader({ onToggleSidebar }: WorkstreamHeaderProps) {
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            placeholder="Buscar tarefas..."
+                            placeholder="Search tasks..."
                             className="w-full bg-[#2a2b2d] border border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                         />
                     </div>

@@ -175,7 +175,7 @@ export function TablerTopbar({
               }}
             >
               <KanbanSquare size={14} />
-              <span className="d-none d-md-inline">Workstream</span>
+              <span className="d-none d-md-inline">DSD Workstream</span>
             </Link>
 
             {/* Mailbox (Notificações) */}

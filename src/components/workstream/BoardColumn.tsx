@@ -8,6 +8,7 @@ import { Plus, MoreHorizontal, GripVertical } from 'lucide-react';
 import { useState } from 'react';
 import { TaskCard } from './TaskCard';
 import type { WSSection, WSTask } from '@/lib/workstream-types';
+import type { WSUser } from '@/lib/workstream-types';
 
 interface BoardColumnProps {
     section: WSSection;
@@ -16,6 +17,7 @@ interface BoardColumnProps {
     onAddTask: (sectionId: number, title: string) => void;
     onDeleteSection: (sectionId: number) => void;
     onRenameSection: (sectionId: number, title: string) => void;
+    users?: WSUser[];
 }
 
 export function BoardColumn({
@@ -25,6 +27,7 @@ export function BoardColumn({
     onAddTask,
     onDeleteSection,
     onRenameSection,
+    users = [],
 }: BoardColumnProps) {
     const [isAddingTask, setIsAddingTask] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -143,7 +146,7 @@ export function BoardColumn({
                                         setShowMenu(false);
                                     }}
                                 >
-                                    Renomear
+                                    Rename
                                 </button>
                                 <button
                                     className="w-full text-left px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/20"
@@ -152,7 +155,7 @@ export function BoardColumn({
                                         setShowMenu(false);
                                     }}
                                 >
-                                    Excluir
+                                    Delete
                                 </button>
                             </div>
                         </>
@@ -173,7 +176,7 @@ export function BoardColumn({
                 <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
                     <div className={`space-y-2 min-h-[40px] ${isOver ? 'bg-blue-500/5 rounded-lg' : ''}`}>
                         {tasks.map((task) => (
-                            <TaskCard key={task.id} task={task} onClick={onTaskClick} />
+                            <TaskCard key={task.id} task={task} onClick={onTaskClick} users={users} />
                         ))}
                     </div>
                 </SortableContext>
@@ -184,7 +187,7 @@ export function BoardColumn({
                         <textarea
                             value={newTaskTitle}
                             onChange={(e) => setNewTaskTitle(e.target.value)}
-                            placeholder="Título da tarefa..."
+                            placeholder="Task title..."
                             className="w-full bg-[#1e1f21] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
                             rows={2}
                             autoFocus
@@ -205,7 +208,7 @@ export function BoardColumn({
                                 disabled={!newTaskTitle.trim()}
                                 className="px-3 py-1 bg-blue-600 hover:bg-blue-500 text-white text-xs rounded-md font-medium disabled:opacity-50 transition-colors"
                             >
-                                Adicionar
+                                Add
                             </button>
                             <button
                                 onClick={() => {
@@ -214,7 +217,7 @@ export function BoardColumn({
                                 }}
                                 className="px-3 py-1 text-gray-400 hover:text-white text-xs rounded-md hover:bg-white/10 transition-colors"
                             >
-                                Cancelar
+                                Cancel
                             </button>
                         </div>
                     </div>
@@ -228,7 +231,7 @@ export function BoardColumn({
                     className="flex items-center gap-1.5 mx-2 mb-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
                 >
                     <Plus className="h-3.5 w-3.5" />
-                    Adicionar tarefa
+                    Add task
                 </button>
             )}
         </div>

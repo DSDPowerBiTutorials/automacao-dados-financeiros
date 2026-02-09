@@ -80,7 +80,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
     }
 
     async function deleteProjectById(projectId: string) {
-        if (!confirm('Tem certeza que deseja excluir este projeto permanentemente?')) return;
+        if (!confirm('Are you sure you want to permanently delete this project?')) return;
         try {
             await fetch(`/api/workstream/projects/${projectId}`, { method: 'DELETE' });
             setProjects((prev) => prev.filter((p) => p.id !== projectId));
@@ -102,8 +102,8 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
         return (
             <div
                 className={`group flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors text-sm ${isActive(project.id)
-                        ? 'bg-white/15 text-white'
-                        : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
+                    ? 'bg-white/15 text-white'
+                    : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
                     }`}
                 onClick={() => {
                     router.push(`/workstream/${project.id}`);
@@ -155,7 +155,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                         className="flex items-center gap-2 w-full px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors no-underline"
                     >
                         <Plus className="h-4 w-4" />
-                        Novo Projeto
+                        New Project
                     </Link>
                 </div>
 
@@ -166,12 +166,12 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                         href="/workstream"
                         onClick={() => onClose?.()}
                         className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors no-underline mb-1 ${pathname === '/workstream'
-                                ? 'bg-white/15 text-white'
-                                : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
+                            ? 'bg-white/15 text-white'
+                            : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
                             }`}
                     >
                         <FolderKanban className="h-4 w-4" />
-                        Início
+                        Home
                     </Link>
 
                     {/* Favorites */}
@@ -187,7 +187,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                     <ChevronRight className="h-3 w-3" />
                                 )}
                                 <Star className="h-3 w-3" />
-                                Favoritos
+                                Favorites
                             </button>
                             {favoritesExpanded && (
                                 <div className="mt-1 space-y-0.5">
@@ -211,7 +211,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                 <ChevronRight className="h-3 w-3" />
                             )}
                             <Hash className="h-3 w-3" />
-                            Projetos
+                            Projects
                         </button>
                         {allProjectsExpanded && (
                             <div className="mt-1 space-y-0.5">
@@ -221,7 +221,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                     </div>
                                 ) : allProjects.length === 0 ? (
                                     <div className="px-3 py-3 text-gray-600 text-xs text-center">
-                                        Nenhum projeto ainda
+                                        No projects yet
                                     </div>
                                 ) : (
                                     allProjects.map((p) => <ProjectItem key={p.id} project={p} />)
@@ -251,11 +251,11 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                     >
                                         {project.is_favorite ? (
                                             <>
-                                                <StarOff className="h-3.5 w-3.5" /> Remover favorito
+                                                <StarOff className="h-3.5 w-3.5" /> Remove favorite
                                             </>
                                         ) : (
                                             <>
-                                                <Star className="h-3.5 w-3.5" /> Adicionar favorito
+                                                <Star className="h-3.5 w-3.5" /> Add to favorites
                                             </>
                                         )}
                                     </button>
@@ -266,20 +266,20 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                             setContextMenu(null);
                                         }}
                                     >
-                                        <Pencil className="h-3.5 w-3.5" /> Editar projeto
+                                        <Pencil className="h-3.5 w-3.5" /> Edit project
                                     </button>
                                     <button
                                         className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
                                         onClick={() => archiveProject(project.id)}
                                     >
-                                        <Archive className="h-3.5 w-3.5" /> Arquivar
+                                        <Archive className="h-3.5 w-3.5" /> Archive
                                     </button>
                                     <div className="border-t border-gray-700 my-1" />
                                     <button
                                         className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/20 transition-colors"
                                         onClick={() => deleteProjectById(project.id)}
                                     >
-                                        <Trash2 className="h-3.5 w-3.5" /> Excluir
+                                        <Trash2 className="h-3.5 w-3.5" /> Delete
                                     </button>
                                 </>
                             );

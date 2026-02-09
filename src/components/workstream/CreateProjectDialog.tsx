@@ -30,7 +30,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
         if (!name.trim()) {
-            setError('Nome do projeto é obrigatório');
+            setError('Project name is required');
             return;
         }
 
@@ -51,7 +51,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
             const json = await res.json();
             if (json.success) {
                 // Create default sections
-                const defaultSections = ['A Fazer', 'Em Progresso', 'Revisão', 'Concluído'];
+                const defaultSections = ['To Do', 'In Progress', 'Review', 'Done'];
                 const sectionIds: number[] = [];
                 for (let i = 0; i < defaultSections.length; i++) {
                     const secRes = await fetch('/api/workstream/sections', {
@@ -83,10 +83,10 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                 setProjectType('general');
                 setColor('#3b82f6');
             } else {
-                setError(json.error || 'Erro ao criar projeto');
+                setError(json.error || 'Error creating project');
             }
         } catch (err) {
-            setError('Erro de rede ao criar projeto');
+            setError('Network error creating project');
         } finally {
             setSaving(false);
         }
@@ -101,7 +101,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
             <div className="relative bg-[#2a2b2d] rounded-xl border border-gray-700 shadow-2xl w-full max-w-lg mx-4">
                 {/* Header */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-                    <h2 className="text-lg font-semibold text-white">Novo Projeto</h2>
+                    <h2 className="text-lg font-semibold text-white">New Project</h2>
                     <button
                         onClick={onClose}
                         className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
@@ -115,13 +115,13 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                     {/* Name */}
                     <div>
                         <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                            Nome do Projeto *
+                            Project Name *
                         </label>
                         <input
                             type="text"
                             value={name}
                             onChange={(e) => setName(e.target.value)}
-                            placeholder="Ex: Reconciliação Q1 2026"
+                            placeholder="E.g.: Q1 2026 Reconciliation"
                             className="w-full bg-[#1e1f21] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             autoFocus
                         />
@@ -130,12 +130,12 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                     {/* Description */}
                     <div>
                         <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                            Descrição
+                            Description
                         </label>
                         <textarea
                             value={description}
                             onChange={(e) => setDescription(e.target.value)}
-                            placeholder="Descreva o objetivo deste projeto..."
+                            placeholder="Describe the goal of this project..."
                             rows={3}
                             className="w-full bg-[#1e1f21] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
                         />
@@ -144,7 +144,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                     {/* Project Type */}
                     <div>
                         <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                            Tipo
+                            Type
                         </label>
                         <div className="grid grid-cols-3 gap-2">
                             {(Object.entries(PROJECT_TYPE_CONFIG) as [ProjectType, { label: string }][]).map(
@@ -154,8 +154,8 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                                         type="button"
                                         onClick={() => setProjectType(type)}
                                         className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${projectType === type
-                                                ? 'bg-blue-600/20 border-blue-600 text-blue-400'
-                                                : 'bg-[#1e1f21] border-gray-700 text-gray-400 hover:border-gray-600'
+                                            ? 'bg-blue-600/20 border-blue-600 text-blue-400'
+                                            : 'bg-[#1e1f21] border-gray-700 text-gray-400 hover:border-gray-600'
                                             }`}
                                     >
                                         {config.label}
@@ -168,7 +168,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                     {/* Color */}
                     <div>
                         <label className="block text-xs font-medium text-gray-400 mb-1.5">
-                            Cor
+                            Color
                         </label>
                         <div className="flex gap-2 flex-wrap">
                             {COLORS.map((c) => (
@@ -198,14 +198,14 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                             onClick={onClose}
                             className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
                         >
-                            Cancelar
+                            Cancel
                         </button>
                         <button
                             type="submit"
                             disabled={saving || !name.trim()}
                             className="px-5 py-2 rounded-lg text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {saving ? 'Criando...' : 'Criar Projeto'}
+                            {saving ? 'Creating...' : 'Create Project'}
                         </button>
                     </div>
                 </form>
