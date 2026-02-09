@@ -253,3 +253,149 @@ export async function removeProjectMember(projectId: string, userId: string) {
         .eq('user_id', userId);
     if (error) throw error;
 }
+
+// ============================================================
+// Task Collaborators
+// ============================================================
+
+export async function getTaskCollaborators(taskId: number) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_task_collaborators')
+        .select('*')
+        .eq('task_id', taskId)
+        .order('added_at', { ascending: true });
+    if (error) throw error;
+
+    // Enrich with user info
+    if (data && data.length > 0) {
+        const userIds = data.map((c: Record<string, unknown>) => c.user_id as string);
+        const { data: users } = await sb
+            .from('system_users')
+            .select('id, name, email, avatar_url')
+            .in('id', userIds);
+
+        const userMap = new Map((users || []).map((u: Record<string, unknown>) => [u.id, u]));
+        return data.map((c: Record<string, unknown>) => {
+            const user = userMap.get(c.user_id as string) as Record<string, unknown> | undefined;
+            return {
+                ...c,
+                user_name: user?.name || null,
+                user_email: user?.email || null,
+                user_avatar: user?.avatar_url || null,
+            };
+        });
+    }
+    return data;
+}
+
+export async function addTaskCollaborator(taskId: number, userId: string, addedBy?: string) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_task_collaborators')
+        .upsert(
+            { task_id: taskId, user_id: userId, added_by: addedBy || null },
+            { onConflict: 'task_id,user_id' }
+        )
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function removeTaskCollaborator(taskId: number, userId: string) {
+    const sb = getAdminClient();
+    const { error } = await sb
+        .from('ws_task_collaborators')
+        .delete()
+        .eq('task_id', taskId)
+        .eq('user_id', userId);
+    if (error) throw error;
+}
+
+// ============================================================
+// Workstream Attachments
+// ============================================================
+
+export async function getAttachments(entityType: string, entityId: number) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_attachments')
+        .select('*')
+        .eq('entity_type', entityType)
+        .eq('entity_id', entityId)
+        .order('created_at', { ascending: false });
+    if (error) throw error;
+    return data;
+}
+
+export async function createAttachmentRecord(attachment: {
+    entity_type: string;
+    entity_id: number;
+    file_name: string;
+    mime_type: string;
+    size_bytes: number;
+    storage_path: string;
+    kind: string;
+    uploaded_by: string | null;
+}) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_attachments')
+        .insert(attachment)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+export async function deleteAttachmentRecord(id: string) {
+    const sb = getAdminClient();
+    const { data, error } = await sb
+        .from('ws_attachments')
+        .delete()
+        .eq('id', id)
+        .select()
+        .single();
+    if (error) throw error;
+    return data;
+}
+
+// ============================================================
+// Workstream Notifications Helper
+// ============================================================
+
+export async function createWSNotification(params: {
+    userId: string;
+    type: string;
+    title: string;
+    message: string;
+    triggeredBy: string;
+    referenceType?: string;
+    referenceUrl?: string;
+    metadata?: Record<string, unknown>;
+}) {
+    const sb = getAdminClient();
+    // Don't notify yourself
+    if (params.userId === params.triggeredBy) return null;
+
+    const { data, error } = await sb
+        .from('notifications')
+        .insert({
+            user_id: params.userId,
+            type: params.type,
+            title: params.title,
+            message: params.message,
+            reference_type: params.referenceType || 'task',
+            reference_url: params.referenceUrl || null,
+            triggered_by: params.triggeredBy,
+            metadata: params.metadata || {},
+        })
+        .select()
+        .single();
+    if (error) {
+        console.error('Failed to create notification:', error);
+        return null;
+    }
+    return data;
+}

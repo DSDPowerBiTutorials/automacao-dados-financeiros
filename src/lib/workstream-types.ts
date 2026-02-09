@@ -68,10 +68,14 @@ export interface WSComment {
     task_id: number;
     user_id: string | null;
     content: string;
+    parent_id: number | null;
+    mentions: string[];
     created_at: string;
     // Joined field
     user_email?: string;
     user_name?: string;
+    // Attachments on this comment
+    attachments?: WSAttachment[];
 }
 
 export interface WSUser {
@@ -93,6 +97,36 @@ export interface WSProjectMember {
     user_name?: string;
     user_email?: string;
     user_avatar?: string;
+}
+
+export interface WSTaskCollaborator {
+    id: number;
+    task_id: number;
+    user_id: string;
+    added_by: string | null;
+    added_at: string;
+    // Joined fields
+    user_name?: string;
+    user_email?: string;
+    user_avatar?: string;
+}
+
+export type WSAttachmentKind = 'image' | 'document' | 'screenshot' | 'other';
+export type WSAttachmentEntityType = 'task' | 'comment' | 'project';
+
+export interface WSAttachment {
+    id: string;
+    entity_type: WSAttachmentEntityType;
+    entity_id: number;
+    file_name: string;
+    mime_type: string | null;
+    size_bytes: number;
+    storage_path: string;
+    kind: WSAttachmentKind;
+    uploaded_by: string | null;
+    created_at: string;
+    // Generated
+    url?: string;
 }
 
 export interface WSActivityLog {

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { UserMenu } from '@/components/auth/UserMenu';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 import { Search, ArrowLeft, Menu } from 'lucide-react';
 import { useState } from 'react';
 
@@ -82,8 +83,9 @@ export function WorkstreamHeader({ onToggleSidebar }: WorkstreamHeaderProps) {
                     </div>
                 </div>
 
-                {/* Right: User *)*/}
+                {/* Right: Notifications + User */}
                 <div className="flex items-center gap-2">
+                    <NotificationBell />
                     <UserMenu />
                 </div>
             </div>

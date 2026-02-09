@@ -17,6 +17,11 @@ import {
     Link2,
     UserPlus,
     ChevronDown,
+    Paperclip,
+    FileText,
+    Image as ImageIcon,
+    Download,
+    Users,
 } from 'lucide-react';
 import type {
     WSTask,
@@ -24,6 +29,8 @@ import type {
     WSActivityLog,
     WSCustomField,
     WSUser,
+    WSTaskCollaborator,
+    WSAttachment,
     TaskStatus,
     TaskPriority,
 } from '@/lib/workstream-types';
@@ -48,7 +55,7 @@ export function TaskDetailPanel({
     onUpdate,
     onDelete,
 }: TaskDetailPanelProps) {
-    const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'activity'>('details');
+    const [activeTab, setActiveTab] = useState<'details' | 'comments' | 'attachments' | 'activity'>('details');
     const [comments, setComments] = useState<WSComment[]>([]);
     const [activities, setActivities] = useState<WSActivityLog[]>([]);
     const [newComment, setNewComment] = useState('');
@@ -61,9 +68,18 @@ export function TaskDetailPanel({
     const [showMentionList, setShowMentionList] = useState(false);
     const [mentionSearch, setMentionSearch] = useState('');
     const [mentionStartIndex, setMentionStartIndex] = useState(-1);
+    const [collaborators, setCollaborators] = useState<WSTaskCollaborator[]>([]);
+    const [showCollabPicker, setShowCollabPicker] = useState(false);
+    const [collabSearch, setCollabSearch] = useState('');
+    const [taskAttachments, setTaskAttachments] = useState<WSAttachment[]>([]);
+    const [uploading, setUploading] = useState(false);
+    const [commentFile, setCommentFile] = useState<File | null>(null);
     const commentInputRef = useRef<HTMLTextAreaElement>(null);
+    const commentFileRef = useRef<HTMLInputElement>(null);
     const mentionListRef = useRef<HTMLDivElement>(null);
     const assigneePickerRef = useRef<HTMLDivElement>(null);
+    const collabPickerRef = useRef<HTMLDivElement>(null);
+    const taskFileRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (task) {
@@ -71,6 +87,8 @@ export function TaskDetailPanel({
             setDescValue(task.description || '');
             fetchComments(task.id);
             fetchActivity(task.id);
+            fetchCollaborators(task.id);
+            fetchAttachments(task.id);
         }
     }, [task?.id]);
 
@@ -80,10 +98,13 @@ export function TaskDetailPanel({
             if (assigneePickerRef.current && !assigneePickerRef.current.contains(e.target as Node)) {
                 setShowAssigneePicker(false);
             }
+            if (collabPickerRef.current && !collabPickerRef.current.contains(e.target as Node)) {
+                setShowCollabPicker(false);
+            }
         }
-        if (showAssigneePicker) document.addEventListener('mousedown', handleClick);
+        if (showAssigneePicker || showCollabPicker) document.addEventListener('mousedown', handleClick);
         return () => document.removeEventListener('mousedown', handleClick);
-    }, [showAssigneePicker]);
+    }, [showAssigneePicker, showCollabPicker]);
 
     async function fetchComments(taskId: number) {
         try {
@@ -103,6 +124,85 @@ export function TaskDetailPanel({
         }
     }
 
+    async function fetchCollaborators(taskId: number) {
+        try {
+            const res = await fetch(`/api/workstream/tasks/${taskId}/collaborators`);
+            const json = await res.json();
+            if (json.success) setCollaborators(json.data || []);
+        } catch (err) {
+            console.error('Failed to fetch collaborators:', err);
+        }
+    }
+
+    async function fetchAttachments(taskId: number) {
+        try {
+            const res = await fetch(`/api/workstream/attachments?entity_type=task&entity_id=${taskId}`);
+            const json = await res.json();
+            if (json.success) setTaskAttachments(json.data || []);
+        } catch (err) {
+            console.error('Failed to fetch attachments:', err);
+        }
+    }
+
+    async function handleAddCollaborator(userId: string) {
+        if (!task) return;
+        try {
+            await fetch(`/api/workstream/tasks/${task.id}/collaborators`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ user_id: userId, added_by: null }),
+            });
+            await fetchCollaborators(task.id);
+            setShowCollabPicker(false);
+            setCollabSearch('');
+        } catch (err) {
+            console.error('Failed to add collaborator:', err);
+        }
+    }
+
+    async function handleRemoveCollaborator(userId: string) {
+        if (!task) return;
+        try {
+            await fetch(`/api/workstream/tasks/${task.id}/collaborators?user_id=${userId}`, {
+                method: 'DELETE',
+            });
+            setCollaborators(prev => prev.filter(c => c.user_id !== userId));
+        } catch (err) {
+            console.error('Failed to remove collaborator:', err);
+        }
+    }
+
+    async function handleUploadTaskFile(files: FileList) {
+        if (!task || files.length === 0) return;
+        setUploading(true);
+        try {
+            for (const file of Array.from(files)) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('entity_type', 'task');
+                formData.append('entity_id', String(task.id));
+                formData.append('kind', file.type.startsWith('image/') ? 'image' : 'document');
+                const res = await fetch('/api/workstream/attachments', { method: 'POST', body: formData });
+                const json = await res.json();
+                if (!json.success) console.error('Upload failed:', json.error);
+            }
+            await fetchAttachments(task.id);
+        } catch (err) {
+            console.error('Failed to upload:', err);
+        } finally {
+            setUploading(false);
+        }
+    }
+
+    async function handleDeleteAttachment(attachmentId: string) {
+        try {
+            await fetch(`/api/workstream/attachments?id=${attachmentId}`, { method: 'DELETE' });
+            setTaskAttachments(prev => prev.filter(a => a.id !== attachmentId));
+        } catch (err) {
+            console.error('Failed to delete attachment:', err);
+        }
+    }
+
     // Extract @mentions from comment text
     function extractMentions(text: string): string[] {
         const mentionRegex = /@(\w[\w\s]*?)(?=\s@|\s*$|[.,!?;])/g;
@@ -117,32 +217,30 @@ export function TaskDetailPanel({
     }
 
     async function handleAddComment() {
-        if (!newComment.trim() || !task) return;
+        if (!newComment.trim() && !commentFile) return;
+        if (!task) return;
         try {
+            const content = newComment.trim() || (commentFile ? `📎 ${commentFile.name}` : '');
             const res = await fetch(`/api/workstream/tasks/${task.id}/comments`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ content: newComment.trim(), user_id: null }),
+                body: JSON.stringify({ content, user_id: null }),
             });
             const json = await res.json();
             if (json.success) {
-                setComments((prev) => [...prev, json.data]);
-
-                // Auto-add mentioned users as project members
-                if (projectId) {
-                    const mentionedIds = extractMentions(newComment);
-                    for (const userId of mentionedIds) {
-                        try {
-                            await fetch(`/api/workstream/projects/${projectId}/members`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ user_id: userId, role: 'member' }),
-                            });
-                        } catch { /* ignore duplicate */ }
-                    }
+                // Upload file attachment linked to the comment
+                if (commentFile && json.data?.id) {
+                    const formData = new FormData();
+                    formData.append('file', commentFile);
+                    formData.append('entity_type', 'comment');
+                    formData.append('entity_id', String(json.data.id));
+                    formData.append('kind', commentFile.type.startsWith('image/') ? 'screenshot' : 'document');
+                    await fetch('/api/workstream/attachments', { method: 'POST', body: formData });
                 }
 
+                setComments((prev) => [...prev, json.data]);
                 setNewComment('');
+                setCommentFile(null);
             }
         } catch (err) {
             console.error('Failed to add comment:', err);
@@ -392,6 +490,78 @@ export function TaskDetailPanel({
                             {/* Due Date — styled like Asana */}
                             <div className="flex items-center gap-3">
                                 <label className="text-xs text-gray-500 w-24 flex-shrink-0 flex items-center gap-1">
+                                    <Users className="h-3 w-3" /> Collaborators
+                                </label>
+                                <div className="flex-1 relative" ref={collabPickerRef}>
+                                    <div className="flex items-center gap-1 flex-wrap">
+                                        {collaborators.map((c) => (
+                                            <div
+                                                key={c.user_id}
+                                                className="group relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#1e1f21] border border-gray-700 text-xs"
+                                                title={`${c.user_name || ''} (${c.user_email || ''})`}
+                                            >
+                                                <div className="w-4 h-4 rounded-full bg-purple-600 flex items-center justify-center text-white text-[8px] font-medium flex-shrink-0">
+                                                    {(c.user_name || '?').charAt(0).toUpperCase()}
+                                                </div>
+                                                <span className="text-gray-300 truncate max-w-[80px]">{c.user_name || c.user_email}</span>
+                                                <button
+                                                    onClick={() => handleRemoveCollaborator(c.user_id)}
+                                                    className="hidden group-hover:block text-gray-500 hover:text-red-400 ml-0.5"
+                                                >
+                                                    ×
+                                                </button>
+                                            </div>
+                                        ))}
+                                        <button
+                                            onClick={() => setShowCollabPicker(!showCollabPicker)}
+                                            className="w-6 h-6 rounded-full border border-dashed border-gray-600 flex items-center justify-center text-gray-500 hover:text-white hover:border-gray-400 transition-colors"
+                                        >
+                                            <UserPlus className="h-3 w-3" />
+                                        </button>
+                                    </div>
+                                    {showCollabPicker && (
+                                        <div className="absolute left-0 top-full mt-1 z-30 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl w-64 max-h-60 overflow-hidden">
+                                            <div className="p-2 border-b border-gray-700">
+                                                <input
+                                                    value={collabSearch}
+                                                    onChange={(e) => setCollabSearch(e.target.value)}
+                                                    placeholder="Add collaborator..."
+                                                    className="w-full bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                    autoFocus
+                                                />
+                                            </div>
+                                            <div className="overflow-y-auto max-h-44">
+                                                {users
+                                                    .filter(u =>
+                                                        !collaborators.some(c => c.user_id === u.id) &&
+                                                        u.id !== task?.assignee_id &&
+                                                        (u.name.toLowerCase().includes(collabSearch.toLowerCase()) ||
+                                                            u.email.toLowerCase().includes(collabSearch.toLowerCase()))
+                                                    )
+                                                    .map((u) => (
+                                                        <button
+                                                            key={u.id}
+                                                            onClick={() => handleAddCollaborator(u.id)}
+                                                            className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-left"
+                                                        >
+                                                            <div className="w-6 h-6 rounded-full bg-purple-600 flex items-center justify-center text-white text-xs font-medium">
+                                                                {u.name.charAt(0).toUpperCase()}
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm text-white truncate">{u.name}</p>
+                                                                <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Due Date — styled like Asana */}
+                            <div className="flex items-center gap-3">
+                                <label className="text-xs text-gray-500 w-24 flex-shrink-0 flex items-center gap-1">
                                     <Calendar className="h-3 w-3" /> Due Date
                                 </label>
                                 <div className="flex-1 flex items-center gap-2">
@@ -581,6 +751,7 @@ export function TaskDetailPanel({
                         <div className="flex gap-1 border-b border-gray-800">
                             {[
                                 { key: 'comments' as const, label: 'Comments', icon: MessageSquare, count: comments.length },
+                                { key: 'attachments' as const, label: 'Attachments', icon: Paperclip, count: taskAttachments.length },
                                 { key: 'activity' as const, label: 'Activity', icon: Clock },
                             ].map(({ key, label, icon: Icon, count }) => (
                                 <button
@@ -653,6 +824,87 @@ export function TaskDetailPanel({
                             </div>
                         )}
 
+                        {/* Attachments tab */}
+                        {activeTab === 'attachments' && (
+                            <div className="space-y-3">
+                                {/* Upload area */}
+                                <div
+                                    className="border-2 border-dashed border-gray-700 rounded-lg p-4 text-center hover:border-blue-500 transition-colors cursor-pointer"
+                                    onClick={() => taskFileRef.current?.click()}
+                                    onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                    onDrop={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (e.dataTransfer.files.length > 0) handleUploadTaskFile(e.dataTransfer.files);
+                                    }}
+                                >
+                                    <input
+                                        ref={taskFileRef}
+                                        type="file"
+                                        multiple
+                                        accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.svg,.xlsx,.xls,.docx,.csv"
+                                        className="hidden"
+                                        onChange={(e) => e.target.files && handleUploadTaskFile(e.target.files)}
+                                    />
+                                    {uploading ? (
+                                        <div className="flex items-center justify-center gap-2 text-blue-400">
+                                            <div className="h-4 w-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                                            <span className="text-sm">Uploading...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <Paperclip className="h-5 w-5 text-gray-500 mx-auto mb-1" />
+                                            <p className="text-xs text-gray-500">Drag files here or click to upload</p>
+                                            <p className="text-[10px] text-gray-600 mt-0.5">PDF, Images, Excel, Word — max 20MB</p>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Attachment list */}
+                                {taskAttachments.length === 0 ? (
+                                    <div className="text-center py-4 text-gray-600 text-sm">
+                                        No attachments yet
+                                    </div>
+                                ) : (
+                                    taskAttachments.map((att) => (
+                                        <div key={att.id} className="group flex items-center gap-3 bg-[#2a2b2d] rounded-lg p-3 hover:bg-[#303132]">
+                                            <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                                {att.mime_type?.startsWith('image/') ? (
+                                                    <ImageIcon className="h-4 w-4 text-blue-400" />
+                                                ) : (
+                                                    <FileText className="h-4 w-4 text-orange-400" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="text-sm text-white truncate">{att.file_name}</p>
+                                                <p className="text-[10px] text-gray-500">
+                                                    {att.size_bytes ? `${(att.size_bytes / 1024).toFixed(0)} KB` : ''} · {new Date(att.created_at).toLocaleDateString()}
+                                                </p>
+                                            </div>
+                                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                {att.url && (
+                                                    <a
+                                                        href={att.url}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-blue-400"
+                                                    >
+                                                        <Download className="h-3.5 w-3.5" />
+                                                    </a>
+                                                )}
+                                                <button
+                                                    onClick={() => handleDeleteAttachment(att.id)}
+                                                    className="p-1.5 rounded hover:bg-red-900/20 text-gray-400 hover:text-red-400"
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                        )}
+
                         {/* Activity tab */}
                         {activeTab === 'activity' && (
                             <div className="text-center py-8 text-gray-600 text-sm">
@@ -662,7 +914,7 @@ export function TaskDetailPanel({
                     </div>
                 </div>
 
-                {/* Comment input (always visible) with @mention */}
+                {/* Comment input (always visible) with @mention and attachment */}
                 <div className="flex-shrink-0 border-t border-gray-800 px-4 py-3 relative">
                     {/* @Mention autocomplete dropdown */}
                     {showMentionList && filteredMentionUsers.length > 0 && (
@@ -687,19 +939,45 @@ export function TaskDetailPanel({
                             ))}
                         </div>
                     )}
+                    {/* Pending file preview */}
+                    {commentFile && (
+                        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-[#2a2b2d] rounded border border-gray-700 text-xs">
+                            <Paperclip className="h-3 w-3 text-gray-400" />
+                            <span className="text-gray-300 truncate flex-1">{commentFile.name}</span>
+                            <button onClick={() => setCommentFile(null)} className="text-gray-500 hover:text-red-400">
+                                <X className="h-3 w-3" />
+                            </button>
+                        </div>
+                    )}
                     <div className="flex gap-2">
-                        <textarea
-                            ref={commentInputRef}
-                            value={newComment}
-                            onChange={handleCommentChange}
-                            onKeyDown={handleCommentKeyDown}
-                            placeholder="Add a comment... (use @ to mention)"
-                            rows={1}
-                            className="flex-1 bg-[#2a2b2d] border border-gray-700 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
-                        />
+                        <div className="flex-1 relative">
+                            <textarea
+                                ref={commentInputRef}
+                                value={newComment}
+                                onChange={handleCommentChange}
+                                onKeyDown={handleCommentKeyDown}
+                                placeholder="Add a comment... (use @ to mention)"
+                                rows={1}
+                                className="w-full bg-[#2a2b2d] border border-gray-700 rounded-lg px-3 py-2 pr-9 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+                            />
+                            <button
+                                onClick={() => commentFileRef.current?.click()}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+                                title="Attach file"
+                            >
+                                <Paperclip className="h-3.5 w-3.5" />
+                            </button>
+                            <input
+                                ref={commentFileRef}
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png,.gif,.webp,.svg"
+                                className="hidden"
+                                onChange={(e) => { if (e.target.files?.[0]) setCommentFile(e.target.files[0]); e.target.value = ''; }}
+                            />
+                        </div>
                         <button
                             onClick={handleAddComment}
-                            disabled={!newComment.trim()}
+                            disabled={!newComment.trim() && !commentFile}
                             className="px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg disabled:opacity-50 transition-colors"
                         >
                             <Send className="h-4 w-4" />
