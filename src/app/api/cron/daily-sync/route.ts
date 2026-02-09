@@ -280,6 +280,35 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================
+    // 4b2. GERAR INVOICES AR A PARTIR DO QUICKBOOKS
+    // ============================================
+    try {
+        const qbArStart = Date.now();
+        console.log("\n🧾 [4b2] Gerando invoices AR a partir do QuickBooks...");
+        const qbArUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/ar-invoices/from-quickbooks`;
+        const response = await fetch(qbArUrl, { method: "POST" });
+        const result = await response.json();
+        results.push({
+            name: "AR Invoices from QuickBooks",
+            success: result.success === true,
+            message: result.success
+                ? `Created: ${result.created}, Emails: ${result.emailsEnriched}, FA history: ${result.faFromHistory}, FA default: ${result.faDefault}`
+                : result.error,
+            count: result.created || 0,
+            duration_ms: Date.now() - qbArStart,
+            error: result.error,
+        });
+    } catch (error: any) {
+        results.push({
+            name: "AR Invoices from QuickBooks",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
     // 4c. CUSTOMER MASTER DATA SYNC
     // ============================================
     try {
