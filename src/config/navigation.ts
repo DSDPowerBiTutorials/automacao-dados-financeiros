@@ -131,6 +131,16 @@ export const NAV: NavGroup[] = withUnderConstruction([
     ]
   },
   {
+    label: "Sales Insights",
+    items: [
+      {
+        title: "Clinics Overview",
+        href: "/sales-insights/clinics",
+        icon: Building2
+      }
+    ]
+  },
+  {
     label: "Accounts Payable",
     items: [
       {
