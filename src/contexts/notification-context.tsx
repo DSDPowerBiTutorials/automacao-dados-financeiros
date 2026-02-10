@@ -60,7 +60,8 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Buscar notificações
+    // Buscar notificações — sem FK join (FKs foram removidas)
+    // Enriquece com dados do system_users manualmente
     const fetchNotifications = useCallback(async (limit: number = 50) => {
         if (!profile?.id) return;
 
@@ -70,22 +71,34 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         try {
             const { data, error: fetchError } = await supabase
                 .from('notifications')
-                .select(`
-                    *,
-                    triggered_by_user:users!notifications_triggered_by_fkey(
-                        id,
-                        name,
-                        avatar_url
-                    )
-                `)
+                .select('*')
                 .eq('user_id', profile.id)
                 .order('created_at', { ascending: false })
                 .limit(limit);
 
             if (fetchError) throw fetchError;
 
-            setNotifications(data || []);
-            setUnreadCount(data?.filter(n => !n.is_read).length || 0);
+            // Enrich triggered_by with system_users data
+            const triggerIds = [...new Set((data || []).map(n => n.triggered_by).filter(Boolean))];
+            let usersMap: Record<string, { id: string; name: string; avatar_url: string | null }> = {};
+
+            if (triggerIds.length > 0) {
+                const { data: sysUsers } = await supabase
+                    .from('system_users')
+                    .select('id, name, avatar_url')
+                    .in('id', triggerIds);
+                for (const u of (sysUsers || [])) {
+                    usersMap[u.id] = u;
+                }
+            }
+
+            const enriched = (data || []).map(n => ({
+                ...n,
+                triggered_by_user: n.triggered_by ? usersMap[n.triggered_by] || null : null,
+            }));
+
+            setNotifications(enriched);
+            setUnreadCount(enriched.filter(n => !n.is_read).length || 0);
         } catch (err: any) {
             console.error('Erro ao buscar notificações:', err);
             setError(err.message || 'Erro ao carregar notificações');
@@ -203,19 +216,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                     // Buscar dados completos da nova notificação
                     const { data } = await supabase
                         .from('notifications')
-                        .select(`
-                            *,
-                            triggered_by_user:users!notifications_triggered_by_fkey(
-                                id,
-                                name,
-                                avatar_url
-                            )
-                        `)
+                        .select('*')
                         .eq('id', payload.new.id)
                         .single();
 
                     if (data) {
-                        setNotifications(prev => [data, ...prev]);
+                        // Enrich triggered_by
+                        let triggered_by_user = null;
+                        if (data.triggered_by) {
+                            const { data: u } = await supabase
+                                .from('system_users')
+                                .select('id, name, avatar_url')
+                                .eq('id', data.triggered_by)
+                                .single();
+                            triggered_by_user = u;
+                        }
+                        const enriched = { ...data, triggered_by_user };
+                        setNotifications(prev => [enriched, ...prev]);
                         setUnreadCount(prev => prev + 1);
                     }
                 }
