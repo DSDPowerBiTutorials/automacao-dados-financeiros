@@ -18,6 +18,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const body = await req.json();
         const taskId = parseInt(id);
 
+        // Extract updated_by before sending to DB (not a ws_tasks column)
+        const updatedBy = body.updated_by;
+        delete body.updated_by;
+
         // Get previous task state for comparison
         const previousTask = await getTask(taskId);
         const data = await updateTask(taskId, body);
@@ -29,7 +33,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             body.assignee_id !== null
         ) {
             try {
-                const triggeredBy = body.updated_by || previousTask.created_by;
+                const triggeredBy = updatedBy || previousTask.created_by;
                 if (triggeredBy) {
                     const allUsers = await getUsers();
                     const triggerUser = allUsers?.find((u: { id: string }) => u.id === triggeredBy);
