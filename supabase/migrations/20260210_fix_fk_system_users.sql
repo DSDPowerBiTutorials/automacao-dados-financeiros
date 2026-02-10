@@ -13,31 +13,20 @@
 -- ============================================================
 
 -- ============================================================
--- 1. Fix ws_tasks FKs
+-- 1. Fix ws_tasks FKs — DROP only (no re-add)
+-- Existing data mixes public.users and system_users UUIDs.
+-- Application layer handles validation.
 -- ============================================================
 
--- Drop existing FKs to auth.users
 ALTER TABLE ws_tasks DROP CONSTRAINT IF EXISTS ws_tasks_assignee_id_fkey;
 ALTER TABLE ws_tasks DROP CONSTRAINT IF EXISTS ws_tasks_created_by_fkey;
 
--- Re-add pointing to system_users
-ALTER TABLE ws_tasks
-    ADD CONSTRAINT ws_tasks_assignee_id_fkey
-    FOREIGN KEY (assignee_id) REFERENCES system_users(id) ON DELETE SET NULL;
-
-ALTER TABLE ws_tasks
-    ADD CONSTRAINT ws_tasks_created_by_fkey
-    FOREIGN KEY (created_by) REFERENCES system_users(id) ON DELETE SET NULL;
-
 -- ============================================================
--- 2. Fix ws_comments FKs
+-- 2. Fix ws_comments FKs — DROP only
+-- Existing comments use public.users IDs.
 -- ============================================================
 
 ALTER TABLE ws_comments DROP CONSTRAINT IF EXISTS ws_comments_user_id_fkey;
-
-ALTER TABLE ws_comments
-    ADD CONSTRAINT ws_comments_user_id_fkey
-    FOREIGN KEY (user_id) REFERENCES system_users(id) ON DELETE SET NULL;
 
 -- ============================================================
 -- 3. Fix notifications FKs (safety re-run)

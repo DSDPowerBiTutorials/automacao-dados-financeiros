@@ -57,7 +57,7 @@ interface TaskDetailPanelProps {
 }
 
 export function TaskDetailPanel({
-    task,
+    task: externalTask,
     customFields,
     projectId,
     users = [],
@@ -67,6 +67,27 @@ export function TaskDetailPanel({
     onDelete,
 }: TaskDetailPanelProps) {
     const { profile } = useAuth();
+    // Navigation stack: allows drilling into subtasks and back
+    const [taskStack, setTaskStack] = useState<WSTask[]>([]);
+    // The currently displayed task — either the external task or a subtask the user navigated into
+    const task = taskStack.length > 0 ? taskStack[taskStack.length - 1] : externalTask;
+    const isSubtaskView = task !== null && task.parent_task_id !== null && task.parent_task_id !== undefined;
+
+    // Reset stack when external task changes
+    useEffect(() => {
+        setTaskStack([]);
+    }, [externalTask?.id]);
+
+    // Navigate into a subtask
+    function openSubtask(subtask: WSTask) {
+        setTaskStack(prev => [...prev, subtask]);
+    }
+
+    // Navigate back to parent
+    function goBackToParent() {
+        setTaskStack(prev => prev.slice(0, -1));
+    }
+
     const [activeTab, setActiveTab] = useState<'comments' | 'attachments' | 'activity'>('comments');
     const [comments, setComments] = useState<WSComment[]>([]);
     const [activities, setActivities] = useState<WSActivityLog[]>([]);
@@ -545,23 +566,34 @@ export function TaskDetailPanel({
             <div className="fixed right-0 top-[56px] h-[calc(100vh-56px)] w-[520px] bg-[#1e1f21] border-l border-gray-800 shadow-2xl z-[100] flex flex-col overflow-hidden">
                 {/* Top bar — close + delete */}
                 <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-800 flex-shrink-0">
-                    <button
-                        onClick={() => {
-                            const newStatus: TaskStatus = isDone ? 'todo' : 'done';
-                            onUpdate(task.id, 'status', newStatus);
-                        }}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isDone
-                            ? 'bg-green-900/30 text-green-400 border border-green-700 hover:bg-green-900/40'
-                            : 'bg-[#2a2b2d] text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'
-                            }`}
-                    >
-                        {isDone ? (
-                            <CheckCircle2 className="h-4 w-4" />
-                        ) : (
-                            <Circle className="h-4 w-4" />
-                        )}
-                        {isDone ? 'Completed' : 'Mark complete'}
-                    </button>
+                    {/* Breadcrumb when viewing a subtask */}
+                    {isSubtaskView && taskStack.length > 0 ? (
+                        <button
+                            onClick={goBackToParent}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white bg-[#2a2b2d] border border-gray-700 hover:border-gray-500 transition-colors"
+                        >
+                            <ArrowRight className="h-3.5 w-3.5 rotate-180" />
+                            Back to parent task
+                        </button>
+                    ) : (
+                        <button
+                            onClick={() => {
+                                const newStatus: TaskStatus = isDone ? 'todo' : 'done';
+                                onUpdate(task.id, 'status', newStatus);
+                            }}
+                            className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isDone
+                                ? 'bg-green-900/30 text-green-400 border border-green-700 hover:bg-green-900/40'
+                                : 'bg-[#2a2b2d] text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'
+                                }`}
+                        >
+                            {isDone ? (
+                                <CheckCircle2 className="h-4 w-4" />
+                            ) : (
+                                <Circle className="h-4 w-4" />
+                            )}
+                            {isDone ? 'Completed' : 'Mark complete'}
+                        </button>
+                    )}
                     <div className="flex items-center gap-1">
                         <button
                             onClick={() => {
@@ -1064,81 +1096,115 @@ export function TaskDetailPanel({
                             )}
                         </div>
 
-                        {/* =============== SUBTASKS =============== */}
-                        <div className="bg-[#252627] rounded-lg p-4">
-                            <div className="flex items-center justify-between mb-2">
-                                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
-                                    <CheckCircle2 className="h-3 w-3" />
-                                    Subtasks
-                                    {subtasks.length > 0 && (
-                                        <span className="text-[10px] text-gray-600 normal-case font-normal">
-                                            ({subtasks.filter(s => s.status === 'done').length}/{subtasks.length})
-                                        </span>
-                                    )}
-                                </h4>
-                                <button
-                                    onClick={() => setShowSubtaskInput(true)}
-                                    className="text-xs text-gray-500 hover:text-blue-400 flex items-center gap-0.5 transition-colors"
-                                >
-                                    <Plus className="h-3 w-3" /> Add
-                                </button>
-                            </div>
-                            {subtasks.length > 0 && (
-                                <div className="mb-2 h-1 bg-gray-700 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-green-500 transition-all duration-300"
-                                        style={{ width: `${(subtasks.filter(s => s.status === 'done').length / subtasks.length) * 100}%` }}
-                                    />
-                                </div>
-                            )}
-                            <div className="space-y-1">
-                                {subtasks.map((sub) => (
-                                    <div key={sub.id} className="flex items-center gap-2 group py-1 px-1 rounded hover:bg-[#1e1f21]">
-                                        <button
-                                            onClick={() => handleToggleSubtask(sub)}
-                                            className={`flex-shrink-0 ${sub.status === 'done' ? 'text-green-400' : 'text-gray-600 hover:text-gray-400'}`}
-                                        >
-                                            {sub.status === 'done' ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                                        </button>
-                                        <span className={`text-sm flex-1 ${sub.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-300'}`}>
-                                            {sub.title}
-                                        </span>
-                                        <button
-                                            onClick={() => {
-                                                if (confirm('Delete subtask?')) {
-                                                    fetch(`/api/workstream/tasks/${sub.id}`, { method: 'DELETE' });
-                                                    setSubtasks(prev => prev.filter(s => s.id !== sub.id));
-                                                }
-                                            }}
-                                            className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity"
-                                        >
-                                            <Trash2 className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                            {showSubtaskInput && (
-                                <div className="flex gap-1.5 mt-2">
-                                    <input
-                                        value={newSubtaskTitle}
-                                        onChange={(e) => setNewSubtaskTitle(e.target.value)}
-                                        placeholder="Subtask title..."
-                                        className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
-                                        autoFocus
-                                        onKeyDown={(e) => {
-                                            if (e.key === 'Enter') handleCreateSubtask();
-                                            if (e.key === 'Escape') { setShowSubtaskInput(false); setNewSubtaskTitle(''); }
-                                        }}
-                                    />
-                                    <button onClick={handleCreateSubtask} className="px-2 py-1.5 bg-blue-600 rounded text-sm text-white hover:bg-blue-500">
-                                        <Plus className="h-4 w-4" />
+                        {/* =============== SUBTASKS (hidden for subtask views) =============== */}
+                        {!isSubtaskView && (
+                            <div className="bg-[#252627] rounded-lg p-4">
+                                <div className="flex items-center justify-between mb-2">
+                                    <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
+                                        <CheckCircle2 className="h-3 w-3" />
+                                        Subtasks
+                                        {subtasks.length > 0 && (
+                                            <span className="text-[10px] text-gray-600 normal-case font-normal">
+                                                ({subtasks.filter(s => s.status === 'done').length}/{subtasks.length})
+                                            </span>
+                                        )}
+                                    </h4>
+                                    <button
+                                        onClick={() => setShowSubtaskInput(true)}
+                                        className="text-xs text-gray-500 hover:text-blue-400 flex items-center gap-0.5 transition-colors"
+                                    >
+                                        <Plus className="h-3 w-3" /> Add
                                     </button>
                                 </div>
-                            )}
-                            {subtasks.length === 0 && !showSubtaskInput && (
-                                <p className="text-xs text-gray-600 text-center py-2">No subtasks</p>
-                            )}
-                        </div>
+                                {subtasks.length > 0 && (
+                                    <div className="mb-2 h-1 bg-gray-700 rounded-full overflow-hidden">
+                                        <div
+                                            className="h-full bg-green-500 transition-all duration-300"
+                                            style={{ width: `${(subtasks.filter(s => s.status === 'done').length / subtasks.length) * 100}%` }}
+                                        />
+                                    </div>
+                                )}
+                                <div className="space-y-1">
+                                    {subtasks.map((sub) => {
+                                        const subAssignee = users.find(u => u.id === sub.assignee_id);
+                                        const subStatusCfg = STATUS_CONFIG[sub.status];
+                                        const subPriorityCfg = PRIORITY_CONFIG[sub.priority];
+                                        return (
+                                            <div
+                                                key={sub.id}
+                                                className="group rounded-lg border border-gray-700/50 hover:border-gray-600 bg-[#1e1f21] hover:bg-[#232425] transition-all cursor-pointer"
+                                                onClick={() => openSubtask(sub)}
+                                            >
+                                                <div className="flex items-center gap-2 px-3 py-2">
+                                                    {/* Status toggle */}
+                                                    <button
+                                                        onClick={(e) => { e.stopPropagation(); handleToggleSubtask(sub); }}
+                                                        className={`flex-shrink-0 ${sub.status === 'done' ? 'text-green-400' : 'text-gray-600 hover:text-gray-400'}`}
+                                                    >
+                                                        {sub.status === 'done' ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                                                    </button>
+                                                    {/* Title */}
+                                                    <span className={`text-sm flex-1 truncate ${sub.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
+                                                        {sub.title}
+                                                    </span>
+                                                    {/* Priority badge */}
+                                                    <span className={`text-[10px] px-1.5 py-0.5 rounded-full border ${subPriorityCfg.color} border-current/20`}>
+                                                        {subPriorityCfg.label}
+                                                    </span>
+                                                    {/* Assignee avatar */}
+                                                    {subAssignee && (
+                                                        <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white text-[10px] font-medium flex-shrink-0" title={subAssignee.name}>
+                                                            {subAssignee.name.charAt(0).toUpperCase()}
+                                                        </div>
+                                                    )}
+                                                    {/* Due date */}
+                                                    {sub.due_date && (
+                                                        <span className={`text-[10px] flex items-center gap-0.5 ${new Date(sub.due_date) < new Date() && sub.status !== 'done' ? 'text-red-400' : 'text-gray-500'}`}>
+                                                            <Calendar className="h-3 w-3" />
+                                                            {new Date(sub.due_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })}
+                                                        </span>
+                                                    )}
+                                                    {/* Delete */}
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            if (confirm('Delete subtask?')) {
+                                                                fetch(`/api/workstream/tasks/${sub.id}`, { method: 'DELETE' });
+                                                                setSubtasks(prev => prev.filter(s => s.id !== sub.id));
+                                                            }
+                                                        }}
+                                                        className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity flex-shrink-0"
+                                                    >
+                                                        <Trash2 className="h-3 w-3" />
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                {showSubtaskInput && (
+                                    <div className="flex gap-1.5 mt-2">
+                                        <input
+                                            value={newSubtaskTitle}
+                                            onChange={(e) => setNewSubtaskTitle(e.target.value)}
+                                            placeholder="Subtask title..."
+                                            className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                            autoFocus
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') handleCreateSubtask();
+                                                if (e.key === 'Escape') { setShowSubtaskInput(false); setNewSubtaskTitle(''); }
+                                            }}
+                                        />
+                                        <button onClick={handleCreateSubtask} className="px-2 py-1.5 bg-blue-600 rounded text-sm text-white hover:bg-blue-500">
+                                            <Plus className="h-4 w-4" />
+                                        </button>
+                                    </div>
+                                )}
+                                {subtasks.length === 0 && !showSubtaskInput && (
+                                    <p className="text-xs text-gray-600 text-center py-2">No subtasks</p>
+                                )}
+                            </div>
+                        )}
 
                         {/* =============== DEPENDENCIES =============== */}
                         <div className="bg-[#252627] rounded-lg p-4">

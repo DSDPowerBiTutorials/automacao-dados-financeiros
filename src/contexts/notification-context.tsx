@@ -59,11 +59,32 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Cache the matching system_users ID for the logged-in user
+    const [systemUserId, setSystemUserId] = useState<string | null>(null);
 
-    // Buscar notificações — sem FK join (FKs foram removidas)
-    // Enriquece com dados do system_users manualmente
+    // Resolve the system_users ID that corresponds to this profile
+    useEffect(() => {
+        if (!profile?.id || !profile?.name) return;
+        (async () => {
+            // Match by first name (case-insensitive)
+            const firstName = profile.name.split(' ')[0];
+            const { data } = await supabase
+                .from('system_users')
+                .select('id, name')
+                .eq('is_active', true);
+            const match = (data || []).find(u =>
+                u.name.toLowerCase() === firstName.toLowerCase() ||
+                u.name.toLowerCase().startsWith(firstName.toLowerCase())
+            );
+            setSystemUserId(match?.id || null);
+        })();
+    }, [profile?.id, profile?.name]);
+
+    // Build the list of user IDs to query notifications for
+    const userIds = [profile?.id, systemUserId].filter(Boolean) as string[];
+
     const fetchNotifications = useCallback(async (limit: number = 50) => {
-        if (!profile?.id) return;
+        if (userIds.length === 0) return;
 
         setLoading(true);
         setError(null);
@@ -72,7 +93,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
             const { data, error: fetchError } = await supabase
                 .from('notifications')
                 .select('*')
-                .eq('user_id', profile.id)
+                .in('user_id', userIds)
                 .order('created_at', { ascending: false })
                 .limit(limit);
 
@@ -105,7 +126,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } finally {
             setLoading(false);
         }
-    }, [profile?.id]);
+    }, [userIds.join(',')]);
 
     // Marcar como lida
     const markAsRead = useCallback(async (notificationId: string) => {
@@ -128,13 +149,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     // Marcar todas como lidas
     const markAllAsRead = useCallback(async () => {
-        if (!profile?.id) return;
+        if (userIds.length === 0) return;
 
         try {
             const { error: updateError } = await supabase
                 .from('notifications')
                 .update({ is_read: true, read_at: new Date().toISOString() })
-                .eq('user_id', profile.id)
+                .in('user_id', userIds)
                 .eq('is_read', false);
 
             if (updateError) throw updateError;
@@ -146,7 +167,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } catch (err: any) {
             console.error('Erro ao marcar todas como lidas:', err);
         }
-    }, [profile?.id]);
+    }, [userIds.join(',')]);
 
     // Deletar notificação
     const deleteNotification = useCallback(async (notificationId: string) => {
@@ -171,13 +192,13 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
 
     // Limpar todas as notificações
     const clearAllNotifications = useCallback(async () => {
-        if (!profile?.id) return;
+        if (userIds.length === 0) return;
 
         try {
             const { error: deleteError } = await supabase
                 .from('notifications')
                 .delete()
-                .eq('user_id', profile.id);
+                .in('user_id', userIds);
 
             if (deleteError) throw deleteError;
 
@@ -186,22 +207,23 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         } catch (err: any) {
             console.error('Erro ao limpar notificações:', err);
         }
-    }, [profile?.id]);
+    }, [userIds.join(',')]);
 
-    // Carregar notificações quando o usuário logar
+    // Carregar notificações quando o usuário logar ou system user ID resolve
     useEffect(() => {
-        if (profile?.id) {
+        if (userIds.length > 0) {
             fetchNotifications();
         } else {
             setNotifications([]);
             setUnreadCount(0);
         }
-    }, [profile?.id, fetchNotifications]);
+    }, [userIds.join(','), fetchNotifications]);
 
-    // Realtime subscription para novas notificações
+    // Realtime subscription para novas notificações (listen for both user IDs)
     useEffect(() => {
-        if (!profile?.id) return;
+        if (userIds.length === 0) return;
 
+        // Subscribe to all inserts, filter client-side for both IDs
         const channel = supabase
             .channel('notifications-realtime')
             .on(
@@ -210,10 +232,12 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                     event: 'INSERT',
                     schema: 'public',
                     table: 'notifications',
-                    filter: `user_id=eq.${profile.id}`
                 },
+                // We filter client-side since Supabase realtime only supports eq, not in
                 async (payload) => {
-                    // Buscar dados completos da nova notificação
+                    // Filter: only process if this notification is for us
+                    if (!userIds.includes(payload.new.user_id)) return;
+
                     const { data } = await supabase
                         .from('notifications')
                         .select('*')
@@ -221,7 +245,6 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
                         .single();
 
                     if (data) {
-                        // Enrich triggered_by
                         let triggered_by_user = null;
                         if (data.triggered_by) {
                             const { data: u } = await supabase
@@ -242,7 +265,7 @@ export function NotificationProvider({ children }: { children: ReactNode }) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [profile?.id]);
+    }, [userIds.join(',')]);
 
     return (
         <NotificationContext.Provider
