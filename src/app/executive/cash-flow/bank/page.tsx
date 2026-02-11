@@ -71,6 +71,9 @@ interface BankTransaction {
     matchType: string | null;
     isReconciled: boolean;
     reconciliationType: string | null;
+    isOrderReconciled: boolean;
+    invoiceOrderId: string | null;
+    invoiceNumber: string | null;
     custom_data: Record<string, any>;
 }
 
@@ -265,6 +268,9 @@ export default function BankCashFlowPage() {
                     matchType: cd.match_type || null,
                     isReconciled: !!row.reconciled,
                     reconciliationType: cd.reconciliationType || (row.reconciled ? "automatic" : null),
+                    isOrderReconciled: !!cd.invoice_order_matched,
+                    invoiceOrderId: cd.invoice_order_id || null,
+                    invoiceNumber: cd.invoice_number || null,
                     custom_data: cd,
                 };
             });
@@ -699,7 +705,8 @@ export default function BankCashFlowPage() {
                         <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
                         <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
                         <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
-                        <div className="w-[60px] flex-shrink-0 text-center">Status</div>
+                        <div className="w-[40px] flex-shrink-0 text-center">GW</div>
+                        <div className="w-[40px] flex-shrink-0 text-center">Ord</div>
                     </div>
                 </div>
 
@@ -750,11 +757,18 @@ export default function BankCashFlowPage() {
                                                 </Badge>
                                             ) : <span className="text-gray-600 text-[9px]">-</span>}
                                         </div>
-                                        <div className="w-[60px] flex-shrink-0 text-center">
+                                        <div className="w-[40px] flex-shrink-0 text-center">
                                             {tx.isReconciled ? (
                                                 tx.reconciliationType === "manual" ? <User className="h-3.5 w-3.5 text-blue-500 mx-auto" /> : <Zap className="h-3.5 w-3.5 text-green-500 mx-auto" />
                                             ) : (
                                                 <AlertCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
+                                            )}
+                                        </div>
+                                        <div className="w-[40px] flex-shrink-0 text-center">
+                                            {tx.isOrderReconciled ? (
+                                                <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
+                                            ) : (
+                                                <span className="text-gray-600 text-[9px]">-</span>
                                             )}
                                         </div>
                                     </div>
@@ -863,10 +877,10 @@ export default function BankCashFlowPage() {
                             )}
                         </div>
 
-                        {/* Reconciliation Status */}
+                        {/* Gateway Reconciliation */}
                         <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                <CreditCard className="h-4 w-4" /> Reconciliation
+                                <CreditCard className="h-4 w-4" /> Gateway Reconciliation
                             </h3>
                             <div>
                                 <p className="text-xs text-gray-500">Status</p>
@@ -939,6 +953,39 @@ export default function BankCashFlowPage() {
                                 </div>
                             </div>
                         )}
+
+                        {/* Order Reconciliation */}
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
+                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                <FileText className="h-4 w-4" /> Order Reconciliation
+                            </h3>
+                            <div>
+                                <p className="text-xs text-gray-500">Status</p>
+                                {selectedRow.isOrderReconciled ? (
+                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
+                                        Matched
+                                    </Badge>
+                                ) : (
+                                    <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
+                                        Not Matched
+                                    </Badge>
+                                )}
+                            </div>
+
+                            {selectedRow.invoiceNumber && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                    <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.invoiceOrderId && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Order ID</p>
+                                    <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
                     {/* Panel Footer */}

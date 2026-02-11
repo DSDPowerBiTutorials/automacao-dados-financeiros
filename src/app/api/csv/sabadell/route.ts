@@ -197,26 +197,66 @@ export async function POST(request: NextRequest) {
             throw new Error("Supabase not configured")
         }
 
+        // Deduplication: fetch existing rows to avoid duplicates on re-upload
+        console.log(`\n🔍 Checking for duplicates...`)
+        const { data: existingRows } = await supabaseAdmin
+            .from("csv_rows")
+            .select("date, description, amount")
+            .eq("source", "sabadell")
+
+        const existingKeys = new Set(
+            (existingRows || []).map(r => `${r.date}|${r.description}|${r.amount}`)
+        )
+
+        const newRows = rows.filter(row => {
+            const key = `${row.date}|${row.description}|${row.amount}`
+            return !existingKeys.has(key)
+        })
+
+        const duplicateCount = rows.length - newRows.length
+        console.log(`📊 Total: ${rows.length} | Duplicates: ${duplicateCount} | New: ${newRows.length}`)
+
+        if (newRows.length === 0) {
+            console.log("⚠️ No new transactions to insert (all duplicates)")
+            return NextResponse.json({
+                success: true,
+                data: {
+                    rowCount: 0,
+                    summary: {
+                        totalCredits: totalCredits,
+                        totalDebits: Math.abs(totalDebits),
+                        finalBalance: lastBalance,
+                        totalSkipped: skippedCount,
+                        inserted: 0,
+                        duplicates: duplicateCount
+                    }
+                },
+                message: "Upload complete — no new transactions found (all already existed)"
+            })
+        }
+
         const { error } = await supabaseAdmin
             .from("csv_rows")
-            .upsert(rows, { onConflict: "id" })
+            .insert(newRows)
 
         if (error) {
             console.error("❌ Supabase error:", error)
             throw new Error(`Database error: ${error.message}`)
         }
 
-        console.log(`✅ [Sabadell EUR] ${rows.length} rows inserted into database`)
+        console.log(`✅ [Sabadell EUR] ${newRows.length} new rows inserted (${duplicateCount} duplicates skipped)`)
 
         return NextResponse.json({
             success: true,
             data: {
-                rowCount: rows.length,
+                rowCount: newRows.length,
                 summary: {
                     totalCredits: totalCredits,
                     totalDebits: Math.abs(totalDebits),
                     finalBalance: lastBalance,
-                    totalSkipped: skippedCount
+                    totalSkipped: skippedCount,
+                    inserted: newRows.length,
+                    duplicates: duplicateCount
                 }
             }
         })

@@ -119,10 +119,44 @@ export async function POST(request: NextRequest) {
 
     console.log(`📥 Inserting ${rows.length} rows for source: ${source}`);
 
-    // Inserir todas as linhas usando supabaseAdmin (bypassa RLS)
+    // Deduplication: fetch existing rows to avoid duplicates on re-upload
+    const rowSource = source || (rows[0]?.source as string) || "";
+    console.log(`🔍 Checking for duplicates (source: ${rowSource})...`);
+    const { data: existingRows } = await supabaseAdmin
+      .from("csv_rows")
+      .select("date, description, amount")
+      .eq("source", rowSource);
+
+    const existingKeys = new Set(
+      (existingRows || []).map((r: any) => `${r.date}|${r.description}|${r.amount}`),
+    );
+
+    const newRows = rows.filter((row: any) => {
+      const key = `${row.date}|${row.description}|${row.amount}`;
+      return !existingKeys.has(key);
+    });
+
+    const duplicateCount = rows.length - newRows.length;
+    console.log(
+      `📊 Total: ${rows.length} | Duplicates: ${duplicateCount} | New: ${newRows.length}`,
+    );
+
+    if (newRows.length === 0) {
+      console.log("⚠️ No new transactions to insert (all duplicates)");
+      return NextResponse.json({
+        success: true,
+        count: 0,
+        inserted: 0,
+        duplicates: duplicateCount,
+        message:
+          "Upload complete — no new transactions found (all already existed)",
+      });
+    }
+
+    // Inserir apenas linhas novas usando supabaseAdmin (bypassa RLS)
     const { data, error } = await supabaseAdmin
       .from("csv_rows")
-      .insert(rows)
+      .insert(newRows)
       .select();
 
     if (error) {
@@ -133,11 +167,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`✅ Successfully inserted ${data?.length || 0} rows`);
+    console.log(
+      `✅ Successfully inserted ${data?.length || 0} rows (${duplicateCount} duplicates skipped)`,
+    );
 
     return NextResponse.json({
       success: true,
       count: data?.length || 0,
+      inserted: data?.length || 0,
+      duplicates: duplicateCount,
       data,
     });
   } catch (error) {
