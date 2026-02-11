@@ -5,17 +5,25 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import {
     Plus,
-    FolderKanban,
+    Home,
+    CheckSquare,
+    Inbox,
+    BarChart3,
+    Briefcase,
+    Target,
     Star,
     ChevronDown,
     ChevronRight,
-    Hash,
     Archive,
     MoreHorizontal,
     Trash2,
     Pencil,
     StarOff,
+    Users2,
+    FolderKanban,
+    UserPlus,
 } from 'lucide-react';
+import { useNotifications } from '@/contexts/notification-context';
 import type { WSProject } from '@/lib/workstream-types';
 import { PROJECT_TYPE_CONFIG } from '@/lib/workstream-types';
 
@@ -27,10 +35,13 @@ interface WorkstreamSidebarProps {
 export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const { unreadCount } = useNotifications();
     const [projects, setProjects] = useState<WSProject[]>([]);
     const [loading, setLoading] = useState(true);
-    const [favoritesExpanded, setFavoritesExpanded] = useState(true);
-    const [allProjectsExpanded, setAllProjectsExpanded] = useState(true);
+    const [starredExpanded, setStarredExpanded] = useState(true);
+    const [projectsExpanded, setProjectsExpanded] = useState(true);
+    const [teamsExpanded, setTeamsExpanded] = useState(true);
+    const [insightsExpanded, setInsightsExpanded] = useState(true);
     const [contextMenu, setContextMenu] = useState<{ projectId: string; x: number; y: number } | null>(null);
 
     useEffect(() => {
@@ -96,12 +107,15 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
     const favorites = projects.filter((p) => p.is_favorite);
     const allProjects = projects;
 
-    const isActive = (projectId: string) => pathname === `/workstream/${projectId}`;
+    // Group projects by type for teams section
+    const teams = Array.from(new Set(projects.map(p => p.project_type))).filter(Boolean);
+
+    const isActive = (path: string) => pathname === path;
 
     function ProjectItem({ project }: { project: WSProject }) {
         return (
             <div
-                className={`group flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors text-sm ${isActive(project.id)
+                className={`group flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors text-sm ${isActive(`/workstream/${project.id}`)
                     ? 'bg-white/15 text-white'
                     : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
                     }`}
@@ -111,9 +125,11 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                 }}
             >
                 <div
-                    className="w-2 h-2 rounded-sm flex-shrink-0"
-                    style={{ backgroundColor: project.color || '#3b82f6' }}
-                />
+                    className="w-5 h-5 rounded flex items-center justify-center flex-shrink-0 text-[10px] font-bold"
+                    style={{ backgroundColor: project.color || '#3b82f6', color: '#fff' }}
+                >
+                    {project.name.charAt(0).toUpperCase()}
+                </div>
                 <span className="truncate flex-1">{project.name}</span>
                 <button
                     className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 transition-opacity"
@@ -129,6 +145,19 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
         );
     }
 
+    // Top-level nav items (Asana-style)
+    const topNavItems = [
+        { label: 'Home', href: '/workstream', icon: Home, active: pathname === '/workstream' },
+        { label: 'My Tasks', href: '/workstream/my-tasks', icon: CheckSquare, active: pathname === '/workstream/my-tasks' },
+        { label: 'Inbox', href: '/workstream/inbox', icon: Inbox, active: pathname === '/workstream/inbox', badge: unreadCount > 0 ? unreadCount : undefined },
+    ];
+
+    const insightItems = [
+        { label: 'Reporting', href: '/workstream/reporting', icon: BarChart3, active: pathname === '/workstream/reporting' },
+        { label: 'Portfolios', href: '/workstream/portfolios', icon: Briefcase, active: pathname === '/workstream/portfolios' },
+        { label: 'Goals', href: '/workstream/goals', icon: Target, active: pathname === '/workstream/goals' },
+    ];
+
     return (
         <>
             {/* Mobile overlay */}
@@ -139,82 +168,117 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
             {/* Sidebar */}
             <aside
                 className={`
-          fixed lg:relative top-0 left-0 h-full z-50 lg:z-auto
-          w-64 flex-shrink-0 flex flex-col
-          bg-[#1e1f21] border-r border-gray-800
-          transition-transform duration-200 ease-in-out
-          ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
+                    fixed lg:relative top-0 left-0 h-full z-50 lg:z-auto
+                    w-64 flex-shrink-0 flex flex-col
+                    bg-[#1e1f21] border-r border-gray-800
+                    transition-transform duration-200 ease-in-out
+                    ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                `}
                 style={{ paddingTop: 0 }}
             >
-                {/* New Project Button */}
-                <div className="px-3 py-3 border-b border-gray-800">
-                    <Link
-                        href="/workstream?new=true"
-                        onClick={() => onClose?.()}
-                        className="flex items-center gap-2 w-full px-3 py-2 rounded-md bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors no-underline"
-                    >
-                        <Plus className="h-4 w-4" />
-                        New Project
-                    </Link>
-                </div>
-
-                {/* Scrollable project list */}
-                <div className="flex-1 overflow-y-auto px-2 py-2">
-                    {/* Home link */}
-                    <Link
-                        href="/workstream"
-                        onClick={() => onClose?.()}
-                        className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors no-underline mb-1 ${pathname === '/workstream'
-                            ? 'bg-white/15 text-white'
-                            : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
-                            }`}
-                    >
-                        <FolderKanban className="h-4 w-4" />
-                        Home
-                    </Link>
-
-                    {/* Favorites */}
-                    {favorites.length > 0 && (
-                        <div className="mt-3">
-                            <button
-                                onClick={() => setFavoritesExpanded(!favoritesExpanded)}
-                                className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider w-full hover:text-gray-400 transition-colors"
+                {/* Scrollable content */}
+                <div className="flex-1 overflow-y-auto px-2 py-3">
+                    {/* Top nav items: Home, My Tasks, Inbox */}
+                    <div className="space-y-0.5">
+                        {topNavItems.map((item) => (
+                            <Link
+                                key={item.href}
+                                href={item.href}
+                                onClick={() => onClose?.()}
+                                className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors no-underline ${item.active
+                                    ? 'bg-white/15 text-white'
+                                    : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
+                                    }`}
                             >
-                                {favoritesExpanded ? (
-                                    <ChevronDown className="h-3 w-3" />
-                                ) : (
-                                    <ChevronRight className="h-3 w-3" />
+                                <item.icon className="h-4 w-4 flex-shrink-0" />
+                                <span className="flex-1">{item.label}</span>
+                                {item.badge && (
+                                    <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center">
+                                        {item.badge > 99 ? '99+' : item.badge}
+                                    </span>
                                 )}
+                            </Link>
+                        ))}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-800 my-3 mx-2" />
+
+                    {/* Insights Section */}
+                    <div>
+                        <button
+                            onClick={() => setInsightsExpanded(!insightsExpanded)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-full hover:text-gray-400 transition-colors"
+                        >
+                            {insightsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                            Insights
+                        </button>
+                        {insightsExpanded && (
+                            <div className="mt-0.5 space-y-0.5">
+                                {insightItems.map((item) => (
+                                    <Link
+                                        key={item.href}
+                                        href={item.href}
+                                        onClick={() => onClose?.()}
+                                        className={`flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm transition-colors no-underline ${item.active
+                                            ? 'bg-white/15 text-white'
+                                            : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
+                                            }`}
+                                    >
+                                        <item.icon className="h-4 w-4 flex-shrink-0" />
+                                        <span>{item.label}</span>
+                                    </Link>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-800 my-3 mx-2" />
+
+                    {/* Starred / Favorites */}
+                    {favorites.length > 0 && (
+                        <div>
+                            <button
+                                onClick={() => setStarredExpanded(!starredExpanded)}
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-full hover:text-gray-400 transition-colors"
+                            >
+                                {starredExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                                 <Star className="h-3 w-3" />
-                                Favorites
+                                Starred
                             </button>
-                            {favoritesExpanded && (
-                                <div className="mt-1 space-y-0.5">
+                            {starredExpanded && (
+                                <div className="mt-0.5 space-y-0.5">
                                     {favorites.map((p) => (
-                                        <ProjectItem key={p.id} project={p} />
+                                        <ProjectItem key={`fav-${p.id}`} project={p} />
                                     ))}
                                 </div>
                             )}
+                            <div className="border-t border-gray-800 my-3 mx-2" />
                         </div>
                     )}
 
-                    {/* All Projects */}
-                    <div className="mt-3">
-                        <button
-                            onClick={() => setAllProjectsExpanded(!allProjectsExpanded)}
-                            className="flex items-center gap-1.5 px-3 py-1 text-xs font-semibold text-gray-500 uppercase tracking-wider w-full hover:text-gray-400 transition-colors"
-                        >
-                            {allProjectsExpanded ? (
-                                <ChevronDown className="h-3 w-3" />
-                            ) : (
-                                <ChevronRight className="h-3 w-3" />
-                            )}
-                            <Hash className="h-3 w-3" />
-                            Projects
-                        </button>
-                        {allProjectsExpanded && (
-                            <div className="mt-1 space-y-0.5">
+                    {/* Projects */}
+                    <div>
+                        <div className="flex items-center justify-between px-3 py-1.5">
+                            <button
+                                onClick={() => setProjectsExpanded(!projectsExpanded)}
+                                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-400 transition-colors"
+                            >
+                                {projectsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                Projects
+                            </button>
+                            <Link
+                                href="/workstream?new=true"
+                                onClick={() => onClose?.()}
+                                className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors no-underline"
+                                title="Create project"
+                            >
+                                <Plus className="h-3.5 w-3.5" />
+                            </Link>
+                        </div>
+                        {projectsExpanded && (
+                            <div className="mt-0.5 space-y-0.5">
                                 {loading ? (
                                     <div className="px-3 py-4 text-center">
                                         <div className="animate-spin h-4 w-4 border-2 border-gray-600 border-t-blue-500 rounded-full mx-auto" />
@@ -228,6 +292,55 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                 )}
                             </div>
                         )}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-gray-800 my-3 mx-2" />
+
+                    {/* Teams */}
+                    <div>
+                        <div className="flex items-center justify-between px-3 py-1.5">
+                            <button
+                                onClick={() => setTeamsExpanded(!teamsExpanded)}
+                                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-400 transition-colors"
+                            >
+                                {teamsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                <Users2 className="h-3 w-3" />
+                                Teams
+                            </button>
+                        </div>
+                        {teamsExpanded && (
+                            <div className="mt-0.5 space-y-0.5">
+                                {teams.length === 0 ? (
+                                    <div className="px-3 py-3 text-gray-600 text-xs text-center">
+                                        No teams yet
+                                    </div>
+                                ) : (
+                                    teams.map((teamType) => {
+                                        const teamProjects = projects.filter(p => p.project_type === teamType);
+                                        const config = PROJECT_TYPE_CONFIG[teamType];
+                                        return (
+                                            <div key={teamType} className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm text-gray-400 hover:bg-white/8 hover:text-gray-200 transition-colors cursor-pointer">
+                                                <Users2 className="h-3.5 w-3.5 flex-shrink-0" />
+                                                <span className="truncate flex-1">{config?.label || teamType}</span>
+                                                <span className="text-[10px] text-gray-600">{teamProjects.length}</span>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Bottom: Invite teammates */}
+                    <div className="border-t border-gray-800 my-3 mx-2" />
+                    <div className="px-3 pb-3">
+                        <button
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-white/8 hover:text-gray-300 transition-colors"
+                        >
+                            <UserPlus className="h-4 w-4" />
+                            Invite teammates
+                        </button>
                     </div>
                 </div>
             </aside>

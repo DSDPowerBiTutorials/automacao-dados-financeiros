@@ -378,7 +378,7 @@ export default function ChaseUSDPage() {
     }
 
     const handleDeleteAll = async () => {
-        if (!confirm("⚠️ WARNING: This will DELETE ALL rows from Chase USD! Are you sure?")) return
+        if (!confirm("⚠️ WARNING: This will DELETE ALL rows from Chase 9186! Are you sure?")) return
         if (!confirm("⚠️ FINAL WARNING: This action CANNOT be undone! Continue?")) return
 
         setIsDeleting(true)
@@ -551,7 +551,7 @@ export default function ChaseUSDPage() {
                                 <Database className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-semibold">Chase USD - Bank Statement</h1>
+                                <h1 className="text-xl font-semibold">Chase 9186 - Bank Statement</h1>
                                 <div className="flex items-center gap-4 mt-1">
                                     <span className="text-gray-400 text-sm">{rows.length} records ({filteredRows.length} filtered)</span>
                                     {lastSaved && (

@@ -18,6 +18,15 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
 export async function POST(request: NextRequest) {
     try {
+        // Parse optional sinceDate from body
+        let sinceDate: string | undefined;
+        try {
+            const body = await request.json();
+            sinceDate = body?.sinceDate; // e.g. "2025-01-01"
+        } catch {
+            // No body provided, use default
+        }
+
         // Test connection first
         const connectionTest = await testGoCardlessConnection();
         if (!connectionTest.success) {
@@ -30,10 +39,12 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Fetch payouts and payments
+        console.log(`[GoCardless Sync] Starting sync since ${sinceDate || "2024-01-01 (default)"}`);
+
+        // Fetch payouts and payments with pagination
         const [payouts, payments] = await Promise.all([
-            fetchGoCardlessPayouts(),
-            fetchGoCardlessPayments(),
+            fetchGoCardlessPayouts(sinceDate),
+            fetchGoCardlessPayments(sinceDate),
         ]);
 
         // Prepare rows for insertion

@@ -115,34 +115,74 @@ async function stripeRequest<T>(endpoint: string, params?: Record<string, string
 
 /**
  * Busca charges (cobranças) do Stripe desde uma data específica
+ * Implementa paginação automática com cursor para buscar TODOS os resultados
  */
 export async function fetchStripeCharges(sinceDate?: Date): Promise<StripeCharge[]> {
-    const params: Record<string, string> = {
-        limit: "100",
-    };
+    const allCharges: StripeCharge[] = [];
+    let hasMore = true;
+    let startingAfter: string | undefined;
 
-    if (sinceDate) {
-        params["created[gte]"] = Math.floor(sinceDate.getTime() / 1000).toString();
+    while (hasMore) {
+        const params: Record<string, string> = {
+            limit: "100",
+        };
+
+        if (sinceDate) {
+            params["created[gte]"] = Math.floor(sinceDate.getTime() / 1000).toString();
+        }
+
+        if (startingAfter) {
+            params["starting_after"] = startingAfter;
+        }
+
+        const response = await stripeRequest<{ data: StripeCharge[]; has_more: boolean }>("/charges", params);
+        const charges = response.data || [];
+        allCharges.push(...charges);
+
+        hasMore = response.has_more && charges.length > 0;
+        if (charges.length > 0) {
+            startingAfter = charges[charges.length - 1].id;
+        }
     }
 
-    const response = await stripeRequest<{ data: StripeCharge[] }>("/charges", params);
-    return response.data || [];
+    console.log(`[Stripe] Fetched ${allCharges.length} charges (paginated)`);
+    return allCharges;
 }
 
 /**
  * Busca payouts (transferências bancárias) do Stripe
+ * Implementa paginação automática com cursor para buscar TODOS os resultados
  */
 export async function fetchStripePayouts(sinceDate?: Date): Promise<StripePayout[]> {
-    const params: Record<string, string> = {
-        limit: "100",
-    };
+    const allPayouts: StripePayout[] = [];
+    let hasMore = true;
+    let startingAfter: string | undefined;
 
-    if (sinceDate) {
-        params["created[gte]"] = Math.floor(sinceDate.getTime() / 1000).toString();
+    while (hasMore) {
+        const params: Record<string, string> = {
+            limit: "100",
+        };
+
+        if (sinceDate) {
+            params["created[gte]"] = Math.floor(sinceDate.getTime() / 1000).toString();
+        }
+
+        if (startingAfter) {
+            params["starting_after"] = startingAfter;
+        }
+
+        const response = await stripeRequest<{ data: StripePayout[]; has_more: boolean }>("/payouts", params);
+        const payouts = response.data || [];
+        allPayouts.push(...payouts);
+
+        hasMore = response.has_more && payouts.length > 0;
+        if (payouts.length > 0) {
+            startingAfter = payouts[payouts.length - 1].id;
+        }
     }
 
-    const response = await stripeRequest<{ data: StripePayout[] }>("/payouts", params);
-    return response.data || [];
+    console.log(`[Stripe] Fetched ${allPayouts.length} payouts (paginated)`);
+    return allPayouts;
 }
 
 /**

@@ -121,11 +121,22 @@ export async function GET(request: NextRequest) {
     const endDate = `${year}-12-31`;
 
     try {
-        // Parallel fetch: bank rows + invoice orders
-        const [bankRows, invoiceRows] = await Promise.all([
+        // Parallel fetch: all bank rows + invoice orders
+        const [bankinterEurRows, bankinterUsdRows, sabadellRows, chaseUsdRows, invoiceRows] = await Promise.all([
             fetchAllRows("bankinter-eur", startDate, endDate),
+            fetchAllRows("bankinter-usd", startDate, endDate),
+            fetchAllRows("sabadell", startDate, endDate),
+            fetchAllRows("chase-usd", startDate, endDate),
             fetchAllRows("invoice-orders", startDate, endDate, "date, amount, custom_data"),
         ]);
+
+        // Combine all bank rows with bank identifier
+        const allBankRows = [
+            ...bankinterEurRows.map(r => ({ ...r, bank: "Bankinter EUR" })),
+            ...bankinterUsdRows.map(r => ({ ...r, bank: "Bankinter USD" })),
+            ...sabadellRows.map(r => ({ ...r, bank: "Sabadell EUR" })),
+            ...chaseUsdRows.map(r => ({ ...r, bank: "Chase 9186" })),
+        ];
 
         // ═══════════════════════════════════════════════════
         // SECTION 1: Bank Inflows Breakdown by Gateway
@@ -149,17 +160,40 @@ export async function GET(request: NextRequest) {
         let totalBankRowCount = 0;
         let reconciledCount = 0;
 
-        for (const row of bankRows) {
+        // Per-bank breakdown
+        const bankBreakdown: Record<string, { inflows: MonthlyData; outflows: MonthlyData; net: MonthlyData; reconciledInflows: MonthlyData; count: number; reconciledCount: number }> = {};
+
+        for (const row of allBankRows) {
             const amount = parseAmount(row.amount);
             const monthIdx = new Date(row.date).getMonth();
             if (monthIdx < 0 || monthIdx > 11) continue;
             const mk = monthKeys[monthIdx];
+            const bankName = row.bank || "Unknown";
+
+            // Initialize bank breakdown
+            if (!bankBreakdown[bankName]) {
+                bankBreakdown[bankName] = {
+                    inflows: emptyMonthly(),
+                    outflows: emptyMonthly(),
+                    net: emptyMonthly(),
+                    reconciledInflows: emptyMonthly(),
+                    count: 0,
+                    reconciledCount: 0,
+                };
+            }
+            const bb = bankBreakdown[bankName];
+            bb.count++;
+
+            totalBankRowCount++;
+            bankNet[mk] += amount;
+            bb.net[mk] += amount;
 
             totalBankRowCount++;
             bankNet[mk] += amount;
 
             if (amount > 0) {
                 bankInflows[mk] += amount;
+                bb.inflows[mk] += amount;
 
                 if (row.reconciled && row.custom_data?.paymentSource) {
                     const gw = normalizeGateway(row.custom_data.paymentSource);
@@ -169,12 +203,15 @@ export async function GET(request: NextRequest) {
                     reconByGateway[gw].monthly[mk] += amount;
                     reconByGateway[gw].count++;
                     reconciledInflows[mk] += amount;
+                    bb.reconciledInflows[mk] += amount;
                     reconciledCount++;
+                    bb.reconciledCount++;
                 } else {
                     unreconciledInflows[mk] += amount;
                 }
             } else {
                 bankOutflows[mk] += amount;
+                bb.outflows[mk] += amount;
             }
         }
 
@@ -251,6 +288,21 @@ export async function GET(request: NextRequest) {
         const totalInflowsSum = sumM(bankInflows);
         const totalReconSum = sumM(reconciledInflows);
 
+        // Bank breakdown sorted by total inflows
+        const bankSorted = Object.entries(bankBreakdown)
+            .map(([name, data]) => ({
+                name,
+                inflows: data.inflows,
+                outflows: data.outflows,
+                net: data.net,
+                reconciledInflows: data.reconciledInflows,
+                count: data.count,
+                reconciledCount: data.reconciledCount,
+                totalInflows: monthKeys.reduce((s, k) => s + data.inflows[k], 0),
+                totalOutflows: monthKeys.reduce((s, k) => s + data.outflows[k], 0),
+            }))
+            .sort((a, b) => b.totalInflows - a.totalInflows);
+
         return NextResponse.json({
             success: true,
             year,
@@ -273,6 +325,7 @@ export async function GET(request: NextRequest) {
                 unreconciledInflows,
                 reconPct,
                 gateways: gatewaySorted,
+                byBank: bankSorted,
             },
             revenue: {
                 groups: revenueGroups,

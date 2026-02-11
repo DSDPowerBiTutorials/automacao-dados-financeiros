@@ -45,7 +45,7 @@ const DATA_SOURCES_CONFIG: {
         { source: "bankinter-eur", displayName: "Bankinter EUR", type: "csv", uploadPath: "/reports/bankinter" },
         { source: "bankinter-usd", displayName: "Bankinter USD", type: "csv", uploadPath: "/reports/bankinter-usd" },
         { source: "sabadell-eur", displayName: "Sabadell EUR", type: "csv", uploadPath: "/reports/sabadell" },
-        { source: "chase-usd", displayName: "Chase USD", type: "csv", uploadPath: "/reports/chase-usd" },
+        { source: "chase-usd", displayName: "Chase 9186", type: "csv", uploadPath: "/reports/chase-usd" },
         { source: "paypal", displayName: "PayPal", type: "csv", uploadPath: "/reports/paypal" },
         { source: "pleo", displayName: "Pleo", type: "csv", uploadPath: "/reports/pleo" },
     ];

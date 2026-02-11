@@ -39,6 +39,18 @@ interface GatewayEntry {
 interface RevenueChild { code: string; name: string; monthly: MonthlyData; }
 interface RevenueGroup { code: string; name: string; monthly: MonthlyData; children: RevenueChild[]; }
 
+interface BankBreakdownEntry {
+    name: string;
+    inflows: MonthlyData;
+    outflows: MonthlyData;
+    net: MonthlyData;
+    reconciledInflows: MonthlyData;
+    count: number;
+    reconciledCount: number;
+    totalInflows: number;
+    totalOutflows: number;
+}
+
 interface CashflowData {
     year: string;
     summary: {
@@ -60,6 +72,7 @@ interface CashflowData {
         unreconciledInflows: MonthlyData;
         reconPct: MonthlyData;
         gateways: GatewayEntry[];
+        byBank?: BankBreakdownEntry[];
     };
     revenue: {
         groups: RevenueGroup[];
@@ -73,6 +86,9 @@ const monthKeys = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep"
 function mv(m: MonthlyData, idx: number): number { return m[monthKeys[idx]]; }
 function sumM(m: MonthlyData): number { return monthKeys.reduce((s, k) => s + m[k], 0); }
 function fmt(v: number): string { return Math.round(v).toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+function emptyMonthly(): MonthlyData {
+    return { jan: 0, feb: 0, mar: 0, apr: 0, may: 0, jun: 0, jul: 0, aug: 0, sep: 0, oct: 0, nov: 0, dec: 0 };
+}
 
 const gwIcons: Record<string, string> = {
     Braintree: "🔷",
@@ -355,7 +371,7 @@ export default function RevenueCashflowPage() {
                         <div>
                             <h1 className="text-2xl font-bold text-white">Revenue Cashflow</h1>
                             <p className="text-sm text-gray-400 mt-0.5">
-                                Bank Inflows × Gateways × Financial Accounts • Bankinter EUR • {selectedYear}
+                                Bank Inflows × Gateways × Financial Accounts • All Banks • {selectedYear}
                             </p>
                         </div>
                     </div>
@@ -389,7 +405,7 @@ export default function RevenueCashflowPage() {
                     <CardHeader className="border-b border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800/80 py-4">
                         <CardTitle className="text-white flex items-center gap-2 text-base">
                             <Landmark className="h-5 w-5 text-emerald-400" />
-                            Revenue Cashflow — Bankinter EUR
+                            Revenue Cashflow — All Banks
                             <Badge className="text-[10px] bg-emerald-500/20 text-emerald-300 border-emerald-500/30 ml-2">
                                 Bank-Centric View
                             </Badge>
@@ -419,6 +435,34 @@ export default function RevenueCashflowPage() {
                                 color="emerald"
                                 icon={<ArrowUpRight className="h-4 w-4 text-emerald-400" />}
                             />
+
+                            {/* ───── BANK ACCOUNT breakdown ───── */}
+                            {data.bank.byBank && data.bank.byBank.length > 0 && (
+                                <>
+                                    <DataRow
+                                        label="By Bank Account"
+                                        monthly={data.bank.inflows}
+                                        color="emerald"
+                                        bold
+                                        indent={0}
+                                        icon={<Landmark className="h-3 w-3 text-emerald-400" />}
+                                        expandable
+                                        isExpanded={expanded.has("banks")}
+                                        onClick={() => toggle("banks")}
+                                        badge={`${data.bank.byBank.length} accounts`}
+                                    />
+                                    {expanded.has("banks") && data.bank.byBank.map(bb => (
+                                        <DataRow
+                                            key={bb.name}
+                                            label={bb.name}
+                                            monthly={bb.inflows}
+                                            color="emerald"
+                                            indent={2}
+                                            badge={`${bb.count} rows`}
+                                        />
+                                    ))}
+                                </>
+                            )}
 
                             {/* ───── GATEWAYS breakdown ───── */}
                             <DataRow

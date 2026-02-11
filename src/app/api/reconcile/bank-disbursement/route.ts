@@ -160,19 +160,21 @@ async function fetchStripeDisbursements(): Promise<DisbursementInfo[]> {
         const amount = parseFloat(tx.amount || 0);
 
         // Determinar moeda: stripe-eur-payouts = EUR, stripe-usd-payouts = USD
-        // Mas os payouts USD também caem no Bankinter EUR (convertidos)
-        const currency = cd.currency?.toUpperCase() ||
+        // Stripe EUR payouts → Bankinter EUR
+        // Stripe USD payouts → Chase USD (via Dsdplanningcenter)
+        const isUsdPayout = tx.source?.includes('usd') || cd.currency?.toUpperCase() === 'USD';
+        const original_currency = cd.currency?.toUpperCase() ||
             (tx.source?.includes('usd') ? 'USD' : 'EUR');
 
         return {
             source: 'stripe',
             date: arrivalDate,
             amount: Math.round(amount * 100) / 100,
-            currency: 'EUR', // Todos caem no Bankinter EUR independente da moeda original
+            currency: isUsdPayout ? 'USD' : 'EUR',
             reference: payoutId,
             transaction_count: 1,
             // Extra info
-            original_currency: currency,
+            original_currency,
             stripe_account_name: cd.stripe_account_name
         } as DisbursementInfo;
     });
@@ -212,23 +214,42 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json().catch(() => ({}));
         const dryRun = body.dryRun !== false;
-        const bankSource = body.bankSource || 'bankinter-eur'; // bankinter-eur ou bankinter-usd
+        // Suporta 4 bancos: bankinter-eur, bankinter-usd, sabadell-eur/sabadell, chase-usd
+        const bankSource = body.bankSource || 'bankinter-eur';
+        // Normalizar source name (sabadell-eur → sabadell, pois csv_rows usa "sabadell")
+        const normalizedBankSource = bankSource === 'sabadell-eur' ? 'sabadell' : bankSource;
 
         // Buscar dados em paralelo
         const [bankRows, braintreeDisb, stripeDisb, gocardlessDisb] = await Promise.all([
-            fetchBankRows(bankSource),
+            fetchBankRows(normalizedBankSource),
             fetchBraintreeDisbursements(),
             fetchStripeDisbursements(),
             fetchGoCardlessDisbursements()
         ]);
 
-        // Filtrar disbursements por moeda
-        const currency = bankSource.includes('usd') ? 'USD' : 'EUR';
-        const allDisbursements = [
-            ...braintreeDisb.filter(d => d.currency === currency),
-            ...stripeDisb.filter(d => d.currency === currency),
-            ...gocardlessDisb.filter(d => d.currency === currency)
-        ];
+        // Determinar quais gateways são relevantes para cada banco
+        // - Bankinter EUR: Braintree EUR, Stripe EUR payouts, GoCardless
+        // - Bankinter USD: Braintree USD
+        // - Sabadell EUR: Braintree EUR, Stripe EUR payouts, GoCardless (mesmos que Bankinter EUR)
+        // - Chase USD: Stripe USD payouts (via Dsdplanningcenter)
+        const currency = normalizedBankSource.includes('usd') || normalizedBankSource === 'chase-usd' ? 'USD' : 'EUR';
+
+        let allDisbursements: DisbursementInfo[];
+        if (normalizedBankSource === 'chase-usd') {
+            // Chase recebe apenas Stripe USD payouts
+            allDisbursements = stripeDisb.filter(d => {
+                const origCurrency = (d as any).original_currency;
+                return origCurrency === 'USD' || d.currency === 'USD';
+            });
+            // Force currency to USD for matching
+            allDisbursements.forEach(d => d.currency = 'USD');
+        } else {
+            allDisbursements = [
+                ...braintreeDisb.filter(d => d.currency === currency),
+                ...stripeDisb.filter(d => d.currency === currency),
+                ...gocardlessDisb.filter(d => d.currency === currency)
+            ];
+        }
 
         const matches: Match[] = [];
         const matchedBankIds = new Set<string>();
@@ -401,7 +422,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({
             success: true,
             dryRun,
-            bankSource,
+            bankSource: normalizedBankSource,
             total: bankRows.length,
             matched: matches.length,
             unmatched: bankRows.length - matches.length,

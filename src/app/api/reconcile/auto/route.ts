@@ -31,7 +31,7 @@ interface Match {
     match_type: string;
 }
 
-async function fetchAllFromSource(source: string, minDate: string = '2025-12-01'): Promise<any[]> {
+async function fetchAllFromSource(source: string, minDate: string = '2025-01-01'): Promise<any[]> {
     let all: any[] = [];
     let offset = 0;
     while (true) {

@@ -39,33 +39,56 @@ interface GoCardlessTransaction {
 }
 
 /**
- * Fetches all payouts from GoCardless since 2024-01-01
+ * Fetches all payouts from GoCardless with automatic cursor-based pagination
+ * @param sinceDate - ISO date string (e.g. "2025-01-01"). Defaults to "2024-01-01"
  */
-export async function fetchGoCardlessPayouts(): Promise<GoCardlessPayout[]> {
+export async function fetchGoCardlessPayouts(sinceDate?: string): Promise<GoCardlessPayout[]> {
     if (!GOCARDLESS_TOKEN) {
         throw new Error("GOCARDLESS_ACCESS_TOKEN is not configured");
     }
 
-    try {
-        // Fetch payouts from 2024-01-01 onwards
-        const response = await fetch(`${GOCARDLESS_API_URL}/payouts?created_at[gte]=2024-01-01T00:00:00Z&limit=500`, {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
-                "GoCardless-Version": "2015-07-06",
-                "Content-Type": "application/json",
-            },
-        });
+    const since = sinceDate || "2024-01-01";
+    const allPayouts: GoCardlessPayout[] = [];
+    let afterCursor: string | undefined;
 
-        if (!response.ok) {
-            const errorBody = await response.text();
-            throw new Error(
-                `GoCardless API error: ${response.status} ${response.statusText} - ${errorBody}`,
-            );
+    try {
+        while (true) {
+            let url = `${GOCARDLESS_API_URL}/payouts?created_at[gte]=${since}T00:00:00Z&limit=500`;
+            if (afterCursor) {
+                url += `&after=${afterCursor}`;
+            }
+
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
+                    "GoCardless-Version": "2015-07-06",
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(
+                    `GoCardless API error: ${response.status} ${response.statusText} - ${errorBody}`,
+                );
+            }
+
+            const data = await response.json();
+            const payouts = data.payouts || [];
+            allPayouts.push(...payouts);
+
+            // Check for more pages using cursors
+            const cursors = data.meta?.cursors;
+            if (cursors?.after) {
+                afterCursor = cursors.after;
+            } else {
+                break;
+            }
         }
 
-        const data = await response.json();
-        return data.payouts || [];
+        console.log(`[GoCardless] Fetched ${allPayouts.length} payouts (paginated, since ${since})`);
+        return allPayouts;
     } catch (error) {
         console.error("Error fetching GoCardless payouts:", error);
         throw error;
@@ -73,33 +96,56 @@ export async function fetchGoCardlessPayouts(): Promise<GoCardlessPayout[]> {
 }
 
 /**
- * Fetches all payments from GoCardless since 2024-01-01
+ * Fetches all payments from GoCardless with automatic cursor-based pagination
+ * @param sinceDate - ISO date string (e.g. "2025-01-01"). Defaults to "2024-01-01"
  */
-export async function fetchGoCardlessPayments(): Promise<GoCardlessPayment[]> {
+export async function fetchGoCardlessPayments(sinceDate?: string): Promise<GoCardlessPayment[]> {
     if (!GOCARDLESS_TOKEN) {
         throw new Error("GOCARDLESS_ACCESS_TOKEN is not configured");
     }
 
-    try {
-        // Fetch payments from 2024-01-01 onwards
-        const response = await fetch(`${GOCARDLESS_API_URL}/payments?created_at[gte]=2024-01-01T00:00:00Z&limit=500`, {
-            method: "GET",
-            headers: {
-                Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
-                "GoCardless-Version": "2015-07-06",
-                "Content-Type": "application/json",
-            },
-        });
+    const since = sinceDate || "2024-01-01";
+    const allPayments: GoCardlessPayment[] = [];
+    let afterCursor: string | undefined;
 
-        if (!response.ok) {
-            const errorBody = await response.text();
-            throw new Error(
-                `GoCardless API error: ${response.status} ${response.statusText} - ${errorBody}`,
-            );
+    try {
+        while (true) {
+            let url = `${GOCARDLESS_API_URL}/payments?created_at[gte]=${since}T00:00:00Z&limit=500`;
+            if (afterCursor) {
+                url += `&after=${afterCursor}`;
+            }
+
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    Authorization: `Bearer ${GOCARDLESS_TOKEN}`,
+                    "GoCardless-Version": "2015-07-06",
+                    "Content-Type": "application/json",
+                },
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                throw new Error(
+                    `GoCardless API error: ${response.status} ${response.statusText} - ${errorBody}`,
+                );
+            }
+
+            const data = await response.json();
+            const payments = data.payments || [];
+            allPayments.push(...payments);
+
+            // Check for more pages using cursors
+            const cursors = data.meta?.cursors;
+            if (cursors?.after) {
+                afterCursor = cursors.after;
+            } else {
+                break;
+            }
         }
 
-        const data = await response.json();
-        return data.payments || [];
+        console.log(`[GoCardless] Fetched ${allPayments.length} payments (paginated, since ${since})`);
+        return allPayments;
     } catch (error) {
         console.error("Error fetching GoCardless payments:", error);
         throw error;
@@ -108,8 +154,9 @@ export async function fetchGoCardlessPayments(): Promise<GoCardlessPayment[]> {
 
 /**
  * Syncs GoCardless transactions to Supabase
+ * @param sinceDate - ISO date string (e.g. "2025-01-01"). Defaults to "2024-01-01"
  */
-export async function syncGoCardlessTransactions(): Promise<{
+export async function syncGoCardlessTransactions(sinceDate?: string): Promise<{
     success: boolean;
     payoutsCount: number;
     paymentsCount: number;
@@ -127,8 +174,8 @@ export async function syncGoCardlessTransactions(): Promise<{
 
         // Fetch payouts and payments
         const [payouts, payments] = await Promise.all([
-            fetchGoCardlessPayouts(),
-            fetchGoCardlessPayments(),
+            fetchGoCardlessPayouts(sinceDate),
+            fetchGoCardlessPayments(sinceDate),
         ]);
 
         // Convert to unified transaction format
