@@ -35,6 +35,8 @@ import {
     Database,
     Key,
     Filter,
+    Upload,
+    Clock,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -50,13 +52,16 @@ interface BankAccountConfig {
     bgColor: string;
     textColor: string;
     activeRing: string;
+    uploadEndpoint: string;
+    uploadAccept: string;
+    uploadType: "formdata" | "json";
 }
 
 const BANK_ACCOUNTS: BankAccountConfig[] = [
-    { key: "bankinter-eur", label: "Bankinter EUR", currency: "EUR", bgColor: "bg-blue-600", textColor: "text-blue-400", activeRing: "ring-blue-500" },
-    { key: "bankinter-usd", label: "Bankinter USD", currency: "USD", bgColor: "bg-emerald-600", textColor: "text-emerald-400", activeRing: "ring-emerald-500" },
-    { key: "sabadell", label: "Sabadell EUR", currency: "EUR", bgColor: "bg-orange-600", textColor: "text-orange-400", activeRing: "ring-orange-500" },
-    { key: "chase-usd", label: "Chase 9186", currency: "USD", bgColor: "bg-purple-600", textColor: "text-purple-400", activeRing: "ring-purple-500" },
+    { key: "bankinter-eur", label: "Bankinter EUR", currency: "EUR", bgColor: "bg-blue-600", textColor: "text-blue-400", activeRing: "ring-blue-500", uploadEndpoint: "/api/csv/bankinter-eur", uploadAccept: ".xlsx", uploadType: "formdata" },
+    { key: "bankinter-usd", label: "Bankinter USD", currency: "USD", bgColor: "bg-emerald-600", textColor: "text-emerald-400", activeRing: "ring-emerald-500", uploadEndpoint: "/api/csv-rows", uploadAccept: ".csv", uploadType: "json" },
+    { key: "sabadell", label: "Sabadell EUR", currency: "EUR", bgColor: "bg-orange-600", textColor: "text-orange-400", activeRing: "ring-orange-500", uploadEndpoint: "/api/csv/sabadell", uploadAccept: ".csv", uploadType: "formdata" },
+    { key: "chase-usd", label: "Chase 9186", currency: "USD", bgColor: "bg-purple-600", textColor: "text-purple-400", activeRing: "ring-purple-500", uploadEndpoint: "/api/csv/chase-usd", uploadAccept: ".csv", uploadType: "formdata" },
 ];
 
 interface BankTransaction {
@@ -202,6 +207,10 @@ export default function BankStatementsPage() {
     const [manualNote, setManualNote] = useState("");
     const [isSavingManual, setIsSavingManual] = useState(false);
 
+    // Bank freshness metadata
+    const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
+    const [isUploading, setIsUploading] = useState<string | null>(null);
+
     // KPI clickable filter: null | "inflows" | "outflows" | "reconciled" | "pending"
     const [kpiFilter, setKpiFilter] = useState<string | null>(null);
 
@@ -298,6 +307,101 @@ export default function BankStatementsPage() {
 
     const applyDateRange = () => {
         setDateRange({ ...pendingDateRange });
+    };
+
+    // ─── Load bank freshness data ───
+    const loadFreshness = useCallback(async () => {
+        const SOURCE_MAP: Record<string, string> = { "sabadell": "sabadell-eur" };
+        try {
+            const res = await fetch("/api/data-freshness");
+            const data = await res.json();
+            if (data.sources) {
+                const map: Record<string, { lastUpload: string | null; lastRecord: string | null }> = {};
+                for (const s of data.sources) {
+                    map[s.source] = { lastUpload: s.lastSync, lastRecord: s.lastRecordDate };
+                }
+                for (const [alias, real] of Object.entries(SOURCE_MAP)) {
+                    if (map[real] && !map[alias]) map[alias] = map[real];
+                }
+                setBankFreshness(map);
+            }
+        } catch { /* silent */ }
+    }, []);
+
+    useEffect(() => { loadFreshness(); }, [loadFreshness]);
+
+    // ─── Bank CSV Upload Handler ───
+    const handleBankUpload = async (bankKey: string, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file) return;
+        const bank = BANK_ACCOUNTS.find(b => b.key === bankKey);
+        if (!bank) return;
+
+        setIsUploading(bankKey);
+        try {
+            if (bank.uploadType === "formdata") {
+                // FormData POST for chase-usd, bankinter-eur, sabadell
+                const formData = new FormData();
+                formData.append("file", file);
+                const res = await fetch(bank.uploadEndpoint, { method: "POST", body: formData });
+                const result = await res.json();
+                if (!res.ok || !result.success) {
+                    toast({ title: "Upload failed", description: result.error || "Unknown error", variant: "destructive" });
+                    return;
+                }
+                const count = result.data?.rowCount || result.data?.rows?.length || 0;
+                toast({ title: "Upload successful", description: `${count} transactions imported for ${bank.label}` });
+            } else {
+                // Client-side parsing for bankinter-usd
+                const text = await file.text();
+                const lines = text.split("\\n");
+                if (lines.length < 2) { toast({ title: "Upload failed", description: "File is empty or invalid", variant: "destructive" }); return; }
+                const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
+                const fechaIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÁ]/g, "A").includes("FECHA") && h.toUpperCase().includes("VALOR"));
+                const descIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÓÑ"]/g, "O").includes("DESCRIPCI"));
+                const haberIdx = headers.findIndex(h => h.toUpperCase() === "HABER");
+                const debeIdx = headers.findIndex(h => h.toUpperCase() === "DEBE");
+                if (fechaIdx < 0 || descIdx < 0) { toast({ title: "Upload failed", description: "Could not find required columns", variant: "destructive" }); return; }
+
+                const rows: any[] = [];
+                for (let i = 1; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (!line) continue;
+                    const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
+                    const dateRaw = cols[fechaIdx];
+                    if (!dateRaw) continue;
+                    const parts = dateRaw.split("/");
+                    const isoDate = parts.length === 3 ? `${parts[2].length === 2 ? "20" + parts[2] : parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}` : dateRaw;
+                    const haber = haberIdx >= 0 ? parseFloat((cols[haberIdx] || "0").replace(/\\./g, "").replace(",", ".")) || 0 : 0;
+                    const debe = debeIdx >= 0 ? parseFloat((cols[debeIdx] || "0").replace(/\\./g, "").replace(",", ".")) || 0 : 0;
+                    const amount = haber - debe;
+                    rows.push({
+                        id: `bankinter-usd-${Date.now()}-${i}`,
+                        file_name: "bankinter-usd.csv",
+                        source: "bankinter-usd",
+                        date: isoDate,
+                        description: cols[descIdx] || "",
+                        amount: amount.toString(),
+                        category: "Other",
+                        classification: "Other",
+                        reconciled: false,
+                        custom_data: { date: isoDate, description: cols[descIdx], amount },
+                    });
+                }
+                if (rows.length === 0) { toast({ title: "Upload failed", description: "No valid rows found", variant: "destructive" }); return; }
+                const res = await fetch("/api/csv-rows", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ rows, source: "bankinter-usd" }) });
+                const result = await res.json();
+                if (!res.ok || !result.success) { toast({ title: "Upload failed", description: result.error || "Unknown error", variant: "destructive" }); return; }
+                toast({ title: "Upload successful", description: `${rows.length} transactions imported for ${bank.label}` });
+            }
+            await loadData();
+            await loadFreshness();
+        } catch (err) {
+            toast({ title: "Upload error", description: err instanceof Error ? err.message : "Unknown error", variant: "destructive" });
+        } finally {
+            setIsUploading(null);
+            event.target.value = "";
+        }
     };
 
     // ─── Auto Reconciliation ───
@@ -595,19 +699,48 @@ export default function BankStatementsPage() {
 
                 {/* ─── Bank Account Tabs ─── */}
                 <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-[#252627]">
+                    {/* Hidden file inputs for each bank upload */}
+                    {BANK_ACCOUNTS.map(bank => (
+                        <input key={`upload-${bank.key}`} type="file" accept={bank.uploadAccept} onChange={e => handleBankUpload(bank.key, e)}
+                            className="hidden" id={`file-upload-${bank.key}`} />
+                    ))}
                     <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mr-1">Accounts:</span>
                         {BANK_ACCOUNTS.map(bank => {
                             const isActive = selectedBanks.has(bank.key);
                             const stats = summary.byBank[bank.key];
+                            const fresh = bankFreshness[bank.key];
+                            const uploading = isUploading === bank.key;
                             return (
-                                <button key={bank.key} onClick={() => toggleBank(bank.key)} onDoubleClick={() => selectSingleBank(bank.key)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm ${isActive ? bank.bgColor + " text-white border-transparent" : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-500"} ${!stats?.count ? "opacity-40" : ""}`}
-                                    title="Double-click to select only this one">
-                                    <Building className="h-3.5 w-3.5" />
-                                    <span className="font-medium">{bank.label}</span>
-                                    {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-700"}`}>{stats.count}</span> : null}
-                                </button>
+                                <div key={bank.key} className="relative">
+                                    <button onClick={() => toggleBank(bank.key)} onDoubleClick={() => selectSingleBank(bank.key)}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm ${isActive ? bank.bgColor + " text-white border-transparent" : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-500"} ${!stats?.count ? "opacity-40" : ""}`}
+                                        title="Double-click to select only this one">
+                                        <div className="flex flex-col items-start">
+                                            <div className="flex items-center gap-2">
+                                                <Building className="h-3.5 w-3.5" />
+                                                <span className="font-medium">{bank.label}</span>
+                                                {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-700"}`}>{stats.count}</span> : null}
+                                            </div>
+                                            {fresh && (
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <Clock className="h-2.5 w-2.5 text-gray-500" />
+                                                    <span className="text-[9px] text-gray-500">
+                                                        {fresh.lastUpload ? `Upload: ${new Date(fresh.lastUpload).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "No upload"}
+                                                        {fresh.lastRecord ? ` · Data: ${new Date(fresh.lastRecord + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </button>
+                                    {/* Upload icon overlay */}
+                                    <label htmlFor={`file-upload-${bank.key}`}
+                                        className="absolute -top-1.5 -right-1.5 bg-[#1e1f21] border border-gray-600 rounded-full p-0.5 cursor-pointer hover:bg-gray-700 hover:border-gray-400 transition-all"
+                                        title={`Upload ${bank.uploadAccept} for ${bank.label}`}
+                                        onClick={e => e.stopPropagation()}>
+                                        {uploading ? <Loader2 className="h-3 w-3 text-gray-400 animate-spin" /> : <Upload className="h-3 w-3 text-gray-400" />}
+                                    </label>
+                                </div>
                             );
                         })}
                         <button onClick={() => setSelectedBanks(new Set(BANK_ACCOUNTS.map(b => b.key)))} className="text-xs text-gray-500 hover:text-white ml-auto">

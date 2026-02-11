@@ -329,36 +329,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
       {
         title: "Bank Statements",
         href: "/cash-management/bank-statements",
-        icon: Building2,
-        children: [
-          {
-            title: "Chase 9186",
-            href: "/reports/chase-usd",
-            icon: Building
-          },
-          {
-            title: "Bankinter",
-            href: "/reports/bankinter",
-            icon: Building,
-            children: [
-              {
-                title: "Bankinter (EUR)",
-                href: "/reports/bankinter-eur",
-                icon: Banknote
-              },
-              {
-                title: "Bankinter (USD)",
-                href: "/reports/bankinter-usd",
-                icon: Banknote
-              }
-            ]
-          },
-          {
-            title: "Sabadell",
-            href: "/reports/sabadell",
-            icon: Building
-          }
-        ]
+        icon: Building2
       },
       {
         title: "Bank Accounts",

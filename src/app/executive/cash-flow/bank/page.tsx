@@ -21,11 +21,8 @@ import {
     Calendar,
     DollarSign,
     Building,
-    Link2,
     AlertCircle,
     CheckCircle,
-    CheckCircle2,
-    Loader2,
     Zap,
     X,
     FileText,
@@ -35,6 +32,7 @@ import {
     Database,
     Key,
     Filter,
+    Clock,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -191,16 +189,8 @@ export default function BankCashFlowPage() {
     // Detail panel
     const [selectedRow, setSelectedRow] = useState<BankTransaction | null>(null);
 
-    // Reconciliation
-    const [isReconciling, setIsReconciling] = useState(false);
-    const [reconcileResults, setReconcileResults] = useState<ReconcileResult[] | null>(null);
-
-    // Manual reconciliation dialog
-    const [reconDialogOpen, setReconDialogOpen] = useState(false);
-    const [reconTransaction, setReconTransaction] = useState<BankTransaction | null>(null);
-    const [manualPaymentSource, setManualPaymentSource] = useState("");
-    const [manualNote, setManualNote] = useState("");
-    const [isSavingManual, setIsSavingManual] = useState(false);
+    // Bank freshness metadata
+    const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
 
     // Filters — committed date range vs pending (to avoid re-fetch on arrow navigation)
     const [dateRange, setDateRange] = useState({ start: "2025-01-01", end: "2025-12-31" });
@@ -297,106 +287,27 @@ export default function BankCashFlowPage() {
         setDateRange({ ...pendingDateRange });
     };
 
-    // ─── Auto Reconciliation ───
-    const runReconciliation = async (dryRun = false) => {
-        setIsReconciling(true);
-        setReconcileResults(null);
-        try {
-            const res = await fetch("/api/reconcile/run-all", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ dryRun, banks: [...selectedBanks] }),
-            });
-            const data = await res.json();
-            if (data.success) {
-                setReconcileResults(data.banks);
-                if (!dryRun) {
-                    toast({ title: "Reconciliation applied", description: `${data.summary?.totalMatched || 0} matches found` });
-                    await loadData();
+    // ─── Load bank freshness data ───
+    useEffect(() => {
+        const SOURCE_MAP: Record<string, string> = { "sabadell": "sabadell-eur" };
+        (async () => {
+            try {
+                const res = await fetch("/api/data-freshness");
+                const data = await res.json();
+                if (data.sources) {
+                    const map: Record<string, { lastUpload: string | null; lastRecord: string | null }> = {};
+                    for (const s of data.sources) {
+                        map[s.source] = { lastUpload: s.lastSync, lastRecord: s.lastRecordDate };
+                    }
+                    // Map aliases
+                    for (const [alias, real] of Object.entries(SOURCE_MAP)) {
+                        if (map[real] && !map[alias]) map[alias] = map[real];
+                    }
+                    setBankFreshness(map);
                 }
-            } else {
-                setError("Reconciliation failed: " + (data.error || ""));
-            }
-        } catch (err) {
-            setError(err instanceof Error ? err.message : "Reconciliation error");
-        } finally {
-            setIsReconciling(false);
-        }
-    };
-
-    // ─── Manual Reconciliation ───
-    const openManualRecon = (tx: BankTransaction) => {
-        setReconTransaction(tx);
-        setManualPaymentSource(tx.gateway || "");
-        setManualNote("");
-        setReconDialogOpen(true);
-    };
-
-    const performManualReconciliation = async () => {
-        if (!reconTransaction) return;
-        setIsSavingManual(true);
-        try {
-            const { error: updateErr } = await supabase
-                .from("csv_rows")
-                .update({
-                    reconciled: true,
-                    custom_data: {
-                        ...reconTransaction.custom_data,
-                        paymentSource: manualPaymentSource || null,
-                        reconciliationType: "manual",
-                        reconciled_at: new Date().toISOString(),
-                        manual_note: manualNote || null,
-                    },
-                })
-                .eq("id", reconTransaction.id);
-
-            if (updateErr) throw updateErr;
-
-            setBankTransactions(prev => prev.map(t =>
-                t.id === reconTransaction.id
-                    ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: manualPaymentSource || null }
-                    : t
-            ));
-
-            toast({ title: "Manual reconciliation", description: "Transaction marked as reconciled" });
-            setReconDialogOpen(false);
-        } catch (err) {
-            toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to reconcile", variant: "destructive" });
-        } finally {
-            setIsSavingManual(false);
-        }
-    };
-
-    const revertReconciliation = async (tx: BankTransaction) => {
-        if (!confirm("Revert reconciliation for this transaction?")) return;
-        try {
-            const cleanData = { ...tx.custom_data };
-            delete cleanData.paymentSource;
-            delete cleanData.reconciliationType;
-            delete cleanData.reconciled_at;
-            delete cleanData.manual_note;
-            delete cleanData.match_type;
-
-            const { error: updateErr } = await supabase
-                .from("csv_rows")
-                .update({ reconciled: false, custom_data: cleanData })
-                .eq("id", tx.id);
-
-            if (updateErr) throw updateErr;
-
-            setBankTransactions(prev => prev.map(t =>
-                t.id === tx.id ? { ...t, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null } : t
-            ));
-
-            if (selectedRow?.id === tx.id) {
-                setSelectedRow({ ...tx, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null });
-            }
-
-            toast({ title: "Reverted", description: "Reconciliation removed" });
-        } catch (err) {
-            toast({ title: "Error", description: "Failed to revert", variant: "destructive" });
-        }
-    };
+            } catch { /* silent */ }
+        })();
+    }, [bankTransactions]);
 
     // ─── Filtered transactions ───
     const filteredTransactions = useMemo(() => {
@@ -520,7 +431,7 @@ export default function BankCashFlowPage() {
     if (isLoading) {
         return (
             <div className="h-full flex items-center justify-center bg-[#1e1f21]">
-                <Loader2 className="h-8 w-8 animate-spin text-white" />
+                <RefreshCw className="h-8 w-8 animate-spin text-white" />
             </div>
         );
     }
@@ -557,14 +468,6 @@ export default function BankCashFlowPage() {
                     {/* Action buttons */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Button onClick={() => runReconciliation(true)} disabled={isReconciling} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
-                                {isReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
-                                Preview
-                            </Button>
-                            <Button onClick={() => runReconciliation(false)} disabled={isReconciling} variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30">
-                                {isReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
-                                Auto-Reconcile
-                            </Button>
                             <Button onClick={loadData} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
                                 <RefreshCw className="h-4 w-4 mr-1" />Refresh
                             </Button>
@@ -592,13 +495,27 @@ export default function BankCashFlowPage() {
                         {BANK_ACCOUNTS.map(bank => {
                             const isActive = selectedBanks.has(bank.key);
                             const stats = summary.byBank[bank.key];
+                            const fresh = bankFreshness[bank.key];
                             return (
                                 <button key={bank.key} onClick={() => toggleBank(bank.key)} onDoubleClick={() => selectSingleBank(bank.key)}
                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm ${isActive ? bank.bgColor + " text-white border-transparent" : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-500"} ${!stats?.count ? "opacity-40" : ""}`}
                                     title="Double-click to select only this one">
-                                    <Building className="h-3.5 w-3.5" />
-                                    <span className="font-medium">{bank.label}</span>
-                                    {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-700"}`}>{stats.count}</span> : null}
+                                    <div className="flex flex-col items-start">
+                                        <div className="flex items-center gap-2">
+                                            <Building className="h-3.5 w-3.5" />
+                                            <span className="font-medium">{bank.label}</span>
+                                            {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-700"}`}>{stats.count}</span> : null}
+                                        </div>
+                                        {fresh && (
+                                            <div className="flex items-center gap-2 mt-0.5">
+                                                <Clock className="h-2.5 w-2.5 text-gray-500" />
+                                                <span className="text-[9px] text-gray-500">
+                                                    {fresh.lastUpload ? `Upload: ${new Date(fresh.lastUpload).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : "No upload"}
+                                                    {fresh.lastRecord ? ` · Data: ${new Date(fresh.lastRecord + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}` : ""}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
                                 </button>
                             );
                         })}
@@ -639,7 +556,7 @@ export default function BankCashFlowPage() {
                             </div>
                         </div>
                         <div className="flex items-center gap-2 min-w-0">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                            <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                             <div className="min-w-0">
                                 <p className="text-[10px] text-gray-500 uppercase">Reconciled</p>
                                 <p className="text-sm font-bold text-emerald-400">{summary.reconciledCount} <span className="text-xs text-gray-500">({summary.reconciledPct}%)</span></p>
@@ -663,25 +580,6 @@ export default function BankCashFlowPage() {
                         </div>
                     </div>
                 </div>
-
-                {/* ─── Reconciliation Results Banner ─── */}
-                {reconcileResults && (
-                    <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-emerald-900/20">
-                        <div className="flex items-center gap-2 mb-2">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
-                            <span className="text-sm font-medium text-emerald-400">Reconciliation Results</span>
-                            <button onClick={() => setReconcileResults(null)} className="ml-auto text-xs text-gray-500 hover:text-white">Close</button>
-                        </div>
-                        <div className="flex gap-4">
-                            {reconcileResults.map(r => (
-                                <div key={r.bankSource} className="text-xs">
-                                    <span className="text-gray-400">{BANK_ACCOUNTS.find(b => b.key === r.bankSource)?.label || r.bankSource}: </span>
-                                    {r.success ? <><span className="text-emerald-400 font-semibold">{r.matched}</span> match | <span className="text-amber-400">{r.unmatched}</span> pend.</> : <span className="text-red-400">{r.error || "Failed"}</span>}
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
 
                 {/* ─── Filters ─── */}
                 <div className="flex-shrink-0 border-b border-gray-700 px-6 py-2 bg-[#252627]">
@@ -718,7 +616,6 @@ export default function BankCashFlowPage() {
                         <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
                         <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
                         <div className="w-[60px] flex-shrink-0 text-center">Status</div>
-                        <div className="w-[40px] flex-shrink-0 text-center">Act</div>
                     </div>
                 </div>
 
@@ -769,20 +666,11 @@ export default function BankCashFlowPage() {
                                                 </Badge>
                                             ) : <span className="text-gray-600 text-[9px]">-</span>}
                                         </div>
-                                        <div className="w-[60px] flex-shrink-0 text-center" onClick={e => e.stopPropagation()}>
+                                        <div className="w-[60px] flex-shrink-0 text-center">
                                             {tx.isReconciled ? (
                                                 tx.reconciliationType === "manual" ? <User className="h-3.5 w-3.5 text-blue-500 mx-auto" /> : <Zap className="h-3.5 w-3.5 text-green-500 mx-auto" />
                                             ) : (
-                                                <Button size="sm" variant="ghost" onClick={() => openManualRecon(tx)} className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30" title="Manual reconcile">
-                                                    <Link2 className="h-3 w-3" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                        <div className="w-[40px] flex-shrink-0 text-center" onClick={e => e.stopPropagation()}>
-                                            {tx.isReconciled && (
-                                                <Button size="sm" variant="ghost" onClick={() => revertReconciliation(tx)} className="h-5 w-5 p-0 text-gray-500 hover:text-red-400 hover:bg-red-900/30" title="Revert">
-                                                    <X className="h-3 w-3" />
-                                                </Button>
+                                                <AlertCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
                                             )}
                                         </div>
                                     </div>
@@ -894,7 +782,7 @@ export default function BankCashFlowPage() {
                         {/* Reconciliation Status */}
                         <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                <Link2 className="h-4 w-4" /> Reconciliation
+                                <CreditCard className="h-4 w-4" /> Reconciliation
                             </h3>
                             <div>
                                 <p className="text-xs text-gray-500">Status</p>
@@ -970,96 +858,10 @@ export default function BankCashFlowPage() {
                     </div>
 
                     {/* Panel Footer */}
-                    <div className="border-t border-gray-700 px-4 py-3 flex justify-between gap-2">
-                        {selectedRow.isReconciled ? (
-                            <Button variant="outline" size="sm" onClick={() => revertReconciliation(selectedRow)} className="border-red-700 text-red-400 hover:bg-red-900/30">
-                                <X className="h-4 w-4 mr-1" /> Revert
-                            </Button>
-                        ) : (
-                            <Button variant="outline" size="sm" onClick={() => openManualRecon(selectedRow)} className="border-cyan-700 text-cyan-400 hover:bg-cyan-900/30">
-                                <Link2 className="h-4 w-4 mr-1" /> Manual Reconcile
-                            </Button>
-                        )}
+                    <div className="border-t border-gray-700 px-4 py-3 flex justify-end">
                         <Button variant="ghost" size="sm" onClick={() => setSelectedRow(null)} className="text-gray-400 hover:text-white">
                             Close
                         </Button>
-                    </div>
-                </div>
-            )}
-
-            {/* ════════════════════════════════════════════════════════ */}
-            {/* MANUAL RECONCILIATION DIALOG */}
-            {/* ════════════════════════════════════════════════════════ */}
-            {reconDialogOpen && reconTransaction && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-                    <div className="bg-[#2a2b2d] rounded-lg w-[500px] max-h-[70vh] overflow-hidden flex flex-col">
-                        {/* Dialog Header */}
-                        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white">Manual Reconciliation</h3>
-                                <p className="text-sm text-gray-400">Mark transaction as reconciled</p>
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={() => setReconDialogOpen(false)} className="text-gray-400 hover:text-white">
-                                <X className="h-5 w-5" />
-                            </Button>
-                        </div>
-
-                        {/* Transaction Info */}
-                        <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
-                            <div className="grid grid-cols-3 gap-4 text-sm">
-                                <div>
-                                    <span className="text-gray-500">Date</span>
-                                    <p className="text-white font-medium">{formatShortDate(reconTransaction.date)}</p>
-                                </div>
-                                <div>
-                                    <span className="text-gray-500">Amount</span>
-                                    <p className={`font-medium ${reconTransaction.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                        {formatCurrency(reconTransaction.amount, reconTransaction.currency)}
-                                    </p>
-                                </div>
-                                <div>
-                                    <span className="text-gray-500">Bank</span>
-                                    <p className="text-white font-medium">{BANK_ACCOUNTS.find(b => b.key === reconTransaction.source)?.label}</p>
-                                </div>
-                            </div>
-                            <p className="text-xs text-gray-400 mt-2 truncate" title={reconTransaction.description}>{reconTransaction.description}</p>
-                        </div>
-
-                        {/* Form */}
-                        <div className="px-6 py-4 space-y-4 flex-1 overflow-auto">
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-1">Payment Source (gateway)</label>
-                                <Select value={manualPaymentSource} onValueChange={setManualPaymentSource}>
-                                    <SelectTrigger className="bg-[#1e1f21] border-gray-600 text-white">
-                                        <SelectValue placeholder="Select source..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="braintree">Braintree</SelectItem>
-                                        <SelectItem value="stripe">Stripe</SelectItem>
-                                        <SelectItem value="gocardless">GoCardless</SelectItem>
-                                        <SelectItem value="paypal">PayPal</SelectItem>
-                                        <SelectItem value="gusto">Gusto</SelectItem>
-                                        <SelectItem value="quickbooks">QuickBooks</SelectItem>
-                                        <SelectItem value="continental">Continental Exchange</SelectItem>
-                                        <SelectItem value="intercompany">Intercompany Transfer</SelectItem>
-                                        <SelectItem value="other">Other</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-1">Note (optional)</label>
-                                <Input placeholder="Description or reference..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm" />
-                            </div>
-                        </div>
-
-                        {/* Dialog Footer */}
-                        <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700">Cancel</Button>
-                            <Button onClick={performManualReconciliation} disabled={isSavingManual} className="bg-cyan-600 hover:bg-cyan-700">
-                                {isSavingManual ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
-                                Reconcile
-                            </Button>
-                        </div>
                     </div>
                 </div>
             )}
