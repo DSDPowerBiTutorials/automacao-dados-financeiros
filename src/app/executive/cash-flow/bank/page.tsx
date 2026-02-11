@@ -423,6 +423,24 @@ export default function BankCashFlowPage() {
         return sorted;
     }, [filteredTransactions]);
 
+    // ─── Chart data: always last 12 months from most recent data ───
+    const chartData = useMemo(() => {
+        if (monthlyData.length === 0) return [];
+        return monthlyData.slice(-12);
+    }, [monthlyData]);
+
+    // ─── Revenue breakdown by bank (from filtered) ───
+    const revenueByBank = useMemo(() => {
+        const map: Record<string, { inflows: number; outflows: number; count: number }> = {};
+        filteredTransactions.forEach(tx => {
+            if (!map[tx.source]) map[tx.source] = { inflows: 0, outflows: 0, count: 0 };
+            map[tx.source].count++;
+            if (tx.amount > 0) map[tx.source].inflows += tx.amount;
+            else map[tx.source].outflows += Math.abs(tx.amount);
+        });
+        return map;
+    }, [filteredTransactions]);
+
     const toggleGroup = (date: string) => {
         setExpandedGroups(prev => {
             const next = new Set(prev);
@@ -617,15 +635,15 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ─── Monthly Highlights + Chart ─── */}
-                {monthlyData.length > 0 && (
+                {chartData.length > 0 && (
                     <div className="flex-shrink-0 border-b border-gray-700 px-6 py-4 bg-[#1e1f21]">
                         {/* Monthly cards */}
                         <div className="flex items-center gap-2 mb-3">
                             <TrendingUp className="h-4 w-4 text-gray-500" />
-                            <span className="text-xs text-gray-500 uppercase tracking-wider">Monthly Overview</span>
+                            <span className="text-xs text-gray-500 uppercase tracking-wider">Monthly Overview (last 12 months)</span>
                         </div>
                         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-                            {monthlyData.map(m => (
+                            {chartData.map(m => (
                                 <div key={m.month} className="flex-shrink-0 bg-[#252627] rounded-lg border border-gray-700 px-3 py-2 min-w-[130px]">
                                     <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">{m.label}</p>
                                     <div className="space-y-0.5">
@@ -652,7 +670,7 @@ export default function BankCashFlowPage() {
                         {/* Line chart */}
                         <div className="h-[200px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                                     <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
                                     <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
@@ -668,6 +686,78 @@ export default function BankCashFlowPage() {
                                 </LineChart>
                             </ResponsiveContainer>
                         </div>
+
+                        {/* ─── Revenue by Account ─── */}
+                        <div className="mt-5">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Building className="h-4 w-4 text-gray-500" />
+                                <span className="text-xs text-gray-500 uppercase tracking-wider">Revenue by Account</span>
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-2">
+                                {BANK_ACCOUNTS.filter(b => revenueByBank[b.key]).map(bank => {
+                                    const stats = revenueByBank[bank.key];
+                                    const net = stats.inflows - stats.outflows;
+                                    return (
+                                        <div key={bank.key} className="flex-shrink-0 bg-[#252627] rounded-lg border border-gray-700 px-3 py-2 min-w-[145px]">
+                                            <p className={`text-[10px] uppercase font-medium mb-1 ${bank.textColor}`}>{bank.label}</p>
+                                            <div className="space-y-0.5">
+                                                <div className="flex justify-between text-[10px]">
+                                                    <span className="text-gray-500">In</span>
+                                                    <span className="text-green-400 font-medium">{formatCompactCurrency(stats.inflows, bank.currency)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[10px]">
+                                                    <span className="text-gray-500">Out</span>
+                                                    <span className="text-red-400 font-medium">{formatCompactCurrency(stats.outflows, bank.currency)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                    <span className="text-gray-500">Net</span>
+                                                    <span className={`font-bold ${net >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(net, bank.currency)}</span>
+                                                </div>
+                                                <div className="flex justify-between text-[10px]">
+                                                    <span className="text-gray-500">Txns</span>
+                                                    <span className="text-gray-300 font-medium">{stats.count}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* ─── Revenue by Payment Gateway ─── */}
+                        {Object.keys(summary.byGateway).length > 0 && (
+                            <div className="mt-5">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <CreditCard className="h-4 w-4 text-gray-500" />
+                                    <span className="text-xs text-gray-500 uppercase tracking-wider">Revenue by Payment Gateway</span>
+                                </div>
+                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                    {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
+                                        const gwStyle = getGatewayStyle(gw);
+                                        const gwLabel = gw.charAt(0).toUpperCase() + gw.slice(1);
+                                        return (
+                                            <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
+                                                <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
+                                                <div className="space-y-0.5">
+                                                    <div className="flex justify-between text-[10px]">
+                                                        <span className="text-gray-500">Amount</span>
+                                                        <span className="text-green-400 font-bold">{formatCompactCurrency(stats.amount, dominantCurrency)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px]">
+                                                        <span className="text-gray-500">Txns</span>
+                                                        <span className="text-gray-300 font-medium">{stats.count}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                        <span className="text-gray-500">Avg</span>
+                                                        <span className="text-gray-300 font-medium">{formatCompactCurrency(stats.amount / stats.count, dominantCurrency)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
