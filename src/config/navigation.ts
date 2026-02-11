@@ -337,21 +337,9 @@ export const NAV: NavGroup[] = withUnderConstruction([
         icon: Building2,
         children: [
           {
-            title: "Chase 9186 (QuickBooks)",
-            href: "/cash-management/chase-quickbooks",
-            icon: Building,
-            children: [
-              {
-                title: "Chase 9186 Business Checking",
-                href: "/cash-management/chase-quickbooks/business-checking",
-                icon: Banknote
-              },
-              {
-                title: "Chase 9186 Savings",
-                href: "/cash-management/chase-quickbooks/savings",
-                icon: Banknote
-              }
-            ]
+            title: "Chase 9186",
+            href: "/reports/chase-usd",
+            icon: Building
           },
           {
             title: "Bankinter",
@@ -366,18 +354,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
               {
                 title: "Bankinter (USD)",
                 href: "/reports/bankinter-usd",
-                icon: Banknote
-              }
-            ]
-          },
-          {
-            title: "Chase 9186 (CSV)",
-            href: "/reports/chase",
-            icon: Building,
-            children: [
-              {
-                title: "Chase 9186 (USD)",
-                href: "/reports/chase-usd",
                 icon: Banknote
               }
             ]

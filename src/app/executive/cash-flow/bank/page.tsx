@@ -159,17 +159,28 @@ export default function BankCashFlowPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const { data: bankData, error: bankError } = await supabase
-                .from("csv_rows")
-                .select("id, date, description, amount, source, reconciled, custom_data")
-                .in("source", BANK_ACCOUNTS.map(b => b.key))
-                .gte("date", dateRange.start)
-                .lte("date", dateRange.end)
-                .order("date", { ascending: false });
+            // Paginated fetch — Supabase default limit is 1000
+            const allSources = BANK_ACCOUNTS.map(b => b.key);
+            let allRows: any[] = [];
+            const PAGE = 1000;
+            let from = 0;
+            while (true) {
+                const { data: chunk, error: chunkErr } = await supabase
+                    .from("csv_rows")
+                    .select("id, date, description, amount, source, reconciled, custom_data")
+                    .in("source", allSources)
+                    .gte("date", dateRange.start)
+                    .lte("date", dateRange.end)
+                    .order("date", { ascending: false })
+                    .range(from, from + PAGE - 1);
+                if (chunkErr) throw chunkErr;
+                if (!chunk || chunk.length === 0) break;
+                allRows.push(...chunk);
+                if (chunk.length < PAGE) break;
+                from += PAGE;
+            }
 
-            if (bankError) throw bankError;
-
-            const transactions: BankTransaction[] = (bankData || []).map(row => {
+            const transactions: BankTransaction[] = (allRows).map(row => {
                 const cd = row.custom_data || {};
                 const source = row.source || "";
                 const paymentSource = cd.paymentSource || null;
