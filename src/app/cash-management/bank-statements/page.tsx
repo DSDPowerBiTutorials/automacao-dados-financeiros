@@ -154,13 +154,27 @@ const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() |
 /** Parse Chase ACH descriptions — extract ORIG CO NAME value for short display */
 function parseChaseShortDescription(description: string, source: string): string {
     if (source !== "chase-usd") return description;
-    // Match ORIG CO NAME:VALUE pattern
-    const match = description.match(/ORIG CO NAME:([^\s]+(?:\s+[^\s:]+)*?)(?:\s+ORIG ID:|$)/i)
+    // ACH: Match ORIG CO NAME:VALUE pattern
+    const origMatch = description.match(/ORIG CO NAME:([^\s]+(?:\s+[^\s:]+)*?)(?:\s+ORIG ID:|$)/i)
         || description.match(/ORIG CO NAME:([^\s]+)/i);
-    if (match && match[1]) return match[1].trim();
-    // Fallback: if no ORIG CO NAME, try CO ENTRY DESCR
+    if (origMatch && origMatch[1]) return origMatch[1].trim();
+    // ACH fallback: CO ENTRY DESCR
     const descrMatch = description.match(/CO ENTRY DESCR:([^\s]+(?:\s+[^\s:]+)*?)(?:\s+SEC:|$)/i);
     if (descrMatch && descrMatch[1]) return descrMatch[1].trim();
+    // WIRE TRANSFER: extract A/C: value (stop at postal code or REF:)
+    const acMatch = description.match(/A\/C:\s*(.+?)(?:\s+[A-Z]{1,2}\d{1,2}[A-Z0-9]*\s|\s+REF:|$)/i);
+    if (acMatch && acMatch[1]) {
+        return acMatch[1].trim().replace(/\s+/g, " ").split(" ").map(w =>
+            w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+        ).join(" ");
+    }
+    // CHIPS CREDIT: extract B/O: value (format: B/O: 1/NAME. 3/...)
+    const boMatch = description.match(/B\/O:\s*(?:\d+\/)?(.+?)(?:\.\s*\d+\/|\s+\d+\/|$)/i);
+    if (boMatch && boMatch[1]) {
+        return boMatch[1].trim().replace(/\s+/g, " ").split(" ").map(w =>
+            w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+        ).join(" ");
+    }
     return description;
 }
 
