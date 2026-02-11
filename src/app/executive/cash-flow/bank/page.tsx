@@ -33,9 +33,11 @@ import {
     Key,
     Filter,
     Clock,
+    TrendingUp,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 // ════════════════════════════════════════════════════════
 // Types & Constants
@@ -388,6 +390,33 @@ export default function BankCashFlowPage() {
         };
     }, [filteredTransactions, bankTransactions]);
 
+    // ─── Monthly breakdown ───
+    const monthlyData = useMemo(() => {
+        const map = new Map<string, { month: string; label: string; inflows: number; outflows: number; balance: number; runningBalance: number }>();
+        // Build months from filtered transactions
+        filteredTransactions.forEach(tx => {
+            const key = tx.date?.substring(0, 7) || "unknown";
+            if (!map.has(key)) {
+                const [y, m] = key.split("-");
+                const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
+                const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+                map.set(key, { month: key, label, inflows: 0, outflows: 0, balance: 0, runningBalance: 0 });
+            }
+            const entry = map.get(key)!;
+            if (tx.amount > 0) entry.inflows += tx.amount;
+            else entry.outflows += Math.abs(tx.amount);
+        });
+        // Sort chronologically and compute balance + running balance
+        const sorted = Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+        let running = 0;
+        sorted.forEach(m => {
+            m.balance = m.inflows - m.outflows;
+            running += m.balance;
+            m.runningBalance = running;
+        });
+        return sorted;
+    }, [filteredTransactions]);
+
     const toggleGroup = (date: string) => {
         setExpandedGroups(prev => {
             const next = new Set(prev);
@@ -580,6 +609,61 @@ export default function BankCashFlowPage() {
                         </div>
                     </div>
                 </div>
+
+                {/* ─── Monthly Highlights + Chart ─── */}
+                {monthlyData.length > 0 && (
+                    <div className="flex-shrink-0 border-b border-gray-700 px-6 py-4 bg-[#1e1f21]">
+                        {/* Monthly cards */}
+                        <div className="flex items-center gap-2 mb-3">
+                            <TrendingUp className="h-4 w-4 text-gray-500" />
+                            <span className="text-xs text-gray-500 uppercase tracking-wider">Monthly Overview</span>
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                            {monthlyData.map(m => (
+                                <div key={m.month} className="flex-shrink-0 bg-[#252627] rounded-lg border border-gray-700 px-3 py-2 min-w-[130px]">
+                                    <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">{m.label}</p>
+                                    <div className="space-y-0.5">
+                                        <div className="flex justify-between text-[10px]">
+                                            <span className="text-gray-500">In</span>
+                                            <span className="text-green-400 font-medium">{formatCompactCurrency(m.inflows, dominantCurrency)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[10px]">
+                                            <span className="text-gray-500">Out</span>
+                                            <span className="text-red-400 font-medium">{formatCompactCurrency(m.outflows, dominantCurrency)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                            <span className="text-gray-500">Net</span>
+                                            <span className={`font-bold ${m.balance >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(m.balance, dominantCurrency)}</span>
+                                        </div>
+                                        <div className="flex justify-between text-[10px]">
+                                            <span className="text-gray-500">Bal</span>
+                                            <span className={`font-medium ${m.runningBalance >= 0 ? "text-blue-400" : "text-orange-400"}`}>{formatCompactCurrency(m.runningBalance, dominantCurrency)}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        {/* Line chart */}
+                        <div className="h-[200px] w-full">
+                            <ResponsiveContainer width="100%" height="100%">
+                                <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                    <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                    <Tooltip
+                                        contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
+                                        labelStyle={{ color: "#9CA3AF" }}
+                                        formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                    />
+                                    <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
+                                    <Line type="monotone" dataKey="inflows" name="Inflows" stroke="#4ade80" strokeWidth={2} dot={{ fill: "#4ade80", r: 3 }} />
+                                    <Line type="monotone" dataKey="outflows" name="Outflows" stroke="#f87171" strokeWidth={2} dot={{ fill: "#f87171", r: 3 }} />
+                                    <Line type="monotone" dataKey="balance" name="Net" stroke="#60a5fa" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: "#60a5fa", r: 3 }} />
+                                </LineChart>
+                            </ResponsiveContainer>
+                        </div>
+                    </div>
+                )}
 
                 {/* ─── Filters ─── */}
                 <div className="flex-shrink-0 border-b border-gray-700 px-6 py-2 bg-[#252627]">
