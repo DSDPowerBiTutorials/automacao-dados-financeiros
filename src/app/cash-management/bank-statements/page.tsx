@@ -168,7 +168,7 @@ function parseChaseShortDescription(description: string, source: string): string
 // Main Component
 // ════════════════════════════════════════════════════════
 
-export default function BankCashFlowPage() {
+export default function BankStatementsPage() {
     const [selectedBanks, setSelectedBanks] = useState<Set<string>>(new Set(["bankinter-eur"]));
     const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -187,6 +187,9 @@ export default function BankCashFlowPage() {
     const [manualPaymentSource, setManualPaymentSource] = useState("");
     const [manualNote, setManualNote] = useState("");
     const [isSavingManual, setIsSavingManual] = useState(false);
+
+    // KPI clickable filter: null | "inflows" | "outflows" | "reconciled" | "pending"
+    const [kpiFilter, setKpiFilter] = useState<string | null>(null);
 
     // Filters — committed date range vs pending (to avoid re-fetch on arrow navigation)
     const [dateRange, setDateRange] = useState({ start: "2025-01-01", end: "2025-12-31" });
@@ -394,6 +397,11 @@ export default function BankCashFlowPage() {
             if (flowFilter === "expense" && tx.amount >= 0) return false;
             if (reconFilter === "reconciled" && !tx.isReconciled) return false;
             if (reconFilter === "pending" && tx.isReconciled) return false;
+            // KPI clickable filters
+            if (kpiFilter === "inflows" && tx.amount <= 0) return false;
+            if (kpiFilter === "outflows" && tx.amount >= 0) return false;
+            if (kpiFilter === "reconciled" && !tx.isReconciled) return false;
+            if (kpiFilter === "pending" && tx.isReconciled) return false;
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 return (
@@ -405,7 +413,7 @@ export default function BankCashFlowPage() {
             }
             return true;
         });
-    }, [bankTransactions, selectedBanks, gatewayFilter, flowFilter, reconFilter, searchQuery, showReconciled]);
+    }, [bankTransactions, selectedBanks, gatewayFilter, flowFilter, reconFilter, searchQuery, showReconciled, kpiFilter]);
 
     // ─── Date groups ───
     const dateGroups = useMemo(() => {
@@ -526,7 +534,7 @@ export default function BankCashFlowPage() {
                                 <Database className="h-6 w-6 text-white" />
                             </div>
                             <div>
-                                <h1 className="text-xl font-semibold">Bank Cash Flow</h1>
+                                <h1 className="text-xl font-semibold">Bank Statements</h1>
                                 <span className="text-gray-400 text-sm">
                                     {summary.transactionCount} transactions • {[...selectedBanks].map(b => BANK_ACCOUNTS.find(a => a.key === b)?.label).join(", ")}
                                 </span>
@@ -594,28 +602,34 @@ export default function BankCashFlowPage() {
                     </div>
                 </div>
 
-                {/* ─── Stats Bar (KPI inline) ─── */}
+                {/* ─── Stats Bar (KPI inline — clickable filters) ─── */}
                 <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-[#1e1f21]">
+                    {kpiFilter && (
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs text-gray-400">Filtering by: <span className="text-white font-medium capitalize">{kpiFilter}</span></span>
+                            <button onClick={() => setKpiFilter(null)} className="text-xs text-red-400 hover:text-red-300 ml-2">✕ Clear</button>
+                        </div>
+                    )}
                     <div className="grid grid-cols-6 gap-4">
-                        <div className="flex items-center gap-2 min-w-0">
+                        <button onClick={() => setKpiFilter(kpiFilter === "inflows" ? null : "inflows")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "inflows" ? "bg-green-900/30 ring-1 ring-green-600" : "hover:bg-gray-800/50"}`}>
                             <ArrowDownCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                            <div className="min-w-0">
+                            <div className="min-w-0 text-left">
                                 <p className="text-[10px] text-gray-500 uppercase">Inflows</p>
                                 <p className="text-sm font-bold text-green-400 truncate" title={formatCurrency(summary.totalInflow, dominantCurrency)}>
                                     {formatCompactCurrency(summary.totalInflow, dominantCurrency)}
                                 </p>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
+                        </button>
+                        <button onClick={() => setKpiFilter(kpiFilter === "outflows" ? null : "outflows")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "outflows" ? "bg-red-900/30 ring-1 ring-red-600" : "hover:bg-gray-800/50"}`}>
                             <ArrowUpCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                            <div className="min-w-0">
+                            <div className="min-w-0 text-left">
                                 <p className="text-[10px] text-gray-500 uppercase">Outflows</p>
                                 <p className="text-sm font-bold text-red-400 truncate" title={formatCurrency(summary.totalOutflow, dominantCurrency)}>
                                     {formatCompactCurrency(summary.totalOutflow, dominantCurrency)}
                                 </p>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
+                        </button>
+                        <div className="flex items-center gap-2 min-w-0 px-2 py-1">
                             <DollarSign className="h-4 w-4 text-blue-500 flex-shrink-0" />
                             <div className="min-w-0">
                                 <p className="text-[10px] text-gray-500 uppercase">Balance</p>
@@ -624,21 +638,21 @@ export default function BankCashFlowPage() {
                                 </p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-2 min-w-0">
+                        <button onClick={() => setKpiFilter(kpiFilter === "reconciled" ? null : "reconciled")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "reconciled" ? "bg-emerald-900/30 ring-1 ring-emerald-600" : "hover:bg-gray-800/50"}`}>
                             <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                            <div className="min-w-0">
+                            <div className="min-w-0 text-left">
                                 <p className="text-[10px] text-gray-500 uppercase">Reconciled</p>
                                 <p className="text-sm font-bold text-emerald-400">{summary.reconciledCount} <span className="text-xs text-gray-500">({summary.reconciledPct}%)</span></p>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
+                        </button>
+                        <button onClick={() => setKpiFilter(kpiFilter === "pending" ? null : "pending")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "pending" ? "bg-amber-900/30 ring-1 ring-amber-600" : "hover:bg-gray-800/50"}`}>
                             <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                            <div className="min-w-0">
+                            <div className="min-w-0 text-left">
                                 <p className="text-[10px] text-gray-500 uppercase">Pending</p>
                                 <p className="text-sm font-bold text-amber-400">{summary.unreconciledCount}</p>
                             </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
+                        </button>
+                        <div className="flex items-center gap-2 min-w-0 px-2 py-1">
                             <CreditCard className="h-4 w-4 text-violet-500 flex-shrink-0" />
                             <div className="min-w-0">
                                 <p className="text-[10px] text-gray-500 uppercase">Reconciled Value</p>

@@ -327,11 +327,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
     label: "Cash Management",
     items: [
       {
-        title: "Bank Accounts",
-        href: "/cash-management/bank-accounts",
-        icon: Building2
-      },
-      {
         title: "Bank Statements",
         href: "/cash-management/bank-statements",
         icon: Building2,
@@ -364,6 +359,11 @@ export const NAV: NavGroup[] = withUnderConstruction([
             icon: Building
           }
         ]
+      },
+      {
+        title: "Bank Accounts",
+        href: "/cash-management/bank-accounts",
+        icon: Building2
       },
       {
         title: "Payment Channels",
