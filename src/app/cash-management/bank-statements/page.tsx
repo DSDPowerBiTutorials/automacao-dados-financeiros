@@ -32,6 +32,7 @@ import {
     User,
     ChevronDown,
     ChevronRight,
+    ChevronUp,
     Database,
     Key,
     Filter,
@@ -318,7 +319,7 @@ export default function BankStatementsPage() {
     const [paymentSourceMatches, setPaymentSourceMatches] = useState<PaymentSourceMatch[]>([]);
     const [revenueOrderMatches, setRevenueOrderMatches] = useState<RevenueOrderMatch[]>([]);
     const [intercompanyMatches, setIntercompanyMatches] = useState<IntercompanyMatch[]>([]);
-    const [selectedInvoice, setSelectedInvoice] = useState<number | null>(null);
+    const [selectedInvoices, setSelectedInvoices] = useState<Set<number>>(new Set());
     const [selectedPaymentMatch, setSelectedPaymentMatch] = useState<string | null>(null);
     const [selectedRevenueOrder, setSelectedRevenueOrder] = useState<string | null>(null);
     const [invoiceSearchTerm, setInvoiceSearchTerm] = useState("");
@@ -328,6 +329,63 @@ export default function BankStatementsPage() {
     const [loadingMatches, setLoadingMatches] = useState(false);
     const [reconTab, setReconTab] = useState<"suggestions" | "all" | "manual" | "intercompany">("suggestions");
     const [selectedIntercompanyMatch, setSelectedIntercompanyMatch] = useState<string | null>(null);
+
+    // Sorting state for all tabs
+    type SortCol = "supplier" | "invoice" | "date" | "amount" | "match" | "bank" | "currency" | "description" | null;
+    type SortDir = "asc" | "desc";
+    const [sortCol, setSortCol] = useState<SortCol>(null);
+    const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+    /** Toggle sort column — click same column flips direction, new column defaults desc */
+    const toggleSort = useCallback((col: SortCol) => {
+        if (sortCol === col) setSortDir(d => d === "asc" ? "desc" : "asc");
+        else { setSortCol(col); setSortDir("desc"); }
+    }, [sortCol]);
+
+    /** Toggle invoice selection (multi-select) */
+    const toggleInvoiceSelection = useCallback((id: number) => {
+        setSelectedInvoices(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+        setSelectedPaymentMatch(null);
+        setSelectedRevenueOrder(null);
+        setSelectedIntercompanyMatch(null);
+    }, []);
+
+    /** Sort invoice array by current sortCol/sortDir */
+    const sortInvoices = useCallback((items: APInvoiceMatch[]): APInvoiceMatch[] => {
+        if (!sortCol) return items;
+        const dir = sortDir === "asc" ? 1 : -1;
+        return [...items].sort((a, b) => {
+            switch (sortCol) {
+                case "supplier": return (a.provider_code || "").localeCompare(b.provider_code || "") * dir;
+                case "invoice": return (a.invoice_number || "").localeCompare(b.invoice_number || "") * dir;
+                case "date": return (a.schedule_date || "").localeCompare(b.schedule_date || "") * dir;
+                case "amount": return ((a.paid_amount ?? a.invoice_amount) - (b.paid_amount ?? b.invoice_amount)) * dir;
+                case "match": return (a.matchScore - b.matchScore) * dir;
+                default: return 0;
+            }
+        });
+    }, [sortCol, sortDir]);
+
+    /** Sort intercompany matches by current sortCol/sortDir */
+    const sortIntercompany = useCallback((items: IntercompanyMatch[]): IntercompanyMatch[] => {
+        if (!sortCol) return items;
+        const dir = sortDir === "asc" ? 1 : -1;
+        return [...items].sort((a, b) => {
+            switch (sortCol) {
+                case "bank": case "supplier": return (a.sourceLabel || "").localeCompare(b.sourceLabel || "") * dir;
+                case "description": return (a.description || "").localeCompare(b.description || "") * dir;
+                case "currency": return (a.currency || "").localeCompare(b.currency || "") * dir;
+                case "date": return (a.date || "").localeCompare(b.date || "") * dir;
+                case "amount": return (a.amount - b.amount) * dir;
+                case "match": return (a.matchScore - b.matchScore) * dir;
+                default: return 0;
+            }
+        });
+    }, [sortCol, sortDir]);
 
     // Bank freshness metadata
     const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
@@ -392,8 +450,12 @@ export default function BankStatementsPage() {
             const transactions: BankTransaction[] = allRows.map(row => {
                 const cd = row.custom_data || {};
                 const source = row.source || "";
+                const amount = parseFloat(row.amount) || 0;
                 const paymentSource = cd.paymentSource || null;
-                const gateway = paymentSource?.toLowerCase() || detectGateway(row.description || "");
+                // Gateway is ONLY for revenue (positive amounts) — never for expenses
+                const gateway = amount > 0
+                    ? (paymentSource?.toLowerCase() || detectGateway(row.description || ""))
+                    : null;
 
                 return {
                     id: row.id,
@@ -930,7 +992,7 @@ export default function BankStatementsPage() {
         setReconTransaction(tx);
         setManualPaymentSource(tx.gateway || "");
         setManualNote("");
-        setSelectedInvoice(null);
+        setSelectedInvoices(new Set());
         setSelectedPaymentMatch(null);
         setSelectedRevenueOrder(null);
         setSelectedIntercompanyMatch(null);
@@ -970,40 +1032,44 @@ export default function BankStatementsPage() {
         const now = new Date().toISOString();
 
         try {
-            // CASE 1: Expense → AP Invoice match
-            if (isExpense && selectedInvoice) {
-                const invoice = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults]
-                    .find(inv => inv.id === selectedInvoice);
-                if (!invoice) throw new Error("Invoice not found");
+            // CASE 1: Expense → AP Invoice match (supports multiple invoices)
+            if (isExpense && selectedInvoices.size > 0) {
+                const allInvoiceLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                const selectedInvs = allInvoiceLists.filter(inv => selectedInvoices.has(inv.id));
+                if (selectedInvs.length === 0) throw new Error("No invoices found");
 
-                const paidAmount = invoice.paid_amount ?? invoice.invoice_amount ?? 0;
+                const totalInvoiceAmount = selectedInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
+                const invoiceNumbers = selectedInvs.map(inv => inv.invoice_number).filter(Boolean).join(", ");
+                const providers = [...new Set(selectedInvs.map(inv => inv.provider_code).filter(Boolean))].join(", ");
 
-                // Update AP invoice
-                const { error: invErr } = await supabase
-                    .from("invoices")
-                    .update({
-                        is_reconciled: true,
-                        reconciled_transaction_id: reconTransaction.id,
-                        reconciled_at: now,
-                        reconciled_amount: paidAmount,
-                    })
-                    .eq("id", selectedInvoice);
-                if (invErr) throw invErr;
+                // Update each AP invoice
+                for (const inv of selectedInvs) {
+                    const paidAmt = inv.paid_amount ?? inv.invoice_amount ?? 0;
+                    const { error: invErr } = await supabase
+                        .from("invoices")
+                        .update({
+                            is_reconciled: true,
+                            reconciled_transaction_id: reconTransaction.id,
+                            reconciled_at: now,
+                            reconciled_amount: paidAmt,
+                        })
+                        .eq("id", inv.id);
+                    if (invErr) throw invErr;
+                }
 
-                // Update bank transaction
+                // Update bank transaction — NO gateway/paymentSource for expenses
                 const { error: txErr } = await supabase
                     .from("csv_rows")
                     .update({
                         reconciled: true,
                         custom_data: {
                             ...reconTransaction.custom_data,
-                            paymentSource: invoice.provider_code || null,
                             reconciliationType: "manual",
                             reconciled_at: now,
-                            matched_invoice_id: selectedInvoice,
-                            matched_invoice_number: invoice.invoice_number,
-                            matched_invoice_amount: paidAmount,
-                            matched_provider: invoice.provider_code,
+                            matched_invoice_ids: [...selectedInvoices],
+                            matched_invoice_numbers: invoiceNumbers,
+                            matched_invoice_total: totalInvoiceAmount,
+                            matched_provider: providers,
                             manual_note: manualNote || null,
                         },
                     })
@@ -1012,11 +1078,11 @@ export default function BankStatementsPage() {
 
                 setBankTransactions(prev => prev.map(t =>
                     t.id === reconTransaction.id
-                        ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: invoice.provider_code || null }
+                        ? { ...t, isReconciled: true, reconciliationType: "manual" }
                         : t
                 ));
 
-                toast({ title: "Reconciled!", description: `Matched with invoice ${invoice.invoice_number} (${invoice.provider_code})` });
+                toast({ title: "Reconciled!", description: `Matched with ${selectedInvs.length} invoice(s): ${invoiceNumbers} (${providers})` });
                 setReconDialogOpen(false);
                 return;
             }
@@ -2018,20 +2084,26 @@ export default function BankStatementsPage() {
                                                         <h4 className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1">
                                                             <Building className="h-3.5 w-3.5" /> Supplier Invoices ({providerNameMatches.length})
                                                         </h4>
-                                                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
-                                                            <span>Supplier</span>
-                                                            <span>Invoice #</span>
-                                                            <span>Date</span>
-                                                            <span className="text-right">Amount</span>
+                                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                                            <span></span>
+                                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
                                                         </div>
                                                         <div className="space-y-1">
-                                                            {providerNameMatches.map(inv => (
+                                                            {sortInvoices(providerNameMatches).map(inv => (
                                                                 <button
                                                                     key={inv.id}
-                                                                    onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
-                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                                    onClick={() => toggleInvoiceSelection(inv.id)}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                                 >
-                                                                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                                                    <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
+                                                                        <div className="flex items-center">
+                                                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
+                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                            </div>
+                                                                        </div>
                                                                         <div className="min-w-0">
                                                                             <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">{inv.matchReason}</p>
@@ -2078,7 +2150,7 @@ export default function BankStatementsPage() {
                                                             {paymentSourceMatches.map(pm => (
                                                                 <button
                                                                     key={pm.id}
-                                                                    onClick={() => { setSelectedPaymentMatch(pm.id); setSelectedInvoice(null); setSelectedRevenueOrder(null); }}
+                                                                    onClick={() => { setSelectedPaymentMatch(pm.id); setSelectedInvoices(new Set()); setSelectedRevenueOrder(null); }}
                                                                     className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedPaymentMatch === pm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="flex items-center justify-between">
@@ -2107,7 +2179,7 @@ export default function BankStatementsPage() {
                                                             {revenueOrderMatches.slice(0, 10).map(rm => (
                                                                 <button
                                                                     key={rm.id}
-                                                                    onClick={() => { setSelectedRevenueOrder(rm.id); setSelectedInvoice(null); setSelectedPaymentMatch(null); }}
+                                                                    onClick={() => { setSelectedRevenueOrder(rm.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); }}
                                                                     className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedRevenueOrder === rm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="flex items-center justify-between">
@@ -2154,24 +2226,30 @@ export default function BankStatementsPage() {
                                             />
                                         </div>
                                         {/* Column headers */}
-                                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
-                                            <span>Supplier</span>
-                                            <span>Invoice #</span>
-                                            <span>Date</span>
-                                            <span className="text-right">Amount</span>
+                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                            <span></span>
+                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
                                         </div>
                                         {isExpense ? (
                                             <div className="space-y-1">
                                                 {filteredAvailableInvoices.length === 0 ? (
                                                     <p className="text-center text-gray-500 text-sm py-4">No invoices found{invoiceSearchTerm ? " matching your search" : ""}</p>
                                                 ) : (
-                                                    filteredAvailableInvoices.slice(0, 50).map(inv => (
+                                                    sortInvoices(filteredAvailableInvoices).slice(0, 50).map(inv => (
                                                         <button
                                                             key={inv.id}
-                                                            onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
-                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                            onClick={() => toggleInvoiceSelection(inv.id)}
+                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                         >
-                                                            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
+                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                    </div>
+                                                                </div>
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
                                                                     {inv.description && <p className="text-[10px] text-gray-500 truncate">{inv.description}</p>}
@@ -2279,20 +2357,26 @@ export default function BankStatementsPage() {
                                         {/* Manual search results */}
                                         {manualSearchResults.length > 0 && (
                                             <div>
-                                                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
-                                                    <span>Supplier</span>
-                                                    <span>Invoice #</span>
-                                                    <span>Date</span>
-                                                    <span className="text-right">Amount</span>
+                                                <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                                    <span></span>
+                                                    <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
                                                 </div>
                                                 <div className="space-y-1 max-h-[250px] overflow-auto">
-                                                    {manualSearchResults.slice(0, 50).map(inv => (
+                                                    {sortInvoices(manualSearchResults).slice(0, 50).map(inv => (
                                                         <button
                                                             key={inv.id}
-                                                            onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
-                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                            onClick={() => toggleInvoiceSelection(inv.id)}
+                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                         >
-                                                            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
+                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                    </div>
+                                                                </div>
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
                                                                 </div>
@@ -2355,17 +2439,17 @@ export default function BankStatementsPage() {
                                         {intercompanyMatches.length > 0 ? (
                                             <div>
                                                 <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
-                                                    <span>Bank / Description</span>
-                                                    <span>Currency</span>
-                                                    <span>Date</span>
-                                                    <span className="text-right">Amount</span>
-                                                    <span className="text-right">Match</span>
+                                                    <button onClick={() => toggleSort("bank")} className="flex items-center gap-0.5 hover:text-gray-300 text-left">Bank / Description {sortCol === "bank" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("currency")} className="flex items-center gap-0.5 hover:text-gray-300">Currency {sortCol === "currency" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("match")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Match {sortCol === "match" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
                                                 </div>
                                                 <div className="space-y-1">
-                                                    {intercompanyMatches.map(ic => (
+                                                    {sortIntercompany(intercompanyMatches).map(ic => (
                                                         <button
                                                             key={ic.id}
-                                                            onClick={() => { setSelectedIntercompanyMatch(ic.id); setSelectedInvoice(null); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
+                                                            onClick={() => { setSelectedIntercompanyMatch(ic.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
                                                             className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedIntercompanyMatch === ic.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                         >
                                                             <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center">
@@ -2402,7 +2486,7 @@ export default function BankStatementsPage() {
                             </div>
 
                             {/* Note input (always visible when in suggestions/all tabs) */}
-                            {reconTab !== "manual" && (selectedInvoice || selectedPaymentMatch || selectedRevenueOrder || selectedIntercompanyMatch) && (
+                            {reconTab !== "manual" && (selectedInvoices.size > 0 || selectedPaymentMatch || selectedRevenueOrder || selectedIntercompanyMatch) && (
                                 <div className="px-6 py-2 border-t border-gray-700/50">
                                     <Input placeholder="Note (optional)..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-xs h-7" />
                                 </div>
@@ -2411,17 +2495,22 @@ export default function BankStatementsPage() {
                             {/* Dialog Footer */}
                             <div className="px-6 py-3 border-t border-gray-700 flex items-center justify-between">
                                 <div className="text-[10px] text-gray-500">
-                                    {selectedInvoice && <span className="text-cyan-400">Invoice selected</span>}
+                                    {selectedInvoices.size > 0 && (() => {
+                                        const allInvLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                                        const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
+                                        const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
+                                        return <span className="text-cyan-400">{selectedInvoices.size} invoice(s) = {formatCurrency(tot, reconTransaction?.currency || "EUR")}</span>;
+                                    })()}
                                     {selectedPaymentMatch && <span className="text-cyan-400">Payment source selected</span>}
                                     {selectedRevenueOrder && <span className="text-cyan-400">Revenue order selected</span>}
                                     {selectedIntercompanyMatch && <span className="text-amber-400">Intercompany transfer selected</span>}
-                                    {!selectedInvoice && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
+                                    {selectedInvoices.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
                                 </div>
                                 <div className="flex gap-3">
                                     <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700 h-8 text-xs">Cancel</Button>
                                     <Button
                                         onClick={performManualReconciliation}
-                                        disabled={isSavingManual || (!selectedInvoice && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !manualPaymentSource && !manualNote)}
+                                        disabled={isSavingManual || (selectedInvoices.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !manualPaymentSource && !manualNote)}
                                         className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
                                     >
                                         {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
