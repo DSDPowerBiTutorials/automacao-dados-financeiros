@@ -157,16 +157,13 @@ interface IntercompanyMatch {
 
 function detectGateway(description: string): string | null {
     const desc = description.toLowerCase();
-    if (desc.includes("braintree") || desc.includes("paypal braintree")) return "braintree";
+    if (desc.includes("braintree") && (desc.includes("amex") || desc.includes("american express"))) return "braintree-amex";
+    if (desc.includes("braintree") && desc.includes("gbp")) return "braintree-gbp";
+    if (desc.includes("braintree") && desc.includes("usd")) return "braintree-usd";
+    if (desc.includes("braintree") || desc.includes("paypal braintree")) return "braintree-eur";
     if (desc.includes("stripe")) return "stripe";
     if (desc.includes("gocardless") || desc.includes("go cardless")) return "gocardless";
     if (desc.includes("paypal") && !desc.includes("braintree")) return "paypal";
-    if (desc.includes("american express") || desc.includes("amex")) return "amex";
-    if (desc.includes("adyen")) return "adyen";
-    if (desc.includes("wise") || desc.includes("transferwise")) return "wise";
-    if (desc.includes("gusto")) return "gusto";
-    if (desc.includes("continental")) return "continental";
-    if (desc.includes("intuit") || desc.includes("quickbooks") || desc.includes("qbooks")) return "quickbooks";
     return null;
 }
 
@@ -198,15 +195,14 @@ const formatDateHeader = (dateStr: string): string => {
 };
 
 const gatewayColors: Record<string, { bg: string; text: string; border: string }> = {
+    "braintree-eur": { bg: "bg-blue-900/30", text: "text-blue-400", border: "border-blue-700" },
+    "braintree-usd": { bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700" },
+    "braintree-gbp": { bg: "bg-purple-900/30", text: "text-purple-400", border: "border-purple-700" },
+    "braintree-amex": { bg: "bg-violet-900/30", text: "text-violet-400", border: "border-violet-700" },
     braintree: { bg: "bg-blue-900/30", text: "text-blue-400", border: "border-blue-700" },
-    stripe: { bg: "bg-indigo-900/30", text: "text-indigo-400", border: "border-indigo-700" },
-    gocardless: { bg: "bg-yellow-900/30", text: "text-yellow-400", border: "border-yellow-700" },
     paypal: { bg: "bg-cyan-900/30", text: "text-cyan-400", border: "border-cyan-700" },
-    amex: { bg: "bg-purple-900/30", text: "text-purple-400", border: "border-purple-700" },
-    gusto: { bg: "bg-red-900/30", text: "text-red-400", border: "border-red-700" },
-    quickbooks: { bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700" },
-    continental: { bg: "bg-orange-900/30", text: "text-orange-400", border: "border-orange-700" },
-    wise: { bg: "bg-teal-900/30", text: "text-teal-400", border: "border-teal-700" },
+    gocardless: { bg: "bg-yellow-900/30", text: "text-yellow-400", border: "border-yellow-700" },
+    stripe: { bg: "bg-indigo-900/30", text: "text-indigo-400", border: "border-indigo-700" },
 };
 
 const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" };
@@ -520,115 +516,78 @@ export default function BankStatementsPage() {
         const txDate = parseDateSafe(tx.date?.split("T")[0]);
         if (!txDate) return;
         const txAmount = Math.abs(tx.amount);
-        const tolerance = txAmount * 0.15; // ±15% tolerance
-        const currency = tx.currency;
-
-        // Date range: ±30 days for broad search
-        const startDate = new Date(txDate);
-        startDate.setDate(startDate.getDate() - 30);
-        const endDate = new Date(txDate);
-        endDate.setDate(endDate.getDate() + 15);
 
         try {
-            // 1) Exact date + amount matches (schedule_date ±3 days, amount ±15%)
-            const exactStart = new Date(txDate);
-            exactStart.setDate(exactStart.getDate() - 3);
-            const exactEnd = new Date(txDate);
-            exactEnd.setDate(exactEnd.getDate() + 3);
-
-            const { data: exactData } = await supabase
-                .from("invoices")
-                .select("*")
-                .eq("is_reconciled", false)
-                .eq("invoice_type", "INCURRED")
-                .gte("schedule_date", exactStart.toISOString().split("T")[0])
-                .lte("schedule_date", exactEnd.toISOString().split("T")[0])
-                .order("schedule_date", { ascending: true });
-
-            const exactMatches: APInvoiceMatch[] = (exactData || [])
-                .filter(inv => {
-                    const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
-                    return Math.abs(invAmount - txAmount) <= tolerance;
-                })
-                .map(inv => {
-                    const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
-                    const amountDiff = Math.abs(invAmount - txAmount);
-                    const isExact = amountDiff < 0.01;
-                    return {
-                        ...inv,
-                        invoice_amount: parseFloat(inv.invoice_amount) || 0,
-                        paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
-                        matchScore: isExact ? 95 : 80,
-                        matchReason: isExact
-                            ? `Exact amount, date ±3 days`
-                            : `Amount within ${((amountDiff / txAmount) * 100).toFixed(0)}%, date ±3 days`,
-                    };
-                });
-            setMatchingInvoices(exactMatches);
-
-            // 2) Provider name matches — search description words against provider_code
+            // 1) Identify supplier from bank description — find ALL unreconciled invoices for that supplier
             const descWords = tx.description.split(/[\s,;.\/\-]+/).filter(w => w.length > 2).map(w => w.toLowerCase());
-            if (descWords.length > 0) {
-                const { data: providerData } = await supabase
+
+            // Load all unreconciled AP invoices
+            const allPages: any[] = [];
+            let page = 0;
+            const PAGE_SIZE = 1000;
+            while (true) {
+                const { data: chunk } = await supabase
                     .from("invoices")
                     .select("*")
                     .eq("is_reconciled", false)
                     .eq("invoice_type", "INCURRED")
-                    .gte("schedule_date", startDate.toISOString().split("T")[0])
-                    .lte("schedule_date", endDate.toISOString().split("T")[0])
-                    .order("schedule_date", { ascending: true })
-                    .limit(500);
-
-                const provMatches: APInvoiceMatch[] = (providerData || [])
-                    .filter(inv => {
-                        const provider = (inv.provider_code || "").toLowerCase();
-                        const invDesc = (inv.description || "").toLowerCase();
-                        // Check if any description word matches provider or invoice description
-                        const nameMatch = descWords.some(w => provider.includes(w) || invDesc.includes(w));
-                        if (!nameMatch) return false;
-                        // Amount within 15%
-                        const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
-                        return Math.abs(invAmount - txAmount) <= tolerance;
-                    })
-                    .filter(inv => !exactMatches.some(em => em.id === inv.id))
-                    .map(inv => {
-                        const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
-                        const provider = (inv.provider_code || "").toLowerCase();
-                        const matchedWords = descWords.filter(w => provider.includes(w));
-                        return {
-                            ...inv,
-                            invoice_amount: parseFloat(inv.invoice_amount) || 0,
-                            paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
-                            matchScore: matchedWords.length > 1 ? 75 : 60,
-                            matchReason: `Supplier name "${matchedWords.join(", ")}" matches, amount within 15%`,
-                        };
-                    });
-                setProviderNameMatches(provMatches);
-            } else {
-                setProviderNameMatches([]);
+                    .order("schedule_date", { ascending: false })
+                    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+                if (!chunk || chunk.length === 0) break;
+                allPages.push(...chunk);
+                if (chunk.length < PAGE_SIZE) break;
+                page++;
             }
 
-            // 3) All unreconciled AP invoices (for manual search)
-            const { data: allData } = await supabase
-                .from("invoices")
-                .select("*")
-                .eq("is_reconciled", false)
-                .eq("invoice_type", "INCURRED")
-                .gte("schedule_date", startDate.toISOString().split("T")[0])
-                .order("schedule_date", { ascending: true })
-                .limit(200);
+            // Score every invoice: supplier name match from description
+            const supplierMatches: APInvoiceMatch[] = [];
+            const otherInvoices: APInvoiceMatch[] = [];
 
-            const allInv: APInvoiceMatch[] = (allData || [])
-                .filter(inv => !exactMatches.some(em => em.id === inv.id))
-                .filter(inv => !providerNameMatches.some(pm => pm.id === inv.id))
-                .map(inv => ({
+            allPages.forEach(inv => {
+                const provider = (inv.provider_code || "").toLowerCase();
+                const invDesc = (inv.description || "").toLowerCase();
+                const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
+                const amountDiff = Math.abs(invAmount - txAmount);
+
+                // Check if bank description words match supplier name
+                const matchedWords = descWords.filter(w => provider.includes(w) || invDesc.includes(w));
+                const isSupplierMatch = matchedWords.length > 0;
+
+                const parsed: APInvoiceMatch = {
                     ...inv,
                     invoice_amount: parseFloat(inv.invoice_amount) || 0,
                     paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
                     matchScore: 0,
-                    matchReason: "Unreconciled",
-                }));
-            setAllAvailableInvoices(allInv);
+                    matchReason: "",
+                };
+
+                if (isSupplierMatch) {
+                    // Supplier match — show ALL invoices for this supplier
+                    const isExact = amountDiff < 0.01;
+                    const isClose = amountDiff <= txAmount * 0.15;
+                    if (isExact) {
+                        parsed.matchScore = 95;
+                        parsed.matchReason = `Exact amount + supplier "${matchedWords.join(", ")}" match`;
+                    } else if (isClose) {
+                        parsed.matchScore = 75;
+                        parsed.matchReason = `Supplier "${matchedWords.join(", ")}" match, amount within ${((amountDiff / txAmount) * 100).toFixed(0)}%`;
+                    } else {
+                        parsed.matchScore = 60;
+                        parsed.matchReason = `Supplier "${matchedWords.join(", ")}" match`;
+                    }
+                    supplierMatches.push(parsed);
+                } else {
+                    parsed.matchReason = "Unreconciled";
+                    otherInvoices.push(parsed);
+                }
+            });
+
+            // Sort supplier matches: highest score first, then by date
+            supplierMatches.sort((a, b) => b.matchScore - a.matchScore || a.schedule_date.localeCompare(b.schedule_date));
+
+            setMatchingInvoices([]); // Not used separately anymore
+            setProviderNameMatches(supplierMatches);
+            setAllAvailableInvoices(otherInvoices);
         } catch (err) {
             console.error("Error loading expense matches:", err);
         }
@@ -642,23 +601,30 @@ export default function BankStatementsPage() {
         const currency = tx.currency;
 
         const startDate = new Date(txDate);
-        startDate.setDate(startDate.getDate() - 5);
+        startDate.setDate(startDate.getDate() - 10);
         const endDate = new Date(txDate);
-        endDate.setDate(endDate.getDate() + 5);
+        endDate.setDate(endDate.getDate() + 10);
 
         try {
-            // 1) Payment Source Matches — grouped by disbursement for Braintree etc.
+            // 1) Payment Source Matches — show ALL unreconciled gateway invoices (not just matching amounts)
             const paymentSources = currency === "USD"
                 ? ["braintree-api-revenue-usd", "stripe-usd"]
-                : ["braintree-api-revenue", "stripe-eur", "gocardless"];
+                : ["braintree-api-revenue", "braintree-api-revenue-gbp", "braintree-api-revenue-amex", "stripe-eur", "gocardless"];
+
+            // Broader date range for gateway data
+            const gwStart = new Date(txDate);
+            gwStart.setDate(gwStart.getDate() - 15);
+            const gwEnd = new Date(txDate);
+            gwEnd.setDate(gwEnd.getDate() + 5);
 
             const { data: gatewayData } = await supabase
                 .from("csv_rows")
                 .select("*")
                 .in("source", paymentSources)
                 .eq("reconciled", false)
-                .gte("date", startDate.toISOString().split("T")[0])
-                .lte("date", endDate.toISOString().split("T")[0]);
+                .gte("date", gwStart.toISOString().split("T")[0])
+                .lte("date", gwEnd.toISOString().split("T")[0])
+                .limit(500);
 
             const pMatches: PaymentSourceMatch[] = [];
             if (gatewayData) {
@@ -666,156 +632,140 @@ export default function BankStatementsPage() {
                 const braintreeRows = gatewayData.filter(r => (r.source || "").includes("braintree"));
                 const otherRows = gatewayData.filter(r => !(r.source || "").includes("braintree"));
 
-                // Braintree: group by disbursement date and sum
-                const disbGroups = new Map<string, { rows: any[]; total: number }>();
+                // Braintree: group by disbursement date and sum — show ALL groups
+                const disbGroups = new Map<string, { rows: any[]; total: number; source: string }>();
                 braintreeRows.forEach(r => {
                     const cd = r.custom_data || {};
                     const disbDate = cd.disbursement_date || r.date?.split("T")[0] || "";
-                    if (!disbGroups.has(disbDate)) disbGroups.set(disbDate, { rows: [], total: 0 });
-                    const g = disbGroups.get(disbDate)!;
+                    const key = `${r.source}|${disbDate}`;
+                    if (!disbGroups.has(key)) disbGroups.set(key, { rows: [], total: 0, source: r.source });
+                    const g = disbGroups.get(key)!;
                     g.rows.push(r);
                     g.total += Math.abs(parseFloat(r.amount) || 0);
                 });
 
-                disbGroups.forEach((group, date) => {
+                disbGroups.forEach((group, key) => {
+                    const date = key.split("|")[1];
                     const diff = Math.abs(group.total - txAmount);
-                    if (diff < Math.max(txAmount * 0.03, 0.10)) {
-                        const exact = diff < 0.10;
-                        pMatches.push({
-                            id: `bt-disb-${date}`,
-                            source: "braintree",
-                            sourceLabel: `Braintree (${date})`,
-                            disbursementDate: date,
-                            amount: group.total,
-                            transactionCount: group.rows.length,
-                            matchScore: exact ? 95 : 80,
-                            matchReason: exact
-                                ? `Exact disbursement match (${group.rows.length} txns)`
-                                : `Disbursement within ${((diff / txAmount) * 100).toFixed(1)}% (${group.rows.length} txns)`,
-                        });
-                    }
+                    const exact = diff < 0.10;
+                    const srcName = group.source.includes("amex") ? "Braintree Amex"
+                        : group.source.includes("gbp") ? "Braintree GBP"
+                            : group.source.includes("usd") ? "Braintree USD" : "Braintree EUR";
+                    pMatches.push({
+                        id: `bt-disb-${key}`,
+                        source: group.source,
+                        sourceLabel: `${srcName} (${date})`,
+                        disbursementDate: date,
+                        amount: group.total,
+                        transactionCount: group.rows.length,
+                        matchScore: exact ? 95 : (diff < txAmount * 0.05 ? 80 : 40),
+                        matchReason: exact
+                            ? `Exact disbursement (${group.rows.length} txns)`
+                            : `${group.rows.length} txns, total ${formatCurrency(group.total, currency)}`,
+                    });
                 });
 
-                // Non-Braintree: individual matches
+                // Non-Braintree: show ALL
                 otherRows.forEach(r => {
                     const rAmount = Math.abs(parseFloat(r.amount) || 0);
                     const diff = Math.abs(rAmount - txAmount);
-                    if (diff < Math.max(txAmount * 0.03, 0.10)) {
-                        const srcLabel = (r.source || "").includes("stripe") ? "Stripe" : "GoCardless";
-                        pMatches.push({
-                            id: r.id,
-                            source: r.source,
-                            sourceLabel: `${srcLabel} (${r.date?.split("T")[0]})`,
-                            disbursementDate: r.date?.split("T")[0] || "",
-                            amount: rAmount,
-                            transactionCount: 1,
-                            matchScore: diff < 0.10 ? 95 : 75,
-                            matchReason: diff < 0.10 ? "Exact amount" : `Within ${((diff / txAmount) * 100).toFixed(1)}%`,
-                        });
-                    }
+                    const srcLabel = (r.source || "").includes("stripe") ? "Stripe" : "GoCardless";
+                    pMatches.push({
+                        id: r.id,
+                        source: r.source,
+                        sourceLabel: `${srcLabel} (${r.date?.split("T")[0]})`,
+                        disbursementDate: r.date?.split("T")[0] || "",
+                        amount: rAmount,
+                        transactionCount: 1,
+                        matchScore: diff < 0.10 ? 95 : (diff < txAmount * 0.05 ? 75 : 30),
+                        matchReason: diff < 0.10 ? "Exact amount" : formatCurrency(rAmount, currency),
+                    });
                 });
             }
             setPaymentSourceMatches(pMatches.sort((a, b) => b.matchScore - a.matchScore));
 
-            // 2) Revenue Order Matches — search ar_invoices
-            const revStart = new Date(txDate);
-            revStart.setDate(revStart.getDate() - 30);
-            const revEnd = new Date(txDate);
-            revEnd.setDate(revEnd.getDate() + 5);
-
-            const { data: arData } = await supabase
-                .from("ar_invoices")
-                .select("*")
-                .eq("reconciled", false)
-                .gte("order_date", revStart.toISOString().split("T")[0])
-                .lte("order_date", revEnd.toISOString().split("T")[0])
-                .limit(300);
+            // 2) Customer name matching — only when description has a customer name
+            const descLower = tx.description.toLowerCase();
+            const descWords = tx.description.split(/[\s,;.\/\-]+/).filter(w => w.length > 2).map(w => w.toLowerCase());
+            const hasCustomerName = descWords.length > 0 && !detectGateway(tx.description); // Only if it's NOT a gateway deposit
 
             const revMatches: RevenueOrderMatch[] = [];
-            (arData || []).forEach(inv => {
-                const invAmount = parseFloat(inv.total_amount) || parseFloat(inv.charged_amount) || 0;
-                const diff = Math.abs(invAmount - txAmount);
-                const isExact = diff < 0.01;
-                const isClose = diff < txAmount * 0.05; // 5% tolerance for revenue
 
-                // Name matching from description
-                const custName = (inv.customer_name || inv.company_name || "").toLowerCase();
-                const descLower = tx.description.toLowerCase();
-                const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
-                const nameMatch = nameWords.some((w: string) => descLower.includes(w));
+            if (hasCustomerName) {
+                // Search ar_invoices by customer name
+                const revStart = new Date(txDate);
+                revStart.setDate(revStart.getDate() - 60);
+                const revEnd = new Date(txDate);
+                revEnd.setDate(revEnd.getDate() + 5);
 
-                let score = 0;
-                let reason = "";
-                if (isExact && nameMatch) { score = 100; reason = "Exact amount + customer name match"; }
-                else if (isExact) { score = 90; reason = "Exact amount match"; }
-                else if (isClose && nameMatch) { score = 75; reason = `Amount within ${((diff / txAmount) * 100).toFixed(0)}% + customer match`; }
-                else if (nameMatch) { score = 50; reason = "Customer name match"; }
-                else if (isClose) { score = 40; reason = `Amount within ${((diff / txAmount) * 100).toFixed(0)}%`; }
+                const { data: arData } = await supabase
+                    .from("ar_invoices")
+                    .select("*")
+                    .eq("reconciled", false)
+                    .gte("order_date", revStart.toISOString().split("T")[0])
+                    .lte("order_date", revEnd.toISOString().split("T")[0])
+                    .limit(500);
 
-                if (score > 0) {
-                    revMatches.push({
-                        id: `ar-${inv.id}`,
-                        source: "ar_invoices",
-                        sourceLabel: "AR Invoice",
-                        orderId: inv.order_id || null,
-                        invoiceNumber: inv.invoice_number || null,
-                        customerName: inv.customer_name || inv.company_name || "",
-                        amount: invAmount,
-                        date: inv.order_date || "",
-                        matchScore: score,
-                        matchReason: reason,
-                    });
-                }
-            });
+                (arData || []).forEach(inv => {
+                    const invAmount = parseFloat(inv.total_amount) || parseFloat(inv.charged_amount) || 0;
+                    const custName = (inv.customer_name || inv.company_name || "").toLowerCase();
+                    const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
+                    const nameMatch = nameWords.some((w: string) => descLower.includes(w));
 
-            // Also search invoice-orders csv_rows
-            const orderSources = currency === "USD"
-                ? ["invoice-orders-usd"]
-                : ["invoice-orders"];
+                    if (nameMatch) {
+                        const diff = Math.abs(invAmount - txAmount);
+                        const isExact = diff < 0.01;
+                        revMatches.push({
+                            id: `ar-${inv.id}`,
+                            source: "ar_invoices",
+                            sourceLabel: "AR Invoice",
+                            orderId: inv.order_id || null,
+                            invoiceNumber: inv.invoice_number || null,
+                            customerName: inv.customer_name || inv.company_name || "",
+                            amount: invAmount,
+                            date: inv.order_date || "",
+                            matchScore: isExact ? 100 : 60,
+                            matchReason: isExact ? "Exact amount + customer name" : `Customer name match`,
+                        });
+                    }
+                });
 
-            const { data: orderData } = await supabase
-                .from("csv_rows")
-                .select("*")
-                .in("source", orderSources)
-                .eq("reconciled", false)
-                .gte("date", revStart.toISOString().split("T")[0])
-                .lte("date", revEnd.toISOString().split("T")[0])
-                .limit(300);
+                // Search invoice-orders csv_rows by customer name
+                const orderSources = currency === "USD" ? ["invoice-orders-usd"] : ["invoice-orders"];
+                const { data: orderData } = await supabase
+                    .from("csv_rows")
+                    .select("*")
+                    .in("source", orderSources)
+                    .eq("reconciled", false)
+                    .gte("date", revStart.toISOString().split("T")[0])
+                    .lte("date", revEnd.toISOString().split("T")[0])
+                    .limit(500);
 
-            (orderData || []).forEach(row => {
-                const rowAmount = Math.abs(parseFloat(row.amount) || 0);
-                const cd = row.custom_data || {};
-                const diff = Math.abs(rowAmount - txAmount);
-                const isExact = diff < 0.01;
-                const isClose = diff < txAmount * 0.05;
+                (orderData || []).forEach(row => {
+                    const cd = row.custom_data || {};
+                    const custName = (cd.customer_name || cd.company_name || "").toLowerCase();
+                    const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
+                    const nameMatch = nameWords.some((w: string) => descLower.includes(w));
 
-                const custName = (cd.customer_name || cd.company_name || "").toLowerCase();
-                const descLower = tx.description.toLowerCase();
-                const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
-                const nameMatch = nameWords.some((w: string) => descLower.includes(w));
-
-                let score = 0;
-                let reason = "";
-                if (isExact && nameMatch) { score = 100; reason = "Exact amount + customer match"; }
-                else if (isExact) { score = 85; reason = "Exact amount match"; }
-                else if (isClose && nameMatch) { score = 70; reason = `Amount within ${((diff / txAmount) * 100).toFixed(0)}% + name match`; }
-                else if (isClose) { score = 35; reason = `Amount within ${((diff / txAmount) * 100).toFixed(0)}%`; }
-
-                if (score > 0) {
-                    revMatches.push({
-                        id: row.id,
-                        source: "invoice-orders",
-                        sourceLabel: "Invoice Order",
-                        orderId: cd.order_id || null,
-                        invoiceNumber: cd.invoice_number || null,
-                        customerName: cd.customer_name || cd.company_name || "",
-                        amount: rowAmount,
-                        date: row.date?.split("T")[0] || "",
-                        matchScore: score,
-                        matchReason: reason,
-                    });
-                }
-            });
+                    if (nameMatch) {
+                        const rowAmount = Math.abs(parseFloat(row.amount) || 0);
+                        const diff = Math.abs(rowAmount - txAmount);
+                        const isExact = diff < 0.01;
+                        revMatches.push({
+                            id: row.id,
+                            source: "invoice-orders",
+                            sourceLabel: "Invoice Order",
+                            orderId: cd.order_id || null,
+                            invoiceNumber: cd.invoice_number || null,
+                            customerName: cd.customer_name || cd.company_name || "",
+                            amount: rowAmount,
+                            date: row.date?.split("T")[0] || "",
+                            matchScore: isExact ? 100 : 55,
+                            matchReason: isExact ? "Exact amount + customer match" : `Customer name match`,
+                        });
+                    }
+                });
+            }
 
             setRevenueOrderMatches(revMatches.sort((a, b) => b.matchScore - a.matchScore));
 
@@ -836,7 +786,6 @@ export default function BankStatementsPage() {
             const icMatches: IntercompanyMatch[] = (icData || [])
                 .filter(r => {
                     const rAmount = parseFloat(r.amount) || 0;
-                    // Opposite sign, similar absolute value
                     if (tx.amount > 0 && rAmount > 0) return false;
                     if (tx.amount < 0 && rAmount < 0) return false;
                     return Math.abs(Math.abs(rAmount) - txAmount) < txAmount * 0.02;
@@ -1460,7 +1409,7 @@ export default function BankStatementsPage() {
                         </Button>
                         <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
                             <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree">Braintree</SelectItem><SelectItem value="stripe">Stripe</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gusto">Gusto</SelectItem><SelectItem value="quickbooks">QuickBooks</SelectItem></SelectContent>
+                            <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree-eur">Braintree EUR</SelectItem><SelectItem value="braintree-usd">Braintree USD</SelectItem><SelectItem value="braintree-gbp">Braintree GBP</SelectItem><SelectItem value="braintree-amex">Braintree Amex</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="stripe">Stripe</SelectItem></SelectContent>
                         </Select>
                         <Select value={flowFilter} onValueChange={setFlowFilter}>
                             <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
@@ -1799,7 +1748,7 @@ export default function BankStatementsPage() {
             {reconDialogOpen && reconTransaction && (() => {
                 const isExpense = reconTransaction.amount < 0;
                 const totalSuggestions = isExpense
-                    ? matchingInvoices.length + providerNameMatches.length
+                    ? providerNameMatches.length
                     : paymentSourceMatches.length + revenueOrderMatches.length + intercompanyMatches.length;
 
                 // Filtered unreconciled invoices for search
@@ -1890,17 +1839,23 @@ export default function BankStatementsPage() {
                                 {/* ── SUGGESTIONS TAB ── */}
                                 {reconTab === "suggestions" && !loadingMatches && (
                                     <>
-                                        {/* EXPENSE: AP Invoice suggestions */}
+                                        {/* EXPENSE: All supplier invoices */}
                                         {isExpense && (
                                             <>
-                                                {/* Exact date+amount matches */}
-                                                {matchingInvoices.length > 0 && (
+                                                {/* Supplier invoices — ALL unreconciled invoices for matched supplier */}
+                                                {providerNameMatches.length > 0 && (
                                                     <div>
                                                         <h4 className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1">
-                                                            <CheckCircle2 className="h-3.5 w-3.5" /> Date & Amount Matches ({matchingInvoices.length})
+                                                            <Building className="h-3.5 w-3.5" /> Supplier Invoices ({providerNameMatches.length})
                                                         </h4>
+                                                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                                            <span>Supplier</span>
+                                                            <span>Invoice #</span>
+                                                            <span>Date</span>
+                                                            <span className="text-right">Amount</span>
+                                                        </div>
                                                         <div className="space-y-1">
-                                                            {matchingInvoices.map(inv => (
+                                                            {providerNameMatches.map(inv => (
                                                                 <button
                                                                     key={inv.id}
                                                                     onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
@@ -1928,40 +1883,7 @@ export default function BankStatementsPage() {
                                                     </div>
                                                 )}
 
-                                                {/* Provider name matches */}
-                                                {providerNameMatches.length > 0 && (
-                                                    <div>
-                                                        <h4 className="text-xs font-semibold text-yellow-400 mb-2 flex items-center gap-1">
-                                                            <Building className="h-3.5 w-3.5" /> Supplier Name Matches ({providerNameMatches.length})
-                                                        </h4>
-                                                        <div className="space-y-1">
-                                                            {providerNameMatches.map(inv => (
-                                                                <button
-                                                                    key={inv.id}
-                                                                    onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
-                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
-                                                                >
-                                                                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
-                                                                        <div className="min-w-0">
-                                                                            <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
-                                                                            <p className="text-[10px] text-gray-500 truncate">{inv.matchReason}</p>
-                                                                        </div>
-                                                                        <div className="text-center">
-                                                                            <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
-                                                                        </div>
-                                                                        <div className="text-center">
-                                                                            <span className="text-[10px] text-gray-400">{formatShortDate(inv.schedule_date)}</span>
-                                                                        </div>
-                                                                        <div className="text-right flex items-center gap-1.5">
-                                                                            <span className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
-                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-yellow-900/20 text-yellow-400 border-yellow-700">{inv.matchScore}%</Badge>
-                                                                        </div>
-                                                                    </div>
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
+
 
                                                 {totalSuggestions === 0 && (
                                                     <div className="text-center py-6 text-gray-500">
@@ -2265,15 +2187,13 @@ export default function BankStatementsPage() {
                                                     <SelectValue placeholder="Select source..." />
                                                 </SelectTrigger>
                                                 <SelectContent>
-                                                    <SelectItem value="braintree">Braintree</SelectItem>
-                                                    <SelectItem value="stripe">Stripe</SelectItem>
-                                                    <SelectItem value="gocardless">GoCardless</SelectItem>
+                                                    <SelectItem value="braintree-eur">Braintree EUR</SelectItem>
+                                                    <SelectItem value="braintree-usd">Braintree USD</SelectItem>
+                                                    <SelectItem value="braintree-gbp">Braintree GBP</SelectItem>
+                                                    <SelectItem value="braintree-amex">Braintree Amex</SelectItem>
                                                     <SelectItem value="paypal">PayPal</SelectItem>
-                                                    <SelectItem value="gusto">Gusto</SelectItem>
-                                                    <SelectItem value="quickbooks">QuickBooks</SelectItem>
-                                                    <SelectItem value="continental">Continental Exchange</SelectItem>
-                                                    <SelectItem value="intercompany">Intercompany Transfer</SelectItem>
-                                                    <SelectItem value="other">Other</SelectItem>
+                                                    <SelectItem value="gocardless">GoCardless</SelectItem>
+                                                    <SelectItem value="stripe">Stripe</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </div>
