@@ -99,6 +99,58 @@ interface DateGroup {
     totalDebits: number;
 }
 
+// ── Smart Reconciliation Match Types ──
+interface APInvoiceMatch {
+    id: number;
+    invoice_number: string;
+    provider_code: string;
+    description: string;
+    invoice_amount: number;
+    paid_amount: number | null;
+    schedule_date: string;
+    payment_date: string | null;
+    currency: string;
+    is_reconciled: boolean;
+    invoice_type: string;
+    bank_account_code: string | null;
+    matchScore: number;
+    matchReason: string;
+}
+
+interface PaymentSourceMatch {
+    id: string;
+    source: string;
+    sourceLabel: string;
+    disbursementDate: string;
+    amount: number;
+    transactionCount: number;
+    matchScore: number;
+    matchReason: string;
+}
+
+interface RevenueOrderMatch {
+    id: string;
+    source: string;
+    sourceLabel: string;
+    orderId: string | null;
+    invoiceNumber: string | null;
+    customerName: string;
+    amount: number;
+    date: string;
+    matchScore: number;
+    matchReason: string;
+}
+
+interface IntercompanyMatch {
+    id: string;
+    source: string;
+    sourceLabel: string;
+    amount: number;
+    date: string;
+    description: string;
+    matchScore: number;
+}
+
 // ════════════════════════════════════════════════════════
 // Helpers
 // ════════════════════════════════════════════════════════
@@ -209,6 +261,20 @@ export default function BankStatementsPage() {
     const [manualPaymentSource, setManualPaymentSource] = useState("");
     const [manualNote, setManualNote] = useState("");
     const [isSavingManual, setIsSavingManual] = useState(false);
+
+    // Smart reconciliation — matching suggestions
+    const [matchingInvoices, setMatchingInvoices] = useState<APInvoiceMatch[]>([]);
+    const [allAvailableInvoices, setAllAvailableInvoices] = useState<APInvoiceMatch[]>([]);
+    const [providerNameMatches, setProviderNameMatches] = useState<APInvoiceMatch[]>([]);
+    const [paymentSourceMatches, setPaymentSourceMatches] = useState<PaymentSourceMatch[]>([]);
+    const [revenueOrderMatches, setRevenueOrderMatches] = useState<RevenueOrderMatch[]>([]);
+    const [intercompanyMatches, setIntercompanyMatches] = useState<IntercompanyMatch[]>([]);
+    const [selectedInvoice, setSelectedInvoice] = useState<number | null>(null);
+    const [selectedPaymentMatch, setSelectedPaymentMatch] = useState<string | null>(null);
+    const [selectedRevenueOrder, setSelectedRevenueOrder] = useState<string | null>(null);
+    const [invoiceSearchTerm, setInvoiceSearchTerm] = useState("");
+    const [loadingMatches, setLoadingMatches] = useState(false);
+    const [reconTab, setReconTab] = useState<"suggestions" | "all" | "manual">("suggestions");
 
     // Bank freshness metadata
     const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
@@ -437,42 +503,583 @@ export default function BankStatementsPage() {
         }
     };
 
-    // ─── Manual Reconciliation ───
-    const openManualRecon = (tx: BankTransaction) => {
+    // ─── Smart Reconciliation: Matching Functions ───
+
+    const parseDateSafe = (dateStr: string): Date | null => {
+        if (!dateStr) return null;
+        const parts = dateStr.split("-");
+        if (parts.length !== 3) return null;
+        return new Date(Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
+    };
+
+    /** Load AP invoice matches for EXPENSE transactions */
+    const loadExpenseMatches = async (tx: BankTransaction) => {
+        const txDate = parseDateSafe(tx.date?.split("T")[0]);
+        if (!txDate) return;
+        const txAmount = Math.abs(tx.amount);
+        const tolerance = txAmount * 0.15; // ±15% tolerance
+        const currency = tx.currency;
+
+        // Date range: ±30 days for broad search
+        const startDate = new Date(txDate);
+        startDate.setDate(startDate.getDate() - 30);
+        const endDate = new Date(txDate);
+        endDate.setDate(endDate.getDate() + 15);
+
+        try {
+            // 1) Exact date + amount matches (schedule_date ±3 days, amount ±15%)
+            const exactStart = new Date(txDate);
+            exactStart.setDate(exactStart.getDate() - 3);
+            const exactEnd = new Date(txDate);
+            exactEnd.setDate(exactEnd.getDate() + 3);
+
+            const { data: exactData } = await supabase
+                .from("invoices")
+                .select("*")
+                .eq("is_reconciled", false)
+                .eq("invoice_type", "INCURRED")
+                .gte("schedule_date", exactStart.toISOString().split("T")[0])
+                .lte("schedule_date", exactEnd.toISOString().split("T")[0])
+                .order("schedule_date", { ascending: true });
+
+            const exactMatches: APInvoiceMatch[] = (exactData || [])
+                .filter(inv => {
+                    const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
+                    return Math.abs(invAmount - txAmount) <= tolerance;
+                })
+                .map(inv => {
+                    const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
+                    const amountDiff = Math.abs(invAmount - txAmount);
+                    const isExact = amountDiff < 0.01;
+                    return {
+                        ...inv,
+                        invoice_amount: parseFloat(inv.invoice_amount) || 0,
+                        paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                        matchScore: isExact ? 95 : 80,
+                        matchReason: isExact
+                            ? `Exact amount, date ±3 days`
+                            : `Amount within ${((amountDiff / txAmount) * 100).toFixed(0)}%, date ±3 days`,
+                    };
+                });
+            setMatchingInvoices(exactMatches);
+
+            // 2) Provider name matches — search description words against provider_code
+            const descWords = tx.description.split(/[\s,;.\/\-]+/).filter(w => w.length > 2).map(w => w.toLowerCase());
+            if (descWords.length > 0) {
+                const { data: providerData } = await supabase
+                    .from("invoices")
+                    .select("*")
+                    .eq("is_reconciled", false)
+                    .eq("invoice_type", "INCURRED")
+                    .gte("schedule_date", startDate.toISOString().split("T")[0])
+                    .lte("schedule_date", endDate.toISOString().split("T")[0])
+                    .order("schedule_date", { ascending: true })
+                    .limit(500);
+
+                const provMatches: APInvoiceMatch[] = (providerData || [])
+                    .filter(inv => {
+                        const provider = (inv.provider_code || "").toLowerCase();
+                        const invDesc = (inv.description || "").toLowerCase();
+                        // Check if any description word matches provider or invoice description
+                        const nameMatch = descWords.some(w => provider.includes(w) || invDesc.includes(w));
+                        if (!nameMatch) return false;
+                        // Amount within 15%
+                        const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
+                        return Math.abs(invAmount - txAmount) <= tolerance;
+                    })
+                    .filter(inv => !exactMatches.some(em => em.id === inv.id))
+                    .map(inv => {
+                        const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
+                        const provider = (inv.provider_code || "").toLowerCase();
+                        const matchedWords = descWords.filter(w => provider.includes(w));
+                        return {
+                            ...inv,
+                            invoice_amount: parseFloat(inv.invoice_amount) || 0,
+                            paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                            matchScore: matchedWords.length > 1 ? 75 : 60,
+                            matchReason: `Supplier name "${matchedWords.join(", ")}" matches, amount within 15%`,
+                        };
+                    });
+                setProviderNameMatches(provMatches);
+            } else {
+                setProviderNameMatches([]);
+            }
+
+            // 3) All unreconciled AP invoices (for manual search)
+            const { data: allData } = await supabase
+                .from("invoices")
+                .select("*")
+                .eq("is_reconciled", false)
+                .eq("invoice_type", "INCURRED")
+                .gte("schedule_date", startDate.toISOString().split("T")[0])
+                .order("schedule_date", { ascending: true })
+                .limit(200);
+
+            const allInv: APInvoiceMatch[] = (allData || [])
+                .filter(inv => !exactMatches.some(em => em.id === inv.id))
+                .filter(inv => !providerNameMatches.some(pm => pm.id === inv.id))
+                .map(inv => ({
+                    ...inv,
+                    invoice_amount: parseFloat(inv.invoice_amount) || 0,
+                    paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                    matchScore: 0,
+                    matchReason: "Unreconciled",
+                }));
+            setAllAvailableInvoices(allInv);
+        } catch (err) {
+            console.error("Error loading expense matches:", err);
+        }
+    };
+
+    /** Load payment source & revenue matches for REVENUE transactions */
+    const loadRevenueMatches = async (tx: BankTransaction) => {
+        const txDate = parseDateSafe(tx.date?.split("T")[0]);
+        if (!txDate) return;
+        const txAmount = Math.abs(tx.amount);
+        const currency = tx.currency;
+
+        const startDate = new Date(txDate);
+        startDate.setDate(startDate.getDate() - 5);
+        const endDate = new Date(txDate);
+        endDate.setDate(endDate.getDate() + 5);
+
+        try {
+            // 1) Payment Source Matches — grouped by disbursement for Braintree etc.
+            const paymentSources = currency === "USD"
+                ? ["braintree-api-revenue-usd", "stripe-usd"]
+                : ["braintree-api-revenue", "stripe-eur", "gocardless"];
+
+            const { data: gatewayData } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .in("source", paymentSources)
+                .eq("reconciled", false)
+                .gte("date", startDate.toISOString().split("T")[0])
+                .lte("date", endDate.toISOString().split("T")[0]);
+
+            const pMatches: PaymentSourceMatch[] = [];
+            if (gatewayData) {
+                // Group Braintree by disbursement_date
+                const braintreeRows = gatewayData.filter(r => (r.source || "").includes("braintree"));
+                const otherRows = gatewayData.filter(r => !(r.source || "").includes("braintree"));
+
+                // Braintree: group by disbursement date and sum
+                const disbGroups = new Map<string, { rows: any[]; total: number }>();
+                braintreeRows.forEach(r => {
+                    const cd = r.custom_data || {};
+                    const disbDate = cd.disbursement_date || r.date?.split("T")[0] || "";
+                    if (!disbGroups.has(disbDate)) disbGroups.set(disbDate, { rows: [], total: 0 });
+                    const g = disbGroups.get(disbDate)!;
+                    g.rows.push(r);
+                    g.total += Math.abs(parseFloat(r.amount) || 0);
+                });
+
+                disbGroups.forEach((group, date) => {
+                    const diff = Math.abs(group.total - txAmount);
+                    if (diff < Math.max(txAmount * 0.03, 0.10)) {
+                        const exact = diff < 0.10;
+                        pMatches.push({
+                            id: `bt-disb-${date}`,
+                            source: "braintree",
+                            sourceLabel: `Braintree (${date})`,
+                            disbursementDate: date,
+                            amount: group.total,
+                            transactionCount: group.rows.length,
+                            matchScore: exact ? 95 : 80,
+                            matchReason: exact
+                                ? `Exact disbursement match (${group.rows.length} txns)`
+                                : `Disbursement within ${((diff / txAmount) * 100).toFixed(1)}% (${group.rows.length} txns)`,
+                        });
+                    }
+                });
+
+                // Non-Braintree: individual matches
+                otherRows.forEach(r => {
+                    const rAmount = Math.abs(parseFloat(r.amount) || 0);
+                    const diff = Math.abs(rAmount - txAmount);
+                    if (diff < Math.max(txAmount * 0.03, 0.10)) {
+                        const srcLabel = (r.source || "").includes("stripe") ? "Stripe" : "GoCardless";
+                        pMatches.push({
+                            id: r.id,
+                            source: r.source,
+                            sourceLabel: `${srcLabel} (${r.date?.split("T")[0]})`,
+                            disbursementDate: r.date?.split("T")[0] || "",
+                            amount: rAmount,
+                            transactionCount: 1,
+                            matchScore: diff < 0.10 ? 95 : 75,
+                            matchReason: diff < 0.10 ? "Exact amount" : `Within ${((diff / txAmount) * 100).toFixed(1)}%`,
+                        });
+                    }
+                });
+            }
+            setPaymentSourceMatches(pMatches.sort((a, b) => b.matchScore - a.matchScore));
+
+            // 2) Revenue Order Matches — search ar_invoices
+            const revStart = new Date(txDate);
+            revStart.setDate(revStart.getDate() - 30);
+            const revEnd = new Date(txDate);
+            revEnd.setDate(revEnd.getDate() + 5);
+
+            const { data: arData } = await supabase
+                .from("ar_invoices")
+                .select("*")
+                .eq("reconciled", false)
+                .gte("order_date", revStart.toISOString().split("T")[0])
+                .lte("order_date", revEnd.toISOString().split("T")[0])
+                .limit(300);
+
+            const revMatches: RevenueOrderMatch[] = [];
+            (arData || []).forEach(inv => {
+                const invAmount = parseFloat(inv.total_amount) || parseFloat(inv.charged_amount) || 0;
+                const diff = Math.abs(invAmount - txAmount);
+                const isExact = diff < 0.01;
+                const isClose = diff < txAmount * 0.05; // 5% tolerance for revenue
+
+                // Name matching from description
+                const custName = (inv.customer_name || inv.company_name || "").toLowerCase();
+                const descLower = tx.description.toLowerCase();
+                const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
+                const nameMatch = nameWords.some((w: string) => descLower.includes(w));
+
+                let score = 0;
+                let reason = "";
+                if (isExact && nameMatch) { score = 100; reason = "Exact amount + customer name match"; }
+                else if (isExact) { score = 90; reason = "Exact amount match"; }
+                else if (isClose && nameMatch) { score = 75; reason = `Amount within ${((diff / txAmount) * 100).toFixed(0)}% + customer match`; }
+                else if (nameMatch) { score = 50; reason = "Customer name match"; }
+                else if (isClose) { score = 40; reason = `Amount within ${((diff / txAmount) * 100).toFixed(0)}%`; }
+
+                if (score > 0) {
+                    revMatches.push({
+                        id: `ar-${inv.id}`,
+                        source: "ar_invoices",
+                        sourceLabel: "AR Invoice",
+                        orderId: inv.order_id || null,
+                        invoiceNumber: inv.invoice_number || null,
+                        customerName: inv.customer_name || inv.company_name || "",
+                        amount: invAmount,
+                        date: inv.order_date || "",
+                        matchScore: score,
+                        matchReason: reason,
+                    });
+                }
+            });
+
+            // Also search invoice-orders csv_rows
+            const orderSources = currency === "USD"
+                ? ["invoice-orders-usd"]
+                : ["invoice-orders"];
+
+            const { data: orderData } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .in("source", orderSources)
+                .eq("reconciled", false)
+                .gte("date", revStart.toISOString().split("T")[0])
+                .lte("date", revEnd.toISOString().split("T")[0])
+                .limit(300);
+
+            (orderData || []).forEach(row => {
+                const rowAmount = Math.abs(parseFloat(row.amount) || 0);
+                const cd = row.custom_data || {};
+                const diff = Math.abs(rowAmount - txAmount);
+                const isExact = diff < 0.01;
+                const isClose = diff < txAmount * 0.05;
+
+                const custName = (cd.customer_name || cd.company_name || "").toLowerCase();
+                const descLower = tx.description.toLowerCase();
+                const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
+                const nameMatch = nameWords.some((w: string) => descLower.includes(w));
+
+                let score = 0;
+                let reason = "";
+                if (isExact && nameMatch) { score = 100; reason = "Exact amount + customer match"; }
+                else if (isExact) { score = 85; reason = "Exact amount match"; }
+                else if (isClose && nameMatch) { score = 70; reason = `Amount within ${((diff / txAmount) * 100).toFixed(0)}% + name match`; }
+                else if (isClose) { score = 35; reason = `Amount within ${((diff / txAmount) * 100).toFixed(0)}%`; }
+
+                if (score > 0) {
+                    revMatches.push({
+                        id: row.id,
+                        source: "invoice-orders",
+                        sourceLabel: "Invoice Order",
+                        orderId: cd.order_id || null,
+                        invoiceNumber: cd.invoice_number || null,
+                        customerName: cd.customer_name || cd.company_name || "",
+                        amount: rowAmount,
+                        date: row.date?.split("T")[0] || "",
+                        matchScore: score,
+                        matchReason: reason,
+                    });
+                }
+            });
+
+            setRevenueOrderMatches(revMatches.sort((a, b) => b.matchScore - a.matchScore));
+
+            // 3) Intercompany matches — opposite-sign in other banks
+            const otherBanks = BANK_ACCOUNTS
+                .filter(b => b.key !== tx.source)
+                .map(b => b.key);
+
+            const { data: icData } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .in("source", otherBanks)
+                .eq("reconciled", false)
+                .gte("date", startDate.toISOString().split("T")[0])
+                .lte("date", endDate.toISOString().split("T")[0])
+                .limit(200);
+
+            const icMatches: IntercompanyMatch[] = (icData || [])
+                .filter(r => {
+                    const rAmount = parseFloat(r.amount) || 0;
+                    // Opposite sign, similar absolute value
+                    if (tx.amount > 0 && rAmount > 0) return false;
+                    if (tx.amount < 0 && rAmount < 0) return false;
+                    return Math.abs(Math.abs(rAmount) - txAmount) < txAmount * 0.02;
+                })
+                .map(r => {
+                    const rAmount = Math.abs(parseFloat(r.amount) || 0);
+                    const diff = Math.abs(rAmount - txAmount);
+                    const bankLabel = BANK_ACCOUNTS.find(b => b.key === r.source)?.label || r.source;
+                    return {
+                        id: r.id,
+                        source: r.source,
+                        sourceLabel: bankLabel,
+                        amount: rAmount,
+                        date: r.date?.split("T")[0] || "",
+                        description: r.description || "",
+                        matchScore: diff < 0.01 ? 95 : 70,
+                    };
+                })
+                .sort((a, b) => b.matchScore - a.matchScore);
+
+            setIntercompanyMatches(icMatches);
+        } catch (err) {
+            console.error("Error loading revenue matches:", err);
+        }
+    };
+
+    /** Open smart reconciliation dialog — loads matching suggestions */
+    const openManualRecon = async (tx: BankTransaction) => {
+        // Reset all state
         setReconTransaction(tx);
         setManualPaymentSource(tx.gateway || "");
         setManualNote("");
+        setSelectedInvoice(null);
+        setSelectedPaymentMatch(null);
+        setSelectedRevenueOrder(null);
+        setInvoiceSearchTerm("");
+        setMatchingInvoices([]);
+        setAllAvailableInvoices([]);
+        setProviderNameMatches([]);
+        setPaymentSourceMatches([]);
+        setRevenueOrderMatches([]);
+        setIntercompanyMatches([]);
+        setReconTab("suggestions");
         setReconDialogOpen(true);
+        setLoadingMatches(true);
+
+        try {
+            const isExpense = tx.amount < 0;
+            if (isExpense) {
+                await loadExpenseMatches(tx);
+            } else {
+                await loadRevenueMatches(tx);
+            }
+        } catch (err) {
+            console.error("Error loading matches:", err);
+        } finally {
+            setLoadingMatches(false);
+        }
     };
 
     const performManualReconciliation = async () => {
         if (!reconTransaction) return;
         setIsSavingManual(true);
+
+        const isExpense = reconTransaction.amount < 0;
+        const txAmount = Math.abs(reconTransaction.amount);
+        const now = new Date().toISOString();
+
         try {
-            const { error: updateErr } = await supabase
-                .from("csv_rows")
-                .update({
-                    reconciled: true,
-                    custom_data: {
-                        ...reconTransaction.custom_data,
-                        paymentSource: manualPaymentSource || null,
-                        reconciliationType: "manual",
-                        reconciled_at: new Date().toISOString(),
-                        manual_note: manualNote || null,
-                    },
-                })
-                .eq("id", reconTransaction.id);
+            // CASE 1: Expense → AP Invoice match
+            if (isExpense && selectedInvoice) {
+                const invoice = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices]
+                    .find(inv => inv.id === selectedInvoice);
+                if (!invoice) throw new Error("Invoice not found");
 
-            if (updateErr) throw updateErr;
+                const paidAmount = invoice.paid_amount ?? invoice.invoice_amount ?? 0;
 
-            setBankTransactions(prev => prev.map(t =>
-                t.id === reconTransaction.id
-                    ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: manualPaymentSource || null }
-                    : t
-            ));
+                // Update AP invoice
+                const { error: invErr } = await supabase
+                    .from("invoices")
+                    .update({
+                        is_reconciled: true,
+                        reconciled_transaction_id: reconTransaction.id,
+                        reconciled_at: now,
+                        reconciled_amount: paidAmount,
+                    })
+                    .eq("id", selectedInvoice);
+                if (invErr) throw invErr;
 
-            toast({ title: "Manual reconciliation", description: "Transaction marked as reconciled" });
-            setReconDialogOpen(false);
+                // Update bank transaction
+                const { error: txErr } = await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: true,
+                        custom_data: {
+                            ...reconTransaction.custom_data,
+                            paymentSource: invoice.provider_code || null,
+                            reconciliationType: "manual",
+                            reconciled_at: now,
+                            matched_invoice_id: selectedInvoice,
+                            matched_invoice_number: invoice.invoice_number,
+                            matched_invoice_amount: paidAmount,
+                            matched_provider: invoice.provider_code,
+                            manual_note: manualNote || null,
+                        },
+                    })
+                    .eq("id", reconTransaction.id);
+                if (txErr) throw txErr;
+
+                setBankTransactions(prev => prev.map(t =>
+                    t.id === reconTransaction.id
+                        ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: invoice.provider_code || null }
+                        : t
+                ));
+
+                toast({ title: "Reconciled!", description: `Matched with invoice ${invoice.invoice_number} (${invoice.provider_code})` });
+                setReconDialogOpen(false);
+                return;
+            }
+
+            // CASE 2: Revenue → Payment Source match
+            if (!isExpense && selectedPaymentMatch) {
+                const match = paymentSourceMatches.find(m => m.id === selectedPaymentMatch);
+                if (!match) throw new Error("Payment source match not found");
+
+                const { error: txErr } = await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: true,
+                        custom_data: {
+                            ...reconTransaction.custom_data,
+                            paymentSource: match.source,
+                            reconciliationType: "manual",
+                            reconciled_at: now,
+                            matched_source: match.source,
+                            matched_disbursement_date: match.disbursementDate,
+                            matched_amount: match.amount,
+                            matched_transaction_count: match.transactionCount,
+                            manual_note: manualNote || null,
+                        },
+                    })
+                    .eq("id", reconTransaction.id);
+                if (txErr) throw txErr;
+
+                setBankTransactions(prev => prev.map(t =>
+                    t.id === reconTransaction.id
+                        ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: match.source }
+                        : t
+                ));
+
+                toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel} (${match.transactionCount} txns)` });
+                setReconDialogOpen(false);
+                return;
+            }
+
+            // CASE 3: Revenue → AR Invoice / Revenue Order match
+            if (!isExpense && selectedRevenueOrder) {
+                const match = revenueOrderMatches.find(m => m.id === selectedRevenueOrder);
+                if (!match) throw new Error("Revenue order not found");
+
+                // Update matched source
+                if (match.source === "invoice-orders") {
+                    await supabase
+                        .from("csv_rows")
+                        .update({
+                            reconciled: true,
+                            custom_data: {
+                                reconciled_at: now,
+                                reconciled_with_bank_id: reconTransaction.id,
+                                reconciled_bank_amount: txAmount,
+                            },
+                        })
+                        .eq("id", match.id);
+                } else if (match.source === "ar_invoices") {
+                    const arId = parseInt(match.id.replace("ar-", ""));
+                    await supabase
+                        .from("ar_invoices")
+                        .update({
+                            reconciled: true,
+                            reconciled_at: now,
+                            reconciled_with: reconTransaction.id,
+                            reconciliation_type: "manual-bank",
+                        })
+                        .eq("id", arId);
+                }
+
+                // Update bank transaction
+                const { error: txErr } = await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: true,
+                        custom_data: {
+                            ...reconTransaction.custom_data,
+                            reconciliationType: "manual",
+                            reconciled_at: now,
+                            matched_order_id: match.orderId || match.id,
+                            matched_order_source: match.source,
+                            matched_customer_name: match.customerName,
+                            matched_invoice_number: match.invoiceNumber,
+                            matched_order_amount: match.amount,
+                            manual_note: manualNote || null,
+                        },
+                    })
+                    .eq("id", reconTransaction.id);
+                if (txErr) throw txErr;
+
+                setBankTransactions(prev => prev.map(t =>
+                    t.id === reconTransaction.id
+                        ? { ...t, isReconciled: true, reconciliationType: "manual" }
+                        : t
+                ));
+
+                toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel}: ${match.customerName} (${formatCurrency(match.amount, reconTransaction.currency)})` });
+                setReconDialogOpen(false);
+                return;
+            }
+
+            // CASE 4: Manual-only fallback (no match selected — just gateway + note)
+            if (manualPaymentSource || manualNote) {
+                const { error: txErr } = await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: true,
+                        custom_data: {
+                            ...reconTransaction.custom_data,
+                            paymentSource: manualPaymentSource || null,
+                            reconciliationType: "manual",
+                            reconciled_at: now,
+                            manual_note: manualNote || null,
+                        },
+                    })
+                    .eq("id", reconTransaction.id);
+                if (txErr) throw txErr;
+
+                setBankTransactions(prev => prev.map(t =>
+                    t.id === reconTransaction.id
+                        ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: manualPaymentSource || null }
+                        : t
+                ));
+
+                toast({ title: "Manual reconciliation", description: "Transaction marked as reconciled" });
+                setReconDialogOpen(false);
+                return;
+            }
+
+            toast({ title: "No selection", description: "Select a match or provide gateway/note to reconcile", variant: "destructive" });
         } catch (err) {
             toast({ title: "Error", description: err instanceof Error ? err.message : "Failed to reconcile", variant: "destructive" });
         } finally {
@@ -1182,81 +1789,395 @@ export default function BankStatementsPage() {
             )}
 
             {/* ════════════════════════════════════════════════════════ */}
-            {/* MANUAL RECONCILIATION DIALOG */}
+            {/* SMART RECONCILIATION DIALOG */}
             {/* ════════════════════════════════════════════════════════ */}
-            {reconDialogOpen && reconTransaction && (
-                <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-                    <div className="bg-[#2a2b2d] rounded-lg w-[500px] max-h-[70vh] overflow-hidden flex flex-col">
-                        {/* Dialog Header */}
-                        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
-                            <div>
-                                <h3 className="text-lg font-semibold text-white">Manual Reconciliation</h3>
-                                <p className="text-sm text-gray-400">Mark transaction as reconciled</p>
-                            </div>
-                            <Button variant="ghost" size="sm" onClick={() => setReconDialogOpen(false)} className="text-gray-400 hover:text-white">
-                                <X className="h-5 w-5" />
-                            </Button>
-                        </div>
+            {reconDialogOpen && reconTransaction && (() => {
+                const isExpense = reconTransaction.amount < 0;
+                const totalSuggestions = isExpense
+                    ? matchingInvoices.length + providerNameMatches.length
+                    : paymentSourceMatches.length + revenueOrderMatches.length + intercompanyMatches.length;
 
-                        {/* Transaction Info */}
-                        <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
-                            <div className="grid grid-cols-3 gap-4 text-sm">
+                // Filtered unreconciled invoices for search
+                const filteredAvailableInvoices = allAvailableInvoices.filter(inv => {
+                    if (!invoiceSearchTerm) return true;
+                    const q = invoiceSearchTerm.toLowerCase();
+                    return (
+                        (inv.provider_code || "").toLowerCase().includes(q) ||
+                        (inv.invoice_number || "").toLowerCase().includes(q) ||
+                        (inv.description || "").toLowerCase().includes(q) ||
+                        String(inv.invoice_amount).includes(q)
+                    );
+                });
+
+                return (
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
+                        <div className="bg-[#2a2b2d] rounded-lg w-[900px] max-h-[85vh] overflow-hidden flex flex-col">
+                            {/* Dialog Header */}
+                            <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
                                 <div>
-                                    <span className="text-gray-500">Date</span>
-                                    <p className="text-white font-medium">{formatShortDate(reconTransaction.date)}</p>
-                                </div>
-                                <div>
-                                    <span className="text-gray-500">Amount</span>
-                                    <p className={`font-medium ${reconTransaction.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                        {formatCurrency(reconTransaction.amount, reconTransaction.currency)}
+                                    <h3 className="text-lg font-semibold text-white">
+                                        {isExpense ? "Expense Reconciliation" : "Revenue Reconciliation"}
+                                    </h3>
+                                    <p className="text-sm text-gray-400">
+                                        {loadingMatches ? "Searching for matches..." : `${totalSuggestions} suggestion(s) found`}
                                     </p>
                                 </div>
-                                <div>
-                                    <span className="text-gray-500">Bank</span>
-                                    <p className="text-white font-medium">{BANK_ACCOUNTS.find(b => b.key === reconTransaction.source)?.label}</p>
+                                <Button variant="ghost" size="sm" onClick={() => setReconDialogOpen(false)} className="text-gray-400 hover:text-white">
+                                    <X className="h-5 w-5" />
+                                </Button>
+                            </div>
+
+                            {/* Transaction Info Bar */}
+                            <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-700">
+                                <div className="grid grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                        <span className="text-gray-500 text-xs">Date</span>
+                                        <p className="text-white font-medium">{formatShortDate(reconTransaction.date)}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500 text-xs">Amount</span>
+                                        <p className={`font-medium ${reconTransaction.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                            {formatCurrency(reconTransaction.amount, reconTransaction.currency)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500 text-xs">Bank</span>
+                                        <p className="text-white font-medium text-xs">{BANK_ACCOUNTS.find(b => b.key === reconTransaction.source)?.label}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500 text-xs">Description</span>
+                                        <p className="text-gray-300 text-xs truncate" title={reconTransaction.description}>{reconTransaction.description}</p>
+                                    </div>
                                 </div>
                             </div>
-                            <p className="text-xs text-gray-400 mt-2 truncate" title={reconTransaction.description}>{reconTransaction.description}</p>
-                        </div>
 
-                        {/* Form */}
-                        <div className="px-6 py-4 space-y-4 flex-1 overflow-auto">
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-1">Payment Source (gateway)</label>
-                                <Select value={manualPaymentSource} onValueChange={setManualPaymentSource}>
-                                    <SelectTrigger className="bg-[#1e1f21] border-gray-600 text-white">
-                                        <SelectValue placeholder="Select source..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="braintree">Braintree</SelectItem>
-                                        <SelectItem value="stripe">Stripe</SelectItem>
-                                        <SelectItem value="gocardless">GoCardless</SelectItem>
-                                        <SelectItem value="paypal">PayPal</SelectItem>
-                                        <SelectItem value="gusto">Gusto</SelectItem>
-                                        <SelectItem value="quickbooks">QuickBooks</SelectItem>
-                                        <SelectItem value="continental">Continental Exchange</SelectItem>
-                                        <SelectItem value="intercompany">Intercompany Transfer</SelectItem>
-                                        <SelectItem value="other">Other</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                            {/* Tab Bar */}
+                            <div className="px-6 py-2 border-b border-gray-700 flex gap-1">
+                                <button
+                                    onClick={() => setReconTab("suggestions")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "suggestions" ? "bg-cyan-600/20 text-cyan-400 border border-cyan-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                >
+                                    Suggestions {totalSuggestions > 0 && <span className="ml-1 bg-cyan-600/30 px-1.5 py-0.5 rounded-full text-[10px]">{totalSuggestions}</span>}
+                                </button>
+                                <button
+                                    onClick={() => setReconTab("all")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "all" ? "bg-violet-600/20 text-violet-400 border border-violet-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                >
+                                    {isExpense ? "All Invoices" : "All Orders"} <span className="ml-1 text-[10px] text-gray-500">({allAvailableInvoices.length})</span>
+                                </button>
+                                <button
+                                    onClick={() => setReconTab("manual")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "manual" ? "bg-orange-600/20 text-orange-400 border border-orange-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                >
+                                    Manual
+                                </button>
                             </div>
-                            <div>
-                                <label className="text-xs text-gray-400 block mb-1">Note (optional)</label>
-                                <Input placeholder="Description or reference..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm" />
-                            </div>
-                        </div>
 
-                        {/* Dialog Footer */}
-                        <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-3">
-                            <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700">Cancel</Button>
-                            <Button onClick={performManualReconciliation} disabled={isSavingManual} className="bg-cyan-600 hover:bg-cyan-700">
-                                {isSavingManual ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Link2 className="h-4 w-4 mr-2" />}
-                                Reconcile
-                            </Button>
+                            {/* Content Area */}
+                            <div className="flex-1 overflow-auto px-6 py-4 space-y-4 min-h-0" style={{ maxHeight: "calc(85vh - 280px)" }}>
+                                {loadingMatches && (
+                                    <div className="flex items-center justify-center gap-2 py-8 text-gray-400">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span>Searching for matching transactions...</span>
+                                    </div>
+                                )}
+
+                                {/* ── SUGGESTIONS TAB ── */}
+                                {reconTab === "suggestions" && !loadingMatches && (
+                                    <>
+                                        {/* EXPENSE: AP Invoice suggestions */}
+                                        {isExpense && (
+                                            <>
+                                                {/* Exact date+amount matches */}
+                                                {matchingInvoices.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1">
+                                                            <CheckCircle2 className="h-3.5 w-3.5" /> Date & Amount Matches ({matchingInvoices.length})
+                                                        </h4>
+                                                        <div className="space-y-1">
+                                                            {matchingInvoices.map(inv => (
+                                                                <button
+                                                                    key={inv.id}
+                                                                    onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                                <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-900/20 text-green-400 border-green-700">{inv.matchScore}%</Badge>
+                                                                            </div>
+                                                                            <p className="text-xs text-white mt-0.5 font-medium">{inv.provider_code}</p>
+                                                                            <p className="text-[10px] text-gray-500 truncate">{inv.description || inv.matchReason}</p>
+                                                                        </div>
+                                                                        <div className="text-right ml-3">
+                                                                            <p className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</p>
+                                                                            <p className="text-[10px] text-gray-500">{formatShortDate(inv.schedule_date)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Provider name matches */}
+                                                {providerNameMatches.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-yellow-400 mb-2 flex items-center gap-1">
+                                                            <Building className="h-3.5 w-3.5" /> Supplier Name Matches ({providerNameMatches.length})
+                                                        </h4>
+                                                        <div className="space-y-1">
+                                                            {providerNameMatches.map(inv => (
+                                                                <button
+                                                                    key={inv.id}
+                                                                    onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                                <Badge variant="outline" className="text-[9px] px-1 py-0 bg-yellow-900/20 text-yellow-400 border-yellow-700">{inv.matchScore}%</Badge>
+                                                                            </div>
+                                                                            <p className="text-xs text-white mt-0.5 font-medium">{inv.provider_code}</p>
+                                                                            <p className="text-[10px] text-gray-500 truncate">{inv.matchReason}</p>
+                                                                        </div>
+                                                                        <div className="text-right ml-3">
+                                                                            <p className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</p>
+                                                                            <p className="text-[10px] text-gray-500">{formatShortDate(inv.schedule_date)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {totalSuggestions === 0 && (
+                                                    <div className="text-center py-6 text-gray-500">
+                                                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                                        <p className="text-sm">No matching invoices found</p>
+                                                        <p className="text-xs mt-1">Check the &quot;All Invoices&quot; tab or use Manual mode</p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* REVENUE: Payment source + Revenue order + Intercompany suggestions */}
+                                        {!isExpense && (
+                                            <>
+                                                {/* Payment source matches */}
+                                                {paymentSourceMatches.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-blue-400 mb-2 flex items-center gap-1">
+                                                            <CreditCard className="h-3.5 w-3.5" /> Payment Source Matches ({paymentSourceMatches.length})
+                                                        </h4>
+                                                        <div className="space-y-1">
+                                                            {paymentSourceMatches.map(pm => (
+                                                                <button
+                                                                    key={pm.id}
+                                                                    onClick={() => { setSelectedPaymentMatch(pm.id); setSelectedInvoice(null); setSelectedRevenueOrder(null); }}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedPaymentMatch === pm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-xs text-white font-medium">{pm.sourceLabel}</p>
+                                                                            <p className="text-[10px] text-gray-500">{pm.matchReason}</p>
+                                                                        </div>
+                                                                        <div className="text-right ml-3 flex items-center gap-2">
+                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-blue-900/20 text-blue-400 border-blue-700">{pm.matchScore}%</Badge>
+                                                                            <p className="text-sm font-medium text-green-400">{formatCurrency(pm.amount, reconTransaction.currency)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Revenue order matches */}
+                                                {revenueOrderMatches.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1">
+                                                            <FileText className="h-3.5 w-3.5" /> Revenue Order Matches ({revenueOrderMatches.length})
+                                                        </h4>
+                                                        <div className="space-y-1">
+                                                            {revenueOrderMatches.slice(0, 10).map(rm => (
+                                                                <button
+                                                                    key={rm.id}
+                                                                    onClick={() => { setSelectedRevenueOrder(rm.id); setSelectedInvoice(null); setSelectedPaymentMatch(null); }}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedRevenueOrder === rm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-xs font-mono text-gray-300">{rm.invoiceNumber || rm.orderId || "-"}</span>
+                                                                                <Badge variant="outline" className={`text-[9px] px-1 py-0 ${rm.matchScore >= 80 ? "bg-green-900/20 text-green-400 border-green-700" : "bg-yellow-900/20 text-yellow-400 border-yellow-700"}`}>{rm.matchScore}%</Badge>
+                                                                            </div>
+                                                                            <p className="text-xs text-white mt-0.5 font-medium">{rm.customerName}</p>
+                                                                            <p className="text-[10px] text-gray-500 truncate">{rm.matchReason}</p>
+                                                                        </div>
+                                                                        <div className="text-right ml-3">
+                                                                            <p className="text-sm font-medium text-green-400">{formatCurrency(rm.amount, reconTransaction.currency)}</p>
+                                                                            <p className="text-[10px] text-gray-500">{formatShortDate(rm.date)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Intercompany matches */}
+                                                {intercompanyMatches.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-orange-400 mb-2 flex items-center gap-1">
+                                                            <Building className="h-3.5 w-3.5" /> Intercompany Matches ({intercompanyMatches.length})
+                                                        </h4>
+                                                        <div className="space-y-1">
+                                                            {intercompanyMatches.map(ic => (
+                                                                <div
+                                                                    key={ic.id}
+                                                                    className="px-3 py-2 rounded-md border border-gray-700 bg-gray-800/30 text-xs"
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div>
+                                                                            <p className="text-white font-medium">{ic.sourceLabel}</p>
+                                                                            <p className="text-[10px] text-gray-500 truncate max-w-[300px]">{ic.description}</p>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <p className="text-sm font-medium text-orange-400">{formatCurrency(ic.amount, reconTransaction.currency)}</p>
+                                                                            <p className="text-[10px] text-gray-500">{formatShortDate(ic.date)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {totalSuggestions === 0 && (
+                                                    <div className="text-center py-6 text-gray-500">
+                                                        <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                                        <p className="text-sm">No matching payment sources found</p>
+                                                        <p className="text-xs mt-1">Use Manual mode to reconcile</p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* ── ALL INVOICES TAB ── */}
+                                {reconTab === "all" && !loadingMatches && (
+                                    <div>
+                                        <div className="mb-3">
+                                            <Input
+                                                placeholder="Search by supplier, invoice #, description..."
+                                                value={invoiceSearchTerm}
+                                                onChange={e => setInvoiceSearchTerm(e.target.value)}
+                                                className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm h-8"
+                                            />
+                                        </div>
+                                        {isExpense ? (
+                                            <div className="space-y-1">
+                                                {filteredAvailableInvoices.length === 0 ? (
+                                                    <p className="text-center text-gray-500 text-sm py-4">No invoices found{invoiceSearchTerm ? " matching your search" : ""}</p>
+                                                ) : (
+                                                    filteredAvailableInvoices.slice(0, 50).map(inv => (
+                                                        <button
+                                                            key={inv.id}
+                                                            onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
+                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                        >
+                                                            <div className="flex items-center justify-between">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2">
+                                                                        <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                    </div>
+                                                                    <p className="text-xs text-white mt-0.5">{inv.provider_code}</p>
+                                                                    {inv.description && <p className="text-[10px] text-gray-500 truncate">{inv.description}</p>}
+                                                                </div>
+                                                                <div className="text-right ml-3">
+                                                                    <p className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</p>
+                                                                    <p className="text-[10px] text-gray-500">{formatShortDate(inv.schedule_date)}</p>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                                )}
+                                                {filteredAvailableInvoices.length > 50 && (
+                                                    <p className="text-center text-gray-500 text-[10px] py-1">Showing 50 of {filteredAvailableInvoices.length} — refine search</p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            <p className="text-center text-gray-500 text-sm py-4">Revenue orders are shown in the Suggestions tab</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* ── MANUAL TAB ── */}
+                                {reconTab === "manual" && (
+                                    <div className="space-y-4">
+                                        <div>
+                                            <label className="text-xs text-gray-400 block mb-1">Payment Source (gateway)</label>
+                                            <Select value={manualPaymentSource} onValueChange={setManualPaymentSource}>
+                                                <SelectTrigger className="bg-[#1e1f21] border-gray-600 text-white">
+                                                    <SelectValue placeholder="Select source..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="braintree">Braintree</SelectItem>
+                                                    <SelectItem value="stripe">Stripe</SelectItem>
+                                                    <SelectItem value="gocardless">GoCardless</SelectItem>
+                                                    <SelectItem value="paypal">PayPal</SelectItem>
+                                                    <SelectItem value="gusto">Gusto</SelectItem>
+                                                    <SelectItem value="quickbooks">QuickBooks</SelectItem>
+                                                    <SelectItem value="continental">Continental Exchange</SelectItem>
+                                                    <SelectItem value="intercompany">Intercompany Transfer</SelectItem>
+                                                    <SelectItem value="other">Other</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div>
+                                            <label className="text-xs text-gray-400 block mb-1">Note (optional)</label>
+                                            <Input placeholder="Description or reference..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Note input (always visible when in suggestions/all tabs) */}
+                            {reconTab !== "manual" && (selectedInvoice || selectedPaymentMatch || selectedRevenueOrder) && (
+                                <div className="px-6 py-2 border-t border-gray-700/50">
+                                    <Input placeholder="Note (optional)..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-xs h-7" />
+                                </div>
+                            )}
+
+                            {/* Dialog Footer */}
+                            <div className="px-6 py-3 border-t border-gray-700 flex items-center justify-between">
+                                <div className="text-[10px] text-gray-500">
+                                    {selectedInvoice && <span className="text-cyan-400">Invoice selected</span>}
+                                    {selectedPaymentMatch && <span className="text-cyan-400">Payment source selected</span>}
+                                    {selectedRevenueOrder && <span className="text-cyan-400">Revenue order selected</span>}
+                                    {!selectedInvoice && !selectedPaymentMatch && !selectedRevenueOrder && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700 h-8 text-xs">Cancel</Button>
+                                    <Button
+                                        onClick={performManualReconciliation}
+                                        disabled={isSavingManual || (!selectedInvoice && !selectedPaymentMatch && !selectedRevenueOrder && !manualPaymentSource && !manualNote)}
+                                        className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
+                                    >
+                                        {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
+                                        Reconcile
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                );
+            })()}
 
             {/* Error banner */}
             {error && (

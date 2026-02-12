@@ -86,6 +86,22 @@ interface IntercompanyMatch {
 }
 
 // Order linked to a reconciled bank transaction via disbursement
+// Revenue order match for credit reconciliation (web orders / invoice orders)
+interface RevenueOrderMatch {
+  id: string
+  source: "invoice-orders" | "ar_invoices"
+  sourceLabel: string
+  date: string
+  amount: number
+  currency: string
+  description: string
+  customerName: string
+  invoiceNumber?: string
+  orderId?: string
+  matchType: "exact" | "amount" | "name" | "email"
+  matchScore: number
+}
+
 interface LinkedOrder {
   id: string
   orderId: string
@@ -234,6 +250,15 @@ export default function BankinterEURPage() {
   // New: Intercompany matches from other bank statements
   const [intercompanyMatches, setIntercompanyMatches] = useState<IntercompanyMatch[]>([])
   const [selectedIntercompanyMatch, setSelectedIntercompanyMatch] = useState<string | null>(null)
+
+  // Revenue order matches for credits (web orders / invoice orders)
+  const [revenueOrderMatches, setRevenueOrderMatches] = useState<RevenueOrderMatch[]>([])
+  const [selectedRevenueOrder, setSelectedRevenueOrder] = useState<string | null>(null)
+  const [loadingRevenueOrders, setLoadingRevenueOrders] = useState(false)
+  const [revenueOrderSearchTerm, setRevenueOrderSearchTerm] = useState("")
+
+  // Provider name matches for debit reconciliation
+  const [providerNameMatches, setProviderNameMatches] = useState<Invoice[]>([])
 
   // Orders linked to reconciled bank transaction
   const [linkedOrders, setLinkedOrders] = useState<LinkedOrder[]>([])
@@ -898,6 +923,184 @@ export default function BankinterEURPage() {
     }
   }
 
+  // Load revenue order matches for credit transactions (invoice-orders + ar_invoices)
+  const loadRevenueOrderMatches = async (transaction: BankinterEURRow) => {
+    setLoadingRevenueOrders(true)
+    try {
+      const txAmount = Math.abs(transaction.amount)
+      const transactionDate = transaction.date?.split("T")[0]
+      if (!transactionDate) return
+
+      const startDate = parseDateUTC(transactionDate)
+      const endDate = parseDateUTC(transactionDate)
+      if (!startDate || !endDate) return
+      startDate.setDate(startDate.getDate() - 30) // wider range for orders
+      endDate.setDate(endDate.getDate() + 5)
+
+      const descLower = (transaction.description || "").toLowerCase()
+      const matches: RevenueOrderMatch[] = []
+
+      // 1. Search invoice-orders (csv_rows with source=invoice-orders)
+      const { data: invoiceOrders } = await supabase
+        .from("csv_rows")
+        .select("id, date, amount, description, custom_data, currency, reconciled")
+        .eq("source", "invoice-orders")
+        .eq("reconciled", false)
+        .gte("date", startDate.toISOString().split("T")[0])
+        .lte("date", endDate.toISOString().split("T")[0])
+        .limit(200)
+
+      if (invoiceOrders) {
+        for (const io of invoiceOrders) {
+          const ioAmount = parseFloat(io.amount) || 0
+          const amountDiff = Math.abs(ioAmount - txAmount)
+          const customerName = io.custom_data?.customer_name || io.description || ""
+          const custLower = customerName.toLowerCase()
+
+          // Match by exact amount
+          const isExactAmount = amountDiff < 0.01
+          // Match by close amount (within 2%)
+          const isCloseAmount = txAmount > 0 && amountDiff < txAmount * 0.02
+          // Match by customer name in bank description
+          const nameWords = custLower.split(/\s+/).filter((w: string) => w.length > 3)
+          const hasNameMatch = nameWords.some((w: string) => descLower.includes(w))
+
+          let matchType: "exact" | "amount" | "name" = "amount"
+          let score = 0
+
+          if (isExactAmount && hasNameMatch) { matchType = "exact"; score = 100 }
+          else if (isExactAmount) { matchType = "exact"; score = 90 }
+          else if (isCloseAmount && hasNameMatch) { matchType = "name"; score = 75 }
+          else if (hasNameMatch) { matchType = "name"; score = 50 }
+          else if (isCloseAmount) { matchType = "amount"; score = 40 }
+          else continue
+
+          matches.push({
+            id: io.id,
+            source: "invoice-orders",
+            sourceLabel: "Invoice Order",
+            date: io.date?.split("T")[0] || "",
+            amount: ioAmount,
+            currency: io.currency || "EUR",
+            description: io.description || "",
+            customerName,
+            invoiceNumber: io.custom_data?.invoice_number || "",
+            orderId: io.custom_data?.order_id || "",
+            matchType,
+            matchScore: score
+          })
+        }
+      }
+
+      // 2. Search ar_invoices (HubSpot deals/invoices)
+      const { data: arInvoices } = await supabase
+        .from("ar_invoices")
+        .select("id, order_id, invoice_number, company_name, client_name, email, total_amount, currency, charged_amount, payment_method, reconciled, status, order_date")
+        .eq("reconciled", false)
+        .eq("currency", "EUR")
+        .limit(200)
+
+      if (arInvoices) {
+        for (const ar of arInvoices) {
+          const arAmount = ar.charged_amount || ar.total_amount || 0
+          const amountDiff = Math.abs(arAmount - txAmount)
+          const companyName = ar.company_name || ar.client_name || ""
+          const compLower = companyName.toLowerCase()
+
+          const isExactAmount = amountDiff < 0.01
+          const isCloseAmount = txAmount > 0 && amountDiff < txAmount * 0.02
+          const nameWords = compLower.split(/\s+/).filter((w: string) => w.length > 3)
+          const hasNameMatch = nameWords.some((w: string) => descLower.includes(w))
+
+          let matchType: "exact" | "amount" | "name" | "email" = "amount"
+          let score = 0
+
+          if (isExactAmount && hasNameMatch) { matchType = "exact"; score = 100 }
+          else if (isExactAmount) { matchType = "exact"; score = 85 }
+          else if (isCloseAmount && hasNameMatch) { matchType = "name"; score = 70 }
+          else if (hasNameMatch) { matchType = "name"; score = 45 }
+          else if (isCloseAmount) { matchType = "amount"; score = 35 }
+          else continue
+
+          matches.push({
+            id: `ar-${ar.id}`,
+            source: "ar_invoices",
+            sourceLabel: "Web Order",
+            date: ar.order_date?.split("T")[0] || "",
+            amount: arAmount,
+            currency: ar.currency || "EUR",
+            description: ar.status || "",
+            customerName: companyName,
+            invoiceNumber: ar.invoice_number || "",
+            orderId: ar.order_id || "",
+            matchType,
+            matchScore: score
+          })
+        }
+      }
+
+      // Sort by score (best matches first)
+      matches.sort((a, b) => b.matchScore - a.matchScore)
+      setRevenueOrderMatches(matches.slice(0, 50))
+    } catch (e) {
+      console.error("Error loading revenue order matches:", e)
+    } finally {
+      setLoadingRevenueOrders(false)
+    }
+  }
+
+  // Load provider-name-matched invoices for debit transactions
+  const loadProviderNameMatches = async (transaction: BankinterEURRow) => {
+    try {
+      const descLower = (transaction.description || "").toLowerCase()
+      const txAmount = Math.abs(transaction.amount)
+
+      // Query all unreconciled AP invoices (wider date range for provider name match)
+      const sixtyDaysAgo = new Date()
+      sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 90)
+
+      const { data: allInvoices } = await supabase
+        .from("invoices")
+        .select("*")
+        .eq("invoice_type", "INCURRED")
+        .eq("currency", "EUR")
+        .eq("is_reconciled", false)
+        .gte("schedule_date", sixtyDaysAgo.toISOString().split("T")[0])
+        .order("schedule_date", { ascending: false })
+        .limit(200)
+
+      if (!allInvoices) { setProviderNameMatches([]); return }
+
+      // Match by provider name appearing in bank description
+      const providerMatches = allInvoices.filter((inv: Invoice) => {
+        if (!inv.provider_code) return false
+        const providerWords = inv.provider_code.toLowerCase().replace(/-/g, " ").split(/\s+/).filter((w: string) => w.length > 2)
+        return providerWords.some((w: string) => descLower.includes(w))
+      })
+
+      // Also match by close amount (within 5%)
+      const amountMatches = allInvoices.filter((inv: Invoice) => {
+        const invAmt = inv.paid_amount ?? inv.invoice_amount ?? 0
+        const diff = Math.abs(invAmt - txAmount)
+        return diff < txAmount * 0.05 && diff >= 0.01 // close but not exact (exact already shown elsewhere)
+      })
+
+      // Combine, deduplicate
+      const seen = new Set<number>()
+      const combined: Invoice[] = []
+      for (const inv of [...providerMatches, ...amountMatches]) {
+        if (!seen.has(inv.id)) {
+          seen.add(inv.id)
+          combined.push(inv)
+        }
+      }
+
+      setProviderNameMatches(combined)
+    } catch (e) {
+      console.error("Error loading provider name matches:", e)
+    }
+  }
+
   // Open reconciliation dialog - find invoices matching this bank transaction
   const openReconciliationDialog = async (transaction: BankinterEURRow) => {
     setReconciliationTransaction(transaction)
@@ -915,6 +1118,11 @@ export default function BankinterEURPage() {
     setLoadingPaymentMatches(false)
     setIntercompanyMatches([])
     setSelectedIntercompanyMatch(null)
+    setRevenueOrderMatches([])
+    setSelectedRevenueOrder(null)
+    setLoadingRevenueOrders(false)
+    setRevenueOrderSearchTerm("")
+    setProviderNameMatches([])
 
     const isCredit = transaction.amount > 0
     const isDebit = transaction.amount < 0
@@ -941,14 +1149,15 @@ export default function BankinterEURPage() {
         return
       }
 
-      // For CREDITS: Find payment source matches (Braintree, Stripe, etc.)
+      // For CREDITS: Find payment source matches (Braintree, Stripe, etc.) + revenue orders
       if (isCredit) {
         setLoadingPaymentMatches(true)
         await loadPaymentSourceMatches(transaction)
         await loadIntercompanyMatches(transaction)
+        await loadRevenueOrderMatches(transaction)
       }
 
-      // For DEBITS: Find AP invoices
+      // For DEBITS: Find AP invoices + provider name matches
 
       // Date range for exact match (±3 days)
       const startDate = parseDateUTC(transactionDate)
@@ -1000,6 +1209,11 @@ export default function BankinterEURPage() {
 
       setMatchingInvoices(exactMatches)
       setAllAvailableInvoices(availableForPartial)
+
+      // Also load provider name matches for debits
+      if (isDebit) {
+        await loadProviderNameMatches(transaction)
+      }
     } catch (e: any) {
       console.error("Error loading invoices:", e)
       toast({ title: "Error", description: "Failed to load invoices", variant: "destructive" })
@@ -1010,66 +1224,172 @@ export default function BankinterEURPage() {
     }
   }
 
-  // Perform reconciliation - link bank transaction to invoice
+  // Perform reconciliation - handles debits (AP invoices), credits (payment sources), and credits (revenue orders)
   const performReconciliation = async () => {
-    if (!reconciliationTransaction || !selectedInvoice) return
+    if (!reconciliationTransaction) return
+
+    const isCredit = reconciliationTransaction.amount > 0
 
     try {
       const txAmount = Math.abs(reconciliationTransaction.amount)
-      const invoice = [...matchingInvoices, ...allAvailableInvoices].find(inv => inv.id === selectedInvoice)
-      if (!invoice) throw new Error("Invoice not found")
+      const now = new Date().toISOString()
 
-      const paidAmount = invoice.paid_amount ?? invoice.invoice_amount ?? 0
-      const isFullyReconciled = Math.abs(txAmount - paidAmount) < 0.01
+      // CASE 1: Credit → Payment Source Match (disbursement)
+      if (isCredit && selectedPaymentMatch) {
+        const match = paymentSourceMatches.find(m => m.id === selectedPaymentMatch)
+        if (!match) throw new Error("Payment source match not found")
 
-      // Update invoice as reconciled
-      const { error: invoiceError } = await supabase
-        .from("invoices")
-        .update({
-          is_reconciled: true,
-          reconciled_transaction_id: reconciliationTransaction.id,
-          reconciled_at: new Date().toISOString(),
-          reconciled_amount: paidAmount
+        const { error: txError } = await supabase
+          .from("csv_rows")
+          .update({
+            reconciled: true,
+            custom_data: {
+              ...reconciliationTransaction.custom_data,
+              reconciliationType: "manual",
+              reconciled_at: now,
+              paymentSource: match.sourceLabel,
+              matched_source: match.source,
+              matched_disbursement_date: match.disbursementDate,
+              matched_amount: match.amount,
+              matched_transaction_count: match.transactionCount,
+            }
+          })
+          .eq("id", reconciliationTransaction.id)
+
+        if (txError) throw txError
+
+        setRows((prev) => prev.map((row) =>
+          row.id === reconciliationTransaction.id
+            ? { ...row, reconciled: true, reconciliationType: "manual" as const, paymentSource: match.sourceLabel }
+            : row
+        ))
+
+        toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel} (${match.transactionCount} txns)`, variant: "success" })
+        setReconciliationDialogOpen(false)
+        return
+      }
+
+      // CASE 2: Credit → Revenue Order Match (invoice-orders / ar_invoices)
+      if (isCredit && selectedRevenueOrder) {
+        const match = revenueOrderMatches.find(m => m.id === selectedRevenueOrder)
+        if (!match) throw new Error("Revenue order not found")
+
+        // Update the matched order as reconciled
+        if (match.source === "invoice-orders") {
+          const { error } = await supabase
+            .from("csv_rows")
+            .update({
+              reconciled: true,
+              custom_data: {
+                reconciled_at: now,
+                reconciled_with_bank_id: reconciliationTransaction.id,
+                reconciled_bank_amount: txAmount,
+              }
+            })
+            .eq("id", match.id)
+          if (error) console.warn("Error updating invoice-order:", error)
+        } else if (match.source === "ar_invoices") {
+          const arId = parseInt(match.id.replace("ar-", ""))
+          const { error } = await supabase
+            .from("ar_invoices")
+            .update({
+              reconciled: true,
+              reconciled_at: now,
+              reconciled_with: reconciliationTransaction.id,
+              reconciliation_type: "manual-bank",
+            })
+            .eq("id", arId)
+          if (error) console.warn("Error updating ar_invoice:", error)
+        }
+
+        // Update bank transaction
+        const { error: txError } = await supabase
+          .from("csv_rows")
+          .update({
+            reconciled: true,
+            custom_data: {
+              ...reconciliationTransaction.custom_data,
+              reconciliationType: "manual",
+              reconciled_at: now,
+              matched_order_id: match.orderId || match.id,
+              matched_order_source: match.source,
+              matched_customer_name: match.customerName,
+              matched_invoice_number: match.invoiceNumber,
+              matched_order_amount: match.amount,
+            }
+          })
+          .eq("id", reconciliationTransaction.id)
+
+        if (txError) throw txError
+
+        setRows((prev) => prev.map((row) =>
+          row.id === reconciliationTransaction.id
+            ? { ...row, reconciled: true, reconciliationType: "manual" as const }
+            : row
+        ))
+
+        toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel}: ${match.customerName} (€${formatEuropeanCurrency(match.amount)})`, variant: "success" })
+        setReconciliationDialogOpen(false)
+        return
+      }
+
+      // CASE 3: Debit → AP Invoice
+      if (!isCredit && selectedInvoice) {
+        const invoice = [...matchingInvoices, ...allAvailableInvoices, ...providerNameMatches].find(inv => inv.id === selectedInvoice)
+        if (!invoice) throw new Error("Invoice not found")
+
+        const paidAmount = invoice.paid_amount ?? invoice.invoice_amount ?? 0
+        const isFullyReconciled = Math.abs(txAmount - paidAmount) < 0.01
+
+        // Update invoice as reconciled
+        const { error: invoiceError } = await supabase
+          .from("invoices")
+          .update({
+            is_reconciled: true,
+            reconciled_transaction_id: reconciliationTransaction.id,
+            reconciled_at: now,
+            reconciled_amount: paidAmount
+          })
+          .eq("id", selectedInvoice)
+
+        if (invoiceError) throw invoiceError
+
+        // Update bank transaction as reconciled
+        const { error: txError } = await supabase
+          .from("csv_rows")
+          .update({
+            reconciled: isFullyReconciled,
+            custom_data: {
+              ...reconciliationTransaction.custom_data,
+              reconciliationType: "manual",
+              reconciled_at: now,
+              matched_invoice_id: selectedInvoice,
+              matched_invoice_amount: paidAmount
+            }
+          })
+          .eq("id", reconciliationTransaction.id)
+
+        if (txError) throw txError
+
+        setRows((prev) => prev.map((row) =>
+          row.id === reconciliationTransaction.id
+            ? { ...row, reconciled: isFullyReconciled, reconciliationType: "manual" as const }
+            : row
+        ))
+
+        toast({
+          title: isFullyReconciled ? "Fully reconciled!" : "Partial reconciliation",
+          description: isFullyReconciled
+            ? "Transaction matched with invoice"
+            : `Remaining: €${(txAmount - paidAmount).toFixed(2)}`,
+          variant: "success"
         })
-        .eq("id", selectedInvoice)
 
-      if (invoiceError) throw invoiceError
+        setReconciliationDialogOpen(false)
+        return
+      }
 
-      // Update bank transaction as reconciled
-      const { error: txError } = await supabase
-        .from("csv_rows")
-        .update({
-          reconciled: isFullyReconciled,
-          custom_data: {
-            ...reconciliationTransaction.custom_data,
-            reconciliationType: "manual",
-            reconciled_at: new Date().toISOString(),
-            matched_invoice_id: selectedInvoice,
-            matched_invoice_amount: paidAmount
-          }
-        })
-        .eq("id", reconciliationTransaction.id)
-
-      if (txError) throw txError
-
-      // Update local state
-      setRows((prev) => prev.map((row) =>
-        row.id === reconciliationTransaction.id
-          ? { ...row, reconciled: isFullyReconciled, reconciliationType: "manual" as const }
-          : row
-      ))
-
-      toast({
-        title: isFullyReconciled ? "Fully reconciled!" : "Partial reconciliation",
-        description: isFullyReconciled
-          ? "Transaction matched with invoice"
-          : `Remaining: €${(txAmount - paidAmount).toFixed(2)}`,
-        variant: "success"
-      })
-
-      setReconciliationDialogOpen(false)
-      setReconciliationTransaction(null)
-      setSelectedInvoice(null)
+      toast({ title: "No selection", description: "Select a match to reconcile", variant: "destructive" })
     } catch (e: any) {
       toast({ title: "Error", description: e?.message || "Failed to reconcile", variant: "destructive" })
     }
@@ -2158,7 +2478,7 @@ export default function BankinterEURPage() {
                       {paymentSourceMatches.map((match) => (
                         <div
                           key={match.id}
-                          onClick={() => setSelectedPaymentMatch(match.id)}
+                          onClick={() => { setSelectedPaymentMatch(match.id); setSelectedRevenueOrder(null) }}
                           className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedPaymentMatch === match.id
                             ? "border-blue-500 bg-blue-900/20"
                             : match.matchType === "exact"
@@ -2171,7 +2491,7 @@ export default function BankinterEURPage() {
                               <input
                                 type="radio"
                                 checked={selectedPaymentMatch === match.id}
-                                onChange={() => setSelectedPaymentMatch(match.id)}
+                                onChange={() => { setSelectedPaymentMatch(match.id); setSelectedRevenueOrder(null) }}
                                 className="h-4 w-4 text-blue-600"
                               />
                               <div>
@@ -2195,6 +2515,100 @@ export default function BankinterEURPage() {
                           </div>
                         </div>
                       ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SECTION FOR CREDITS: Revenue Orders (Web Orders / Invoice Orders) */}
+              {!isIntercompany && isCreditTransaction && (
+                <div>
+                  <h4 className="text-sm font-medium text-emerald-400 mb-3 flex items-center gap-2">
+                    <FileText className="h-4 w-4" />
+                    Customer Orders / Invoice Orders
+                  </h4>
+
+                  {/* Search */}
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input
+                      placeholder="Search by customer, invoice, order..."
+                      value={revenueOrderSearchTerm}
+                      onChange={(e) => setRevenueOrderSearchTerm(e.target.value)}
+                      className="pl-9 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm"
+                    />
+                  </div>
+
+                  {loadingRevenueOrders ? (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                    </div>
+                  ) : revenueOrderMatches.length === 0 ? (
+                    <div className="text-center py-3 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                      <p className="text-sm">No matching customer orders found</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[220px] overflow-y-auto">
+                      {revenueOrderMatches
+                        .filter(m => {
+                          if (!revenueOrderSearchTerm) return true
+                          const term = revenueOrderSearchTerm.toLowerCase()
+                          return m.customerName.toLowerCase().includes(term) ||
+                            (m.invoiceNumber || "").toLowerCase().includes(term) ||
+                            (m.orderId || "").toLowerCase().includes(term) ||
+                            String(m.amount).includes(term)
+                        })
+                        .map((match) => (
+                          <div
+                            key={match.id}
+                            onClick={() => {
+                              setSelectedRevenueOrder(match.id)
+                              setSelectedPaymentMatch(null) // deselect payment source
+                            }}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedRevenueOrder === match.id
+                              ? "border-emerald-500 bg-emerald-900/20"
+                              : match.matchType === "exact"
+                                ? "border-green-700/50 hover:border-green-600 bg-green-900/10"
+                                : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                              }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  checked={selectedRevenueOrder === match.id}
+                                  onChange={() => {
+                                    setSelectedRevenueOrder(match.id)
+                                    setSelectedPaymentMatch(null)
+                                  }}
+                                  className="h-4 w-4 text-emerald-600"
+                                />
+                                <div>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-white text-sm font-medium">{match.customerName.substring(0, 30)}</span>
+                                    {match.matchType === "exact" && (
+                                      <span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">EXACT</span>
+                                    )}
+                                    {match.matchType === "name" && (
+                                      <span className="text-[10px] text-amber-400 bg-amber-900/30 px-1.5 py-0.5 rounded">NAME</span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-gray-500">
+                                    {match.sourceLabel} • {formatShortDate(match.date)} • {match.invoiceNumber || match.orderId || "-"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium text-green-400">
+                                  €{formatEuropeanCurrency(match.amount)}
+                                </p>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${match.matchScore >= 80 ? "text-green-400 bg-green-900/30" : match.matchScore >= 50 ? "text-amber-400 bg-amber-900/30" : "text-gray-400 bg-gray-800/50"}`}>
+                                  {match.matchScore}%
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>
@@ -2341,6 +2755,51 @@ export default function BankinterEURPage() {
                       </div>
                     )}
                   </div>
+
+                  {/* Provider name matches (by description match) */}
+                  {providerNameMatches.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-medium text-purple-400 mb-3 flex items-center gap-2">
+                        <Building2 className="h-4 w-4" />
+                        Provider Name Matches (description match)
+                      </h4>
+                      <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                        {providerNameMatches.map((inv) => (
+                          <div
+                            key={`prov-${inv.id}`}
+                            onClick={() => setSelectedInvoice(inv.id)}
+                            className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedInvoice === inv.id
+                              ? "border-purple-500 bg-purple-900/20"
+                              : "border-purple-700/30 hover:border-purple-600 bg-purple-900/5"
+                              }`}
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <input
+                                  type="radio"
+                                  checked={selectedInvoice === inv.id}
+                                  onChange={() => setSelectedInvoice(inv.id)}
+                                  className="h-4 w-4 text-purple-600"
+                                />
+                                <div>
+                                  <p className="text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
+                                  <p className="text-xs text-gray-500">
+                                    {inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium text-red-400">
+                                  €{formatEuropeanCurrency(inv.paid_amount ?? inv.invoice_amount)}
+                                </p>
+                                <span className="text-[10px] text-purple-400 bg-purple-900/30 px-1.5 py-0.5 rounded">PROVIDER</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -2366,11 +2825,11 @@ export default function BankinterEURPage() {
               ) : isCreditTransaction ? (
                 <Button
                   onClick={performReconciliation}
-                  disabled={!selectedPaymentMatch}
-                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={!selectedPaymentMatch && !selectedRevenueOrder}
+                  className={selectedRevenueOrder ? "bg-emerald-600 hover:bg-emerald-700" : "bg-blue-600 hover:bg-blue-700"}
                 >
                   <Link2 className="h-4 w-4 mr-2" />
-                  Match Payment Source
+                  {selectedRevenueOrder ? "Match Customer Order" : "Match Payment Source"}
                 </Button>
               ) : (
                 <Button

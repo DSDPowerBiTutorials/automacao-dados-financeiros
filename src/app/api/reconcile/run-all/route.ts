@@ -109,20 +109,56 @@ export async function POST(req: NextRequest) {
             specialResults.gocardlessBankinter = { success: false, error: "Failed to call" };
         }
 
+        // Deep Reconciliation (8-level multi-strategy) — runs after standard reconciliation
+        // to catch remaining unmatched bank rows with wider tolerances
+        try {
+            const deepRes = await fetch(`${req.nextUrl.origin}/api/reconcile/deep`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ dryRun, banks }),
+            });
+            specialResults.deepReconciliation = await deepRes.json();
+        } catch {
+            specialResults.deepReconciliation = { success: false, error: "Failed to call" };
+        }
+
+        // AR Invoices auto-reconciliation (gateway → invoice matching)
+        try {
+            const autoRes = await fetch(`${req.nextUrl.origin}/api/reconcile/auto`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ dryRun }),
+            });
+            specialResults.arInvoicesAuto = await autoRes.json();
+        } catch {
+            specialResults.arInvoicesAuto = { success: false, error: "Failed to call" };
+        }
+
         const totalMatched = results.reduce((sum, r) => sum + r.matched, 0);
         const totalUnmatched = results.reduce((sum, r) => sum + r.unmatched, 0);
         const totalValue = results.reduce((sum, r) => sum + (r.totalValue || 0), 0);
+
+        // Include deep reconciliation stats
+        const deepMatched = specialResults.deepReconciliation?.summary?.matched || 0;
+        const deepValue = specialResults.deepReconciliation?.summary?.totalValue || 0;
+        const arAutoMatched = specialResults.arInvoicesAuto?.summary?.matched || 0;
 
         return NextResponse.json({
             success: true,
             dryRun,
             duration: `${((Date.now() - startTime) / 1000).toFixed(1)}s`,
             summary: {
-                totalMatched,
-                totalUnmatched,
-                totalValue: Math.round(totalValue * 100) / 100,
+                totalMatched: totalMatched + deepMatched,
+                totalUnmatched: Math.max(0, totalUnmatched - deepMatched),
+                totalValue: Math.round((totalValue + deepValue) * 100) / 100,
                 banksProcessed: results.filter(r => r.success).length,
                 banksTotal: banks.length,
+                deepReconciliation: {
+                    matched: deepMatched,
+                    value: deepValue,
+                    byLevel: specialResults.deepReconciliation?.summary?.byLevel || {},
+                },
+                arInvoicesReconciled: arAutoMatched,
             },
             banks: results,
             specialReconciliations: specialResults,

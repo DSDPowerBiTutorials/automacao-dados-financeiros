@@ -77,15 +77,24 @@ async function fetchBankRows(source: string): Promise<BankRow[]> {
 
 async function fetchBraintreeDisbursements(): Promise<DisbursementInfo[]> {
     // Braintree armazena disbursement_date no custom_data de braintree-api-revenue
-    const { data } = await supabaseAdmin
-        .from('csv_rows')
-        .select('*')
-        .eq('source', 'braintree-api-revenue')
-        .not('custom_data->disbursement_date', 'is', null)
-        .order('date', { ascending: false })
-        .limit(5000);
+    // Paginate to get all rows (may exceed 5000)
+    let allData: any[] = [];
+    let offset = 0;
+    while (true) {
+        const { data } = await supabaseAdmin
+            .from('csv_rows')
+            .select('*')
+            .eq('source', 'braintree-api-revenue')
+            .not('custom_data->disbursement_date', 'is', null)
+            .order('date', { ascending: false })
+            .range(offset, offset + 999);
+        if (!data || data.length === 0) break;
+        allData = allData.concat(data);
+        if (data.length < 1000) break;
+        offset += 1000;
+    }
 
-    if (!data) return [];
+    if (allData.length === 0) return [];
 
     // Agrupar por disbursement_date + merchant_account_id
     const grouped = new Map<string, {
@@ -96,11 +105,15 @@ async function fetchBraintreeDisbursements(): Promise<DisbursementInfo[]> {
         transaction_ids: string[];
     }>();
 
-    data.forEach(tx => {
+    allData.forEach(tx => {
         const cd = tx.custom_data || {};
         const disbDate = cd.disbursement_date?.split('T')[0];
         const merchantId = cd.merchant_account_id || '';
         if (!disbDate) return;
+
+        // Skip AMEX — they are settled separately via "Trans american express"
+        const cardType = (cd.card_type || '').toLowerCase();
+        if (cardType.includes('american express') || cardType.includes('amex')) return;
 
         const key = `${disbDate}|${merchantId}`;
         if (!grouped.has(key)) {
@@ -210,6 +223,84 @@ async function fetchGoCardlessDisbursements(): Promise<DisbursementInfo[]> {
     });
 }
 
+async function fetchBraintreeAmexDisbursements(): Promise<DisbursementInfo[]> {
+    // AMEX transactions are settled separately — bank shows "Trans american express europe"
+    // Look for AMEX card types in braintree-api-revenue OR braintree-amex source
+    let allData: any[] = [];
+    for (const src of ['braintree-api-revenue', 'braintree-amex']) {
+        const { data } = await supabaseAdmin
+            .from('csv_rows')
+            .select('*')
+            .eq('source', src)
+            .not('custom_data->disbursement_date', 'is', null)
+            .order('date', { ascending: false })
+            .limit(5000);
+        if (data) allData = allData.concat(data);
+    }
+
+    // Filter only AMEX card types
+    const amexData = allData.filter(tx => {
+        const cardType = (tx.custom_data?.card_type || '').toLowerCase();
+        return cardType.includes('american express') || cardType.includes('amex');
+    });
+
+    // Deduplicate by transaction_id (since AMEX exists in both sources)
+    const seen = new Set<string>();
+    const uniqueAmex = amexData.filter(tx => {
+        const txId = tx.custom_data?.transaction_id || tx.id;
+        if (seen.has(txId)) return false;
+        seen.add(txId);
+        return true;
+    });
+
+    // Group by disbursement_date + merchant_account_id (same as regular Braintree)
+    const grouped = new Map<string, {
+        amount: number;
+        count: number;
+        merchant_account_id: string;
+        batch_id: string;
+        transaction_ids: string[];
+    }>();
+
+    uniqueAmex.forEach(tx => {
+        const cd = tx.custom_data || {};
+        const disbDate = cd.disbursement_date?.split('T')[0];
+        const merchantId = cd.merchant_account_id || '';
+        if (!disbDate) return;
+
+        const key = `${disbDate}|${merchantId}`;
+        if (!grouped.has(key)) {
+            grouped.set(key, {
+                amount: 0,
+                count: 0,
+                merchant_account_id: merchantId,
+                batch_id: cd.settlement_batch_id || '',
+                transaction_ids: []
+            });
+        }
+        const g = grouped.get(key)!;
+        g.amount += parseFloat(cd.settlement_amount || tx.amount || 0);
+        g.count++;
+        const txId = cd.transaction_id || tx.id;
+        if (txId && !g.transaction_ids.includes(txId)) g.transaction_ids.push(txId);
+    });
+
+    return Array.from(grouped.entries()).map(([key, val]) => {
+        const [date, merchantId] = key.split('|');
+        return {
+            source: 'braintree',
+            date,
+            amount: Math.round(val.amount * 100) / 100,
+            currency: merchantId.includes('EUR') ? 'EUR' : merchantId.includes('USD') ? 'USD' : 'EUR',
+            reference: `braintree-amex-disb-${date}`,
+            transaction_count: val.count,
+            merchant_account_id: merchantId,
+            settlement_batch_id: val.batch_id || `${date}_${merchantId}`,
+            transaction_ids: val.transaction_ids
+        };
+    });
+}
+
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json().catch(() => ({}));
@@ -220,9 +311,10 @@ export async function POST(req: NextRequest) {
         const normalizedBankSource = bankSource === 'sabadell-eur' ? 'sabadell' : bankSource;
 
         // Buscar dados em paralelo
-        const [bankRows, braintreeDisb, stripeDisb, gocardlessDisb] = await Promise.all([
+        const [bankRows, braintreeDisb, braintreeAmexDisb, stripeDisb, gocardlessDisb] = await Promise.all([
             fetchBankRows(normalizedBankSource),
             fetchBraintreeDisbursements(),
+            fetchBraintreeAmexDisbursements(),
             fetchStripeDisbursements(),
             fetchGoCardlessDisbursements()
         ]);
@@ -246,6 +338,7 @@ export async function POST(req: NextRequest) {
         } else {
             allDisbursements = [
                 ...braintreeDisb.filter(d => d.currency === currency),
+                ...braintreeAmexDisb.filter(d => d.currency === currency),
                 ...stripeDisb.filter(d => d.currency === currency),
                 ...gocardlessDisb.filter(d => d.currency === currency)
             ];
@@ -319,7 +412,10 @@ export async function POST(req: NextRequest) {
                 const descLower = bankRow.description.toLowerCase();
                 const descPatterns = [
                     { pattern: 'braintree', source: 'braintree' },
-                    { pattern: 'paypal braintree', source: 'braintree' },
+                    { pattern: 'trans/paypal', source: 'braintree' },   // "Trans/paypal (europe) s.a r.l" = Braintree
+                    { pattern: 'paypal (europe)', source: 'braintree' }, // Alternative paypal pattern
+                    { pattern: 'paypal', source: 'braintree' },         // Generic paypal = Braintree
+                    { pattern: 'american express', source: 'braintree' }, // "Trans american express europe" = Braintree AMEX
                     { pattern: 'stripe technology', source: 'stripe' }, // Trans/stripe technology europ
                     { pattern: 'stripe', source: 'stripe' },
                     { pattern: 'gocardless', source: 'gocardless' }

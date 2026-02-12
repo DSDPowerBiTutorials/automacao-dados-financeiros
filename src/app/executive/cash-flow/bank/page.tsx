@@ -75,6 +75,38 @@ interface BankTransaction {
     invoiceOrderId: string | null;
     invoiceNumber: string | null;
     custom_data: Record<string, any>;
+    // Enriched chain data (loaded on-demand)
+    chainData?: ReconciliationChainData | null;
+}
+
+interface ReconciliationChainData {
+    gateway_transactions: {
+        transaction_id: string;
+        amount: number;
+        date: string;
+        customer_name: string | null;
+        customer_email: string | null;
+        order_id: string | null;
+        product_name: string | null;
+        payment_method: string | null;
+    }[];
+    invoices: {
+        id: number;
+        invoice_number: string;
+        order_id: string;
+        client_name: string;
+        company_name: string | null;
+        total_amount: number;
+        currency: string;
+        product: string | null;
+        invoice_date: string | null;
+    }[];
+    disbursement?: {
+        id: string;
+        date: string;
+        amount: number;
+        transaction_count: number;
+    };
 }
 
 interface ReconcileResult {
@@ -193,6 +225,7 @@ export default function BankCashFlowPage() {
 
     // Detail panel
     const [selectedRow, setSelectedRow] = useState<BankTransaction | null>(null);
+    const [chainLoading, setChainLoading] = useState(false);
 
     // Bank freshness metadata
     const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
@@ -210,6 +243,31 @@ export default function BankCashFlowPage() {
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
     const { toast } = useToast();
+
+    // ─── Load enriched chain data when a reconciled row is selected ───
+    const loadChainData = useCallback(async (row: BankTransaction) => {
+        if (!row.isReconciled || row.chainData) return;
+        setChainLoading(true);
+        try {
+            const res = await fetch(`/api/reconcile/chain-details?bankRowId=${row.id}`);
+            const data = await res.json();
+            if (data.success) {
+                setSelectedRow(prev => prev && prev.id === row.id ? { ...prev, chainData: data.chain } : prev);
+            }
+        } catch (err) {
+            console.error('Error loading chain data:', err);
+        } finally {
+            setChainLoading(false);
+        }
+    }, []);
+
+    // ─── Handle row selection ───
+    const handleRowSelect = useCallback((tx: BankTransaction) => {
+        setSelectedRow(tx);
+        if (tx.isReconciled && !tx.chainData) {
+            loadChainData(tx);
+        }
+    }, [loadChainData]);
 
     // ─── Bank toggle ───
     const toggleBank = useCallback((bankKey: string) => {
@@ -449,6 +507,30 @@ export default function BankCashFlowPage() {
         });
     };
 
+    // ─── Run reconciliation ───
+    const [isReconciling, setIsReconciling] = useState(false);
+    const runDeepReconciliation = async () => {
+        setIsReconciling(true);
+        try {
+            const res = await fetch("/api/reconcile/run-all", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ dryRun: false }),
+            });
+            const data = await res.json();
+            if (data.success) {
+                toast({ title: "Reconciliação concluída", description: `${data.summary.totalMatched} transações reconciliadas (${formatCurrency(data.summary.totalValue, dominantCurrency)})` });
+                loadData(); // Reload
+            } else {
+                toast({ title: "Erro", description: data.error, variant: "destructive" });
+            }
+        } catch (err: any) {
+            toast({ title: "Erro", description: err.message, variant: "destructive" });
+        } finally {
+            setIsReconciling(false);
+        }
+    };
+
     // ─── Export CSV ───
     const exportCSV = () => {
         const headers = ["Bank", "Date", "Description", "Amount", "Currency", "Gateway", "Reconciled"];
@@ -526,6 +608,10 @@ export default function BankCashFlowPage() {
                             </Button>
                             <Button onClick={exportCSV} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
                                 <Download className="h-4 w-4 mr-1" />CSV
+                            </Button>
+                            <Button onClick={runDeepReconciliation} disabled={isReconciling} variant="outline" size="sm" className="bg-emerald-900/30 border-emerald-700 text-emerald-400 hover:bg-emerald-800/50">
+                                {isReconciling ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <Zap className="h-4 w-4 mr-1" />}
+                                {isReconciling ? "Reconciling..." : "Auto Reconcile"}
                             </Button>
                         </div>
                         <div className="flex items-center gap-3">
@@ -826,7 +912,7 @@ export default function BankCashFlowPage() {
                                 return (
                                     <div key={tx.id}
                                         className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-700/50" : ""}`}
-                                        onClick={() => setSelectedRow(tx)}>
+                                        onClick={() => handleRowSelect(tx)}>
                                         <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-300">{formatShortDate(tx.date)}</div>
                                         {showBankColumn && (
                                             <div className="w-[90px] flex-shrink-0">
@@ -977,6 +1063,7 @@ export default function BankCashFlowPage() {
                                 {selectedRow.isReconciled ? (
                                     <Badge variant="outline" className="bg-green-900/30 text-green-400 border-green-700">
                                         Reconciled ({selectedRow.reconciliationType === "automatic" ? "Auto" : "Manual"})
+                                        {selectedRow.custom_data?.match_level ? ` L${selectedRow.custom_data.match_level}` : ""}
                                     </Badge>
                                 ) : (
                                     <Badge variant="outline" className="bg-yellow-900/30 text-yellow-400 border-yellow-700">
@@ -985,12 +1072,79 @@ export default function BankCashFlowPage() {
                                 )}
                             </div>
 
+                            {selectedRow.custom_data?.match_confidence != null && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Confidence</p>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+                                            <div className={`h-1.5 rounded-full ${selectedRow.custom_data.match_confidence >= 0.9 ? 'bg-green-500' : selectedRow.custom_data.match_confidence >= 0.7 ? 'bg-yellow-500' : 'bg-orange-500'}`}
+                                                style={{ width: `${Math.round(selectedRow.custom_data.match_confidence * 100)}%` }} />
+                                        </div>
+                                        <span className="text-xs text-gray-300">{Math.round(selectedRow.custom_data.match_confidence * 100)}%</span>
+                                    </div>
+                                </div>
+                            )}
+
                             {selectedRow.paymentSource && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Payment Source</p>
                                     <Badge variant="outline" className={`${getGatewayStyle(selectedRow.paymentSource).bg} ${getGatewayStyle(selectedRow.paymentSource).text} ${getGatewayStyle(selectedRow.paymentSource).border}`}>
                                         {selectedRow.paymentSource}
                                     </Badge>
+                                </div>
+                            )}
+
+                            {/* Quick summary from custom_data enriched fields */}
+                            {selectedRow.custom_data?.matched_customer_names?.length > 0 && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Customers ({selectedRow.custom_data.matched_customer_names.length})</p>
+                                    <div className="space-y-1">
+                                        {selectedRow.custom_data.matched_customer_names.slice(0, 5).map((name: string, i: number) => (
+                                            <div key={i} className="flex items-center gap-1.5">
+                                                <User className="h-3 w-3 text-blue-400" />
+                                                <span className="text-sm text-white">{name}</span>
+                                            </div>
+                                        ))}
+                                        {selectedRow.custom_data.matched_customer_names.length > 5 && (
+                                            <p className="text-xs text-gray-500">+{selectedRow.custom_data.matched_customer_names.length - 5} more</p>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedRow.custom_data?.matched_order_ids?.length > 0 && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Orders ({selectedRow.custom_data.matched_order_ids.length})</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {selectedRow.custom_data.matched_order_ids.slice(0, 8).map((oid: string, i: number) => (
+                                            <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-amber-900/20 text-amber-300 border-amber-700">
+                                                {oid}
+                                            </Badge>
+                                        ))}
+                                        {selectedRow.custom_data.matched_order_ids.length > 8 && (
+                                            <span className="text-xs text-gray-500">+{selectedRow.custom_data.matched_order_ids.length - 8} more</span>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedRow.custom_data?.matched_products?.length > 0 && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Products</p>
+                                    <div className="flex flex-wrap gap-1">
+                                        {selectedRow.custom_data.matched_products.slice(0, 5).map((prod: string, i: number) => (
+                                            <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-violet-900/20 text-violet-300 border-violet-700">
+                                                {prod}
+                                            </Badge>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedRow.custom_data?.braintree_transaction_count && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Transactions in Batch</p>
+                                    <p className="text-sm text-white">{selectedRow.custom_data.braintree_transaction_count}</p>
                                 </div>
                             )}
 
@@ -1076,6 +1230,141 @@ export default function BankCashFlowPage() {
                                 </div>
                             )}
                         </div>
+
+                        {/* ═══ Enriched Chain Data (loaded on-demand) ═══ */}
+                        {selectedRow.isReconciled && (
+                            <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+                                <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                                    <Database className="h-4 w-4" /> Full Reconciliation Chain
+                                </h3>
+
+                                {chainLoading && (
+                                    <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                        <RefreshCw className="h-4 w-4 animate-spin" /> Loading details...
+                                    </div>
+                                )}
+
+                                {selectedRow.chainData && (
+                                    <>
+                                        {/* Disbursement Info */}
+                                        {selectedRow.chainData.disbursement && (
+                                            <div className="bg-[#252627] rounded-lg border border-gray-700 p-3 space-y-2">
+                                                <p className="text-[10px] text-gray-500 uppercase font-medium">Disbursement (Payout)</p>
+                                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                                    <div>
+                                                        <span className="text-gray-500 text-xs">Date:</span>
+                                                        <span className="text-white ml-1">{formatShortDate(selectedRow.chainData.disbursement.date)}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-500 text-xs">Amount:</span>
+                                                        <span className="text-green-400 font-medium ml-1">{formatCurrency(selectedRow.chainData.disbursement.amount, selectedRow.currency)}</span>
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-gray-500 text-xs">Transactions:</span>
+                                                        <span className="text-white ml-1">{selectedRow.chainData.disbursement.transaction_count}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Gateway Transactions */}
+                                        {selectedRow.chainData.gateway_transactions.length > 0 && (
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] text-gray-500 uppercase font-medium">
+                                                    Gateway Transactions ({selectedRow.chainData.gateway_transactions.length})
+                                                </p>
+                                                {selectedRow.chainData.gateway_transactions.slice(0, 10).map((tx, i) => (
+                                                    <div key={i} className="bg-[#252627] rounded-lg border border-gray-700 p-3 space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-xs text-gray-400 font-mono">{tx.transaction_id}</span>
+                                                            <span className="text-green-400 font-medium text-sm">{formatCurrency(tx.amount, selectedRow.currency)}</span>
+                                                        </div>
+                                                        {tx.customer_name && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <User className="h-3 w-3 text-blue-400" />
+                                                                <span className="text-white text-sm font-medium">{tx.customer_name}</span>
+                                                            </div>
+                                                        )}
+                                                        {tx.customer_email && (
+                                                            <p className="text-gray-400 text-xs pl-[18px]">{tx.customer_email}</p>
+                                                        )}
+                                                        {tx.order_id && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <FileText className="h-3 w-3 text-amber-400" />
+                                                                <span className="text-amber-300 text-xs font-mono">Order: {tx.order_id}</span>
+                                                            </div>
+                                                        )}
+                                                        {tx.product_name && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <CreditCard className="h-3 w-3 text-violet-400" />
+                                                                <span className="text-violet-300 text-xs">{tx.product_name}</span>
+                                                            </div>
+                                                        )}
+                                                        <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                                                            <span>{formatShortDate(tx.date)}</span>
+                                                            {tx.payment_method && <span>{tx.payment_method}</span>}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                                {selectedRow.chainData.gateway_transactions.length > 10 && (
+                                                    <p className="text-xs text-gray-500 text-center">
+                                                        + {selectedRow.chainData.gateway_transactions.length - 10} more transactions
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Linked Invoices */}
+                                        {selectedRow.chainData.invoices.length > 0 && (
+                                            <div className="space-y-2">
+                                                <p className="text-[10px] text-gray-500 uppercase font-medium">
+                                                    Linked Invoices ({selectedRow.chainData.invoices.length})
+                                                </p>
+                                                {selectedRow.chainData.invoices.slice(0, 10).map((inv, i) => (
+                                                    <div key={i} className="bg-blue-900/10 rounded-lg border border-blue-800/30 p-3 space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-blue-300 text-xs font-mono">{inv.invoice_number || `INV-${inv.id}`}</span>
+                                                            <span className="text-green-400 font-medium text-sm">{formatCurrency(inv.total_amount, inv.currency || selectedRow.currency)}</span>
+                                                        </div>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <User className="h-3 w-3 text-blue-400" />
+                                                            <span className="text-white text-sm">{inv.client_name || inv.company_name || 'N/A'}</span>
+                                                        </div>
+                                                        {inv.order_id && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <FileText className="h-3 w-3 text-amber-400" />
+                                                                <span className="text-amber-300 text-xs font-mono">Order: {inv.order_id}</span>
+                                                            </div>
+                                                        )}
+                                                        {inv.product && (
+                                                            <div className="flex items-center gap-1.5">
+                                                                <CreditCard className="h-3 w-3 text-violet-400" />
+                                                                <span className="text-violet-300 text-xs">{inv.product}</span>
+                                                            </div>
+                                                        )}
+                                                        {inv.invoice_date && (
+                                                            <p className="text-[10px] text-gray-500">{formatShortDate(inv.invoice_date)}</p>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {/* No data found */}
+                                        {selectedRow.chainData.gateway_transactions.length === 0 && selectedRow.chainData.invoices.length === 0 && (
+                                            <p className="text-xs text-gray-500 italic">No linked transactions or invoices found for this reconciliation.</p>
+                                        )}
+                                    </>
+                                )}
+
+                                {!chainLoading && !selectedRow.chainData && (
+                                    <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700 text-xs"
+                                        onClick={() => loadChainData(selectedRow)}>
+                                        <Database className="h-3 w-3 mr-1" /> Load Details
+                                    </Button>
+                                )}
+                            </div>
+                        )}
                     </div>
 
                     {/* Panel Footer */}

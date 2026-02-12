@@ -418,6 +418,11 @@ export const NAV: NavGroup[] = withUnderConstruction([
         icon: CheckCircle2
       },
       {
+        title: "Braintree ↔ Orders",
+        href: "/actions/braintree-reconciliation",
+        icon: CheckCircle2
+      },
+      {
         title: "🤖 BOTella Logs",
         href: "/actions/bot-logs",
         icon: Bot

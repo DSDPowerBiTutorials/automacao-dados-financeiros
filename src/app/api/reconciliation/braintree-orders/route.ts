@@ -1,0 +1,389 @@
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "@/lib/supabase-admin";
+
+export const dynamic = "force-dynamic";
+
+/**
+ * API de Reconciliação Braintree ↔ Orders/Invoices
+ *
+ * Strategies:
+ * 1. "order-id"   — Match por Order ID (Braintree order_id → invoice-orders order_id)
+ * 2. "email"      — Match por Customer Email (Braintree email → invoice-orders email)
+ * 3. "amount-date" — Match por valor + data ±3 dias
+ * 4. "all"        — Executa todas as estratégias sequencialmente
+ *
+ * POST /api/reconciliation/braintree-orders?strategy=all&dryRun=1
+ */
+
+interface MatchResult {
+    braintreeId: string;
+    braintreeTransactionId: string;
+    orderId: string;
+    orderRowId: string;
+    matchType: string;
+    confidence: number;
+    braintreeAmount: number;
+    orderAmount: number;
+    braintreeDate: string;
+    orderDate: string;
+    customerName: string | null;
+    customerEmail: string | null;
+}
+
+function chunk<T>(arr: T[], size: number): T[][] {
+    const out: T[][] = [];
+    for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
+    return out;
+}
+
+/** Normaliza email para comparação */
+function normalizeEmail(email: string | null | undefined): string | null {
+    if (!email) return null;
+    return email.toString().trim().toLowerCase();
+}
+
+/** Calcula diferença em dias entre duas datas ISO */
+function daysDiff(dateA: string, dateB: string): number {
+    const a = new Date(dateA);
+    const b = new Date(dateB);
+    return Math.abs((a.getTime() - b.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+export async function POST(req: Request) {
+    try {
+        const url = new URL(req.url);
+        const dryRun = url.searchParams.get("dryRun") === "1";
+        const strategy = url.searchParams.get("strategy") || "all";
+        const currency = (url.searchParams.get("currency") || "").toUpperCase();
+
+        console.log(`[Braintree-Orders] Strategy: ${strategy} | DryRun: ${dryRun} | Currency: ${currency || "ALL"}`);
+
+        // 1. Buscar transações Braintree não reconciliadas
+        let braintreeQuery = supabaseAdmin
+            .from("csv_rows")
+            .select("id, source, amount, date, description, customer_email, customer_name, custom_data, reconciled")
+            .or("source.eq.braintree-api-revenue,source.eq.braintree-eur,source.eq.braintree-usd")
+            .eq("reconciled", false)
+            .gte("date", "2024-01-01")
+            .order("date", { ascending: false })
+            .limit(5000);
+
+        const { data: braintreeRows, error: btError } = await braintreeQuery;
+
+        if (btError) {
+            console.error("[Braintree-Orders] Supabase error (braintree):", btError);
+            return NextResponse.json({ success: false, error: btError.message }, { status: 500 });
+        }
+
+        // Filtrar por moeda se especificada
+        let transactions = braintreeRows || [];
+        if (currency) {
+            transactions = transactions.filter((r) => {
+                const cd = r.custom_data || {};
+                const txCurrency = (cd.currency || cd.currency_iso_code || "").toUpperCase();
+                const merchant = (cd.merchant_account_id || "").toLowerCase();
+                return txCurrency === currency || merchant.includes(currency.toLowerCase());
+            });
+        }
+
+        console.log(`[Braintree-Orders] ${transactions.length} transações Braintree não reconciliadas`);
+
+        // 2. Buscar invoice-orders
+        const { data: orderRows, error: orderError } = await supabaseAdmin
+            .from("csv_rows")
+            .select("id, source, amount, date, description, customer_email, customer_name, custom_data, reconciled")
+            .eq("source", "invoice-orders")
+            .gte("date", "2024-01-01")
+            .order("date", { ascending: false })
+            .limit(10000);
+
+        if (orderError) {
+            console.error("[Braintree-Orders] Supabase error (orders):", orderError);
+            return NextResponse.json({ success: false, error: orderError.message }, { status: 500 });
+        }
+
+        const orders = orderRows || [];
+        console.log(`[Braintree-Orders] ${orders.length} invoice-orders carregadas`);
+
+        if (transactions.length === 0) {
+            return NextResponse.json({
+                success: true,
+                data: { message: "Nenhuma transação Braintree pendente de reconciliação", total: 0, matched: 0 },
+            });
+        }
+
+        if (orders.length === 0) {
+            return NextResponse.json({
+                success: true,
+                data: { message: "Nenhuma invoice-order encontrada para reconciliar", total: transactions.length, matched: 0 },
+            });
+        }
+
+        // Build indexes for fast lookup
+        const ordersByOrderId = new Map<string, any>();
+        const ordersByEmail = new Map<string, any[]>();
+        const ordersByAmountDate = new Map<string, any[]>();
+
+        for (const order of orders) {
+            // Index by order_id
+            const orderId = order.custom_data?.order_id || order.custom_data?.order_number || order.custom_data?.Number;
+            if (orderId) {
+                ordersByOrderId.set(String(orderId).toLowerCase().trim(), order);
+            }
+
+            // Index by email
+            const email = normalizeEmail(order.customer_email || order.custom_data?.customer_email || order.custom_data?.Email);
+            if (email) {
+                if (!ordersByEmail.has(email)) ordersByEmail.set(email, []);
+                ordersByEmail.get(email)!.push(order);
+            }
+
+            // Index by amount (rounded to 2 decimals) for fuzzy matching
+            const amt = Math.abs(parseFloat(order.amount) || 0).toFixed(2);
+            if (amt !== "0.00") {
+                if (!ordersByAmountDate.has(amt)) ordersByAmountDate.set(amt, []);
+                ordersByAmountDate.get(amt)!.push(order);
+            }
+        }
+
+        console.log(`[Braintree-Orders] Indexes: ${ordersByOrderId.size} by orderId, ${ordersByEmail.size} by email, ${ordersByAmountDate.size} by amount`);
+
+        // 3. Run matching strategies
+        const matches: MatchResult[] = [];
+        const matchedBraintreeIds = new Set<string>();
+        const matchedOrderIds = new Set<string>();
+
+        // Strategy 1: Match by Order ID
+        if (strategy === "order-id" || strategy === "all") {
+            for (const tx of transactions) {
+                if (matchedBraintreeIds.has(tx.id)) continue;
+
+                const btOrderId = tx.custom_data?.order_id;
+                if (!btOrderId) continue;
+
+                const key = String(btOrderId).toLowerCase().trim();
+                const matchedOrder = ordersByOrderId.get(key);
+
+                if (matchedOrder && !matchedOrderIds.has(matchedOrder.id)) {
+                    matches.push({
+                        braintreeId: tx.id,
+                        braintreeTransactionId: tx.custom_data?.transaction_id || tx.id,
+                        orderId: btOrderId,
+                        orderRowId: matchedOrder.id,
+                        matchType: "order-id",
+                        confidence: 1.0,
+                        braintreeAmount: parseFloat(tx.amount) || 0,
+                        orderAmount: parseFloat(matchedOrder.amount) || 0,
+                        braintreeDate: tx.date,
+                        orderDate: matchedOrder.date,
+                        customerName: tx.customer_name || tx.custom_data?.customer_name,
+                        customerEmail: tx.customer_email || tx.custom_data?.customer_email,
+                    });
+                    matchedBraintreeIds.add(tx.id);
+                    matchedOrderIds.add(matchedOrder.id);
+                }
+            }
+            console.log(`[Strategy: order-id] ${matches.length} matches`);
+        }
+
+        // Strategy 2: Match by Email + Amount tolerance
+        if (strategy === "email" || strategy === "all") {
+            const emailMatchesBefore = matches.length;
+
+            for (const tx of transactions) {
+                if (matchedBraintreeIds.has(tx.id)) continue;
+
+                const email = normalizeEmail(tx.customer_email || tx.custom_data?.customer_email);
+                if (!email) continue;
+
+                const candidates = ordersByEmail.get(email);
+                if (!candidates) continue;
+
+                const btAmount = Math.abs(parseFloat(tx.amount) || 0);
+
+                // Find best match by amount similarity
+                let bestMatch: any = null;
+                let bestDiff = Infinity;
+
+                for (const order of candidates) {
+                    if (matchedOrderIds.has(order.id)) continue;
+
+                    const orderAmount = Math.abs(parseFloat(order.amount) || 0);
+                    const amountDiff = Math.abs(btAmount - orderAmount);
+                    const amountTolerance = Math.max(1.0, btAmount * 0.02); // 2% or €1
+
+                    if (amountDiff <= amountTolerance && amountDiff < bestDiff) {
+                        bestDiff = amountDiff;
+                        bestMatch = order;
+                    }
+                }
+
+                if (bestMatch) {
+                    const confidence = bestDiff < 0.01 ? 0.95 : 0.80;
+                    matches.push({
+                        braintreeId: tx.id,
+                        braintreeTransactionId: tx.custom_data?.transaction_id || tx.id,
+                        orderId: bestMatch.custom_data?.order_id || bestMatch.custom_data?.Number || "",
+                        orderRowId: bestMatch.id,
+                        matchType: "email",
+                        confidence,
+                        braintreeAmount: parseFloat(tx.amount) || 0,
+                        orderAmount: parseFloat(bestMatch.amount) || 0,
+                        braintreeDate: tx.date,
+                        orderDate: bestMatch.date,
+                        customerName: tx.customer_name || tx.custom_data?.customer_name,
+                        customerEmail: email,
+                    });
+                    matchedBraintreeIds.add(tx.id);
+                    matchedOrderIds.add(bestMatch.id);
+                }
+            }
+            console.log(`[Strategy: email] ${matches.length - emailMatchesBefore} new matches`);
+        }
+
+        // Strategy 3: Match by Amount + Date proximity
+        if (strategy === "amount-date" || strategy === "all") {
+            const amountMatchesBefore = matches.length;
+
+            for (const tx of transactions) {
+                if (matchedBraintreeIds.has(tx.id)) continue;
+
+                const btAmount = Math.abs(parseFloat(tx.amount) || 0);
+                if (btAmount < 1) continue;
+
+                const amountKey = btAmount.toFixed(2);
+                const candidates = ordersByAmountDate.get(amountKey);
+                if (!candidates) continue;
+
+                // Find best match by date proximity
+                let bestMatch: any = null;
+                let bestDays = Infinity;
+
+                for (const order of candidates) {
+                    if (matchedOrderIds.has(order.id)) continue;
+
+                    const days = daysDiff(tx.date, order.date);
+                    if (days <= 3 && days < bestDays) {
+                        bestDays = days;
+                        bestMatch = order;
+                    }
+                }
+
+                if (bestMatch) {
+                    const confidence = bestDays === 0 ? 0.75 : bestDays <= 1 ? 0.65 : 0.50;
+                    matches.push({
+                        braintreeId: tx.id,
+                        braintreeTransactionId: tx.custom_data?.transaction_id || tx.id,
+                        orderId: bestMatch.custom_data?.order_id || bestMatch.custom_data?.Number || "",
+                        orderRowId: bestMatch.id,
+                        matchType: "amount-date",
+                        confidence,
+                        braintreeAmount: parseFloat(tx.amount) || 0,
+                        orderAmount: parseFloat(bestMatch.amount) || 0,
+                        braintreeDate: tx.date,
+                        orderDate: bestMatch.date,
+                        customerName: tx.customer_name || tx.custom_data?.customer_name,
+                        customerEmail: tx.customer_email || tx.custom_data?.customer_email,
+                    });
+                    matchedBraintreeIds.add(tx.id);
+                    matchedOrderIds.add(bestMatch.id);
+                }
+            }
+            console.log(`[Strategy: amount-date] ${matches.length - amountMatchesBefore} new matches`);
+        }
+
+        console.log(`\n[Braintree-Orders] TOTAL: ${matches.length} matches de ${transactions.length} transações`);
+
+        // 4. Apply matches (update both sides if not dry run)
+        let appliedCount = 0;
+        let failedCount = 0;
+
+        if (!dryRun && matches.length > 0) {
+            for (const batch of chunk(matches, 25)) {
+                const results = await Promise.allSettled(
+                    batch.map(async (match) => {
+                        // Update Braintree row
+                        const { error: btErr } = await supabaseAdmin
+                            .from("csv_rows")
+                            .update({
+                                reconciled: true,
+                                matched_with: match.orderRowId,
+                                matched_source: "invoice-orders",
+                                match_confidence: match.confidence,
+                                match_details: {
+                                    match_type: match.matchType,
+                                    order_id: match.orderId,
+                                    order_amount: match.orderAmount,
+                                    order_date: match.orderDate,
+                                    matched_at: new Date().toISOString(),
+                                },
+                            })
+                            .eq("id", match.braintreeId);
+
+                        if (btErr) throw new Error(`Braintree update failed: ${btErr.message}`);
+
+                        // Update Order row
+                        const { error: orderErr } = await supabaseAdmin
+                            .from("csv_rows")
+                            .update({
+                                reconciled: true,
+                                matched_with: match.braintreeId,
+                                matched_source: "braintree",
+                                match_confidence: match.confidence,
+                                match_details: {
+                                    match_type: match.matchType,
+                                    transaction_id: match.braintreeTransactionId,
+                                    braintree_amount: match.braintreeAmount,
+                                    braintree_date: match.braintreeDate,
+                                    matched_at: new Date().toISOString(),
+                                },
+                            })
+                            .eq("id", match.orderRowId);
+
+                        if (orderErr) throw new Error(`Order update failed: ${orderErr.message}`);
+
+                        return match;
+                    })
+                );
+
+                for (const r of results) {
+                    if (r.status === "fulfilled") appliedCount++;
+                    else {
+                        failedCount++;
+                        console.error("[Match failed]", r.reason);
+                    }
+                }
+            }
+        }
+
+        // 5. Summary by strategy
+        const byStrategy: Record<string, number> = {};
+        for (const m of matches) {
+            byStrategy[m.matchType] = (byStrategy[m.matchType] || 0) + 1;
+        }
+
+        return NextResponse.json({
+            success: true,
+            dryRun,
+            data: {
+                totalBraintree: transactions.length,
+                totalOrders: orders.length,
+                totalMatched: matches.length,
+                totalApplied: dryRun ? 0 : appliedCount,
+                totalFailed: failedCount,
+                totalUnmatched: transactions.length - matches.length,
+                byStrategy,
+                averageConfidence: matches.length > 0
+                    ? +(matches.reduce((sum, m) => sum + m.confidence, 0) / matches.length).toFixed(3)
+                    : 0,
+                matches: dryRun ? matches.slice(0, 100) : matches.slice(0, 20),
+            },
+        });
+    } catch (err: any) {
+        console.error("[Braintree-Orders] Unexpected error:", err);
+        return NextResponse.json(
+            { success: false, error: err?.message || "Unexpected error" },
+            { status: 500 }
+        );
+    }
+}
