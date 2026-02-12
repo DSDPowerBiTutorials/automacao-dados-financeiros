@@ -574,7 +574,22 @@ export default function BankStatementsPage() {
         try {
             // 1) Extract supplier name from description (e.g., "Recibo/iberent technology" → "iberent technology")
             const extractedSupplier = extractSupplierName(tx.description);
-            const descWords = tx.description.split(/[\s,;.\/\-]+/).filter(w => w.length > 2).map(w => w.toLowerCase());
+
+            // Banking noise words — never use these for supplier matching
+            const NOISE_WORDS = new Set([
+                "recibo", "recib", "transferencia", "transfer", "pago", "paga", "pmt",
+                "payment", "cobro", "cargo", "abono", "ingreso", "domiciliacion",
+                "adeudo", "comision", "comisiones", "impuesto", "iva", "sepa",
+                "swift", "ref", "fra", "factura", "orden", "concepto",
+                "nro", "num", "numero", "cuenta", "cta", "iban",
+            ]);
+
+            // When we have an extracted supplier name, use ONLY those words for matching
+            const rawWords = (extractedSupplier || tx.description)
+                .split(/[\s,;.\/\-]+/)
+                .filter(w => w.length > 2)
+                .map(w => w.toLowerCase())
+                .filter(w => !NOISE_WORDS.has(w));
 
             // Load all unreconciled AP invoices
             const allPages: any[] = [];
@@ -613,7 +628,7 @@ export default function BankStatementsPage() {
                 }
 
                 // Method 2: Word-based matching (fallback)
-                const matchedWords = descWords.filter(w => provider.includes(w) || invDesc.includes(w));
+                const matchedWords = rawWords.filter(w => provider.includes(w) || invDesc.includes(w));
                 const wordMatch = matchedWords.length > 0;
 
                 const isSupplierMatch = fuzzyMatch || wordMatch;
