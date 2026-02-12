@@ -273,6 +273,9 @@ export default function BankStatementsPage() {
     const [selectedPaymentMatch, setSelectedPaymentMatch] = useState<string | null>(null);
     const [selectedRevenueOrder, setSelectedRevenueOrder] = useState<string | null>(null);
     const [invoiceSearchTerm, setInvoiceSearchTerm] = useState("");
+    const [manualSearchTerm, setManualSearchTerm] = useState("");
+    const [manualSearchResults, setManualSearchResults] = useState<APInvoiceMatch[]>([]);
+    const [isSearchingManual, setIsSearchingManual] = useState(false);
     const [loadingMatches, setLoadingMatches] = useState(false);
     const [reconTab, setReconTab] = useState<"suggestions" | "all" | "manual">("suggestions");
 
@@ -876,6 +879,8 @@ export default function BankStatementsPage() {
         setPaymentSourceMatches([]);
         setRevenueOrderMatches([]);
         setIntercompanyMatches([]);
+        setManualSearchTerm("");
+        setManualSearchResults([]);
         setReconTab("suggestions");
         setReconDialogOpen(true);
         setLoadingMatches(true);
@@ -905,7 +910,7 @@ export default function BankStatementsPage() {
         try {
             // CASE 1: Expense → AP Invoice match
             if (isExpense && selectedInvoice) {
-                const invoice = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices]
+                const invoice = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults]
                     .find(inv => inv.id === selectedInvoice);
                 if (!invoice) throw new Error("Invoice not found");
 
@@ -1901,18 +1906,20 @@ export default function BankStatementsPage() {
                                                                     onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
                                                                     className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                                 >
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
-                                                                                <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-900/20 text-green-400 border-green-700">{inv.matchScore}%</Badge>
-                                                                            </div>
-                                                                            <p className="text-xs text-white mt-0.5 font-medium">{inv.provider_code}</p>
-                                                                            <p className="text-[10px] text-gray-500 truncate">{inv.description || inv.matchReason}</p>
+                                                                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
+                                                                            <p className="text-[10px] text-gray-500 truncate">{inv.matchReason}</p>
                                                                         </div>
-                                                                        <div className="text-right ml-3">
-                                                                            <p className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</p>
-                                                                            <p className="text-[10px] text-gray-500">{formatShortDate(inv.schedule_date)}</p>
+                                                                        <div className="text-center">
+                                                                            <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                        </div>
+                                                                        <div className="text-center">
+                                                                            <span className="text-[10px] text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                        </div>
+                                                                        <div className="text-right flex items-center gap-1.5">
+                                                                            <span className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-900/20 text-green-400 border-green-700">{inv.matchScore}%</Badge>
                                                                         </div>
                                                                     </div>
                                                                 </button>
@@ -1934,18 +1941,20 @@ export default function BankStatementsPage() {
                                                                     onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
                                                                     className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                                 >
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div className="flex-1 min-w-0">
-                                                                            <div className="flex items-center gap-2">
-                                                                                <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
-                                                                                <Badge variant="outline" className="text-[9px] px-1 py-0 bg-yellow-900/20 text-yellow-400 border-yellow-700">{inv.matchScore}%</Badge>
-                                                                            </div>
-                                                                            <p className="text-xs text-white mt-0.5 font-medium">{inv.provider_code}</p>
+                                                                    <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">{inv.matchReason}</p>
                                                                         </div>
-                                                                        <div className="text-right ml-3">
-                                                                            <p className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</p>
-                                                                            <p className="text-[10px] text-gray-500">{formatShortDate(inv.schedule_date)}</p>
+                                                                        <div className="text-center">
+                                                                            <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                        </div>
+                                                                        <div className="text-center">
+                                                                            <span className="text-[10px] text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                        </div>
+                                                                        <div className="text-right flex items-center gap-1.5">
+                                                                            <span className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-yellow-900/20 text-yellow-400 border-yellow-700">{inv.matchScore}%</Badge>
                                                                         </div>
                                                                     </div>
                                                                 </button>
@@ -2074,11 +2083,18 @@ export default function BankStatementsPage() {
                                     <div>
                                         <div className="mb-3">
                                             <Input
-                                                placeholder="Search by supplier, invoice #, description..."
+                                                placeholder="Search by supplier name or invoice number..."
                                                 value={invoiceSearchTerm}
                                                 onChange={e => setInvoiceSearchTerm(e.target.value)}
                                                 className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm h-8"
                                             />
+                                        </div>
+                                        {/* Column headers */}
+                                        <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                            <span>Supplier</span>
+                                            <span>Invoice #</span>
+                                            <span>Date</span>
+                                            <span className="text-right">Amount</span>
                                         </div>
                                         {isExpense ? (
                                             <div className="space-y-1">
@@ -2091,17 +2107,19 @@ export default function BankStatementsPage() {
                                                             onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
                                                             className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
                                                         >
-                                                            <div className="flex items-center justify-between">
-                                                                <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2">
-                                                                        <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
-                                                                    </div>
-                                                                    <p className="text-xs text-white mt-0.5">{inv.provider_code}</p>
+                                                            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
                                                                     {inv.description && <p className="text-[10px] text-gray-500 truncate">{inv.description}</p>}
                                                                 </div>
-                                                                <div className="text-right ml-3">
-                                                                    <p className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</p>
-                                                                    <p className="text-[10px] text-gray-500">{formatShortDate(inv.schedule_date)}</p>
+                                                                <div className="text-center">
+                                                                    <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -2120,6 +2138,126 @@ export default function BankStatementsPage() {
                                 {/* ── MANUAL TAB ── */}
                                 {reconTab === "manual" && (
                                     <div className="space-y-4">
+                                        {/* Invoice search by supplier name / invoice number */}
+                                        <div>
+                                            <label className="text-xs text-gray-400 block mb-1">Search Invoice by Supplier Name or Invoice Number</label>
+                                            <div className="flex gap-2">
+                                                <Input
+                                                    placeholder="Type supplier name or invoice number..."
+                                                    value={manualSearchTerm}
+                                                    onChange={e => setManualSearchTerm(e.target.value)}
+                                                    onKeyDown={async e => {
+                                                        if (e.key === "Enter" && manualSearchTerm.length >= 2) {
+                                                            setIsSearchingManual(true);
+                                                            try {
+                                                                const q = manualSearchTerm.toLowerCase();
+                                                                const { data } = await supabase
+                                                                    .from("invoices")
+                                                                    .select("*")
+                                                                    .eq("is_reconciled", false)
+                                                                    .eq("invoice_type", "INCURRED")
+                                                                    .order("schedule_date", { ascending: false })
+                                                                    .limit(500);
+                                                                const results = (data || []).filter(inv =>
+                                                                    (inv.provider_code || "").toLowerCase().includes(q) ||
+                                                                    (inv.invoice_number || "").toLowerCase().includes(q)
+                                                                ).map(inv => ({
+                                                                    ...inv,
+                                                                    invoice_amount: parseFloat(inv.invoice_amount) || 0,
+                                                                    paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                                                                    matchScore: 0,
+                                                                    matchReason: "Manual search",
+                                                                }));
+                                                                setManualSearchResults(results);
+                                                            } catch { /* silent */ }
+                                                            setIsSearchingManual(false);
+                                                        }
+                                                    }}
+                                                    className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm flex-1"
+                                                />
+                                                <Button
+                                                    variant="outline"
+                                                    size="sm"
+                                                    disabled={isSearchingManual || manualSearchTerm.length < 2}
+                                                    onClick={async () => {
+                                                        setIsSearchingManual(true);
+                                                        try {
+                                                            const q = manualSearchTerm.toLowerCase();
+                                                            const { data } = await supabase
+                                                                .from("invoices")
+                                                                .select("*")
+                                                                .eq("is_reconciled", false)
+                                                                .eq("invoice_type", "INCURRED")
+                                                                .order("schedule_date", { ascending: false })
+                                                                .limit(500);
+                                                            const results = (data || []).filter(inv =>
+                                                                (inv.provider_code || "").toLowerCase().includes(q) ||
+                                                                (inv.invoice_number || "").toLowerCase().includes(q)
+                                                            ).map(inv => ({
+                                                                ...inv,
+                                                                invoice_amount: parseFloat(inv.invoice_amount) || 0,
+                                                                paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                                                                matchScore: 0,
+                                                                matchReason: "Manual search",
+                                                            }));
+                                                            setManualSearchResults(results);
+                                                        } catch { /* silent */ }
+                                                        setIsSearchingManual(false);
+                                                    }}
+                                                    className="border-gray-600 text-gray-300 hover:bg-gray-700 h-9"
+                                                >
+                                                    {isSearchingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                                                </Button>
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 mt-1">Press Enter or click search. Min 2 characters.</p>
+                                        </div>
+
+                                        {/* Manual search results */}
+                                        {manualSearchResults.length > 0 && (
+                                            <div>
+                                                <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                                    <span>Supplier</span>
+                                                    <span>Invoice #</span>
+                                                    <span>Date</span>
+                                                    <span className="text-right">Amount</span>
+                                                </div>
+                                                <div className="space-y-1 max-h-[250px] overflow-auto">
+                                                    {manualSearchResults.slice(0, 50).map(inv => (
+                                                        <button
+                                                            key={inv.id}
+                                                            onClick={() => { setSelectedInvoice(inv.id); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
+                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoice === inv.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                        >
+                                                            <div className="grid grid-cols-[1fr_auto_auto_auto] gap-3 items-center">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                {manualSearchResults.length > 50 && (
+                                                    <p className="text-center text-gray-500 text-[10px] py-1">Showing 50 of {manualSearchResults.length} results</p>
+                                                )}
+                                            </div>
+                                        )}
+                                        {manualSearchResults.length === 0 && manualSearchTerm.length >= 2 && !isSearchingManual && (
+                                            <p className="text-center text-gray-500 text-xs py-2">No invoices found for \"{manualSearchTerm}\"</p>
+                                        )}
+
+                                        {/* Divider */}
+                                        <div className="border-t border-gray-700 pt-3">
+                                            <label className="text-xs text-gray-400 block mb-1">Or reconcile without invoice:</label>
+                                        </div>
                                         <div>
                                             <label className="text-xs text-gray-400 block mb-1">Payment Source (gateway)</label>
                                             <Select value={manualPaymentSource} onValueChange={setManualPaymentSource}>
