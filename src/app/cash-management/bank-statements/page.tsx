@@ -146,6 +146,7 @@ interface IntercompanyMatch {
     source: string;
     sourceLabel: string;
     amount: number;
+    currency: string;
     date: string;
     description: string;
     matchScore: number;
@@ -206,6 +207,58 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
 };
 
 const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" };
+
+/** String similarity using Sørensen-Dice coefficient on bigrams — returns 0-1 */
+function stringSimilarity(s1: string, s2: string): number {
+    const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, "").trim();
+    const a = norm(s1);
+    const b = norm(s2);
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (a.includes(b) || b.includes(a)) return 0.85;
+    const getBigrams = (s: string): Map<string, number> => {
+        const map = new Map<string, number>();
+        for (let i = 0; i < s.length - 1; i++) {
+            const bi = s.substring(i, i + 2);
+            map.set(bi, (map.get(bi) || 0) + 1);
+        }
+        return map;
+    };
+    const biA = getBigrams(a);
+    const biB = getBigrams(b);
+    let matches = 0;
+    biB.forEach((count, bi) => {
+        const aCount = biA.get(bi) || 0;
+        matches += Math.min(count, aCount);
+    });
+    const total = (a.length - 1) + (b.length - 1);
+    return total > 0 ? (2 * matches) / total : 0;
+}
+
+/** Extract supplier name from "/" in Bankinter descriptions — e.g. "Recibo/iberent technology" → "iberent technology" */
+function extractSupplierName(description: string): string | null {
+    const slashIdx = description.indexOf('/');
+    if (slashIdx >= 0 && slashIdx < description.length - 2) {
+        const afterSlash = description.substring(slashIdx + 1).trim();
+        // Ignore if it looks like a reference number or too short
+        if (afterSlash.length >= 3 && !/^\d+$/.test(afterSlash)) return afterSlash;
+    }
+    return null;
+}
+
+/** Get date range for intercompany matching: ±1 day, Friday→Monday, Monday→Friday */
+function getIntercompanyDateRange(txDate: Date): { start: string; end: string } {
+    const start = new Date(txDate);
+    const end = new Date(txDate);
+    const dow = txDate.getUTCDay(); // 0=Sun, 5=Fri
+    start.setUTCDate(start.getUTCDate() - 1);
+    end.setUTCDate(end.getUTCDate() + 1);
+    if (dow === 5) end.setUTCDate(txDate.getUTCDate() + 3); // Fri→Mon
+    if (dow === 4) end.setUTCDate(txDate.getUTCDate() + 4); // Thu→Mon
+    if (dow === 1) start.setUTCDate(txDate.getUTCDate() - 3); // Mon→Fri
+    if (dow === 2) start.setUTCDate(txDate.getUTCDate() - 4); // Tue→Fri
+    return { start: start.toISOString().split("T")[0], end: end.toISOString().split("T")[0] };
+}
 
 /** Parse Chase ACH descriptions — extract ORIG CO NAME value for short display */
 function parseChaseShortDescription(description: string, source: string): string {
@@ -273,7 +326,8 @@ export default function BankStatementsPage() {
     const [manualSearchResults, setManualSearchResults] = useState<APInvoiceMatch[]>([]);
     const [isSearchingManual, setIsSearchingManual] = useState(false);
     const [loadingMatches, setLoadingMatches] = useState(false);
-    const [reconTab, setReconTab] = useState<"suggestions" | "all" | "manual">("suggestions");
+    const [reconTab, setReconTab] = useState<"suggestions" | "all" | "manual" | "intercompany">("suggestions");
+    const [selectedIntercompanyMatch, setSelectedIntercompanyMatch] = useState<string | null>(null);
 
     // Bank freshness metadata
     const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
@@ -518,7 +572,8 @@ export default function BankStatementsPage() {
         const txAmount = Math.abs(tx.amount);
 
         try {
-            // 1) Identify supplier from bank description — find ALL unreconciled invoices for that supplier
+            // 1) Extract supplier name from description (e.g., "Recibo/iberent technology" → "iberent technology")
+            const extractedSupplier = extractSupplierName(tx.description);
             const descWords = tx.description.split(/[\s,;.\/\-]+/).filter(w => w.length > 2).map(w => w.toLowerCase());
 
             // Load all unreconciled AP invoices
@@ -549,9 +604,19 @@ export default function BankStatementsPage() {
                 const invAmount = parseFloat(inv.paid_amount) || parseFloat(inv.invoice_amount) || 0;
                 const amountDiff = Math.abs(invAmount - txAmount);
 
-                // Check if bank description words match supplier name
+                // Method 1: Fuzzy match extracted supplier name vs provider_code (≥60%)
+                let fuzzyScore = 0;
+                let fuzzyMatch = false;
+                if (extractedSupplier) {
+                    fuzzyScore = stringSimilarity(extractedSupplier, inv.provider_code || "");
+                    fuzzyMatch = fuzzyScore >= 0.60;
+                }
+
+                // Method 2: Word-based matching (fallback)
                 const matchedWords = descWords.filter(w => provider.includes(w) || invDesc.includes(w));
-                const isSupplierMatch = matchedWords.length > 0;
+                const wordMatch = matchedWords.length > 0;
+
+                const isSupplierMatch = fuzzyMatch || wordMatch;
 
                 const parsed: APInvoiceMatch = {
                     ...inv,
@@ -562,18 +627,20 @@ export default function BankStatementsPage() {
                 };
 
                 if (isSupplierMatch) {
-                    // Supplier match — show ALL invoices for this supplier
                     const isExact = amountDiff < 0.01;
                     const isClose = amountDiff <= txAmount * 0.15;
+                    const matchLabel = fuzzyMatch
+                        ? `"${extractedSupplier}" ≈ "${inv.provider_code}" (${Math.round(fuzzyScore * 100)}%)`
+                        : `"${matchedWords.join(", ")}"`;
                     if (isExact) {
                         parsed.matchScore = 95;
-                        parsed.matchReason = `Exact amount + supplier "${matchedWords.join(", ")}" match`;
+                        parsed.matchReason = `Exact amount + supplier ${matchLabel}`;
                     } else if (isClose) {
                         parsed.matchScore = 75;
-                        parsed.matchReason = `Supplier "${matchedWords.join(", ")}" match, amount within ${((amountDiff / txAmount) * 100).toFixed(0)}%`;
+                        parsed.matchReason = `Supplier ${matchLabel}, amount ±${((amountDiff / txAmount) * 100).toFixed(0)}%`;
                     } else {
-                        parsed.matchScore = 60;
-                        parsed.matchReason = `Supplier "${matchedWords.join(", ")}" match`;
+                        parsed.matchScore = fuzzyMatch ? Math.round(fuzzyScore * 100) : 60;
+                        parsed.matchReason = `Supplier ${matchLabel}`;
                     }
                     supplierMatches.push(parsed);
                 } else {
@@ -768,47 +835,77 @@ export default function BankStatementsPage() {
             }
 
             setRevenueOrderMatches(revMatches.sort((a, b) => b.matchScore - a.matchScore));
+        } catch (err) {
+            console.error("Error loading revenue matches:", err);
+        }
+    };
 
-            // 3) Intercompany matches — opposite-sign in other banks
-            const otherBanks = BANK_ACCOUNTS
-                .filter(b => b.key !== tx.source)
-                .map(b => b.key);
+    /** Load intercompany matches — transfers between company bank accounts (±1 day, Fri→Mon, cross-currency) */
+    const loadIntercompanyMatches = async (tx: BankTransaction) => {
+        const txDate = parseDateSafe(tx.date?.split("T")[0]);
+        if (!txDate) return;
+        const txAmount = Math.abs(tx.amount);
+        const txCurrency = tx.currency;
+        const { start, end } = getIntercompanyDateRange(txDate);
+
+        try {
+            const otherBanks = BANK_ACCOUNTS.filter(b => b.key !== tx.source).map(b => b.key);
 
             const { data: icData } = await supabase
                 .from("csv_rows")
                 .select("*")
                 .in("source", otherBanks)
                 .eq("reconciled", false)
-                .gte("date", startDate.toISOString().split("T")[0])
-                .lte("date", endDate.toISOString().split("T")[0])
-                .limit(200);
+                .gte("date", start)
+                .lte("date", end)
+                .limit(500);
 
-            const icMatches: IntercompanyMatch[] = (icData || [])
-                .filter(r => {
-                    const rAmount = parseFloat(r.amount) || 0;
-                    if (tx.amount > 0 && rAmount > 0) return false;
-                    if (tx.amount < 0 && rAmount < 0) return false;
-                    return Math.abs(Math.abs(rAmount) - txAmount) < txAmount * 0.02;
-                })
-                .map(r => {
-                    const rAmount = Math.abs(parseFloat(r.amount) || 0);
-                    const diff = Math.abs(rAmount - txAmount);
-                    const bankLabel = BANK_ACCOUNTS.find(b => b.key === r.source)?.label || r.source;
-                    return {
-                        id: r.id,
-                        source: r.source,
-                        sourceLabel: bankLabel,
-                        amount: rAmount,
-                        date: r.date?.split("T")[0] || "",
-                        description: r.description || "",
-                        matchScore: diff < 0.01 ? 95 : 70,
-                    };
-                })
-                .sort((a, b) => b.matchScore - a.matchScore);
+            const icMatches: IntercompanyMatch[] = [];
 
-            setIntercompanyMatches(icMatches);
+            (icData || []).forEach(r => {
+                const rAmount = parseFloat(r.amount) || 0;
+                const rAbsAmount = Math.abs(rAmount);
+                const rSource = r.source || "";
+                const rCurrency = rSource.includes("usd") || rSource === "chase-usd" ? "USD" : "EUR";
+                const isCrossCurrency = txCurrency !== rCurrency;
+
+                // Must be opposite sign (outflow ↔ inflow)
+                if (tx.amount > 0 && rAmount > 0) return;
+                if (tx.amount < 0 && rAmount < 0) return;
+
+                let matchScore = 0;
+
+                if (isCrossCurrency) {
+                    // Cross-currency: ~20% tolerance for EUR/USD exchange rate
+                    const ratio = rAbsAmount / txAmount;
+                    if (ratio < 0.80 || ratio > 1.25) return;
+                    const diff = Math.abs(1 - ratio);
+                    matchScore = diff < 0.02 ? 90 : diff < 0.10 ? 75 : 55;
+                } else {
+                    // Same currency: tight tolerance (0.5% or €1)
+                    const diff = Math.abs(rAbsAmount - txAmount);
+                    const pct = txAmount > 0 ? diff / txAmount : 0;
+                    if (pct >= 0.005 && diff >= 1) return;
+                    matchScore = diff < 0.01 ? 98 : diff < 1 ? 90 : 75;
+                }
+
+                const bankLabel = BANK_ACCOUNTS.find(b => b.key === rSource)?.label || rSource;
+
+                icMatches.push({
+                    id: r.id,
+                    source: rSource,
+                    sourceLabel: bankLabel,
+                    amount: rAbsAmount,
+                    currency: rCurrency,
+                    date: r.date?.split("T")[0] || "",
+                    description: r.description || "",
+                    matchScore,
+                });
+            });
+
+            setIntercompanyMatches(icMatches.sort((a, b) => b.matchScore - a.matchScore));
         } catch (err) {
-            console.error("Error loading revenue matches:", err);
+            console.error("Error loading intercompany matches:", err);
         }
     };
 
@@ -821,6 +918,7 @@ export default function BankStatementsPage() {
         setSelectedInvoice(null);
         setSelectedPaymentMatch(null);
         setSelectedRevenueOrder(null);
+        setSelectedIntercompanyMatch(null);
         setInvoiceSearchTerm("");
         setMatchingInvoices([]);
         setAllAvailableInvoices([]);
@@ -837,9 +935,9 @@ export default function BankStatementsPage() {
         try {
             const isExpense = tx.amount < 0;
             if (isExpense) {
-                await loadExpenseMatches(tx);
+                await Promise.all([loadExpenseMatches(tx), loadIntercompanyMatches(tx)]);
             } else {
-                await loadRevenueMatches(tx);
+                await Promise.all([loadRevenueMatches(tx), loadIntercompanyMatches(tx)]);
             }
         } catch (err) {
             console.error("Error loading matches:", err);
@@ -1001,6 +1099,57 @@ export default function BankStatementsPage() {
                 ));
 
                 toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel}: ${match.customerName} (${formatCurrency(match.amount, reconTransaction.currency)})` });
+                setReconDialogOpen(false);
+                return;
+            }
+
+            // CASE IC: Intercompany match — reconcile BOTH bank transactions
+            if (selectedIntercompanyMatch) {
+                const match = intercompanyMatches.find(m => m.id === selectedIntercompanyMatch);
+                if (!match) throw new Error("Intercompany match not found");
+
+                // Reconcile the matched transaction in the other bank
+                const { error: matchErr } = await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: true,
+                        custom_data: {
+                            reconciliationType: "intercompany",
+                            reconciled_at: now,
+                            intercompany_matched_with: reconTransaction.id,
+                            intercompany_matched_bank: reconTransaction.source,
+                            intercompany_matched_amount: txAmount,
+                            manual_note: manualNote || null,
+                        },
+                    })
+                    .eq("id", match.id);
+                if (matchErr) throw matchErr;
+
+                // Reconcile the current transaction
+                const { error: txErr } = await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: true,
+                        custom_data: {
+                            ...reconTransaction.custom_data,
+                            reconciliationType: "intercompany",
+                            reconciled_at: now,
+                            intercompany_matched_with: match.id,
+                            intercompany_matched_bank: match.source,
+                            intercompany_matched_amount: match.amount,
+                            manual_note: manualNote || null,
+                        },
+                    })
+                    .eq("id", reconTransaction.id);
+                if (txErr) throw txErr;
+
+                setBankTransactions(prev => prev.map(t => {
+                    if (t.id === reconTransaction.id) return { ...t, isReconciled: true, reconciliationType: "intercompany" };
+                    if (t.id === match.id) return { ...t, isReconciled: true, reconciliationType: "intercompany" };
+                    return t;
+                }));
+
+                toast({ title: "Intercompany Reconciled!", description: `Matched with ${match.sourceLabel}: ${formatCurrency(match.amount, match.currency)} on ${formatShortDate(match.date)}` });
                 setReconDialogOpen(false);
                 return;
             }
@@ -1749,7 +1898,7 @@ export default function BankStatementsPage() {
                 const isExpense = reconTransaction.amount < 0;
                 const totalSuggestions = isExpense
                     ? providerNameMatches.length
-                    : paymentSourceMatches.length + revenueOrderMatches.length + intercompanyMatches.length;
+                    : paymentSourceMatches.length + revenueOrderMatches.length;
 
                 // Filtered unreconciled invoices for search
                 const filteredAvailableInvoices = allAvailableInvoices.filter(inv => {
@@ -1824,6 +1973,12 @@ export default function BankStatementsPage() {
                                     className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "manual" ? "bg-orange-600/20 text-orange-400 border border-orange-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
                                 >
                                     Manual
+                                </button>
+                                <button
+                                    onClick={() => setReconTab("intercompany")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "intercompany" ? "bg-amber-600/20 text-amber-400 border border-amber-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                >
+                                    Intercompany {intercompanyMatches.length > 0 && <span className="ml-1 bg-amber-600/30 px-1.5 py-0.5 rounded-full text-[10px]">{intercompanyMatches.length}</span>}
                                 </button>
                             </div>
 
@@ -1955,34 +2110,6 @@ export default function BankStatementsPage() {
                                                                         </div>
                                                                     </div>
                                                                 </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                )}
-
-                                                {/* Intercompany matches */}
-                                                {intercompanyMatches.length > 0 && (
-                                                    <div>
-                                                        <h4 className="text-xs font-semibold text-orange-400 mb-2 flex items-center gap-1">
-                                                            <Building className="h-3.5 w-3.5" /> Intercompany Matches ({intercompanyMatches.length})
-                                                        </h4>
-                                                        <div className="space-y-1">
-                                                            {intercompanyMatches.map(ic => (
-                                                                <div
-                                                                    key={ic.id}
-                                                                    className="px-3 py-2 rounded-md border border-gray-700 bg-gray-800/30 text-xs"
-                                                                >
-                                                                    <div className="flex items-center justify-between">
-                                                                        <div>
-                                                                            <p className="text-white font-medium">{ic.sourceLabel}</p>
-                                                                            <p className="text-[10px] text-gray-500 truncate max-w-[300px]">{ic.description}</p>
-                                                                        </div>
-                                                                        <div className="text-right">
-                                                                            <p className="text-sm font-medium text-orange-400">{formatCurrency(ic.amount, reconTransaction.currency)}</p>
-                                                                            <p className="text-[10px] text-gray-500">{formatShortDate(ic.date)}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
                                                             ))}
                                                         </div>
                                                     </div>
@@ -2203,10 +2330,64 @@ export default function BankStatementsPage() {
                                         </div>
                                     </div>
                                 )}
+
+                                {/* ── INTERCOMPANY TAB ── */}
+                                {reconTab === "intercompany" && !loadingMatches && (
+                                    <div>
+                                        <p className="text-xs text-gray-400 mb-3">
+                                            Matching transfers in other bank accounts (same day ±1, Fri→Mon). Includes cross-currency EUR↔USD matches.
+                                        </p>
+                                        {intercompanyMatches.length > 0 ? (
+                                            <div>
+                                                <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                                    <span>Bank / Description</span>
+                                                    <span>Currency</span>
+                                                    <span>Date</span>
+                                                    <span className="text-right">Amount</span>
+                                                    <span className="text-right">Match</span>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {intercompanyMatches.map(ic => (
+                                                        <button
+                                                            key={ic.id}
+                                                            onClick={() => { setSelectedIntercompanyMatch(ic.id); setSelectedInvoice(null); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
+                                                            className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedIntercompanyMatch === ic.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                        >
+                                                            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-white font-medium">{ic.sourceLabel}</p>
+                                                                    <p className="text-[10px] text-gray-500 truncate">{ic.description}</p>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-600 text-gray-300">{ic.currency}</Badge>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(ic.date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-sm font-medium text-amber-400">{formatCurrency(ic.amount, ic.currency)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${ic.matchScore >= 90 ? "bg-green-900/20 text-green-400 border-green-700" : ic.matchScore >= 70 ? "bg-yellow-900/20 text-yellow-400 border-yellow-700" : "bg-orange-900/20 text-orange-400 border-orange-700"}`}>{ic.matchScore}%</Badge>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-6 text-gray-500">
+                                                <Building className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                                <p className="text-sm">No intercompany transfers found</p>
+                                                <p className="text-xs mt-1">No matching transfers in other bank accounts for this date range</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
 
                             {/* Note input (always visible when in suggestions/all tabs) */}
-                            {reconTab !== "manual" && (selectedInvoice || selectedPaymentMatch || selectedRevenueOrder) && (
+                            {reconTab !== "manual" && (selectedInvoice || selectedPaymentMatch || selectedRevenueOrder || selectedIntercompanyMatch) && (
                                 <div className="px-6 py-2 border-t border-gray-700/50">
                                     <Input placeholder="Note (optional)..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-xs h-7" />
                                 </div>
@@ -2218,13 +2399,14 @@ export default function BankStatementsPage() {
                                     {selectedInvoice && <span className="text-cyan-400">Invoice selected</span>}
                                     {selectedPaymentMatch && <span className="text-cyan-400">Payment source selected</span>}
                                     {selectedRevenueOrder && <span className="text-cyan-400">Revenue order selected</span>}
-                                    {!selectedInvoice && !selectedPaymentMatch && !selectedRevenueOrder && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
+                                    {selectedIntercompanyMatch && <span className="text-amber-400">Intercompany transfer selected</span>}
+                                    {!selectedInvoice && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
                                 </div>
                                 <div className="flex gap-3">
                                     <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700 h-8 text-xs">Cancel</Button>
                                     <Button
                                         onClick={performManualReconciliation}
-                                        disabled={isSavingManual || (!selectedInvoice && !selectedPaymentMatch && !selectedRevenueOrder && !manualPaymentSource && !manualNote)}
+                                        disabled={isSavingManual || (!selectedInvoice && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !manualPaymentSource && !manualNote)}
                                         className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
                                     >
                                         {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
