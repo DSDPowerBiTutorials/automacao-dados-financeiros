@@ -1,359 +1,564 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { Breadcrumbs } from "@/components/app/breadcrumbs";
-import { Button } from "@/components/ui/button";
+import { useEffect, useState, useCallback } from "react";
 import { supabase } from "@/lib/supabase";
-import { Loader2, ArrowRight, Building2, Shield } from "lucide-react";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { useAuth } from "@/contexts/auth-context";
-import { OverviewCards } from "@/components/dashboard/OverviewCards";
-import { CashFlowChart } from "@/components/dashboard/CashFlowChart";
-import { ExpenseChart } from "@/components/dashboard/ExpenseChart";
-import { VendorChart } from "@/components/dashboard/VendorChart";
-import { useRouter } from "next/navigation";
 
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { KPIStrip, KPIData } from "@/components/dashboard/KPIStrip";
+import {
+  CashFlowAreaChart,
+  CashFlowPoint,
+} from "@/components/dashboard/CashFlowAreaChart";
+import {
+  RevenueByChannelChart,
+  ChannelData,
+} from "@/components/dashboard/RevenueByChannelChart";
+import {
+  ExpensesByCostCenter,
+  CostCenterData,
+} from "@/components/dashboard/ExpensesByCostCenter";
+import {
+  BankBalancesCards,
+  BankBalance,
+} from "@/components/dashboard/BankBalancesCards";
+import {
+  ReconciliationStatus,
+  ReconciliationSource,
+  getSourceColor,
+} from "@/components/dashboard/ReconciliationStatus";
+import {
+  RecentTransactions,
+  RecentTransaction,
+} from "@/components/dashboard/RecentTransactions";
+
+// ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
+function SkeletonPulse({ className }: { className?: string }) {
+  return (
+    <div
+      className={`animate-pulse rounded-lg ${className || ""}`}
+      style={{ background: "#1e2433" }}
+    />
+  );
+}
+
+function DashboardSkeleton() {
+  return (
+    <div className="dashboard-bg px-6 py-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <SkeletonPulse className="h-7 w-64" />
+          <SkeletonPulse className="h-4 w-40" />
+        </div>
+        <div className="flex gap-3">
+          <SkeletonPulse className="h-9 w-24" />
+          <SkeletonPulse className="h-9 w-20" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <SkeletonPulse key={i} className="h-24" />
+        ))}
+      </div>
+      <SkeletonPulse className="h-[380px]" />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SkeletonPulse className="h-80" />
+        <SkeletonPulse className="h-80" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SkeletonPulse className="h-72" />
+        <SkeletonPulse className="h-72" />
+      </div>
+      <SkeletonPulse className="h-64" />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Source label helpers
+// ---------------------------------------------------------------------------
+const SOURCE_LABELS: Record<string, string> = {
+  "bankinter-eur": "Bankinter EUR",
+  "bankinter-usd": "Bankinter USD",
+  "sabadell-eur": "Sabadell EUR",
+  "chase-usd": "Chase USD",
+  "braintree-eur": "Braintree EUR",
+  "braintree-usd": "Braintree USD",
+  "braintree-gbp": "Braintree GBP",
+  "braintree-aud": "Braintree AUD",
+  "braintree-amex": "Braintree Amex",
+  "braintree-transactions": "Braintree Trans.",
+  "stripe-eur": "Stripe EUR",
+  "stripe-usd": "Stripe USD",
+  stripe: "Stripe",
+  gocardless: "GoCardless",
+  paypal: "PayPal",
+  pleo: "Pleo",
+};
+
+const BANK_LABELS: Record<string, { bank: string; currency: string }> = {
+  "bankinter-eur": { bank: "Bankinter", currency: "EUR" },
+  "bankinter-usd": { bank: "Bankinter", currency: "USD" },
+  "sabadell": { bank: "Sabadell", currency: "EUR" },
+  "chase-usd": { bank: "Chase", currency: "USD" },
+};
+
+const CHANNEL_COLORS: Record<string, string> = {
+  Braintree: "#818cf8",
+  Stripe: "#a78bfa",
+  GoCardless: "#fbbf24",
+  PayPal: "#60a5fa",
+};
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 export default function DashboardPage() {
   const { selectedScope } = useGlobalScope();
   const { profile } = useAuth();
-  const router = useRouter();
+
   const [loading, setLoading] = useState(true);
-
-  // Overview data
-  const [overviewData, setOverviewData] = useState({
-    totalPayables: 0,
-    totalReceivables: 0,
-    reconciledPercentage: 0,
-    activeEntities: 2,
-    activeUsers: 0,
-    lastSync: new Date().toISOString(),
+  const [showIntercompany, setShowIntercompany] = useState(false);
+  const [kpiData, setKpiData] = useState<KPIData>({
+    revenueMonth: 0,
+    expenseMonth: 0,
+    netResult: 0,
+    reconciliationRate: 0,
+    pendingTransactions: 0,
+    totalBankBalance: 0,
+    intercompanyRevenue: 0,
+    intercompanyExpense: 0,
+    bankBalanceDate: "",
   });
+  const [cashFlowData, setCashFlowData] = useState<CashFlowPoint[]>([]);
+  const [channelData, setChannelData] = useState<ChannelData[]>([]);
+  const [expenseData, setExpenseData] = useState<CostCenterData[]>([]);
+  const [bankBalances, setBankBalances] = useState<BankBalance[]>([]);
+  const [reconciliationData, setReconciliationData] = useState<
+    ReconciliationSource[]
+  >([]);
+  const [recentTxData, setRecentTxData] = useState<RecentTransaction[]>([]);
 
-  // Cash flow data
-  const [cashFlowData, setCashFlowData] = useState<Array<{
-    month: string;
-    inflow: number;
-    outflow: number;
-    net: number;
-  }>>([]);
+  // ---------------------------------------------------------------------------
+  // Data loaders
+  // ---------------------------------------------------------------------------
 
-  // Expense breakdown data
-  const [expenseData, setExpenseData] = useState<Array<{
-    name: string;
-    value: number;
-  }>>([]);
-
-  // Top vendors data
-  const [vendorData, setVendorData] = useState<Array<{
-    name: string;
-    amount: number;
-  }>>([]);
-
-  useEffect(() => {
-    loadDashboardData();
-  }, [selectedScope]);
-
-  const loadDashboardData = async () => {
-    setLoading(true);
+  const loadKPIData = useCallback(async () => {
     try {
-      await Promise.all([
-        loadOverviewStats(),
-        loadCashFlowData(),
-        loadExpenseData(),
-        loadVendorData(),
-      ]);
-    } catch (error) {
-      console.error('Error loading dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      const now = new Date();
+      const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+      const nextMonth = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+      const monthEnd = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`;
 
-  const loadOverviewStats = async () => {
-    try {
-      // Get total payables (AP invoices)
-      const { data: apInvoices } = await supabase
-        .from('invoices')
-        .select('invoice_amount, is_reconciled')
-        .eq('invoice_type', 'INCURRED')
-        .eq('scope', selectedScope === 'GLOBAL' ? selectedScope : selectedScope);
+      // Revenue this month
+      let revenueQuery = supabase
+        .from("invoices")
+        .select("invoice_amount, is_reconciled, is_intercompany")
+        .eq("invoice_type", "REVENUE")
+        .gte("payment_date", monthStart)
+        .lt("payment_date", monthEnd);
 
-      const totalPayables = apInvoices?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
+      if (selectedScope !== "GLOBAL") {
+        revenueQuery = revenueQuery.eq("scope", selectedScope);
+      }
+      const { data: revenueInvoices } = await revenueQuery;
+      const revenueMonth =
+        revenueInvoices?.filter(i => !i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
+      const intercompanyRevenue =
+        revenueInvoices?.filter(i => i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
 
-      // Get total receivables (AR invoices)
-      const { data: arInvoices } = await supabase
-        .from('invoices')
-        .select('invoice_amount, is_reconciled')
-        .eq('invoice_type', 'REVENUE')
-        .eq('scope', selectedScope === 'GLOBAL' ? selectedScope : selectedScope);
+      // Expenses this month
+      let expenseQuery = supabase
+        .from("invoices")
+        .select("invoice_amount, is_reconciled, is_intercompany")
+        .eq("invoice_type", "INCURRED")
+        .gte("payment_date", monthStart)
+        .lt("payment_date", monthEnd);
 
-      const totalReceivables = arInvoices?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
+      if (selectedScope !== "GLOBAL") {
+        expenseQuery = expenseQuery.eq("scope", selectedScope);
+      }
+      const { data: expenseInvoices } = await expenseQuery;
+      const expenseMonth =
+        expenseInvoices?.filter(i => !i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
+      const intercompanyExpense =
+        expenseInvoices?.filter(i => i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
 
-      // Calculate reconciliation percentage
-      const allInvoices = [...(apInvoices || []), ...(arInvoices || [])];
-      const reconciledCount = allInvoices.filter(inv => inv.is_reconciled).length;
-      const reconciledPercentage = allInvoices.length > 0
-        ? Math.round((reconciledCount / allInvoices.length) * 100)
-        : 0;
+      // Reconciliation rate — all invoices
+      let allQuery = supabase.from("invoices").select("is_reconciled");
+      if (selectedScope !== "GLOBAL") {
+        allQuery = allQuery.eq("scope", selectedScope);
+      }
+      const { data: allInvoices } = await allQuery;
+      const total = allInvoices?.length || 0;
+      const reconciled =
+        allInvoices?.filter((i) => i.is_reconciled).length || 0;
+      const reconciliationRate =
+        total > 0 ? Math.round((reconciled / total) * 100) : 0;
 
-      // Get active users count
-      const { count: userCount } = await supabase
-        .from('users')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_active', true);
+      // Pending transactions from csv_rows
+      const { count: pendingCount } = await supabase
+        .from("csv_rows")
+        .select("id", { count: "exact", head: true })
+        .eq("reconciled", false);
 
-      setOverviewData({
-        totalPayables,
-        totalReceivables,
-        reconciledPercentage,
-        activeEntities: 2, // ES and US
-        activeUsers: userCount || 0,
-        lastSync: new Date().toISOString(),
+      setKpiData({
+        revenueMonth,
+        expenseMonth,
+        netResult: revenueMonth - expenseMonth,
+        reconciliationRate,
+        pendingTransactions: pendingCount || 0,
+        totalBankBalance: 0, // updated by loadBankBalances
+        intercompanyRevenue,
+        intercompanyExpense,
+        bankBalanceDate: "",
       });
     } catch (error) {
-      console.error('Error loading overview stats:', error);
+      console.error("Error loading KPIs:", error);
     }
-  };
+  }, [selectedScope]);
 
-  const loadCashFlowData = async () => {
+  const loadCashFlow = useCallback(async () => {
     try {
-      // Get last 12 months of cash flow
-      const months = [];
+      const months: CashFlowPoint[] = [];
       for (let i = 11; i >= 0; i--) {
         const date = new Date();
         date.setMonth(date.getMonth() - i);
-        const monthKey = date.toISOString().substring(0, 7); // YYYY-MM
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        const next = new Date(date.getFullYear(), date.getMonth() + 1, 1);
+        const nextKey = `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}`;
 
-        // Calculate next month for the lt filter
-        const nextMonth = new Date(date);
-        nextMonth.setMonth(nextMonth.getMonth() + 1);
-        const nextMonthKey = nextMonth.toISOString().substring(0, 7);
+        const [{ data: inflows }, { data: outflows }] = await Promise.all([
+          supabase
+            .from("invoices")
+            .select("invoice_amount, is_intercompany")
+            .eq("invoice_type", "REVENUE")
+            .eq("is_reconciled", true)
+            .gte("payment_date", `${monthKey}-01`)
+            .lt("payment_date", `${nextKey}-01`),
+          supabase
+            .from("invoices")
+            .select("invoice_amount, is_intercompany")
+            .eq("invoice_type", "INCURRED")
+            .eq("is_reconciled", true)
+            .gte("payment_date", `${monthKey}-01`)
+            .lt("payment_date", `${nextKey}-01`),
+        ]);
 
-        // Get inflows (receivables paid)
-        const { data: inflows } = await supabase
-          .from('invoices')
-          .select('invoice_amount')
-          .eq('invoice_type', 'REVENUE')
-          .eq('is_reconciled', true)
-          .gte('payment_date', `${monthKey}-01`)
-          .lt('payment_date', `${nextMonthKey}-01`);
-
-        // Get outflows (payables paid)
-        const { data: outflows } = await supabase
-          .from('invoices')
-          .select('invoice_amount')
-          .eq('invoice_type', 'INCURRED')
-          .eq('is_reconciled', true)
-          .gte('payment_date', `${monthKey}-01`)
-          .lt('payment_date', `${nextMonthKey}-01`);
-
-        const inflow = inflows?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
-        const outflow = outflows?.reduce((sum, inv) => sum + inv.invoice_amount, 0) || 0;
+        const inflow =
+          inflows?.filter(i => !i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
+        const outflow =
+          outflows?.filter(i => !i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
+        const icInflow =
+          inflows?.filter(i => i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
+        const icOutflow =
+          outflows?.filter(i => i.is_intercompany).reduce((s, i) => s + (i.invoice_amount || 0), 0) || 0;
 
         months.push({
-          month: date.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }),
+          month: date.toLocaleDateString("pt-BR", {
+            month: "short",
+            year: "2-digit",
+          }),
           inflow,
           outflow,
           net: inflow - outflow,
+          icInflow,
+          icOutflow,
         });
       }
-
       setCashFlowData(months);
     } catch (error) {
-      console.error('Error loading cash flow data:', error);
+      console.error("Error loading cash flow:", error);
     }
-  };
+  }, []);
 
-  const loadExpenseData = async () => {
+  const loadChannelRevenue = useCallback(async () => {
     try {
-      const { data: expenses } = await supabase
-        .from('invoices')
-        .select('cost_center_code, invoice_amount')
-        .eq('invoice_type', 'INCURRED')
-        .not('cost_center_code', 'is', null);
+      const { data: rows } = await supabase
+        .from("csv_rows")
+        .select("source, amount")
+        .in("source", [
+          "braintree-eur",
+          "braintree-usd",
+          "braintree-gbp",
+          "braintree-aud",
+          "braintree-amex",
+          "braintree-transactions",
+          "stripe-eur",
+          "stripe-usd",
+          "stripe",
+          "gocardless",
+          "paypal",
+        ]);
 
-      // Group by cost center
       const grouped: Record<string, number> = {};
-      expenses?.forEach(exp => {
-        if (exp.cost_center_code) {
-          grouped[exp.cost_center_code] = (grouped[exp.cost_center_code] || 0) + exp.invoice_amount;
+      rows?.forEach((r) => {
+        const src = (r.source || "").toLowerCase();
+        let channel = "Outros";
+        if (src.includes("braintree")) channel = "Braintree";
+        else if (src.includes("stripe")) channel = "Stripe";
+        else if (src.includes("gocardless")) channel = "GoCardless";
+        else if (src.includes("paypal")) channel = "PayPal";
+
+        const amount = Math.abs(r.amount || 0);
+        grouped[channel] = (grouped[channel] || 0) + amount;
+      });
+
+      const result: ChannelData[] = Object.entries(grouped)
+        .sort((a, b) => b[1] - a[1])
+        .map(([name, value]) => ({
+          name,
+          value,
+          color: CHANNEL_COLORS[name] || "#6b7280",
+        }));
+
+      setChannelData(result);
+    } catch (error) {
+      console.error("Error loading channel revenue:", error);
+    }
+  }, []);
+
+  const loadExpenses = useCallback(async () => {
+    try {
+      let query = supabase
+        .from("invoices")
+        .select("cost_center_code, invoice_amount")
+        .eq("invoice_type", "INCURRED")
+        .not("cost_center_code", "is", null);
+
+      if (selectedScope !== "GLOBAL") {
+        query = query.eq("scope", selectedScope);
+      }
+      const { data: expenses } = await query;
+
+      const grouped: Record<string, number> = {};
+      expenses?.forEach((e) => {
+        if (e.cost_center_code) {
+          grouped[e.cost_center_code] =
+            (grouped[e.cost_center_code] || 0) + (e.invoice_amount || 0);
         }
       });
 
-      // Get top 8 cost centers
-      const sorted = Object.entries(grouped)
+      const sorted: CostCenterData[] = Object.entries(grouped)
         .sort((a, b) => b[1] - a[1])
         .slice(0, 8)
         .map(([name, value]) => ({ name, value }));
 
       setExpenseData(sorted);
     } catch (error) {
-      console.error('Error loading expense data:', error);
+      console.error("Error loading expenses:", error);
     }
-  };
+  }, [selectedScope]);
 
-  const loadVendorData = async () => {
+  const loadBankBalances = useCallback(async () => {
     try {
-      // Buscar invoices INCURRED com provider_code
-      const { data: vendors, error: vendorsError } = await supabase
-        .from('invoices')
-        .select('provider_code, invoice_amount')
-        .eq('invoice_type', 'INCURRED')
-        .not('provider_code', 'is', null);
+      const bankSources = Object.keys(BANK_LABELS);
+      const balances: BankBalance[] = [];
+      let bankinterEurDate = "";
 
-      if (vendorsError) {
-        console.error('Error loading vendors:', vendorsError);
-        return;
-      }
+      await Promise.all(
+        bankSources.map(async (source) => {
+          const { data: rows } = await supabase
+            .from("csv_rows")
+            .select("date, amount, custom_data")
+            .eq("source", source)
+            .order("date", { ascending: false })
+            .limit(1);
 
-      // Buscar nomes dos providers separadamente
-      let providersMap: Record<string, string> = {};
-      try {
-        const { data: providers } = await supabase
-          .from('providers')
-          .select('code, name');
+          if (rows && rows.length > 0) {
+            const row = rows[0];
+            const customData =
+              typeof row.custom_data === "string"
+                ? JSON.parse(row.custom_data)
+                : row.custom_data;
 
-        if (providers) {
-          providersMap = Object.fromEntries(
-            providers.map(p => [p.code, p.name])
-          );
-        }
-      } catch (error) {
-        console.log('Providers table not available, using codes');
-      }
+            // Check both "saldo" (bankinter) and "balance" (chase, sabadell) fields
+            let saldo: number;
+            if (customData?.saldo !== undefined) {
+              saldo = parseFloat(String(customData.saldo));
+            } else if (customData?.balance !== undefined) {
+              saldo = parseFloat(String(customData.balance));
+            } else {
+              saldo = row.amount || 0;
+            }
 
-      // Group by provider
-      const grouped: Record<string, { name: string; amount: number }> = {};
-      vendors?.forEach(vendor => {
-        if (vendor.provider_code) {
-          if (!grouped[vendor.provider_code]) {
-            grouped[vendor.provider_code] = {
-              name: providersMap[vendor.provider_code] || vendor.provider_code,
-              amount: 0,
-            };
+            const info = BANK_LABELS[source];
+            balances.push({
+              bank: info.bank,
+              currency: info.currency,
+              balance: saldo,
+              lastDate: row.date || "—",
+              source,
+            });
+
+            // Track bankinter-eur reference date
+            if (source === "bankinter-eur" && row.date) {
+              bankinterEurDate = row.date;
+            }
           }
-          grouped[vendor.provider_code].amount += vendor.invoice_amount;
-        }
+        })
+      );
+
+      balances.sort((a, b) => a.bank.localeCompare(b.bank));
+      setBankBalances(balances);
+
+      const total = balances.reduce((s, b) => s + b.balance, 0);
+      setKpiData((prev) => ({
+        ...prev,
+        totalBankBalance: total,
+        bankBalanceDate: bankinterEurDate,
+      }));
+    } catch (error) {
+      console.error("Error loading bank balances:", error);
+    }
+  }, []);
+
+  const loadReconciliation = useCallback(async () => {
+    try {
+      const { data: rows } = await supabase
+        .from("csv_rows")
+        .select("source, reconciled");
+
+      if (!rows) return;
+
+      const grouped: Record<string, { total: number; reconciled: number }> = {};
+      rows.forEach((r) => {
+        const src = r.source || "unknown";
+        if (!grouped[src]) grouped[src] = { total: 0, reconciled: 0 };
+        grouped[src].total++;
+        if (r.reconciled) grouped[src].reconciled++;
       });
 
-      // Get top 10 vendors
-      const sorted = Object.values(grouped)
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 10);
+      const result: ReconciliationSource[] = Object.entries(grouped)
+        .filter(([, v]) => v.total > 0)
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 10)
+        .map(([source, v]) => ({
+          source,
+          label: SOURCE_LABELS[source] || source,
+          total: v.total,
+          reconciled: v.reconciled,
+          color: getSourceColor(source),
+        }));
 
-      setVendorData(sorted);
+      setReconciliationData(result);
     } catch (error) {
-      console.error('Error loading vendor data:', error);
+      console.error("Error loading reconciliation:", error);
     }
-  };
+  }, []);
 
-  const quickActions = [
-    {
-      title: 'Accounts Payable',
-      description: 'Manage invoices and payments',
-      href: '/accounts-payable/invoices',
-      icon: Building2,
-    },
-    {
-      title: 'Accounts Receivable',
-      description: 'Track revenues and customers',
-      href: '/accounts-receivable/invoices',
-      icon: Shield,
-    },
-    {
-      title: 'Cash Management',
-      description: 'Bank accounts and reconciliation',
-      href: '/cash-management',
-      icon: Building2,
-    },
-    {
-      title: 'Reports',
-      description: 'Financial analysis and insights',
-      href: '/reports/bankinter-eur',
-      icon: Shield,
-    },
-  ];
+  const loadRecentTransactions = useCallback(async () => {
+    try {
+      const { data: rows } = await supabase
+        .from("csv_rows")
+        .select(
+          "id, date, description, amount, source, reconciled, custom_data"
+        )
+        .order("date", { ascending: false })
+        .limit(10);
 
+      if (!rows) return;
+
+      const txs: RecentTransaction[] = rows.map((r) => {
+        const src = (r.source || "").toLowerCase();
+        let currency = "EUR";
+        if (src.includes("usd")) currency = "USD";
+        else if (src.includes("gbp")) currency = "GBP";
+        else if (src.includes("aud")) currency = "AUD";
+
+        return {
+          id: r.id,
+          date: r.date || "",
+          description: r.description || "",
+          amount: r.amount || 0,
+          currency,
+          source: r.source || "",
+          reconciled: !!r.reconciled,
+        };
+      });
+
+      setRecentTxData(txs);
+    } catch (error) {
+      console.error("Error loading recent transactions:", error);
+    }
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // Load all data on mount and scope change
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    const load = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([
+          loadKPIData(),
+          loadCashFlow(),
+          loadChannelRevenue(),
+          loadExpenses(),
+          loadBankBalances(),
+          loadReconciliation(),
+          loadRecentTransactions(),
+        ]);
+      } catch (error) {
+        console.error("Dashboard load error:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, [
+    selectedScope,
+    loadKPIData,
+    loadCashFlow,
+    loadChannelRevenue,
+    loadExpenses,
+    loadBankBalances,
+    loadReconciliation,
+    loadRecentTransactions,
+  ]);
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-[#243140]" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
-    <div className="min-h-full px-6 py-6 space-y-6">
-      <Breadcrumbs
-        items={[
-          { label: "Home", href: "/" },
-          { label: "Dashboard", href: "/dashboard" },
-        ]}
+    <div className="dashboard-bg px-6 py-6 space-y-6">
+      {/* Header */}
+      <DashboardHeader
+        userName={profile?.name || "Utilizador"}
+        scope={selectedScope}
       />
 
-      {/* Institutional Header */}
-      <header className="page-header-standard bg-gradient-to-r from-[#243140] to-[#1a2530] rounded-lg p-8 text-white shadow-lg">
-        <div className="max-w-4xl">
-          <h1 className="header-title text-white">DSD Finance Hub</h1>
-          <p className="header-subtitle text-gray-200">
-            Integrated Financial Management Platform — empowering global operations from Spain and USA
-          </p>
-          {profile && (
-            <div className="flex items-center gap-4 text-sm">
-              <div className="flex items-center gap-2">
-                <Shield className="w-4 h-4" />
-                <span>Logged in as: <strong>{profile.name}</strong></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Building2 className="w-4 h-4" />
-                <span>Scope: <strong>{selectedScope}</strong></span>
-              </div>
-            </div>
-          )}
-        </div>
-      </header>
+      {/* KPI Strip */}
+      <KPIStrip
+        data={kpiData}
+        showIntercompany={showIntercompany}
+        onToggleIntercompany={() => setShowIntercompany((p) => !p)}
+      />
 
-      {/* Overview Cards */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Financial Overview</h2>
-        <OverviewCards data={overviewData} />
+      {/* Cash Flow Chart (full width) */}
+      <CashFlowAreaChart data={cashFlowData} showIntercompany={showIntercompany} />
+
+      {/* Revenue by Channel + Expense by Cost Center */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <RevenueByChannelChart data={channelData} />
+        <ExpensesByCostCenter data={expenseData} />
       </div>
 
-      {/* Cash Flow Chart */}
-      <CashFlowChart data={cashFlowData} />
-
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <ExpenseChart data={expenseData} />
-        <VendorChart data={vendorData} />
+      {/* Bank Balances + Reconciliation Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <BankBalancesCards data={bankBalances} />
+        <ReconciliationStatus data={reconciliationData} />
       </div>
 
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActions.map((action, index) => {
-            const Icon = action.icon;
-            return (
-              <Button
-                key={index}
-                variant="outline"
-                className="h-auto flex flex-col items-start p-6 hover:bg-gray-50 hover:border-[#243140] transition-all"
-                onClick={() => router.push(action.href)}
-              >
-                <div className="flex items-center justify-between w-full mb-2">
-                  <Icon className="w-5 h-5 text-[#243140]" />
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </div>
-                <div className="text-left">
-                  <h3 className="font-semibold text-gray-900 mb-1">{action.title}</h3>
-                  <p className="text-sm text-gray-500">{action.description}</p>
-                </div>
-              </Button>
-            );
-          })}
-        </div>
-      </div>
+      {/* Recent Transactions */}
+      <RecentTransactions data={recentTxData} />
     </div>
   );
 }

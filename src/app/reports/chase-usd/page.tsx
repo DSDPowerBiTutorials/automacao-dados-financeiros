@@ -21,7 +21,11 @@ import {
     Calendar,
     DollarSign,
     FileText,
-    Key
+    Key,
+    Search,
+    Link2,
+    ArrowLeftRight,
+    Building2
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { Button } from "@/components/ui/button"
@@ -29,8 +33,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { formatTimestamp, formatDate } from "@/lib/formatters"
+import { useToast } from "@/hooks/use-toast"
 
 // Formatar USD no padrão brasileiro: $ 1.234,56
 const formatUSDCurrency = (value: number | null | undefined): string => {
@@ -58,6 +64,10 @@ interface ChaseUSDRow {
     bankMatchAmount?: number | null
     bankMatchDate?: string | null
     bankMatchDescription?: string | null
+    isIntercompany?: boolean
+    intercompanyAccountCode?: string | null
+    intercompanyAccountName?: string | null
+    intercompanyNote?: string | null
     custom_data?: {
         post_date?: string | null
         check_number?: string | null
@@ -68,8 +78,35 @@ interface ChaseUSDRow {
         category?: string
         row_index?: number
         file_name?: string
+        is_intercompany?: boolean
+        intercompany_account_code?: string
+        intercompany_account_name?: string
+        intercompany_note?: string
+        intercompany_linked_id?: string
+        exclude_from_pnl?: boolean
+        cash_flow_category?: string
+        reconciliationType?: string
+        reconciled_at?: string
     }
     [key: string]: any
+}
+
+// Intercompany Match
+interface IntercompanyMatch {
+    id: string
+    source: string
+    sourceLabel: string
+    date: string
+    amount: number
+    currency: string
+    description: string
+}
+
+// Bank Account interface for intercompany
+interface BankAccount {
+    code: string
+    name: string
+    currency: string
 }
 
 // Mapeamento de cores por fonte de pagamento
@@ -93,13 +130,26 @@ export default function ChaseUSDPage() {
     const [dateTo, setDateTo] = useState<string>("")
     const [isAutoReconciling, setIsAutoReconciling] = useState(false)
 
+    // Intercompany states
+    const [reconciliationDialogOpen, setReconciliationDialogOpen] = useState(false)
+    const [reconciliationTransaction, setReconciliationTransaction] = useState<ChaseUSDRow | null>(null)
+    const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([])
+    const [selectedBankAccount, setSelectedBankAccount] = useState<string | null>(null)
+    const [intercompanyNote, setIntercompanyNote] = useState("")
+    const [intercompanyMatches, setIntercompanyMatches] = useState<IntercompanyMatch[]>([])
+    const [selectedIntercompanyMatch, setSelectedIntercompanyMatch] = useState<string | null>(null)
+    const [showIntercompany, setShowIntercompany] = useState(true)
+    const [isReverting, setIsReverting] = useState(false)
+
+    const { toast } = useToast()
+
     useEffect(() => {
         loadData()
     }, [])
 
     useEffect(() => {
         applyFilters()
-    }, [rows, dateFrom, dateTo])
+    }, [rows, dateFrom, dateTo, showIntercompany])
 
     const applyFilters = () => {
         let filtered = rows
@@ -110,6 +160,10 @@ export default function ChaseUSDPage() {
 
         if (dateTo) {
             filtered = filtered.filter((row) => row.date <= dateTo)
+        }
+
+        if (!showIntercompany) {
+            filtered = filtered.filter(row => !row.isIntercompany)
         }
 
         setFilteredRows(filtered)
@@ -149,6 +203,10 @@ export default function ChaseUSDPage() {
                     bankMatchAmount: row.custom_data?.bank_match_amount || null,
                     bankMatchDate: row.custom_data?.bank_match_date || null,
                     bankMatchDescription: row.custom_data?.bank_match_description || null,
+                    isIntercompany: row.custom_data?.is_intercompany || false,
+                    intercompanyAccountCode: row.custom_data?.intercompany_account_code || null,
+                    intercompanyAccountName: row.custom_data?.intercompany_account_name || null,
+                    intercompanyNote: row.custom_data?.intercompany_note || null,
                     custom_data: row.custom_data || {}
                 }))
                 setRows(mappedRows)
@@ -448,6 +506,305 @@ export default function ChaseUSDPage() {
         }
     }
 
+    // === INTERCOMPANY FUNCTIONS ===
+
+    // Load bank accounts for intercompany selection
+    useEffect(() => {
+        const loadBankAccounts = async () => {
+            try {
+                const { data } = await supabase
+                    .from("bank_accounts")
+                    .select("code, name, currency")
+                    .eq("is_active", true)
+                if (data) setBankAccounts(data)
+            } catch (e) {
+                console.error("Error loading bank accounts:", e)
+            }
+        }
+        loadBankAccounts()
+    }, [])
+
+    const loadIntercompanyMatches = async (transaction: ChaseUSDRow) => {
+        try {
+            const transactionDate = transaction.date?.split("T")[0]
+            if (!transactionDate) return
+
+            const txAmount = Math.abs(transaction.amount)
+            const startDate = new Date(transactionDate)
+            startDate.setDate(startDate.getDate() - 10)
+            const endDate = new Date(transactionDate)
+            endDate.setDate(endDate.getDate() + 10)
+
+            const otherBankSources = ["bankinter-eur", "sabadell-eur", "bankinter-usd"]
+            const matches: IntercompanyMatch[] = []
+
+            for (const source of otherBankSources) {
+                const { data: candidates } = await supabase
+                    .from("csv_rows")
+                    .select("id, date, amount, description, custom_data")
+                    .eq("source", source)
+                    .eq("reconciled", false)
+                    .gte("date", startDate.toISOString().split("T")[0])
+                    .lte("date", endDate.toISOString().split("T")[0])
+                    .limit(50)
+
+                if (!candidates) continue
+
+                const isCrossCurrency = source.includes("eur")
+
+                candidates.forEach(tx => {
+                    const txAmt = parseFloat(tx.amount) || 0
+
+                    let isMatch = false
+                    if (isCrossCurrency) {
+                        // Cross-currency: USD→EUR ratio check
+                        const absUsd = txAmount
+                        const absEur = Math.abs(txAmt)
+                        const ratio = absEur > 0 ? absUsd / absEur : 0
+                        isMatch = ratio >= 1.02 && ratio <= 1.25
+                    } else {
+                        // Same currency: 1% tolerance
+                        const amountDiff = Math.abs(Math.abs(txAmt) - txAmount)
+                        isMatch = amountDiff < txAmount * 0.01
+                    }
+
+                    const hasOppositeSigns = (transaction.amount > 0 && txAmt < 0) || (transaction.amount < 0 && txAmt > 0)
+
+                    if (isMatch && hasOppositeSigns) {
+                        const currency = source.includes("usd") ? "USD" : "EUR"
+                        const sourceLabel = source === "bankinter-eur" ? "Bankinter EUR"
+                            : source === "bankinter-usd" ? "Bankinter USD"
+                                : source === "sabadell-eur" ? "Sabadell EUR" : source
+
+                        matches.push({
+                            id: tx.id,
+                            source,
+                            sourceLabel,
+                            date: tx.date?.split("T")[0] || "",
+                            amount: txAmt,
+                            currency,
+                            description: tx.description || ""
+                        })
+                    }
+                })
+            }
+
+            setIntercompanyMatches(matches)
+        } catch (e) {
+            console.error("Error loading intercompany matches:", e)
+        }
+    }
+
+    const openReconciliationDialog = (row: ChaseUSDRow) => {
+        setReconciliationTransaction(row)
+        setReconciliationDialogOpen(true)
+        setSelectedBankAccount(null)
+        setIntercompanyNote("")
+        setSelectedIntercompanyMatch(null)
+        loadIntercompanyMatches(row)
+    }
+
+    const performIntercompanyReconciliation = async () => {
+        if (!reconciliationTransaction || !selectedBankAccount) return
+
+        try {
+            const bankAccount = bankAccounts.find(acc => acc.code === selectedBankAccount)
+            if (!bankAccount) throw new Error("Bank account not found")
+
+            const now = new Date().toISOString()
+            const txDate = new Date(reconciliationTransaction.date)
+            const startDate = new Date(txDate)
+            startDate.setDate(startDate.getDate() - 10)
+            const endDate = new Date(txDate)
+            endDate.setDate(endDate.getDate() + 10)
+
+            const counterpartSource = selectedBankAccount.toLowerCase()
+            const isCrossCurrencyLink = counterpartSource.includes("eur") || counterpartSource.includes("sabadell")
+
+            const { data: candidates } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .eq("source", counterpartSource)
+                .eq("reconciled", false)
+                .gte("date", startDate.toISOString().split("T")[0])
+                .lte("date", endDate.toISOString().split("T")[0])
+
+            // eslint-disable-next-line
+            let counterpartMatch: any = null
+
+            if (candidates && candidates.length > 0) {
+                if (isCrossCurrencyLink) {
+                    counterpartMatch = candidates.find(c => {
+                        const cAmount = parseFloat(c.amount) || 0
+                        const hasOppositeSigns = (reconciliationTransaction.amount > 0 && cAmount < 0) || (reconciliationTransaction.amount < 0 && cAmount > 0)
+                        if (!hasOppositeSigns) return false
+                        const absUsd = Math.abs(reconciliationTransaction.amount)
+                        const absEur = Math.abs(cAmount)
+                        const ratio = absEur > 0 ? absUsd / absEur : 0
+                        return ratio >= 1.02 && ratio <= 1.25
+                    })
+                } else {
+                    const oppositeAmount = -reconciliationTransaction.amount
+                    counterpartMatch = candidates.find(c => {
+                        const cAmount = parseFloat(c.amount) || 0
+                        return Math.abs(cAmount - oppositeAmount) < 0.01
+                    })
+                    if (!counterpartMatch) {
+                        const tolerance = Math.abs(reconciliationTransaction.amount) * 0.005
+                        counterpartMatch = candidates.find(c => {
+                            const cAmount = parseFloat(c.amount) || 0
+                            return Math.abs(cAmount + reconciliationTransaction.amount) <= tolerance
+                        })
+                    }
+                }
+            }
+
+            // Update THIS transaction as intercompany
+            const { error: txError } = await supabase
+                .from("csv_rows")
+                .update({
+                    reconciled: true,
+                    custom_data: {
+                        ...reconciliationTransaction.custom_data,
+                        reconciliationType: "manual",
+                        reconciled_at: now,
+                        is_intercompany: true,
+                        intercompany_account_code: selectedBankAccount,
+                        intercompany_account_name: bankAccount.name,
+                        intercompany_note: intercompanyNote || null,
+                        intercompany_linked_id: counterpartMatch?.id || null,
+                        exclude_from_pnl: true,
+                        cash_flow_category: "intercompany_transfer"
+                    }
+                })
+                .eq("id", reconciliationTransaction.id)
+
+            if (txError) throw txError
+
+            // If counterpart found, update it too
+            if (counterpartMatch) {
+                await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: true,
+                        custom_data: {
+                            ...counterpartMatch.custom_data,
+                            reconciliationType: "manual",
+                            reconciled_at: now,
+                            is_intercompany: true,
+                            intercompany_account_code: "chase-usd",
+                            intercompany_account_name: "Chase USD",
+                            intercompany_note: intercompanyNote || null,
+                            intercompany_linked_id: reconciliationTransaction.id,
+                            exclude_from_pnl: true,
+                            cash_flow_category: "intercompany_transfer"
+                        }
+                    })
+                    .eq("id", counterpartMatch.id)
+            }
+
+            // Update local state
+            setRows(prev => prev.map(row =>
+                row.id === reconciliationTransaction.id
+                    ? {
+                        ...row,
+                        conciliado: true,
+                        reconciliationType: "manual" as const,
+                        isIntercompany: true,
+                        intercompanyAccountCode: selectedBankAccount,
+                        intercompanyAccountName: bankAccount.name,
+                        intercompanyNote: intercompanyNote || null
+                    }
+                    : row
+            ))
+
+            const direction = reconciliationTransaction.amount > 0 ? "from" : "to"
+            toast({
+                title: counterpartMatch ? "✓ Intercompany Linked" : "Intercompany Transfer",
+                description: counterpartMatch
+                    ? `Both transactions marked as transfer ${direction} ${bankAccount.name}`
+                    : `Marked as transfer ${direction} ${bankAccount.name} (counterpart not found)`
+            })
+
+            setReconciliationDialogOpen(false)
+            setReconciliationTransaction(null)
+            setSelectedBankAccount(null)
+            setIntercompanyNote("")
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Failed to reconcile"
+            toast({ title: "Error", description: msg })
+        }
+    }
+
+    const revertIntercompanyReconciliation = async (row: ChaseUSDRow) => {
+        const hasLinked = row.custom_data?.intercompany_linked_id
+        const confirmMsg = hasLinked
+            ? "Revert this intercompany transaction AND its linked counterpart?"
+            : "Revert this intercompany transaction?"
+
+        if (!confirm(confirmMsg)) return
+
+        setIsReverting(true)
+        try {
+            const cleanedCustomData = { ...row.custom_data }
+            delete cleanedCustomData.is_intercompany
+            delete cleanedCustomData.intercompany_account_code
+            delete cleanedCustomData.intercompany_account_name
+            delete cleanedCustomData.intercompany_note
+            delete cleanedCustomData.intercompany_linked_id
+            delete cleanedCustomData.exclude_from_pnl
+            delete cleanedCustomData.cash_flow_category
+            delete cleanedCustomData.reconciliationType
+            delete cleanedCustomData.reconciled_at
+
+            const { error } = await supabase
+                .from("csv_rows")
+                .update({ reconciled: false, custom_data: cleanedCustomData })
+                .eq("id", row.id)
+
+            if (error) throw error
+
+            if (hasLinked) {
+                const { data: counterpart } = await supabase
+                    .from("csv_rows")
+                    .select("*")
+                    .eq("id", row.custom_data!.intercompany_linked_id!)
+                    .single()
+
+                if (counterpart) {
+                    const counterpartClean = { ...counterpart.custom_data }
+                    delete counterpartClean.is_intercompany
+                    delete counterpartClean.intercompany_account_code
+                    delete counterpartClean.intercompany_account_name
+                    delete counterpartClean.intercompany_note
+                    delete counterpartClean.intercompany_linked_id
+                    delete counterpartClean.exclude_from_pnl
+                    delete counterpartClean.cash_flow_category
+                    delete counterpartClean.reconciliationType
+                    delete counterpartClean.reconciled_at
+
+                    await supabase
+                        .from("csv_rows")
+                        .update({ reconciled: false, custom_data: counterpartClean })
+                        .eq("id", counterpart.id)
+                }
+            }
+
+            setRows(prev => prev.map(r =>
+                r.id === row.id
+                    ? { ...r, conciliado: false, reconciliationType: null, isIntercompany: false, intercompanyAccountCode: null, intercompanyAccountName: null, intercompanyNote: null }
+                    : r
+            ))
+
+            toast({ title: "Reverted", description: "Intercompany reconciliation reverted" })
+        } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : "Failed to revert"
+            toast({ title: "Error", description: msg })
+        } finally {
+            setIsReverting(false)
+        }
+    }
+
     const downloadCSV = () => {
         try {
             const headers = ["ID", "Date", "Description", "Amount", "Payment Source", "Reconciled"]
@@ -614,6 +971,11 @@ export default function ChaseUSDPage() {
                         <span className="text-gray-400 text-sm">Unreconciled:</span>
                         <span className="text-yellow-400 font-medium">{stats.unreconciledCount}</span>
                     </div>
+                    <div className="flex items-center gap-2">
+                        <ArrowLeftRight className="h-4 w-4 text-purple-400" />
+                        <span className="text-gray-400 text-sm">Intercompany:</span>
+                        <span className="text-purple-400 font-medium">{filteredRows.filter(r => r.isIntercompany).length}</span>
+                    </div>
                 </div>
             </div>
 
@@ -688,6 +1050,9 @@ export default function ChaseUSDPage() {
                                 ) : (
                                     <XCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
                                 )}
+                                {row.isIntercompany && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-purple-900/30 text-purple-400 border border-purple-700 ml-1">IC</span>
+                                )}
                             </div>
                             <div className="w-[70px] flex-shrink-0 flex items-center justify-center gap-1">
                                 {editingRow === row.id ? (
@@ -707,6 +1072,15 @@ export default function ChaseUSDPage() {
                                         <Button size="sm" variant="ghost" onClick={() => deleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30">
                                             <Trash2 className="h-3 w-3" />
                                         </Button>
+                                        {row.isIntercompany ? (
+                                            <Button size="sm" variant="ghost" onClick={() => revertIntercompanyReconciliation(row)} disabled={isReverting} className="h-6 w-6 p-0 text-purple-400 hover:text-purple-300 hover:bg-purple-900/30" title="Revert Intercompany">
+                                                <ArrowLeftRight className="h-3 w-3" />
+                                            </Button>
+                                        ) : (
+                                            <Button size="sm" variant="ghost" onClick={() => openReconciliationDialog(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-purple-400 hover:bg-purple-900/30" title="Intercompany">
+                                                <Link2 className="h-3 w-3" />
+                                            </Button>
+                                        )}
                                     </>
                                 )}
                             </div>
@@ -714,6 +1088,111 @@ export default function ChaseUSDPage() {
                     );
                 })}
             </div>
+
+            {/* Intercompany Reconciliation Dialog */}
+            {reconciliationDialogOpen && reconciliationTransaction && (
+                <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
+                    <div className="bg-[#1e1f21] border border-gray-700 rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
+                        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-semibold text-white">Intercompany Reconciliation</h3>
+                                <p className="text-sm text-gray-400">
+                                    {formatDate(reconciliationTransaction.date)} — {reconciliationTransaction.description}
+                                </p>
+                                <p className="text-sm font-mono mt-1">
+                                    <span className={reconciliationTransaction.amount >= 0 ? "text-green-400" : "text-red-400"}>
+                                        {formatUSDCurrency(reconciliationTransaction.amount)}
+                                    </span>
+                                </p>
+                            </div>
+                            <Button variant="ghost" size="sm" onClick={() => setReconciliationDialogOpen(false)} className="text-gray-400 hover:text-white">
+                                <X className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <div className="p-4 space-y-4">
+                            {/* Auto-detected matches */}
+                            {intercompanyMatches.length > 0 && (
+                                <div>
+                                    <h4 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                        <Zap className="h-4 w-4 text-yellow-400" />
+                                        Suggested Matches
+                                    </h4>
+                                    <div className="space-y-2">
+                                        {intercompanyMatches.map(match => (
+                                            <div
+                                                key={match.id}
+                                                onClick={() => {
+                                                    setSelectedIntercompanyMatch(match.id)
+                                                    setSelectedBankAccount(match.source)
+                                                }}
+                                                className={`p-3 rounded border cursor-pointer transition-all ${selectedIntercompanyMatch === match.id
+                                                        ? "border-purple-500 bg-purple-900/20"
+                                                        : "border-gray-700 bg-gray-800/50 hover:border-gray-600"
+                                                    }`}
+                                            >
+                                                <div className="flex justify-between">
+                                                    <span className="text-sm text-white">{match.sourceLabel}</span>
+                                                    <span className={`text-sm font-mono ${match.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                                        {match.currency === "EUR" ? "€" : "$"} {Math.abs(match.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs text-gray-400 mt-1">
+                                                    {formatDate(match.date)} — {match.description}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Manual bank account selection */}
+                            <div>
+                                <h4 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                    <Building2 className="h-4 w-4 text-blue-400" />
+                                    Target Bank Account
+                                </h4>
+                                <select
+                                    value={selectedBankAccount || ""}
+                                    onChange={(e) => setSelectedBankAccount(e.target.value || null)}
+                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded px-3 py-2 text-sm"
+                                >
+                                    <option value="">Select bank account...</option>
+                                    {bankAccounts
+                                        .filter(acc => acc.code.toLowerCase() !== "chase-usd")
+                                        .map(acc => (
+                                            <option key={acc.code} value={acc.code}>
+                                                {acc.name} ({acc.currency})
+                                            </option>
+                                        ))
+                                    }
+                                </select>
+                            </div>
+
+                            {/* Note */}
+                            <div>
+                                <label className="text-sm text-gray-400 mb-1 block">Note (optional)</label>
+                                <input
+                                    type="text"
+                                    value={intercompanyNote}
+                                    onChange={(e) => setIntercompanyNote(e.target.value)}
+                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded px-3 py-2 text-sm"
+                                    placeholder="e.g. FX transfer via Continental Exchange"
+                                />
+                            </div>
+
+                            {/* Confirm button */}
+                            <Button
+                                onClick={performIntercompanyReconciliation}
+                                disabled={!selectedBankAccount}
+                                className="w-full bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                                <ArrowLeftRight className="h-4 w-4 mr-2" />
+                                Confirm Intercompany Transfer
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     )
 }

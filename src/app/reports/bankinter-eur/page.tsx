@@ -875,7 +875,7 @@ export default function BankinterEURPage() {
       endDate.setDate(endDate.getDate() + 5)
 
       // Search other bank accounts for opposite transactions
-      const otherBankSources = ["bankinter-usd", "sabadell-eur"]
+      const otherBankSources = ["bankinter-usd", "sabadell-eur", "chase-usd"]
       const matches: IntercompanyMatch[] = []
 
       for (const source of otherBankSources) {
@@ -890,11 +890,23 @@ export default function BankinterEURPage() {
 
         if (!candidates) continue
 
+        const isCrossCurrency = source.includes("usd")
+
         candidates.forEach(tx => {
           const txAmt = parseFloat(tx.amount) || 0
-          // Look for opposite sign transactions with similar amount
-          const amountDiff = Math.abs(Math.abs(txAmt) - txAmount)
-          const isMatch = amountDiff < txAmount * 0.01 // 1% tolerance
+
+          let isMatch = false
+          if (isCrossCurrency) {
+            // Cross-currency matching: approximate FX rate range (1.02–1.25 EUR/USD)
+            const absEur = Math.abs(transaction.amount)
+            const absUsd = Math.abs(txAmt)
+            const ratio = absUsd > 0 && absEur > 0 ? absUsd / absEur : 0
+            isMatch = ratio >= 1.02 && ratio <= 1.25
+          } else {
+            // Same currency: 1% tolerance
+            const amountDiff = Math.abs(Math.abs(txAmt) - txAmount)
+            isMatch = amountDiff < txAmount * 0.01
+          }
 
           // For intercompany, we expect opposite signs
           const hasOppositeSigns = (transaction.amount > 0 && txAmt < 0) || (transaction.amount < 0 && txAmt > 0)
@@ -902,7 +914,8 @@ export default function BankinterEURPage() {
           if (isMatch && hasOppositeSigns) {
             const currency = source.includes("usd") ? "USD" : "EUR"
             const sourceLabel = source === "bankinter-usd" ? "Bankinter USD"
-              : source === "sabadell-eur" ? "Sabadell EUR" : source
+              : source === "sabadell-eur" ? "Sabadell EUR"
+                : source === "chase-usd" ? "Chase USD" : source
 
             matches.push({
               id: tx.id,
@@ -1427,20 +1440,35 @@ export default function BankinterEURPage() {
 
       // Find best matching transaction (same amount, opposite sign)
       let counterpartMatch: any = null
-      if (candidates && candidates.length > 0) {
-        // First try exact amount match
-        counterpartMatch = candidates.find(c => {
-          const cAmount = parseFloat(c.amount) || 0
-          return Math.abs(cAmount - oppositeAmount) < 0.01
-        })
+      const isCrossCurrencyLink = counterpartSource.includes("usd") || counterpartSource.includes("chase")
 
-        // If no exact match, try with tolerance (0.5%)
-        if (!counterpartMatch) {
-          const tolerance = Math.abs(oppositeAmount) * 0.005
+      if (candidates && candidates.length > 0) {
+        if (isCrossCurrencyLink) {
+          // Cross-currency: find opposite sign tx where USD/EUR ratio is ~1.02–1.25
           counterpartMatch = candidates.find(c => {
             const cAmount = parseFloat(c.amount) || 0
-            return Math.abs(cAmount - oppositeAmount) <= tolerance
+            const hasOppositeSigns = (reconciliationTransaction.amount > 0 && cAmount < 0) || (reconciliationTransaction.amount < 0 && cAmount > 0)
+            if (!hasOppositeSigns) return false
+            const absEur = Math.abs(reconciliationTransaction.amount)
+            const absUsd = Math.abs(cAmount)
+            const ratio = absUsd > 0 && absEur > 0 ? absUsd / absEur : 0
+            return ratio >= 1.02 && ratio <= 1.25
           })
+        } else {
+          // Same currency: exact match first
+          counterpartMatch = candidates.find(c => {
+            const cAmount = parseFloat(c.amount) || 0
+            return Math.abs(cAmount - oppositeAmount) < 0.01
+          })
+
+          // If no exact match, try with tolerance (0.5%)
+          if (!counterpartMatch) {
+            const tolerance = Math.abs(oppositeAmount) * 0.005
+            counterpartMatch = candidates.find(c => {
+              const cAmount = parseFloat(c.amount) || 0
+              return Math.abs(cAmount - oppositeAmount) <= tolerance
+            })
+          }
         }
       }
 
