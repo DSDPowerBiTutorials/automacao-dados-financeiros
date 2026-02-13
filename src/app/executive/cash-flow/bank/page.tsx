@@ -237,6 +237,8 @@ export default function BankCashFlowPage() {
     const [flowFilter, setFlowFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [reconFilter, setReconFilter] = useState("all");
+    const [gwReconFilter, setGwReconFilter] = useState("all");
+    const [orderFilter, setOrderFilter] = useState("all");
     const [showReconciled, setShowReconciled] = useState(true);
 
     // Date groups
@@ -332,7 +334,7 @@ export default function BankCashFlowPage() {
                     matchType: cd.match_type || null,
                     isReconciled: !!row.reconciled,
                     reconciliationType: cd.reconciliationType || (row.reconciled ? "automatic" : null),
-                    isOrderReconciled: !!cd.invoice_order_matched,
+                    isOrderReconciled: !!cd.invoice_order_matched || (amount < 0 && !!row.reconciled),
                     invoiceOrderId: cd.invoice_order_id || null,
                     invoiceNumber: cd.invoice_number || null,
                     custom_data: cd,
@@ -391,6 +393,14 @@ export default function BankCashFlowPage() {
             if (flowFilter === "expense" && tx.amount >= 0) return false;
             if (reconFilter === "reconciled" && !tx.isReconciled) return false;
             if (reconFilter === "pending" && tx.isReconciled) return false;
+            // GW reconciliation type filter
+            if (gwReconFilter === "auto" && (!tx.isReconciled || !tx.reconciliationType?.startsWith("automatic"))) return false;
+            if (gwReconFilter === "manual" && (!tx.isReconciled || tx.reconciliationType !== "manual")) return false;
+            if (gwReconFilter === "intercompany" && (!tx.isReconciled || tx.reconciliationType !== "intercompany")) return false;
+            if (gwReconFilter === "not-reconciled" && tx.isReconciled) return false;
+            // Order reconciliation filter
+            if (orderFilter === "matched" && !tx.isOrderReconciled) return false;
+            if (orderFilter === "not-matched" && tx.isOrderReconciled) return false;
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 return (
@@ -402,7 +412,7 @@ export default function BankCashFlowPage() {
             }
             return true;
         });
-    }, [bankTransactions, selectedBanks, gatewayFilter, flowFilter, reconFilter, searchQuery, showReconciled]);
+    }, [bankTransactions, selectedBanks, gatewayFilter, flowFilter, reconFilter, gwReconFilter, orderFilter, searchQuery, showReconciled]);
 
     // ─── Date groups ───
     const dateGroups = useMemo(() => {
@@ -875,6 +885,14 @@ export default function BankCashFlowPage() {
                             <SelectTrigger className="w-32 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="reconciled">Reconciled</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
                         </Select>
+                        <Select value={gwReconFilter} onValueChange={setGwReconFilter}>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
+                            <SelectContent><SelectItem value="all">GW All</SelectItem><SelectItem value="auto">Auto</SelectItem><SelectItem value="manual">Manual</SelectItem><SelectItem value="intercompany">Intercompany</SelectItem><SelectItem value="not-reconciled">Not Recon.</SelectItem></SelectContent>
+                        </Select>
+                        <Select value={orderFilter} onValueChange={setOrderFilter}>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
+                            <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
+                        </Select>
                     </div>
                 </div>
 
@@ -1070,8 +1088,8 @@ export default function BankCashFlowPage() {
                                 <p className="text-xs text-gray-500">Status</p>
                                 {selectedRow.isReconciled ? (
                                     <Badge variant="outline" className={`${selectedRow.reconciliationType?.startsWith("automatic") ? "bg-green-900/30 text-green-400 border-green-700"
-                                            : selectedRow.reconciliationType === "intercompany" ? "bg-amber-900/30 text-amber-400 border-amber-700"
-                                                : "bg-blue-900/30 text-blue-400 border-blue-700"
+                                        : selectedRow.reconciliationType === "intercompany" ? "bg-amber-900/30 text-amber-400 border-amber-700"
+                                            : "bg-blue-900/30 text-blue-400 border-blue-700"
                                         }`}>
                                         Reconciled ({selectedRow.reconciliationType?.startsWith("automatic") ? "Auto" : selectedRow.reconciliationType === "intercompany" ? "Intercompany" : "Manual"})
                                         {selectedRow.custom_data?.match_level ? ` L${selectedRow.custom_data.match_level}` : ""}
