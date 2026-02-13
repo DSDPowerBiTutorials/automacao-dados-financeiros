@@ -311,14 +311,20 @@ export default function BankCashFlowPage() {
             const transactions: BankTransaction[] = allRows.map(row => {
                 const cd = row.custom_data || {};
                 const source = row.source || "";
-                const paymentSource = cd.paymentSource || null;
-                const gateway = paymentSource?.toLowerCase() || detectGateway(row.description || "");
+                const amount = parseFloat(row.amount) || 0;
+                // paymentSource is ONLY for revenue — never for expenses
+                const rawPaymentSource = cd.paymentSource || null;
+                const paymentSource = amount > 0 ? rawPaymentSource : null;
+                // Gateway is ONLY for revenue (positive amounts)
+                const gateway = amount > 0
+                    ? (paymentSource?.toLowerCase() || detectGateway(row.description || ""))
+                    : null;
 
                 return {
                     id: row.id,
                     date: row.date || "",
                     description: row.description || "",
-                    amount: parseFloat(row.amount) || 0,
+                    amount,
                     source,
                     currency: source.includes("usd") ? "USD" : "EUR",
                     gateway,
@@ -1053,16 +1059,21 @@ export default function BankCashFlowPage() {
                             )}
                         </div>
 
-                        {/* Gateway Reconciliation */}
+                        {/* ─── RECONCILIATION STATUS ─── */}
                         <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                <CreditCard className="h-4 w-4" /> Gateway Reconciliation
+                                {selectedRow.amount >= 0
+                                    ? <><CreditCard className="h-4 w-4" /> Gateway Reconciliation</>
+                                    : <><Building className="h-4 w-4" /> AP Reconciliation</>}
                             </h3>
                             <div>
                                 <p className="text-xs text-gray-500">Status</p>
                                 {selectedRow.isReconciled ? (
-                                    <Badge variant="outline" className="bg-green-900/30 text-green-400 border-green-700">
-                                        Reconciled ({selectedRow.reconciliationType === "automatic" ? "Auto" : "Manual"})
+                                    <Badge variant="outline" className={`${selectedRow.reconciliationType?.startsWith("automatic") ? "bg-green-900/30 text-green-400 border-green-700"
+                                            : selectedRow.reconciliationType === "intercompany" ? "bg-amber-900/30 text-amber-400 border-amber-700"
+                                                : "bg-blue-900/30 text-blue-400 border-blue-700"
+                                        }`}>
+                                        Reconciled ({selectedRow.reconciliationType?.startsWith("automatic") ? "Auto" : selectedRow.reconciliationType === "intercompany" ? "Intercompany" : "Manual"})
                                         {selectedRow.custom_data?.match_level ? ` L${selectedRow.custom_data.match_level}` : ""}
                                     </Badge>
                                 ) : (
@@ -1071,6 +1082,14 @@ export default function BankCashFlowPage() {
                                     </Badge>
                                 )}
                             </div>
+
+                            {/* Reconciliation method detail */}
+                            {selectedRow.reconciliationType === "automatic-ap-bulk" && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Method</p>
+                                    <p className="text-sm text-green-300">AP Bulk Reconciliation (Excel)</p>
+                                </div>
+                            )}
 
                             {selectedRow.custom_data?.match_confidence != null && (
                                 <div>
@@ -1085,7 +1104,8 @@ export default function BankCashFlowPage() {
                                 </div>
                             )}
 
-                            {selectedRow.paymentSource && (
+                            {/* ─── REVENUE: Payment Source / Gateway info ─── */}
+                            {selectedRow.amount >= 0 && selectedRow.paymentSource && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Payment Source</p>
                                     <Badge variant="outline" className={`${getGatewayStyle(selectedRow.paymentSource).bg} ${getGatewayStyle(selectedRow.paymentSource).text} ${getGatewayStyle(selectedRow.paymentSource).border}`}>
@@ -1094,8 +1114,8 @@ export default function BankCashFlowPage() {
                                 </div>
                             )}
 
-                            {/* Quick summary from custom_data enriched fields */}
-                            {selectedRow.custom_data?.matched_customer_names?.length > 0 && (
+                            {/* Quick summary from custom_data enriched fields — revenue only */}
+                            {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_customer_names?.length > 0 && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Customers ({selectedRow.custom_data.matched_customer_names.length})</p>
                                     <div className="space-y-1">
@@ -1112,7 +1132,7 @@ export default function BankCashFlowPage() {
                                 </div>
                             )}
 
-                            {selectedRow.custom_data?.matched_order_ids?.length > 0 && (
+                            {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_order_ids?.length > 0 && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Orders ({selectedRow.custom_data.matched_order_ids.length})</p>
                                     <div className="flex flex-wrap gap-1">
@@ -1128,7 +1148,7 @@ export default function BankCashFlowPage() {
                                 </div>
                             )}
 
-                            {selectedRow.custom_data?.matched_products?.length > 0 && (
+                            {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_products?.length > 0 && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Products</p>
                                     <div className="flex flex-wrap gap-1">
@@ -1141,7 +1161,7 @@ export default function BankCashFlowPage() {
                                 </div>
                             )}
 
-                            {selectedRow.custom_data?.braintree_transaction_count && (
+                            {selectedRow.amount >= 0 && selectedRow.custom_data?.braintree_transaction_count && (
                                 <div>
                                     <p className="text-xs text-gray-500">Transactions in Batch</p>
                                     <p className="text-sm text-white">{selectedRow.custom_data.braintree_transaction_count}</p>
@@ -1158,6 +1178,57 @@ export default function BankCashFlowPage() {
                                 </div>
                             )}
 
+                            {/* ─── EXPENSE: AP Invoice details ─── */}
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_provider && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Provider</p>
+                                    <p className="text-sm text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_number && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                    <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_number}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_numbers && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Invoices</p>
+                                    <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_numbers}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_total != null && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Invoice Total</p>
+                                    <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_invoice_total, selectedRow.currency)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_amount != null && !selectedRow.custom_data?.matched_invoice_total && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
+                                    <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_amount, selectedRow.currency)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_payment_date && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Payment Date (Excel)</p>
+                                    <span className="text-sm text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.ap_financial_account && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Financial Account</p>
+                                    <span className="text-sm text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
+                                </div>
+                            )}
+
+                            {/* ─── COMMON fields ─── */}
                             {selectedRow.custom_data?.reconciled_at && (
                                 <div>
                                     <p className="text-xs text-gray-500">Reconciled at</p>
@@ -1178,9 +1249,23 @@ export default function BankCashFlowPage() {
                                     <p className="text-sm text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
                                 </div>
                             )}
+
+                            {/* ─── INTERCOMPANY details ─── */}
+                            {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_bank && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Bank</p>
+                                    <p className="text-sm text-amber-300">{selectedRow.custom_data.intercompany_matched_bank}</p>
+                                </div>
+                            )}
+                            {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_amount != null && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
+                                    <span className="text-sm font-medium text-amber-400">{formatCurrency(selectedRow.custom_data.intercompany_matched_amount, selectedRow.currency)}</span>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Matched transaction details */}
+                        {/* Matched transaction details (gateway auto-match) */}
                         {selectedRow.isReconciled && selectedRow.custom_data?.bank_match_amount && (
                             <div className="px-4 py-4 space-y-3 bg-green-900/10">
                                 <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
@@ -1198,38 +1283,40 @@ export default function BankCashFlowPage() {
                             </div>
                         )}
 
-                        {/* Order Reconciliation */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                <FileText className="h-4 w-4" /> Order Reconciliation
-                            </h3>
-                            <div>
-                                <p className="text-xs text-gray-500">Status</p>
-                                {selectedRow.isOrderReconciled ? (
-                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
-                                        Matched
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
-                                        Not Matched
-                                    </Badge>
+                        {/* Order Reconciliation — only for revenue */}
+                        {selectedRow.amount >= 0 && (
+                            <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <FileText className="h-4 w-4" /> Order Reconciliation
+                                </h3>
+                                <div>
+                                    <p className="text-xs text-gray-500">Status</p>
+                                    {selectedRow.isOrderReconciled ? (
+                                        <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
+                                            Matched
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
+                                            Not Matched
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {selectedRow.invoiceNumber && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                        <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
+                                    </div>
+                                )}
+
+                                {selectedRow.invoiceOrderId && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Order ID</p>
+                                        <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
+                                    </div>
                                 )}
                             </div>
-
-                            {selectedRow.invoiceNumber && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
-                                    <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
-                                </div>
-                            )}
-
-                            {selectedRow.invoiceOrderId && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Order ID</p>
-                                    <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
-                                </div>
-                            )}
-                        </div>
+                        )}
 
                         {/* ═══ Enriched Chain Data (loaded on-demand) ═══ */}
                         {selectedRow.isReconciled && (
