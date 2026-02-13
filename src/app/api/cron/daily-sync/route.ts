@@ -43,7 +43,7 @@ interface SyncResult {
     error?: string;
 }
 
-export const maxDuration = 300; // 5 minutos máximo
+export const maxDuration = 540; // 9 minutos máximo (pipeline expandido)
 
 export async function GET(req: NextRequest) {
     const startTime = Date.now();
@@ -490,7 +490,7 @@ export async function GET(req: NextRequest) {
     // ============================================
     try {
         const reconcileStart = Date.now();
-        console.log("\n🔗 [8/8] Reconciliação Automática (Braintree/Stripe/GoCardless)...");
+        console.log("\n🔗 [8/11] Reconciliação Automática AR (Braintree/Stripe/GoCardless)...");
 
         const reconcileUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/reconcile/auto`;
 
@@ -503,7 +503,7 @@ export async function GET(req: NextRequest) {
 
         if (result.success) {
             results.push({
-                name: "Reconciliation",
+                name: "AR Reconciliation",
                 success: true,
                 message: `BT: ${result.summary.bySource.braintree}, ST: ${result.summary.bySource.stripe}, GC: ${result.summary.bySource.gocardless}, HS: ${result.summary.bySource.hubspot_confirmed || 0}`,
                 count: result.summary.updated,
@@ -513,9 +513,123 @@ export async function GET(req: NextRequest) {
             throw new Error(result.error || "Reconciliation failed");
         }
     } catch (error: any) {
-        console.error("[Reconciliation] Error:", error);
+        console.error("[AR Reconciliation] Error:", error);
         results.push({
-            name: "Reconciliation",
+            name: "AR Reconciliation",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // 9. RECONCILIAÇÃO BANCÁRIA COMPLETA (run-all pipeline)
+    // ============================================
+    try {
+        const bankReconStart = Date.now();
+        console.log("\n🏦 [9/11] Reconciliação Bancária Completa (Bank ↔ Gateway/Disbursement)...");
+
+        const runAllUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/reconcile/run-all`;
+
+        const response = await fetch(runAllUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dryRun: false }),
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            results.push({
+                name: "Bank Reconciliation",
+                success: true,
+                message: `Matched: ${result.summary.totalMatched}, Banks: ${result.summary.banksProcessed}/${result.summary.banksTotal}`,
+                count: result.summary.totalMatched,
+                duration_ms: Date.now() - bankReconStart,
+            });
+        } else {
+            throw new Error(result.error || "Bank reconciliation failed");
+        }
+    } catch (error: any) {
+        console.error("[Bank Reconciliation] Error:", error);
+        results.push({
+            name: "Bank Reconciliation",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // 10. RECONCILIAÇÃO AP INVOICES ↔ BANCO
+    // ============================================
+    try {
+        const apBankStart = Date.now();
+        console.log("\n📋 [10/11] Reconciliação AP Invoices ↔ Bank Debits...");
+
+        const apBankUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/reconcile/ap-bank`;
+
+        const response = await fetch(apBankUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dryRun: false }),
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            results.push({
+                name: "AP Bank Reconciliation",
+                success: true,
+                message: `Matched: ${result.summary.matched} of ${result.summary.invoices} invoices (${JSON.stringify(result.summary.byStrategy)})`,
+                count: result.summary.applied || result.summary.matched,
+                duration_ms: Date.now() - apBankStart,
+            });
+        } else {
+            throw new Error(result.error || "AP Bank reconciliation failed");
+        }
+    } catch (error: any) {
+        console.error("[AP Bank Reconciliation] Error:", error);
+        results.push({
+            name: "AP Bank Reconciliation",
+            success: false,
+            message: "Failed",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
+    // 11. RECONCILIAÇÃO PAGAMENTOS AGENDADOS/FEITOS
+    // ============================================
+    try {
+        const apSchedStart = Date.now();
+        console.log("\n📅 [11/11] Reconciliação Pagamentos Agendados/Feitos...");
+
+        const apSchedUrl = `${process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"}/api/reconcile/ap-scheduled`;
+
+        const response = await fetch(apSchedUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ dryRun: false }),
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            results.push({
+                name: "AP Scheduled Reconciliation",
+                success: true,
+                message: `Matched: ${result.summary.matched}, Needs review: ${result.summary.needsReview}`,
+                count: result.summary.applied || result.summary.matched,
+                duration_ms: Date.now() - apSchedStart,
+            });
+        } else {
+            throw new Error(result.error || "AP Scheduled reconciliation failed");
+        }
+    } catch (error: any) {
+        console.error("[AP Scheduled Reconciliation] Error:", error);
+        results.push({
+            name: "AP Scheduled Reconciliation",
             success: false,
             message: "Failed",
             duration_ms: Date.now() - startTime,
@@ -527,6 +641,7 @@ export async function GET(req: NextRequest) {
     // SALVAR METADATA DA SINCRONIZAÇÃO
     // ============================================
     const totalDuration = Date.now() - startTime;
+    const totalSteps = results.length;
     const successCount = results.filter((r) => r.success).length;
     const failCount = results.filter((r) => !r.success).length;
     const totalRecords = results.reduce((sum, r) => sum + (r.count || 0), 0);
@@ -560,19 +675,19 @@ export async function GET(req: NextRequest) {
             if (failCount === 0) {
                 await completeBotTask(
                     botContext,
-                    `Sincronização concluída: ${successCount}/8 sistemas`,
+                    `Sincronização concluída: ${successCount}/${totalSteps} sistemas`,
                     { results, successCount, failCount }
                 );
             } else if (successCount > 0) {
                 await warnBotTask(
                     botContext,
-                    `Sincronização parcial: ${successCount}/8 ok, ${failCount} falhas`,
+                    `Sincronização parcial: ${successCount}/${totalSteps} ok, ${failCount} falhas`,
                     { results, successCount, failCount }
                 );
             } else {
                 await failBotTask(
                     botContext,
-                    `Sincronização falhou: ${failCount}/8 erros`,
+                    `Sincronização falhou: ${failCount}/${totalSteps} erros`,
                     { results, successCount, failCount }
                 );
             }
@@ -586,12 +701,12 @@ export async function GET(req: NextRequest) {
     // ============================================
     console.log(`\n${BOT_CONSOLE_NAME} ✅ [Daily Sync] Sincronização concluída!`);
     console.log(`   ⏱️ Duração total: ${(totalDuration / 1000).toFixed(1)}s`);
-    console.log(`   ✓ Sucesso: ${successCount}/8`);
-    console.log(`   ✗ Falhas: ${failCount}/8`);
+    console.log(`   ✓ Sucesso: ${successCount}/${totalSteps}`);
+    console.log(`   ✗ Falhas: ${failCount}/${totalSteps}`);
 
     return NextResponse.json({
         success: failCount === 0,
-        message: `Daily sync completed: ${successCount}/8 successful`,
+        message: `Daily sync completed: ${successCount}/${totalSteps} successful`,
         duration_ms: totalDuration,
         timestamp: new Date().toISOString(),
         bot: "BOTella",

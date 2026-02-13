@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap, User } from "lucide-react";
+import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap, User, CheckCircle2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -68,6 +68,9 @@ type Invoice = {
   cash_impact: boolean;
   is_intercompany: boolean;
   is_reconciled?: boolean; // Payment reconciliation status
+  reconciled_at?: string | null; // Date of reconciliation
+  reconciled_transaction_id?: string | null;
+  reconciled_amount?: number | null;
   payment_status?: string | null;
   notes?: string | null;
   is_split?: boolean;
@@ -163,7 +166,7 @@ export default function InvoicesPage() {
   const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
     "actions", "split", "scope", "impact", "type", "input_date", "invoice_date", "benefit_date", "due_date", "schedule_date",
     "provider", "description", "invoice_number", "amount", "currency", "financial_account",
-    "cost_center", "cost_type", "dep_cost_type", "payment_status", "payment_method",
+    "cost_center", "cost_type", "dep_cost_type", "payment_status", "is_reconciled", "payment_method",
     "bank_account", "payment_date"
   ]));
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
@@ -2534,7 +2537,7 @@ export default function InvoicesPage() {
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          const allColumns = new Set(['actions', 'split', 'scope', 'impact', 'type', 'input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date', 'provider', 'description', 'invoice_number', 'amount', 'currency', 'financial_account', 'cost_center', 'cost_type', 'dep_cost_type', 'payment_status', 'payment_method', 'bank_account', 'payment_date']);
+                          const allColumns = new Set(['actions', 'split', 'scope', 'impact', 'type', 'input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date', 'provider', 'description', 'invoice_number', 'amount', 'currency', 'financial_account', 'cost_center', 'cost_type', 'dep_cost_type', 'payment_status', 'is_reconciled', 'payment_method', 'bank_account', 'payment_date']);
                           setVisibleColumns(allColumns);
                         }}
                         className="absolute -top-2 -left-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white z-10 cursor-pointer"
@@ -2579,6 +2582,7 @@ export default function InvoicesPage() {
                     { id: 'cost_type', label: 'Cost Type' },
                     { id: 'dep_cost_type', label: 'Dep Cost Type' },
                     { id: 'payment_status', label: 'Payment Status' },
+                    { id: 'is_reconciled', label: 'Recon' },
                     { id: 'payment_method', label: 'Payment Method' },
                     { id: 'bank_account', label: 'Bank Account' },
                     { id: 'payment_date', label: 'Payment Date' },
@@ -2603,7 +2607,7 @@ export default function InvoicesPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const allColumns = new Set(['actions', 'scope', 'impact', 'type', 'input_date', 'invoice_date', 'benefit_date', 'provider', 'description', 'invoice_number', 'amount', 'currency', 'financial_account', 'cost_center', 'cost_type', 'dep_cost_type', 'payment_status', 'payment_method', 'bank_account', 'payment_date']);
+                      const allColumns = new Set(['actions', 'scope', 'impact', 'type', 'input_date', 'invoice_date', 'benefit_date', 'provider', 'description', 'invoice_number', 'amount', 'currency', 'financial_account', 'cost_center', 'cost_type', 'dep_cost_type', 'payment_status', 'is_reconciled', 'payment_method', 'bank_account', 'payment_date']);
                       setTempVisibleColumns(allColumns);
                     }}
                   >
@@ -2983,6 +2987,9 @@ export default function InvoicesPage() {
                     )}
                     {visibleColumns.has('payment_status') && (
                       <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Status</th>
+                    )}
+                    {visibleColumns.has('is_reconciled') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Recon</th>
                     )}
                     {visibleColumns.has('payment_method') && (
                       <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Method</th>
@@ -3715,6 +3722,19 @@ export default function InvoicesPage() {
                             >
                               {paymentStatus.replace('_', ' ')}
                             </Badge>
+                          </td>
+                        )}
+
+                        {/* Recon Status */}
+                        {visibleColumns.has('is_reconciled') && (
+                          <td className="px-2 py-1 text-center">
+                            {invoice.is_reconciled ? (
+                              <span title={`Reconciled${invoice.reconciled_at ? ' on ' + new Date(invoice.reconciled_at).toLocaleDateString('pt-BR') : ''}`}>
+                                <CheckCircle2 className="h-3.5 w-3.5 text-green-400 inline" />
+                              </span>
+                            ) : (
+                              <span className="text-gray-500" title="Not reconciled">-</span>
+                            )}
                           </td>
                         )}
 

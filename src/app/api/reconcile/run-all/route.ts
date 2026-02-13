@@ -169,6 +169,21 @@ export async function POST(req: NextRequest) {
         console.log(`[run-all]   web-orders-bank: ${webOrdersMatched} matched`);
 
         // ═══════════════════════════════════════════════════
+        // FASE 7 — AP RECONCILIATION (link AP invoices ↔ bank debits)
+        // ═══════════════════════════════════════════════════
+        console.log("[run-all] FASE 7: AP Invoice ↔ Bank reconciliation...");
+
+        // 10. AP Bank: all pending AP invoices vs bank debits (5 strategies)
+        pipelineResults.apBank = await callApi(baseUrl, "/api/reconcile/ap-bank", { dryRun });
+        const apBankMatched = pipelineResults.apBank?.summary?.matched || 0;
+        console.log(`[run-all]   ap-bank: ${apBankMatched} matched`);
+
+        // 11. AP Scheduled: paid but not reconciled + recent scheduled
+        pipelineResults.apScheduled = await callApi(baseUrl, "/api/reconcile/ap-scheduled", { dryRun });
+        const apScheduledMatched = pipelineResults.apScheduled?.summary?.matched || 0;
+        console.log(`[run-all]   ap-scheduled: ${apScheduledMatched} matched`);
+
+        // ═══════════════════════════════════════════════════
         // SUMMARY
         // ═══════════════════════════════════════════════════
 
@@ -176,7 +191,7 @@ export async function POST(req: NextRequest) {
         const bankTotalUnmatched = bankResults.reduce((sum, r) => sum + r.unmatched, 0);
         const bankTotalValue = bankResults.reduce((sum, r) => sum + (r.totalValue || 0), 0);
 
-        const allMatched = bankTotalMatched + deepMatched + chainEurMatched + chainUsdMatched + webOrdersMatched;
+        const allMatched = bankTotalMatched + deepMatched + chainEurMatched + chainUsdMatched + webOrdersMatched + apBankMatched + apScheduledMatched;
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
         console.log(`[run-all] COMPLETE in ${duration}s — Total matched: ${allMatched}`);
@@ -217,8 +232,14 @@ export async function POST(req: NextRequest) {
                     fallback: {
                         webOrdersBank: webOrdersMatched,
                     },
+                    apReconciliation: {
+                        apBank: apBankMatched,
+                        apScheduled: apScheduledMatched,
+                        apBankByStrategy: pipelineResults.apBank?.summary?.byStrategy || {},
+                    },
                 },
                 arInvoicesReconciled: arAutoMatched,
+                apInvoicesReconciled: apBankMatched + apScheduledMatched,
             },
             banks: bankResults,
             specialReconciliations: pipelineResults,

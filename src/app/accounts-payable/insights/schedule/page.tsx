@@ -719,10 +719,114 @@ export default function PaymentSchedulePage() {
             const { error } = await supabase.from("invoices").update(updatePayload).eq("id", paymentConfirmInvoice.id);
             if (error) throw error;
 
-            setInvoices((prev) => prev.map((inv) => (inv.id === paymentConfirmInvoice.id ? { ...inv, ...updatePayload } : inv)));
-            if (selectedInvoice?.id === paymentConfirmInvoice.id) setSelectedInvoice({ ...selectedInvoice, ...updatePayload });
+            // ─── Auto-match with bank transaction ───────────────
+            // Search for a bank debit matching this payment (±7 calendar days ≈ 5 business days)
+            let autoReconciled = false;
+            try {
+                const paidAmount = parseFloat(paymentConfirmData.paid_amount);
+                const payDate = paymentConfirmData.payment_date;
+                const bankCode = paymentConfirmInvoice.bank_account_code || "";
 
-            toast({ title: "Payment confirmed", variant: "success" });
+                // Determine bank source
+                let sources = ["bankinter-eur", "sabadell"];
+                if (bankCode.includes("4605") || bankCode.toLowerCase().includes("eur")) {
+                    sources = ["bankinter-eur"];
+                } else if (bankCode.toLowerCase().includes("usd") && bankCode.toLowerCase().includes("bankinter")) {
+                    sources = ["bankinter-usd"];
+                } else if (bankCode.toLowerCase().includes("sabadell") || bankCode.includes("0081")) {
+                    sources = ["sabadell"];
+                } else if (bankCode.toLowerCase().includes("chase") || (bankCode.toLowerCase().includes("usd") && !bankCode.toLowerCase().includes("bankinter"))) {
+                    sources = ["chase-usd"];
+                }
+
+                const startDate = parseLocalDate(payDate);
+                startDate.setDate(startDate.getDate() - 7);
+                const endDate = parseLocalDate(payDate);
+                endDate.setDate(endDate.getDate() + 7);
+
+                const { data: bankMatches } = await supabase
+                    .from("csv_rows")
+                    .select("id, amount, date")
+                    .in("source", sources)
+                    .lt("amount", 0)
+                    .eq("reconciled", false)
+                    .gte("date", startDate.toISOString().split("T")[0])
+                    .lte("date", endDate.toISOString().split("T")[0]);
+
+                const exactMatches = (bankMatches || []).filter(tx => {
+                    const txAmt = Math.abs(tx.amount);
+                    return Math.abs(txAmt - paidAmount) < 0.01;
+                });
+
+                if (exactMatches.length === 1) {
+                    // Unique match → auto-reconcile
+                    const tx = exactMatches[0];
+                    const now = new Date().toISOString();
+
+                    await supabase.from("invoices").update({
+                        is_reconciled: true,
+                        reconciled_transaction_id: tx.id,
+                        reconciled_at: now,
+                        reconciled_amount: paidAmount,
+                    }).eq("id", paymentConfirmInvoice.id);
+
+                    await supabase.from("csv_rows").update({
+                        reconciled: true,
+                        custom_data: {
+                            reconciliationType: "automatic",
+                            reconciled_at: now,
+                            matched_invoice_ids: [paymentConfirmInvoice.id],
+                            matched_invoice_numbers: paymentConfirmInvoice.invoice_number || "",
+                            matched_invoice_total: paidAmount,
+                            matched_provider: paymentConfirmInvoice.provider_code || "",
+                            match_type: "confirm_payment_auto",
+                            api: "schedule-confirm",
+                        },
+                    }).eq("id", tx.id);
+
+                    // Log history
+                    await fetch("/api/invoice-history", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            invoice_id: paymentConfirmInvoice.id,
+                            change_type: "reconciled",
+                            field_name: "is_reconciled",
+                            old_value: "false",
+                            new_value: "true",
+                            changed_by: "auto",
+                            metadata: {
+                                method: "automatic",
+                                trigger: "confirm_payment",
+                                bank_tx_id: tx.id,
+                                bank_amount: tx.amount,
+                                bank_date: tx.date,
+                            },
+                        }),
+                    }).catch(() => { });
+
+                    autoReconciled = true;
+                }
+            } catch (autoErr) {
+                console.warn("[confirmPayment] Auto-reconciliation attempt failed:", autoErr);
+                // Non-blocking — payment is already confirmed
+            }
+
+            setInvoices((prev) => prev.map((inv) => (inv.id === paymentConfirmInvoice.id
+                ? { ...inv, ...updatePayload, ...(autoReconciled ? { is_reconciled: true } : {}) }
+                : inv
+            )));
+            if (selectedInvoice?.id === paymentConfirmInvoice.id) {
+                setSelectedInvoice({ ...selectedInvoice, ...updatePayload, ...(autoReconciled ? { is_reconciled: true } : {}) });
+            }
+
+            toast({
+                title: autoReconciled ? "Payment confirmed & reconciled!" : "Payment confirmed",
+                description: autoReconciled
+                    ? "Automatically matched with bank transaction"
+                    : "Bank reconciliation will be attempted when transaction appears",
+                variant: "success",
+            });
             setPaymentConfirmDialogOpen(false);
             setPaymentConfirmInvoice(null);
         } catch (e: any) {
