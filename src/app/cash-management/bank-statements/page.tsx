@@ -451,7 +451,9 @@ export default function BankStatementsPage() {
                 const cd = row.custom_data || {};
                 const source = row.source || "";
                 const amount = parseFloat(row.amount) || 0;
-                const paymentSource = cd.paymentSource || null;
+                // paymentSource is ONLY for revenue — never for expenses
+                const rawPaymentSource = cd.paymentSource || null;
+                const paymentSource = amount > 0 ? rawPaymentSource : null;
                 // Gateway is ONLY for revenue (positive amounts) — never for expenses
                 const gateway = amount > 0
                     ? (paymentSource?.toLowerCase() || detectGateway(row.description || ""))
@@ -1243,7 +1245,8 @@ export default function BankStatementsPage() {
                         reconciled: true,
                         custom_data: {
                             ...reconTransaction.custom_data,
-                            paymentSource: manualPaymentSource || null,
+                            // paymentSource is ONLY for revenue — never for expenses
+                            ...(isExpense ? {} : { paymentSource: manualPaymentSource || null }),
                             reconciliationType: "manual",
                             reconciled_at: now,
                             manual_note: manualNote || null,
@@ -1254,7 +1257,7 @@ export default function BankStatementsPage() {
 
                 setBankTransactions(prev => prev.map(t =>
                     t.id === reconTransaction.id
-                        ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: manualPaymentSource || null }
+                        ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: isExpense ? null : (manualPaymentSource || null) }
                         : t
                 ));
 
@@ -1843,16 +1846,21 @@ export default function BankStatementsPage() {
                             )}
                         </div>
 
-                        {/* Gateway Reconciliation */}
+                        {/* ── RECONCILIATION STATUS ── */}
                         <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                <Link2 className="h-4 w-4" /> Gateway Reconciliation
+                                {selectedRow.amount >= 0
+                                    ? <><Link2 className="h-4 w-4" /> Gateway Reconciliation</>
+                                    : <><Building className="h-4 w-4" /> AP Reconciliation</>}
                             </h3>
                             <div>
                                 <p className="text-xs text-gray-500">Status</p>
                                 {selectedRow.isReconciled ? (
-                                    <Badge variant="outline" className="bg-green-900/30 text-green-400 border-green-700">
-                                        Reconciled ({selectedRow.reconciliationType === "automatic" ? "Auto" : "Manual"})
+                                    <Badge variant="outline" className={`${selectedRow.reconciliationType?.startsWith("automatic") ? "bg-green-900/30 text-green-400 border-green-700"
+                                            : selectedRow.reconciliationType === "intercompany" ? "bg-amber-900/30 text-amber-400 border-amber-700"
+                                                : "bg-blue-900/30 text-blue-400 border-blue-700"
+                                        }`}>
+                                        Reconciled ({selectedRow.reconciliationType?.startsWith("automatic") ? "Auto" : selectedRow.reconciliationType === "intercompany" ? "Intercompany" : "Manual"})
                                     </Badge>
                                 ) : (
                                     <Badge variant="outline" className="bg-yellow-900/30 text-yellow-400 border-yellow-700">
@@ -1861,7 +1869,16 @@ export default function BankStatementsPage() {
                                 )}
                             </div>
 
-                            {selectedRow.paymentSource && (
+                            {/* Reconciliation method detail */}
+                            {selectedRow.reconciliationType === "automatic-ap-bulk" && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Method</p>
+                                    <p className="text-sm text-green-300">AP Bulk Reconciliation (Excel)</p>
+                                </div>
+                            )}
+
+                            {/* ── REVENUE: Payment Source / Gateway info ── */}
+                            {selectedRow.amount >= 0 && selectedRow.paymentSource && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Payment Source</p>
                                     <Badge variant="outline" className={`${getGatewayStyle(selectedRow.paymentSource).bg} ${getGatewayStyle(selectedRow.paymentSource).text} ${getGatewayStyle(selectedRow.paymentSource).border}`}>
@@ -1880,6 +1897,57 @@ export default function BankStatementsPage() {
                                 </div>
                             )}
 
+                            {/* ── EXPENSE: AP Invoice details ── */}
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_provider && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Provider</p>
+                                    <p className="text-sm text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_number && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                    <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_number}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_numbers && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Invoices</p>
+                                    <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_numbers}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_total != null && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Invoice Total</p>
+                                    <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_invoice_total, selectedRow.currency)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_amount != null && !selectedRow.custom_data?.matched_invoice_total && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
+                                    <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_amount, selectedRow.currency)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_payment_date && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Payment Date (Excel)</p>
+                                    <span className="text-sm text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.ap_financial_account && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Financial Account</p>
+                                    <span className="text-sm text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
+                                </div>
+                            )}
+
+                            {/* ── COMMON fields ── */}
                             {selectedRow.custom_data?.reconciled_at && (
                                 <div>
                                     <p className="text-xs text-gray-500">Reconciled at</p>
@@ -1900,9 +1968,23 @@ export default function BankStatementsPage() {
                                     <p className="text-sm text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
                                 </div>
                             )}
+
+                            {/* ── INTERCOMPANY details ── */}
+                            {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_bank && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Bank</p>
+                                    <p className="text-sm text-amber-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.custom_data.intercompany_matched_bank)?.label || selectedRow.custom_data.intercompany_matched_bank}</p>
+                                </div>
+                            )}
+                            {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_amount != null && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
+                                    <span className="text-sm font-medium text-amber-400">{formatCurrency(selectedRow.custom_data.intercompany_matched_amount, selectedRow.currency)}</span>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Matched transaction details */}
+                        {/* Matched transaction details (gateway auto-match) */}
                         {selectedRow.isReconciled && selectedRow.custom_data?.bank_match_amount && (
                             <div className="px-4 py-4 space-y-3 bg-green-900/10">
                                 <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
@@ -1920,38 +2002,40 @@ export default function BankStatementsPage() {
                             </div>
                         )}
 
-                        {/* Order Reconciliation */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                <FileText className="h-4 w-4" /> Order Reconciliation
-                            </h3>
-                            <div>
-                                <p className="text-xs text-gray-500">Status</p>
-                                {selectedRow.isOrderReconciled ? (
-                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
-                                        Matched
-                                    </Badge>
-                                ) : (
-                                    <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
-                                        Not Matched
-                                    </Badge>
+                        {/* Order Reconciliation — only for revenue */}
+                        {selectedRow.amount >= 0 && (
+                            <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
+                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <FileText className="h-4 w-4" /> Order Reconciliation
+                                </h3>
+                                <div>
+                                    <p className="text-xs text-gray-500">Status</p>
+                                    {selectedRow.isOrderReconciled ? (
+                                        <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
+                                            Matched
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
+                                            Not Matched
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {selectedRow.invoiceNumber && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                        <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
+                                    </div>
+                                )}
+
+                                {selectedRow.invoiceOrderId && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Order ID</p>
+                                        <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
+                                    </div>
                                 )}
                             </div>
-
-                            {selectedRow.invoiceNumber && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
-                                    <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
-                                </div>
-                            )}
-
-                            {selectedRow.invoiceOrderId && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Order ID</p>
-                                    <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
-                                </div>
-                            )}
-                        </div>
+                        )}
                     </div>
 
                     {/* Panel Footer */}
@@ -2406,23 +2490,26 @@ export default function BankStatementsPage() {
                                         <div className="border-t border-gray-700 pt-3">
                                             <label className="text-xs text-gray-400 block mb-1">Or reconcile without invoice:</label>
                                         </div>
-                                        <div>
-                                            <label className="text-xs text-gray-400 block mb-1">Payment Source (gateway)</label>
-                                            <Select value={manualPaymentSource} onValueChange={setManualPaymentSource}>
-                                                <SelectTrigger className="bg-[#1e1f21] border-gray-600 text-white">
-                                                    <SelectValue placeholder="Select source..." />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="braintree-eur">Braintree EUR</SelectItem>
-                                                    <SelectItem value="braintree-usd">Braintree USD</SelectItem>
-                                                    <SelectItem value="braintree-gbp">Braintree GBP</SelectItem>
-                                                    <SelectItem value="braintree-amex">Braintree Amex</SelectItem>
-                                                    <SelectItem value="paypal">PayPal</SelectItem>
-                                                    <SelectItem value="gocardless">GoCardless</SelectItem>
-                                                    <SelectItem value="stripe">Stripe</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
+                                        {/* Payment Source dropdown — ONLY for revenue, never for expenses */}
+                                        {!isExpense && (
+                                            <div>
+                                                <label className="text-xs text-gray-400 block mb-1">Payment Source (gateway)</label>
+                                                <Select value={manualPaymentSource} onValueChange={setManualPaymentSource}>
+                                                    <SelectTrigger className="bg-[#1e1f21] border-gray-600 text-white">
+                                                        <SelectValue placeholder="Select source..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="braintree-eur">Braintree EUR</SelectItem>
+                                                        <SelectItem value="braintree-usd">Braintree USD</SelectItem>
+                                                        <SelectItem value="braintree-gbp">Braintree GBP</SelectItem>
+                                                        <SelectItem value="braintree-amex">Braintree Amex</SelectItem>
+                                                        <SelectItem value="paypal">PayPal</SelectItem>
+                                                        <SelectItem value="gocardless">GoCardless</SelectItem>
+                                                        <SelectItem value="stripe">Stripe</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
                                         <div>
                                             <label className="text-xs text-gray-400 block mb-1">Note (optional)</label>
                                             <Input placeholder="Description or reference..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm" />
