@@ -42,6 +42,12 @@ function normalizeEmail(email: string | null | undefined): string | null {
     return email.toString().trim().toLowerCase();
 }
 
+/** Normaliza name para fuzzy matching */
+function normalizeName(name: string | null | undefined): string | null {
+    if (!name) return null;
+    return name.toString().trim().toLowerCase().replace(/[^a-z0-9]/g, '') || null;
+}
+
 /** Calcula diferença em dias entre duas datas ISO */
 function daysDiff(dateA: string, dateB: string): number {
     const a = new Date(dateA);
@@ -122,13 +128,23 @@ export async function POST(req: Request) {
         // Build indexes for fast lookup
         const ordersByOrderId = new Map<string, any>();
         const ordersByEmail = new Map<string, any[]>();
-        const ordersByAmountDate = new Map<string, any[]>();
+        const ordersByAmountRounded = new Map<number, any[]>();
+        const ordersByCustomerName = new Map<string, any[]>();
+        const ordersByPartialOrderId = new Map<string, any[]>();
 
         for (const order of orders) {
             // Index by order_id
             const orderId = order.custom_data?.order_id || order.custom_data?.order_number || order.custom_data?.Number;
             if (orderId) {
-                ordersByOrderId.set(String(orderId).toLowerCase().trim(), order);
+                const key = String(orderId).toLowerCase().trim();
+                ordersByOrderId.set(key, order);
+
+                // Also index by partial order_id prefix (first 7 chars) for fuzzy matching
+                if (key.length >= 7) {
+                    const prefix = key.substring(0, 7);
+                    if (!ordersByPartialOrderId.has(prefix)) ordersByPartialOrderId.set(prefix, []);
+                    ordersByPartialOrderId.get(prefix)!.push(order);
+                }
             }
 
             // Index by email
@@ -138,15 +154,23 @@ export async function POST(req: Request) {
                 ordersByEmail.get(email)!.push(order);
             }
 
-            // Index by amount (rounded to 2 decimals) for fuzzy matching
-            const amt = Math.abs(parseFloat(order.amount) || 0).toFixed(2);
-            if (amt !== "0.00") {
-                if (!ordersByAmountDate.has(amt)) ordersByAmountDate.set(amt, []);
-                ordersByAmountDate.get(amt)!.push(order);
+            // Index by amount (rounded to integer) for fuzzy matching
+            const amt = Math.abs(parseFloat(order.amount) || 0);
+            if (amt > 0) {
+                const roundedAmt = Math.round(amt);
+                if (!ordersByAmountRounded.has(roundedAmt)) ordersByAmountRounded.set(roundedAmt, []);
+                ordersByAmountRounded.get(roundedAmt)!.push(order);
+            }
+
+            // Index by customer name
+            const customerName = normalizeName(order.customer_name || order.custom_data?.customer_name || order.custom_data?.CustomerName);
+            if (customerName && customerName.length >= 3) {
+                if (!ordersByCustomerName.has(customerName)) ordersByCustomerName.set(customerName, []);
+                ordersByCustomerName.get(customerName)!.push(order);
             }
         }
 
-        console.log(`[Braintree-Orders] Indexes: ${ordersByOrderId.size} by orderId, ${ordersByEmail.size} by email, ${ordersByAmountDate.size} by amount`);
+        console.log(`[Braintree-Orders] Indexes: ${ordersByOrderId.size} by orderId, ${ordersByEmail.size} by email, ${ordersByAmountRounded.size} by amount, ${ordersByCustomerName.size} by name, ${ordersByPartialOrderId.size} by partialId`);
 
         // 3. Run matching strategies
         const matches: MatchResult[] = [];
@@ -241,7 +265,7 @@ export async function POST(req: Request) {
             console.log(`[Strategy: email] ${matches.length - emailMatchesBefore} new matches`);
         }
 
-        // Strategy 3: Match by Amount + Date proximity
+        // Strategy 3: Match by Amount + Date proximity (rounded keys ±1, ±5 days)
         if (strategy === "amount-date" || strategy === "all") {
             const amountMatchesBefore = matches.length;
 
@@ -251,19 +275,28 @@ export async function POST(req: Request) {
                 const btAmount = Math.abs(parseFloat(tx.amount) || 0);
                 if (btAmount < 1) continue;
 
-                const amountKey = btAmount.toFixed(2);
-                const candidates = ordersByAmountDate.get(amountKey);
-                if (!candidates) continue;
+                // Check rounded key and neighbors (±1) for near-misses
+                const roundedKey = Math.round(btAmount);
+                const candidateKeys = [roundedKey - 1, roundedKey, roundedKey + 1];
+                const allCandidates: any[] = [];
+                for (const key of candidateKeys) {
+                    const list = ordersByAmountRounded.get(key);
+                    if (list) allCandidates.push(...list);
+                }
 
                 // Find best match by date proximity
                 let bestMatch: any = null;
                 let bestDays = Infinity;
 
-                for (const order of candidates) {
+                for (const order of allCandidates) {
                     if (matchedOrderIds.has(order.id)) continue;
 
+                    const orderAmount = Math.abs(parseFloat(order.amount) || 0);
+                    const amountDiff = Math.abs(btAmount - orderAmount);
+                    if (amountDiff > 1.0) continue; // Hard cap at ±€1
+
                     const days = daysDiff(tx.date, order.date);
-                    if (days <= 3 && days < bestDays) {
+                    if (days <= 5 && days < bestDays) {
                         bestDays = days;
                         bestMatch = order;
                     }
@@ -290,6 +323,119 @@ export async function POST(req: Request) {
                 }
             }
             console.log(`[Strategy: amount-date] ${matches.length - amountMatchesBefore} new matches`);
+        }
+
+        // Strategy 4: Match by Customer Name + Amount tolerance
+        if (strategy === "all") {
+            const nameMatchesBefore = matches.length;
+
+            for (const tx of transactions) {
+                if (matchedBraintreeIds.has(tx.id)) continue;
+
+                const customerName = normalizeName(tx.customer_name || tx.custom_data?.customer_name);
+                if (!customerName || customerName.length < 3) continue;
+
+                const btAmount = Math.abs(parseFloat(tx.amount) || 0);
+                if (btAmount < 1) continue;
+
+                // Try exact normalized name
+                let candidates = (ordersByCustomerName.get(customerName) || [])
+                    .filter(o => !matchedOrderIds.has(o.id));
+
+                // Try partial name match if no exact
+                if (candidates.length === 0) {
+                    for (const [nameKey, orderList] of ordersByCustomerName) {
+                        if (nameKey.includes(customerName) || customerName.includes(nameKey)) {
+                            candidates.push(...orderList.filter(o => !matchedOrderIds.has(o.id)));
+                        }
+                    }
+                }
+
+                let bestMatch: any = null;
+                let bestScore = Infinity;
+
+                for (const order of candidates) {
+                    const orderAmount = Math.abs(parseFloat(order.amount) || 0);
+                    const amountDiff = Math.abs(btAmount - orderAmount);
+                    const amountTolerance = Math.max(1.0, btAmount * 0.02);
+
+                    if (amountDiff <= amountTolerance) {
+                        const days = daysDiff(tx.date, order.date);
+                        if (days <= 7 && (amountDiff + days) < bestScore) {
+                            bestScore = amountDiff + days;
+                            bestMatch = order;
+                        }
+                    }
+                }
+
+                if (bestMatch) {
+                    matches.push({
+                        braintreeId: tx.id,
+                        braintreeTransactionId: tx.custom_data?.transaction_id || tx.id,
+                        orderId: bestMatch.custom_data?.order_id || bestMatch.custom_data?.Number || "",
+                        orderRowId: bestMatch.id,
+                        matchType: "customer-name",
+                        confidence: 0.60,
+                        braintreeAmount: parseFloat(tx.amount) || 0,
+                        orderAmount: parseFloat(bestMatch.amount) || 0,
+                        braintreeDate: tx.date,
+                        orderDate: bestMatch.date,
+                        customerName: tx.customer_name || tx.custom_data?.customer_name,
+                        customerEmail: tx.customer_email || tx.custom_data?.customer_email,
+                    });
+                    matchedBraintreeIds.add(tx.id);
+                    matchedOrderIds.add(bestMatch.id);
+                }
+            }
+            console.log(`[Strategy: customer-name] ${matches.length - nameMatchesBefore} new matches`);
+        }
+
+        // Strategy 5: Partial Order ID prefix matching
+        if (strategy === "all") {
+            const partialMatchesBefore = matches.length;
+
+            for (const tx of transactions) {
+                if (matchedBraintreeIds.has(tx.id)) continue;
+
+                const btOrderId = tx.custom_data?.order_id;
+                if (!btOrderId) continue;
+
+                const key = String(btOrderId).toLowerCase().trim();
+                if (key.length < 7) continue;
+
+                // Already tried exact match in strategy 1, now try prefix
+                const prefix = key.substring(0, 7);
+                const candidates = (ordersByPartialOrderId.get(prefix) || [])
+                    .filter(o => !matchedOrderIds.has(o.id));
+
+                if (candidates.length === 1) {
+                    // Only match if unambiguous (single candidate)
+                    const order = candidates[0];
+                    const btAmount = Math.abs(parseFloat(tx.amount) || 0);
+                    const orderAmount = Math.abs(parseFloat(order.amount) || 0);
+                    const amountDiff = Math.abs(btAmount - orderAmount);
+
+                    if (amountDiff < 2.0) {
+                        matches.push({
+                            braintreeId: tx.id,
+                            braintreeTransactionId: tx.custom_data?.transaction_id || tx.id,
+                            orderId: order.custom_data?.order_id || order.custom_data?.Number || "",
+                            orderRowId: order.id,
+                            matchType: "partial-order-id",
+                            confidence: 0.70,
+                            braintreeAmount: parseFloat(tx.amount) || 0,
+                            orderAmount: parseFloat(order.amount) || 0,
+                            braintreeDate: tx.date,
+                            orderDate: order.date,
+                            customerName: tx.customer_name || tx.custom_data?.customer_name,
+                            customerEmail: tx.customer_email || tx.custom_data?.customer_email,
+                        });
+                        matchedBraintreeIds.add(tx.id);
+                        matchedOrderIds.add(order.id);
+                    }
+                }
+            }
+            console.log(`[Strategy: partial-order-id] ${matches.length - partialMatchesBefore} new matches`);
         }
 
         console.log(`\n[Braintree-Orders] TOTAL: ${matches.length} matches de ${transactions.length} transações`);

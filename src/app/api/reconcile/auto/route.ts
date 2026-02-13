@@ -19,6 +19,14 @@ interface Payment {
     amount: number;
     email: string | null;
     order_id: string | null;
+    customer_name: string | null;
+    customer_company: string | null;
+}
+
+/** Normalize company/person name for fuzzy matching */
+function normalizeName(name: string | null | undefined): string | null {
+    if (!name) return null;
+    return name.toLowerCase().replace(/[^a-z0-9]/g, '') || null;
 }
 
 interface Match {
@@ -55,9 +63,10 @@ export async function POST(req: NextRequest) {
         const dryRun = body.dryRun !== false; // Default: dry run
 
         // Buscar transações de todos os gateways em paralelo
-        const [braintree, stripeEur, gocardless] = await Promise.all([
+        const [braintree, stripeEur, stripeUsd, gocardless] = await Promise.all([
             fetchAllFromSource('braintree-api-revenue'),
             fetchAllFromSource('stripe-eur'),
+            fetchAllFromSource('stripe-usd'),
             fetchAllFromSource('gocardless')
         ]);
 
@@ -72,12 +81,14 @@ export async function POST(req: NextRequest) {
                 transaction_id: cd.transaction_id || bt.id,
                 date: bt.date,
                 amount: bt.amount,
-                email: bt.customer_email?.toLowerCase() || null,
-                order_id: cd.order_id || null
+                email: bt.customer_email?.toLowerCase() || cd.customer_email?.toLowerCase() || null,
+                order_id: cd.order_id || null,
+                customer_name: cd.customer_name || bt.customer_name || null,
+                customer_company: cd.customer_company || cd.company_name || null,
             });
         });
 
-        // Stripe
+        // Stripe EUR
         stripeEur.forEach(st => {
             const cd = st.custom_data || {};
             allPayments.push({
@@ -85,23 +96,49 @@ export async function POST(req: NextRequest) {
                 transaction_id: cd.payment_intent || cd.charge_id || st.id,
                 date: st.date,
                 amount: st.amount,
-                email: cd.customer_email?.toLowerCase() || null,
-                order_id: cd.order_id || cd.metadata?.order_id || null
+                email: cd.customer_email?.toLowerCase() || st.customer_email?.toLowerCase() || null,
+                order_id: cd.order_id || cd.metadata?.order_id || null,
+                customer_name: cd.customer_name || st.customer_name || null,
+                customer_company: cd.customer_company || null,
             });
         });
 
-        // GoCardless
-        gocardless.forEach(gc => {
-            const cd = gc.custom_data || {};
+        // Stripe USD
+        stripeUsd.forEach(st => {
+            const cd = st.custom_data || {};
             allPayments.push({
-                source: 'gocardless',
-                transaction_id: cd.payment_id || cd.gocardless_id || gc.id,
-                date: gc.date,
-                amount: gc.amount,
-                email: cd.customer_email?.toLowerCase() || null,
-                order_id: null
+                source: 'stripe',
+                transaction_id: cd.payment_intent || cd.charge_id || st.id,
+                date: st.date,
+                amount: st.amount,
+                email: cd.customer_email?.toLowerCase() || st.customer_email?.toLowerCase() || null,
+                order_id: cd.order_id || cd.metadata?.order_id || null,
+                customer_name: cd.customer_name || st.customer_name || null,
+                customer_company: cd.customer_company || null,
             });
         });
+
+        // GoCardless — ONLY payments (type=payment), payouts have no customer info
+        gocardless
+            .filter(gc => {
+                const cd = gc.custom_data || {};
+                const type = (cd.type || cd.resource_type || '').toLowerCase();
+                // Include payments, exclude payouts/refunds
+                return type !== 'payout' && type !== 'refund';
+            })
+            .forEach(gc => {
+                const cd = gc.custom_data || {};
+                allPayments.push({
+                    source: 'gocardless',
+                    transaction_id: cd.payment_id || cd.gocardless_id || gc.id,
+                    date: gc.date,
+                    amount: gc.amount,
+                    email: cd.customer_email?.toLowerCase() || gc.customer_email?.toLowerCase() || null,
+                    order_id: cd.order_id || cd.mandate_id || null,
+                    customer_name: cd.customer_name || gc.customer_name || null,
+                    customer_company: cd.customer_company || cd.company_name || null,
+                });
+            });
 
         // Buscar invoices pendentes
         let invoices: any[] = [];
@@ -153,9 +190,24 @@ export async function POST(req: NextRequest) {
             invoiceByAmountDate.get(amountKey)!.push(inv);
         });
 
+        // Index por customer_name normalizado para invoices
+        const invoiceByClientName = new Map<string, any[]>();
+        invoices.forEach(inv => {
+            if (inv.client_name) {
+                const nameKey = normalizeName(inv.client_name);
+                if (nameKey && nameKey.length >= 3) {
+                    if (!invoiceByClientName.has(nameKey)) invoiceByClientName.set(nameKey, []);
+                    invoiceByClientName.get(nameKey)!.push(inv);
+                }
+            }
+        });
+
+        console.log(`[auto] Payments: ${allPayments.length} (BT:${braintree.length} Stripe:${stripeEur.length + stripeUsd.length} GC:${gocardless.length})`);
+        console.log(`[auto] Invoices: ${invoices.length} | Indexes: orderId=${invoiceByOrderId.size} email=${invoiceByEmail.size} domain=${invoiceByEmailDomain.size} company=${invoiceByCompanyName.size} clientName=${invoiceByClientName.size} amount=${invoiceByAmountDate.size}`);
+
         // Fazer matching
         const matches: Match[] = [];
-        const stats = { braintree: 0, stripe: 0, gocardless: 0, hubspot_confirmed: 0 };
+        const stats = { braintree: 0, stripe: 0, gocardless: 0, hubspot_confirmed: 0, by_strategy: {} as Record<string, number> };
         const matchedInvoiceIds = new Set<number>();
 
         for (const payment of allPayments) {
@@ -207,16 +259,23 @@ export async function POST(req: NextRequest) {
                 }
             }
 
-            // 4. Match por valor + data (todos os gateways, janela ±3 dias)
+            // 4. Match por valor + data (todos os gateways, janela ±5 dias, tolerância ±1 no amount key)
             if (!invoice) {
                 const amountKey = Math.round(payment.amount);
-                const candidates = (invoiceByAmountDate.get(amountKey) || [])
+                // Check amount key and neighbors (±1) for near-misses
+                const candidateKeys = [amountKey - 1, amountKey, amountKey + 1];
+                const allCandidates: any[] = [];
+                for (const key of candidateKeys) {
+                    const list = invoiceByAmountDate.get(key);
+                    if (list) allCandidates.push(...list);
+                }
+                const uniqueCandidates = allCandidates
                     .filter(inv => !matchedInvoiceIds.has(inv.id));
                 const paymentDate = new Date(payment.date);
-                const dateMatch = candidates.find(inv => {
+                const dateMatch = uniqueCandidates.find(inv => {
                     const invDate = new Date(inv.invoice_date || inv.order_date);
                     const daysDiff = Math.abs((paymentDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
-                    return daysDiff <= 3 && Math.abs(inv.total_amount - payment.amount) < 1;
+                    return daysDiff <= 5 && Math.abs(inv.total_amount - payment.amount) < 1;
                 });
                 if (dateMatch) {
                     invoice = dateMatch;
@@ -224,9 +283,60 @@ export async function POST(req: NextRequest) {
                 }
             }
 
+            // 5. Match por company_name + valor ±2% + data ±7 dias
+            if (!invoice && payment.customer_company) {
+                const companyKey = normalizeName(payment.customer_company);
+                if (companyKey) {
+                    const candidates = (invoiceByCompanyName.get(companyKey) || [])
+                        .filter(inv => !matchedInvoiceIds.has(inv.id));
+                    const paymentDate = new Date(payment.date);
+                    const companyMatch = candidates.find(inv => {
+                        const invDate = new Date(inv.invoice_date || inv.order_date);
+                        const daysDiff = Math.abs((paymentDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
+                        const amountTolerance = Math.max(1, payment.amount * 0.02); // 2% or €1 min
+                        return daysDiff <= 7 && Math.abs(inv.total_amount - payment.amount) < amountTolerance;
+                    });
+                    if (companyMatch) {
+                        invoice = companyMatch;
+                        matchType = 'company_name+amount';
+                    }
+                }
+            }
+
+            // 6. Match por customer_name ↔ client_name + valor ±€2 + data ±5 dias
+            if (!invoice && payment.customer_name) {
+                const nameKey = normalizeName(payment.customer_name);
+                if (nameKey && nameKey.length >= 3) {
+                    // Try exact normalized name match first
+                    let candidates = (invoiceByClientName.get(nameKey) || [])
+                        .filter(inv => !matchedInvoiceIds.has(inv.id));
+
+                    // Try partial match (payment name contained in invoice name or vice versa)
+                    if (candidates.length === 0) {
+                        for (const [invNameKey, invList] of invoiceByClientName) {
+                            if (invNameKey.includes(nameKey) || nameKey.includes(invNameKey)) {
+                                candidates.push(...invList.filter(inv => !matchedInvoiceIds.has(inv.id)));
+                            }
+                        }
+                    }
+
+                    const paymentDate = new Date(payment.date);
+                    const nameMatch = candidates.find(inv => {
+                        const invDate = new Date(inv.invoice_date || inv.order_date);
+                        const daysDiff = Math.abs((paymentDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
+                        return daysDiff <= 5 && Math.abs(inv.total_amount - payment.amount) < 2;
+                    });
+                    if (nameMatch) {
+                        invoice = nameMatch;
+                        matchType = 'customer_name+amount';
+                    }
+                }
+            }
+
             if (invoice && matchType) {
                 matchedInvoiceIds.add(invoice.id);
                 stats[payment.source as keyof typeof stats]++;
+                stats.by_strategy[matchType] = (stats.by_strategy[matchType] || 0) + 1;
                 matches.push({
                     invoice_id: invoice.id,
                     invoice_number: invoice.invoice_number,
@@ -304,10 +414,12 @@ export async function POST(req: NextRequest) {
             summary: {
                 payments: {
                     braintree: braintree.length,
-                    stripe: stripeEur.length,
+                    stripe_eur: stripeEur.length,
+                    stripe_usd: stripeUsd.length,
                     gocardless: gocardless.length,
                     total: allPayments.length
                 },
+                byStrategy: stats.by_strategy,
                 invoicesPending: invoices.length,
                 matched: matches.length,
                 bySource: stats,
