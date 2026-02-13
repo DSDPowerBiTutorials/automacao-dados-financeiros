@@ -43,7 +43,7 @@ interface SyncResult {
     error?: string;
 }
 
-export const maxDuration = 540; // 9 minutos máximo (pipeline expandido)
+export const maxDuration = 300; // Vercel Hobby plan max
 
 export async function GET(req: NextRequest) {
     const startTime = Date.now();
