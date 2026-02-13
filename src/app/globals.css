@@ -522,8 +522,10 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 /* Override for dashboard page — remove white wrapper */
-.app-content-wrapper:has(> .dashboard-bg) {
+.app-content-wrapper:has(> .dashboard-bg),
+.app-content-wrapper:has(> .dark-page) {
   background-color: transparent !important;
   box-shadow: none !important;
   border-radius: 0 !important;
+  margin: 0 !important;
 }
