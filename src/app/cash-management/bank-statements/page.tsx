@@ -153,6 +153,19 @@ interface IntercompanyMatch {
     matchScore: number;
 }
 
+interface DisbursementTransaction {
+    id: string;
+    date: string;
+    customerName: string;
+    customerEmail: string;
+    orderId: string | null;
+    amount: number;
+    currency: string;
+    cardType: string | null;
+    paymentMethod: string | null;
+    transactionId: string;
+}
+
 // ════════════════════════════════════════════════════════
 // Helpers
 // ════════════════════════════════════════════════════════
@@ -300,6 +313,11 @@ export default function BankStatementsPage() {
 
     // Detail panel
     const [selectedRow, setSelectedRow] = useState<BankTransaction | null>(null);
+
+    // Disbursement transaction details
+    const [disbursementTxns, setDisbursementTxns] = useState<DisbursementTransaction[]>([]);
+    const [loadingDisbursementTxns, setLoadingDisbursementTxns] = useState(false);
+    const [disbursementExpanded, setDisbursementExpanded] = useState(false);
 
     // Reconciliation
     const [isReconciling, setIsReconciling] = useState(false);
@@ -495,6 +513,109 @@ export default function BankStatementsPage() {
     }, [dateRange]);
 
     useEffect(() => { loadData(); }, [loadData]);
+
+    // ─── Load disbursement transaction details ───
+    const loadDisbursementDetails = useCallback(async (row: BankTransaction) => {
+        const cd = row.custom_data;
+        const txIds: string[] = cd?.transaction_ids || [];
+        const settlementBatch = cd?.settlement_batch_id;
+        const disbDate = cd?.disbursement_date;
+        const paySource = row.paymentSource?.toLowerCase() || "";
+
+        if (txIds.length === 0 && !settlementBatch && !disbDate) {
+            setDisbursementTxns([]);
+            return;
+        }
+
+        setLoadingDisbursementTxns(true);
+        try {
+            let rows: any[] = [];
+
+            // Strategy 1: query by transaction_ids if available
+            if (txIds.length > 0) {
+                // Braintree transactions are in csv_rows — match by custom_data.transaction_id
+                const sources = paySource.includes("stripe")
+                    ? ["stripe-eur", "stripe-usd"]
+                    : paySource.includes("gocardless")
+                        ? ["gocardless"]
+                        : ["braintree-api-revenue", "braintree-api-revenue-usd", "braintree-api-revenue-gbp", "braintree-api-revenue-amex"];
+
+                // Fetch in batches of 50 IDs to avoid URL-length issues
+                for (let i = 0; i < txIds.length; i += 50) {
+                    const batch = txIds.slice(i, i + 50);
+                    for (const source of sources) {
+                        const { data } = await supabase
+                            .from("csv_rows")
+                            .select("id, date, amount, description, custom_data")
+                            .eq("source", source)
+                            .in("custom_data->>transaction_id", batch)
+                            .limit(100);
+                        if (data) rows.push(...data);
+                    }
+                }
+            }
+
+            // Strategy 2: fallback — query by disbursement_date + source
+            if (rows.length === 0 && disbDate) {
+                const sources = paySource.includes("stripe")
+                    ? ["stripe-eur", "stripe-usd"]
+                    : paySource.includes("gocardless")
+                        ? ["gocardless"]
+                        : ["braintree-api-revenue", "braintree-api-revenue-usd", "braintree-api-revenue-gbp", "braintree-api-revenue-amex"];
+
+                for (const source of sources) {
+                    const { data } = await supabase
+                        .from("csv_rows")
+                        .select("id, date, amount, description, custom_data")
+                        .eq("source", source)
+                        .eq("custom_data->>disbursement_date", disbDate)
+                        .order("date", { ascending: false })
+                        .limit(200);
+                    if (data) rows.push(...data);
+                }
+            }
+
+            // Deduplicate by ID
+            const seen = new Set<string>();
+            const unique = rows.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; });
+
+            const txns: DisbursementTransaction[] = unique.map(r => {
+                const rcd = r.custom_data || {};
+                return {
+                    id: r.id,
+                    date: r.date || rcd.created_at || "",
+                    customerName: rcd.customer_name || rcd.customerName || extractSupplierName(r.description || ""),
+                    customerEmail: rcd.customer_email || rcd.email || "",
+                    orderId: rcd.order_id || rcd.orderId || null,
+                    amount: parseFloat(r.amount) || 0,
+                    currency: rcd.currency || (r.source?.includes("usd") ? "USD" : "EUR"),
+                    cardType: rcd.card_type || rcd.cardType || null,
+                    paymentMethod: rcd.payment_method_type || rcd.payment_method || null,
+                    transactionId: rcd.transaction_id || r.id,
+                };
+            });
+
+            // Sort by amount descending
+            txns.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
+            setDisbursementTxns(txns);
+        } catch (err) {
+            console.error("Error loading disbursement details:", err);
+            setDisbursementTxns([]);
+        } finally {
+            setLoadingDisbursementTxns(false);
+        }
+    }, []);
+
+    // Auto-load disbursement details when selecting a reconciled revenue row
+    useEffect(() => {
+        if (selectedRow && selectedRow.amount >= 0 && selectedRow.isReconciled && selectedRow.paymentSource) {
+            loadDisbursementDetails(selectedRow);
+            setDisbursementExpanded(true);
+        } else {
+            setDisbursementTxns([]);
+            setDisbursementExpanded(false);
+        }
+    }, [selectedRow, loadDisbursementDetails]);
 
     const applyDateRange = () => {
         setDateRange({ ...pendingDateRange });
@@ -1915,7 +2036,107 @@ export default function BankStatementsPage() {
                                 </div>
                             )}
 
-                            {/* ── EXPENSE: AP Invoice details ── */}
+                            {/* Settlement batch & transaction count */}
+                            {selectedRow.custom_data?.braintree_transaction_count > 0 && (
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs text-gray-500">Transactions in Disbursement</p>
+                                        <p className="text-sm text-white font-medium">{selectedRow.custom_data.braintree_transaction_count} transactions</p>
+                                    </div>
+                                    {selectedRow.custom_data?.settlement_batch_id && (
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-500">Settlement Batch</p>
+                                            <p className="text-[10px] font-mono text-gray-400">{selectedRow.custom_data.settlement_batch_id}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ══ DISBURSEMENT TRANSACTIONS BREAKDOWN ══ */}
+                        {selectedRow.amount >= 0 && selectedRow.isReconciled && selectedRow.paymentSource && (
+                            <div className="border-b border-gray-800">
+                                <button
+                                    onClick={() => setDisbursementExpanded(!disbursementExpanded)}
+                                    className="w-full px-4 py-3 flex items-center justify-between bg-[#1a1d23] hover:bg-[#1e2128] transition-colors"
+                                >
+                                    <h3 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                                        <Database className="h-4 w-4" />
+                                        Revenue Breakdown ({disbursementTxns.length} transactions)
+                                    </h3>
+                                    {disbursementExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                                </button>
+
+                                {disbursementExpanded && (
+                                    <div className="bg-[#13151a]">
+                                        {loadingDisbursementTxns ? (
+                                            <div className="flex items-center justify-center py-6 gap-2">
+                                                <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                                                <span className="text-xs text-gray-400">Loading transactions...</span>
+                                            </div>
+                                        ) : disbursementTxns.length === 0 ? (
+                                            <div className="py-4 px-4 text-center text-xs text-gray-500">
+                                                No individual transactions found for this disbursement.
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-[400px] overflow-y-auto">
+                                                {/* Summary */}
+                                                <div className="px-4 py-2 border-b border-gray-800/50 flex items-center justify-between bg-[#1a1d23]">
+                                                    <span className="text-[10px] text-gray-500 uppercase">Total: {disbursementTxns.length} txns</span>
+                                                    <span className="text-xs font-mono text-green-400 font-medium">
+                                                        {formatCurrency(disbursementTxns.reduce((s, t) => s + t.amount, 0), selectedRow.currency)}
+                                                    </span>
+                                                </div>
+
+                                                {/* Transaction rows */}
+                                                {disbursementTxns.map((txn, idx) => (
+                                                    <div key={txn.id} className={`px-4 py-2 border-b border-gray-800/30 hover:bg-gray-800/30 ${idx % 2 === 0 ? "bg-[#13151a]" : "bg-[#161821]"}`}>
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs text-white font-medium truncate" title={txn.customerName}>
+                                                                    {txn.customerName || "—"}
+                                                                </p>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    {txn.orderId && (
+                                                                        <span className="text-[9px] font-mono text-blue-400 bg-blue-900/20 px-1 rounded">
+                                                                            #{txn.orderId}
+                                                                        </span>
+                                                                    )}
+                                                                    {txn.cardType && (
+                                                                        <span className="text-[9px] text-gray-500">
+                                                                            {txn.cardType}
+                                                                        </span>
+                                                                    )}
+                                                                    {txn.paymentMethod && !txn.cardType && (
+                                                                        <span className="text-[9px] text-gray-500">
+                                                                            {txn.paymentMethod}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {txn.customerEmail && (
+                                                                    <p className="text-[9px] text-gray-500 truncate mt-0.5">{txn.customerEmail}</p>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-right shrink-0">
+                                                                <p className="text-xs font-mono text-green-400 font-medium">
+                                                                    {formatCurrency(txn.amount, txn.currency)}
+                                                                </p>
+                                                                <p className="text-[9px] text-gray-500 mt-0.5">
+                                                                    {txn.date ? formatShortDate(txn.date) : "—"}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ── RECONCILIATION STATUS ── (continued - expenses) */}
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
                             {selectedRow.amount < 0 && selectedRow.custom_data?.matched_provider && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Matched Provider</p>
