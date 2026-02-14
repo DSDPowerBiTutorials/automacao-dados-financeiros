@@ -34,6 +34,8 @@ import {
     Filter,
     Clock,
     TrendingUp,
+    BarChart3,
+    Package,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -186,6 +188,21 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
 
 const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" };
 
+// Product color palette for product revenue cards
+const PRODUCT_COLORS: { bg: string; text: string; border: string }[] = [
+    { bg: "bg-violet-900/30", text: "text-violet-400", border: "border-violet-700" },
+    { bg: "bg-pink-900/30", text: "text-pink-400", border: "border-pink-700" },
+    { bg: "bg-sky-900/30", text: "text-sky-400", border: "border-sky-700" },
+    { bg: "bg-amber-900/30", text: "text-amber-400", border: "border-amber-700" },
+    { bg: "bg-lime-900/30", text: "text-lime-400", border: "border-lime-700" },
+    { bg: "bg-rose-900/30", text: "text-rose-400", border: "border-rose-700" },
+    { bg: "bg-cyan-900/30", text: "text-cyan-400", border: "border-cyan-700" },
+    { bg: "bg-fuchsia-900/30", text: "text-fuchsia-400", border: "border-fuchsia-700" },
+    { bg: "bg-teal-900/30", text: "text-teal-400", border: "border-teal-700" },
+    { bg: "bg-orange-900/30", text: "text-orange-400", border: "border-orange-700" },
+];
+const getProductStyle = (index: number) => PRODUCT_COLORS[index % PRODUCT_COLORS.length];
+
 /** Parse Chase ACH descriptions — extract ORIG CO NAME value for short display */
 function parseChaseShortDescription(description: string, source: string): string {
     if (source !== "chase-usd") return description;
@@ -240,6 +257,12 @@ export default function BankCashFlowPage() {
     const [gwReconFilter, setGwReconFilter] = useState("all");
     const [orderFilter, setOrderFilter] = useState("all");
     const [showReconciled, setShowReconciled] = useState(true);
+
+    // Revenue view toggle: gateway vs product
+    const [revenueViewMode, setRevenueViewMode] = useState<"gateway" | "product">("gateway");
+
+    // Invoice-orders data for product revenue breakdown
+    const [invoiceOrders, setInvoiceOrders] = useState<{ description: string; amount: number; date: string; financial_account_name: string | null; financial_account_code: string | null }[]>([]);
 
     // Date groups
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
@@ -347,6 +370,35 @@ export default function BankCashFlowPage() {
             const allDates = new Set<string>();
             transactions.forEach(t => { if (t.date) allDates.add(t.date.split("T")[0]); });
             setExpandedGroups(allDates);
+
+            // ─── Load invoice-orders for product revenue breakdown ───
+            try {
+                const orderRows: any[] = [];
+                let oFrom = 0;
+                while (true) {
+                    const { data: oChunk, error: oErr } = await supabase
+                        .from("csv_rows")
+                        .select("description, amount, date, custom_data")
+                        .eq("source", "invoice-orders")
+                        .gte("date", dateRange.start)
+                        .lte("date", dateRange.end)
+                        .range(oFrom, oFrom + PAGE - 1);
+                    if (oErr) { console.error("Error loading invoice-orders:", oErr); break; }
+                    if (!oChunk || oChunk.length === 0) break;
+                    orderRows.push(...oChunk);
+                    if (oChunk.length < PAGE) break;
+                    oFrom += PAGE;
+                }
+                setInvoiceOrders(orderRows.map(r => ({
+                    description: r.description || "Unknown",
+                    amount: parseFloat(r.amount) || 0,
+                    date: r.date || "",
+                    financial_account_name: r.custom_data?.financial_account_name || null,
+                    financial_account_code: r.custom_data?.financial_account_code || null,
+                })));
+            } catch (orderErr) {
+                console.error("Error loading invoice-orders for product breakdown:", orderErr);
+            }
         } catch (err) {
             console.error("Error loading data:", err);
             setError(err instanceof Error ? err.message : "Error loading data");
@@ -514,6 +566,24 @@ export default function BankCashFlowPage() {
         });
         return map;
     }, [filteredTransactions]);
+
+    // ─── Revenue breakdown by product (from invoice-orders) ───
+    const productRevenue = useMemo(() => {
+        const map: Record<string, { amount: number; count: number; faCode: string | null; faName: string | null }> = {};
+        let totalProductRevenue = 0;
+        invoiceOrders.forEach(order => {
+            if (order.amount <= 0) return; // Only revenue
+            // Use financial_account_name as the grouping key, fallback to description
+            const productKey = order.financial_account_name || order.description || "Unclassified";
+            if (!map[productKey]) map[productKey] = { amount: 0, count: 0, faCode: order.financial_account_code, faName: order.financial_account_name };
+            map[productKey].amount += order.amount;
+            map[productKey].count++;
+            totalProductRevenue += order.amount;
+        });
+        // Sort by amount descending
+        const sorted = Object.entries(map).sort(([, a], [, b]) => b.amount - a.amount);
+        return { items: sorted, total: totalProductRevenue };
+    }, [invoiceOrders]);
 
     const toggleGroup = (date: string) => {
         setExpandedGroups(prev => {
@@ -826,669 +896,749 @@ export default function BankCashFlowPage() {
                             </div>
                         </div>
 
-                        {/* ─── Revenue by Payment Gateway ─── */}
-                        {Object.keys(summary.byGateway).length > 0 && (
+                        {/* ─── Revenue by Payment Gateway / Product (TOGGLE) ─── */}
+                        {(Object.keys(summary.byGateway).length > 0 || productRevenue.items.length > 0) && (
                             <div className="mt-5">
-                                <div className="flex items-center gap-2 mb-3">
-                                    <CreditCard className="h-4 w-4 text-gray-500" />
-                                    <span className="text-xs text-gray-500 uppercase tracking-wider">Revenue by Payment Gateway</span>
+                                {/* Header with toggle */}
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        {revenueViewMode === "gateway" ? <CreditCard className="h-4 w-4 text-gray-500" /> : <Package className="h-4 w-4 text-gray-500" />}
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">
+                                            {revenueViewMode === "gateway" ? "Revenue by Payment Gateway" : "Revenue by Product"}
+                                        </span>
+                                    </div>
+                                    <div className="flex items-center bg-[#1a1b1d] rounded-lg border border-gray-700 p-0.5">
+                                        <button
+                                            onClick={() => setRevenueViewMode("gateway")}
+                                            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "gateway" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                        >
+                                            <CreditCard className="h-3 w-3" />Gateway
+                                        </button>
+                                        <button
+                                            onClick={() => setRevenueViewMode("product")}
+                                            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "product" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                        >
+                                            <Package className="h-3 w-3" />Product
+                                        </button>
+                                    </div>
                                 </div>
-                                <div className="flex gap-2 overflow-x-auto pb-2">
-                                    {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
-                                        const gwStyle = getGatewayStyle(gw);
-                                        const gwLabel = gw.charAt(0).toUpperCase() + gw.slice(1);
-                                        return (
-                                            <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
-                                                <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
-                                                <div className="space-y-0.5">
-                                                    <div className="flex justify-between text-[10px]">
-                                                        <span className="text-gray-500">Amount</span>
-                                                        <span className="text-green-400 font-bold">{formatCompactCurrency(stats.amount, dominantCurrency)}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-[10px]">
-                                                        <span className="text-gray-500">Txns</span>
-                                                        <span className="text-gray-300 font-medium">{stats.count}</span>
-                                                    </div>
-                                                    <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
-                                                        <span className="text-gray-500">Avg</span>
-                                                        <span className="text-gray-300 font-medium">{formatCompactCurrency(stats.amount / stats.count, dominantCurrency)}</span>
+
+                                {/* Gateway view */}
+                                {revenueViewMode === "gateway" && (
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
+                                            const gwStyle = getGatewayStyle(gw);
+                                            const gwLabel = gw.charAt(0).toUpperCase() + gw.slice(1);
+                                            return (
+                                                <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
+                                                    <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
+                                                    <div className="space-y-0.5">
+                                                        <div className="flex justify-between text-[10px]">
+                                                            <span className="text-gray-500">Amount</span>
+                                                            <span className="text-green-400 font-bold">{formatCompactCurrency(stats.amount, dominantCurrency)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-[10px]">
+                                                            <span className="text-gray-500">Txns</span>
+                                                            <span className="text-gray-300 font-medium">{stats.count}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                            <span className="text-gray-500">Avg</span>
+                                                            <span className="text-gray-300 font-medium">{formatCompactCurrency(stats.amount / stats.count, dominantCurrency)}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Product view */}
+                                {revenueViewMode === "product" && (
+                                    <div>
+                                        {productRevenue.items.length > 0 ? (
+                                            <>
+                                                {/* Total banner */}
+                                                <div className="flex items-center justify-between mb-2 px-1">
+                                                    <span className="text-[10px] text-gray-500">{productRevenue.items.length} products • {invoiceOrders.filter(o => o.amount > 0).length} orders</span>
+                                                    <span className="text-xs text-green-400 font-bold">{formatCompactCurrency(productRevenue.total, dominantCurrency)} total</span>
+                                                </div>
+                                                {/* Product cards */}
+                                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                                    {productRevenue.items.map(([product, stats], idx) => {
+                                                        const pStyle = getProductStyle(idx);
+                                                        const pct = productRevenue.total > 0 ? Math.round((stats.amount / productRevenue.total) * 100) : 0;
+                                                        return (
+                                                            <div key={product} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] ${pStyle.bg} ${pStyle.border}`}>
+                                                                <p className={`text-[10px] uppercase font-medium mb-1 truncate ${pStyle.text}`} title={product}>{product}</p>
+                                                                {stats.faCode && (
+                                                                    <p className="text-[8px] text-gray-500 mb-1 font-mono">{stats.faCode}</p>
+                                                                )}
+                                                                <div className="space-y-0.5">
+                                                                    <div className="flex justify-between text-[10px]">
+                                                                        <span className="text-gray-500">Amount</span>
+                                                                        <span className="text-green-400 font-bold">{formatCompactCurrency(stats.amount, dominantCurrency)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-[10px]">
+                                                                        <span className="text-gray-500">Orders</span>
+                                                                        <span className="text-gray-300 font-medium">{stats.count}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                                        <span className="text-gray-500">Share</span>
+                                                                        <span className="text-gray-300 font-medium">{pct}%</span>
+                                                                    </div>
+                                                                    <div className="w-full bg-gray-700 rounded-full h-1 mt-0.5">
+                                                                        <div className={`h-1 rounded-full ${pStyle.border.replace('border-', 'bg-')}`} style={{ width: `${pct}%` }} />
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </>
+                                        ) : (
+                                            <div className="text-center py-4">
+                                                <Package className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                                                <p className="text-xs text-gray-500">No invoice-orders data for this period</p>
+                                                <p className="text-[10px] text-gray-600 mt-1">Upload invoice-orders CSV to see product breakdown</p>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
                 )}
 
-                {/* ─── Filters ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-2 bg-[#252627]">
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <Filter className="h-3.5 w-3.5 text-gray-500" />
-                        <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-600 text-white text-xs" />
-                        <span className="text-gray-600">→</span>
-                        <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-600 text-white text-xs" />
-                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-600 text-white hover:bg-gray-700 text-xs">
-                            Apply
-                        </Button>
-                        <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree">Braintree</SelectItem><SelectItem value="stripe">Stripe</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gusto">Gusto</SelectItem><SelectItem value="quickbooks">QuickBooks</SelectItem></SelectContent>
-                        </Select>
-                        <Select value={flowFilter} onValueChange={setFlowFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="income">Inflows</SelectItem><SelectItem value="expense">Outflows</SelectItem></SelectContent>
-                        </Select>
-                        <Select value={reconFilter} onValueChange={setReconFilter}>
-                            <SelectTrigger className="w-32 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="reconciled">Reconciled</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
-                        </Select>
-                        <Select value={gwReconFilter} onValueChange={setGwReconFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">GW All</SelectItem><SelectItem value="auto">Auto</SelectItem><SelectItem value="manual">Manual</SelectItem><SelectItem value="intercompany">Intercompany</SelectItem><SelectItem value="not-reconciled">Not Recon.</SelectItem></SelectContent>
-                        </Select>
-                        <Select value={orderFilter} onValueChange={setOrderFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                {/* ─── Table Header ─── */}
-                <div className="flex-shrink-0 sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
-                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[900px]">
-                        <div className="w-[60px] flex-shrink-0">Date</div>
-                        {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
-                        <div className="flex-1 min-w-[200px]">Description</div>
-                        <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
-                        <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
-                        <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
-                        <div className="w-[40px] flex-shrink-0 text-center">GW</div>
-                        <div className="w-[40px] flex-shrink-0 text-center">Ord</div>
-                    </div>
-                </div>
-
-                {/* ─── Content (date-grouped rows) ─── */}
-                <div className="flex-1 overflow-y-auto overflow-x-auto">
-                    {dateGroups.map(group => (
-                        <div key={group.date} className="border-b border-gray-800">
-                            {/* Date group header */}
-                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
-                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                                <span className="font-medium text-white text-sm">{group.dateLabel}</span>
-                                <span className="text-gray-500 text-xs ml-auto">
-                                    {group.rows.length} txns <span className="mx-1">|</span>
-                                    <span className="text-green-400">+{formatCurrency(group.totalCredits, dominantCurrency)}</span>
-                                    <span className="mx-1">/</span>
-                                    <span className="text-red-400">-{formatCurrency(group.totalDebits, dominantCurrency)}</span>
-                                </span>
-                            </div>
-
-                            {/* Rows */}
-                            {expandedGroups.has(group.date) && group.rows.map(tx => {
-                                const bankInfo = BANK_ACCOUNTS.find(b => b.key === tx.source);
-                                const gwStyle = getGatewayStyle(tx.paymentSource || tx.gateway);
-                                const isDebit = tx.amount < 0;
-                                const isCredit = tx.amount > 0;
-
-                                return (
-                                    <div key={tx.id}
-                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-700/50" : ""}`}
-                                        onClick={() => handleRowSelect(tx)}>
-                                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-300">{formatShortDate(tx.date)}</div>
-                                        {showBankColumn && (
-                                            <div className="w-[90px] flex-shrink-0">
-                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-400"} border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
-                                            </div>
-                                        )}
-                                        <div className="flex-1 min-w-[200px] text-[11px] text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
-                                        <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                            {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
-                                        </div>
-                                        <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                            {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
-                                        </div>
-                                        <div className="w-[80px] flex-shrink-0 text-center">
-                                            {(tx.paymentSource || tx.gateway) ? (
-                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
-                                                    {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
-                                                </Badge>
-                                            ) : <span className="text-gray-600 text-[9px]">-</span>}
-                                        </div>
-                                        <div className="w-[40px] flex-shrink-0 text-center">
-                                            {tx.isReconciled ? (
-                                                tx.reconciliationType === "manual" ? <User className="h-3.5 w-3.5 text-blue-500 mx-auto" /> : <Zap className="h-3.5 w-3.5 text-green-500 mx-auto" />
-                                            ) : (
-                                                <AlertCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
-                                            )}
-                                        </div>
-                                        <div className="w-[40px] flex-shrink-0 text-center">
-                                            {tx.isOrderReconciled ? (
-                                                <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
-                                            ) : (
-                                                <span className="text-gray-600 text-[9px]">-</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
-
-                    {dateGroups.length === 0 && (
-                        <div className="text-center py-20 text-gray-500">
-                            <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>No transactions found</p>
-                            <p className="text-sm mt-1">Adjust filters or select other accounts</p>
-                        </div>
-                    )}
-                    <div className="h-8"></div>
+            {/* ─── Filters ─── */}
+            <div className="flex-shrink-0 border-b border-gray-700 px-6 py-2 bg-[#252627]">
+                <div className="flex items-center gap-3 flex-wrap">
+                    <Filter className="h-3.5 w-3.5 text-gray-500" />
+                    <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-600 text-white text-xs" />
+                    <span className="text-gray-600">→</span>
+                    <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-600 text-white text-xs" />
+                    <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-600 text-white hover:bg-gray-700 text-xs">
+                        Apply
+                    </Button>
+                    <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
+                        <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
+                        <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree">Braintree</SelectItem><SelectItem value="stripe">Stripe</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gusto">Gusto</SelectItem><SelectItem value="quickbooks">QuickBooks</SelectItem></SelectContent>
+                    </Select>
+                    <Select value={flowFilter} onValueChange={setFlowFilter}>
+                        <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
+                        <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="income">Inflows</SelectItem><SelectItem value="expense">Outflows</SelectItem></SelectContent>
+                    </Select>
+                    <Select value={reconFilter} onValueChange={setReconFilter}>
+                        <SelectTrigger className="w-32 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
+                        <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="reconciled">Reconciled</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
+                    </Select>
+                    <Select value={gwReconFilter} onValueChange={setGwReconFilter}>
+                        <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
+                        <SelectContent><SelectItem value="all">GW All</SelectItem><SelectItem value="auto">Auto</SelectItem><SelectItem value="manual">Manual</SelectItem><SelectItem value="intercompany">Intercompany</SelectItem><SelectItem value="not-reconciled">Not Recon.</SelectItem></SelectContent>
+                    </Select>
+                    <Select value={orderFilter} onValueChange={setOrderFilter}>
+                        <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
+                        <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
+                    </Select>
                 </div>
             </div>
 
-            {/* ════════════════════════════════════════════════════════ */}
-            {/* DETAIL PANEL (right side) */}
-            {/* ════════════════════════════════════════════════════════ */}
-            {selectedRow && (
-                <div className="fixed right-0 top-0 h-full w-[450px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
-                    {/* Panel Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
-                        <div className="flex items-center gap-2 min-w-0">
-                            {selectedRow.isReconciled ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />}
-                            <span className="font-medium text-white truncate">{selectedRow.description}</span>
+            {/* ─── Table Header ─── */}
+            <div className="flex-shrink-0 sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
+                <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[900px]">
+                    <div className="w-[60px] flex-shrink-0">Date</div>
+                    {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
+                    <div className="flex-1 min-w-[200px]">Description</div>
+                    <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
+                    <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
+                    <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
+                    <div className="w-[40px] flex-shrink-0 text-center">GW</div>
+                    <div className="w-[40px] flex-shrink-0 text-center">Ord</div>
+                </div>
+            </div>
+
+            {/* ─── Content (date-grouped rows) ─── */}
+            <div className="flex-1 overflow-y-auto overflow-x-auto">
+                {dateGroups.map(group => (
+                    <div key={group.date} className="border-b border-gray-800">
+                        {/* Date group header */}
+                        <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
+                            {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
+                            <span className="font-medium text-white text-sm">{group.dateLabel}</span>
+                            <span className="text-gray-500 text-xs ml-auto">
+                                {group.rows.length} txns <span className="mx-1">|</span>
+                                <span className="text-green-400">+{formatCurrency(group.totalCredits, dominantCurrency)}</span>
+                                <span className="mx-1">/</span>
+                                <span className="text-red-400">-{formatCurrency(group.totalDebits, dominantCurrency)}</span>
+                            </span>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white flex-shrink-0" onClick={() => setSelectedRow(null)}>
-                            <X className="h-4 w-4" />
-                        </Button>
+
+                        {/* Rows */}
+                        {expandedGroups.has(group.date) && group.rows.map(tx => {
+                            const bankInfo = BANK_ACCOUNTS.find(b => b.key === tx.source);
+                            const gwStyle = getGatewayStyle(tx.paymentSource || tx.gateway);
+                            const isDebit = tx.amount < 0;
+                            const isCredit = tx.amount > 0;
+
+                            return (
+                                <div key={tx.id}
+                                    className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-700/50" : ""}`}
+                                    onClick={() => handleRowSelect(tx)}>
+                                    <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-300">{formatShortDate(tx.date)}</div>
+                                    {showBankColumn && (
+                                        <div className="w-[90px] flex-shrink-0">
+                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-400"} border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
+                                        </div>
+                                    )}
+                                    <div className="flex-1 min-w-[200px] text-[11px] text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
+                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                        {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                    </div>
+                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                        {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                    </div>
+                                    <div className="w-[80px] flex-shrink-0 text-center">
+                                        {(tx.paymentSource || tx.gateway) ? (
+                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
+                                                {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
+                                            </Badge>
+                                        ) : <span className="text-gray-600 text-[9px]">-</span>}
+                                    </div>
+                                    <div className="w-[40px] flex-shrink-0 text-center">
+                                        {tx.isReconciled ? (
+                                            tx.reconciliationType === "manual" ? <User className="h-3.5 w-3.5 text-blue-500 mx-auto" /> : <Zap className="h-3.5 w-3.5 text-green-500 mx-auto" />
+                                        ) : (
+                                            <AlertCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
+                                        )}
+                                    </div>
+                                    <div className="w-[40px] flex-shrink-0 text-center">
+                                        {tx.isOrderReconciled ? (
+                                            <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
+                                        ) : (
+                                            <span className="text-gray-600 text-[9px]">-</span>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                ))}
+
+                {dateGroups.length === 0 && (
+                    <div className="text-center py-20 text-gray-500">
+                        <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                        <p>No transactions found</p>
+                        <p className="text-sm mt-1">Adjust filters or select other accounts</p>
+                    </div>
+                )}
+                <div className="h-8"></div>
+            </div>
+        </div>
+
+            {/* ════════════════════════════════════════════════════════ */ }
+    {/* DETAIL PANEL (right side) */ }
+    {/* ════════════════════════════════════════════════════════ */ }
+    {
+        selectedRow && (
+            <div className="fixed right-0 top-0 h-full w-[450px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
+                {/* Panel Header */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                    <div className="flex items-center gap-2 min-w-0">
+                        {selectedRow.isReconciled ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />}
+                        <span className="font-medium text-white truncate">{selectedRow.description}</span>
+                    </div>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white flex-shrink-0" onClick={() => setSelectedRow(null)}>
+                        <X className="h-4 w-4" />
+                    </Button>
+                </div>
+
+                {/* Panel Content */}
+                <div className="flex-1 overflow-y-auto">
+                    {/* Transaction Info */}
+                    <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="flex items-center gap-3">
+                                <Calendar className="h-4 w-4 text-gray-500" />
+                                <div>
+                                    <p className="text-xs text-gray-500">Date</p>
+                                    <p className="text-sm text-white">{formatShortDate(selectedRow.date)}</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center gap-3">
+                                <DollarSign className="h-4 w-4 text-gray-500" />
+                                <div>
+                                    <p className="text-xs text-gray-500">Amount</p>
+                                    <p className={`text-sm font-bold ${selectedRow.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                        {formatCurrency(selectedRow.amount, selectedRow.currency)}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-gray-500" />
+                            <div className="flex-1">
+                                <p className="text-xs text-gray-500">Description</p>
+                                <p className="text-sm text-white break-words">{selectedRow.description}</p>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-xs text-gray-500">Bank</p>
+                                <p className="text-sm text-gray-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.source)?.label || selectedRow.source}</p>
+                            </div>
+                            <div>
+                                <p className="text-xs text-gray-500">Currency</p>
+                                <p className="text-sm text-gray-300">{selectedRow.currency}</p>
+                            </div>
+                        </div>
+
+                        {/* Custom data fields */}
+                        {selectedRow.custom_data && Object.keys(selectedRow.custom_data).length > 0 && (
+                            <div className="space-y-2">
+                                {selectedRow.custom_data.details && (
+                                    <div><p className="text-xs text-gray-500">Type</p><p className="text-sm text-gray-300">{selectedRow.custom_data.details}</p></div>
+                                )}
+                                {selectedRow.custom_data.type && (
+                                    <div><p className="text-xs text-gray-500">Transaction Type</p><p className="text-sm text-gray-300">{selectedRow.custom_data.type}</p></div>
+                                )}
+                                {selectedRow.custom_data.balance != null && (
+                                    <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-white font-medium">{formatCurrency(selectedRow.custom_data.balance, selectedRow.currency)}</p></div>
+                                )}
+                                {selectedRow.custom_data.saldo != null && (
+                                    <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-white font-medium">{formatCurrency(selectedRow.custom_data.saldo, selectedRow.currency)}</p></div>
+                                )}
+                                {selectedRow.custom_data.check_number && (
+                                    <div><p className="text-xs text-gray-500">Check/Slip #</p><p className="text-sm text-gray-300 font-mono">{selectedRow.custom_data.check_number}</p></div>
+                                )}
+                                {selectedRow.custom_data.referencia && (
+                                    <div><p className="text-xs text-gray-500">Reference</p><p className="text-sm text-gray-300 font-mono">{selectedRow.custom_data.referencia}</p></div>
+                                )}
+                                {selectedRow.custom_data.clave && (
+                                    <div><p className="text-xs text-gray-500">Key</p><p className="text-sm text-gray-300">{selectedRow.custom_data.clave}</p></div>
+                                )}
+                                {selectedRow.custom_data.categoria && (
+                                    <div><p className="text-xs text-gray-500">Category</p><p className="text-sm text-gray-300">{selectedRow.custom_data.categoria}</p></div>
+                                )}
+                            </div>
+                        )}
                     </div>
 
-                    {/* Panel Content */}
-                    <div className="flex-1 overflow-y-auto">
-                        {/* Transaction Info */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-800">
-                            <div className="grid grid-cols-2 gap-4">
-                                <div className="flex items-center gap-3">
-                                    <Calendar className="h-4 w-4 text-gray-500" />
-                                    <div>
-                                        <p className="text-xs text-gray-500">Date</p>
-                                        <p className="text-sm text-white">{formatShortDate(selectedRow.date)}</p>
-                                    </div>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                    <DollarSign className="h-4 w-4 text-gray-500" />
-                                    <div>
-                                        <p className="text-xs text-gray-500">Amount</p>
-                                        <p className={`text-sm font-bold ${selectedRow.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                            {formatCurrency(selectedRow.amount, selectedRow.currency)}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="flex items-center gap-3">
-                                <FileText className="h-4 w-4 text-gray-500" />
-                                <div className="flex-1">
-                                    <p className="text-xs text-gray-500">Description</p>
-                                    <p className="text-sm text-white break-words">{selectedRow.description}</p>
-                                </div>
-                            </div>
-
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <p className="text-xs text-gray-500">Bank</p>
-                                    <p className="text-sm text-gray-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.source)?.label || selectedRow.source}</p>
-                                </div>
-                                <div>
-                                    <p className="text-xs text-gray-500">Currency</p>
-                                    <p className="text-sm text-gray-300">{selectedRow.currency}</p>
-                                </div>
-                            </div>
-
-                            {/* Custom data fields */}
-                            {selectedRow.custom_data && Object.keys(selectedRow.custom_data).length > 0 && (
-                                <div className="space-y-2">
-                                    {selectedRow.custom_data.details && (
-                                        <div><p className="text-xs text-gray-500">Type</p><p className="text-sm text-gray-300">{selectedRow.custom_data.details}</p></div>
-                                    )}
-                                    {selectedRow.custom_data.type && (
-                                        <div><p className="text-xs text-gray-500">Transaction Type</p><p className="text-sm text-gray-300">{selectedRow.custom_data.type}</p></div>
-                                    )}
-                                    {selectedRow.custom_data.balance != null && (
-                                        <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-white font-medium">{formatCurrency(selectedRow.custom_data.balance, selectedRow.currency)}</p></div>
-                                    )}
-                                    {selectedRow.custom_data.saldo != null && (
-                                        <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-white font-medium">{formatCurrency(selectedRow.custom_data.saldo, selectedRow.currency)}</p></div>
-                                    )}
-                                    {selectedRow.custom_data.check_number && (
-                                        <div><p className="text-xs text-gray-500">Check/Slip #</p><p className="text-sm text-gray-300 font-mono">{selectedRow.custom_data.check_number}</p></div>
-                                    )}
-                                    {selectedRow.custom_data.referencia && (
-                                        <div><p className="text-xs text-gray-500">Reference</p><p className="text-sm text-gray-300 font-mono">{selectedRow.custom_data.referencia}</p></div>
-                                    )}
-                                    {selectedRow.custom_data.clave && (
-                                        <div><p className="text-xs text-gray-500">Key</p><p className="text-sm text-gray-300">{selectedRow.custom_data.clave}</p></div>
-                                    )}
-                                    {selectedRow.custom_data.categoria && (
-                                        <div><p className="text-xs text-gray-500">Category</p><p className="text-sm text-gray-300">{selectedRow.custom_data.categoria}</p></div>
-                                    )}
-                                </div>
+                    {/* ─── RECONCILIATION STATUS ─── */}
+                    <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
+                        <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            {selectedRow.amount >= 0
+                                ? <><CreditCard className="h-4 w-4" /> Gateway Reconciliation</>
+                                : <><Building className="h-4 w-4" /> AP Reconciliation</>}
+                        </h3>
+                        <div>
+                            <p className="text-xs text-gray-500">Status</p>
+                            {selectedRow.isReconciled ? (
+                                <Badge variant="outline" className={`${selectedRow.reconciliationType?.startsWith("automatic") ? "bg-green-900/30 text-green-400 border-green-700"
+                                    : selectedRow.reconciliationType === "intercompany" ? "bg-amber-900/30 text-amber-400 border-amber-700"
+                                        : "bg-blue-900/30 text-blue-400 border-blue-700"
+                                    }`}>
+                                    Reconciled ({selectedRow.reconciliationType?.startsWith("automatic") ? "Auto" : selectedRow.reconciliationType === "intercompany" ? "Intercompany" : "Manual"})
+                                    {selectedRow.custom_data?.match_level ? ` L${selectedRow.custom_data.match_level}` : ""}
+                                </Badge>
+                            ) : (
+                                <Badge variant="outline" className="bg-yellow-900/30 text-yellow-400 border-yellow-700">
+                                    Not Reconciled
+                                </Badge>
                             )}
                         </div>
 
-                        {/* ─── RECONCILIATION STATUS ─── */}
+                        {/* Reconciliation method detail */}
+                        {selectedRow.reconciliationType === "automatic-ap-bulk" && (
+                            <div>
+                                <p className="text-xs text-gray-500">Method</p>
+                                <p className="text-sm text-green-300">AP Bulk Reconciliation (Excel)</p>
+                            </div>
+                        )}
+
+                        {selectedRow.custom_data?.match_confidence != null && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Confidence</p>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+                                        <div className={`h-1.5 rounded-full ${selectedRow.custom_data.match_confidence >= 0.9 ? 'bg-green-500' : selectedRow.custom_data.match_confidence >= 0.7 ? 'bg-yellow-500' : 'bg-orange-500'}`}
+                                            style={{ width: `${Math.round(selectedRow.custom_data.match_confidence * 100)}%` }} />
+                                    </div>
+                                    <span className="text-xs text-gray-300">{Math.round(selectedRow.custom_data.match_confidence * 100)}%</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ─── REVENUE: Payment Source / Gateway info ─── */}
+                        {selectedRow.amount >= 0 && selectedRow.paymentSource && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Payment Source</p>
+                                <Badge variant="outline" className={`${getGatewayStyle(selectedRow.paymentSource).bg} ${getGatewayStyle(selectedRow.paymentSource).text} ${getGatewayStyle(selectedRow.paymentSource).border}`}>
+                                    {selectedRow.paymentSource}
+                                </Badge>
+                            </div>
+                        )}
+
+                        {/* Quick summary from custom_data enriched fields — revenue only */}
+                        {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_customer_names?.length > 0 && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Customers ({selectedRow.custom_data.matched_customer_names.length})</p>
+                                <div className="space-y-1">
+                                    {selectedRow.custom_data.matched_customer_names.slice(0, 5).map((name: string, i: number) => (
+                                        <div key={i} className="flex items-center gap-1.5">
+                                            <User className="h-3 w-3 text-blue-400" />
+                                            <span className="text-sm text-white">{name}</span>
+                                        </div>
+                                    ))}
+                                    {selectedRow.custom_data.matched_customer_names.length > 5 && (
+                                        <p className="text-xs text-gray-500">+{selectedRow.custom_data.matched_customer_names.length - 5} more</p>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_order_ids?.length > 0 && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Orders ({selectedRow.custom_data.matched_order_ids.length})</p>
+                                <div className="flex flex-wrap gap-1">
+                                    {selectedRow.custom_data.matched_order_ids.slice(0, 8).map((oid: string, i: number) => (
+                                        <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-amber-900/20 text-amber-300 border-amber-700">
+                                            {oid}
+                                        </Badge>
+                                    ))}
+                                    {selectedRow.custom_data.matched_order_ids.length > 8 && (
+                                        <span className="text-xs text-gray-500">+{selectedRow.custom_data.matched_order_ids.length - 8} more</span>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_products?.length > 0 && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Products</p>
+                                <div className="flex flex-wrap gap-1">
+                                    {selectedRow.custom_data.matched_products.slice(0, 5).map((prod: string, i: number) => (
+                                        <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-violet-900/20 text-violet-300 border-violet-700">
+                                            {prod}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {selectedRow.amount >= 0 && selectedRow.custom_data?.braintree_transaction_count && (
+                            <div>
+                                <p className="text-xs text-gray-500">Transactions in Batch</p>
+                                <p className="text-sm text-white">{selectedRow.custom_data.braintree_transaction_count}</p>
+                            </div>
+                        )}
+
+                        {selectedRow.custom_data?.disbursement_reference && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Disbursement Reference</p>
+                                <div className="flex items-center gap-2">
+                                    <Key className="h-3 w-3 text-gray-500" />
+                                    <span className="text-xs font-mono text-gray-300">{selectedRow.custom_data.disbursement_reference}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* ─── EXPENSE: AP Invoice details ─── */}
+                        {selectedRow.amount < 0 && selectedRow.custom_data?.matched_provider && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Matched Provider</p>
+                                <p className="text-sm text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
+                            </div>
+                        )}
+
+                        {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_number && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_number}</span>
+                            </div>
+                        )}
+
+                        {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_numbers && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Matched Invoices</p>
+                                <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_numbers}</span>
+                            </div>
+                        )}
+
+                        {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_total != null && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Invoice Total</p>
+                                <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_invoice_total, selectedRow.currency)}</span>
+                            </div>
+                        )}
+
+                        {selectedRow.amount < 0 && selectedRow.custom_data?.matched_amount != null && !selectedRow.custom_data?.matched_invoice_total && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
+                                <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_amount, selectedRow.currency)}</span>
+                            </div>
+                        )}
+
+                        {selectedRow.amount < 0 && selectedRow.custom_data?.matched_payment_date && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Payment Date (Excel)</p>
+                                <span className="text-sm text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
+                            </div>
+                        )}
+
+                        {selectedRow.amount < 0 && selectedRow.custom_data?.ap_financial_account && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Financial Account</p>
+                                <span className="text-sm text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
+                            </div>
+                        )}
+
+                        {/* ─── COMMON fields ─── */}
+                        {selectedRow.custom_data?.reconciled_at && (
+                            <div>
+                                <p className="text-xs text-gray-500">Reconciled at</p>
+                                <p className="text-sm text-gray-300">{new Date(selectedRow.custom_data.reconciled_at).toLocaleString("pt-BR")}</p>
+                            </div>
+                        )}
+
+                        {selectedRow.custom_data?.manual_note && (
+                            <div>
+                                <p className="text-xs text-gray-500">Note</p>
+                                <p className="text-sm text-gray-300">{selectedRow.custom_data.manual_note}</p>
+                            </div>
+                        )}
+
+                        {selectedRow.custom_data?.match_type && (
+                            <div>
+                                <p className="text-xs text-gray-500">Match Type</p>
+                                <p className="text-sm text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
+                            </div>
+                        )}
+
+                        {/* ─── INTERCOMPANY details ─── */}
+                        {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_bank && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Matched Bank</p>
+                                <p className="text-sm text-amber-300">{selectedRow.custom_data.intercompany_matched_bank}</p>
+                            </div>
+                        )}
+                        {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_amount != null && (
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
+                                <span className="text-sm font-medium text-amber-400">{formatCurrency(selectedRow.custom_data.intercompany_matched_amount, selectedRow.currency)}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Matched transaction details (gateway auto-match) */}
+                    {selectedRow.isReconciled && selectedRow.custom_data?.bank_match_amount && (
+                        <div className="px-4 py-4 space-y-3 bg-green-900/10">
+                            <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
+                                <Zap className="h-4 w-4" /> Matched Transaction
+                            </h3>
+                            <div className="space-y-2 text-sm">
+                                {selectedRow.custom_data.bank_match_date && (
+                                    <div className="flex justify-between"><span className="text-gray-400">Date:</span><span className="text-white">{formatShortDate(selectedRow.custom_data.bank_match_date)}</span></div>
+                                )}
+                                <div className="flex justify-between"><span className="text-gray-400">Amount:</span><span className="text-green-400 font-medium">{formatCurrency(selectedRow.custom_data.bank_match_amount, selectedRow.currency)}</span></div>
+                                {selectedRow.custom_data.bank_match_description && (
+                                    <div><span className="text-gray-400">Description:</span><p className="text-white text-xs mt-1">{selectedRow.custom_data.bank_match_description}</p></div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Order Reconciliation — only for revenue */}
+                    {selectedRow.amount >= 0 && (
                         <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
                             <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                {selectedRow.amount >= 0
-                                    ? <><CreditCard className="h-4 w-4" /> Gateway Reconciliation</>
-                                    : <><Building className="h-4 w-4" /> AP Reconciliation</>}
+                                <FileText className="h-4 w-4" /> Order Reconciliation
                             </h3>
                             <div>
                                 <p className="text-xs text-gray-500">Status</p>
-                                {selectedRow.isReconciled ? (
-                                    <Badge variant="outline" className={`${selectedRow.reconciliationType?.startsWith("automatic") ? "bg-green-900/30 text-green-400 border-green-700"
-                                        : selectedRow.reconciliationType === "intercompany" ? "bg-amber-900/30 text-amber-400 border-amber-700"
-                                            : "bg-blue-900/30 text-blue-400 border-blue-700"
-                                        }`}>
-                                        Reconciled ({selectedRow.reconciliationType?.startsWith("automatic") ? "Auto" : selectedRow.reconciliationType === "intercompany" ? "Intercompany" : "Manual"})
-                                        {selectedRow.custom_data?.match_level ? ` L${selectedRow.custom_data.match_level}` : ""}
+                                {selectedRow.isOrderReconciled ? (
+                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
+                                        Matched
                                     </Badge>
                                 ) : (
-                                    <Badge variant="outline" className="bg-yellow-900/30 text-yellow-400 border-yellow-700">
-                                        Not Reconciled
+                                    <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
+                                        Not Matched
                                     </Badge>
                                 )}
                             </div>
 
-                            {/* Reconciliation method detail */}
-                            {selectedRow.reconciliationType === "automatic-ap-bulk" && (
-                                <div>
-                                    <p className="text-xs text-gray-500">Method</p>
-                                    <p className="text-sm text-green-300">AP Bulk Reconciliation (Excel)</p>
-                                </div>
-                            )}
-
-                            {selectedRow.custom_data?.match_confidence != null && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Confidence</p>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-1 bg-gray-700 rounded-full h-1.5">
-                                            <div className={`h-1.5 rounded-full ${selectedRow.custom_data.match_confidence >= 0.9 ? 'bg-green-500' : selectedRow.custom_data.match_confidence >= 0.7 ? 'bg-yellow-500' : 'bg-orange-500'}`}
-                                                style={{ width: `${Math.round(selectedRow.custom_data.match_confidence * 100)}%` }} />
-                                        </div>
-                                        <span className="text-xs text-gray-300">{Math.round(selectedRow.custom_data.match_confidence * 100)}%</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* ─── REVENUE: Payment Source / Gateway info ─── */}
-                            {selectedRow.amount >= 0 && selectedRow.paymentSource && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Payment Source</p>
-                                    <Badge variant="outline" className={`${getGatewayStyle(selectedRow.paymentSource).bg} ${getGatewayStyle(selectedRow.paymentSource).text} ${getGatewayStyle(selectedRow.paymentSource).border}`}>
-                                        {selectedRow.paymentSource}
-                                    </Badge>
-                                </div>
-                            )}
-
-                            {/* Quick summary from custom_data enriched fields — revenue only */}
-                            {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_customer_names?.length > 0 && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Customers ({selectedRow.custom_data.matched_customer_names.length})</p>
-                                    <div className="space-y-1">
-                                        {selectedRow.custom_data.matched_customer_names.slice(0, 5).map((name: string, i: number) => (
-                                            <div key={i} className="flex items-center gap-1.5">
-                                                <User className="h-3 w-3 text-blue-400" />
-                                                <span className="text-sm text-white">{name}</span>
-                                            </div>
-                                        ))}
-                                        {selectedRow.custom_data.matched_customer_names.length > 5 && (
-                                            <p className="text-xs text-gray-500">+{selectedRow.custom_data.matched_customer_names.length - 5} more</p>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_order_ids?.length > 0 && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Orders ({selectedRow.custom_data.matched_order_ids.length})</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {selectedRow.custom_data.matched_order_ids.slice(0, 8).map((oid: string, i: number) => (
-                                            <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-amber-900/20 text-amber-300 border-amber-700">
-                                                {oid}
-                                            </Badge>
-                                        ))}
-                                        {selectedRow.custom_data.matched_order_ids.length > 8 && (
-                                            <span className="text-xs text-gray-500">+{selectedRow.custom_data.matched_order_ids.length - 8} more</span>
-                                        )}
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_products?.length > 0 && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Products</p>
-                                    <div className="flex flex-wrap gap-1">
-                                        {selectedRow.custom_data.matched_products.slice(0, 5).map((prod: string, i: number) => (
-                                            <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-violet-900/20 text-violet-300 border-violet-700">
-                                                {prod}
-                                            </Badge>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
-                            {selectedRow.amount >= 0 && selectedRow.custom_data?.braintree_transaction_count && (
-                                <div>
-                                    <p className="text-xs text-gray-500">Transactions in Batch</p>
-                                    <p className="text-sm text-white">{selectedRow.custom_data.braintree_transaction_count}</p>
-                                </div>
-                            )}
-
-                            {selectedRow.custom_data?.disbursement_reference && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Disbursement Reference</p>
-                                    <div className="flex items-center gap-2">
-                                        <Key className="h-3 w-3 text-gray-500" />
-                                        <span className="text-xs font-mono text-gray-300">{selectedRow.custom_data.disbursement_reference}</span>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* ─── EXPENSE: AP Invoice details ─── */}
-                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_provider && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Matched Provider</p>
-                                    <p className="text-sm text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
-                                </div>
-                            )}
-
-                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_number && (
+                            {selectedRow.invoiceNumber && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
-                                    <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_number}</span>
+                                    <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
                                 </div>
                             )}
 
-                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_numbers && (
+                            {selectedRow.invoiceOrderId && (
                                 <div>
-                                    <p className="text-xs text-gray-500 mb-1">Matched Invoices</p>
-                                    <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_numbers}</span>
-                                </div>
-                            )}
-
-                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_total != null && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Invoice Total</p>
-                                    <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_invoice_total, selectedRow.currency)}</span>
-                                </div>
-                            )}
-
-                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_amount != null && !selectedRow.custom_data?.matched_invoice_total && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
-                                    <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_amount, selectedRow.currency)}</span>
-                                </div>
-                            )}
-
-                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_payment_date && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Payment Date (Excel)</p>
-                                    <span className="text-sm text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
-                                </div>
-                            )}
-
-                            {selectedRow.amount < 0 && selectedRow.custom_data?.ap_financial_account && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Financial Account</p>
-                                    <span className="text-sm text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
-                                </div>
-                            )}
-
-                            {/* ─── COMMON fields ─── */}
-                            {selectedRow.custom_data?.reconciled_at && (
-                                <div>
-                                    <p className="text-xs text-gray-500">Reconciled at</p>
-                                    <p className="text-sm text-gray-300">{new Date(selectedRow.custom_data.reconciled_at).toLocaleString("pt-BR")}</p>
-                                </div>
-                            )}
-
-                            {selectedRow.custom_data?.manual_note && (
-                                <div>
-                                    <p className="text-xs text-gray-500">Note</p>
-                                    <p className="text-sm text-gray-300">{selectedRow.custom_data.manual_note}</p>
-                                </div>
-                            )}
-
-                            {selectedRow.custom_data?.match_type && (
-                                <div>
-                                    <p className="text-xs text-gray-500">Match Type</p>
-                                    <p className="text-sm text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
-                                </div>
-                            )}
-
-                            {/* ─── INTERCOMPANY details ─── */}
-                            {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_bank && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Matched Bank</p>
-                                    <p className="text-sm text-amber-300">{selectedRow.custom_data.intercompany_matched_bank}</p>
-                                </div>
-                            )}
-                            {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_amount != null && (
-                                <div>
-                                    <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
-                                    <span className="text-sm font-medium text-amber-400">{formatCurrency(selectedRow.custom_data.intercompany_matched_amount, selectedRow.currency)}</span>
+                                    <p className="text-xs text-gray-500 mb-1">Order ID</p>
+                                    <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
                                 </div>
                             )}
                         </div>
+                    )}
 
-                        {/* Matched transaction details (gateway auto-match) */}
-                        {selectedRow.isReconciled && selectedRow.custom_data?.bank_match_amount && (
-                            <div className="px-4 py-4 space-y-3 bg-green-900/10">
-                                <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
-                                    <Zap className="h-4 w-4" /> Matched Transaction
-                                </h3>
-                                <div className="space-y-2 text-sm">
-                                    {selectedRow.custom_data.bank_match_date && (
-                                        <div className="flex justify-between"><span className="text-gray-400">Date:</span><span className="text-white">{formatShortDate(selectedRow.custom_data.bank_match_date)}</span></div>
-                                    )}
-                                    <div className="flex justify-between"><span className="text-gray-400">Amount:</span><span className="text-green-400 font-medium">{formatCurrency(selectedRow.custom_data.bank_match_amount, selectedRow.currency)}</span></div>
-                                    {selectedRow.custom_data.bank_match_description && (
-                                        <div><span className="text-gray-400">Description:</span><p className="text-white text-xs mt-1">{selectedRow.custom_data.bank_match_description}</p></div>
-                                    )}
+                    {/* ═══ Enriched Chain Data (loaded on-demand) ═══ */}
+                    {selectedRow.isReconciled && (
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+                            <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-2">
+                                <Database className="h-4 w-4" /> Full Reconciliation Chain
+                            </h3>
+
+                            {chainLoading && (
+                                <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                    <RefreshCw className="h-4 w-4 animate-spin" /> Loading details...
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Order Reconciliation — only for revenue */}
-                        {selectedRow.amount >= 0 && (
-                            <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
-                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
-                                    <FileText className="h-4 w-4" /> Order Reconciliation
-                                </h3>
-                                <div>
-                                    <p className="text-xs text-gray-500">Status</p>
-                                    {selectedRow.isOrderReconciled ? (
-                                        <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
-                                            Matched
-                                        </Badge>
-                                    ) : (
-                                        <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
-                                            Not Matched
-                                        </Badge>
-                                    )}
-                                </div>
-
-                                {selectedRow.invoiceNumber && (
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
-                                        <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
-                                    </div>
-                                )}
-
-                                {selectedRow.invoiceOrderId && (
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-1">Order ID</p>
-                                        <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* ═══ Enriched Chain Data (loaded on-demand) ═══ */}
-                        {selectedRow.isReconciled && (
-                            <div className="px-4 py-4 space-y-4 border-b border-gray-800">
-                                <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-2">
-                                    <Database className="h-4 w-4" /> Full Reconciliation Chain
-                                </h3>
-
-                                {chainLoading && (
-                                    <div className="flex items-center gap-2 text-gray-400 text-sm">
-                                        <RefreshCw className="h-4 w-4 animate-spin" /> Loading details...
-                                    </div>
-                                )}
-
-                                {selectedRow.chainData && (
-                                    <>
-                                        {/* Disbursement Info */}
-                                        {selectedRow.chainData.disbursement && (
-                                            <div className="bg-[#252627] rounded-lg border border-gray-700 p-3 space-y-2">
-                                                <p className="text-[10px] text-gray-500 uppercase font-medium">Disbursement (Payout)</p>
-                                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                                    <div>
-                                                        <span className="text-gray-500 text-xs">Date:</span>
-                                                        <span className="text-white ml-1">{formatShortDate(selectedRow.chainData.disbursement.date)}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-500 text-xs">Amount:</span>
-                                                        <span className="text-green-400 font-medium ml-1">{formatCurrency(selectedRow.chainData.disbursement.amount, selectedRow.currency)}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-500 text-xs">Transactions:</span>
-                                                        <span className="text-white ml-1">{selectedRow.chainData.disbursement.transaction_count}</span>
-                                                    </div>
+                            {selectedRow.chainData && (
+                                <>
+                                    {/* Disbursement Info */}
+                                    {selectedRow.chainData.disbursement && (
+                                        <div className="bg-[#252627] rounded-lg border border-gray-700 p-3 space-y-2">
+                                            <p className="text-[10px] text-gray-500 uppercase font-medium">Disbursement (Payout)</p>
+                                            <div className="grid grid-cols-2 gap-2 text-sm">
+                                                <div>
+                                                    <span className="text-gray-500 text-xs">Date:</span>
+                                                    <span className="text-white ml-1">{formatShortDate(selectedRow.chainData.disbursement.date)}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-500 text-xs">Amount:</span>
+                                                    <span className="text-green-400 font-medium ml-1">{formatCurrency(selectedRow.chainData.disbursement.amount, selectedRow.currency)}</span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-gray-500 text-xs">Transactions:</span>
+                                                    <span className="text-white ml-1">{selectedRow.chainData.disbursement.transaction_count}</span>
                                                 </div>
                                             </div>
-                                        )}
+                                        </div>
+                                    )}
 
-                                        {/* Gateway Transactions */}
-                                        {selectedRow.chainData.gateway_transactions.length > 0 && (
-                                            <div className="space-y-2">
-                                                <p className="text-[10px] text-gray-500 uppercase font-medium">
-                                                    Gateway Transactions ({selectedRow.chainData.gateway_transactions.length})
-                                                </p>
-                                                {selectedRow.chainData.gateway_transactions.slice(0, 10).map((tx, i) => (
-                                                    <div key={i} className="bg-[#252627] rounded-lg border border-gray-700 p-3 space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-xs text-gray-400 font-mono">{tx.transaction_id}</span>
-                                                            <span className="text-green-400 font-medium text-sm">{formatCurrency(tx.amount, selectedRow.currency)}</span>
-                                                        </div>
-                                                        {tx.customer_name && (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <User className="h-3 w-3 text-blue-400" />
-                                                                <span className="text-white text-sm font-medium">{tx.customer_name}</span>
-                                                            </div>
-                                                        )}
-                                                        {tx.customer_email && (
-                                                            <p className="text-gray-400 text-xs pl-[18px]">{tx.customer_email}</p>
-                                                        )}
-                                                        {tx.order_id && (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <FileText className="h-3 w-3 text-amber-400" />
-                                                                <span className="text-amber-300 text-xs font-mono">Order: {tx.order_id}</span>
-                                                            </div>
-                                                        )}
-                                                        {tx.product_name && (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <CreditCard className="h-3 w-3 text-violet-400" />
-                                                                <span className="text-violet-300 text-xs">{tx.product_name}</span>
-                                                            </div>
-                                                        )}
-                                                        <div className="flex items-center gap-3 text-[10px] text-gray-500">
-                                                            <span>{formatShortDate(tx.date)}</span>
-                                                            {tx.payment_method && <span>{tx.payment_method}</span>}
-                                                        </div>
+                                    {/* Gateway Transactions */}
+                                    {selectedRow.chainData.gateway_transactions.length > 0 && (
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] text-gray-500 uppercase font-medium">
+                                                Gateway Transactions ({selectedRow.chainData.gateway_transactions.length})
+                                            </p>
+                                            {selectedRow.chainData.gateway_transactions.slice(0, 10).map((tx, i) => (
+                                                <div key={i} className="bg-[#252627] rounded-lg border border-gray-700 p-3 space-y-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs text-gray-400 font-mono">{tx.transaction_id}</span>
+                                                        <span className="text-green-400 font-medium text-sm">{formatCurrency(tx.amount, selectedRow.currency)}</span>
                                                     </div>
-                                                ))}
-                                                {selectedRow.chainData.gateway_transactions.length > 10 && (
-                                                    <p className="text-xs text-gray-500 text-center">
-                                                        + {selectedRow.chainData.gateway_transactions.length - 10} more transactions
-                                                    </p>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Linked Invoices */}
-                                        {selectedRow.chainData.invoices.length > 0 && (
-                                            <div className="space-y-2">
-                                                <p className="text-[10px] text-gray-500 uppercase font-medium">
-                                                    Linked Invoices ({selectedRow.chainData.invoices.length})
-                                                </p>
-                                                {selectedRow.chainData.invoices.slice(0, 10).map((inv, i) => (
-                                                    <div key={i} className="bg-blue-900/10 rounded-lg border border-blue-800/30 p-3 space-y-1">
-                                                        <div className="flex items-center justify-between">
-                                                            <span className="text-blue-300 text-xs font-mono">{inv.invoice_number || `INV-${inv.id}`}</span>
-                                                            <span className="text-green-400 font-medium text-sm">{formatCurrency(inv.total_amount, inv.currency || selectedRow.currency)}</span>
-                                                        </div>
+                                                    {tx.customer_name && (
                                                         <div className="flex items-center gap-1.5">
                                                             <User className="h-3 w-3 text-blue-400" />
-                                                            <span className="text-white text-sm">{inv.client_name || inv.company_name || 'N/A'}</span>
+                                                            <span className="text-white text-sm font-medium">{tx.customer_name}</span>
                                                         </div>
-                                                        {inv.order_id && (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <FileText className="h-3 w-3 text-amber-400" />
-                                                                <span className="text-amber-300 text-xs font-mono">Order: {inv.order_id}</span>
-                                                            </div>
-                                                        )}
-                                                        {inv.product && (
-                                                            <div className="flex items-center gap-1.5">
-                                                                <CreditCard className="h-3 w-3 text-violet-400" />
-                                                                <span className="text-violet-300 text-xs">{inv.product}</span>
-                                                            </div>
-                                                        )}
-                                                        {inv.invoice_date && (
-                                                            <p className="text-[10px] text-gray-500">{formatShortDate(inv.invoice_date)}</p>
-                                                        )}
+                                                    )}
+                                                    {tx.customer_email && (
+                                                        <p className="text-gray-400 text-xs pl-[18px]">{tx.customer_email}</p>
+                                                    )}
+                                                    {tx.order_id && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <FileText className="h-3 w-3 text-amber-400" />
+                                                            <span className="text-amber-300 text-xs font-mono">Order: {tx.order_id}</span>
+                                                        </div>
+                                                    )}
+                                                    {tx.product_name && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <CreditCard className="h-3 w-3 text-violet-400" />
+                                                            <span className="text-violet-300 text-xs">{tx.product_name}</span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                                                        <span>{formatShortDate(tx.date)}</span>
+                                                        {tx.payment_method && <span>{tx.payment_method}</span>}
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                </div>
+                                            ))}
+                                            {selectedRow.chainData.gateway_transactions.length > 10 && (
+                                                <p className="text-xs text-gray-500 text-center">
+                                                    + {selectedRow.chainData.gateway_transactions.length - 10} more transactions
+                                                </p>
+                                            )}
+                                        </div>
+                                    )}
 
-                                        {/* No data found */}
-                                        {selectedRow.chainData.gateway_transactions.length === 0 && selectedRow.chainData.invoices.length === 0 && (
-                                            <p className="text-xs text-gray-500 italic">No linked transactions or invoices found for this reconciliation.</p>
-                                        )}
-                                    </>
-                                )}
+                                    {/* Linked Invoices */}
+                                    {selectedRow.chainData.invoices.length > 0 && (
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] text-gray-500 uppercase font-medium">
+                                                Linked Invoices ({selectedRow.chainData.invoices.length})
+                                            </p>
+                                            {selectedRow.chainData.invoices.slice(0, 10).map((inv, i) => (
+                                                <div key={i} className="bg-blue-900/10 rounded-lg border border-blue-800/30 p-3 space-y-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-blue-300 text-xs font-mono">{inv.invoice_number || `INV-${inv.id}`}</span>
+                                                        <span className="text-green-400 font-medium text-sm">{formatCurrency(inv.total_amount, inv.currency || selectedRow.currency)}</span>
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <User className="h-3 w-3 text-blue-400" />
+                                                        <span className="text-white text-sm">{inv.client_name || inv.company_name || 'N/A'}</span>
+                                                    </div>
+                                                    {inv.order_id && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <FileText className="h-3 w-3 text-amber-400" />
+                                                            <span className="text-amber-300 text-xs font-mono">Order: {inv.order_id}</span>
+                                                        </div>
+                                                    )}
+                                                    {inv.product && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <CreditCard className="h-3 w-3 text-violet-400" />
+                                                            <span className="text-violet-300 text-xs">{inv.product}</span>
+                                                        </div>
+                                                    )}
+                                                    {inv.invoice_date && (
+                                                        <p className="text-[10px] text-gray-500">{formatShortDate(inv.invoice_date)}</p>
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
 
-                                {!chainLoading && !selectedRow.chainData && (
-                                    <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700 text-xs"
-                                        onClick={() => loadChainData(selectedRow)}>
-                                        <Database className="h-3 w-3 mr-1" /> Load Details
-                                    </Button>
-                                )}
-                            </div>
-                        )}
-                    </div>
+                                    {/* No data found */}
+                                    {selectedRow.chainData.gateway_transactions.length === 0 && selectedRow.chainData.invoices.length === 0 && (
+                                        <p className="text-xs text-gray-500 italic">No linked transactions or invoices found for this reconciliation.</p>
+                                    )}
+                                </>
+                            )}
 
-                    {/* Panel Footer */}
-                    <div className="border-t border-gray-700 px-4 py-3 flex justify-end">
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedRow(null)} className="text-gray-400 hover:text-white">
-                            Close
-                        </Button>
-                    </div>
+                            {!chainLoading && !selectedRow.chainData && (
+                                <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700 text-xs"
+                                    onClick={() => loadChainData(selectedRow)}>
+                                    <Database className="h-3 w-3 mr-1" /> Load Details
+                                </Button>
+                            )}
+                        </div>
+                    )}
                 </div>
-            )}
 
-            {/* Error banner */}
-            {error && (
-                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-900/90 border border-red-700 rounded-lg px-6 py-3 text-red-200 text-sm z-50 flex items-center gap-3">
-                    <AlertCircle className="h-4 w-4" />
-                    {error}
-                    <button onClick={() => setError(null)} className="text-red-400 hover:text-white ml-2">✕</button>
+                {/* Panel Footer */}
+                <div className="border-t border-gray-700 px-4 py-3 flex justify-end">
+                    <Button variant="ghost" size="sm" onClick={() => setSelectedRow(null)} className="text-gray-400 hover:text-white">
+                        Close
+                    </Button>
                 </div>
-            )}
-        </div>
+            </div>
+        )
+    }
+
+    {/* Error banner */ }
+    {
+        error && (
+            <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-900/90 border border-red-700 rounded-lg px-6 py-3 text-red-200 text-sm z-50 flex items-center gap-3">
+                <AlertCircle className="h-4 w-4" />
+                {error}
+                <button onClick={() => setError(null)} className="text-red-400 hover:text-white ml-2">✕</button>
+            </div>
+        )
+    }
+        </div >
     );
 }
