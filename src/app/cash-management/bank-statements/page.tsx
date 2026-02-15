@@ -38,6 +38,8 @@ import {
     Filter,
     Upload,
     Clock,
+    Package,
+    ShoppingCart,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -348,6 +350,18 @@ export default function BankStatementsPage() {
     const [reconTab, setReconTab] = useState<"suggestions" | "all" | "manual" | "intercompany">("suggestions");
     const [selectedIntercompanyMatch, setSelectedIntercompanyMatch] = useState<string | null>(null);
 
+    // Invoice-order browsing (All Orders tab for revenue)
+    const [orderSearchTerm, setOrderSearchTerm] = useState("");
+    const [orderSearchResults, setOrderSearchResults] = useState<RevenueOrderMatch[]>([]);
+    const [isSearchingOrders, setIsSearchingOrders] = useState(false);
+    const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+
+    // Gateway transaction browsing (for linking individual txns to disbursement)
+    const [gatewayTxSearchTerm, setGatewayTxSearchTerm] = useState("");
+    const [gatewayTxResults, setGatewayTxResults] = useState<{ id: string; transactionId: string; customerName: string; customerEmail: string; orderId: string | null; amount: number; date: string; source: string; currency: string; cardType: string | null; product: string | null; }[]>([]);
+    const [isSearchingGatewayTx, setIsSearchingGatewayTx] = useState(false);
+    const [selectedGatewayTxIds, setSelectedGatewayTxIds] = useState<Set<string>>(new Set());
+
     // Sorting state for all tabs
     type SortCol = "supplier" | "invoice" | "date" | "amount" | "match" | "bank" | "currency" | "description" | null;
     type SortDir = "asc" | "desc";
@@ -404,6 +418,125 @@ export default function BankStatementsPage() {
             }
         });
     }, [sortCol, sortDir]);
+
+    /** Toggle order selection (multi-select for invoice-orders) */
+    const toggleOrderSelection = useCallback((id: string) => {
+        setSelectedOrderIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    }, []);
+
+    /** Toggle gateway transaction selection (multi-select) */
+    const toggleGatewayTxSelection = useCallback((id: string) => {
+        setSelectedGatewayTxIds(prev => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id); else next.add(id);
+            return next;
+        });
+    }, []);
+
+    /** Search invoice-orders for revenue reconciliation */
+    const searchInvoiceOrders = useCallback(async (query: string, tx: BankTransaction) => {
+        if (query.length < 2) return;
+        setIsSearchingOrders(true);
+        try {
+            const currency = tx.currency;
+            const orderSources = currency === "USD" ? ["invoice-orders-usd", "invoice-orders"] : ["invoice-orders"];
+            const { data } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .in("source", orderSources)
+                .order("date", { ascending: false })
+                .limit(500);
+
+            const q = query.toLowerCase();
+            const results: RevenueOrderMatch[] = (data || [])
+                .filter(row => {
+                    const cd = row.custom_data || {};
+                    return (
+                        (cd.customer_name || "").toLowerCase().includes(q) ||
+                        (cd.company_name || "").toLowerCase().includes(q) ||
+                        (cd.order_id || "").toLowerCase().includes(q) ||
+                        (cd.invoice_number || "").toLowerCase().includes(q) ||
+                        (row.description || "").toLowerCase().includes(q)
+                    );
+                })
+                .map(row => {
+                    const cd = row.custom_data || {};
+                    return {
+                        id: row.id,
+                        source: "invoice-orders",
+                        sourceLabel: cd.financial_account_name || row.description || "Invoice Order",
+                        orderId: cd.order_id || null,
+                        invoiceNumber: cd.invoice_number || null,
+                        customerName: cd.customer_name || cd.company_name || "Unknown",
+                        amount: Math.abs(parseFloat(row.amount) || 0),
+                        date: row.date || "",
+                        matchScore: 0,
+                        matchReason: "Manual search",
+                    };
+                });
+            setOrderSearchResults(results);
+        } catch (err) {
+            console.error("Error searching invoice-orders:", err);
+        }
+        setIsSearchingOrders(false);
+    }, []);
+
+    /** Search gateway transactions for manual linking */
+    const searchGatewayTransactions = useCallback(async (query: string, tx: BankTransaction) => {
+        if (query.length < 2) return;
+        setIsSearchingGatewayTx(true);
+        try {
+            const currency = tx.currency;
+            const paymentSources = currency === "USD"
+                ? ["braintree-api-revenue-usd", "stripe-usd"]
+                : ["braintree-api-revenue", "braintree-api-revenue-gbp", "braintree-api-revenue-amex", "stripe-eur", "gocardless"];
+
+            const { data } = await supabase
+                .from("csv_rows")
+                .select("*")
+                .in("source", paymentSources)
+                .order("date", { ascending: false })
+                .limit(1000);
+
+            const q = query.toLowerCase();
+            const results = (data || [])
+                .filter(row => {
+                    const cd = row.custom_data || {};
+                    return (
+                        (cd.customer_name || "").toLowerCase().includes(q) ||
+                        (cd.customer_email || "").toLowerCase().includes(q) ||
+                        (cd.order_id || "").toLowerCase().includes(q) ||
+                        (cd.transaction_id || "").toLowerCase().includes(q) ||
+                        (cd.disbursement_date || "").includes(q) ||
+                        (row.description || "").toLowerCase().includes(q)
+                    );
+                })
+                .map(row => {
+                    const cd = row.custom_data || {};
+                    return {
+                        id: row.id,
+                        transactionId: cd.transaction_id || row.id,
+                        customerName: cd.customer_name || "Unknown",
+                        customerEmail: cd.customer_email || "",
+                        orderId: cd.order_id || null,
+                        amount: Math.abs(parseFloat(row.amount) || 0),
+                        date: row.date || "",
+                        source: row.source || "",
+                        currency: cd.currency || currency,
+                        cardType: cd.card_type || cd.payment_method || null,
+                        product: cd.plan_id || cd.subscription_id || cd.product || null,
+                    };
+                });
+            setGatewayTxResults(results);
+        } catch (err) {
+            console.error("Error searching gateway transactions:", err);
+        }
+        setIsSearchingGatewayTx(false);
+    }, []);
 
     // Bank freshness metadata
     const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
@@ -1130,6 +1263,14 @@ export default function BankStatementsPage() {
         setIntercompanyMatches([]);
         setManualSearchTerm("");
         setManualSearchResults([]);
+        setOrderSearchTerm("");
+        setOrderSearchResults([]);
+        setSelectedOrderIds(new Set());
+        setIsSearchingOrders(false);
+        setGatewayTxSearchTerm("");
+        setGatewayTxResults([]);
+        setSelectedGatewayTxIds(new Set());
+        setIsSearchingGatewayTx(false);
         setReconTab("suggestions");
         setReconDialogOpen(true);
         setLoadingMatches(true);
@@ -1356,6 +1497,86 @@ export default function BankStatementsPage() {
                 }));
 
                 toast({ title: "Intercompany Reconciled!", description: `Matched with ${match.sourceLabel}: ${formatCurrency(match.amount, match.currency)} on ${formatShortDate(match.date)}` });
+                setReconDialogOpen(false);
+                return;
+            }
+
+            // CASE 5: Gateway Transactions + Invoice Orders (combined linking)
+            if (selectedGatewayTxIds.size > 0 || selectedOrderIds.size > 0) {
+                const linkedGatewayIds = Array.from(selectedGatewayTxIds);
+                const linkedOrderIds = Array.from(selectedOrderIds);
+
+                // Sum amounts for validation
+                const linkedGatewayTotal = gatewayTxResults
+                    .filter(t => selectedGatewayTxIds.has(t.id))
+                    .reduce((s, t) => s + t.amount, 0);
+                const linkedOrderTotal = orderSearchResults
+                    .filter(o => selectedOrderIds.has(o.id))
+                    .reduce((s, o) => s + o.amount, 0);
+
+                // Mark selected gateway transactions as reconciled
+                for (const gId of linkedGatewayIds) {
+                    await supabase
+                        .from("csv_rows")
+                        .update({
+                            reconciled: true,
+                            custom_data: {
+                                reconciled_at: now,
+                                reconciled_with_bank_id: reconTransaction.id,
+                                reconciled_bank_amount: txAmount,
+                                reconciliation_type: "bank-gateway-link",
+                            },
+                        })
+                        .eq("id", gId);
+                }
+
+                // Mark selected invoice-orders as reconciled
+                for (const oId of linkedOrderIds) {
+                    await supabase
+                        .from("csv_rows")
+                        .update({
+                            reconciled: true,
+                            custom_data: {
+                                reconciled_at: now,
+                                reconciled_with_bank_id: reconTransaction.id,
+                                reconciled_bank_amount: txAmount,
+                                reconciliation_type: "bank-order-link",
+                            },
+                        })
+                        .eq("id", oId);
+                }
+
+                // Update bank transaction
+                const { error: txErr } = await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: true,
+                        custom_data: {
+                            ...reconTransaction.custom_data,
+                            reconciliationType: "gateway-order-link",
+                            reconciled_at: now,
+                            linked_gateway_transaction_ids: linkedGatewayIds,
+                            linked_gateway_transaction_count: linkedGatewayIds.length,
+                            linked_gateway_total: linkedGatewayTotal,
+                            linked_invoice_order_ids: linkedOrderIds,
+                            linked_invoice_order_count: linkedOrderIds.length,
+                            linked_invoice_order_total: linkedOrderTotal,
+                            manual_note: manualNote || null,
+                        },
+                    })
+                    .eq("id", reconTransaction.id);
+                if (txErr) throw txErr;
+
+                setBankTransactions(prev => prev.map(t =>
+                    t.id === reconTransaction.id
+                        ? { ...t, isReconciled: true, reconciliationType: "gateway-order-link" }
+                        : t
+                ));
+
+                const parts = [];
+                if (linkedGatewayIds.length > 0) parts.push(`${linkedGatewayIds.length} gateway txn(s)`);
+                if (linkedOrderIds.length > 0) parts.push(`${linkedOrderIds.length} invoice order(s)`);
+                toast({ title: "Reconciled!", description: `Linked with ${parts.join(" + ")}` });
                 setReconDialogOpen(false);
                 return;
             }
@@ -2595,7 +2816,78 @@ export default function BankStatementsPage() {
                                                 )}
                                             </div>
                                         ) : (
-                                            <p className="text-center text-gray-500 text-sm py-4">Revenue orders are shown in the Suggestions tab</p>
+                                            /* ── Revenue: Invoice-Order Search ── */
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="text-xs text-gray-400 block mb-1">Search Invoice-Orders (customer, order ID, invoice #)</label>
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            placeholder="Type customer name, order ID, invoice #..."
+                                                            value={orderSearchTerm}
+                                                            onChange={e => setOrderSearchTerm(e.target.value)}
+                                                            onKeyDown={async e => {
+                                                                if (e.key === "Enter" && reconTransaction) {
+                                                                    await searchInvoiceOrders(orderSearchTerm, reconTransaction);
+                                                                }
+                                                            }}
+                                                            className="flex-1 bg-gray-800 border-gray-700 text-white text-xs h-8"
+                                                        />
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            disabled={isSearchingOrders || orderSearchTerm.length < 2}
+                                                            onClick={() => reconTransaction && searchInvoiceOrders(orderSearchTerm, reconTransaction)}
+                                                            className="h-8 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                                                        >
+                                                            {isSearchingOrders ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                {selectedOrderIds.size > 0 && (
+                                                    <div className="bg-cyan-900/20 border border-cyan-800 rounded p-2">
+                                                        <p className="text-[10px] text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(orderSearchResults.filter(o => selectedOrderIds.has(o.id)).reduce((s, o) => s + o.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    </div>
+                                                )}
+                                                <div className="max-h-[320px] overflow-y-auto space-y-1">
+                                                    {orderSearchResults.length === 0 && !isSearchingOrders && (
+                                                        <p className="text-center text-gray-500 text-[10px] py-4">Search for invoice-orders by customer, order ID, or invoice number</p>
+                                                    )}
+                                                    {isSearchingOrders && (
+                                                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>
+                                                    )}
+                                                    {orderSearchResults.map(order => (
+                                                        <button
+                                                            key={order.id}
+                                                            onClick={() => toggleOrderSelection(order.id)}
+                                                            className={`w-full text-left p-2 rounded border transition-colors ${selectedOrderIds.has(order.id)
+                                                                    ? "bg-cyan-900/30 border-cyan-600"
+                                                                    : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
+                                                                }`}
+                                                        >
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
+                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-white font-medium truncate">{order.customerName}</p>
+                                                                    <p className="text-[10px] text-gray-500 truncate">
+                                                                        {order.orderId && <span className="text-cyan-400">#{order.orderId}</span>}
+                                                                        {order.invoiceNumber && <span className="ml-2">Inv: {order.invoiceNumber}</span>}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(order.date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-medium text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 )}
@@ -2722,7 +3014,83 @@ export default function BankStatementsPage() {
                                             </div>
                                         )}
                                         {manualSearchResults.length === 0 && manualSearchTerm.length >= 2 && !isSearchingManual && (
-                                            <p className="text-center text-gray-500 text-xs py-2">No invoices found for \"{manualSearchTerm}\"</p>
+                                            <p className="text-center text-gray-500 text-xs py-2">No invoices found for &quot;{manualSearchTerm}&quot;</p>
+                                        )}
+
+                                        {/* ── Gateway Transactions Search (Revenue only) ── */}
+                                        {!isExpense && (
+                                            <div className="border-t border-gray-700 pt-3">
+                                                <label className="text-xs text-gray-400 block mb-1 flex items-center gap-1">
+                                                    <Package className="h-3.5 w-3.5" /> Link Gateway Transactions (Braintree, Stripe, GoCardless)
+                                                </label>
+                                                <div className="flex gap-2 mt-1">
+                                                    <Input
+                                                        placeholder="Search by customer, email, transaction ID, order ID..."
+                                                        value={gatewayTxSearchTerm}
+                                                        onChange={e => setGatewayTxSearchTerm(e.target.value)}
+                                                        onKeyDown={async e => {
+                                                            if (e.key === "Enter" && reconTransaction) {
+                                                                await searchGatewayTransactions(gatewayTxSearchTerm, reconTransaction);
+                                                            }
+                                                        }}
+                                                        className="flex-1 bg-gray-800 border-gray-700 text-white text-xs h-8"
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={isSearchingGatewayTx || gatewayTxSearchTerm.length < 2}
+                                                        onClick={() => reconTransaction && searchGatewayTransactions(gatewayTxSearchTerm, reconTransaction)}
+                                                        className="h-8 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                                                    >
+                                                        {isSearchingGatewayTx ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                                                    </Button>
+                                                </div>
+                                                {selectedGatewayTxIds.size > 0 && (
+                                                    <div className="bg-purple-900/20 border border-purple-800 rounded p-2 mt-2">
+                                                        <p className="text-[10px] text-purple-400">{selectedGatewayTxIds.size} transaction(s) selected — total: {formatCurrency(gatewayTxResults.filter(t => selectedGatewayTxIds.has(t.id)).reduce((s, t) => s + t.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    </div>
+                                                )}
+                                                <div className="max-h-[250px] overflow-y-auto space-y-1 mt-2">
+                                                    {isSearchingGatewayTx && (
+                                                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>
+                                                    )}
+                                                    {gatewayTxResults.length === 0 && !isSearchingGatewayTx && gatewayTxSearchTerm.length >= 2 && (
+                                                        <p className="text-center text-gray-500 text-[10px] py-2">No gateway transactions found</p>
+                                                    )}
+                                                    {gatewayTxResults.map(gtx => (
+                                                        <button
+                                                            key={gtx.id}
+                                                            onClick={() => toggleGatewayTxSelection(gtx.id)}
+                                                            className={`w-full text-left p-2 rounded border transition-colors ${selectedGatewayTxIds.has(gtx.id)
+                                                                    ? "bg-purple-900/30 border-purple-600"
+                                                                    : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
+                                                                }`}
+                                                        >
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedGatewayTxIds.has(gtx.id) ? "bg-purple-500 border-purple-500" : "border-gray-500"}`}>
+                                                                        {selectedGatewayTxIds.has(gtx.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-white font-medium truncate">{gtx.customerName}</p>
+                                                                    <p className="text-[10px] text-gray-500 truncate">
+                                                                        <span className="text-purple-400">{gtx.source}</span>
+                                                                        {gtx.orderId && <span className="ml-1.5 text-cyan-400">#{gtx.orderId}</span>}
+                                                                        {gtx.transactionId && <span className="ml-1.5 text-gray-600">TxID: {String(gtx.transactionId).slice(0, 12)}...</span>}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(gtx.date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-medium text-emerald-400">{formatCurrency(gtx.amount, gtx.currency || "EUR")}</span>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         )}
 
                                         {/* Divider */}
