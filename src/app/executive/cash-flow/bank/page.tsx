@@ -281,8 +281,8 @@ export default function BankCashFlowPage() {
     const [orderFilter, setOrderFilter] = useState("all");
     const [showReconciled, setShowReconciled] = useState(true);
 
-    // Revenue view toggle: gateway vs P&L line
-    const [revenueViewMode, setRevenueViewMode] = useState<"gateway" | "pnl">("gateway");
+    // Revenue view toggle: bank account vs gateway vs P&L line
+    const [revenueViewMode, setRevenueViewMode] = useState<"bank" | "gateway" | "pnl">("gateway");
 
     // Invoice-orders data for P&L revenue breakdown
     const [invoiceOrders, setInvoiceOrders] = useState<{ description: string; amount: number; date: string; financial_account_name: string | null; financial_account_code: string | null }[]>([]);
@@ -889,55 +889,24 @@ export default function BankCashFlowPage() {
                             </ResponsiveContainer>
                         </div>
 
-                        {/* ─── Revenue by Account ─── */}
-                        <div className="mt-5">
-                            <div className="flex items-center gap-2 mb-3">
-                                <Building className="h-4 w-4 text-gray-500" />
-                                <span className="text-xs text-gray-500 uppercase tracking-wider">Revenue by Account</span>
-                            </div>
-                            <div className="flex gap-2 overflow-x-auto pb-2">
-                                {BANK_ACCOUNTS.filter(b => revenueByBank[b.key]).map(bank => {
-                                    const stats = revenueByBank[bank.key];
-                                    const net = stats.inflows - stats.outflows;
-                                    return (
-                                        <div key={bank.key} className="flex-shrink-0 bg-[#252627] rounded-lg border border-gray-700 px-3 py-2 min-w-[145px]">
-                                            <p className={`text-[10px] uppercase font-medium mb-1 ${bank.textColor}`}>{bank.label}</p>
-                                            <div className="space-y-0.5">
-                                                <div className="flex justify-between text-[10px]">
-                                                    <span className="text-gray-500">In</span>
-                                                    <span className="text-green-400 font-medium">{formatCompactCurrency(stats.inflows, bank.currency)}</span>
-                                                </div>
-                                                <div className="flex justify-between text-[10px]">
-                                                    <span className="text-gray-500">Out</span>
-                                                    <span className="text-red-400 font-medium">{formatCompactCurrency(stats.outflows, bank.currency)}</span>
-                                                </div>
-                                                <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
-                                                    <span className="text-gray-500">Net</span>
-                                                    <span className={`font-bold ${net >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(net, bank.currency)}</span>
-                                                </div>
-                                                <div className="flex justify-between text-[10px]">
-                                                    <span className="text-gray-500">Txns</span>
-                                                    <span className="text-gray-300 font-medium">{stats.count}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* ─── Revenue by Payment Gateway / P&L Line (TOGGLE) ─── */}
-                        {(Object.keys(summary.byGateway).length > 0 || Object.keys(pnlLineRevenue.byLine).length > 0) && (
+                        {/* ─── Inflows Breakdown (Bank Account / Gateway / P&L Line) ─── */}
+                        {(Object.keys(revenueByBank).length > 0 || Object.keys(summary.byGateway).length > 0 || Object.keys(pnlLineRevenue.byLine).length > 0) && (
                             <div className="mt-5">
-                                {/* Header with toggle */}
+                                {/* Header with 3-option toggle */}
                                 <div className="flex items-center justify-between mb-3">
                                     <div className="flex items-center gap-2">
-                                        {revenueViewMode === "gateway" ? <CreditCard className="h-4 w-4 text-gray-500" /> : <BarChart3 className="h-4 w-4 text-gray-500" />}
+                                        {revenueViewMode === "bank" ? <Building className="h-4 w-4 text-gray-500" /> : revenueViewMode === "gateway" ? <CreditCard className="h-4 w-4 text-gray-500" /> : <BarChart3 className="h-4 w-4 text-gray-500" />}
                                         <span className="text-xs text-gray-500 uppercase tracking-wider">
-                                            {revenueViewMode === "gateway" ? "Inflows by Payment Gateway" : "Inflows by P&L Line"}
+                                            {revenueViewMode === "bank" ? "Inflows by Bank Account" : revenueViewMode === "gateway" ? "Inflows by Payment Gateway" : "Inflows by P&L Line"}
                                         </span>
                                     </div>
                                     <div className="flex items-center bg-[#1a1b1d] rounded-lg border border-gray-700 p-0.5">
+                                        <button
+                                            onClick={() => setRevenueViewMode("bank")}
+                                            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "bank" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                        >
+                                            <Building className="h-3 w-3" />Bank Account
+                                        </button>
                                         <button
                                             onClick={() => setRevenueViewMode("gateway")}
                                             className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "gateway" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
@@ -953,8 +922,41 @@ export default function BankCashFlowPage() {
                                     </div>
                                 </div>
 
+                                {/* Bank Account view */}
+                                {revenueViewMode === "bank" && (
+                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                        {BANK_ACCOUNTS.filter(b => revenueByBank[b.key]).map(bank => {
+                                            const stats = revenueByBank[bank.key];
+                                            const net = stats.inflows - stats.outflows;
+                                            return (
+                                                <div key={bank.key} className="flex-shrink-0 bg-[#252627] rounded-lg border border-gray-700 px-3 py-2 min-w-[145px]">
+                                                    <p className={`text-[10px] uppercase font-medium mb-1 ${bank.textColor}`}>{bank.label}</p>
+                                                    <div className="space-y-0.5">
+                                                        <div className="flex justify-between text-[10px]">
+                                                            <span className="text-gray-500">In</span>
+                                                            <span className="text-green-400 font-medium">{formatCompactCurrency(stats.inflows, bank.currency)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-[10px]">
+                                                            <span className="text-gray-500">Out</span>
+                                                            <span className="text-red-400 font-medium">{formatCompactCurrency(stats.outflows, bank.currency)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                            <span className="text-gray-500">Net</span>
+                                                            <span className={`font-bold ${net >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(net, bank.currency)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-[10px]">
+                                                            <span className="text-gray-500">Txns</span>
+                                                            <span className="text-gray-300 font-medium">{stats.count}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
                                 {/* Gateway view */}
-                                {revenueViewMode === "gateway" && (
+                                {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length > 0 && (
                                     <div className="flex gap-2 overflow-x-auto pb-2">
                                         {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
                                             const gwStyle = getGatewayStyle(gw);
