@@ -1090,8 +1090,8 @@ export default function BankCashFlowPage() {
                                             <Line key={gwKey} type="monotone" dataKey={gwKey} name={gwKey.charAt(0).toUpperCase() + gwKey.slice(1)} stroke={GATEWAY_CHART_COLORS[gwKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: GATEWAY_CHART_COLORS[gwKey] || "#9ca3af", r: 3 }} connectNulls />
                                         ))}
                                     </LineChart>
-                                ) : (
-                                    <LineChart data={monthlyByPnl.length > 0 ? monthlyByPnl : chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                ) : activePnlKeys.length > 0 ? (
+                                    <LineChart data={monthlyByPnl} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                                         <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
                                         <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
@@ -1106,6 +1106,20 @@ export default function BankCashFlowPage() {
                                             const label = pnlConfig ? `${pnlConfig.icon} ${pnlConfig.label}` : (pnlKey === "unclassified" ? "❓ Unclassified" : pnlKey);
                                             return <Line key={pnlKey} type="monotone" dataKey={pnlKey} name={label} stroke={PNL_CHART_COLORS[pnlKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: PNL_CHART_COLORS[pnlKey] || "#9ca3af", r: 3 }} connectNulls />;
                                         })}
+                                    </LineChart>
+                                ) : (
+                                    /* P&L chart fallback — no order-level reconciliation yet */
+                                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                        <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                        <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
+                                            labelStyle={{ color: "#9CA3AF" }}
+                                            formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
+                                        <Line type="monotone" dataKey="inflows" name="Inflows (unclassified)" stroke="#6b7280" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: "#6b7280", r: 3 }} />
                                     </LineChart>
                                 )}
                             </ResponsiveContainer>
@@ -1147,36 +1161,54 @@ export default function BankCashFlowPage() {
                                     </div>
                                 )}
 
-                                {/* Gateway view */}
+                                {/* Gateway view — only reconciled bank inflows */}
                                 {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length > 0 && (
-                                    <div className="flex gap-2 overflow-x-auto pb-2">
-                                        {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
-                                            const gwStyle = getGatewayStyle(gw);
-                                            const gwLabel = gw.charAt(0).toUpperCase() + gw.slice(1);
-                                            return (
-                                                <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
-                                                    <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
-                                                    <div className="space-y-0.5">
-                                                        <div className="flex justify-between text-[10px]">
-                                                            <span className="text-gray-500">Amount</span>
-                                                            <span className="text-green-400 font-bold">{formatCompactCurrency(stats.amount, dominantCurrency)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-[10px]">
-                                                            <span className="text-gray-500">Txns</span>
-                                                            <span className="text-gray-300 font-medium">{stats.count}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
-                                                            <span className="text-gray-500">Avg</span>
-                                                            <span className="text-gray-300 font-medium">{formatCompactCurrency(stats.amount / stats.count, dominantCurrency)}</span>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-2 px-1">
+                                            <span className="text-[10px] text-gray-500">
+                                                {summary.reconciledCount} reconciled of {summary.transactionCount} transactions
+                                                {summary.reconciledPct > 0 && ` (${summary.reconciledPct}% of inflows)`}
+                                            </span>
+                                            <span className="text-[10px] text-amber-500/70">• Only reconciled bank inflows</span>
+                                        </div>
+                                        <div className="flex gap-2 overflow-x-auto pb-2">
+                                            {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
+                                                const gwStyle = getGatewayStyle(gw);
+                                                const gwLabel = gw.charAt(0).toUpperCase() + gw.slice(1);
+                                                return (
+                                                    <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
+                                                        <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
+                                                        <div className="space-y-0.5">
+                                                            <div className="flex justify-between text-[10px]">
+                                                                <span className="text-gray-500">Amount</span>
+                                                                <span className="text-green-400 font-bold">{formatCompactCurrency(stats.amount, dominantCurrency)}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-[10px]">
+                                                                <span className="text-gray-500">Txns</span>
+                                                                <span className="text-gray-300 font-medium">{stats.count}</span>
+                                                            </div>
+                                                            <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                                <span className="text-gray-500">Avg</span>
+                                                                <span className="text-gray-300 font-medium">{formatCompactCurrency(stats.amount / stats.count, dominantCurrency)}</span>
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
+                                        </div>
                                     </div>
                                 )}
 
-                                {/* P&L Line view */}
+                                {/* Gateway empty state */}
+                                {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length === 0 && (
+                                    <div className="text-center py-4">
+                                        <CreditCard className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                                        <p className="text-xs text-gray-500">No gateway-reconciled inflows in this period</p>
+                                        <p className="text-[10px] text-gray-600 mt-1">Run Auto Reconcile to match bank transactions with gateway disbursements</p>
+                                    </div>
+                                )}
+
+                                {/* P&L Line view — only bank transactions with order-level reconciliation */}
                                 {revenueViewMode === "pnl" && (
                                     <div>
                                         {Object.keys(pnlLineRevenue.byLine).length > 0 ? (
@@ -1264,8 +1296,12 @@ export default function BankCashFlowPage() {
                                         ) : (
                                             <div className="text-center py-4">
                                                 <BarChart3 className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                                                <p className="text-xs text-gray-500">No invoice-orders data for this period</p>
-                                                <p className="text-[10px] text-gray-600 mt-1">Upload invoice-orders CSV to see P&L breakdown</p>
+                                                <p className="text-xs text-gray-500">No P&L classification available for bank inflows</p>
+                                                <p className="text-[10px] text-gray-600 mt-1 max-w-md mx-auto">
+                                                    P&L lines require order-level reconciliation (Bank → Gateway → Invoice-Orders → Products).
+                                                    Currently {summary.reconciledCount} transactions are gateway-reconciled but need product matching.
+                                                </p>
+                                                <p className="text-[10px] text-amber-500/60 mt-2">Run invoice-order reconciliation to classify inflows by P&L line.</p>
                                             </div>
                                         )}
                                     </div>
