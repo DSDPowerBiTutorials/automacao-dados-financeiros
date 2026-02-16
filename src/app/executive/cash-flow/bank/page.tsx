@@ -550,7 +550,7 @@ export default function BankCashFlowPage() {
         const unreconciledCount = filteredTransactions.filter(t => !t.isReconciled).length;
 
         const byGateway: Record<string, { amount: number; count: number }> = {};
-        inflows.forEach(t => {
+        inflows.filter(t => t.isReconciled).forEach(t => {
             const key = t.paymentSource || t.gateway || "other";
             if (!byGateway[key]) byGateway[key] = { amount: 0, count: 0 };
             byGateway[key].amount += t.amount;
@@ -630,11 +630,11 @@ export default function BankCashFlowPage() {
         return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
     }, [filteredTransactions]);
 
-    // ─── Monthly breakdown by GATEWAY (for chart) ───
+    // ─── Monthly breakdown by GATEWAY (for chart) — ONLY reconciled ───
     const monthlyByGateway = useMemo(() => {
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
         filteredTransactions.forEach(tx => {
-            if (tx.amount <= 0) return;
+            if (tx.amount <= 0 || !tx.isReconciled) return;
             const key = tx.date?.substring(0, 7) || "unknown";
             if (!map.has(key)) {
                 const [y, m] = key.split("-");
@@ -649,12 +649,47 @@ export default function BankCashFlowPage() {
         return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
     }, [filteredTransactions]);
 
-    // ─── Monthly breakdown by P&L LINE (for chart) ───
+    // ─── Monthly breakdown by P&L LINE (for chart) — ONLY bank-reconciled orders ───
     const monthlyByPnl = useMemo(() => {
+        // Build set of reconciled bank invoice_order_ids
+        const reconOrderIds = new Set<string>();
+        filteredTransactions.forEach(tx => {
+            if (tx.isReconciled && tx.isOrderReconciled && tx.invoiceOrderId) {
+                reconOrderIds.add(String(tx.invoiceOrderId));
+            }
+        });
+        // Only use invoice-orders that are linked to reconciled bank transactions,
+        // OR if the bank tx has matched_products we use the bank amount directly
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
-        invoiceOrders.forEach(order => {
-            if (order.amount <= 0) return;
-            const key = order.date?.substring(0, 7) || "unknown";
+        // Strategy: use reconciled bank transactions that have products/P&L info
+        filteredTransactions.forEach(tx => {
+            if (tx.amount <= 0 || !tx.isReconciled) return;
+            // Check if this bank row has matched_products from reconciliation
+            const products = tx.custom_data?.matched_products as string[] | undefined;
+            if (!products || products.length === 0) return;
+            // Try to find P&L line from invoice-orders that match this bank tx
+            const orderId = tx.invoiceOrderId;
+            let lineCode = "unclassified";
+            if (orderId) {
+                // Find the invoice-order with matching id to get financial_account_code
+                const matchedOrder = invoiceOrders.find(o => {
+                    // Match by description containing product name or by order linkage
+                    return products.some(p => o.description.includes(p) || o.financial_account_name?.includes(p));
+                });
+                if (matchedOrder?.financial_account_code) {
+                    lineCode = getPnlLineFromCode(matchedOrder.financial_account_code);
+                }
+            }
+            // If no order link, try to match products against invoice-orders
+            if (lineCode === "unclassified" && products.length > 0) {
+                const matchedOrder = invoiceOrders.find(o =>
+                    products.some(p => o.description.toLowerCase().includes(p.toLowerCase()) || o.financial_account_name?.toLowerCase()?.includes(p.toLowerCase()))
+                );
+                if (matchedOrder?.financial_account_code) {
+                    lineCode = getPnlLineFromCode(matchedOrder.financial_account_code);
+                }
+            }
+            const key = tx.date?.substring(0, 7) || "unknown";
             if (!map.has(key)) {
                 const [y, m] = key.split("-");
                 const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
@@ -662,11 +697,10 @@ export default function BankCashFlowPage() {
                 map.set(key, { month: key, label } as any);
             }
             const entry = map.get(key)!;
-            const lineCode = getPnlLineFromCode(order.financial_account_code);
-            entry[lineCode] = (entry[lineCode] as number || 0) + order.amount;
+            entry[lineCode] = (entry[lineCode] as number || 0) + tx.amount;
         });
         return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
-    }, [invoiceOrders]);
+    }, [filteredTransactions, invoiceOrders]);
 
     // ─── Collect active keys per breakdown for chart legend ───
     const activeBankKeys = useMemo(() => {
@@ -699,27 +733,44 @@ export default function BankCashFlowPage() {
         return map;
     }, [filteredTransactions]);
 
-    // ─── Revenue breakdown by P&L line (from invoice-orders) ───
+    // ─── Revenue breakdown by P&L line — ONLY from reconciled bank transactions ───
     const pnlLineRevenue = useMemo(() => {
         const map: Record<string, { amount: number; count: number; products: Record<string, { amount: number; count: number; faCode: string | null; faName: string | null }> }> = {};
         let totalRevenue = 0;
-        invoiceOrders.forEach(order => {
-            if (order.amount <= 0) return; // Only revenue (bank inflows)
-            const lineCode = getPnlLineFromCode(order.financial_account_code);
-            if (!map[lineCode]) map[lineCode] = { amount: 0, count: 0, products: {} };
-            map[lineCode].amount += order.amount;
-            map[lineCode].count++;
-            totalRevenue += order.amount;
-            // Track products within each P&L line
-            const productKey = order.financial_account_name || order.description || "Unclassified";
-            if (!map[lineCode].products[productKey]) {
-                map[lineCode].products[productKey] = { amount: 0, count: 0, faCode: order.financial_account_code, faName: order.financial_account_name };
+        // Only use reconciled bank inflows that have product info
+        filteredTransactions.forEach(tx => {
+            if (tx.amount <= 0 || !tx.isReconciled) return;
+            const products = tx.custom_data?.matched_products as string[] | undefined;
+            if (!products || products.length === 0) return;
+            // Determine P&L line from matched invoice-orders
+            let lineCode = "unclassified";
+            let productName = products.join(", ");
+            let faCode: string | null = null;
+            let faName: string | null = null;
+            // Try to match against invoice-orders for P&L classification
+            const matchedOrder = invoiceOrders.find(o =>
+                products.some(p => o.description.toLowerCase().includes(p.toLowerCase()) || o.financial_account_name?.toLowerCase()?.includes(p.toLowerCase()))
+            );
+            if (matchedOrder?.financial_account_code) {
+                lineCode = getPnlLineFromCode(matchedOrder.financial_account_code);
+                faCode = matchedOrder.financial_account_code;
+                faName = matchedOrder.financial_account_name;
+                productName = matchedOrder.financial_account_name || matchedOrder.description;
             }
-            map[lineCode].products[productKey].amount += order.amount;
+            if (!map[lineCode]) map[lineCode] = { amount: 0, count: 0, products: {} };
+            map[lineCode].amount += tx.amount;
+            map[lineCode].count++;
+            totalRevenue += tx.amount;
+            // Track products
+            const productKey = productName || "Unclassified";
+            if (!map[lineCode].products[productKey]) {
+                map[lineCode].products[productKey] = { amount: 0, count: 0, faCode, faName };
+            }
+            map[lineCode].products[productKey].amount += tx.amount;
             map[lineCode].products[productKey].count++;
         });
         return { byLine: map, total: totalRevenue };
-    }, [invoiceOrders]);
+    }, [filteredTransactions, invoiceOrders]);
 
     const toggleGroup = (date: string) => {
         setExpandedGroups(prev => {
@@ -1132,7 +1183,7 @@ export default function BankCashFlowPage() {
                                             <>
                                                 {/* Total banner */}
                                                 <div className="flex items-center justify-between mb-2 px-1">
-                                                    <span className="text-[10px] text-gray-500">{PNL_LINES.filter(l => pnlLineRevenue.byLine[l.code]).length} P&L lines • {invoiceOrders.filter(o => o.amount > 0).length} orders</span>
+                                                    <span className="text-[10px] text-gray-500">{PNL_LINES.filter(l => pnlLineRevenue.byLine[l.code]).length} P&L lines • {pnlLineRevenue.total > 0 ? `${Object.values(pnlLineRevenue.byLine).reduce((s, l) => s + l.count, 0)} reconciled txns` : "0 txns"}</span>
                                                     <span className="text-xs text-green-400 font-bold">{formatCompactCurrency(pnlLineRevenue.total, dominantCurrency)} total inflows</span>
                                                 </div>
                                                 {/* P&L Line cards — clickable */}
