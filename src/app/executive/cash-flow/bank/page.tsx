@@ -321,7 +321,7 @@ export default function BankCashFlowPage() {
     // Invoice-orders data for P&L revenue breakdown
     const [invoiceOrders, setInvoiceOrders] = useState<{ description: string; amount: number; date: string; financial_account_name: string | null; financial_account_code: string | null; invoice_number: string | null }[]>([]);
 
-// BT reference map: transaction_id → { matched_invoice_number, matched_invoice_fac, customer_name }
+    // BT reference map: transaction_id → { matched_invoice_number, matched_invoice_fac, customer_name }
     const [btTxMap, setBtTxMap] = useState<Record<string, { matched_invoice_number: string | null; matched_invoice_fac: string | null; customer_name: string | null }>>({});
 
     // P&L line drill-down popup
@@ -464,21 +464,22 @@ export default function BankCashFlowPage() {
                 console.error("Error loading invoice-orders for product breakdown:", orderErr);
             }
 
-            // ─── Load BT revenue + amex reference data for P&L chain ───
+            // ─── Load gateway reference data for P&L chain (BT + Stripe + GC) ───
             try {
                 const txMap: Record<string, { matched_invoice_number: string | null; matched_invoice_fac: string | null; customer_name: string | null }> = {};
-                for (const btSource of ["braintree-api-revenue", "braintree-amex"]) {
+                for (const gwSource of ["braintree-api-revenue", "braintree-amex", "stripe-eur", "stripe-usd", "gocardless"]) {
                     let btFrom = 0;
                     while (true) {
                         const { data: btChunk, error: btErr } = await supabase
                             .from("csv_rows")
                             .select("custom_data")
-                            .eq("source", btSource)
+                            .eq("source", gwSource)
                             .range(btFrom, btFrom + PAGE - 1);
-                        if (btErr) { console.error(`Error loading ${btSource}:`, btErr); break; }
+                        if (btErr) { console.error(`Error loading ${gwSource}:`, btErr); break; }
                         if (!btChunk || btChunk.length === 0) break;
                         btChunk.forEach(r => {
-                            const txId = r.custom_data?.transaction_id;
+                            // Support multiple ID fields: transaction_id (BT/Stripe), gocardless_id, payment_id (GC)
+                            const txId = r.custom_data?.transaction_id || r.custom_data?.gocardless_id || r.custom_data?.payment_id;
                             if (txId) {
                                 txMap[txId] = {
                                     matched_invoice_number: r.custom_data?.matched_invoice_number || null,
@@ -493,7 +494,7 @@ export default function BankCashFlowPage() {
                 }
                 setBtTxMap(txMap);
             } catch (btErr) {
-                console.error("Error loading BT reference data:", btErr);
+                console.error("Error loading gateway reference data:", btErr);
             }
         } catch (err) {
             console.error("Error loading data:", err);
@@ -591,9 +592,16 @@ export default function BankCashFlowPage() {
 
     // ─── Resolve P&L line for a bank inflow via chain lookup ───
     const resolvePnlLine = useCallback((tx: BankTransaction): string => {
-        // Strategy 1: bank row has transaction_ids → look up BT tx → get P&L code
-        const txIds = tx.custom_data?.transaction_ids as string[] | undefined;
-        if (txIds && txIds.length > 0) {
+        // Strategy 0: bank row has direct pnl_line classification
+        const directPnl = tx.custom_data?.pnl_line as string | undefined;
+        if (directPnl) return directPnl;
+
+        // Strategy 1: bank row has transaction_ids (or gc_transaction_ids) → look up gateway tx → get P&L code
+        const txIds = [
+            ...(tx.custom_data?.transaction_ids as string[] || []),
+            ...(tx.custom_data?.gc_transaction_ids as string[] || []),
+        ];
+        if (txIds.length > 0) {
             for (const txId of txIds) {
                 const btRef = btTxMap[txId];
                 if (btRef) {
@@ -609,7 +617,11 @@ export default function BankCashFlowPage() {
                 }
             }
         }
-        // Strategy 2: bank row has matched_products → match against invoice-orders (legacy)
+        // Strategy 2: bank row has pnl_fac (direct customer match)
+        const directFac = tx.custom_data?.pnl_fac as string | undefined;
+        if (directFac) return getPnlLineFromCode(directFac);
+
+        // Strategy 3: bank row has matched_products → match against invoice-orders (legacy)
         const products = tx.custom_data?.matched_products as string[] | undefined;
         if (products && products.length > 0) {
             const matchedOrder = invoiceOrders.find(o =>
@@ -797,8 +809,11 @@ export default function BankCashFlowPage() {
             let productName = "Unclassified";
             let faCode: string | null = null;
             let faName: string | null = null;
-            const txIds = tx.custom_data?.transaction_ids as string[] | undefined;
-            if (txIds) {
+            const txIds = [
+                ...(tx.custom_data?.transaction_ids as string[] || []),
+                ...(tx.custom_data?.gc_transaction_ids as string[] || []),
+            ];
+            if (txIds.length > 0) {
                 for (const txId of txIds) {
                     const btRef = btTxMap[txId];
                     if (btRef) {
