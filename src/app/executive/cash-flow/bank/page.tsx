@@ -847,6 +847,32 @@ export default function BankCashFlowPage() {
                     }
                 }
             }
+            // Fallback: use pnl_fac directly to resolve product name from invoiceOrders
+            if (productName === "Unclassified") {
+                const directFac = tx.custom_data?.pnl_fac as string | undefined;
+                if (directFac) {
+                    faCode = directFac;
+                    const matchedOrder = invoiceOrders.find(o => o.financial_account_code === directFac);
+                    if (matchedOrder?.financial_account_name) {
+                        faName = matchedOrder.financial_account_name;
+                        productName = faName;
+                    } else {
+                        const prefix = directFac.split(".")[0];
+                        const pnlDef = PNL_LINES.find(l => l.code === prefix);
+                        productName = pnlDef ? `${pnlDef.icon} ${pnlDef.label}` : directFac;
+                    }
+                }
+            }
+            // Fallback: use pnl_line directly
+            if (productName === "Unclassified") {
+                const directPnl = tx.custom_data?.pnl_line as string | undefined;
+                if (directPnl && directPnl !== "unclassified") {
+                    const pnlDef = PNL_LINES.find(l => l.code === directPnl);
+                    productName = pnlDef ? `${pnlDef.icon} ${pnlDef.label}` : directPnl;
+                    faCode = directPnl;
+                }
+            }
+            // Final fallback: payment source label
             if (productName === "Unclassified" && tx.paymentSource) {
                 productName = tx.paymentSource;
             }
