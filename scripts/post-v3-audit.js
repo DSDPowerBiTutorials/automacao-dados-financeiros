@@ -75,8 +75,11 @@ async function paginate(source) {
     console.log('\n══ BANK → P&L COVERAGE ══\n');
 
     function bankStats(rows, label) {
-        const inflows = rows.filter(r => parseFloat(r.amount) > 0);
+        const allInflows = rows.filter(r => parseFloat(r.amount) > 0);
+        const internalCount = allInflows.filter(r => r.custom_data?.is_internal_transfer || r.custom_data?.pnl_line === 'internal').length;
+        const inflows = allInflows.filter(r => !r.custom_data?.is_internal_transfer && r.custom_data?.pnl_line !== 'internal');
         const total = inflows.length;
+        console.log(`    (${allInflows.length} total inflows, ${internalCount} internal excluded, ${total} revenue inflows)`);
 
         const withPnl = inflows.filter(r => {
             const cd = r.custom_data || {};

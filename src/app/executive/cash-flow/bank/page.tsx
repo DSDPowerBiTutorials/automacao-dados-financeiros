@@ -225,6 +225,7 @@ const PNL_CHART_COLORS: Record<string, string> = {
     "103": "#38bdf8",
     "104": "#fbbf24",
     "105": "#f472b6",
+    internal: "#94a3b8",
     unclassified: "#6b7280",
 };
 
@@ -235,6 +236,7 @@ const PNL_LINES: { code: string; label: string; bg: string; text: string; border
     { code: "103", label: "Planning Center", bg: "bg-sky-900/30", text: "text-sky-400", border: "border-sky-700", icon: "📋" },
     { code: "104", label: "Lab", bg: "bg-amber-900/30", text: "text-amber-400", border: "border-amber-700", icon: "🔬" },
     { code: "105", label: "Other Income", bg: "bg-pink-900/30", text: "text-pink-400", border: "border-pink-700", icon: "💡" },
+    { code: "internal", label: "Internal Transfers", bg: "bg-slate-900/30", text: "text-slate-400", border: "border-slate-700", icon: "🔄" },
 ];
 
 const getPnlLineFromCode = (faCode: string | null): string => {
@@ -744,12 +746,13 @@ export default function BankCashFlowPage() {
         return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
     }, [filteredTransactions]);
 
-    // ─── Monthly breakdown by P&L LINE (for chart) — ALL inflows via chain lookup ───
+    // ─── Monthly breakdown by P&L LINE (for chart) — ALL inflows via chain lookup (excludes internal transfers) ───
     const monthlyByPnl = useMemo(() => {
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
         filteredTransactions.forEach(tx => {
             if (tx.amount <= 0) return;
             const lineCode = resolvePnlLine(tx);
+            if (lineCode === "internal") return; // exclude internal transfers from P&L chart
             const key = tx.date?.substring(0, 7) || "unknown";
             if (!map.has(key)) {
                 const [y, m] = key.split("-");
@@ -794,13 +797,26 @@ export default function BankCashFlowPage() {
         return map;
     }, [filteredTransactions]);
 
-    // ─── Revenue breakdown by P&L line — ALL inflows via chain lookup ───
+    // ─── Revenue breakdown by P&L line — ALL inflows via chain lookup (internal transfers tracked separately) ───
     const pnlLineRevenue = useMemo(() => {
         const map: Record<string, { amount: number; count: number; products: Record<string, { amount: number; count: number; faCode: string | null; faName: string | null }> }> = {};
         let totalRevenue = 0;
+        let internalTotal = 0;
         filteredTransactions.forEach(tx => {
             if (tx.amount <= 0) return;
             const lineCode = resolvePnlLine(tx);
+            // Track internal transfers separately — don't include in revenue total
+            if (lineCode === "internal") {
+                if (!map[lineCode]) map[lineCode] = { amount: 0, count: 0, products: {} };
+                map[lineCode].amount += tx.amount;
+                map[lineCode].count++;
+                internalTotal += tx.amount;
+                const productName = "🔄 Internal Transfer";
+                if (!map[lineCode].products[productName]) map[lineCode].products[productName] = { amount: 0, count: 0, faCode: "internal", faName: "Internal Transfer" };
+                map[lineCode].products[productName].amount += tx.amount;
+                map[lineCode].products[productName].count++;
+                return;
+            }
             if (!map[lineCode]) map[lineCode] = { amount: 0, count: 0, products: {} };
             map[lineCode].amount += tx.amount;
             map[lineCode].count++;
@@ -883,7 +899,7 @@ export default function BankCashFlowPage() {
             map[lineCode].products[productKey].amount += tx.amount;
             map[lineCode].products[productKey].count++;
         });
-        return { byLine: map, total: totalRevenue };
+        return { byLine: map, total: totalRevenue, internalTotal };
     }, [filteredTransactions, resolvePnlLine, btTxMap, invoiceOrders]);
 
     const toggleGroup = (date: string) => {
@@ -1327,16 +1343,17 @@ export default function BankCashFlowPage() {
                                                 {/* Total banner */}
                                                 <div className="flex items-center justify-between mb-2 px-1">
                                                     <span className="text-[10px] text-gray-500">
-                                                        {PNL_LINES.filter(l => pnlLineRevenue.byLine[l.code]).length} P&L lines
+                                                        {PNL_LINES.filter(l => l.code !== "internal" && pnlLineRevenue.byLine[l.code]).length} P&L lines
                                                         {pnlLineRevenue.byLine["unclassified"] ? ` + unclassified` : ""}
+                                                        {pnlLineRevenue.byLine["internal"] ? ` • ${pnlLineRevenue.byLine["internal"].count} internal excluded` : ""}
                                                         {" • "}
-                                                        {Object.values(pnlLineRevenue.byLine).reduce((s, l) => s + l.count, 0)} inflows
+                                                        {Object.entries(pnlLineRevenue.byLine).filter(([k]) => k !== "internal").reduce((s, [, l]) => s + l.count, 0)} revenue inflows
                                                     </span>
-                                                    <span className="text-xs text-green-400 font-bold">{formatCompactCurrency(pnlLineRevenue.total, dominantCurrency)} total inflows</span>
+                                                    <span className="text-xs text-green-400 font-bold">{formatCompactCurrency(pnlLineRevenue.total, dominantCurrency)} revenue</span>
                                                 </div>
                                                 {/* P&L Line cards — clickable */}
                                                 <div className="flex gap-2 overflow-x-auto pb-2">
-                                                    {PNL_LINES.map(line => {
+                                                    {PNL_LINES.filter(l => l.code !== "internal").map(line => {
                                                         const lineData = pnlLineRevenue.byLine[line.code];
                                                         if (!lineData) return null;
                                                         const pct = pnlLineRevenue.total > 0 ? Math.round((lineData.amount / pnlLineRevenue.total) * 100) : 0;
@@ -1404,6 +1421,38 @@ export default function BankCashFlowPage() {
                                                                     </div>
                                                                 </div>
                                                                 <p className="text-[8px] text-gray-600 mt-1 text-center">Click for products</p>
+                                                            </div>
+                                                        );
+                                                    })()}
+                                                    {/* Internal transfers bucket (non-revenue, shown separately) */}
+                                                    {pnlLineRevenue.byLine["internal"] && (() => {
+                                                        const intData = pnlLineRevenue.byLine["internal"];
+                                                        const grossTotal = pnlLineRevenue.total + pnlLineRevenue.internalTotal;
+                                                        const pct = grossTotal > 0 ? Math.round((intData.amount / grossTotal) * 100) : 0;
+                                                        return (
+                                                            <div
+                                                                onClick={() => setSelectedPnlLine("internal")}
+                                                                className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-slate-900/30 border-slate-700 opacity-70"
+                                                            >
+                                                                <div className="flex items-center gap-1.5 mb-1">
+                                                                    <span className="text-sm">🔄</span>
+                                                                    <p className="text-[10px] uppercase font-medium text-slate-400">Internal Transfers</p>
+                                                                </div>
+                                                                <div className="space-y-0.5">
+                                                                    <div className="flex justify-between text-[10px]">
+                                                                        <span className="text-gray-500">Amount</span>
+                                                                        <span className="text-slate-400 font-bold">{formatCompactCurrency(intData.amount, dominantCurrency)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-[10px]">
+                                                                        <span className="text-gray-500">Txns</span>
+                                                                        <span className="text-gray-300 font-medium">{intData.count}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                                        <span className="text-gray-500">% of gross</span>
+                                                                        <span className="text-gray-300 font-medium">{pct}%</span>
+                                                                    </div>
+                                                                </div>
+                                                                <p className="text-[8px] text-slate-600 mt-1 text-center">Non-revenue</p>
                                                             </div>
                                                         );
                                                     })()}
