@@ -190,6 +190,8 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
     quickbooks: { bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700" },
     continental: { bg: "bg-orange-900/30", text: "text-orange-400", border: "border-orange-700" },
     wise: { bg: "bg-teal-900/30", text: "text-teal-400", border: "border-teal-700" },
+    "sem-gateway": { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-600" },
+    "braintree (amex)": { bg: "bg-purple-900/30", text: "text-purple-400", border: "border-purple-700" },
 };
 
 const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" };
@@ -213,6 +215,8 @@ const GATEWAY_CHART_COLORS: Record<string, string> = {
     continental: "#fb923c",
     wise: "#2dd4bf",
     other: "#9ca3af",
+    "sem-gateway": "#6b7280",
+    "braintree (amex)": "#c084fc",
 };
 
 const PNL_CHART_COLORS: Record<string, string> = {
@@ -315,7 +319,10 @@ export default function BankCashFlowPage() {
     const [revenueViewMode, setRevenueViewMode] = useState<"bank" | "gateway" | "pnl">("gateway");
 
     // Invoice-orders data for P&L revenue breakdown
-    const [invoiceOrders, setInvoiceOrders] = useState<{ description: string; amount: number; date: string; financial_account_name: string | null; financial_account_code: string | null }[]>([]);
+    const [invoiceOrders, setInvoiceOrders] = useState<{ description: string; amount: number; date: string; financial_account_name: string | null; financial_account_code: string | null; invoice_number: string | null }[]>([]);
+
+    // BT reference map: transaction_id → { matched_invoice_number, customer_name }
+    const [btTxMap, setBtTxMap] = useState<Record<string, { matched_invoice_number: string | null; customer_name: string | null }>>({}); 
 
     // P&L line drill-down popup
     const [selectedPnlLine, setSelectedPnlLine] = useState<string | null>(null);
@@ -451,9 +458,41 @@ export default function BankCashFlowPage() {
                     date: r.date || "",
                     financial_account_name: r.custom_data?.financial_account_name || null,
                     financial_account_code: r.custom_data?.financial_account_code || null,
+                    invoice_number: r.custom_data?.invoice_number || null,
                 })));
             } catch (orderErr) {
                 console.error("Error loading invoice-orders for product breakdown:", orderErr);
+            }
+
+            // ─── Load BT revenue + amex reference data for P&L chain ───
+            try {
+                const txMap: Record<string, { matched_invoice_number: string | null; customer_name: string | null }> = {};
+                for (const btSource of ["braintree-api-revenue", "braintree-amex"]) {
+                    let btFrom = 0;
+                    while (true) {
+                        const { data: btChunk, error: btErr } = await supabase
+                            .from("csv_rows")
+                            .select("custom_data")
+                            .eq("source", btSource)
+                            .range(btFrom, btFrom + PAGE - 1);
+                        if (btErr) { console.error(`Error loading ${btSource}:`, btErr); break; }
+                        if (!btChunk || btChunk.length === 0) break;
+                        btChunk.forEach(r => {
+                            const txId = r.custom_data?.transaction_id;
+                            if (txId) {
+                                txMap[txId] = {
+                                    matched_invoice_number: r.custom_data?.matched_invoice_number || null,
+                                    customer_name: r.custom_data?.customer_name || null,
+                                };
+                            }
+                        });
+                        if (btChunk.length < PAGE) break;
+                        btFrom += PAGE;
+                    }
+                }
+                setBtTxMap(txMap);
+            } catch (btErr) {
+                console.error("Error loading BT reference data:", btErr);
             }
         } catch (err) {
             console.error("Error loading data:", err);
@@ -538,6 +577,41 @@ export default function BankCashFlowPage() {
         return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
     }, [filteredTransactions]);
 
+    // ─── Invoice number → P&L code map ───
+    const invoiceToFAC = useMemo(() => {
+        const map: Record<string, string> = {};
+        invoiceOrders.forEach(o => {
+            if (o.invoice_number && o.financial_account_code) {
+                map[o.invoice_number] = o.financial_account_code;
+            }
+        });
+        return map;
+    }, [invoiceOrders]);
+
+    // ─── Resolve P&L line for a bank inflow via chain lookup ───
+    const resolvePnlLine = useCallback((tx: BankTransaction): string => {
+        // Strategy 1: bank row has transaction_ids → look up BT tx → get matched_invoice_number → get P&L code
+        const txIds = tx.custom_data?.transaction_ids as string[] | undefined;
+        if (txIds && txIds.length > 0) {
+            for (const txId of txIds) {
+                const btRef = btTxMap[txId];
+                if (btRef?.matched_invoice_number) {
+                    const fac = invoiceToFAC[btRef.matched_invoice_number];
+                    if (fac) return getPnlLineFromCode(fac);
+                }
+            }
+        }
+        // Strategy 2: bank row has matched_products → match against invoice-orders (legacy)
+        const products = tx.custom_data?.matched_products as string[] | undefined;
+        if (products && products.length > 0) {
+            const matchedOrder = invoiceOrders.find(o =>
+                products.some(p => o.description.toLowerCase().includes(p.toLowerCase()) || o.financial_account_name?.toLowerCase()?.includes(p.toLowerCase()))
+            );
+            if (matchedOrder?.financial_account_code) return getPnlLineFromCode(matchedOrder.financial_account_code);
+        }
+        return "unclassified";
+    }, [btTxMap, invoiceToFAC, invoiceOrders]);
+
     // ─── Summary ───
     const summary = useMemo(() => {
         const inflows = filteredTransactions.filter(t => t.amount > 0);
@@ -549,9 +623,10 @@ export default function BankCashFlowPage() {
         const reconciledAmount = reconciledCredits.reduce((s, t) => s + t.amount, 0);
         const unreconciledCount = filteredTransactions.filter(t => !t.isReconciled).length;
 
+        // Gateway breakdown: ALL inflows (not just reconciled)
         const byGateway: Record<string, { amount: number; count: number }> = {};
-        inflows.filter(t => t.isReconciled).forEach(t => {
-            const key = t.paymentSource || t.gateway || "other";
+        inflows.forEach(t => {
+            const key = t.paymentSource?.toLowerCase() || t.gateway || "sem-gateway";
             if (!byGateway[key]) byGateway[key] = { amount: 0, count: 0 };
             byGateway[key].amount += t.amount;
             byGateway[key].count++;
@@ -630,11 +705,11 @@ export default function BankCashFlowPage() {
         return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
     }, [filteredTransactions]);
 
-    // ─── Monthly breakdown by GATEWAY (for chart) — ONLY reconciled ───
+    // ─── Monthly breakdown by GATEWAY (for chart) — ALL inflows ───
     const monthlyByGateway = useMemo(() => {
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
         filteredTransactions.forEach(tx => {
-            if (tx.amount <= 0 || !tx.isReconciled) return;
+            if (tx.amount <= 0) return;
             const key = tx.date?.substring(0, 7) || "unknown";
             if (!map.has(key)) {
                 const [y, m] = key.split("-");
@@ -643,52 +718,18 @@ export default function BankCashFlowPage() {
                 map.set(key, { month: key, label } as any);
             }
             const entry = map.get(key)!;
-            const gwKey = tx.paymentSource?.toLowerCase() || tx.gateway || "other";
+            const gwKey = tx.paymentSource?.toLowerCase() || tx.gateway || "sem-gateway";
             entry[gwKey] = (entry[gwKey] as number || 0) + tx.amount;
         });
         return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
     }, [filteredTransactions]);
 
-    // ─── Monthly breakdown by P&L LINE (for chart) — ONLY bank-reconciled orders ───
+    // ─── Monthly breakdown by P&L LINE (for chart) — ALL inflows via chain lookup ───
     const monthlyByPnl = useMemo(() => {
-        // Build set of reconciled bank invoice_order_ids
-        const reconOrderIds = new Set<string>();
-        filteredTransactions.forEach(tx => {
-            if (tx.isReconciled && tx.isOrderReconciled && tx.invoiceOrderId) {
-                reconOrderIds.add(String(tx.invoiceOrderId));
-            }
-        });
-        // Only use invoice-orders that are linked to reconciled bank transactions,
-        // OR if the bank tx has matched_products we use the bank amount directly
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
-        // Strategy: use reconciled bank transactions that have products/P&L info
         filteredTransactions.forEach(tx => {
-            if (tx.amount <= 0 || !tx.isReconciled) return;
-            // Check if this bank row has matched_products from reconciliation
-            const products = tx.custom_data?.matched_products as string[] | undefined;
-            if (!products || products.length === 0) return;
-            // Try to find P&L line from invoice-orders that match this bank tx
-            const orderId = tx.invoiceOrderId;
-            let lineCode = "unclassified";
-            if (orderId) {
-                // Find the invoice-order with matching id to get financial_account_code
-                const matchedOrder = invoiceOrders.find(o => {
-                    // Match by description containing product name or by order linkage
-                    return products.some(p => o.description.includes(p) || o.financial_account_name?.includes(p));
-                });
-                if (matchedOrder?.financial_account_code) {
-                    lineCode = getPnlLineFromCode(matchedOrder.financial_account_code);
-                }
-            }
-            // If no order link, try to match products against invoice-orders
-            if (lineCode === "unclassified" && products.length > 0) {
-                const matchedOrder = invoiceOrders.find(o =>
-                    products.some(p => o.description.toLowerCase().includes(p.toLowerCase()) || o.financial_account_name?.toLowerCase()?.includes(p.toLowerCase()))
-                );
-                if (matchedOrder?.financial_account_code) {
-                    lineCode = getPnlLineFromCode(matchedOrder.financial_account_code);
-                }
-            }
+            if (tx.amount <= 0) return;
+            const lineCode = resolvePnlLine(tx);
             const key = tx.date?.substring(0, 7) || "unknown";
             if (!map.has(key)) {
                 const [y, m] = key.split("-");
@@ -700,7 +741,7 @@ export default function BankCashFlowPage() {
             entry[lineCode] = (entry[lineCode] as number || 0) + tx.amount;
         });
         return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
-    }, [filteredTransactions, invoiceOrders]);
+    }, [filteredTransactions, resolvePnlLine]);
 
     // ─── Collect active keys per breakdown for chart legend ───
     const activeBankKeys = useMemo(() => {
@@ -733,36 +774,40 @@ export default function BankCashFlowPage() {
         return map;
     }, [filteredTransactions]);
 
-    // ─── Revenue breakdown by P&L line — ONLY from reconciled bank transactions ───
+    // ─── Revenue breakdown by P&L line — ALL inflows via chain lookup ───
     const pnlLineRevenue = useMemo(() => {
         const map: Record<string, { amount: number; count: number; products: Record<string, { amount: number; count: number; faCode: string | null; faName: string | null }> }> = {};
         let totalRevenue = 0;
-        // Only use reconciled bank inflows that have product info
         filteredTransactions.forEach(tx => {
-            if (tx.amount <= 0 || !tx.isReconciled) return;
-            const products = tx.custom_data?.matched_products as string[] | undefined;
-            if (!products || products.length === 0) return;
-            // Determine P&L line from matched invoice-orders
-            let lineCode = "unclassified";
-            let productName = products.join(", ");
-            let faCode: string | null = null;
-            let faName: string | null = null;
-            // Try to match against invoice-orders for P&L classification
-            const matchedOrder = invoiceOrders.find(o =>
-                products.some(p => o.description.toLowerCase().includes(p.toLowerCase()) || o.financial_account_name?.toLowerCase()?.includes(p.toLowerCase()))
-            );
-            if (matchedOrder?.financial_account_code) {
-                lineCode = getPnlLineFromCode(matchedOrder.financial_account_code);
-                faCode = matchedOrder.financial_account_code;
-                faName = matchedOrder.financial_account_name;
-                productName = matchedOrder.financial_account_name || matchedOrder.description;
-            }
+            if (tx.amount <= 0) return;
+            const lineCode = resolvePnlLine(tx);
             if (!map[lineCode]) map[lineCode] = { amount: 0, count: 0, products: {} };
             map[lineCode].amount += tx.amount;
             map[lineCode].count++;
             totalRevenue += tx.amount;
-            // Track products
-            const productKey = productName || "Unclassified";
+            // Try to get product name from chain
+            let productName = "Unclassified";
+            let faCode: string | null = null;
+            let faName: string | null = null;
+            const txIds = tx.custom_data?.transaction_ids as string[] | undefined;
+            if (txIds) {
+                for (const txId of txIds) {
+                    const btRef = btTxMap[txId];
+                    if (btRef?.matched_invoice_number) {
+                        const matchedOrder = invoiceOrders.find(o => o.invoice_number === btRef.matched_invoice_number);
+                        if (matchedOrder) {
+                            productName = matchedOrder.financial_account_name || matchedOrder.description;
+                            faCode = matchedOrder.financial_account_code;
+                            faName = matchedOrder.financial_account_name;
+                            break;
+                        }
+                    }
+                }
+            }
+            if (productName === "Unclassified" && tx.paymentSource) {
+                productName = tx.paymentSource;
+            }
+            const productKey = productName;
             if (!map[lineCode].products[productKey]) {
                 map[lineCode].products[productKey] = { amount: 0, count: 0, faCode, faName };
             }
@@ -770,7 +815,7 @@ export default function BankCashFlowPage() {
             map[lineCode].products[productKey].count++;
         });
         return { byLine: map, total: totalRevenue };
-    }, [filteredTransactions, invoiceOrders]);
+    }, [filteredTransactions, resolvePnlLine, btTxMap, invoiceOrders]);
 
     const toggleGroup = (date: string) => {
         setExpandedGroups(prev => {
@@ -1087,7 +1132,7 @@ export default function BankCashFlowPage() {
                                         />
                                         <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
                                         {activeGatewayKeys.map(gwKey => (
-                                            <Line key={gwKey} type="monotone" dataKey={gwKey} name={gwKey.charAt(0).toUpperCase() + gwKey.slice(1)} stroke={GATEWAY_CHART_COLORS[gwKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: GATEWAY_CHART_COLORS[gwKey] || "#9ca3af", r: 3 }} connectNulls />
+                                            <Line key={gwKey} type="monotone" dataKey={gwKey} name={gwKey === "sem-gateway" ? "Sem Gateway" : (gwKey.charAt(0).toUpperCase() + gwKey.slice(1))} stroke={GATEWAY_CHART_COLORS[gwKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: GATEWAY_CHART_COLORS[gwKey] || "#9ca3af", r: 3 }} connectNulls />
                                         ))}
                                     </LineChart>
                                 ) : activePnlKeys.length > 0 ? (
@@ -1108,7 +1153,7 @@ export default function BankCashFlowPage() {
                                         })}
                                     </LineChart>
                                 ) : (
-                                    /* P&L chart fallback — no order-level reconciliation yet */
+                                    /* No inflows at all */
                                     <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
                                         <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
@@ -1118,8 +1163,7 @@ export default function BankCashFlowPage() {
                                             labelStyle={{ color: "#9CA3AF" }}
                                             formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
                                         />
-                                        <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
-                                        <Line type="monotone" dataKey="inflows" name="Inflows (unclassified)" stroke="#6b7280" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: "#6b7280", r: 3 }} />
+                                        <Line type="monotone" dataKey="inflows" name="Inflows" stroke="#6b7280" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: "#6b7280", r: 3 }} />
                                     </LineChart>
                                 )}
                             </ResponsiveContainer>
@@ -1161,20 +1205,19 @@ export default function BankCashFlowPage() {
                                     </div>
                                 )}
 
-                                {/* Gateway view — only reconciled bank inflows */}
+                                {/* Gateway view — ALL bank inflows by gateway */}
                                 {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length > 0 && (
                                     <div>
                                         <div className="flex items-center gap-2 mb-2 px-1">
                                             <span className="text-[10px] text-gray-500">
-                                                {summary.reconciledCount} reconciled of {summary.transactionCount} transactions
-                                                {summary.reconciledPct > 0 && ` (${summary.reconciledPct}% of inflows)`}
+                                                All inflows by payment gateway • {summary.reconciledCount} reconciled ({summary.reconciledPct}%)
                                             </span>
-                                            <span className="text-[10px] text-amber-500/70">• Only reconciled bank inflows</span>
                                         </div>
                                         <div className="flex gap-2 overflow-x-auto pb-2">
                                             {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
                                                 const gwStyle = getGatewayStyle(gw);
-                                                const gwLabel = gw.charAt(0).toUpperCase() + gw.slice(1);
+                                                const gwLabel = gw === "sem-gateway" ? "Sem Gateway" : (gw.charAt(0).toUpperCase() + gw.slice(1));
+                                                const pct = summary.totalInflow > 0 ? Math.round((stats.amount / summary.totalInflow) * 100) : 0;
                                                 return (
                                                     <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
                                                         <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
@@ -1188,8 +1231,8 @@ export default function BankCashFlowPage() {
                                                                 <span className="text-gray-300 font-medium">{stats.count}</span>
                                                             </div>
                                                             <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
-                                                                <span className="text-gray-500">Avg</span>
-                                                                <span className="text-gray-300 font-medium">{formatCompactCurrency(stats.amount / stats.count, dominantCurrency)}</span>
+                                                                <span className="text-gray-500">Share</span>
+                                                                <span className="text-gray-300 font-medium">{pct}%</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1203,19 +1246,23 @@ export default function BankCashFlowPage() {
                                 {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length === 0 && (
                                     <div className="text-center py-4">
                                         <CreditCard className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                                        <p className="text-xs text-gray-500">No gateway-reconciled inflows in this period</p>
-                                        <p className="text-[10px] text-gray-600 mt-1">Run Auto Reconcile to match bank transactions with gateway disbursements</p>
+                                        <p className="text-xs text-gray-500">No inflows in this period</p>
                                     </div>
                                 )}
 
-                                {/* P&L Line view — only bank transactions with order-level reconciliation */}
+                                {/* P&L Line view — ALL bank inflows with chain-based classification */}
                                 {revenueViewMode === "pnl" && (
                                     <div>
                                         {Object.keys(pnlLineRevenue.byLine).length > 0 ? (
                                             <>
                                                 {/* Total banner */}
                                                 <div className="flex items-center justify-between mb-2 px-1">
-                                                    <span className="text-[10px] text-gray-500">{PNL_LINES.filter(l => pnlLineRevenue.byLine[l.code]).length} P&L lines • {pnlLineRevenue.total > 0 ? `${Object.values(pnlLineRevenue.byLine).reduce((s, l) => s + l.count, 0)} reconciled txns` : "0 txns"}</span>
+                                                    <span className="text-[10px] text-gray-500">
+                                                        {PNL_LINES.filter(l => pnlLineRevenue.byLine[l.code]).length} P&L lines
+                                                        {pnlLineRevenue.byLine["unclassified"] ? ` + unclassified` : ""}
+                                                        {" • "}
+                                                        {Object.values(pnlLineRevenue.byLine).reduce((s, l) => s + l.count, 0)} inflows
+                                                    </span>
                                                     <span className="text-xs text-green-400 font-bold">{formatCompactCurrency(pnlLineRevenue.total, dominantCurrency)} total inflows</span>
                                                 </div>
                                                 {/* P&L Line cards — clickable */}
@@ -1296,12 +1343,7 @@ export default function BankCashFlowPage() {
                                         ) : (
                                             <div className="text-center py-4">
                                                 <BarChart3 className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                                                <p className="text-xs text-gray-500">No P&L classification available for bank inflows</p>
-                                                <p className="text-[10px] text-gray-600 mt-1 max-w-md mx-auto">
-                                                    P&L lines require order-level reconciliation (Bank → Gateway → Invoice-Orders → Products).
-                                                    Currently {summary.reconciledCount} transactions are gateway-reconciled but need product matching.
-                                                </p>
-                                                <p className="text-[10px] text-amber-500/60 mt-2">Run invoice-order reconciliation to classify inflows by P&L line.</p>
+                                                <p className="text-xs text-gray-500">No inflows in this period</p>
                                             </div>
                                         )}
                                     </div>
