@@ -321,8 +321,8 @@ export default function BankCashFlowPage() {
     // Invoice-orders data for P&L revenue breakdown
     const [invoiceOrders, setInvoiceOrders] = useState<{ description: string; amount: number; date: string; financial_account_name: string | null; financial_account_code: string | null; invoice_number: string | null }[]>([]);
 
-    // BT reference map: transaction_id → { matched_invoice_number, customer_name }
-    const [btTxMap, setBtTxMap] = useState<Record<string, { matched_invoice_number: string | null; customer_name: string | null }>>({}); 
+// BT reference map: transaction_id → { matched_invoice_number, matched_invoice_fac, customer_name }
+    const [btTxMap, setBtTxMap] = useState<Record<string, { matched_invoice_number: string | null; matched_invoice_fac: string | null; customer_name: string | null }>>({});
 
     // P&L line drill-down popup
     const [selectedPnlLine, setSelectedPnlLine] = useState<string | null>(null);
@@ -466,7 +466,7 @@ export default function BankCashFlowPage() {
 
             // ─── Load BT revenue + amex reference data for P&L chain ───
             try {
-                const txMap: Record<string, { matched_invoice_number: string | null; customer_name: string | null }> = {};
+                const txMap: Record<string, { matched_invoice_number: string | null; matched_invoice_fac: string | null; customer_name: string | null }> = {};
                 for (const btSource of ["braintree-api-revenue", "braintree-amex"]) {
                     let btFrom = 0;
                     while (true) {
@@ -482,6 +482,7 @@ export default function BankCashFlowPage() {
                             if (txId) {
                                 txMap[txId] = {
                                     matched_invoice_number: r.custom_data?.matched_invoice_number || null,
+                                    matched_invoice_fac: r.custom_data?.matched_invoice_fac || null,
                                     customer_name: r.custom_data?.customer_name || null,
                                 };
                             }
@@ -590,14 +591,21 @@ export default function BankCashFlowPage() {
 
     // ─── Resolve P&L line for a bank inflow via chain lookup ───
     const resolvePnlLine = useCallback((tx: BankTransaction): string => {
-        // Strategy 1: bank row has transaction_ids → look up BT tx → get matched_invoice_number → get P&L code
+        // Strategy 1: bank row has transaction_ids → look up BT tx → get P&L code
         const txIds = tx.custom_data?.transaction_ids as string[] | undefined;
         if (txIds && txIds.length > 0) {
             for (const txId of txIds) {
                 const btRef = btTxMap[txId];
-                if (btRef?.matched_invoice_number) {
-                    const fac = invoiceToFAC[btRef.matched_invoice_number];
-                    if (fac) return getPnlLineFromCode(fac);
+                if (btRef) {
+                    // First try: use pre-computed FAC from reconciliation
+                    if (btRef.matched_invoice_fac) {
+                        return getPnlLineFromCode(btRef.matched_invoice_fac);
+                    }
+                    // Fallback: look up invoice_number in invoiceToFAC map
+                    if (btRef.matched_invoice_number) {
+                        const fac = invoiceToFAC[btRef.matched_invoice_number];
+                        if (fac) return getPnlLineFromCode(fac);
+                    }
                 }
             }
         }
@@ -793,13 +801,33 @@ export default function BankCashFlowPage() {
             if (txIds) {
                 for (const txId of txIds) {
                     const btRef = btTxMap[txId];
-                    if (btRef?.matched_invoice_number) {
-                        const matchedOrder = invoiceOrders.find(o => o.invoice_number === btRef.matched_invoice_number);
-                        if (matchedOrder) {
-                            productName = matchedOrder.financial_account_name || matchedOrder.description;
-                            faCode = matchedOrder.financial_account_code;
-                            faName = matchedOrder.financial_account_name;
+                    if (btRef) {
+                        // Try matched_invoice_fac (pre-computed, always available)
+                        if (btRef.matched_invoice_fac) {
+                            faCode = btRef.matched_invoice_fac;
+                            // Try to find the FA name from invoice orders
+                            if (btRef.matched_invoice_number) {
+                                const matchedOrder = invoiceOrders.find(o => o.invoice_number === btRef.matched_invoice_number);
+                                if (matchedOrder) {
+                                    faName = matchedOrder.financial_account_name;
+                                    productName = faName || matchedOrder.description;
+                                } else {
+                                    productName = faCode;
+                                }
+                            } else {
+                                productName = faCode;
+                            }
                             break;
+                        }
+                        // Fallback: look up invoice_number in loaded invoice-orders
+                        if (btRef.matched_invoice_number) {
+                            const matchedOrder = invoiceOrders.find(o => o.invoice_number === btRef.matched_invoice_number);
+                            if (matchedOrder) {
+                                productName = matchedOrder.financial_account_name || matchedOrder.description;
+                                faCode = matchedOrder.financial_account_code;
+                                faName = matchedOrder.financial_account_name;
+                                break;
+                            }
                         }
                     }
                 }
