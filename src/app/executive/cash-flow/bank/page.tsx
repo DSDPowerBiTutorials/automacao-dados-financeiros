@@ -194,6 +194,36 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
 
 const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" };
 
+// ─── Chart stroke colors ───
+const BANK_CHART_COLORS: Record<string, string> = {
+    "bankinter-eur": "#3b82f6",
+    "bankinter-usd": "#10b981",
+    "sabadell": "#f97316",
+    "chase-usd": "#a855f7",
+};
+
+const GATEWAY_CHART_COLORS: Record<string, string> = {
+    braintree: "#60a5fa",
+    stripe: "#818cf8",
+    gocardless: "#facc15",
+    paypal: "#22d3ee",
+    amex: "#c084fc",
+    gusto: "#f87171",
+    quickbooks: "#34d399",
+    continental: "#fb923c",
+    wise: "#2dd4bf",
+    other: "#9ca3af",
+};
+
+const PNL_CHART_COLORS: Record<string, string> = {
+    "101": "#34d399",
+    "102": "#a78bfa",
+    "103": "#38bdf8",
+    "104": "#fbbf24",
+    "105": "#f472b6",
+    unclassified: "#6b7280",
+};
+
 // ─── P&L Line definitions ───
 const PNL_LINES: { code: string; label: string; bg: string; text: string; border: string; icon: string }[] = [
     { code: "101", label: "Growth", bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700", icon: "🚀" },
@@ -581,6 +611,82 @@ export default function BankCashFlowPage() {
         return monthlyData.slice(-12);
     }, [monthlyData]);
 
+    // ─── Monthly breakdown by BANK ACCOUNT (for chart) ───
+    const monthlyByBank = useMemo(() => {
+        const map = new Map<string, Record<string, number> & { month: string; label: string }>();
+        filteredTransactions.forEach(tx => {
+            if (tx.amount <= 0) return;
+            const key = tx.date?.substring(0, 7) || "unknown";
+            if (!map.has(key)) {
+                const [y, m] = key.split("-");
+                const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
+                const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+                map.set(key, { month: key, label } as any);
+            }
+            const entry = map.get(key)!;
+            const bankKey = tx.source;
+            entry[bankKey] = (entry[bankKey] as number || 0) + tx.amount;
+        });
+        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
+    }, [filteredTransactions]);
+
+    // ─── Monthly breakdown by GATEWAY (for chart) ───
+    const monthlyByGateway = useMemo(() => {
+        const map = new Map<string, Record<string, number> & { month: string; label: string }>();
+        filteredTransactions.forEach(tx => {
+            if (tx.amount <= 0) return;
+            const key = tx.date?.substring(0, 7) || "unknown";
+            if (!map.has(key)) {
+                const [y, m] = key.split("-");
+                const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
+                const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+                map.set(key, { month: key, label } as any);
+            }
+            const entry = map.get(key)!;
+            const gwKey = tx.paymentSource?.toLowerCase() || tx.gateway || "other";
+            entry[gwKey] = (entry[gwKey] as number || 0) + tx.amount;
+        });
+        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
+    }, [filteredTransactions]);
+
+    // ─── Monthly breakdown by P&L LINE (for chart) ───
+    const monthlyByPnl = useMemo(() => {
+        const map = new Map<string, Record<string, number> & { month: string; label: string }>();
+        invoiceOrders.forEach(order => {
+            if (order.amount <= 0) return;
+            const key = order.date?.substring(0, 7) || "unknown";
+            if (!map.has(key)) {
+                const [y, m] = key.split("-");
+                const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
+                const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+                map.set(key, { month: key, label } as any);
+            }
+            const entry = map.get(key)!;
+            const lineCode = getPnlLineFromCode(order.financial_account_code);
+            entry[lineCode] = (entry[lineCode] as number || 0) + order.amount;
+        });
+        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
+    }, [invoiceOrders]);
+
+    // ─── Collect active keys per breakdown for chart legend ───
+    const activeBankKeys = useMemo(() => {
+        const keys = new Set<string>();
+        monthlyByBank.forEach(m => { Object.keys(m).forEach(k => { if (k !== "month" && k !== "label" && (m as any)[k] > 0) keys.add(k); }); });
+        return [...keys];
+    }, [monthlyByBank]);
+
+    const activeGatewayKeys = useMemo(() => {
+        const keys = new Set<string>();
+        monthlyByGateway.forEach(m => { Object.keys(m).forEach(k => { if (k !== "month" && k !== "label" && (m as any)[k] > 0) keys.add(k); }); });
+        return [...keys];
+    }, [monthlyByGateway]);
+
+    const activePnlKeys = useMemo(() => {
+        const keys = new Set<string>();
+        monthlyByPnl.forEach(m => { Object.keys(m).forEach(k => { if (k !== "month" && k !== "label" && (m as any)[k] > 0) keys.add(k); }); });
+        return [...keys];
+    }, [monthlyByPnl]);
+
     // ─── Revenue breakdown by bank (from filtered) ───
     const revenueByBank = useMemo(() => {
         const map: Record<string, { inflows: number; outflows: number; count: number }> = {};
@@ -869,59 +975,94 @@ export default function BankCashFlowPage() {
                                 </div>
                             ))}
                         </div>
-                        {/* Line chart */}
+
+                        {/* ─── View Mode Toggle (controls chart + breakdown) ─── */}
+                        <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                                {revenueViewMode === "bank" ? <Building className="h-4 w-4 text-gray-500" /> : revenueViewMode === "gateway" ? <CreditCard className="h-4 w-4 text-gray-500" /> : <BarChart3 className="h-4 w-4 text-gray-500" />}
+                                <span className="text-xs text-gray-500 uppercase tracking-wider">
+                                    {revenueViewMode === "bank" ? "Inflows by Bank Account" : revenueViewMode === "gateway" ? "Inflows by Payment Gateway" : "Inflows by P&L Line"}
+                                </span>
+                            </div>
+                            <div className="flex items-center bg-[#1a1b1d] rounded-lg border border-gray-700 p-0.5">
+                                <button
+                                    onClick={() => setRevenueViewMode("bank")}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "bank" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                >
+                                    <Building className="h-3 w-3" />Bank Account
+                                </button>
+                                <button
+                                    onClick={() => setRevenueViewMode("gateway")}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "gateway" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                >
+                                    <CreditCard className="h-3 w-3" />Gateway
+                                </button>
+                                <button
+                                    onClick={() => setRevenueViewMode("pnl")}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "pnl" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                >
+                                    <BarChart3 className="h-3 w-3" />P&L Line
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Line chart — dynamic based on revenueViewMode */}
                         <div className="h-[200px] w-full">
                             <ResponsiveContainer width="100%" height="100%">
-                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                    <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
-                                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
-                                    <Tooltip
-                                        contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
-                                        labelStyle={{ color: "#9CA3AF" }}
-                                        formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
-                                    />
-                                    <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
-                                    <Line type="monotone" dataKey="inflows" name="Inflows" stroke="#4ade80" strokeWidth={2} dot={{ fill: "#4ade80", r: 3 }} />
-                                    <Line type="monotone" dataKey="outflows" name="Outflows" stroke="#f87171" strokeWidth={2} dot={{ fill: "#f87171", r: 3 }} />
-                                    <Line type="monotone" dataKey="balance" name="Net" stroke="#60a5fa" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: "#60a5fa", r: 3 }} />
-                                </LineChart>
+                                {revenueViewMode === "bank" ? (
+                                    <LineChart data={monthlyByBank.length > 0 ? monthlyByBank : chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                        <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                        <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
+                                            labelStyle={{ color: "#9CA3AF" }}
+                                            formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
+                                        {activeBankKeys.map(bankKey => (
+                                            <Line key={bankKey} type="monotone" dataKey={bankKey} name={BANK_ACCOUNTS.find(b => b.key === bankKey)?.label || bankKey} stroke={BANK_CHART_COLORS[bankKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: BANK_CHART_COLORS[bankKey] || "#9ca3af", r: 3 }} connectNulls />
+                                        ))}
+                                    </LineChart>
+                                ) : revenueViewMode === "gateway" ? (
+                                    <LineChart data={monthlyByGateway.length > 0 ? monthlyByGateway : chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                        <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                        <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
+                                            labelStyle={{ color: "#9CA3AF" }}
+                                            formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
+                                        {activeGatewayKeys.map(gwKey => (
+                                            <Line key={gwKey} type="monotone" dataKey={gwKey} name={gwKey.charAt(0).toUpperCase() + gwKey.slice(1)} stroke={GATEWAY_CHART_COLORS[gwKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: GATEWAY_CHART_COLORS[gwKey] || "#9ca3af", r: 3 }} connectNulls />
+                                        ))}
+                                    </LineChart>
+                                ) : (
+                                    <LineChart data={monthlyByPnl.length > 0 ? monthlyByPnl : chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                        <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                        <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                        <Tooltip
+                                            contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
+                                            labelStyle={{ color: "#9CA3AF" }}
+                                            formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                        />
+                                        <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
+                                        {activePnlKeys.map(pnlKey => {
+                                            const pnlConfig = PNL_LINES.find(l => l.code === pnlKey);
+                                            const label = pnlConfig ? `${pnlConfig.icon} ${pnlConfig.label}` : (pnlKey === "unclassified" ? "❓ Unclassified" : pnlKey);
+                                            return <Line key={pnlKey} type="monotone" dataKey={pnlKey} name={label} stroke={PNL_CHART_COLORS[pnlKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: PNL_CHART_COLORS[pnlKey] || "#9ca3af", r: 3 }} connectNulls />;
+                                        })}
+                                    </LineChart>
+                                )}
                             </ResponsiveContainer>
                         </div>
 
-                        {/* ─── Inflows Breakdown (Bank Account / Gateway / P&L Line) ─── */}
+                        {/* ─── Inflows Breakdown Cards (Bank Account / Gateway / P&L Line) ─── */}
                         {(Object.keys(revenueByBank).length > 0 || Object.keys(summary.byGateway).length > 0 || Object.keys(pnlLineRevenue.byLine).length > 0) && (
                             <div className="mt-5">
-                                {/* Header with 3-option toggle */}
-                                <div className="flex items-center justify-between mb-3">
-                                    <div className="flex items-center gap-2">
-                                        {revenueViewMode === "bank" ? <Building className="h-4 w-4 text-gray-500" /> : revenueViewMode === "gateway" ? <CreditCard className="h-4 w-4 text-gray-500" /> : <BarChart3 className="h-4 w-4 text-gray-500" />}
-                                        <span className="text-xs text-gray-500 uppercase tracking-wider">
-                                            {revenueViewMode === "bank" ? "Inflows by Bank Account" : revenueViewMode === "gateway" ? "Inflows by Payment Gateway" : "Inflows by P&L Line"}
-                                        </span>
-                                    </div>
-                                    <div className="flex items-center bg-[#1a1b1d] rounded-lg border border-gray-700 p-0.5">
-                                        <button
-                                            onClick={() => setRevenueViewMode("bank")}
-                                            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "bank" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
-                                        >
-                                            <Building className="h-3 w-3" />Bank Account
-                                        </button>
-                                        <button
-                                            onClick={() => setRevenueViewMode("gateway")}
-                                            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "gateway" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
-                                        >
-                                            <CreditCard className="h-3 w-3" />Gateway
-                                        </button>
-                                        <button
-                                            onClick={() => setRevenueViewMode("pnl")}
-                                            className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "pnl" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
-                                        >
-                                            <BarChart3 className="h-3 w-3" />P&L Line
-                                        </button>
-                                    </div>
-                                </div>
-
                                 {/* Bank Account view */}
                                 {revenueViewMode === "bank" && (
                                     <div className="flex gap-2 overflow-x-auto pb-2">
