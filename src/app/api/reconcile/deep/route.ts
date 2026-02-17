@@ -232,6 +232,8 @@ async function buildDisbursementGroups(): Promise<DisbursementGroup[]> {
             for (const p of payouts) {
                 const cd = p.custom_data || {};
                 const isUsd = payoutSource.includes("usd") || cd.currency?.toUpperCase() === "USD";
+                // Extract Stripe fees from custom_data fields
+                const stripeFee = parseFloat(cd.stripe_fee || cd.fee || cd.fees || 0);
                 groups.push({
                     source: "stripe",
                     date: (cd.arrival_date || p.date || "").split("T")[0],
@@ -244,6 +246,7 @@ async function buildDisbursementGroups(): Promise<DisbursementGroup[]> {
                     customer_emails: [],
                     order_ids: [],
                     products: [],
+                    fees_amount: stripeFee > 0 ? Math.round(stripeFee * 100) / 100 : undefined,
                 });
             }
         }
@@ -262,6 +265,8 @@ async function buildDisbursementGroups(): Promise<DisbursementGroup[]> {
     if (gcPayouts) {
         for (const gc of gcPayouts) {
             const cd = gc.custom_data || {};
+            // Extract GoCardless fees from custom_data fields
+            const gcFee = parseFloat(cd.app_fee || cd.gocardless_fees || cd.fees || cd.gc_fee || 0);
             groups.push({
                 source: "gocardless",
                 date: gc.date?.split("T")[0] || "",
@@ -274,6 +279,7 @@ async function buildDisbursementGroups(): Promise<DisbursementGroup[]> {
                 customer_emails: [],
                 order_ids: [],
                 products: [],
+                fees_amount: gcFee > 0 ? Math.round(gcFee * 100) / 100 : undefined,
             });
         }
     }
@@ -349,6 +355,39 @@ async function buildDisbursementGroups(): Promise<DisbursementGroup[]> {
 // ═══════════════════════════════════════════════════════════
 
 type GatewayHint = "braintree" | "braintree-amex" | "stripe" | "gocardless" | null;
+
+/** Normalize text for fuzzy comparison (lowercase, strip accents/symbols) */
+function normText(s: string): string {
+    return s
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9 ]/g, "")
+        .trim();
+}
+
+/** Bigram-based string similarity (0-1), reused from ap-bank pattern */
+function stringSimilarity(s1: string, s2: string): number {
+    const a = normText(s1);
+    const b = normText(s2);
+    if (!a || !b) return 0;
+    if (a === b) return 1;
+    if (a.includes(b) || b.includes(a)) return 0.85;
+    const bg = (s: string) => {
+        const m = new Map<string, number>();
+        for (let i = 0; i < s.length - 1; i++) {
+            const bi = s.substring(i, i + 2);
+            m.set(bi, (m.get(bi) || 0) + 1);
+        }
+        return m;
+    };
+    const biA = bg(a);
+    const biB = bg(b);
+    let matches = 0;
+    biB.forEach((cnt, bi) => { matches += Math.min(cnt, biA.get(bi) || 0); });
+    const total = (a.length - 1) + (b.length - 1);
+    return total > 0 ? (2 * matches) / total : 0;
+}
 
 /** Static daysDiff for use outside POST handler (calendar days) */
 function daysDiffStatic(d1: string, d2: string): number {
@@ -506,6 +545,29 @@ export async function POST(req: NextRequest) {
             disbBySource.get(d.source)!.push(d);
         }
 
+        // Build payout ID → disbursement index for L0 deterministic matching
+        const disbByPayoutId = new Map<string, DisbursementGroup>();
+        for (const d of disbGroups) {
+            if (d.source === 'stripe') {
+                // Stripe payout references are like po_XXXX stored in reference or transaction_ids
+                for (const tid of d.transaction_ids) {
+                    if (tid.startsWith('po_')) disbByPayoutId.set(tid, d);
+                }
+                if (d.reference.startsWith('po_')) disbByPayoutId.set(d.reference, d);
+            }
+            // Braintree settlement batch IDs
+            if (d.settlement_batch_id && d.source.startsWith('braintree')) {
+                disbByPayoutId.set(d.settlement_batch_id, d);
+            }
+        }
+
+        // Regex patterns for extracting payout/settlement IDs from bank descriptions
+        const PAYOUT_ID_PATTERNS = [
+            /\bpo_[a-zA-Z0-9]{10,}\b/,                    // Stripe payout ID (po_1SsYEhIO1Dgqa3T...)
+            /\b\d{4}_\d{2}_\d{2}_[a-z0-9_]+\b/i,          // Braintree settlement batch (2025_01_15_merchant)
+            /batch[\s_:-]*(\w{6,})/i,                       // Generic batch reference
+        ];
+
         // Process each bank row through 12 matching levels
         for (const bankRow of bankRows) {
             if (matchedBankIds.has(bankRow.id)) continue;
@@ -528,6 +590,26 @@ export async function POST(req: NextRequest) {
             let matchLevel = 0;
             let matchType = "";
             let confidence = 0;
+
+            // ─── LEVEL 0: Payout/Settlement ID extraction (deterministic) ───
+            if (!match) {
+                const desc = bankRow.description;
+                for (const pattern of PAYOUT_ID_PATTERNS) {
+                    const idMatch = desc.match(pattern);
+                    if (idMatch) {
+                        const extractedId = idMatch[1] || idMatch[0];
+                        const directDisb = disbByPayoutId.get(extractedId);
+                        if (directDisb && !matchedDisbRefs.has(directDisb.reference) && directDisb.currency === expectedCurrency) {
+                            match = directDisb;
+                            matchLevel = 0;
+                            matchType = `payout_id_${pattern.source || 'regex'}`;
+                            confidence = 1.0;
+                            console.log(`[Deep L0] Payout ID match: ${extractedId} → bank ${bankRow.id} (${bankRow.source})`);
+                            break;
+                        }
+                    }
+                }
+            }
 
             // ─── LEVEL 1: Exact (same date + amount ±0.10) ───
             if (!match) {
@@ -810,7 +892,22 @@ export async function POST(req: NextRequest) {
                             }
                         }
                     }
-                    // 3. Fuzzy match (2+ word overlap >= 3 chars, or 1 word >= 5 chars)
+                    // 3. Bigram fuzzy match (similarity ≥ 0.55)
+                    if (!facInfo) {
+                        let bestSim = 0;
+                        let bestKey = '';
+                        for (const [key] of ioByName) {
+                            const sim = stringSimilarity(nExtracted, key);
+                            if (sim > bestSim) {
+                                bestSim = sim;
+                                bestKey = key;
+                            }
+                        }
+                        if (bestSim >= 0.55 && bestKey) {
+                            facInfo = nameToDominantFac.get(bestKey) || ioByName.get(bestKey)!;
+                        }
+                    }
+                    // 4. Word overlap fallback (2+ words >= 3 chars, or 1 word >= 5 chars)
                     if (!facInfo) {
                         const extractedWords = getWords(nExtracted);
                         for (const [key, info] of ioByName) {
@@ -1027,6 +1124,205 @@ export async function POST(req: NextRequest) {
                     order_ids: refundMatch.order_ids,
                     products: refundMatch.products,
                 });
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // LEVEL 13: Global Ranking Score (re-evaluate unmatched with composite scoring)
+        // ═══════════════════════════════════════════════════════════
+        // For remaining unmatched bank credits, collect ALL candidates and rank by composite score
+        // instead of waterfall "first match wins". This captures cases where a lower-level match
+        // is actually the best overall candidate.
+        for (const bankRow of bankRows) {
+            if (matchedBankIds.has(bankRow.id)) continue;
+            if (bankRow.amount <= 0) continue;
+
+            const bankDate = bankRow.date;
+            const bankAmount = bankRow.amount;
+            const expectedCurrency = bankToExpectedCurrency(bankRow.source);
+            const expectedGateways = bankToExpectedGateways(bankRow.source);
+            const gatewayHint = detectGatewayFromDescription(bankRow.description);
+
+            // Collect ALL candidate disbursements within generous bounds
+            const allCandidates = disbGroups.filter(d =>
+                d.currency === expectedCurrency &&
+                !matchedDisbRefs.has(d.reference) &&
+                daysDiff(d.date, bankDate) <= 15 &&
+                Math.abs(d.amount - bankAmount) < Math.max(bankAmount * 0.05, 5.0)
+            );
+
+            if (allCandidates.length === 0) continue;
+
+            // Score each candidate: composite of amount proximity, date proximity, gateway hint, name match
+            const scored = allCandidates.map(d => {
+                let score = 0;
+
+                // Amount proximity (0-3 points): closer = better
+                const amtDiffPct = Math.abs(d.amount - bankAmount) / Math.max(bankAmount, 1);
+                if (amtDiffPct < 0.001) score += 3;       // exact
+                else if (amtDiffPct < 0.005) score += 2.5; // very close
+                else if (amtDiffPct < 0.01) score += 2;    // close
+                else if (amtDiffPct < 0.02) score += 1;    // reasonable
+                else score += Math.max(0, 0.5 - amtDiffPct * 10);
+
+                // Date proximity (0-2 points): closer = better
+                const dDiff = daysDiff(d.date, bankDate);
+                if (dDiff === 0) score += 2;
+                else if (dDiff <= 1) score += 1.8;
+                else if (dDiff <= 3) score += 1.5;
+                else if (dDiff <= 5) score += 1.0;
+                else if (dDiff <= 7) score += 0.5;
+                else score += Math.max(0, 0.3 - dDiff * 0.02);
+
+                // Gateway hint match (0-1.5 points)
+                if (gatewayHint) {
+                    if (d.source === gatewayHint) score += 1.5;
+                    else if (gatewayHint === "braintree" && d.source.startsWith("braintree")) score += 1.2;
+                    else if (expectedGateways.includes(d.source)) score += 0.3;
+                }
+
+                // Customer name match (0-1 point): extract from description and compare
+                if (d.customer_names.length > 0) {
+                    const desc = bankRow.description;
+                    for (const name of d.customer_names) {
+                        const sim = stringSimilarity(desc, name);
+                        if (sim > 0.4) {
+                            score += Math.min(1, sim);
+                            break;
+                        }
+                    }
+                }
+
+                return { disb: d, score };
+            });
+
+            // Sort by score descending
+            scored.sort((a, b) => b.score - a.score);
+
+            // Accept only if best score exceeds threshold (3.5 = reasonable amount + date match)
+            if (scored[0].score >= 3.5) {
+                const best = scored[0].disb;
+                matchedBankIds.add(bankRow.id);
+                matchedDisbRefs.add(best.reference);
+
+                const levelKey = "L13_global_ranking";
+                levelStats.set(levelKey, (levelStats.get(levelKey) || 0) + 1);
+
+                matches.push({
+                    bank_row_id: bankRow.id,
+                    bank_date: bankDate,
+                    bank_amount: bankAmount,
+                    bank_description: bankRow.description.substring(0, 100),
+                    match_level: 13,
+                    match_type: "global_ranking_score",
+                    disbursement_source: best.source,
+                    disbursement_date: best.date,
+                    disbursement_amount: best.amount,
+                    disbursement_reference: best.reference,
+                    confidence: Math.min(0.90, scored[0].score / 7.5), // Normalize to 0-0.90
+                    settlement_batch_id: best.settlement_batch_id,
+                    transaction_ids: best.transaction_ids,
+                    transaction_count: best.transaction_count,
+                    customer_names: best.customer_names,
+                    customer_emails: best.customer_emails,
+                    order_ids: best.order_ids,
+                    products: best.products,
+                });
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // LEVEL 14: Refund-Adjusted Payout (charges - refunds = expected payout)
+        // ═══════════════════════════════════════════════════════════
+        // For bank deposits that don't match any single disbursement, try computing
+        // the expected payout as: sum(charges in settlement window) - sum(refunds in window)
+        // This handles cases where the gateway nets refunds against the payout.
+        for (const bankRow of bankRows) {
+            if (matchedBankIds.has(bankRow.id)) continue;
+            if (bankRow.amount <= 0) continue;
+
+            const bankDate = bankRow.date;
+            const bankAmount = bankRow.amount;
+            const expectedCurrency = bankToExpectedCurrency(bankRow.source);
+            const gatewayHint = detectGatewayFromDescription(bankRow.description);
+
+            // Only attempt for gateway-identified bank rows
+            if (!gatewayHint) continue;
+
+            // Find positive (charge) and negative (refund) disbursements from same gateway within ±5 days
+            const srcFilter = gatewayHint === "braintree-amex" ? "braintree-amex" : gatewayHint;
+            const nearbyDisbs = disbGroups.filter(d =>
+                d.currency === expectedCurrency &&
+                !matchedDisbRefs.has(d.reference) &&
+                (d.source === srcFilter || (gatewayHint === "braintree" && d.source.startsWith("braintree"))) &&
+                daysDiff(d.date, bankDate) <= 5
+            );
+
+            if (nearbyDisbs.length < 2) continue;
+
+            // Separate into positive (charges) and potential offset groups
+            const positiveDisbs = nearbyDisbs.filter(d => d.amount > 0);
+            const allAmounts = nearbyDisbs.map(d => d.amount);
+
+            // Try subsets of positive disbs minus other positives (net effect)
+            // Sometimes payout = large_disb - small_disb (refund was netted)
+            for (let i = 0; i < positiveDisbs.length; i++) {
+                if (matchedBankIds.has(bankRow.id)) break;
+                const mainDisb = positiveDisbs[i];
+                if (mainDisb.amount <= bankAmount) continue; // Must be larger than bank deposit
+
+                const diff = mainDisb.amount - bankAmount;
+                // Look for a combination that accounts for the difference (refunds netted)
+                for (let j = 0; j < nearbyDisbs.length; j++) {
+                    if (i === j) continue;
+                    const offsetDisb = nearbyDisbs[j];
+                    if (Math.abs(offsetDisb.amount - diff) < 1.0) {
+                        // Found: mainDisb.amount - offsetDisb.amount ≈ bankAmount
+                        const netAmount = mainDisb.amount - offsetDisb.amount;
+                        if (Math.abs(netAmount - bankAmount) < 1.0) {
+                            matchedBankIds.add(bankRow.id);
+                            matchedDisbRefs.add(mainDisb.reference);
+                            matchedDisbRefs.add(offsetDisb.reference);
+
+                            const levelKey = "L14_refund_adjusted_payout";
+                            levelStats.set(levelKey, (levelStats.get(levelKey) || 0) + 1);
+
+                            const merged: DisbursementGroup = {
+                                ...mainDisb,
+                                amount: Math.round(netAmount * 100) / 100,
+                                reference: `${mainDisb.reference}-adj:${offsetDisb.reference}`,
+                                transaction_count: mainDisb.transaction_count + offsetDisb.transaction_count,
+                                transaction_ids: [...mainDisb.transaction_ids, ...offsetDisb.transaction_ids],
+                                customer_names: [...new Set([...mainDisb.customer_names, ...offsetDisb.customer_names])],
+                                customer_emails: [...new Set([...mainDisb.customer_emails, ...offsetDisb.customer_emails])],
+                                order_ids: [...new Set([...mainDisb.order_ids, ...offsetDisb.order_ids])],
+                                products: [...new Set([...mainDisb.products, ...offsetDisb.products])],
+                            };
+
+                            matches.push({
+                                bank_row_id: bankRow.id,
+                                bank_date: bankDate,
+                                bank_amount: bankAmount,
+                                bank_description: bankRow.description.substring(0, 100),
+                                match_level: 14,
+                                match_type: "refund_adjusted_payout",
+                                disbursement_source: merged.source,
+                                disbursement_date: merged.date,
+                                disbursement_amount: merged.amount,
+                                disbursement_reference: merged.reference,
+                                confidence: 0.60,
+                                settlement_batch_id: merged.settlement_batch_id,
+                                transaction_ids: merged.transaction_ids,
+                                transaction_count: merged.transaction_count,
+                                customer_names: merged.customer_names,
+                                customer_emails: merged.customer_emails,
+                                order_ids: merged.order_ids,
+                                products: merged.products,
+                            });
+                            break;
+                        }
+                    }
+                }
             }
         }
 

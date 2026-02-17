@@ -136,6 +136,12 @@ export async function POST(req: NextRequest) {
             payoutsByAmount.get(key)!.push(p);
         });
 
+        // Build payout index by payoutId for Tier 0 deterministic matching
+        const payoutByPayoutId = new Map<string, StripePayoutInfo>();
+        stripePayouts.forEach(p => {
+            payoutByPayoutId.set(p.payoutId, p);
+        });
+
         // Para cada lançamento Bankinter, tentar encontrar payout correspondente
         for (const bankRow of bankRows) {
             if (matchedBankIds.has(bankRow.id)) continue;
@@ -148,6 +154,22 @@ export async function POST(req: NextRequest) {
             let matchType: 'exact' | 'date_range' | 'description_amount' | null = null;
             let dateDiff = 0;
             let amountDiff = 0;
+
+            // ─── TIER 0: Extract payout ID from bank description (deterministic) ───
+            // Stripe payouts appear in bank statements as "po_XXXXXXX" or similar references
+            const poIdMatch = bankRow.description.match(/\bpo_[a-zA-Z0-9]{10,}\b/);
+            if (poIdMatch) {
+                const extractedPoId = poIdMatch[0];
+                const directMatch = payoutByPayoutId.get(extractedPoId);
+                if (directMatch && !matchedPayoutIds.has(directMatch.payoutId)) {
+                    bestMatch = directMatch;
+                    matchType = 'exact';
+                    const payoutDateObj = new Date(directMatch.arrivalDate);
+                    dateDiff = Math.abs((bankDateObj.getTime() - payoutDateObj.getTime()) / 86400000);
+                    amountDiff = Math.abs(directMatch.amount - bankAmount);
+                    console.log(`[Stripe Reconcile] Tier 0 PO ID match: ${extractedPoId} → bank ${bankRow.id}`);
+                }
+            }
 
             // Candidatos com mesmo valor (±0.10)
             const exactAmountKey = bankAmount.toFixed(2);
