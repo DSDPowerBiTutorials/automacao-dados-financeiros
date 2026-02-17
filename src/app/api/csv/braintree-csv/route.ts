@@ -359,6 +359,10 @@ export async function POST(request: NextRequest) {
                     status_history: [],
                     country_of_issuance: getValue(colIndex.countryOfIssuance) || null,
                     issuing_bank: getValue(colIndex.issuingBank) || null,
+                    // Refund tracking
+                    refunded_transaction_id: getValue(colIndex.refundedTransactionId) || null,
+                    // Descriptor (merchant name visible on bank statement)
+                    descriptor_name: getValue(colIndex.descriptorName) || null,
                     // Import metadata
                     _imported: true,
                     _import_source: file.name,

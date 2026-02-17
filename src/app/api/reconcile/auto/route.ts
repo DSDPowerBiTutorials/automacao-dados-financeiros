@@ -21,6 +21,8 @@ interface Payment {
     order_id: string | null;
     customer_name: string | null;
     customer_company: string | null;
+    billing_name: string | null;
+    csv_row_id: string;
 }
 
 /** Normalize company/person name for fuzzy matching */
@@ -37,6 +39,9 @@ interface Match {
     payment_amount: number;
     invoice_amount: number;
     match_type: string;
+    csv_row_id: string;
+    financial_account_code: string | null;
+    financial_account_name: string | null;
 }
 
 async function fetchAllFromSource(source: string, minDate: string = '2025-01-01'): Promise<any[]> {
@@ -85,6 +90,8 @@ export async function POST(req: NextRequest) {
                 order_id: cd.order_id || null,
                 customer_name: cd.customer_name || bt.customer_name || null,
                 customer_company: cd.customer_company || cd.company_name || null,
+                billing_name: cd.billing_name || null,
+                csv_row_id: bt.id,
             });
         });
 
@@ -100,6 +107,8 @@ export async function POST(req: NextRequest) {
                 order_id: cd.order_id || cd.metadata?.order_id || null,
                 customer_name: cd.customer_name || st.customer_name || null,
                 customer_company: cd.customer_company || null,
+                billing_name: null,
+                csv_row_id: st.id,
             });
         });
 
@@ -115,6 +124,8 @@ export async function POST(req: NextRequest) {
                 order_id: cd.order_id || cd.metadata?.order_id || null,
                 customer_name: cd.customer_name || st.customer_name || null,
                 customer_company: cd.customer_company || null,
+                billing_name: null,
+                csv_row_id: st.id,
             });
         });
 
@@ -137,6 +148,8 @@ export async function POST(req: NextRequest) {
                     order_id: cd.order_id || cd.mandate_id || null,
                     customer_name: cd.customer_name || gc.customer_name || null,
                     customer_company: cd.customer_company || cd.company_name || null,
+                    billing_name: null,
+                    csv_row_id: gc.id,
                 });
             });
 
@@ -344,7 +357,66 @@ export async function POST(req: NextRequest) {
                     transaction_id: payment.transaction_id,
                     payment_amount: payment.amount,
                     invoice_amount: invoice.total_amount,
-                    match_type: matchType
+                    match_type: matchType,
+                    csv_row_id: payment.csv_row_id,
+                    financial_account_code: invoice.financial_account_code || null,
+                    financial_account_name: invoice.financial_account_name || null,
+                });
+            }
+        }
+
+        // 4b. Strategy 7: billing_name → client_name + amount ±€2 + date ±5 days (Braintree only)
+        for (const payment of allPayments) {
+            if (!payment.billing_name) continue;
+            // Check if this payment was already matched
+            const alreadyMatched = matches.some(m => m.transaction_id === payment.transaction_id && m.payment_source === payment.source);
+            if (alreadyMatched) continue;
+
+            const billingNameKey = normalizeName(payment.billing_name);
+            if (!billingNameKey || billingNameKey.length < 3) continue;
+
+            // Skip if same as customer_name (already tried in strategy 6)
+            const customerNameKey = normalizeName(payment.customer_name);
+            if (billingNameKey === customerNameKey) continue;
+
+            let invoice: any = null;
+
+            // Try exact billing name match against client_name index
+            let candidates = (invoiceByClientName.get(billingNameKey) || [])
+                .filter(inv => !matchedInvoiceIds.has(inv.id));
+
+            // Partial match fallback
+            if (candidates.length === 0) {
+                for (const [invNameKey, invList] of invoiceByClientName) {
+                    if (invNameKey.includes(billingNameKey) || billingNameKey.includes(invNameKey)) {
+                        candidates.push(...invList.filter(inv => !matchedInvoiceIds.has(inv.id)));
+                    }
+                }
+            }
+
+            const paymentDate = new Date(payment.date);
+            const billingMatch = candidates.find(inv => {
+                const invDate = new Date(inv.invoice_date || inv.order_date);
+                const daysDiff = Math.abs((paymentDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
+                return daysDiff <= 5 && Math.abs(inv.total_amount - payment.amount) < 2;
+            });
+
+            if (billingMatch) {
+                invoice = billingMatch;
+                matchedInvoiceIds.add(invoice.id);
+                stats[payment.source as keyof typeof stats]++;
+                stats.by_strategy['billing_name+amount'] = (stats.by_strategy['billing_name+amount'] || 0) + 1;
+                matches.push({
+                    invoice_id: invoice.id,
+                    invoice_number: invoice.invoice_number,
+                    payment_source: payment.source,
+                    transaction_id: payment.transaction_id,
+                    payment_amount: payment.amount,
+                    invoice_amount: invoice.total_amount,
+                    match_type: 'billing_name+amount',
+                    csv_row_id: payment.csv_row_id,
+                    financial_account_code: invoice.financial_account_code || null,
+                    financial_account_name: invoice.financial_account_name || null,
                 });
             }
         }
@@ -377,7 +449,10 @@ export async function POST(req: NextRequest) {
                     transaction_id: `hubspot-${inv.hubspot_id || inv.id}`,
                     payment_amount: inv.total_amount,
                     invoice_amount: inv.total_amount,
-                    match_type: 'hubspot_paid_status'
+                    match_type: 'hubspot_paid_status',
+                    csv_row_id: '',
+                    financial_account_code: inv.financial_account_code || null,
+                    financial_account_name: inv.financial_account_name || null,
                 });
             }
         }
@@ -402,6 +477,29 @@ export async function POST(req: NextRequest) {
                     errors.push(`${match.invoice_id}: ${error.message}`);
                 } else {
                     updated++;
+                    // Write FAC classification to the gateway csv_row
+                    if (match.csv_row_id && match.financial_account_code) {
+                        const { data: existingRow } = await supabaseAdmin
+                            .from('csv_rows')
+                            .select('custom_data')
+                            .eq('id', match.csv_row_id)
+                            .single();
+                        const prevData = (existingRow?.custom_data as Record<string, unknown>) || {};
+                        await supabaseAdmin
+                            .from('csv_rows')
+                            .update({
+                                reconciled: true,
+                                custom_data: {
+                                    ...prevData,
+                                    matched_invoice_number: match.invoice_number,
+                                    matched_invoice_fac: match.financial_account_code,
+                                    matched_invoice_fac_name: match.financial_account_name,
+                                    reconciled_with: `ar_invoice:${match.invoice_id}`,
+                                    reconciliation_type: match.match_type,
+                                },
+                            })
+                            .eq('id', match.csv_row_id);
+                    }
                 }
             }
         }

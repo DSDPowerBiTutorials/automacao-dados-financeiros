@@ -52,6 +52,33 @@ export interface CSVRow {
   order_id_3?: string;
   order_id_4?: string;
 
+  // Enriched reconciliation fields (from gateway matching)
+  matched_invoice_number?: string;
+  matched_invoice_fac?: string;
+  matched_invoice_fac_name?: string;
+  matched_customer_name?: string;
+  matched_customer_email?: string;
+  matched_customer_names?: string[];
+  matched_customer_emails?: string[];
+  matched_order_ids?: string[];
+  matched_products?: string[];
+
+  // Gateway-specific enriched fields
+  billing_name?: string;
+  billing_country?: string;
+  company_name?: string;
+  subscription_id?: string;
+  gc_subscription_id?: string;
+  mandate_id?: string;
+  descriptor_name?: string;
+  refunded_transaction_id?: string;
+  amount_refunded?: number;
+  settlement_amount?: number;
+  settlement_currency?: string;
+  card_type?: string;
+  country_of_issuance?: string;
+  merchant_account_id?: string;
+
   [key: string]: any;
 }
 

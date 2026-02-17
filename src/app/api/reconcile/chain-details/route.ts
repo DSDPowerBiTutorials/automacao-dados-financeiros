@@ -24,6 +24,23 @@ interface GatewayTransaction {
     payment_method: string | null;
     source?: string;
     matched_invoice_number?: string | null;
+    // Enriched fields (new)
+    subscription_id?: string | null;
+    card_type?: string | null;
+    country_of_issuance?: string | null;
+    merchant_account_id?: string | null;
+    settlement_amount?: number | null;
+    settlement_currency?: string | null;
+    amount_refunded?: number | null;
+    company_name?: string | null;
+    billing_name?: string | null;
+    billing_country?: string | null;
+    gc_subscription_id?: string | null;
+    mandate_id?: string | null;
+    descriptor_name?: string | null;
+    refunded_transaction_id?: string | null;
+    matched_invoice_fac?: string | null;
+    matched_invoice_fac_name?: string | null;
 }
 
 interface LinkedInvoice {
@@ -74,10 +91,27 @@ function mapGatewayRow(row: any, srcHint?: string): GatewayTransaction {
         customer_name: row.customer_name || cd.customer_name || cd.customer_company || cd.billing_name || null,
         customer_email: row.customer_email || cd.customer_email || null,
         order_id: cd.order_id || cd.metadata?.order_id || null,
-        product_name: cd.plan_id || cd.subscription_id || cd.product || cd.product_description || cd.description || null,
+        product_name: cd.plan_id || cd.subscription_id || cd.product || cd.product_description || cd.description || cd.stripe_description || null,
         payment_method: cd.payment_method || cd.payment_method_type || cd.card_type || (srcHint === "gocardless" ? "direct_debit" : null),
         source: srcHint || row.source || null,
         matched_invoice_number: cd.matched_invoice_number || null,
+        // Enriched fields
+        subscription_id: cd.subscription_id || cd.gc_subscription_id || null,
+        card_type: cd.card_type || null,
+        country_of_issuance: cd.country_of_issuance || cd.billing_country || null,
+        merchant_account_id: cd.merchant_account_id || null,
+        settlement_amount: cd.settlement_amount ? parseFloat(cd.settlement_amount) : null,
+        settlement_currency: cd.settlement_currency || null,
+        amount_refunded: cd.amount_refunded ? parseFloat(cd.amount_refunded) : null,
+        company_name: cd.customer_company || cd.company_name || null,
+        billing_name: cd.billing_name || null,
+        billing_country: cd.billing_country || cd.country_of_issuance || null,
+        gc_subscription_id: cd.gc_subscription_id || null,
+        mandate_id: cd.mandate_id || null,
+        descriptor_name: cd.descriptor_name || null,
+        refunded_transaction_id: cd.refunded_transaction_id || null,
+        matched_invoice_fac: cd.matched_invoice_fac || null,
+        matched_invoice_fac_name: cd.matched_invoice_fac_name || null,
     };
 }
 
@@ -657,6 +691,35 @@ export async function GET(req: NextRequest) {
             return true;
         });
 
+        // Build summary metadata from chain data
+        const facCodes = new Set<string>();
+        const facNames = new Set<string>();
+        let hasRefunds = false;
+        let totalRefunded = 0;
+        const countries = new Set<string>();
+        const uniqueSubscriptions = new Set<string>();
+
+        for (const gt of gatewayTransactions) {
+            if (gt.matched_invoice_fac) facCodes.add(gt.matched_invoice_fac);
+            if (gt.matched_invoice_fac_name) facNames.add(gt.matched_invoice_fac_name);
+            if (gt.amount_refunded && gt.amount_refunded > 0) {
+                hasRefunds = true;
+                totalRefunded += gt.amount_refunded;
+            }
+            if (gt.refunded_transaction_id) hasRefunds = true;
+            if (gt.country_of_issuance) countries.add(gt.country_of_issuance);
+            if (gt.subscription_id) uniqueSubscriptions.add(gt.subscription_id);
+        }
+        for (const o of dedupedOrders) {
+            if (o.financial_account_code) facCodes.add(o.financial_account_code);
+            if (o.financial_account_name) facNames.add(o.financial_account_name);
+            if (o.country) countries.add(o.country);
+        }
+
+        // Also pull FAC from bank row custom_data
+        if (cd.matched_invoice_fac) facCodes.add(cd.matched_invoice_fac);
+        if (cd.matched_invoice_fac_name) facNames.add(cd.matched_invoice_fac_name);
+
         return NextResponse.json({
             success: true,
             chain: {
@@ -664,6 +727,18 @@ export async function GET(req: NextRequest) {
                 invoices: linkedInvoices,
                 orders: dedupedOrders,
                 disbursement: disbursementInfo,
+                summary: {
+                    fac_codes: [...facCodes],
+                    fac_names: [...facNames],
+                    has_refunds: hasRefunds,
+                    total_refunded: Math.round(totalRefunded * 100) / 100,
+                    countries: [...countries],
+                    subscription_count: uniqueSubscriptions.size,
+                    customer_count: new Set(gatewayTransactions.map(t => t.customer_email).filter(Boolean)).size,
+                    match_confidence: cd.match_confidence || null,
+                    match_level: cd.match_level || null,
+                    match_type: cd.match_type || null,
+                },
             },
         });
     } catch (error: any) {

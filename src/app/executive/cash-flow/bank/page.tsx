@@ -99,6 +99,23 @@ interface ReconciliationChainData {
         payment_method: string | null;
         source?: string;
         matched_invoice_number?: string | null;
+        // Enriched fields
+        subscription_id?: string | null;
+        card_type?: string | null;
+        country_of_issuance?: string | null;
+        merchant_account_id?: string | null;
+        settlement_amount?: number | null;
+        settlement_currency?: string | null;
+        amount_refunded?: number | null;
+        company_name?: string | null;
+        billing_name?: string | null;
+        billing_country?: string | null;
+        gc_subscription_id?: string | null;
+        mandate_id?: string | null;
+        descriptor_name?: string | null;
+        refunded_transaction_id?: string | null;
+        matched_invoice_fac?: string | null;
+        matched_invoice_fac_name?: string | null;
     }[];
     invoices: {
         id: number;
@@ -132,6 +149,18 @@ interface ReconciliationChainData {
         date: string;
         amount: number;
         transaction_count: number;
+    };
+    summary?: {
+        fac_codes: string[];
+        fac_names: string[];
+        has_refunds: boolean;
+        total_refunded: number;
+        countries: string[];
+        subscription_count: number;
+        customer_count: number;
+        match_confidence: number | null;
+        match_level: number | null;
+        match_type: string | null;
     };
 }
 
@@ -1526,10 +1555,12 @@ export default function BankCashFlowPage() {
 
                 {/* ─── Table Header ─── */}
                 <div className="flex-shrink-0 sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
-                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[900px]">
+                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[1060px]">
                         <div className="w-[60px] flex-shrink-0">Date</div>
                         {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
                         <div className="flex-1 min-w-[200px]">Description</div>
+                        <div className="w-[100px] flex-shrink-0 truncate">Client</div>
+                        <div className="w-[80px] flex-shrink-0">Product</div>
                         <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
                         <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
                         <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
@@ -1563,7 +1594,7 @@ export default function BankCashFlowPage() {
 
                                 return (
                                     <div key={tx.id}
-                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-700/50" : ""}`}
+                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 cursor-pointer min-w-[1060px] ${selectedRow?.id === tx.id ? "bg-gray-700/50" : ""}`}
                                         onClick={() => handleRowSelect(tx)}>
                                         <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-300">{formatShortDate(tx.date)}</div>
                                         {showBankColumn && (
@@ -1572,6 +1603,33 @@ export default function BankCashFlowPage() {
                                             </div>
                                         )}
                                         <div className="flex-1 min-w-[200px] text-[11px] text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
+                                        {/* Client column */}
+                                        <div className="w-[100px] flex-shrink-0 text-[10px] text-gray-300 truncate" title={tx.custom_data?.matched_customer_names?.join(', ') || ''}>
+                                            {tx.amount > 0 && tx.custom_data?.matched_customer_names?.length > 0
+                                                ? <span className="text-blue-300">{tx.custom_data.matched_customer_names[0]}{tx.custom_data.matched_customer_names.length > 1 ? ` +${tx.custom_data.matched_customer_names.length - 1}` : ''}</span>
+                                                : tx.amount < 0 && tx.custom_data?.matched_provider
+                                                    ? <span className="text-orange-300">{tx.custom_data.matched_provider}</span>
+                                                    : <span className="text-gray-600">-</span>}
+                                        </div>
+                                        {/* Product / FAC column */}
+                                        <div className="w-[80px] flex-shrink-0">
+                                            {(() => {
+                                                const facCode = tx.custom_data?.matched_invoice_fac || null;
+                                                if (facCode) {
+                                                    const lineCode = getPnlLineFromCode(facCode);
+                                                    const lineConfig = getPnlLineConfig(lineCode);
+                                                    return (
+                                                        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${lineConfig?.bg || 'bg-gray-800'} ${lineConfig?.text || 'text-gray-400'} ${lineConfig?.border || 'border-gray-600'}`}>
+                                                            {lineConfig?.icon || ''} {facCode}
+                                                        </Badge>
+                                                    );
+                                                }
+                                                if (tx.custom_data?.matched_products?.length > 0) {
+                                                    return <span className="text-violet-300 text-[9px] truncate block">{tx.custom_data.matched_products[0]}</span>;
+                                                }
+                                                return <span className="text-gray-600 text-[9px]">-</span>;
+                                            })()}
+                                        </div>
                                         <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
                                             {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
                                         </div>
@@ -1812,6 +1870,82 @@ export default function BankCashFlowPage() {
                                     <div>
                                         <p className="text-xs text-gray-500">Transactions in Batch</p>
                                         <p className="text-sm text-white">{selectedRow.custom_data.braintree_transaction_count}</p>
+                                    </div>
+                                )}
+
+                                {/* ─── FAC Classification (from matched invoice-orders) ─── */}
+                                {selectedRow.amount >= 0 && selectedRow.custom_data?.matched_invoice_fac && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Financial Account</p>
+                                        <div className="flex items-center gap-2">
+                                            {(() => {
+                                                const lineCode = getPnlLineFromCode(selectedRow.custom_data.matched_invoice_fac);
+                                                const lineConfig = getPnlLineConfig(lineCode);
+                                                return (
+                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 ${lineConfig?.bg || 'bg-gray-800'} ${lineConfig?.text || 'text-gray-400'} ${lineConfig?.border || 'border-gray-600'}`}>
+                                                        {lineConfig?.icon || '📊'} {selectedRow.custom_data.matched_invoice_fac}
+                                                    </Badge>
+                                                );
+                                            })()}
+                                            {selectedRow.custom_data.matched_invoice_fac_name && (
+                                                <span className="text-xs text-gray-300">{selectedRow.custom_data.matched_invoice_fac_name}</span>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ─── Chain summary (from chain-details API) ─── */}
+                                {selectedRow.amount >= 0 && selectedRow.chainData?.summary && (
+                                    <div className="space-y-2">
+                                        {/* FAC codes from chain */}
+                                        {selectedRow.chainData.summary.fac_codes.length > 0 && !selectedRow.custom_data?.matched_invoice_fac && (
+                                            <div>
+                                                <p className="text-xs text-gray-500 mb-1">P&amp;L Lines (from chain)</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {selectedRow.chainData.summary.fac_codes.map((fac: string, i: number) => {
+                                                        const lc = getPnlLineFromCode(fac);
+                                                        const lconf = getPnlLineConfig(lc);
+                                                        return (
+                                                            <Badge key={i} variant="outline" className={`text-[9px] px-1 py-0 ${lconf?.bg || 'bg-gray-800'} ${lconf?.text || 'text-gray-400'} ${lconf?.border || 'border-gray-600'}`}>
+                                                                {lconf?.icon || ''} {fac}
+                                                            </Badge>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Refund alert */}
+                                        {selectedRow.chainData.summary.has_refunds && (
+                                            <div className="flex items-center gap-2 p-2 bg-red-900/20 rounded-lg border border-red-800/40">
+                                                <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0" />
+                                                <div>
+                                                    <p className="text-xs text-red-300 font-medium">Refunds Detected</p>
+                                                    {selectedRow.chainData.summary.total_refunded > 0 && (
+                                                        <p className="text-[10px] text-red-400">Total: {formatCurrency(selectedRow.chainData.summary.total_refunded, selectedRow.currency)}</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Countries */}
+                                        {selectedRow.chainData.summary.countries.length > 0 && (
+                                            <div>
+                                                <p className="text-xs text-gray-500 mb-1">Countries</p>
+                                                <div className="flex flex-wrap gap-1">
+                                                    {selectedRow.chainData.summary.countries.map((c: string, i: number) => (
+                                                        <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-800 text-gray-300 border-gray-600">
+                                                            {c}
+                                                        </Badge>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        {/* Subscriptions count */}
+                                        {selectedRow.chainData.summary.subscription_count > 0 && (
+                                            <div className="flex items-center gap-1.5">
+                                                <span className="text-[10px] text-gray-500">🔄 Subscriptions:</span>
+                                                <span className="text-xs text-teal-400 font-medium">{selectedRow.chainData.summary.subscription_count}</span>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
@@ -2117,6 +2251,39 @@ export default function BankCashFlowPage() {
                                                                     <span>{formatShortDate(tx.date)}</span>
                                                                     {tx.payment_method && <span>{tx.payment_method}</span>}
                                                                     {tx.source && <span className="text-gray-600">{tx.source}</span>}
+                                                                </div>
+                                                                {/* Enriched badges */}
+                                                                <div className="flex flex-wrap gap-1 mt-0.5">
+                                                                    {tx.card_type && (
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-800/50 text-gray-400 border-gray-700">
+                                                                            {tx.card_type}
+                                                                        </Badge>
+                                                                    )}
+                                                                    {tx.country_of_issuance && (
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-800/50 text-gray-400 border-gray-700">
+                                                                            {tx.country_of_issuance}
+                                                                        </Badge>
+                                                                    )}
+                                                                    {tx.subscription_id && (
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-teal-900/30 text-teal-400 border-teal-700">
+                                                                            🔄 {tx.subscription_id}
+                                                                        </Badge>
+                                                                    )}
+                                                                    {tx.matched_invoice_fac && (
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-emerald-900/20 text-emerald-400 border-emerald-700/50">
+                                                                            {tx.matched_invoice_fac}
+                                                                        </Badge>
+                                                                    )}
+                                                                    {tx.amount_refunded != null && tx.amount_refunded > 0 && (
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-red-900/30 text-red-400 border-red-700">
+                                                                            ⚠ Refund: {formatCurrency(tx.amount_refunded, selectedRow.currency)}
+                                                                        </Badge>
+                                                                    )}
+                                                                    {tx.company_name && (
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-blue-900/20 text-blue-300 border-blue-700/50">
+                                                                            🏢 {tx.company_name}
+                                                                        </Badge>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                         ))}

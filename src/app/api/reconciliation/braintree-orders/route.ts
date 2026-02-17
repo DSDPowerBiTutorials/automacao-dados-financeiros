@@ -438,6 +438,141 @@ export async function POST(req: Request) {
             console.log(`[Strategy: partial-order-id] ${matches.length - partialMatchesBefore} new matches`);
         }
 
+        // Strategy 6: Subscription ID — match BT subscription payments to subscription-type IOs
+        if (strategy === "all") {
+            const subMatchesBefore = matches.length;
+
+            // Subscription FAC codes (products that are subscriptions)
+            const subscriptionFACCodes = new Set(["105.1", "101.4", "101.3"]);
+
+            for (const tx of transactions) {
+                if (matchedBraintreeIds.has(tx.id)) continue;
+
+                const subscriptionId = tx.custom_data?.subscription_id;
+                if (!subscriptionId) continue;
+
+                // For subscription payments, match by email to subscription-type IOs
+                const email = normalizeEmail(tx.customer_email || tx.custom_data?.customer_email);
+                if (!email) continue;
+
+                const candidates = (ordersByEmail.get(email) || []).filter(o => {
+                    if (matchedOrderIds.has(o.id)) return false;
+                    // Only match orders classified as subscription products
+                    const fac = o.custom_data?.financial_account_code;
+                    return fac && subscriptionFACCodes.has(fac);
+                });
+
+                if (candidates.length > 0) {
+                    const btAmount = Math.abs(parseFloat(tx.amount) || 0);
+                    // Pick closest amount
+                    let bestMatch: any = null;
+                    let bestDiff = Infinity;
+                    for (const order of candidates) {
+                        const diff = Math.abs(btAmount - Math.abs(parseFloat(order.amount) || 0));
+                        if (diff < bestDiff && diff < Math.max(2.0, btAmount * 0.05)) {
+                            bestDiff = diff;
+                            bestMatch = order;
+                        }
+                    }
+
+                    if (bestMatch) {
+                        matches.push({
+                            braintreeId: tx.id,
+                            braintreeTransactionId: tx.custom_data?.transaction_id || tx.id,
+                            orderId: bestMatch.custom_data?.order_id || bestMatch.custom_data?.Number || "",
+                            orderRowId: bestMatch.id,
+                            matchType: "subscription-id",
+                            confidence: 0.85,
+                            braintreeAmount: parseFloat(tx.amount) || 0,
+                            orderAmount: parseFloat(bestMatch.amount) || 0,
+                            braintreeDate: tx.date,
+                            orderDate: bestMatch.date,
+                            customerName: tx.customer_name || tx.custom_data?.customer_name,
+                            customerEmail: email,
+                        });
+                        matchedBraintreeIds.add(tx.id);
+                        matchedOrderIds.add(bestMatch.id);
+                    }
+                }
+            }
+            console.log(`[Strategy: subscription-id] ${matches.length - subMatchesBefore} new matches`);
+        }
+
+        // Strategy 7: Billing Name — match BT billing_name (cardholder) to IO customer_name
+        if (strategy === "all") {
+            const billingMatchesBefore = matches.length;
+
+            for (const tx of transactions) {
+                if (matchedBraintreeIds.has(tx.id)) continue;
+
+                const billingName = normalizeName(tx.custom_data?.billing_name);
+                if (!billingName || billingName.length < 3) continue;
+
+                // Skip if billing_name is same as customer_name (already tried in strategy 4)
+                const customerNameNorm = normalizeName(tx.customer_name || tx.custom_data?.customer_name);
+                if (billingName === customerNameNorm) continue;
+
+                const btAmount = Math.abs(parseFloat(tx.amount) || 0);
+                if (btAmount < 1) continue;
+
+                let candidates: any[] = [];
+                // Try exact billing name match against IO customer names
+                candidates = (ordersByCustomerName.get(billingName) || []).filter(o => !matchedOrderIds.has(o.id));
+
+                // Partial match fallback
+                if (candidates.length === 0) {
+                    for (const [nameKey, orderList] of ordersByCustomerName) {
+                        if (nameKey.includes(billingName) || billingName.includes(nameKey)) {
+                            candidates.push(...orderList.filter(o => !matchedOrderIds.has(o.id)));
+                        }
+                    }
+                }
+
+                let bestMatch: any = null;
+                let bestScore = Infinity;
+
+                for (const order of candidates) {
+                    const orderAmount = Math.abs(parseFloat(order.amount) || 0);
+                    const amountDiff = Math.abs(btAmount - orderAmount);
+                    if (amountDiff > Math.max(2.0, btAmount * 0.03)) continue;
+
+                    const days = daysDiff(tx.date, order.date);
+                    if (days <= 7 && (amountDiff + days) < bestScore) {
+                        bestScore = amountDiff + days;
+                        bestMatch = order;
+                    }
+                }
+
+                if (bestMatch) {
+                    // Country tiebreaker: boost confidence if countries match
+                    let confidence = 0.65;
+                    const btCountry = tx.custom_data?.country_of_issuance;
+                    const orderCountry = bestMatch.custom_data?.country || bestMatch.custom_data?.Country;
+                    if (btCountry && orderCountry && btCountry.toLowerCase() === orderCountry.toLowerCase()) {
+                        confidence += 0.05;
+                    }
+
+                    matches.push({
+                        braintreeId: tx.id,
+                        braintreeTransactionId: tx.custom_data?.transaction_id || tx.id,
+                        orderId: bestMatch.custom_data?.order_id || bestMatch.custom_data?.Number || "",
+                        orderRowId: bestMatch.id,
+                        matchType: "billing-name",
+                        confidence,
+                        braintreeAmount: parseFloat(tx.amount) || 0,
+                        orderAmount: parseFloat(bestMatch.amount) || 0,
+                        braintreeDate: tx.date,
+                        orderDate: bestMatch.date,
+                        customerName: tx.custom_data?.billing_name || tx.customer_name,
+                        customerEmail: tx.customer_email || tx.custom_data?.customer_email,
+                    });
+                    matchedBraintreeIds.add(tx.id);
+                    matchedOrderIds.add(bestMatch.id);
+                }
+            }
+            console.log(`[Strategy: billing-name] ${matches.length - billingMatchesBefore} new matches`);
+        }
+
         console.log(`\n[Braintree-Orders] TOTAL: ${matches.length} matches de ${transactions.length} transações`);
 
         // 4. Apply matches (update both sides if not dry run)
@@ -445,10 +580,32 @@ export async function POST(req: Request) {
         let failedCount = 0;
 
         if (!dryRun && matches.length > 0) {
+            // Build a map of order IDs → order data for FAC lookup
+            const orderDataMap = new Map<string, any>();
+            for (const order of orders) {
+                orderDataMap.set(order.id, order);
+            }
+
             for (const batch of chunk(matches, 25)) {
                 const results = await Promise.allSettled(
                     batch.map(async (match) => {
-                        // Update Braintree row
+                        // Lookup the matched order to get FAC data
+                        const matchedOrder = orderDataMap.get(match.orderRowId);
+                        const orderCd = matchedOrder?.custom_data || {};
+                        const invoiceNumber = orderCd.Number || orderCd.invoice_number || match.orderId;
+                        const facCode = orderCd.financial_account_code || null;
+                        const facName = orderCd.financial_account_name || null;
+
+                        // Fetch existing custom_data from BT row to preserve it
+                        const { data: currentBtRow } = await supabaseAdmin
+                            .from("csv_rows")
+                            .select("custom_data")
+                            .eq("id", match.braintreeId)
+                            .single();
+
+                        const existingBtCd = currentBtRow?.custom_data || {};
+
+                        // Update Braintree row — with FAC enrichment
                         const { error: btErr } = await supabaseAdmin
                             .from("csv_rows")
                             .update({
@@ -462,6 +619,14 @@ export async function POST(req: Request) {
                                     order_amount: match.orderAmount,
                                     order_date: match.orderDate,
                                     matched_at: new Date().toISOString(),
+                                },
+                                custom_data: {
+                                    ...existingBtCd,
+                                    matched_invoice_number: invoiceNumber,
+                                    matched_invoice_fac: facCode,
+                                    matched_invoice_fac_name: facName,
+                                    matched_customer_name: match.customerName,
+                                    matched_customer_email: match.customerEmail,
                                 },
                             })
                             .eq("id", match.braintreeId);

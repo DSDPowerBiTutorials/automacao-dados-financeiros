@@ -273,6 +273,69 @@ async function buildDisbursementGroups(): Promise<DisbursementGroup[]> {
         }
     }
 
+    // ─── Enrich Stripe payouts with charge customer data ───
+    for (const currSuffix of ["eur", "usd"] as const) {
+        const chargeSource = `stripe-${currSuffix}`;
+        const { data: charges } = await supabaseAdmin
+            .from("csv_rows")
+            .select("date, customer_name, customer_email, custom_data")
+            .eq("source", chargeSource)
+            .order("date", { ascending: false })
+            .limit(3000);
+
+        if (charges && charges.length > 0) {
+            const stripePayoutGroups = groups.filter(
+                g => g.source === "stripe" && g.currency === currSuffix.toUpperCase()
+            );
+            for (const pg of stripePayoutGroups) {
+                const pgDate = pg.date;
+                // Charges that settled within ±2 days of payout arrival
+                const nearby = charges.filter(c => {
+                    const cDate = (c.date || "").split("T")[0];
+                    return cDate && daysDiffStatic(cDate, pgDate) <= 2;
+                });
+                for (const ch of nearby) {
+                    const nm = ch.customer_name || (ch.custom_data as any)?.customer_name;
+                    const em = ch.customer_email || (ch.custom_data as any)?.customer_email;
+                    const cd = (ch.custom_data || {}) as Record<string, any>;
+                    if (nm && !pg.customer_names.includes(nm)) pg.customer_names.push(nm);
+                    if (em && !pg.customer_emails.includes(em)) pg.customer_emails.push(em);
+                    const prod = cd.stripe_description || cd.product;
+                    if (prod && !pg.products.includes(prod)) pg.products.push(prod);
+                }
+            }
+        }
+    }
+
+    // ─── Enrich GoCardless payouts with payment customer data ───
+    const { data: gcPayments } = await supabaseAdmin
+        .from("csv_rows")
+        .select("date, customer_name, customer_email, custom_data")
+        .eq("source", "gocardless")
+        .eq("custom_data->>type", "payment")
+        .order("date", { ascending: false })
+        .limit(3000);
+
+    if (gcPayments && gcPayments.length > 0) {
+        const gcPayoutGroups = groups.filter(g => g.source === "gocardless");
+        for (const pg of gcPayoutGroups) {
+            const pgDate = pg.date;
+            const nearby = gcPayments.filter(p => {
+                const pDate = (p.date || "").split("T")[0];
+                return pDate && daysDiffStatic(pDate, pgDate) <= 3;
+            });
+            for (const pm of nearby) {
+                const nm = pm.customer_name || (pm.custom_data as any)?.customer_name;
+                const em = pm.customer_email || (pm.custom_data as any)?.customer_email;
+                const cd = (pm.custom_data || {}) as Record<string, any>;
+                if (nm && !pg.customer_names.includes(nm)) pg.customer_names.push(nm);
+                if (em && !pg.customer_emails.includes(em)) pg.customer_emails.push(em);
+                const prod = cd.subscription_name || cd.gc_subscription_id;
+                if (prod && !pg.products.includes(prod)) pg.products.push(prod);
+            }
+        }
+    }
+
     return groups;
 }
 
@@ -281,6 +344,11 @@ async function buildDisbursementGroups(): Promise<DisbursementGroup[]> {
 // ═══════════════════════════════════════════════════════════
 
 type GatewayHint = "braintree" | "braintree-amex" | "stripe" | "gocardless" | null;
+
+/** Static daysDiff for use outside POST handler */
+function daysDiffStatic(d1: string, d2: string): number {
+    return Math.abs((new Date(d1).getTime() - new Date(d2).getTime()) / 86400000);
+}
 
 function detectGatewayFromDescription(desc: string): GatewayHint {
     const d = desc.toLowerCase();
@@ -312,7 +380,7 @@ function bankToExpectedGateways(bankSource: string): string[] {
 // ═══════════════════════════════════════════════════════════
 
 function daysDiff(d1: string, d2: string): number {
-    return Math.abs((new Date(d1).getTime() - new Date(d2).getTime()) / 86400000);
+    return daysDiffStatic(d1, d2);
 }
 
 function getDateRange(baseDate: string, offsetDays: number): string[] {
@@ -560,6 +628,48 @@ export async function POST(req: NextRequest) {
                 }
             }
 
+            // ─── LEVEL 7b: Refund-offset (disbursement - nearby refunds ≈ bank amount) ───
+            if (!match) {
+                // Some bank deposits are net of refund disbursements processed nearby
+                // Try: disbursement_amount - refund_disbursements = bank_amount
+                const nearbyPositive = validDisbs.filter(d =>
+                    d.amount > 0 && daysDiff(d.date, bankDate) <= 5 && d.amount > bankAmount
+                );
+                // Look for negative/refund disbursements (amount < 0 not normally present, but
+                // look for smaller positive disbs that when subtracted give the bank amount)
+                for (const posDisb of nearbyPositive) {
+                    if (match) break;
+                    const diff = posDisb.amount - bankAmount;
+                    if (diff <= 0 || diff > posDisb.amount * 0.3) continue; // refund max 30%
+                    // Check if there's any other disbursement or fee that equals the difference
+                    const refundMatch = validDisbs.find(d =>
+                        d !== posDisb &&
+                        !matchedDisbRefs.has(d.reference) &&
+                        daysDiff(d.date, bankDate) <= 5 &&
+                        Math.abs(d.amount - diff) < 0.50
+                    );
+                    if (refundMatch) {
+                        const merged: DisbursementGroup = {
+                            ...posDisb,
+                            amount: Math.round((posDisb.amount - refundMatch.amount) * 100) / 100,
+                            reference: `${posDisb.reference}-refund:${refundMatch.reference}`,
+                            transaction_count: posDisb.transaction_count + refundMatch.transaction_count,
+                            transaction_ids: [...posDisb.transaction_ids, ...refundMatch.transaction_ids],
+                            customer_names: [...new Set([...posDisb.customer_names, ...refundMatch.customer_names])],
+                            customer_emails: [...new Set([...posDisb.customer_emails, ...refundMatch.customer_emails])],
+                            order_ids: [...new Set([...posDisb.order_ids, ...refundMatch.order_ids])],
+                            products: [...new Set([...posDisb.products, ...refundMatch.products])],
+                        };
+                        match = merged;
+                        matchLevel = 7;
+                        matchType = "refund_offset_net";
+                        confidence = 0.62;
+                        matchedDisbRefs.add(posDisb.reference);
+                        matchedDisbRefs.add(refundMatch.reference);
+                    }
+                }
+            }
+
             // ─── LEVEL 8: Cross-gateway residual (any gateway, wider tolerance) ───
             if (!match && gatewayHint) {
                 // Try all gateways, not just the expected ones
@@ -632,6 +742,23 @@ export async function POST(req: NextRequest) {
                     const existingCd = currentRow?.custom_data || {};
                     const sourceName = m.disbursement_source.charAt(0).toUpperCase() + m.disbursement_source.slice(1);
 
+                    // Look up FAC classification from invoice-orders if we have order_ids
+                    let facCode: string | null = null;
+                    let facName: string | null = null;
+                    if (m.order_ids.length > 0) {
+                        const { data: orderRows } = await supabaseAdmin
+                            .from("csv_rows")
+                            .select("custom_data")
+                            .eq("source", "invoice-orders")
+                            .in("custom_data->>order_id", m.order_ids.slice(0, 5))
+                            .limit(1);
+                        if (orderRows && orderRows.length > 0) {
+                            const ocd = orderRows[0].custom_data as Record<string, any>;
+                            facCode = ocd?.financial_account_code || null;
+                            facName = ocd?.financial_account_name || null;
+                        }
+                    }
+
                     const newCustomData = {
                         ...existingCd,
                         reconciled_at: new Date().toISOString(),
@@ -651,6 +778,9 @@ export async function POST(req: NextRequest) {
                         matched_customer_emails: m.customer_emails,
                         matched_order_ids: m.order_ids,
                         matched_products: m.products,
+                        // FAC classification
+                        ...(facCode && { matched_invoice_fac: facCode }),
+                        ...(facName && { matched_invoice_fac_name: facName }),
                     };
 
                     const { error } = await supabaseAdmin

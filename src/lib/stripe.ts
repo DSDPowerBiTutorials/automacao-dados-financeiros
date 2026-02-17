@@ -283,6 +283,12 @@ export async function syncStripeTransactions(options?: {
                     created_at: new Date(charge.created * 1000).toISOString(),
                     settlement_date: unixToDate(charge.created), // mesmo dia
                     disbursement_date: disbursementDate.toISOString().split("T")[0], // +2 dias
+                    // Enriched fields for reconciliation
+                    customer_id: charge.customer || null,
+                    amount_refunded: charge.amount_refunded ? charge.amount_refunded / 100 : 0,
+                    stripe_description: charge.description || null,
+                    billing_country: charge.billing_details?.address?.country || null,
+                    billing_phone: charge.billing_details?.phone || null,
                     // Metadados originais (podem conter order_id)
                     metadata: charge.metadata,
                 },
