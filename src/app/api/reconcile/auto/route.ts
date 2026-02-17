@@ -240,13 +240,16 @@ export async function POST(req: NextRequest) {
                 }
             }
 
-            // 2. Match por email + valor
+            // 2. Match por email + valor + data ±30 dias
             if (!invoice && payment.email) {
                 const candidates = (invoiceByEmail.get(payment.email) || [])
                     .filter(inv => !matchedInvoiceIds.has(inv.id));
-                const amountMatch = candidates.find(inv =>
-                    Math.abs(inv.total_amount - payment.amount) < 1
-                );
+                const paymentDate = new Date(payment.date);
+                const amountMatch = candidates.find(inv => {
+                    const invDate = new Date(inv.invoice_date || inv.order_date);
+                    const daysDiff = Math.abs((paymentDate.getTime() - invDate.getTime()) / (1000 * 60 * 60 * 24));
+                    return daysDiff <= 30 && Math.abs(inv.total_amount - payment.amount) < 1;
+                });
                 if (amountMatch) {
                     invoice = amountMatch;
                     matchType = 'email+amount';

@@ -1,16 +1,16 @@
 /**
- * API Endpoint: Reconciliação Completa Multi-Banco — Pipeline v2
+ * API Endpoint: Reconciliação Completa Multi-Banco — Pipeline v3
  * 
  * POST /api/reconcile/run-all
  * 
- * Pipeline completo em 9 fases sequenciais:
+ * Pipeline completo em 11 fases sequenciais:
  * 
  *   FASE 1 — ENRICHMENT (preparação de dados)
  *     1. cross-reference     → enriquece ar_invoices com order_id do HubSpot
  *     2. braintree-orders    → liga Braintree transactions a invoice-orders
  *
  *   FASE 2 — GATEWAY → INVOICE (revenue recognition)
- *     3. auto                → AR Invoices ↔ Gateway payments (6 estratégias)
+ *     3. auto                → AR Invoices ↔ Gateway payments (7 estratégias)
  *
  *   FASE 3 — BANK → GATEWAY (cash reconciliation)
  *     4. bank-disbursement   → Bank ↔ Disbursement aggregates (por banco)
@@ -20,11 +20,21 @@
  *   FASE 4 — CHAIN (full flow Order→BT→Disbursement→Bank)
  *     7. disbursement-chain  → cadeia completa EUR + USD
  *
- *   FASE 5 — DEEP (catch remaining with wider tolerances)
- *     8. deep                → 8 níveis progressivos
+ *   FASE 5 — DEEP (catch remaining with wider tolerances — 12 níveis)
+ *     8. deep                → 12 níveis progressivos (incl. name extraction, AMEX, intercompany, refund debit)
  *
  *   FASE 6 — FALLBACK
  *     9. web-orders-bank     → Web Orders → Bank (último recurso)
+ *
+ *   FASE 7 — AP RECONCILIATION
+ *    10. ap-bank             → AP Invoice ↔ Bank debits (5 strategies)
+ *    11. ap-scheduled        → AP paid but not reconciled
+ *
+ *   FASE 8 — P&L CLASSIFICATION
+ *    12. pnl-classify        → Internal transfers, intercompany, name→FAC, dominant FAC, catch-all 105.0
+ *
+ *   FASE 9 — DEEP SECOND PASS (catch matches enabled by P&L enrichment)
+ *    13. deep (2nd pass)     → Re-run with enriched data
  * 
  * Body: { dryRun?: boolean, banks?: string[] }
  */
@@ -184,6 +194,26 @@ export async function POST(req: NextRequest) {
         console.log(`[run-all]   ap-scheduled: ${apScheduledMatched} matched`);
 
         // ═══════════════════════════════════════════════════
+        // FASE 8 — P&L CLASSIFICATION (classify remaining bank inflows)
+        // ═══════════════════════════════════════════════════
+        console.log("[run-all] FASE 8: P&L Classification...");
+
+        // 12. PNL Classify: internal transfers, intercompany, name→FAC, gateway dominant, catch-all
+        pipelineResults.pnlClassify = await callApi(baseUrl, "/api/reconcile/pnl-classify", { dryRun, banks });
+        const pnlClassified = pipelineResults.pnlClassify?.summary?.totalClassified || 0;
+        console.log(`[run-all]   pnl-classify: ${pnlClassified} classified`);
+
+        // ═══════════════════════════════════════════════════
+        // FASE 9 — DEEP SECOND PASS (catch matches enabled by enrichment)
+        // ═══════════════════════════════════════════════════
+        console.log("[run-all] FASE 9: Deep reconciliation (2nd pass)...");
+
+        // 13. Deep 12-level (second pass — catches matches now possible after P&L enrichment)
+        pipelineResults.deepReconciliation2 = await callApi(baseUrl, "/api/reconcile/deep", { dryRun, banks });
+        const deep2Matched = pipelineResults.deepReconciliation2?.summary?.matched || 0;
+        console.log(`[run-all]   deep (2nd pass): ${deep2Matched} matched`);
+
+        // ═══════════════════════════════════════════════════
         // SUMMARY
         // ═══════════════════════════════════════════════════
 
@@ -191,10 +221,10 @@ export async function POST(req: NextRequest) {
         const bankTotalUnmatched = bankResults.reduce((sum, r) => sum + r.unmatched, 0);
         const bankTotalValue = bankResults.reduce((sum, r) => sum + (r.totalValue || 0), 0);
 
-        const allMatched = bankTotalMatched + deepMatched + chainEurMatched + chainUsdMatched + webOrdersMatched + apBankMatched + apScheduledMatched;
+        const allMatched = bankTotalMatched + deepMatched + deep2Matched + chainEurMatched + chainUsdMatched + webOrdersMatched + apBankMatched + apScheduledMatched;
         const duration = ((Date.now() - startTime) / 1000).toFixed(1);
 
-        console.log(`[run-all] COMPLETE in ${duration}s — Total matched: ${allMatched}`);
+        console.log(`[run-all] COMPLETE in ${duration}s — Total matched: ${allMatched}, PNL classified: ${pnlClassified}`);
 
         return NextResponse.json({
             success: true,
@@ -202,7 +232,7 @@ export async function POST(req: NextRequest) {
             duration: `${duration}s`,
             summary: {
                 totalMatched: allMatched,
-                totalUnmatched: Math.max(0, bankTotalUnmatched - deepMatched),
+                totalUnmatched: Math.max(0, bankTotalUnmatched - deepMatched - deep2Matched),
                 totalValue: Math.round((bankTotalValue + deepValue) * 100) / 100,
                 banksProcessed: bankResults.filter(r => r.success).length,
                 banksTotal: banks.length,
@@ -236,6 +266,15 @@ export async function POST(req: NextRequest) {
                         apBank: apBankMatched,
                         apScheduled: apScheduledMatched,
                         apBankByStrategy: pipelineResults.apBank?.summary?.byStrategy || {},
+                    },
+                    pnlClassification: {
+                        totalClassified: pnlClassified,
+                        byPhase: pipelineResults.pnlClassify?.summary?.byPhase || {},
+                        coverage: pipelineResults.pnlClassify?.summary?.coverage || "0%",
+                    },
+                    deepSecondPass: {
+                        matched: deep2Matched,
+                        byLevel: pipelineResults.deepReconciliation2?.summary?.byLevel || {},
                     },
                 },
                 arInvoicesReconciled: arAutoMatched,

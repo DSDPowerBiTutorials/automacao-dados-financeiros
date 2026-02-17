@@ -121,7 +121,7 @@ function findMatches(bankRows: BankRow[], gcPayouts: GoCardlessPayoutInfo[]): Ma
     const usedBankRows = new Set<string>();
 
     // Ordenar payouts por data para facilitar agrupamento
-    const sortedPayouts = [...gcPayouts].sort((a, b) => 
+    const sortedPayouts = [...gcPayouts].sort((a, b) =>
         new Date(a.date).getTime() - new Date(b.date).getTime()
     );
 
@@ -143,7 +143,7 @@ function findMatches(bankRows: BankRow[], gcPayouts: GoCardlessPayoutInfo[]): Ma
         if (exactMatch) {
             const pDate = new Date(exactMatch.date);
             const daysDiff = Math.round((bankDate.getTime() - pDate.getTime()) / (1000 * 60 * 60 * 24));
-            
+
             matches.push({
                 bankRowId: bank.id,
                 bankDate: bank.date,
@@ -163,61 +163,73 @@ function findMatches(bankRows: BankRow[], gcPayouts: GoCardlessPayoutInfo[]): Ma
             continue;
         }
 
-        // 2. Tentar match por soma de payouts próximos
-        // Pegar payouts em janela de 10 dias antes do depósito bancário
+        // 2. Tentar match por soma de payouts próximos (optimal subset-sum)
+        // Pegar payouts em janela de 15 dias antes do depósito bancário
         const windowStart = new Date(bankDate);
         windowStart.setDate(windowStart.getDate() - 15);
-        
+
         const payoutsInWindow = sortedPayouts.filter(p => {
             if (usedPayouts.has(p.id)) return false;
             const pDate = new Date(p.date);
             return pDate >= windowStart && pDate <= bankDate;
         });
 
-        // Tentar combinações de payouts que somem o valor do banco
-        // Começar com payouts mais próximos da data do banco
+        // Optimal subset-sum: test all combinations up to 15 payouts
+        // For more than 15, use the closest payouts by date
+        const maxPayoutsForSubset = 15;
         const sortedByProximity = [...payoutsInWindow].sort((a, b) => {
             const aDiff = Math.abs(new Date(a.date).getTime() - bankDate.getTime());
             const bDiff = Math.abs(new Date(b.date).getTime() - bankDate.getTime());
             return aDiff - bDiff;
-        });
+        }).slice(0, maxPayoutsForSubset);
 
-        // Tentar soma cumulativa
-        let sum = 0;
-        const selectedPayouts: GoCardlessPayoutInfo[] = [];
-        
-        for (const payout of sortedByProximity) {
-            if (Math.abs(sum + payout.amount - bankAmt) < Math.abs(sum - bankAmt)) {
-                selectedPayouts.push(payout);
-                sum += payout.amount;
+        // Find the best subset whose sum is closest to bankAmt
+        let bestSubset: GoCardlessPayoutInfo[] = [];
+        let bestDiff = Infinity;
+
+        const n = sortedByProximity.length;
+        // Limit iterations: 2^n but cap at 2^15 = 32768
+        const maxCombinations = Math.min(1 << n, 32768);
+
+        for (let mask = 1; mask < maxCombinations; mask++) {
+            let sum = 0;
+            const subset: GoCardlessPayoutInfo[] = [];
+            for (let bit = 0; bit < n; bit++) {
+                if (mask & (1 << bit)) {
+                    subset.push(sortedByProximity[bit]);
+                    sum += sortedByProximity[bit].amount;
+                }
             }
-            
-            // Se chegamos próximo o suficiente (diferença < €5 ou < 0.1%)
-            if (Math.abs(sum - bankAmt) < 5 || Math.abs(sum - bankAmt) / bankAmt < 0.001) {
-                break;
+            const diff = Math.abs(sum - bankAmt);
+            if (diff < bestDiff) {
+                bestDiff = diff;
+                bestSubset = subset;
             }
+            // Perfect match found, no need to continue
+            if (diff < 0.01) break;
         }
 
         // Verificar se a soma está próxima o suficiente
+        const sum = bestSubset.reduce((s, p) => s + p.amount, 0);
         const sumDiff = Math.abs(sum - bankAmt);
-        if (selectedPayouts.length > 0 && (sumDiff < 5 || sumDiff / bankAmt < 0.01)) {
+        if (bestSubset.length > 0 && (sumDiff < 5 || sumDiff / bankAmt < 0.01)) {
             matches.push({
                 bankRowId: bank.id,
                 bankDate: bank.date,
                 bankAmount: bankAmt,
                 bankDescription: bank.description,
-                gcPayoutIds: selectedPayouts.map(p => p.payoutId),
-                gcPayoutDbIds: selectedPayouts.map(p => p.id),
+                gcPayoutIds: bestSubset.map(p => p.payoutId),
+                gcPayoutDbIds: bestSubset.map(p => p.id),
                 gcTotalAmount: sum,
-                gcDates: selectedPayouts.map(p => p.date),
+                gcDates: bestSubset.map(p => p.date),
                 matchType: 'sum',
-                dateDiff: Math.max(...selectedPayouts.map(p => 
+                dateDiff: Math.max(...bestSubset.map(p =>
                     Math.abs((bankDate.getTime() - new Date(p.date).getTime()) / (1000 * 60 * 60 * 24))
                 )),
                 amountDiff: sumDiff
             });
 
-            selectedPayouts.forEach(p => usedPayouts.add(p.id));
+            bestSubset.forEach(p => usedPayouts.add(p.id));
             usedBankRows.add(bank.id);
         }
     }
@@ -371,7 +383,7 @@ export async function POST(req: NextRequest) {
                         .single();
 
                     const existingCustomData = existingRow?.custom_data || {};
-                    
+
                     const { error: gcError } = await supabaseAdmin
                         .from('csv_rows')
                         .update({
@@ -413,9 +425,9 @@ export async function POST(req: NextRequest) {
     } catch (error) {
         console.error('[GoCardless Reconcile] Error:', error);
         return NextResponse.json(
-            { 
-                success: false, 
-                error: error instanceof Error ? error.message : 'Unknown error' 
+            {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
             },
             { status: 500 }
         );
@@ -469,9 +481,9 @@ export async function GET(req: NextRequest) {
     } catch (error) {
         console.error('[GoCardless Reconcile] GET Error:', error);
         return NextResponse.json(
-            { 
-                success: false, 
-                error: error instanceof Error ? error.message : 'Unknown error' 
+            {
+                success: false,
+                error: error instanceof Error ? error.message : 'Unknown error'
             },
             { status: 500 }
         );

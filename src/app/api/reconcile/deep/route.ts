@@ -3,7 +3,7 @@
  * 
  * POST /api/reconcile/deep
  * 
- * Reconciliação automática avançada com 8 estratégias progressivas:
+ * Reconciliação automática avançada com 12 estratégias progressivas:
  * 
  * NÍVEL 1: Exact match (data exata + valor exato ±0.10)
  * NÍVEL 2: Date range (±3 dias + valor ±0.10)  
@@ -12,7 +12,12 @@
  * NÍVEL 5: Amount clustering (soma de múltiplos disbursements dentro de ±3 dias)
  * NÍVEL 6: Percentage tolerance (±1% do valor para valores > €500)
  * NÍVEL 7: Net amount match (valor bruto - fees = valor banco)
+ * NÍVEL 7b: Refund-offset (disbursement - refund = valor banco)
  * NÍVEL 8: Cross-gateway residual (valores sem match são testados contra todos os gateways)
+ * NÍVEL 9: Name extraction (extrai nome do cliente da descrição bancária → IO → FAC)
+ * NÍVEL 10: AMEX extended (±10 dias úteis + ±3% para AMEX com delays maiores)
+ * NÍVEL 11: Cross-bank intercompany (débito num banco ↔ crédito noutro banco)
+ * NÍVEL 12: Refund debit (débitos bancários ↔ refunds nos gateways)
  * 
  * Também armazena dados enriquecidos (customer_name, product, order_id) no custom_data
  * para uso no popup do cashflow.
@@ -345,9 +350,28 @@ async function buildDisbursementGroups(): Promise<DisbursementGroup[]> {
 
 type GatewayHint = "braintree" | "braintree-amex" | "stripe" | "gocardless" | null;
 
-/** Static daysDiff for use outside POST handler */
+/** Static daysDiff for use outside POST handler (calendar days) */
 function daysDiffStatic(d1: string, d2: string): number {
     return Math.abs((new Date(d1).getTime() - new Date(d2).getTime()) / 86400000);
+}
+
+/** Business-day diff: excludes weekends (Sat/Sun), returns integer */
+function businessDaysDiff(d1: string, d2: string): number {
+    const a = new Date(d1);
+    const b = new Date(d2);
+    let start = a < b ? new Date(a) : new Date(b);
+    const end = a < b ? b : a;
+    start.setHours(0, 0, 0, 0);
+    end.setHours(0, 0, 0, 0);
+    let count = 0;
+    const cursor = new Date(start);
+    cursor.setDate(cursor.getDate() + 1);
+    while (cursor <= end) {
+        const dow = cursor.getDay();
+        if (dow !== 0 && dow !== 6) count++;
+        cursor.setDate(cursor.getDate() + 1);
+    }
+    return count;
 }
 
 function detectGatewayFromDescription(desc: string): GatewayHint {
@@ -376,10 +400,16 @@ function bankToExpectedGateways(bankSource: string): string[] {
 }
 
 // ═══════════════════════════════════════════════════════════
-// Matching Engine — 8 Levels
+// Matching Engine — 12 Levels
 // ═══════════════════════════════════════════════════════════
 
+/** daysDiff: uses business days for levels >=4, calendar days for L1-L3 */
 function daysDiff(d1: string, d2: string): number {
+    return businessDaysDiff(d1, d2);
+}
+
+/** Calendar-day diff for backward compat in L1-L3 where exact dates matter */
+function calendarDaysDiff(d1: string, d2: string): number {
     return daysDiffStatic(d1, d2);
 }
 
@@ -401,10 +431,62 @@ export async function POST(req: NextRequest) {
         const targetBanks = body.banks || ["bankinter-eur", "bankinter-usd", "sabadell", "chase-usd"];
 
         // Fetch all data in parallel
-        const [bankRows, disbGroups] = await Promise.all([
+        const [bankRows, disbGroups, ioRows] = await Promise.all([
             fetchBankRows(targetBanks),
             buildDisbursementGroups(),
+            fetchAllPaginated("invoice-orders"),
         ]);
+
+        // ─── Build invoice-orders name index for L9 ───
+        const normalizeForMatch = (s: string) => s.toLowerCase().trim().replace(/\s+/g, ' ').replace(/[^a-z0-9 ]/g, '');
+        const getWords = (s: string) => s.split(/\s+/).filter(w => w.length >= 3);
+
+        // Map: normalized customer_name → { fac_code, fac_name }
+        const ioByName = new Map<string, { fac_code: string; fac_name: string }>();
+        // Also build dominant FAC per name
+        const nameToFacFreq = new Map<string, Map<string, number>>();
+
+        for (const row of ioRows) {
+            const cd = row.custom_data || {};
+            const name = cd.customer_name || cd.company_name || cd.billing_name;
+            const fac = cd.financial_account_code;
+            if (!name || !fac) continue;
+            const nName = normalizeForMatch(name);
+            if (!nName) continue;
+            if (!ioByName.has(nName)) {
+                ioByName.set(nName, { fac_code: fac, fac_name: cd.financial_account_name || '' });
+            }
+            // Track frequency
+            if (!nameToFacFreq.has(nName)) nameToFacFreq.set(nName, new Map());
+            const freq = nameToFacFreq.get(nName)!;
+            freq.set(fac, (freq.get(fac) || 0) + 1);
+        }
+        // Build dominant FAC per name
+        const nameToDominantFac = new Map<string, { fac_code: string; fac_name: string }>();
+        for (const [nName, freqMap] of nameToFacFreq) {
+            let best = ''; let bestCount = 0;
+            for (const [fac, count] of freqMap) {
+                if (count > bestCount) { best = fac; bestCount = count; }
+            }
+            if (best) {
+                const info = ioByName.get(nName);
+                nameToDominantFac.set(nName, { fac_code: best, fac_name: info?.fac_name || '' });
+            }
+        }
+
+        // ─── Name extraction regex patterns (from mega-v4) ───
+        const NAME_PATTERNS: { regex: RegExp; label: string }[] = [
+            { regex: /trans(?:f|\.?\s*inm)?\/(.+)/i, label: 'transf-prefix' },
+            { regex: /^mxiso\s+(.+)/i, label: 'mxiso' },
+            { regex: /orig co name:\s*(.+?)(?:\s+orig id|\s+sec|\s*$)/i, label: 'orig-co-name' },
+            { regex: /remesa\s+(?:de\s+)?(.+)/i, label: 'remesa' },
+            { regex: /(?:ach|wire|chips)\s+(?:credit|deposit|transfer)?\s*(?:from\s+)?(.+)/i, label: 'ach-wire' },
+            { regex: /abono\s+(?:de\s+)?(.+)/i, label: 'abono' },
+        ];
+        const GATEWAY_NAMES_SKIP = /paypal|stripe|gocardless|braintree|american express|amex/i;
+
+        // ─── Internal transfer and intercompany regex for L11 ───
+        const INTERNAL_REGEX = /propia cuenta|movimiento entre|traspaso(?:s)? (?:propios?|entre)|dotacion|cuenta propia|transferencia\s+a\s+favor.*propia|transf.*propia|mov(?:imiento)?\s+interno/i;
 
         const matches: MatchResult[] = [];
         const matchedBankIds = new Set<string>();
@@ -424,7 +506,7 @@ export async function POST(req: NextRequest) {
             disbBySource.get(d.source)!.push(d);
         }
 
-        // Process each bank row through 8 matching levels
+        // Process each bank row through 12 matching levels
         for (const bankRow of bankRows) {
             if (matchedBankIds.has(bankRow.id)) continue;
             if (bankRow.amount <= 0) continue;
@@ -465,13 +547,13 @@ export async function POST(req: NextRequest) {
                 }
             }
 
-            // ─── LEVEL 2: Date range ±3 days + amount ±0.10 ───
+            // ─── LEVEL 2: Date range ±3 calendar days + amount ±0.10 ───
             if (!match) {
-                const candidates = validDisbs.filter(d => daysDiff(d.date, bankDate) <= 3 && Math.abs(d.amount - bankAmount) < 0.10);
+                const candidates = validDisbs.filter(d => calendarDaysDiff(d.date, bankDate) <= 3 && Math.abs(d.amount - bankAmount) < 0.10);
                 if (candidates.length > 0) {
                     // Sort by closest date, then closest amount
                     candidates.sort((a, b) => {
-                        const dDiff = daysDiff(a.date, bankDate) - daysDiff(b.date, bankDate);
+                        const dDiff = calendarDaysDiff(a.date, bankDate) - calendarDaysDiff(b.date, bankDate);
                         if (dDiff !== 0) return dDiff;
                         return Math.abs(a.amount - bankAmount) - Math.abs(b.amount - bankAmount);
                     });
@@ -480,7 +562,7 @@ export async function POST(req: NextRequest) {
                     match = hintMatch || candidates[0];
                     matchLevel = 2;
                     matchType = "date_range_3d";
-                    confidence = 0.95 - daysDiff(match.date, bankDate) * 0.02;
+                    confidence = 0.95 - calendarDaysDiff(match.date, bankDate) * 0.02;
                 }
             }
 
@@ -692,6 +774,168 @@ export async function POST(req: NextRequest) {
                 }
             }
 
+            // ─── LEVEL 9: Name extraction from bank description → IO → FAC ───
+            if (!match) {
+                const desc = bankRow.description;
+                let extractedName: string | null = null;
+                let extractionMethod = '';
+
+                for (const { regex, label } of NAME_PATTERNS) {
+                    const m = desc.match(regex);
+                    if (m && m[1]) {
+                        const candidate = m[1].trim();
+                        // Skip if it's a known gateway name
+                        if (!GATEWAY_NAMES_SKIP.test(candidate) && candidate.length >= 3) {
+                            extractedName = candidate;
+                            extractionMethod = label;
+                            break;
+                        }
+                    }
+                }
+
+                if (extractedName) {
+                    const nExtracted = normalizeForMatch(extractedName);
+                    let facInfo: { fac_code: string; fac_name: string } | null = null;
+
+                    // 1. Exact match
+                    if (ioByName.has(nExtracted)) {
+                        facInfo = nameToDominantFac.get(nExtracted) || ioByName.get(nExtracted)!;
+                    }
+                    // 2. Substring match
+                    if (!facInfo) {
+                        for (const [key, info] of ioByName) {
+                            if (key.includes(nExtracted) || nExtracted.includes(key)) {
+                                facInfo = nameToDominantFac.get(key) || info;
+                                break;
+                            }
+                        }
+                    }
+                    // 3. Fuzzy match (2+ word overlap >= 3 chars, or 1 word >= 5 chars)
+                    if (!facInfo) {
+                        const extractedWords = getWords(nExtracted);
+                        for (const [key, info] of ioByName) {
+                            const keyWords = getWords(key);
+                            const overlap = extractedWords.filter(w => keyWords.includes(w));
+                            if (overlap.length >= 2 || (overlap.length === 1 && overlap[0].length >= 5)) {
+                                facInfo = nameToDominantFac.get(key) || info;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (facInfo) {
+                        // Try to find a disbursement linked to this customer within ±10 business days
+                        const nameDisb = validDisbs.find(d =>
+                            daysDiff(d.date, bankDate) <= 10 &&
+                            Math.abs(d.amount - bankAmount) < 5.00
+                        );
+                        if (nameDisb) {
+                            match = { ...nameDisb };
+                            matchLevel = 9;
+                            matchType = `name_extraction_${extractionMethod}`;
+                            confidence = 0.52;
+                        }
+                    }
+                }
+            }
+
+            // ─── LEVEL 10: AMEX extended (±10 business days + ±3% tolerance) ───
+            if (!match && (gatewayHint === "braintree-amex" || bankRow.description.toLowerCase().includes("amex") || bankRow.description.toLowerCase().includes("american express"))) {
+                const tolerance = Math.max(bankAmount * 0.03, 1.00);
+                const amexCandidates = disbGroups.filter(d =>
+                    d.currency === expectedCurrency &&
+                    !matchedDisbRefs.has(d.reference) &&
+                    (d.source === "braintree-amex" || d.source.includes("amex")) &&
+                    daysDiff(d.date, bankDate) <= 10 &&
+                    Math.abs(d.amount - bankAmount) < tolerance
+                );
+                if (amexCandidates.length > 0) {
+                    amexCandidates.sort((a, b) => {
+                        const aScore = Math.abs(a.amount - bankAmount) / bankAmount + daysDiff(a.date, bankDate) * 0.02;
+                        const bScore = Math.abs(b.amount - bankAmount) / bankAmount + daysDiff(b.date, bankDate) * 0.02;
+                        return aScore - bScore;
+                    });
+                    match = amexCandidates[0];
+                    matchLevel = 10;
+                    matchType = "amex_extended_10bd";
+                    confidence = 0.48;
+                }
+            }
+
+            // ─── LEVEL 11: Internal transfer / Intercompany detection ───
+            if (!match) {
+                const desc = bankRow.description;
+                const descLower = desc.toLowerCase();
+                // Check internal transfer patterns
+                if (INTERNAL_REGEX.test(desc)) {
+                    // Match debit in another bank with same amount ±0.10 within ±3 business days
+                    const crossBankMatch = bankRows.find(other =>
+                        other.id !== bankRow.id &&
+                        other.source !== bankRow.source &&
+                        !matchedBankIds.has(other.id) &&
+                        other.amount < 0 &&
+                        Math.abs(Math.abs(other.amount) - bankAmount) < 0.10 &&
+                        daysDiff(other.date, bankDate) <= 3
+                    );
+                    if (crossBankMatch) {
+                        // Mark both as internal transfers
+                        matchedBankIds.add(bankRow.id);
+                        matchedBankIds.add(crossBankMatch.id);
+                        const levelKey = "L11_internal_transfer";
+                        levelStats.set(levelKey, (levelStats.get(levelKey) || 0) + 1);
+                        matches.push({
+                            bank_row_id: bankRow.id,
+                            bank_date: bankDate,
+                            bank_amount: bankAmount,
+                            bank_description: desc.substring(0, 100),
+                            match_level: 11,
+                            match_type: "internal_transfer_cross_bank",
+                            disbursement_source: "internal",
+                            disbursement_date: crossBankMatch.date,
+                            disbursement_amount: Math.abs(crossBankMatch.amount),
+                            disbursement_reference: `internal:${crossBankMatch.source}:${crossBankMatch.id}`,
+                            confidence: 0.45,
+                            settlement_batch_id: undefined,
+                            transaction_ids: [],
+                            transaction_count: 0,
+                            customer_names: [],
+                            customer_emails: [],
+                            order_ids: [],
+                            products: [],
+                        });
+                        continue; // Skip to next bankRow
+                    }
+                }
+                // Check intercompany DSD pattern
+                if (descLower.includes('dsd') && (/llc|s\.l|sl |sl,|planning center/i.test(descLower))) {
+                    // Mark as intercompany — no need for disbursement match
+                    matchedBankIds.add(bankRow.id);
+                    const levelKey = "L11_intercompany_dsd";
+                    levelStats.set(levelKey, (levelStats.get(levelKey) || 0) + 1);
+                    matches.push({
+                        bank_row_id: bankRow.id,
+                        bank_date: bankDate,
+                        bank_amount: bankAmount,
+                        bank_description: desc.substring(0, 100),
+                        match_level: 11,
+                        match_type: "intercompany_dsd",
+                        disbursement_source: "internal",
+                        disbursement_date: bankDate,
+                        disbursement_amount: bankAmount,
+                        disbursement_reference: `intercompany-dsd:${bankRow.id}`,
+                        confidence: 0.45,
+                        settlement_batch_id: undefined,
+                        transaction_ids: [],
+                        transaction_count: 0,
+                        customer_names: [],
+                        customer_emails: [],
+                        order_ids: [],
+                        products: [],
+                    });
+                    continue; // Skip to next bankRow
+                }
+            }
+
             // ═══ Record match ═══
             if (match) {
                 matchedBankIds.add(bankRow.id);
@@ -719,6 +963,69 @@ export async function POST(req: NextRequest) {
                     customer_emails: match.customer_emails,
                     order_ids: match.order_ids,
                     products: match.products,
+                });
+            }
+        }
+
+        // ═══════════════════════════════════════════════════════════
+        // LEVEL 12: Refund/Chargeback Debit Matching (second pass for negative amounts)
+        // ═══════════════════════════════════════════════════════════
+        // Match bank debits (amount < 0) against gateway refund transactions
+        const refundSources = ["braintree-api-revenue", "braintree-amex", "stripe-eur-payouts", "stripe-usd-payouts", "gocardless-payouts"];
+
+        for (const bankRow of bankRows) {
+            if (matchedBankIds.has(bankRow.id)) continue;
+            if (bankRow.amount >= 0) continue; // Only process debits
+
+            const bankDate = bankRow.date;
+            const bankDebitAbs = Math.abs(bankRow.amount);
+            const expectedCurrency = bankToExpectedCurrency(bankRow.source);
+            const descLower = bankRow.description.toLowerCase();
+
+            // Skip if it looks like a transfer/AP payment (not a refund)
+            if (INTERNAL_REGEX.test(bankRow.description)) continue;
+
+            // Look for refund transactions in gateway data
+            // Refunds often show as negative amounts in gateway sources too
+            const refundDisbs = disbGroups.filter(d => {
+                if (matchedDisbRefs.has(d.reference)) return false;
+                if (d.currency !== expectedCurrency) return false;
+                // Check description keywords that suggest refund
+                const hasRefundKeyword = descLower.includes('refund') || descLower.includes('chargeback') ||
+                    descLower.includes('devolucion') || descLower.includes('reembolso') ||
+                    descLower.includes('reversal') || descLower.includes('contra');
+                if (!hasRefundKeyword) return false;
+                if (daysDiff(d.date, bankDate) > 5) return false;
+                if (Math.abs(d.amount - bankDebitAbs) > 0.10) return false;
+                return true;
+            });
+
+            if (refundDisbs.length > 0) {
+                refundDisbs.sort((a, b) => Math.abs(a.amount - bankDebitAbs) - Math.abs(b.amount - bankDebitAbs));
+                const refundMatch = refundDisbs[0];
+                matchedBankIds.add(bankRow.id);
+                matchedDisbRefs.add(refundMatch.reference);
+                const levelKey = "L12_refund_debit";
+                levelStats.set(levelKey, (levelStats.get(levelKey) || 0) + 1);
+                matches.push({
+                    bank_row_id: bankRow.id,
+                    bank_date: bankDate,
+                    bank_amount: bankRow.amount,
+                    bank_description: bankRow.description.substring(0, 100),
+                    match_level: 12,
+                    match_type: "refund_debit_match",
+                    disbursement_source: refundMatch.source,
+                    disbursement_date: refundMatch.date,
+                    disbursement_amount: refundMatch.amount,
+                    disbursement_reference: `refund:${refundMatch.reference}`,
+                    confidence: 0.50,
+                    settlement_batch_id: refundMatch.settlement_batch_id,
+                    transaction_ids: refundMatch.transaction_ids,
+                    transaction_count: refundMatch.transaction_count,
+                    customer_names: refundMatch.customer_names,
+                    customer_emails: refundMatch.customer_emails,
+                    order_ids: refundMatch.order_ids,
+                    products: refundMatch.products,
                 });
             }
         }
@@ -781,6 +1088,18 @@ export async function POST(req: NextRequest) {
                         // FAC classification
                         ...(facCode && { matched_invoice_fac: facCode }),
                         ...(facName && { matched_invoice_fac_name: facName }),
+                        // Internal transfer / intercompany flags
+                        ...(m.disbursement_source === "internal" && {
+                            is_internal_transfer: true,
+                            pnl_line: "internal",
+                            pnl_source: m.match_type,
+                        }),
+                        // Refund debit flag
+                        ...(m.match_type === "refund_debit_match" && {
+                            is_refund_debit: true,
+                            pnl_line: "refund",
+                            pnl_source: "refund-debit-deep-L12",
+                        }),
                     };
 
                     const { error } = await supabaseAdmin
@@ -805,7 +1124,8 @@ export async function POST(req: NextRequest) {
 
         // Summary
         const totalBankCredits = bankRows.filter(r => r.amount > 0).length;
-        const totalValue = matches.reduce((s, m) => s + m.bank_amount, 0);
+        const totalBankDebits = bankRows.filter(r => r.amount < 0).length;
+        const totalValue = matches.reduce((s, m) => s + Math.abs(m.bank_amount), 0);
         const byLevel = Object.fromEntries(levelStats);
         const bySource: Record<string, number> = {};
         matches.forEach(m => {
@@ -817,6 +1137,7 @@ export async function POST(req: NextRequest) {
             dryRun,
             summary: {
                 bankCreditsUnreconciled: totalBankCredits,
+                bankDebitsUnreconciled: totalBankDebits,
                 disbursementGroups: disbGroups.length,
                 matched: matches.length,
                 matchRate: totalBankCredits > 0 ? `${Math.round((matches.length / totalBankCredits) * 100)}%` : "0%",

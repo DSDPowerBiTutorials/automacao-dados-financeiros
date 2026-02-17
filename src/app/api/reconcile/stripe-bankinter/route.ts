@@ -149,18 +149,29 @@ export async function POST(req: NextRequest) {
             let dateDiff = 0;
             let amountDiff = 0;
 
-            // Candidatos com mesmo valor (±0.01)
+            // Candidatos com mesmo valor (±0.10)
             const exactAmountKey = bankAmount.toFixed(2);
-            const candidates = payoutsByAmount.get(exactAmountKey)?.filter(
-                p => !matchedPayoutIds.has(p.payoutId)
-            ) || [];
+            const candidates: StripePayoutInfo[] = [];
+            // Check exact key and neighbors for rounding differences
+            const baseAmount = Math.round(bankAmount * 100);
+            for (let offset = -10; offset <= 10; offset++) {
+                const neighborKey = ((baseAmount + offset) / 100).toFixed(2);
+                const list = payoutsByAmount.get(neighborKey);
+                if (list) {
+                    for (const p of list) {
+                        if (!matchedPayoutIds.has(p.payoutId) && Math.abs(p.amount - bankAmount) < 0.10) {
+                            candidates.push(p);
+                        }
+                    }
+                }
+            }
 
             // 1. Match exato: mesmo valor + mesma data
             for (const payout of candidates) {
                 const payoutDateObj = new Date(payout.arrivalDate);
                 const daysDiff = Math.abs((bankDateObj.getTime() - payoutDateObj.getTime()) / 86400000);
 
-                if (daysDiff === 0 && Math.abs(payout.amount - bankAmount) < 0.01) {
+                if (daysDiff === 0 && Math.abs(payout.amount - bankAmount) < 0.10) {
                     bestMatch = payout;
                     matchType = 'exact';
                     dateDiff = 0;
@@ -169,13 +180,13 @@ export async function POST(req: NextRequest) {
                 }
             }
 
-            // 2. Match por data range: mesmo valor + ±2 dias
+            // 2. Match por data range: mesmo valor + ±3 dias
             if (!bestMatch) {
                 for (const payout of candidates) {
                     const payoutDateObj = new Date(payout.arrivalDate);
                     const daysDiff = Math.abs((bankDateObj.getTime() - payoutDateObj.getTime()) / 86400000);
 
-                    if (daysDiff <= 2 && Math.abs(payout.amount - bankAmount) < 0.01) {
+                    if (daysDiff <= 3 && Math.abs(payout.amount - bankAmount) < 0.10) {
                         bestMatch = payout;
                         matchType = 'date_range';
                         dateDiff = daysDiff;

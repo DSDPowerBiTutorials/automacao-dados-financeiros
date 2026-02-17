@@ -328,13 +328,17 @@ export async function POST(req: NextRequest) {
 
         let allDisbursements: DisbursementInfo[];
         if (normalizedBankSource === 'chase-usd') {
-            // Chase recebe apenas Stripe USD payouts
-            allDisbursements = stripeDisb.filter(d => {
+            // Chase receives Stripe USD payouts + Braintree USD + wire transfers
+            const stripeUsd = stripeDisb.filter(d => {
                 const origCurrency = (d as any).original_currency;
                 return origCurrency === 'USD' || d.currency === 'USD';
             });
-            // Force currency to USD for matching
-            allDisbursements.forEach(d => d.currency = 'USD');
+            stripeUsd.forEach(d => d.currency = 'USD');
+
+            const braintreeUsd = braintreeDisb.filter(d => d.currency === 'USD');
+            const braintreeAmexUsd = braintreeAmexDisb.filter(d => d.currency === 'USD');
+
+            allDisbursements = [...stripeUsd, ...braintreeUsd, ...braintreeAmexUsd];
         } else {
             allDisbursements = [
                 ...braintreeDisb.filter(d => d.currency === currency),
@@ -420,6 +424,16 @@ export async function POST(req: NextRequest) {
                     { pattern: 'stripe', source: 'stripe' },
                     { pattern: 'gocardless', source: 'gocardless' }
                 ];
+
+                // Also try ORIG CO NAME parsing for wire transfers (Chase USD)
+                const origCoMatch = descLower.match(/orig co name:\s*(.+?)(?:\s+orig id|\s+sec|\s*$)/i);
+                if (origCoMatch) {
+                    const origName = origCoMatch[1].trim().toLowerCase();
+                    // Map ORIG CO NAME to gateway source
+                    if (origName.includes('stripe')) descPatterns.unshift({ pattern: origName, source: 'stripe' });
+                    else if (origName.includes('braintree') || origName.includes('paypal')) descPatterns.unshift({ pattern: origName, source: 'braintree' });
+                    else if (origName.includes('gocardless')) descPatterns.unshift({ pattern: origName, source: 'gocardless' });
+                }
 
                 for (const { pattern, source } of descPatterns) {
                     if (descLower.includes(pattern)) {
