@@ -99,7 +99,8 @@ export interface CSVFile {
   | "braintree-amex-transactions"
   | "stripe"
   | "gocardless"
-  | "paypal";
+  | "paypal"
+  | "craft-commerce";
 }
 
 // Salvar arquivo CSV no banco via API route

@@ -40,11 +40,11 @@ export async function GET(request: NextRequest) {
 
         if (bankError) throw bankError;
 
-        // 4. Buscar web orders do ar_invoices
+        // 4. Buscar web orders do ar_invoices (HubSpot + Craft Commerce)
         const { data: webOrders, error: woError } = await supabaseAdmin
             .from("ar_invoices")
             .select("*")
-            .eq("source", "hubspot");
+            .in("source", ["hubspot", "craft-commerce"]);
 
         if (woError) throw woError;
 

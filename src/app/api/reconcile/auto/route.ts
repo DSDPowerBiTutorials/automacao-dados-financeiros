@@ -153,14 +153,14 @@ export async function POST(req: NextRequest) {
                 });
             });
 
-        // Buscar invoices pendentes
+        // Buscar invoices pendentes (HubSpot + Craft Commerce)
         let invoices: any[] = [];
         let offset = 0;
         while (true) {
             const { data } = await supabaseAdmin
                 .from('ar_invoices')
                 .select('*')
-                .eq('source', 'hubspot')
+                .in('source', ['hubspot', 'craft-commerce'])
                 .or('reconciled.is.null,reconciled.eq.false')
                 .range(offset, offset + 999);
             if (!data || data.length === 0) break;

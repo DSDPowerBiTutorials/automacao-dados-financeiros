@@ -146,7 +146,7 @@ export async function POST(req: NextRequest) {
         const { data: arInvoices, error: arError } = await supabaseAdmin
             .from('ar_invoices')
             .select('*')
-            .eq('source', 'hubspot')
+            .in('source', ['hubspot', 'craft-commerce'])
             .eq('currency', currency)
             .not('order_id', 'is', null)
             .order('order_date', { ascending: false })

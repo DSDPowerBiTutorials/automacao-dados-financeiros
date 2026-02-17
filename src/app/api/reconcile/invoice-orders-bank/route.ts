@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
         const { data: webOrders, error: woError } = await supabaseAdmin
             .from("ar_invoices")
             .select("*")
-            .eq("source", "hubspot");
+            .in("source", ["hubspot", "craft-commerce"]);
 
         if (woError) throw woError;
 

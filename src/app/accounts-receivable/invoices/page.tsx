@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X, Eye, ExternalLink, Globe, Filter, ArrowUp, ArrowDown, Ban, Zap, User, CalendarIcon } from "lucide-react";
+import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X, Eye, ExternalLink, Globe, Filter, ArrowUp, ArrowDown, Ban, Zap, User, CalendarIcon, Upload } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -146,6 +146,8 @@ export default function ARInvoicesPage() {
   const [syncing, setSyncing] = useState(false);
   const [reconciling, setReconciling] = useState(false);
   const [bankReconciling, setBankReconciling] = useState(false);
+  const [uploadingCraft, setUploadingCraft] = useState(false);
+  const craftFileInputRef = React.useRef<HTMLInputElement>(null);
   const [editingInvoice, setEditingInvoice] = useState<Partial<ARInvoice> | null>(null);
   const [manualReconcileDialog, setManualReconcileDialog] = useState(false);
   const [reconcileTarget, setReconcileTarget] = useState<ARInvoice | null>(null);
@@ -908,6 +910,37 @@ export default function ARInvoicesPage() {
     }
   }
 
+  // Upload Craft Commerce CSV
+  const handleCraftUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setUploadingCraft(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const response = await fetch("/api/csv/craft-commerce", {
+        method: "POST",
+        body: formData,
+      });
+      const result = await response.json();
+      if (result.success) {
+        const s = result.summary;
+        toast({
+          title: "Upload concluído",
+          description: `${s.total} orders importadas (EUR: ${s.eur}, USD: ${s.usd}) — ${s.paid} pagas, ${s.unpaid} pendentes${s.coupon ? `, ${s.coupon} cupão` : ""}${s.credit ? `, ${s.credit} crédito` : ""}${s.subscription ? `, ${s.subscription} subscrição` : ""}`,
+        });
+        loadInvoices();
+      } else {
+        toast({ title: "Erro no upload", description: result.error, variant: "destructive" });
+      }
+    } catch (err: any) {
+      toast({ title: "Erro", description: err.message || "Falha no upload", variant: "destructive" });
+    } finally {
+      setUploadingCraft(false);
+      if (craftFileInputRef.current) craftFileInputRef.current.value = "";
+    }
+  };
+
   function exportToExcel() {
     const data = filteredInvoices.map(inv => ({
       "Number": inv.invoice_number,
@@ -965,6 +998,20 @@ export default function ARInvoicesPage() {
             <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" onClick={exportToExcel}>
               <Download className="h-4 w-4 mr-1" /> Export
             </Button>
+            <div className="relative">
+              <input
+                ref={craftFileInputRef}
+                type="file"
+                accept=".csv"
+                onChange={handleCraftUpload}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                disabled={uploadingCraft}
+              />
+              <Button variant="outline" size="sm" className="bg-transparent border-purple-700 text-purple-400 hover:bg-purple-900/30" disabled={uploadingCraft}>
+                {uploadingCraft ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Upload className="h-4 w-4 mr-1" />}
+                Upload Orders
+              </Button>
+            </div>
             <Button size="sm" className="bg-blue-600 hover:bg-blue-700" onClick={() => { setEditingInvoice({ ...EMPTY_INVOICE, scope: selectedScope }); setDialogOpen(true); }}>
               <Plus className="h-4 w-4 mr-1" /> New
             </Button>
@@ -1217,7 +1264,16 @@ export default function ARInvoicesPage() {
                   </button>
                 </div>
                 {/* Invoice */}
-                <div className="w-[100px] flex-shrink-0 font-mono text-gray-300 truncate" title={inv.invoice_number}>{inv.invoice_number.replace('HS-', '')}</div>
+                <div className="w-[100px] flex-shrink-0 font-mono text-gray-300 truncate flex items-center gap-1" title={inv.invoice_number}>
+                  {inv.source === 'craft-commerce' ? (
+                    <span className="text-[8px] px-1 py-0.5 rounded bg-purple-900/30 text-purple-400 border border-purple-700/50 flex-shrink-0">CC</span>
+                  ) : inv.source === 'hubspot' ? (
+                    <span className="text-[8px] px-1 py-0.5 rounded bg-blue-900/30 text-blue-400 border border-blue-700/50 flex-shrink-0">HS</span>
+                  ) : inv.source === 'manual' ? (
+                    <span className="text-[8px] px-1 py-0.5 rounded bg-gray-700/50 text-gray-400 border border-gray-600 flex-shrink-0">M</span>
+                  ) : null}
+                  <span className="truncate">{inv.invoice_number.replace(/^(HS-|CC-)/, '')}</span>
+                </div>
                 {/* Date */}
                 <div className="w-[70px] flex-shrink-0 text-gray-400">{formatDate(inv.invoice_date)}</div>
                 {/* Order */}
