@@ -71,15 +71,15 @@ export const NAV: NavGroup[] = withUnderConstruction([
     label: "Executive Insights",
     items: [
       {
+        title: "Overview Dashboard",
+        href: "/dashboard",
+        icon: Home
+      },
+      {
         title: "Executive",
         href: "/executive",
         icon: LayoutDashboard,
         children: [
-          {
-            title: "Overview Dashboard",
-            href: "/dashboard",
-            icon: LayoutDashboard
-          },
           {
             title: "Performance Analytics",
             href: "/executive/performance",
