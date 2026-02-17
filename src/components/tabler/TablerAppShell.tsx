@@ -44,8 +44,8 @@ export function TablerAppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="page relative min-h-screen">
-      {/* Background with logos - fixed behind everything */}
-      <div className="fixed inset-0 z-0">
+      {/* Background with logos - fixed behind everything (dark mode only via opacity) */}
+      <div className="fixed inset-0 z-0" style={{ opacity: 'var(--bg-image-opacity)' }}>
         <Image
           src="/LoginBackgroundLogo.png"
           alt="Background"
@@ -53,7 +53,7 @@ export function TablerAppShell({ children }: { children: React.ReactNode }) {
           className="object-cover"
           priority
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-black/40 via-black/30 to-[#243140]/50" />
+        <div className="absolute inset-0" style={{ background: `linear-gradient(to bottom right, var(--overlay-from), var(--overlay-via), var(--overlay-to))` }} />
       </div>
 
       <div className="page-wrapper relative z-10">
@@ -65,7 +65,7 @@ export function TablerAppShell({ children }: { children: React.ReactNode }) {
         />
         <div className="page-body">
           <div className="app-container">
-            <div className="app-content-wrapper bg-white rounded-lg shadow-xl my-4 min-h-[calc(100vh-120px)]">
+            <div className="app-content-wrapper rounded-lg shadow-xl my-4 min-h-[calc(100vh-120px)]">
               {children}
             </div>
           </div>

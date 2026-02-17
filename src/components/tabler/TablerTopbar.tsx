@@ -72,7 +72,7 @@ export function TablerTopbar({
   return (
     <div ref={dropdownRootRef}>
       {/* Top Header Bar - DARK - Tudo em uma linha */}
-      <header className="navbar navbar-expand-md d-print-none sticky-top" style={{ zIndex: 1030, background: '#1e1f21', borderBottom: '1px solid #333' }}>
+      <header className="navbar navbar-expand-md d-print-none sticky-top" style={{ zIndex: 1030, background: 'var(--header-bg)', borderBottom: '1px solid var(--header-border)' }}>
         <div className="app-container d-flex align-items-center justify-content-between w-100">
 
           {/* Lado Esquerdo: Logo + Nome */}
@@ -84,7 +84,7 @@ export function TablerTopbar({
               aria-controls="navbar-menu"
               aria-expanded={mobileOpen}
               aria-label="Toggle navigation"
-              style={{ filter: 'invert(1)' }}
+              style={{ filter: 'var(--toggler-filter, none)' }}
             >
               <span className="navbar-toggler-icon" />
             </button>
@@ -106,7 +106,7 @@ export function TablerTopbar({
               onClick={onToggleNavVisible}
               aria-label={navVisible ? "Recolher menu" : "Expandir menu"}
               title={navVisible ? "Recolher menu" : "Expandir menu"}
-              style={{ background: navVisible ? '#FF7300' : '#333', color: '#fff', border: 'none' }}
+              style={{ background: navVisible ? '#FF7300' : 'var(--scope-inactive-bg)', color: navVisible ? '#fff' : 'var(--header-text)', border: 'none' }}
             >
               {navVisible ? (
                 <span className="d-inline-flex align-items-center gap-1"><ChevronUp size={16} /> Menu</span>
@@ -117,7 +117,7 @@ export function TablerTopbar({
 
             {/* Search */}
             <div className="input-icon">
-              <span className="input-icon-addon" style={{ color: '#888' }}><Search size={16} /></span>
+              <span className="input-icon-addon" style={{ color: 'var(--header-text-muted)' }}><Search size={16} /></span>
               <input
                 type="text"
                 value={menuQuery}
@@ -125,7 +125,7 @@ export function TablerTopbar({
                 className="form-control form-control-sm"
                 placeholder="Buscar..."
                 aria-label="Buscar no menu"
-                style={{ background: '#2a2b2e', border: '1px solid #444', color: '#fff', width: '160px' }}
+                style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)', width: '160px' }}
               />
             </div>
 
@@ -138,9 +138,9 @@ export function TablerTopbar({
                   className="btn"
                   onClick={() => setSelectedScope(scope)}
                   style={{
-                    background: selectedScope === scope ? '#FF7300' : '#2a2b2e',
-                    color: selectedScope === scope ? '#fff' : '#aaa',
-                    border: '1px solid #444',
+                    background: selectedScope === scope ? '#FF7300' : 'var(--scope-inactive-bg)',
+                    color: selectedScope === scope ? '#fff' : 'var(--scope-inactive-text)',
+                    border: '1px solid var(--input-border)',
                     fontWeight: selectedScope === scope ? 600 : 400
                   }}
                 >
@@ -150,7 +150,7 @@ export function TablerTopbar({
             </div>
 
             {/* Scope Label */}
-            <span className="small" style={{ color: '#888' }}>{SCOPE_CONFIG[selectedScope].label}</span>
+            <span className="small" style={{ color: 'var(--header-text-muted)' }}>{SCOPE_CONFIG[selectedScope].label}</span>
           </div>
 
           {/* Lado Direito: Workstream + Mailbox + Avatar */}
@@ -160,18 +160,18 @@ export function TablerTopbar({
               href="/workstream"
               className="d-inline-flex align-items-center gap-1 px-2 py-1 rounded text-decoration-none"
               style={{
-                background: 'rgba(59,130,246,0.15)',
-                color: '#60a5fa',
+                background: 'var(--workstream-bg)',
+                color: 'var(--workstream-text)',
                 fontSize: '13px',
                 fontWeight: 500,
-                border: '1px solid rgba(59,130,246,0.25)',
+                border: '1px solid var(--workstream-border)',
                 transition: 'all 0.15s',
               }}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(59,130,246,0.25)';
+                (e.currentTarget as HTMLElement).style.background = 'var(--workstream-bg-hover)';
               }}
               onMouseLeave={(e) => {
-                (e.currentTarget as HTMLElement).style.background = 'rgba(59,130,246,0.15)';
+                (e.currentTarget as HTMLElement).style.background = 'var(--workstream-bg)';
               }}
             >
               <KanbanSquare size={14} />
@@ -194,7 +194,7 @@ export function TablerTopbar({
 
       {/* Navigation Menu - DARK */}
       {navVisible && (
-        <header className="navbar navbar-expand-md d-print-none" style={{ background: '#252628', borderBottom: '1px solid #333' }}>
+        <header className="navbar navbar-expand-md d-print-none" style={{ background: 'var(--nav-bg)', borderBottom: '1px solid var(--nav-border)' }}>
           <div className="app-container">
             <div id="navbar-menu" className={"navbar-collapse " + (mobileOpen ? "d-block " : "d-none ") + "d-md-flex"}>
               {/* Mobile Search & Scope */}
@@ -207,7 +207,7 @@ export function TablerTopbar({
                       onChange={(e) => setMenuQuery(e.target.value)}
                       className="form-control"
                       placeholder="Buscar no menu…"
-                      style={{ background: '#2a2b2e', border: '1px solid #444', color: '#fff' }}
+                      style={{ background: 'var(--input-bg)', border: '1px solid var(--input-border)', color: 'var(--input-text)' }}
                     />
                   </div>
                   <div className="col-12">
@@ -219,9 +219,9 @@ export function TablerTopbar({
                           className="btn btn-sm"
                           onClick={() => setSelectedScope(scope)}
                           style={{
-                            background: selectedScope === scope ? '#FF7300' : '#2a2b2e',
-                            color: selectedScope === scope ? '#fff' : '#aaa',
-                            border: '1px solid #444'
+                            background: selectedScope === scope ? '#FF7300' : 'var(--scope-inactive-bg)',
+                            color: selectedScope === scope ? '#fff' : 'var(--scope-inactive-text)',
+                            border: '1px solid var(--input-border)'
                           }}
                         >
                           {scope}
@@ -247,7 +247,7 @@ export function TablerTopbar({
                         type="button"
                         className={"nav-link dropdown-toggle" + (isOpen ? " show" : "")}
                         onClick={(e) => { e.stopPropagation(); setOpenGroup(isOpen ? null : group.label); }}
-                        style={{ color: isOpen ? '#FF7300' : '#ccc', fontWeight: 500 }}
+                        style={{ color: isOpen ? '#FF7300' : 'var(--nav-text)', fontWeight: 500 }}
                       >
                         {group.label}
                       </button>
@@ -255,7 +255,7 @@ export function TablerTopbar({
                         <div
                           className={"dropdown-menu show" + (shouldAlignEnd ? " dropdown-menu-end" : "")}
                           ref={(el) => { dropdownRefs.current[group.label] = el; }}
-                          style={{ top: "100%", bottom: "auto", background: '#1e1f21', border: '1px solid #444', boxShadow: '0 10px 40px rgba(0,0,0,0.5)' }}
+                          style={{ top: "100%", bottom: "auto", background: 'var(--dropdown-bg)', border: '1px solid var(--dropdown-border)', boxShadow: 'var(--dropdown-shadow)' }}
                         >
                           <div className="dropdown-menu-columns">
                             {columns.map((col, idx) => (
@@ -346,9 +346,9 @@ function DropdownItem({ item, pathname, onNavigate }: { item: NavItem; pathname:
         className="dropdown-item d-flex align-items-center gap-2"
         href={item.href}
         onClick={onNavigate}
-        style={{ color: active ? '#FF7300' : '#ccc', background: active ? 'rgba(255,115,0,0.1)' : 'transparent', borderRadius: '6px', padding: '8px 12px' }}
+        style={{ color: active ? '#FF7300' : 'var(--nav-text)', background: active ? 'rgba(255,115,0,0.1)' : 'transparent', borderRadius: '6px', padding: '8px 12px' }}
       >
-        <Icon size={18} style={{ color: active ? '#FF7300' : '#888' }} />
+        <Icon size={18} style={{ color: active ? '#FF7300' : 'var(--nav-text-muted)' }} />
         <span style={{ fontWeight: active ? 600 : 400 }}>{item.title}</span>
       </Link>
     );
@@ -377,9 +377,9 @@ function DropdownChild({ child, pathname, onNavigate }: { child: NavItem; pathna
         className="dropdown-item d-flex align-items-center gap-2"
         href={child.href}
         onClick={onNavigate}
-        style={{ color: childActive ? '#FF7300' : '#bbb', background: childActive ? 'rgba(255,115,0,0.1)' : 'transparent', borderRadius: '6px', padding: '6px 10px' }}
+        style={{ color: childActive ? '#FF7300' : 'var(--nav-text)', background: childActive ? 'rgba(255,115,0,0.1)' : 'transparent', borderRadius: '6px', padding: '6px 10px' }}
       >
-        <ChildIcon size={16} style={{ color: childActive ? '#FF7300' : '#666' }} />
+        <ChildIcon size={16} style={{ color: childActive ? '#FF7300' : 'var(--nav-text-muted)' }} />
         <span style={{ fontWeight: childActive ? 600 : 400 }}>{child.title}</span>
       </Link>
     );
@@ -387,8 +387,8 @@ function DropdownChild({ child, pathname, onNavigate }: { child: NavItem; pathna
 
   return (
     <div className="dropdown-item-text">
-      <div className="small fw-semibold mt-2 mb-1" style={{ color: '#888' }}>{child.title}</div>
-      <div className="d-grid gap-1 ps-3" style={{ borderLeft: '2px solid #444' }}>
+      <div className="small fw-semibold mt-2 mb-1" style={{ color: 'var(--nav-text-muted)' }}>{child.title}</div>
+      <div className="d-grid gap-1 ps-3" style={{ borderLeft: '2px solid var(--input-border)' }}>
         {child.children!.map((sub) => {
           const SubIcon = sub.icon;
           const subActive = pathname === sub.href || pathname.startsWith(sub.href + "/");
@@ -398,9 +398,9 @@ function DropdownChild({ child, pathname, onNavigate }: { child: NavItem; pathna
               className="dropdown-item d-flex align-items-center gap-2"
               href={sub.href}
               onClick={onNavigate}
-              style={{ color: subActive ? '#FF7300' : '#999', background: subActive ? 'rgba(255,115,0,0.1)' : 'transparent', borderRadius: '4px', padding: '4px 8px', fontSize: '13px' }}
+              style={{ color: subActive ? '#FF7300' : 'var(--nav-text-muted)', background: subActive ? 'rgba(255,115,0,0.1)' : 'transparent', borderRadius: '4px', padding: '4px 8px', fontSize: '13px' }}
             >
-              <SubIcon size={14} style={{ color: subActive ? '#FF7300' : '#555' }} />
+              <SubIcon size={14} style={{ color: subActive ? '#FF7300' : 'var(--nav-text-muted)' }} />
               <span style={{ fontWeight: subActive ? 600 : 400 }}>{sub.title}</span>
             </Link>
           );

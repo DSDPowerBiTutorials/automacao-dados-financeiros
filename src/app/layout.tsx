@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/auth-context"
 import { TimezoneProvider } from "@/contexts/timezone-context"
 import { NotificationProvider } from "@/contexts/notification-context"
 import { LayoutContent } from "@/components/layout/LayoutContent"
+import { ThemeProvider } from "@/components/ui/theme-provider"
 
 export const metadata = {
   title: "DSD Finance Hub",
@@ -24,22 +25,24 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="pt-BR">
+    <html lang="pt-BR" suppressHydrationWarning>
       <body className="text-neutral-900">
-        <AuthProvider>
-          <TimezoneProvider>
-            <NotificationProvider>
-              <CompanyViewProvider>
-                <GlobalScopeProvider>
-                  <LayoutContent>
-                    {children}
-                  </LayoutContent>
-                  <Toaster />
-                </GlobalScopeProvider>
-              </CompanyViewProvider>
-            </NotificationProvider>
-          </TimezoneProvider>
-        </AuthProvider>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+          <AuthProvider>
+            <TimezoneProvider>
+              <NotificationProvider>
+                <CompanyViewProvider>
+                  <GlobalScopeProvider>
+                    <LayoutContent>
+                      {children}
+                    </LayoutContent>
+                    <Toaster />
+                  </GlobalScopeProvider>
+                </CompanyViewProvider>
+              </NotificationProvider>
+            </TimezoneProvider>
+          </AuthProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

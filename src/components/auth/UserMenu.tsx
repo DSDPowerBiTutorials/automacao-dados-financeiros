@@ -2,6 +2,7 @@
 
 import { useAuth } from '@/contexts/auth-context';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { UserAvatar } from '@/components/user-avatar';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -12,13 +13,18 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { LogOut, User, Settings, Shield } from 'lucide-react';
+import { LogOut, User, Settings, Shield, Sun, Moon } from 'lucide-react';
 
 export function UserMenu() {
     const { profile, signOut } = useAuth();
     const router = useRouter();
+    const { theme, setTheme } = useTheme();
 
     if (!profile) return null;
+
+    const toggleTheme = () => {
+        setTheme(theme === 'dark' ? 'light' : 'dark');
+    };
 
     const getRoleBadge = (role: string) => {
         const roleConfig: Record<string, { label: string; color: string }> = {
@@ -43,7 +49,7 @@ export function UserMenu() {
                 </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
-                className="w-72 bg-white shadow-lg"
+                className="w-72"
                 align="end"
                 sideOffset={5}
             >
@@ -74,6 +80,14 @@ export function UserMenu() {
                 <DropdownMenuItem onClick={() => router.push('/settings')}>
                     <Settings className="mr-2 h-4 w-4" />
                     <span>Configurações</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={toggleTheme}>
+                    {theme === 'dark' ? (
+                        <Sun className="mr-2 h-4 w-4" />
+                    ) : (
+                        <Moon className="mr-2 h-4 w-4" />
+                    )}
+                    <span>{theme === 'dark' ? 'Modo Claro' : 'Modo Escuro'}</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

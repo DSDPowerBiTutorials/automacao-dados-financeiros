@@ -4,10 +4,63 @@
 
 /* ================================================
    CSS VARIABLES FOR SHADCN/UI COMPONENTS
-   Dark theme — all dropdowns, popovers, dialogs
-   get dark backgrounds with white text by default.
+   Light theme (default) — white backgrounds, dark text.
+   Dark theme (.dark) — dark backgrounds, light text.
    ================================================ */
 :root {
+  /* shadcn — light */
+  --background: 0 0% 100%;
+  --foreground: 222 47% 11%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 222 47% 11%;
+  --card: 0 0% 100%;
+  --card-foreground: 222 47% 11%;
+  --primary: 210 100% 50%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 210 40% 96%;
+  --secondary-foreground: 222 47% 11%;
+  --muted: 210 40% 96%;
+  --muted-foreground: 215 16% 47%;
+  --accent: 210 40% 96%;
+  --accent-foreground: 222 47% 11%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 214 32% 91%;
+  --input: 214 32% 91%;
+  --ring: 210 100% 50%;
+  --radius: 0.5rem;
+
+  /* Header / nav — light */
+  --header-bg: #ffffff;
+  --header-border: #e5e7eb;
+  --header-text: #111827;
+  --header-text-muted: #6b7280;
+  --nav-bg: #f9fafb;
+  --nav-border: #e5e7eb;
+  --nav-text: #374151;
+  --nav-text-muted: #6b7280;
+  --nav-text-active: #FF7300;
+  --input-bg: #f3f4f6;
+  --input-border: #d1d5db;
+  --input-text: #111827;
+  --dropdown-bg: #ffffff;
+  --dropdown-border: #e5e7eb;
+  --dropdown-shadow: 0 10px 40px rgba(0, 0, 0, 0.12);
+  --scope-inactive-bg: #f3f4f6;
+  --scope-inactive-text: #6b7280;
+  --workstream-bg: rgba(59, 130, 246, 0.1);
+  --workstream-text: #2563eb;
+  --workstream-border: rgba(59, 130, 246, 0.2);
+  --workstream-bg-hover: rgba(59, 130, 246, 0.18);
+  --content-bg: #ffffff;
+  --content-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --overlay-from: rgba(255, 255, 255, 0);
+  --overlay-via: rgba(255, 255, 255, 0);
+  --overlay-to: rgba(255, 255, 255, 0);
+  --bg-image-opacity: 0;  --toggler-filter: none;}
+
+.dark {
+  /* shadcn — dark */
   --background: 220 15% 10%;
   --foreground: 0 0% 95%;
   --popover: 220 15% 12%;
@@ -27,7 +80,36 @@
   --border: 220 10% 28%;
   --input: 220 10% 28%;
   --ring: 210 100% 50%;
-  --radius: 0.5rem;
+
+  /* Header / nav — dark */
+  --header-bg: #1e1f21;
+  --header-border: #333333;
+  --header-text: #ffffff;
+  --header-text-muted: #888888;
+  --nav-bg: #252628;
+  --nav-border: #333333;
+  --nav-text: #cccccc;
+  --nav-text-muted: #888888;
+  --nav-text-active: #FF7300;
+  --input-bg: #2a2b2e;
+  --input-border: #444444;
+  --input-text: #ffffff;
+  --dropdown-bg: #1e1f21;
+  --dropdown-border: #444444;
+  --dropdown-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  --scope-inactive-bg: #2a2b2e;
+  --scope-inactive-text: #aaaaaa;
+  --workstream-bg: rgba(59, 130, 246, 0.15);
+  --workstream-text: #60a5fa;
+  --workstream-border: rgba(59, 130, 246, 0.25);
+  --workstream-bg-hover: rgba(59, 130, 246, 0.25);
+  --content-bg: white;
+  --content-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --overlay-from: rgba(0, 0, 0, 0.4);
+  --overlay-via: rgba(0, 0, 0, 0.3);
+  --overlay-to: rgba(36, 49, 64, 0.5);
+  --bg-image-opacity: 1;
+  --toggler-filter: invert(1);
 }
 
 html,
@@ -37,6 +119,12 @@ body {
   color: #111827;
   margin: 0;
   padding: 0;
+}
+
+html.dark,
+html.dark body {
+  background-color: #1a1b1e;
+  color: #e5e7eb;
 }
 
 * {
@@ -66,6 +154,18 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background-color: #9ca3af;
   /* cinza mais escuro no hover */
+}
+
+/* Dark scrollbar */
+.dark ::-webkit-scrollbar-track {
+  background: #1a1b1e;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background-color: #4b5563;
+  border: 2px solid #1a1b1e;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: #6b7280;
 }
 
 /* Sidebar nav scrollbar */
@@ -115,11 +215,11 @@ aside nav::-webkit-scrollbar-thumb {
    STANDARDIZED PAGE COMPONENTS
    ================================================ */
 
-/* Content wrapper - white background with rounded corners */
+/* Content wrapper - theme-aware background */
 .app-content-wrapper {
-  background-color: white;
+  background-color: var(--content-bg);
   border-radius: 0.75rem;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  box-shadow: var(--content-shadow);
   margin: 1rem 0;
   min-height: calc(100vh - 120px);
   overflow: hidden;
@@ -138,13 +238,19 @@ aside nav::-webkit-scrollbar-thumb {
 
 /* Dark Mode Header for Bank Statements */
 .page-header-dark {
-  background: #1e1f21;
-  border-bottom: 1px solid #374151;
-  color: white;
+  background: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+  color: #111827;
   padding: 0.75rem 1.5rem;
   position: sticky;
   top: 0;
   z-index: 20;
+}
+
+.dark .page-header-dark {
+  background: #1e1f21;
+  border-bottom-color: #374151;
+  color: white;
 }
 
 .page-header-standard .header-title {
@@ -315,22 +421,37 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 /* ================================================
-   EXECUTIVE DASHBOARD — DARK THEME
+   EXECUTIVE DASHBOARD — DARK THEME (default)
+   Light overrides via :root (no .dark prefix needed)
    ================================================ */
 
 .dashboard-bg {
-  background-color: #0f1419;
+  background-color: #f5f7fb;
   min-height: 100vh;
 }
 
+.dark .dashboard-bg {
+  background-color: #0f1419;
+}
+
 .dashboard-card {
-  background: #1a1f2e;
-  border: 1px solid #2a3142;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
   transition: all 0.2s ease;
 }
 
+.dark .dashboard-card {
+  background: #1a1f2e;
+  border-color: #2a3142;
+}
+
 .dashboard-card:hover {
+  background: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.dark .dashboard-card:hover {
   background: #222838;
   border-color: #3a4152;
 }
@@ -344,18 +465,34 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dashboard-text-primary {
+  color: #111827;
+}
+
+.dark .dashboard-text-primary {
   color: #e5e7eb;
 }
 
 .dashboard-text-secondary {
+  color: #6b7280;
+}
+
+.dark .dashboard-text-secondary {
   color: #9ca3af;
 }
 
 .dashboard-text-muted {
+  color: #9ca3af;
+}
+
+.dark .dashboard-text-muted {
   color: #6b7280;
 }
 
 .dashboard-divider {
+  border-color: #e5e7eb;
+}
+
+.dark .dashboard-divider {
   border-color: #2a3142;
 }
 
@@ -366,8 +503,13 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dashboard-table thead {
+  background-color: #f9fafb;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.dark .dashboard-table thead {
   background-color: #151a26;
-  border-bottom: 1px solid #2a3142;
+  border-bottom-color: #2a3142;
 }
 
 .dashboard-table thead th {
@@ -381,29 +523,46 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dashboard-table tbody tr {
-  border-bottom: 1px solid #1e2433;
+  border-bottom: 1px solid #f3f4f6;
   transition: background-color 0.15s ease;
 }
 
+.dark .dashboard-table tbody tr {
+  border-bottom-color: #1e2433;
+}
+
 .dashboard-table tbody tr:hover {
+  background-color: #f9fafb;
+}
+
+.dark .dashboard-table tbody tr:hover {
   background-color: #1e2433;
 }
 
 .dashboard-table tbody td {
   padding: 0.625rem 1rem;
   font-size: 0.8125rem;
-  color: #d1d5db;
+  color: #374151;
   vertical-align: middle;
+}
+
+.dark .dashboard-table tbody td {
+  color: #d1d5db;
 }
 
 /* Dashboard KPI Card */
 .dashboard-kpi {
-  background: linear-gradient(135deg, #1a1f2e 0%, #1e2538 100%);
-  border: 1px solid #2a3142;
+  background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+  border: 1px solid #e5e7eb;
   border-radius: 0.75rem;
   padding: 1.25rem;
   position: relative;
   overflow: hidden;
+}
+
+.dark .dashboard-kpi {
+  background: linear-gradient(135deg, #1a1f2e 0%, #1e2538 100%);
+  border-color: #2a3142;
 }
 
 .dashboard-kpi::after {
@@ -443,10 +602,14 @@ aside nav::-webkit-scrollbar-thumb {
 
 /* Dashboard Progress Bar */
 .dashboard-progress-track {
-  background: #1e2433;
+  background: #e5e7eb;
   border-radius: 9999px;
   height: 6px;
   overflow: hidden;
+}
+
+.dark .dashboard-progress-track {
+  background: #1e2433;
 }
 
 .dashboard-progress-fill {
@@ -455,7 +618,7 @@ aside nav::-webkit-scrollbar-thumb {
   transition: width 0.6s ease;
 }
 
-/* Dashboard Source Badge */
+/* Dashboard Source Badge — light defaults, dark overrides */
 .dashboard-source-badge {
   display: inline-flex;
   align-items: center;
@@ -467,58 +630,108 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dashboard-source-badge.source-bankinter {
+  background: rgba(16, 185, 129, 0.12);
+  color: #059669;
+}
+
+.dark .dashboard-source-badge.source-bankinter {
   background: rgba(16, 185, 129, 0.15);
   color: #34d399;
 }
 
 .dashboard-source-badge.source-sabadell {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.dark .dashboard-source-badge.source-sabadell {
   background: rgba(59, 130, 246, 0.15);
   color: #60a5fa;
 }
 
 .dashboard-source-badge.source-chase {
+  background: rgba(6, 182, 212, 0.12);
+  color: #0891b2;
+}
+
+.dark .dashboard-source-badge.source-chase {
   background: rgba(6, 182, 212, 0.15);
   color: #22d3ee;
 }
 
 .dashboard-source-badge.source-braintree {
+  background: rgba(99, 102, 241, 0.12);
+  color: #4f46e5;
+}
+
+.dark .dashboard-source-badge.source-braintree {
   background: rgba(99, 102, 241, 0.15);
   color: #818cf8;
 }
 
 .dashboard-source-badge.source-stripe {
+  background: rgba(139, 92, 246, 0.12);
+  color: #7c3aed;
+}
+
+.dark .dashboard-source-badge.source-stripe {
   background: rgba(139, 92, 246, 0.15);
   color: #a78bfa;
 }
 
 .dashboard-source-badge.source-gocardless {
+  background: rgba(245, 158, 11, 0.12);
+  color: #d97706;
+}
+
+.dark .dashboard-source-badge.source-gocardless {
   background: rgba(245, 158, 11, 0.15);
   color: #fbbf24;
 }
 
 .dashboard-source-badge.source-paypal {
+  background: rgba(59, 130, 246, 0.12);
+  color: #2563eb;
+}
+
+.dark .dashboard-source-badge.source-paypal {
   background: rgba(59, 130, 246, 0.15);
   color: #93c5fd;
 }
 
 .dashboard-source-badge.source-pleo {
+  background: rgba(236, 72, 153, 0.12);
+  color: #db2777;
+}
+
+.dark .dashboard-source-badge.source-pleo {
   background: rgba(236, 72, 153, 0.15);
   color: #f472b6;
 }
 
-/* Recharts tooltip dark */
+/* Recharts tooltip */
 .dashboard-tooltip {
-  background: #1a1f2e !important;
-  border: 1px solid #2a3142 !important;
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
   border-radius: 0.5rem !important;
   padding: 0.75rem 1rem !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12) !important;
+}
+
+.dark .dashboard-tooltip {
+  background: #1a1f2e !important;
+  border-color: #2a3142 !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
 }
 
 .dashboard-tooltip .recharts-tooltip-label {
-  color: #e5e7eb !important;
+  color: #111827 !important;
   font-weight: 600;
   margin-bottom: 0.25rem;
+}
+
+.dark .dashboard-tooltip .recharts-tooltip-label {
+  color: #e5e7eb !important;
 }
 
 /* Override for dashboard page — remove white wrapper */
