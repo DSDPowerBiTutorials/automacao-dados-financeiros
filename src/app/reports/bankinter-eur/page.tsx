@@ -158,7 +158,12 @@ interface BankinterEURRow {
   amount: number
   reconciled: boolean
   paymentSource?: string | null
-  reconciliationType?: "automatic" | "manual" | null
+  reconciliationType?: "automatic" | "manual" | "intercompany" | null
+  matchType?: string | null
+  disbursementReference?: string | null
+  disbursementAmount?: number | null
+  disbursementDate?: string | null
+  matchedWith?: string | null
   braintreeSettlementBatchId?: string | null
   braintreeTransactionCount?: number | null
   reconciledAt?: string | null
@@ -190,6 +195,27 @@ interface BankinterEURRow {
     cash_flow_category?: string
     reconciliationType?: string
     reconciled_at?: string
+    match_type?: string
+    disbursement_reference?: string
+    disbursement_amount?: number
+    disbursement_date?: string
+    paymentSource?: string
+    matched_source?: string
+    matched_order_id?: string
+    matched_order_source?: string
+    matched_customer_name?: string
+    matched_invoice_number?: string
+    matched_order_amount?: number
+    matched_invoice_id?: number
+    matched_invoice_amount?: number
+    matched_amount?: number
+    matched_disbursement_date?: string
+    matched_transaction_count?: number
+    settlement_batch_id?: string
+    transaction_ids?: string[]
+    braintree_transaction_count?: number
+    braintree_settlement_batch_id?: string
+    [key: string]: unknown
   }
 }
 
@@ -430,15 +456,20 @@ export default function BankinterEURPage() {
           amount: parseFloat(row.amount) || 0,
           reconciled: row.reconciled ?? row.custom_data?.conciliado ?? false,
           paymentSource: row.custom_data?.paymentSource || row.custom_data?.destinationAccount || null,
-          reconciliationType: row.custom_data?.reconciliationType || (row.reconciled ? "automatic" : null),
-          braintreeSettlementBatchId: row.custom_data?.braintree_settlement_batch_id || null,
+          reconciliationType: (row.custom_data?.reconciliationType === "intercompany" || row.custom_data?.is_intercompany) ? "intercompany" : (row.custom_data?.reconciliationType || (row.reconciled ? "automatic" : null)) as "automatic" | "manual" | "intercompany" | null,
+          matchType: row.custom_data?.match_type || null,
+          disbursementReference: row.custom_data?.disbursement_reference || null,
+          disbursementAmount: row.custom_data?.disbursement_amount || null,
+          disbursementDate: row.custom_data?.disbursement_date || null,
+          matchedWith: row.matched_with || null,
+          braintreeSettlementBatchId: row.custom_data?.braintree_settlement_batch_id || row.custom_data?.settlement_batch_id || null,
           braintreeTransactionCount: row.custom_data?.braintree_transaction_count || null,
           reconciledAt: row.custom_data?.reconciled_at || null,
           bankMatchAmount: row.custom_data?.bank_match_amount || null,
           bankMatchDate: row.custom_data?.bank_match_date || null,
           bankMatchDescription: row.custom_data?.bank_match_description || null,
           // Intercompany fields
-          isIntercompany: row.custom_data?.is_intercompany || false,
+          isIntercompany: row.custom_data?.is_intercompany || row.custom_data?.reconciliationType === "intercompany" || false,
           intercompanyAccountCode: row.custom_data?.intercompany_account_code || null,
           intercompanyAccountName: row.custom_data?.intercompany_account_name || null,
           intercompanyNote: row.custom_data?.intercompany_note || null,
@@ -1252,10 +1283,12 @@ export default function BankinterEURPage() {
         const match = paymentSourceMatches.find(m => m.id === selectedPaymentMatch)
         if (!match) throw new Error("Payment source match not found")
 
+        const matchedWithValue = `manual:${match.source}:${match.reference || match.id}`
         const { error: txError } = await supabase
           .from("csv_rows")
           .update({
             reconciled: true,
+            matched_with: matchedWithValue,
             custom_data: {
               ...reconciliationTransaction.custom_data,
               reconciliationType: "manual",
@@ -1273,7 +1306,7 @@ export default function BankinterEURPage() {
 
         setRows((prev) => prev.map((row) =>
           row.id === reconciliationTransaction.id
-            ? { ...row, reconciled: true, reconciliationType: "manual" as const, paymentSource: match.sourceLabel }
+            ? { ...row, reconciled: true, reconciliationType: "manual" as const, paymentSource: match.sourceLabel, matchedWith: matchedWithValue }
             : row
         ))
 
@@ -1316,14 +1349,17 @@ export default function BankinterEURPage() {
         }
 
         // Update bank transaction
+        const orderMatchedWith = `manual:order:${match.orderId || match.id}`
         const { error: txError } = await supabase
           .from("csv_rows")
           .update({
             reconciled: true,
+            matched_with: orderMatchedWith,
             custom_data: {
               ...reconciliationTransaction.custom_data,
               reconciliationType: "manual",
               reconciled_at: now,
+              paymentSource: match.sourceLabel || match.source,
               matched_order_id: match.orderId || match.id,
               matched_order_source: match.source,
               matched_customer_name: match.customerName,
@@ -1337,7 +1373,7 @@ export default function BankinterEURPage() {
 
         setRows((prev) => prev.map((row) =>
           row.id === reconciliationTransaction.id
-            ? { ...row, reconciled: true, reconciliationType: "manual" as const }
+            ? { ...row, reconciled: true, reconciliationType: "manual" as const, paymentSource: match.sourceLabel || null, matchedWith: orderMatchedWith }
             : row
         ))
 
@@ -1368,10 +1404,12 @@ export default function BankinterEURPage() {
         if (invoiceError) throw invoiceError
 
         // Update bank transaction as reconciled
+        const invoiceMatchedWith = `manual:invoice:${selectedInvoice}`
         const { error: txError } = await supabase
           .from("csv_rows")
           .update({
             reconciled: isFullyReconciled,
+            matched_with: invoiceMatchedWith,
             custom_data: {
               ...reconciliationTransaction.custom_data,
               reconciliationType: "manual",
@@ -1473,13 +1511,15 @@ export default function BankinterEURPage() {
       }
 
       // Update THIS transaction as intercompany
+      const intercompanyMatchedWith = `intercompany:${selectedBankAccount}:${counterpartMatch?.id || 'manual'}`
       const { error: txError } = await supabase
         .from("csv_rows")
         .update({
           reconciled: true,
+          matched_with: intercompanyMatchedWith,
           custom_data: {
             ...reconciliationTransaction.custom_data,
-            reconciliationType: "manual",
+            reconciliationType: "intercompany",
             reconciled_at: now,
             is_intercompany: true,
             intercompany_account_code: selectedBankAccount,
@@ -1502,9 +1542,10 @@ export default function BankinterEURPage() {
           .from("csv_rows")
           .update({
             reconciled: true,
+            matched_with: `intercompany:bankinter-eur:${reconciliationTransaction.id}`,
             custom_data: {
               ...counterpartMatch.custom_data,
-              reconciliationType: "manual",
+              reconciliationType: "intercompany",
               reconciled_at: now,
               is_intercompany: true,
               intercompany_account_code: "bankinter-eur",
@@ -1530,11 +1571,12 @@ export default function BankinterEURPage() {
           ? {
             ...row,
             reconciled: true,
-            reconciliationType: "manual" as const,
+            reconciliationType: "intercompany" as const,
             isIntercompany: true,
             intercompanyAccountCode: selectedBankAccount,
             intercompanyAccountName: bankAccount.name,
-            intercompanyNote: intercompanyNote || null
+            intercompanyNote: intercompanyNote || null,
+            matchedWith: intercompanyMatchedWith
           }
           : row
       ))
@@ -1586,6 +1628,7 @@ export default function BankinterEURPage() {
         .from("csv_rows")
         .update({
           reconciled: false,
+          matched_with: null,
           custom_data: cleanedCustomData
         })
         .eq("id", row.id)
@@ -1617,6 +1660,7 @@ export default function BankinterEURPage() {
             .from("csv_rows")
             .update({
               reconciled: false,
+              matched_with: null,
               custom_data: counterpartClean
             })
             .eq("id", counterpart.id)
@@ -1658,6 +1702,109 @@ export default function BankinterEURPage() {
         description: revertedBoth
           ? "Both linked transactions are now unreconciled"
           : "Transaction is now unreconciled",
+        variant: "success"
+      })
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "Failed to revert", variant: "destructive" })
+    } finally {
+      setIsReverting(false)
+    }
+  }
+
+  // Revert any reconciliation (automatic or manual — NOT intercompany, which has its own handler)
+  const revertReconciliation = async (row: BankinterEURRow) => {
+    const typeLabel = row.reconciliationType === "automatic" ? "automática" : "manual"
+    if (!confirm(`Reverter conciliação ${typeLabel}? A transação voltará a aparecer como não conciliada.`)) return
+
+    setIsReverting(true)
+    try {
+      const cd = { ...(row.custom_data || {}) }
+      // Remove all reconciliation-enriched fields
+      delete cd.reconciliationType
+      delete cd.reconciled_at
+      delete cd.paymentSource
+      delete cd.matched_source
+      delete cd.matched_disbursement_date
+      delete cd.matched_amount
+      delete cd.matched_transaction_count
+      delete cd.match_type
+      delete cd.disbursement_reference
+      delete cd.disbursement_amount
+      delete cd.disbursement_date
+      delete cd.settlement_batch_id
+      delete cd.transaction_ids
+      delete cd.braintree_transaction_count
+      delete cd.braintree_settlement_batch_id
+      delete cd.matched_order_id
+      delete cd.matched_order_source
+      delete cd.matched_customer_name
+      delete cd.matched_invoice_number
+      delete cd.matched_order_amount
+      delete cd.matched_invoice_id
+      delete cd.matched_invoice_amount
+      delete cd.matched_customer_names
+      delete cd.matched_order_ids
+      delete cd.matched_products
+      delete cd.matched_invoice_fac
+      delete cd.matched_invoice_fac_name
+      delete cd.match_confidence
+      delete cd.match_level
+      delete cd.invoice_order_matched
+      delete cd.invoice_order_id
+      delete cd.invoice_number
+
+      const { error } = await supabase
+        .from("csv_rows")
+        .update({
+          reconciled: false,
+          matched_with: null,
+          custom_data: cd
+        })
+        .eq("id", row.id)
+
+      if (error) throw error
+
+      setRows((prev) => prev.map((r) =>
+        r.id === row.id
+          ? {
+            ...r,
+            reconciled: false,
+            reconciliationType: null,
+            paymentSource: null,
+            matchType: null,
+            disbursementReference: null,
+            disbursementAmount: null,
+            disbursementDate: null,
+            matchedWith: null,
+            braintreeSettlementBatchId: null,
+            braintreeTransactionCount: null,
+            reconciledAt: null,
+            custom_data: cd
+          }
+          : r
+      ))
+
+      if (selectedRow?.id === row.id) {
+        setSelectedRow({
+          ...selectedRow,
+          reconciled: false,
+          reconciliationType: null,
+          paymentSource: null,
+          matchType: null,
+          disbursementReference: null,
+          disbursementAmount: null,
+          disbursementDate: null,
+          matchedWith: null,
+          braintreeSettlementBatchId: null,
+          braintreeTransactionCount: null,
+          reconciledAt: null,
+          custom_data: cd
+        })
+      }
+
+      toast({
+        title: "Conciliação revertida",
+        description: `Transação (${typeLabel}) agora está como não conciliada`,
         variant: "success"
       })
     } catch (e: any) {
@@ -2148,6 +2295,94 @@ export default function BankinterEURPage() {
                   <p className="text-xs text-gray-500">Reconciled At</p>
                   <p className="text-sm text-gray-300">{formatTimestamp(new Date(selectedRow.reconciledAt))}</p>
                 </div>
+              )}
+
+              {/* Match Type (automatic reconciliation detail) */}
+              {selectedRow.matchType && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Match Type</p>
+                  <Badge variant="outline" className="bg-gray-800/50 text-gray-300 border-gray-600 text-[10px]">
+                    {selectedRow.matchType.replace(/_/g, " ")}
+                  </Badge>
+                </div>
+              )}
+
+              {/* Disbursement Reference */}
+              {selectedRow.disbursementReference && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Disbursement Reference</p>
+                  <div className="flex items-center gap-2">
+                    <Key className="h-3 w-3 text-gray-500" />
+                    <span className="text-xs font-mono text-gray-300">{selectedRow.disbursementReference}</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Disbursement Amount / Date */}
+              {selectedRow.disbursementAmount != null && (
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <p className="text-xs text-gray-500">Disbursement Amount</p>
+                    <p className="text-sm text-green-400 font-medium">€{formatEuropeanCurrency(selectedRow.disbursementAmount)}</p>
+                  </div>
+                  {selectedRow.disbursementDate && (
+                    <div>
+                      <p className="text-xs text-gray-500">Disbursement Date</p>
+                      <p className="text-sm text-gray-300">{formatShortDate(selectedRow.disbursementDate)}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Manual match details - customer / order / invoice */}
+              {selectedRow.custom_data?.matched_customer_name && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Customer</p>
+                  <div className="flex items-center gap-2">
+                    <User className="h-3 w-3 text-blue-400" />
+                    <span className="text-sm text-white">{selectedRow.custom_data.matched_customer_name}</span>
+                  </div>
+                </div>
+              )}
+
+              {selectedRow.custom_data?.matched_invoice_number && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Invoice</p>
+                  <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_number}</span>
+                </div>
+              )}
+
+              {selectedRow.custom_data?.matched_order_id && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Order ID</p>
+                  <span className="text-xs font-mono text-amber-300">{selectedRow.custom_data.matched_order_id}</span>
+                </div>
+              )}
+
+              {/* Matched With (top-level reference) */}
+              {selectedRow.matchedWith && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-1">Matched With</p>
+                  <span className="text-[10px] font-mono text-gray-400 break-all">{selectedRow.matchedWith}</span>
+                </div>
+              )}
+
+              {/* REVERT BUTTON for auto/manual reconciliation (not intercompany) */}
+              {selectedRow.reconciled && !selectedRow.isIntercompany && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => revertReconciliation(selectedRow)}
+                  disabled={isReverting}
+                  className="w-full border-red-700/50 text-red-400 hover:bg-red-900/30 mt-2"
+                >
+                  {isReverting ? (
+                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                  ) : (
+                    <X className="h-3 w-3 mr-1" />
+                  )}
+                  Revert Reconciliation
+                </Button>
               )}
             </div>
 
