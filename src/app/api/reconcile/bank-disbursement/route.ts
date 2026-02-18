@@ -152,14 +152,11 @@ async function fetchBraintreeDisbursements(): Promise<DisbursementInfo[]> {
 }
 
 async function fetchStripeDisbursements(): Promise<DisbursementInfo[]> {
-    // Stripe payouts estão em stripe-eur-payouts e stripe-usd-payouts
-    // O payout_id está no campo custom_data->transaction_id (ex: po_1SsYEhIO1Dgqa3TAnKdoz5Fc)
-    // E a data de chegada no banco está em custom_data->arrival_date ou no campo date
+    // Stripe payouts — fetch ALL payouts (not just unreconciled) as matching candidates
     const { data } = await supabaseAdmin
         .from('csv_rows')
         .select('*')
         .or('source.eq.stripe-eur-payouts,source.eq.stripe-usd-payouts')
-        .eq('reconciled', false)
         .order('date', { ascending: false })
         .limit(2000);
 
@@ -194,13 +191,12 @@ async function fetchStripeDisbursements(): Promise<DisbursementInfo[]> {
 }
 
 async function fetchGoCardlessDisbursements(): Promise<DisbursementInfo[]> {
-    // GoCardless usa payouts - registros com custom_data.type = 'payout'
+    // GoCardless payouts — fetch ALL payouts as matching candidates
     const { data } = await supabaseAdmin
         .from('csv_rows')
         .select('*')
         .eq('source', 'gocardless')
         .eq('custom_data->>type', 'payout')
-        .eq('reconciled', false)
         .order('date', { ascending: false })
         .limit(2000);
 
@@ -223,28 +219,106 @@ async function fetchGoCardlessDisbursements(): Promise<DisbursementInfo[]> {
     });
 }
 
-async function fetchBraintreeAmexDisbursements(): Promise<DisbursementInfo[]> {
-    // AMEX transactions are settled separately — bank shows "Trans american express europe"
-    // Look for AMEX card types in braintree-api-revenue OR braintree-amex source
+// Individual AMEX transaction for single/pair matching
+interface AmexTransaction {
+    id: string;
+    settlement_date: string;
+    settlement_amount: number;
+    transaction_id: string;
+    card_type: string;
+    merchant_account_id: string;
+    currency: string;
+}
+
+async function fetchAmexIndividualTransactions(): Promise<AmexTransaction[]> {
+    // AMEX bank entries are individual or pair settlements, NOT aggregated disbursements.
+    // Fetch all individual AMEX transactions for matching.
     let allData: any[] = [];
-    for (const src of ['braintree-api-revenue', 'braintree-amex']) {
+    let offset = 0;
+    while (true) {
         const { data } = await supabaseAdmin
             .from('csv_rows')
             .select('*')
-            .eq('source', src)
-            .not('custom_data->disbursement_date', 'is', null)
+            .eq('source', 'braintree-amex')
             .order('date', { ascending: false })
-            .limit(5000);
-        if (data) allData = allData.concat(data);
+            .range(offset, offset + 999);
+        if (!data || data.length === 0) break;
+        allData = allData.concat(data);
+        if (data.length < 1000) break;
+        offset += 1000;
     }
 
-    // Filter only AMEX card types
+    // Also include AMEX card_type from braintree-api-revenue
+    let btAmex: any[] = [];
+    offset = 0;
+    while (true) {
+        const { data } = await supabaseAdmin
+            .from('csv_rows')
+            .select('*')
+            .eq('source', 'braintree-api-revenue')
+            .order('date', { ascending: false })
+            .range(offset, offset + 999);
+        if (!data || data.length === 0) break;
+        const amexOnly = data.filter((tx: any) => {
+            const ct = (tx.custom_data?.card_type || '').toLowerCase();
+            return ct.includes('american express') || ct.includes('amex');
+        });
+        btAmex = btAmex.concat(amexOnly);
+        if (data.length < 1000) break;
+        offset += 1000;
+    }
+
+    allData = allData.concat(btAmex);
+
+    // Deduplicate by transaction_id
+    const seen = new Set<string>();
+    const unique: AmexTransaction[] = [];
+    for (const tx of allData) {
+        const cd = tx.custom_data || {};
+        const txId = cd.transaction_id || tx.id;
+        if (seen.has(txId)) continue;
+        seen.add(txId);
+
+        const merchantId = cd.merchant_account_id || '';
+        unique.push({
+            id: tx.id,
+            settlement_date: cd.settlement_date?.split('T')[0] || tx.date?.split('T')[0] || '',
+            settlement_amount: Math.round(parseFloat(cd.settlement_amount || tx.amount || 0) * 100) / 100,
+            transaction_id: txId,
+            card_type: cd.card_type || 'American Express',
+            merchant_account_id: merchantId,
+            currency: merchantId.includes('USD') ? 'USD' : 'EUR'
+        });
+    }
+
+    return unique;
+}
+
+async function fetchBraintreeAmexDisbursements(): Promise<DisbursementInfo[]> {
+    // Keep aggregated AMEX disbursements as fallback (for entries not matched by individual)
+    let allData: any[] = [];
+    for (const src of ['braintree-api-revenue', 'braintree-amex']) {
+        let offset = 0;
+        while (true) {
+            const { data } = await supabaseAdmin
+                .from('csv_rows')
+                .select('*')
+                .eq('source', src)
+                .not('custom_data->disbursement_date', 'is', null)
+                .order('date', { ascending: false })
+                .range(offset, offset + 999);
+            if (!data || data.length === 0) break;
+            allData = allData.concat(data);
+            if (data.length < 1000) break;
+            offset += 1000;
+        }
+    }
+
     const amexData = allData.filter(tx => {
         const cardType = (tx.custom_data?.card_type || '').toLowerCase();
         return cardType.includes('american express') || cardType.includes('amex');
     });
 
-    // Deduplicate by transaction_id (since AMEX exists in both sources)
     const seen = new Set<string>();
     const uniqueAmex = amexData.filter(tx => {
         const txId = tx.custom_data?.transaction_id || tx.id;
@@ -253,7 +327,6 @@ async function fetchBraintreeAmexDisbursements(): Promise<DisbursementInfo[]> {
         return true;
     });
 
-    // Group by disbursement_date + merchant_account_id (same as regular Braintree)
     const grouped = new Map<string, {
         amount: number;
         count: number;
@@ -305,39 +378,30 @@ export async function POST(req: NextRequest) {
     try {
         const body = await req.json().catch(() => ({}));
         const dryRun = body.dryRun !== false;
-        // Suporta 4 bancos: bankinter-eur, bankinter-usd, sabadell-eur/sabadell, chase-usd
         const bankSource = body.bankSource || 'bankinter-eur';
-        // Normalizar source name (sabadell-eur → sabadell, pois csv_rows usa "sabadell")
         const normalizedBankSource = bankSource === 'sabadell-eur' ? 'sabadell' : bankSource;
 
         // Buscar dados em paralelo
-        const [bankRows, braintreeDisb, braintreeAmexDisb, stripeDisb, gocardlessDisb] = await Promise.all([
+        const [bankRows, braintreeDisb, braintreeAmexDisb, amexTxs, stripeDisb, gocardlessDisb] = await Promise.all([
             fetchBankRows(normalizedBankSource),
             fetchBraintreeDisbursements(),
             fetchBraintreeAmexDisbursements(),
+            fetchAmexIndividualTransactions(),
             fetchStripeDisbursements(),
             fetchGoCardlessDisbursements()
         ]);
 
-        // Determinar quais gateways são relevantes para cada banco
-        // - Bankinter EUR: Braintree EUR, Stripe EUR payouts, GoCardless
-        // - Bankinter USD: Braintree USD
-        // - Sabadell EUR: Braintree EUR, Stripe EUR payouts, GoCardless (mesmos que Bankinter EUR)
-        // - Chase USD: Stripe USD payouts (via Dsdplanningcenter)
         const currency = normalizedBankSource.includes('usd') || normalizedBankSource === 'chase-usd' ? 'USD' : 'EUR';
 
         let allDisbursements: DisbursementInfo[];
         if (normalizedBankSource === 'chase-usd') {
-            // Chase receives Stripe USD payouts + Braintree USD + wire transfers
             const stripeUsd = stripeDisb.filter(d => {
                 const origCurrency = (d as any).original_currency;
                 return origCurrency === 'USD' || d.currency === 'USD';
             });
             stripeUsd.forEach(d => d.currency = 'USD');
-
             const braintreeUsd = braintreeDisb.filter(d => d.currency === 'USD');
             const braintreeAmexUsd = braintreeAmexDisb.filter(d => d.currency === 'USD');
-
             allDisbursements = [...stripeUsd, ...braintreeUsd, ...braintreeAmexUsd];
         } else {
             allDisbursements = [
@@ -348,48 +412,190 @@ export async function POST(req: NextRequest) {
             ];
         }
 
+        // Filter AMEX individual txs by currency
+        const amexTxsFiltered = amexTxs.filter(t => t.currency === currency);
+
         const matches: Match[] = [];
         const matchedBankIds = new Set<string>();
         const matchedDisbRefs = new Set<string>();
-        const stats = { braintree: 0, stripe: 0, gocardless: 0 };
+        const matchedAmexTxIds = new Set<string>();
+        const stats = { braintree: 0, stripe: 0, gocardless: 0, amex_individual: 0, amex_pair: 0 };
 
-        // Criar índices para matching
+        // Create indices for matching
         const disbByDate = new Map<string, DisbursementInfo[]>();
-        const disbByAmount = new Map<number, DisbursementInfo[]>();
-
         allDisbursements.forEach(d => {
-            // Index por data
             if (!disbByDate.has(d.date)) disbByDate.set(d.date, []);
             disbByDate.get(d.date)!.push(d);
-
-            // Index por valor arredondado
-            const amountKey = Math.round(d.amount);
-            if (!disbByAmount.has(amountKey)) disbByAmount.set(amountKey, []);
-            disbByAmount.get(amountKey)!.push(d);
         });
 
-        // Match each bank row with disbursements
+        // Helper: days between two date strings
+        function daysBetween(d1: string, d2: string): number {
+            return Math.abs(Math.round(
+                (new Date(d1).getTime() - new Date(d2).getTime()) / (1000 * 60 * 60 * 24)
+            ));
+        }
+
+        // Helper: check if bank description matches a gateway pattern
+        function descriptionMatchesGateway(desc: string): { source: string; isAmex: boolean; isPaypal: boolean } | null {
+            const d = desc.toLowerCase();
+            if (d.includes('american express')) return { source: 'braintree', isAmex: true, isPaypal: false };
+            if (d.includes('paypal')) return { source: 'braintree', isAmex: false, isPaypal: true };
+            if (d.includes('braintree')) return { source: 'braintree', isAmex: false, isPaypal: false };
+            if (d.includes('stripe')) return { source: 'stripe', isAmex: false, isPaypal: false };
+            if (d.includes('gocardless')) return { source: 'gocardless', isAmex: false, isPaypal: false };
+
+            // Chase USD: ORIG CO NAME parsing
+            const origCoMatch = d.match(/orig co name:\s*(.+?)(?:\s+orig id|\s+sec|\s*$)/i);
+            if (origCoMatch) {
+                const origName = origCoMatch[1].trim().toLowerCase();
+                if (origName.includes('stripe')) return { source: 'stripe', isAmex: false, isPaypal: false };
+                if (origName.includes('braintree') || origName.includes('paypal')) return { source: 'braintree', isAmex: false, isPaypal: true };
+                if (origName.includes('gocardless')) return { source: 'gocardless', isAmex: false, isPaypal: false };
+            }
+            return null;
+        }
+
+        // =======================================================
+        // PHASE 1: AMEX individual/pair matching
+        // AMEX bank entries are individual/pair settlements, not aggregated.
+        // =======================================================
+        const amexBankRows = bankRows.filter(r =>
+            r.description.toLowerCase().includes('american express')
+        );
+
+        for (const bankRow of amexBankRows) {
+            if (matchedBankIds.has(bankRow.id)) continue;
+            const bankDate = bankRow.date?.split('T')[0];
+            const bankAmount = Math.round(bankRow.amount * 100) / 100;
+
+            // Get AMEX txs within ±14 days by settlement_date
+            const nearbyAmex = amexTxsFiltered.filter(t =>
+                !matchedAmexTxIds.has(t.transaction_id) &&
+                t.settlement_date &&
+                daysBetween(bankDate, t.settlement_date) <= 14
+            );
+
+            // Strategy A1: Single AMEX tx match (±1% tolerance)
+            let matched = false;
+            for (const tx of nearbyAmex) {
+                const pctDiff = Math.abs(tx.settlement_amount - bankAmount) / (bankAmount || 1);
+                if (pctDiff < 0.01) {
+                    matchedBankIds.add(bankRow.id);
+                    matchedAmexTxIds.add(tx.transaction_id);
+                    stats.amex_individual++;
+                    matches.push({
+                        bank_row_id: bankRow.id,
+                        bank_date: bankDate,
+                        bank_amount: bankAmount,
+                        bank_description: bankRow.description.substring(0, 100),
+                        disbursement_source: 'braintree',
+                        disbursement_date: tx.settlement_date,
+                        disbursement_amount: tx.settlement_amount,
+                        disbursement_reference: `amex-tx-${tx.transaction_id}`,
+                        match_type: 'amex_single_tx',
+                        transaction_ids: [tx.transaction_id],
+                        transaction_count: 1
+                    });
+                    matched = true;
+                    break;
+                }
+            }
+            if (matched) continue;
+
+            // Strategy A2: Pair of AMEX txs summing to bank amount (±1%)
+            let pairFound = false;
+            for (let i = 0; i < nearbyAmex.length && !pairFound; i++) {
+                for (let j = i + 1; j < nearbyAmex.length && !pairFound; j++) {
+                    const sum = nearbyAmex[i].settlement_amount + nearbyAmex[j].settlement_amount;
+                    const pctDiff = Math.abs(sum - bankAmount) / (bankAmount || 1);
+                    if (pctDiff < 0.01) {
+                        matchedBankIds.add(bankRow.id);
+                        matchedAmexTxIds.add(nearbyAmex[i].transaction_id);
+                        matchedAmexTxIds.add(nearbyAmex[j].transaction_id);
+                        stats.amex_pair++;
+                        matches.push({
+                            bank_row_id: bankRow.id,
+                            bank_date: bankDate,
+                            bank_amount: bankAmount,
+                            bank_description: bankRow.description.substring(0, 100),
+                            disbursement_source: 'braintree',
+                            disbursement_date: nearbyAmex[i].settlement_date,
+                            disbursement_amount: sum,
+                            disbursement_reference: `amex-pair-${nearbyAmex[i].transaction_id}+${nearbyAmex[j].transaction_id}`,
+                            match_type: 'amex_pair_tx',
+                            transaction_ids: [nearbyAmex[i].transaction_id, nearbyAmex[j].transaction_id],
+                            transaction_count: 2
+                        });
+                        pairFound = true;
+                    }
+                }
+            }
+            if (pairFound) continue;
+
+            // Strategy A3: Triple AMEX txs (±1%) — for 3+ entry days
+            let tripleFound = false;
+            if (nearbyAmex.length >= 3 && bankAmount > 100) {
+                for (let i = 0; i < Math.min(nearbyAmex.length, 30) && !tripleFound; i++) {
+                    for (let j = i + 1; j < Math.min(nearbyAmex.length, 30) && !tripleFound; j++) {
+                        for (let k = j + 1; k < Math.min(nearbyAmex.length, 30) && !tripleFound; k++) {
+                            const sum = nearbyAmex[i].settlement_amount + nearbyAmex[j].settlement_amount + nearbyAmex[k].settlement_amount;
+                            const pctDiff = Math.abs(sum - bankAmount) / (bankAmount || 1);
+                            if (pctDiff < 0.01) {
+                                matchedBankIds.add(bankRow.id);
+                                matchedAmexTxIds.add(nearbyAmex[i].transaction_id);
+                                matchedAmexTxIds.add(nearbyAmex[j].transaction_id);
+                                matchedAmexTxIds.add(nearbyAmex[k].transaction_id);
+                                stats.amex_individual++;
+                                matches.push({
+                                    bank_row_id: bankRow.id,
+                                    bank_date: bankDate,
+                                    bank_amount: bankAmount,
+                                    bank_description: bankRow.description.substring(0, 100),
+                                    disbursement_source: 'braintree',
+                                    disbursement_date: nearbyAmex[i].settlement_date,
+                                    disbursement_amount: Math.round(sum * 100) / 100,
+                                    disbursement_reference: `amex-triple-${nearbyAmex[i].transaction_id}`,
+                                    match_type: 'amex_triple_tx',
+                                    transaction_ids: [nearbyAmex[i].transaction_id, nearbyAmex[j].transaction_id, nearbyAmex[k].transaction_id],
+                                    transaction_count: 3
+                                });
+                                tripleFound = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // =======================================================
+        // PHASE 2: Standard matching for non-AMEX entries
+        // Strategies: exact → date_range → description_with_date_constraint
+        // =======================================================
         for (const bankRow of bankRows) {
             if (matchedBankIds.has(bankRow.id)) continue;
-            if (bankRow.amount <= 0) continue; // Skip debits
+            if (bankRow.amount <= 0) continue;
+
+            // Skip AMEX entries (already handled in Phase 1)
+            if (bankRow.description.toLowerCase().includes('american express')) continue;
 
             let match: DisbursementInfo | null = null;
             let matchType: string | null = null;
             const bankDate = bankRow.date?.split('T')[0];
             const bankAmount = Math.round(bankRow.amount * 100) / 100;
 
-            // 1. Exact match: same date + same amount (±0.10)
+            // Strategy 1: Exact match — same date + same amount (±€0.10 or ±0.1%)
             const exactCandidates = (disbByDate.get(bankDate) || [])
                 .filter(d => !matchedDisbRefs.has(d.reference));
+            const tolerance1 = Math.max(0.10, bankAmount * 0.001); // At least €0.10 or 0.1%
             const exactMatch = exactCandidates.find(d =>
-                Math.abs(d.amount - bankAmount) < 0.10
+                Math.abs(d.amount - bankAmount) < tolerance1
             );
             if (exactMatch) {
                 match = exactMatch;
                 matchType = 'exact_date_amount';
             }
 
-            // 2. Date range match: ±3 days + same amount
+            // Strategy 2: Date range match — ±3 days + same amount (±€0.10 or ±0.1%)
             if (!match) {
                 const bankDateObj = new Date(bankDate);
                 for (let offset = -3; offset <= 3; offset++) {
@@ -401,7 +607,7 @@ export async function POST(req: NextRequest) {
                     const candidates = (disbByDate.get(checkDateStr) || [])
                         .filter(d => !matchedDisbRefs.has(d.reference));
                     const rangeMatch = candidates.find(d =>
-                        Math.abs(d.amount - bankAmount) < 0.10
+                        Math.abs(d.amount - bankAmount) < tolerance1
                     );
                     if (rangeMatch) {
                         match = rangeMatch;
@@ -411,53 +617,72 @@ export async function POST(req: NextRequest) {
                 }
             }
 
-            // 3. Description-based match (Braintree, Stripe, GoCardless in description)
+            // Strategy 3: Description-based + DATE CONSTRAINED (±14 days, ±2% amount)
+            // CRITICAL FIX: The old strategy 3 had NO date constraint, causing false positives.
+            if (!match) {
+                const gatewayInfo = descriptionMatchesGateway(bankRow.description);
+
+                if (gatewayInfo) {
+                    // Only search disbursements from the matching gateway source
+                    const sourceDisbursements = allDisbursements
+                        .filter(d => d.source === gatewayInfo.source && !matchedDisbRefs.has(d.reference));
+
+                    // MUST have date proximity (±14 days max)
+                    const MAX_DATE_OFFSET = 14;
+                    const amountTolerance = bankAmount > 100
+                        ? bankAmount * 0.02  // ±2% for amounts over €100
+                        : 5.0;               // ±€5 for small amounts
+
+                    let bestMatch: DisbursementInfo | null = null;
+                    let bestDaysDiff = Infinity;
+
+                    for (const disb of sourceDisbursements) {
+                        const dd = daysBetween(bankDate, disb.date);
+                        if (dd > MAX_DATE_OFFSET) continue;
+                        if (Math.abs(disb.amount - bankAmount) > amountTolerance) continue;
+
+                        // Prefer closest date.
+                        if (dd < bestDaysDiff) {
+                            bestDaysDiff = dd;
+                            bestMatch = disb;
+                        }
+                    }
+
+                    if (bestMatch) {
+                        match = bestMatch;
+                        matchType = 'description_date_amount';
+                    }
+                }
+            }
+
+            // Strategy 4: PayPal bank entries ↔ Braintree CC disbursements (±7d, ±2%)
+            // PayPal (Europe) S.à r.l. is the settlement entity for Braintree CC disbursements.
+            // Some CC disbursements arrive at the bank as "Trans/paypal" entries.
             if (!match) {
                 const descLower = bankRow.description.toLowerCase();
-                const descPatterns = [
-                    { pattern: 'braintree', source: 'braintree' },
-                    { pattern: 'trans/paypal', source: 'braintree' },   // "Trans/paypal (europe) s.a r.l" = Braintree
-                    { pattern: 'paypal (europe)', source: 'braintree' }, // Alternative paypal pattern
-                    { pattern: 'paypal', source: 'braintree' },         // Generic paypal = Braintree
-                    { pattern: 'american express', source: 'braintree' }, // "Trans american express europe" = Braintree AMEX
-                    { pattern: 'stripe technology', source: 'stripe' }, // Trans/stripe technology europ
-                    { pattern: 'stripe', source: 'stripe' },
-                    { pattern: 'gocardless', source: 'gocardless' }
-                ];
+                if (descLower.includes('paypal')) {
+                    const ccDisbs = braintreeDisb
+                        .filter(d => d.currency === currency && !matchedDisbRefs.has(d.reference));
 
-                // Also try ORIG CO NAME parsing for wire transfers (Chase USD)
-                const origCoMatch = descLower.match(/orig co name:\s*(.+?)(?:\s+orig id|\s+sec|\s*$)/i);
-                if (origCoMatch) {
-                    const origName = origCoMatch[1].trim().toLowerCase();
-                    // Map ORIG CO NAME to gateway source
-                    if (origName.includes('stripe')) descPatterns.unshift({ pattern: origName, source: 'stripe' });
-                    else if (origName.includes('braintree') || origName.includes('paypal')) descPatterns.unshift({ pattern: origName, source: 'braintree' });
-                    else if (origName.includes('gocardless')) descPatterns.unshift({ pattern: origName, source: 'gocardless' });
-                }
+                    const MAX_OFFSET = 7;
+                    const amtTol = bankAmount * 0.02;
 
-                for (const { pattern, source } of descPatterns) {
-                    if (descLower.includes(pattern)) {
-                        // Find closest amount match from that source (tolerance 0.10 for exact payouts)
-                        const sourceDisbursements = allDisbursements
-                            .filter(d => d.source === source && !matchedDisbRefs.has(d.reference));
+                    let bestCC: DisbursementInfo | null = null;
+                    let bestDiff = Infinity;
 
-                        // First try exact match
-                        let amountMatch = sourceDisbursements.find(d =>
-                            Math.abs(d.amount - bankAmount) < 0.10
-                        );
-
-                        // If no exact match, try looser tolerance for larger amounts
-                        if (!amountMatch) {
-                            amountMatch = sourceDisbursements.find(d =>
-                                Math.abs(d.amount - bankAmount) < 5
-                            );
+                    for (const disb of ccDisbs) {
+                        const dd = daysBetween(bankDate, disb.date);
+                        if (dd > MAX_OFFSET) continue;
+                        if (Math.abs(disb.amount - bankAmount) > amtTol) continue;
+                        if (dd < bestDiff) {
+                            bestDiff = dd;
+                            bestCC = disb;
                         }
+                    }
 
-                        if (amountMatch) {
-                            match = amountMatch;
-                            matchType = 'description_amount';
-                            break;
-                        }
+                    if (bestCC) {
+                        match = bestCC;
+                        matchType = 'paypal_cc_disbursement';
                     }
                 }
             }
@@ -465,7 +690,8 @@ export async function POST(req: NextRequest) {
             if (match && matchType) {
                 matchedBankIds.add(bankRow.id);
                 matchedDisbRefs.add(match.reference);
-                stats[match.source as keyof typeof stats]++;
+                const src = match.source as keyof typeof stats;
+                if (src in stats) stats[src]++;
 
                 matches.push({
                     bank_row_id: bankRow.id,
@@ -529,6 +755,12 @@ export async function POST(req: NextRequest) {
 
         const totalValue = matches.reduce((sum, m) => sum + m.bank_amount, 0);
 
+        // Group matches by type for detailed stats
+        const matchByType: Record<string, number> = {};
+        for (const m of matches) {
+            matchByType[m.match_type] = (matchByType[m.match_type] || 0) + 1;
+        }
+
         return NextResponse.json({
             success: true,
             dryRun,
@@ -540,16 +772,19 @@ export async function POST(req: NextRequest) {
                 bankRowsUnreconciled: bankRows.length,
                 disbursements: {
                     braintree: braintreeDisb.filter(d => d.currency === currency).length,
+                    braintreeAmex: braintreeAmexDisb.filter(d => d.currency === currency).length,
+                    amexIndividualTxs: amexTxsFiltered.length,
                     stripe: stripeDisb.filter(d => d.currency === currency).length,
                     gocardless: gocardlessDisb.filter(d => d.currency === currency).length,
                     total: allDisbursements.length
                 },
                 matched: matches.length,
                 bySource: stats,
+                byMatchType: matchByType,
                 totalValue: Math.round(totalValue * 100) / 100,
                 updated: dryRun ? 0 : updated
             },
-            matches: matches.slice(0, 30)
+            matches: matches.slice(0, 50)
         });
 
     } catch (error: any) {
