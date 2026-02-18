@@ -78,15 +78,15 @@ export default function PortfoliosPage() {
     }
 
     return (
-        <div className="h-full overflow-y-auto bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
             <div className="max-w-5xl mx-auto px-6 py-8">
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <Briefcase className="h-6 w-6" />
                             Portfolios
                         </h1>
-                        <p className="text-gray-400 text-sm mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                             Track progress across all your projects at a glance
                         </p>
                     </div>
@@ -94,12 +94,12 @@ export default function PortfoliosPage() {
 
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
-                        <div className="animate-spin h-8 w-8 border-3 border-gray-600 border-t-blue-500 rounded-full" />
+                        <div className="animate-spin h-8 w-8 border-3 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full" />
                     </div>
                 ) : projects.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <Briefcase className="h-12 w-12 text-gray-700 mb-4" />
-                        <h2 className="text-lg font-medium text-gray-400 mb-1">No projects yet</h2>
+                        <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-1">No projects yet</h2>
                         <p className="text-sm text-gray-600">Create a project to see it in your portfolio</p>
                     </div>
                 ) : (
@@ -120,7 +120,7 @@ export default function PortfoliosPage() {
                                 <div
                                     key={project.id}
                                     onClick={() => router.push(`/workstream/${project.id}`)}
-                                    className="grid grid-cols-12 gap-4 items-center bg-[#2a2b2d] border border-gray-800 rounded-lg px-4 py-3 hover:bg-[#333435] cursor-pointer transition-colors"
+                                    className="grid grid-cols-12 gap-4 items-center bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333435] cursor-pointer transition-colors"
                                 >
                                     {/* Project name */}
                                     <div className="col-span-4 flex items-center gap-3">
@@ -130,7 +130,7 @@ export default function PortfoliosPage() {
                                         >
                                             {project.name.charAt(0).toUpperCase()}
                                         </div>
-                                        <span className="text-sm text-white truncate">{project.name}</span>
+                                        <span className="text-sm text-gray-900 dark:text-white truncate">{project.name}</span>
                                     </div>
 
                                     {/* Status */}
@@ -141,13 +141,13 @@ export default function PortfoliosPage() {
                                     </div>
 
                                     {/* Total tasks */}
-                                    <div className="col-span-1 text-center text-sm text-gray-400">
+                                    <div className="col-span-1 text-center text-sm text-gray-500 dark:text-gray-400">
                                         {project.total_tasks}
                                     </div>
 
                                     {/* Progress */}
                                     <div className="col-span-3 flex items-center gap-2">
-                                        <div className="flex-1 h-2 bg-gray-800 rounded-full overflow-hidden">
+                                        <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-green-500 rounded-full transition-all"
                                                 style={{ width: `${project.completion_rate}%` }}

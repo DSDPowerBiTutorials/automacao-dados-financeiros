@@ -98,13 +98,13 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
             <div className="absolute inset-0 bg-black/70" onClick={onClose} />
 
             {/* Dialog */}
-            <div className="relative bg-[#2a2b2d] rounded-xl border border-gray-700 shadow-2xl w-full max-w-lg mx-4">
+            <div className="relative bg-gray-50 dark:bg-[#2a2b2d] rounded-xl border border-gray-200 dark:border-gray-700 shadow-2xl w-full max-w-lg mx-4">
                 {/* Header */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-                    <h2 className="text-lg font-semibold text-white">New Project</h2>
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                    <h2 className="text-lg font-semibold text-gray-900 dark:text-white">New Project</h2>
                     <button
                         onClick={onClose}
-                        className="p-1 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        className="p-1 rounded hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white transition-colors"
                     >
                         <X className="h-5 w-5" />
                     </button>
@@ -114,7 +114,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                 <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
                     {/* Name */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                             Project Name *
                         </label>
                         <input
@@ -122,14 +122,14 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             placeholder="E.g.: Q1 2026 Reconciliation"
-                            className="w-full bg-[#1e1f21] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                            className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
                             autoFocus
                         />
                     </div>
 
                     {/* Description */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                             Description
                         </label>
                         <textarea
@@ -137,13 +137,13 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                             onChange={(e) => setDescription(e.target.value)}
                             placeholder="Describe the goal of this project..."
                             rows={3}
-                            className="w-full bg-[#1e1f21] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
+                            className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 resize-none"
                         />
                     </div>
 
                     {/* Project Type */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                             Type
                         </label>
                         <div className="grid grid-cols-3 gap-2">
@@ -155,7 +155,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                                         onClick={() => setProjectType(type)}
                                         className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${projectType === type
                                             ? 'bg-blue-600/20 border-blue-600 text-blue-400'
-                                            : 'bg-[#1e1f21] border-gray-700 text-gray-400 hover:border-gray-600'
+                                            : 'bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 text-gray-500 dark:text-gray-400 hover:border-gray-300 dark:border-gray-600'
                                             }`}
                                     >
                                         {config.label}
@@ -167,7 +167,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
 
                     {/* Color */}
                     <div>
-                        <label className="block text-xs font-medium text-gray-400 mb-1.5">
+                        <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1.5">
                             Color
                         </label>
                         <div className="flex gap-2 flex-wrap">
@@ -196,7 +196,7 @@ export function CreateProjectDialog({ open, onClose, onCreated }: CreateProjectD
                         <button
                             type="button"
                             onClick={onClose}
-                            className="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white hover:bg-white/10 transition-colors"
+                            className="px-4 py-2 rounded-lg text-sm text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-white/10 transition-colors"
                         >
                             Cancel
                         </button>

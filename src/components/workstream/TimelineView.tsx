@@ -99,9 +99,9 @@ export function TimelineView({ tasks, sections, users, onTaskClick }: TimelineVi
             {/* Scrollable area */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Sidebar: task names */}
-                <div className="flex-shrink-0 border-r border-gray-800 overflow-y-auto bg-[#1e1f21]" style={{ width: SIDEBAR_WIDTH }}>
+                <div className="flex-shrink-0 border-r border-gray-200 dark:border-gray-800 overflow-y-auto bg-white dark:bg-[#1e1f21]" style={{ width: SIDEBAR_WIDTH }}>
                     {/* Header */}
-                    <div className="h-12 border-b border-gray-800 px-3 flex items-center">
+                    <div className="h-12 border-b border-gray-200 dark:border-gray-800 px-3 flex items-center">
                         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tasks</span>
                     </div>
                     {/* Task rows */}
@@ -111,14 +111,14 @@ export function TimelineView({ tasks, sections, users, onTaskClick }: TimelineVi
                             <div
                                 key={t.id}
                                 onClick={() => onTaskClick(t)}
-                                className="flex items-center gap-2 px-3 border-b border-gray-800/50 cursor-pointer hover:bg-white/5 transition-colors"
+                                className="flex items-center gap-2 px-3 border-b border-gray-200 dark:border-gray-800/50 cursor-pointer hover:bg-white/5 transition-colors"
                                 style={{ height: ROW_HEIGHT }}
                             >
                                 <div
                                     className="w-2 h-2 rounded-full flex-shrink-0"
                                     style={{ backgroundColor: STATUS_COLORS[t.status] || '#6b7280' }}
                                 />
-                                <span className="text-xs text-gray-300 truncate flex-1">{t.title}</span>
+                                <span className="text-xs text-gray-700 dark:text-gray-300 truncate flex-1">{t.title}</span>
                                 {assignee && (
                                     <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white text-[8px] font-medium flex-shrink-0">
                                         {assignee.name.charAt(0).toUpperCase()}
@@ -133,13 +133,13 @@ export function TimelineView({ tasks, sections, users, onTaskClick }: TimelineVi
                 <div className="flex-1 overflow-auto" ref={scrollRef}>
                     <div style={{ width: totalDays * DAY_WIDTH, minHeight: '100%' }} className="relative">
                         {/* Date header */}
-                        <div className="h-12 border-b border-gray-800 sticky top-0 z-10 bg-[#1e1f21] flex">
+                        <div className="h-12 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white dark:bg-[#1e1f21] flex">
                             {weekStarts.map((ws, idx) => {
                                 const offset = diffDays(ws, startDate) * DAY_WIDTH;
                                 return (
                                     <div
                                         key={idx}
-                                        className="absolute top-0 border-l border-gray-800"
+                                        className="absolute top-0 border-l border-gray-200 dark:border-gray-800"
                                         style={{ left: offset }}
                                     >
                                         <div className="px-2 py-1">
@@ -167,7 +167,7 @@ export function TimelineView({ tasks, sections, users, onTaskClick }: TimelineVi
                                     <div
                                         key={t.id}
                                         style={{ top: 48 + idx * ROW_HEIGHT, height: ROW_HEIGHT }}
-                                        className="absolute left-0 right-0 border-b border-gray-800/30"
+                                        className="absolute left-0 right-0 border-b border-gray-200 dark:border-gray-100 dark:border-gray-800/30"
                                     />
                                 );
                             }
@@ -182,7 +182,7 @@ export function TimelineView({ tasks, sections, users, onTaskClick }: TimelineVi
                                 <div
                                     key={t.id}
                                     style={{ top: 48 + idx * ROW_HEIGHT, height: ROW_HEIGHT }}
-                                    className="absolute left-0 right-0 border-b border-gray-800/30"
+                                    className="absolute left-0 right-0 border-b border-gray-200 dark:border-gray-100 dark:border-gray-800/30"
                                 >
                                     <div
                                         onClick={() => onTaskClick(t)}
@@ -195,7 +195,7 @@ export function TimelineView({ tasks, sections, users, onTaskClick }: TimelineVi
                                             borderLeft: `3px solid ${color}`,
                                         }}
                                     >
-                                        <span className="text-[10px] text-gray-300 truncate">{t.title}</span>
+                                        <span className="text-[10px] text-gray-700 dark:text-gray-300 truncate">{t.title}</span>
                                     </div>
                                 </div>
                             );

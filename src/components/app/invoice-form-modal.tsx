@@ -358,7 +358,7 @@ export function InvoiceFormModal({
             <Dialog open={open} onOpenChange={onOpenChange}>
                 <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
                     <div className="flex items-center justify-center py-12">
-                        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                        <Loader2 className="h-8 w-8 animate-spin text-gray-500 dark:text-gray-400" />
                     </div>
                 </DialogContent>
             </Dialog>

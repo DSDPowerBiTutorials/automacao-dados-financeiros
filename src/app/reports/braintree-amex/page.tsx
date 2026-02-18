@@ -720,7 +720,7 @@ export default function BraintreeEURPage() {
     if (!account)
       return {
         bg: "bg-gray-100",
-        text: "text-gray-400",
+        text: "text-gray-500 dark:text-gray-400",
         border: "border-gray-200",
       };
     return (
@@ -766,7 +766,7 @@ export default function BraintreeEURPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Settings className="h-4 w-4" />
                   Settings
                 </Button>
@@ -795,7 +795,7 @@ export default function BraintreeEURPage() {
                   id="file-upload-braintree"
                 />
                 <label htmlFor="file-upload-braintree">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
+                  <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload CSV
@@ -807,13 +807,13 @@ export default function BraintreeEURPage() {
                   disabled={isLoading}
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-white text-white hover:bg-white/10"
+                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
                   title="Force data refresh"
                 >
                   <Zap className={`h-4 w-4 ${isLoading ? 'animate-pulse' : ''}`} />
                   Refresh
                 </Button>
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
@@ -856,7 +856,7 @@ export default function BraintreeEURPage() {
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
-              <CardDescription className="text-white/80">
+              <CardDescription className="text-gray-900 dark:text-white/80">
                 Upload CSV files - Columns: disbursement_date → Date |
                 settlement_currency_sales → Amount (Payout calculated
                 automatically)
@@ -1001,7 +1001,7 @@ export default function BraintreeEURPage() {
                                   {row.destinationAccount}
                                 </button>
                               ) : (
-                                <span className="text-gray-400 text-xs">
+                                <span className="text-gray-500 dark:text-gray-400 text-xs">
                                   N/A
                                 </span>
                               )}
@@ -1012,21 +1012,21 @@ export default function BraintreeEURPage() {
                                   {row.reconciliationType === "automatic" ? (
                                     <div className="relative group">
                                       <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                         Automatic reconciliation
                                       </div>
                                     </div>
                                   ) : (
                                     <div className="relative group">
                                       <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                         Manual reconciliation
                                       </div>
                                     </div>
                                   )}
                                 </div>
                               ) : (
-                                <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                                <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 mx-auto" />
                               )}
                             </td>
                             <td className="py-3 px-4 text-center">

@@ -1053,7 +1053,7 @@ ${result.recommendations.join('\n')}
                                                             {financialAccountCode} - {financialAccountName}
                                                         </Badge>
                                                     ) : (
-                                                        <span className="text-gray-400 text-sm">-</span>
+                                                        <span className="text-gray-500 dark:text-gray-400 text-sm">-</span>
                                                     )}
                                                 </td>
 
@@ -1640,7 +1640,7 @@ function getPaidStatusIcon(status: string) {
     if (normalizedStatus.includes('partial')) {
         return <AlertTriangle className="w-4 h-4 text-yellow-600" />;
     }
-    return <XCircle className="w-4 h-4 text-gray-400" />;
+    return <XCircle className="w-4 h-4 text-gray-500 dark:text-gray-400" />;
 }
 
 // Helper: Pegar último status de histórico (ex: "Unpaid;Paid" -> "Paid")

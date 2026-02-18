@@ -116,8 +116,8 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
         return (
             <div
                 className={`group flex items-center gap-2 px-3 py-1.5 rounded-md cursor-pointer transition-colors text-sm ${isActive(`/workstream/${project.id}`)
-                    ? 'bg-white/15 text-white'
-                    : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
+                    ? 'bg-white/15 text-gray-900 dark:text-white'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-white/8 hover:text-gray-600 dark:text-gray-200'
                     }`}
                 onClick={() => {
                     router.push(`/workstream/${project.id}`);
@@ -170,7 +170,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                 className={`
                     fixed lg:relative top-0 left-0 h-full z-50 lg:z-auto
                     w-64 flex-shrink-0 flex flex-col
-                    bg-[#1e1f21] border-r border-gray-800
+                    bg-white dark:bg-[#1e1f21] border-r border-gray-200 dark:border-gray-800
                     transition-transform duration-200 ease-in-out
                     ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
                 `}
@@ -186,8 +186,8 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                 href={item.href}
                                 onClick={() => onClose?.()}
                                 className={`flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors no-underline ${item.active
-                                    ? 'bg-white/15 text-white'
-                                    : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
+                                    ? 'bg-white/15 text-gray-900 dark:text-white'
+                                    : 'text-gray-500 dark:text-gray-400 hover:bg-white/8 hover:text-gray-600 dark:text-gray-200'
                                     }`}
                             >
                                 <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -202,13 +202,13 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                     </div>
 
                     {/* Divider */}
-                    <div className="border-t border-gray-800 my-3 mx-2" />
+                    <div className="border-t border-gray-200 dark:border-gray-800 my-3 mx-2" />
 
                     {/* Insights Section */}
                     <div>
                         <button
                             onClick={() => setInsightsExpanded(!insightsExpanded)}
-                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-full hover:text-gray-400 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-full hover:text-gray-500 dark:text-gray-400 transition-colors"
                         >
                             {insightsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                             Insights
@@ -221,8 +221,8 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                         href={item.href}
                                         onClick={() => onClose?.()}
                                         className={`flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm transition-colors no-underline ${item.active
-                                            ? 'bg-white/15 text-white'
-                                            : 'text-gray-400 hover:bg-white/8 hover:text-gray-200'
+                                            ? 'bg-white/15 text-gray-900 dark:text-white'
+                                            : 'text-gray-500 dark:text-gray-400 hover:bg-white/8 hover:text-gray-600 dark:text-gray-200'
                                             }`}
                                     >
                                         <item.icon className="h-4 w-4 flex-shrink-0" />
@@ -234,14 +234,14 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                     </div>
 
                     {/* Divider */}
-                    <div className="border-t border-gray-800 my-3 mx-2" />
+                    <div className="border-t border-gray-200 dark:border-gray-800 my-3 mx-2" />
 
                     {/* Starred / Favorites */}
                     {favorites.length > 0 && (
                         <div>
                             <button
                                 onClick={() => setStarredExpanded(!starredExpanded)}
-                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-full hover:text-gray-400 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider w-full hover:text-gray-500 dark:text-gray-400 transition-colors"
                             >
                                 {starredExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                                 <Star className="h-3 w-3" />
@@ -254,7 +254,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                     ))}
                                 </div>
                             )}
-                            <div className="border-t border-gray-800 my-3 mx-2" />
+                            <div className="border-t border-gray-200 dark:border-gray-800 my-3 mx-2" />
                         </div>
                     )}
 
@@ -263,7 +263,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                         <div className="flex items-center justify-between px-3 py-1.5">
                             <button
                                 onClick={() => setProjectsExpanded(!projectsExpanded)}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-400 transition-colors"
+                                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-500 dark:text-gray-400 transition-colors"
                             >
                                 {projectsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                                 Projects
@@ -271,7 +271,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                             <Link
                                 href="/workstream?new=true"
                                 onClick={() => onClose?.()}
-                                className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors no-underline"
+                                className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors no-underline"
                                 title="Create project"
                             >
                                 <Plus className="h-3.5 w-3.5" />
@@ -281,7 +281,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                             <div className="mt-0.5 space-y-0.5">
                                 {loading ? (
                                     <div className="px-3 py-4 text-center">
-                                        <div className="animate-spin h-4 w-4 border-2 border-gray-600 border-t-blue-500 rounded-full mx-auto" />
+                                        <div className="animate-spin h-4 w-4 border-2 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full mx-auto" />
                                     </div>
                                 ) : allProjects.length === 0 ? (
                                     <div className="px-3 py-3 text-gray-600 text-xs text-center">
@@ -295,14 +295,14 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                     </div>
 
                     {/* Divider */}
-                    <div className="border-t border-gray-800 my-3 mx-2" />
+                    <div className="border-t border-gray-200 dark:border-gray-800 my-3 mx-2" />
 
                     {/* Teams */}
                     <div>
                         <div className="flex items-center justify-between px-3 py-1.5">
                             <button
                                 onClick={() => setTeamsExpanded(!teamsExpanded)}
-                                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-400 transition-colors"
+                                className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 uppercase tracking-wider hover:text-gray-500 dark:text-gray-400 transition-colors"
                             >
                                 {teamsExpanded ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
                                 <Users2 className="h-3 w-3" />
@@ -320,7 +320,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                         const teamProjects = projects.filter(p => p.project_type === teamType);
                                         const config = PROJECT_TYPE_CONFIG[teamType];
                                         return (
-                                            <div key={teamType} className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm text-gray-400 hover:bg-white/8 hover:text-gray-200 transition-colors cursor-pointer">
+                                            <div key={teamType} className="flex items-center gap-2.5 px-3 py-1.5 rounded-md text-sm text-gray-500 dark:text-gray-400 hover:bg-white/8 hover:text-gray-600 dark:text-gray-200 transition-colors cursor-pointer">
                                                 <Users2 className="h-3.5 w-3.5 flex-shrink-0" />
                                                 <span className="truncate flex-1">{config?.label || teamType}</span>
                                                 <span className="text-[10px] text-gray-600">{teamProjects.length}</span>
@@ -333,10 +333,10 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                     </div>
 
                     {/* Bottom: Invite teammates */}
-                    <div className="border-t border-gray-800 my-3 mx-2" />
+                    <div className="border-t border-gray-200 dark:border-gray-800 my-3 mx-2" />
                     <div className="px-3 pb-3">
                         <button
-                            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-white/8 hover:text-gray-300 transition-colors"
+                            className="flex items-center gap-2 w-full px-3 py-2 rounded-md text-sm text-gray-500 hover:bg-white/8 hover:text-gray-700 dark:text-gray-300 transition-colors"
                         >
                             <UserPlus className="h-4 w-4" />
                             Invite teammates
@@ -350,7 +350,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                 <>
                     <div className="fixed inset-0 z-[60]" onClick={() => setContextMenu(null)} />
                     <div
-                        className="fixed z-[61] bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl py-1 min-w-[160px]"
+                        className="fixed z-[61] bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[160px]"
                         style={{ left: contextMenu.x, top: contextMenu.y }}
                     >
                         {(() => {
@@ -359,7 +359,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                             return (
                                 <>
                                     <button
-                                        className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                                        className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-white/10 transition-colors"
                                         onClick={() => toggleFavorite(project.id, project.is_favorite)}
                                     >
                                         {project.is_favorite ? (
@@ -373,7 +373,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                         )}
                                     </button>
                                     <button
-                                        className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                                        className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-white/10 transition-colors"
                                         onClick={() => {
                                             router.push(`/workstream/${project.id}?settings=true`);
                                             setContextMenu(null);
@@ -382,12 +382,12 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                                         <Pencil className="h-3.5 w-3.5" /> Edit project
                                     </button>
                                     <button
-                                        className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-300 hover:bg-white/10 transition-colors"
+                                        className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-white/10 transition-colors"
                                         onClick={() => archiveProject(project.id)}
                                     >
                                         <Archive className="h-3.5 w-3.5" /> Archive
                                     </button>
-                                    <div className="border-t border-gray-700 my-1" />
+                                    <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
                                     <button
                                         className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-red-400 hover:bg-red-900/20 transition-colors"
                                         onClick={() => deleteProjectById(project.id)}

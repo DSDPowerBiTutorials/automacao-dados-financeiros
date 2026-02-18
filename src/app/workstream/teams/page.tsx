@@ -70,16 +70,16 @@ export default function TeamsPage() {
     }, []);
 
     return (
-        <div className="h-full overflow-y-auto bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
             <div className="max-w-5xl mx-auto px-6 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
                     <div>
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <Users2 className="h-6 w-6" />
                             Teams
                         </h1>
-                        <p className="text-gray-400 text-sm mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                             Manage your teams and their projects
                         </p>
                     </div>
@@ -94,40 +94,40 @@ export default function TeamsPage() {
 
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
-                        <div className="animate-spin h-8 w-8 border-3 border-gray-600 border-t-blue-500 rounded-full" />
+                        <div className="animate-spin h-8 w-8 border-3 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full" />
                     </div>
                 ) : teams.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <Users2 className="h-12 w-12 text-gray-700 mb-4" />
-                        <h2 className="text-lg font-medium text-gray-400 mb-1">No teams yet</h2>
+                        <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-1">No teams yet</h2>
                         <p className="text-sm text-gray-600">Create projects to organize your teams</p>
                     </div>
                 ) : (
                     <div className="space-y-6">
                         {teams.map((team) => (
-                            <div key={team.type} className="bg-[#2a2b2d] border border-gray-800 rounded-xl overflow-hidden">
+                            <div key={team.type} className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                                 {/* Team header */}
-                                <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
+                                <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
                                         <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                                             <Users2 className="h-5 w-5 text-blue-400" />
                                         </div>
                                         <div>
-                                            <h3 className="text-sm font-semibold text-white">{team.label}</h3>
+                                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white">{team.label}</h3>
                                             <p className="text-xs text-gray-500">
                                                 {team.projects.length} project{team.projects.length !== 1 ? 's' : ''} · {team.members.length} member{team.members.length !== 1 ? 's' : ''}
                                             </p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <button className="p-1.5 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors">
+                                        <button className="p-1.5 rounded hover:bg-white/10 text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors">
                                             <Settings className="h-4 w-4" />
                                         </button>
                                     </div>
                                 </div>
 
                                 {/* Members row */}
-                                <div className="px-5 py-3 border-b border-gray-800/50">
+                                <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-800/50">
                                     <div className="flex items-center gap-2">
                                         <span className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider mr-2">Members</span>
                                         <div className="flex -space-x-2">
@@ -137,7 +137,7 @@ export default function TeamsPage() {
                                                 </div>
                                             ))}
                                             {team.members.length > 6 && (
-                                                <div className="w-7 h-7 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-gray-300 font-medium border-2 border-[#2a2b2d]">
+                                                <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] text-gray-700 dark:text-gray-300 font-medium border-2 border-[#2a2b2d]">
                                                     +{team.members.length - 6}
                                                 </div>
                                             )}
@@ -146,7 +146,7 @@ export default function TeamsPage() {
                                 </div>
 
                                 {/* Projects */}
-                                <div className="divide-y divide-gray-800/50">
+                                <div className="divide-y divide-gray-200 dark:divide-gray-800/50">
                                     {team.projects.map((project) => (
                                         <div
                                             key={project.id}
@@ -159,7 +159,7 @@ export default function TeamsPage() {
                                             >
                                                 {project.name.charAt(0).toUpperCase()}
                                             </div>
-                                            <span className="text-sm text-gray-300 flex-1 truncate">{project.name}</span>
+                                            <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{project.name}</span>
                                             <ChevronRight className="h-4 w-4 text-gray-600" />
                                         </div>
                                     ))}
@@ -168,20 +168,20 @@ export default function TeamsPage() {
                         ))}
 
                         {/* All Members section */}
-                        <div className="bg-[#2a2b2d] border border-gray-800 rounded-xl overflow-hidden">
-                            <div className="px-5 py-4 border-b border-gray-800">
-                                <h3 className="text-sm font-semibold text-white">All Members</h3>
+                        <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                            <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800">
+                                <h3 className="text-sm font-semibold text-gray-900 dark:text-white">All Members</h3>
                                 <p className="text-xs text-gray-500 mt-0.5">{allUsers.length} people in your organization</p>
                             </div>
-                            <div className="divide-y divide-gray-800/50">
+                            <div className="divide-y divide-gray-200 dark:divide-gray-800/50">
                                 {allUsers.map((user) => (
                                     <div key={user.id} className="flex items-center gap-3 px-5 py-3">
                                         <UserAvatar user={user} size="md" />
                                         <div className="flex-1 min-w-0">
-                                            <p className="text-sm text-white truncate">{user.name}</p>
+                                            <p className="text-sm text-gray-900 dark:text-white truncate">{user.name}</p>
                                             <p className="text-xs text-gray-500 truncate">{user.email}</p>
                                         </div>
-                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-700 text-gray-400">
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
                                             {user.role}
                                         </span>
                                     </div>

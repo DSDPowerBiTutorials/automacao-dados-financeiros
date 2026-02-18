@@ -460,7 +460,7 @@ export default function InvoiceOrdersPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-900 text-white">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
             <div className="p-4 md:p-6 space-y-4">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -476,7 +476,7 @@ export default function InvoiceOrdersPage() {
                             <FileText className="h-6 w-6 text-blue-400" />
                             Invoice Orders
                         </h1>
-                        <p className="text-gray-400 text-sm mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                             Gerencie e reconcilie Invoice Orders importadas de CSV
                         </p>
                     </div>
@@ -488,23 +488,23 @@ export default function InvoiceOrdersPage() {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Card className="bg-gray-800 border-gray-700">
+                    <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-gray-400 text-xs uppercase">Total Invoices</p>
-                                    <p className="text-2xl font-bold text-white">{stats.total}</p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs uppercase">Total Invoices</p>
+                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
                                 </div>
                                 <FileText className="h-8 w-8 text-blue-400 opacity-50" />
                             </div>
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gray-800 border-gray-700">
+                    <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-gray-400 text-xs uppercase">Reconciled</p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs uppercase">Reconciled</p>
                                     <p className="text-2xl font-bold text-green-400">{stats.reconciled}</p>
                                 </div>
                                 <CheckCircle2 className="h-8 w-8 text-green-400 opacity-50" />
@@ -512,11 +512,11 @@ export default function InvoiceOrdersPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gray-800 border-gray-700">
+                    <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-gray-400 text-xs uppercase">Pending</p>
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs uppercase">Pending</p>
                                     <p className="text-2xl font-bold text-yellow-400">{stats.unreconciled}</p>
                                 </div>
                                 <AlertCircle className="h-8 w-8 text-yellow-400 opacity-50" />
@@ -524,12 +524,12 @@ export default function InvoiceOrdersPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gray-800 border-gray-700">
+                    <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
-                                    <p className="text-gray-400 text-xs uppercase">Total Amount</p>
-                                    <p className="text-2xl font-bold text-white">
+                                    <p className="text-gray-500 dark:text-gray-400 text-xs uppercase">Total Amount</p>
+                                    <p className="text-2xl font-bold text-gray-900 dark:text-white">
                                         €{formatEuropeanNumber(stats.totalAmount)}
                                     </p>
                                 </div>
@@ -540,7 +540,7 @@ export default function InvoiceOrdersPage() {
                 </div>
 
                 {/* Actions Bar */}
-                <Card className="bg-gray-800 border-gray-700">
+                <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     <CardContent className="p-4">
                         <div className="flex flex-wrap items-center gap-3">
                             {/* Upload Button */}
@@ -569,7 +569,7 @@ export default function InvoiceOrdersPage() {
                             {/* Refresh */}
                             <Button
                                 variant="outline"
-                                className="bg-gray-700 hover:bg-gray-600 border-gray-600"
+                                className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600"
                                 onClick={loadData}
                                 disabled={loading}
                             >
@@ -595,7 +595,7 @@ export default function InvoiceOrdersPage() {
                             {/* Export */}
                             <Button
                                 variant="outline"
-                                className="bg-gray-700 hover:bg-gray-600 border-gray-600"
+                                className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600"
                                 onClick={exportToExcel}
                             >
                                 <Download className="h-4 w-4 mr-2" />
@@ -605,35 +605,35 @@ export default function InvoiceOrdersPage() {
                             {/* Column Selector */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="bg-gray-700 hover:bg-gray-600 border-gray-600">
+                                    <Button variant="outline" className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600">
                                         <Columns className="h-4 w-4 mr-2" />
                                         Columns
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="bg-gray-800 border-gray-700 text-white w-56">
+                                <DropdownMenuContent className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white w-56">
                                     <DropdownMenuLabel>Standard Columns</DropdownMenuLabel>
-                                    <DropdownMenuSeparator className="bg-gray-700" />
+                                    <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-700" />
                                     {columns.map((col) => (
                                         <DropdownMenuCheckboxItem
                                             key={col.key}
                                             checked={col.visible}
                                             onCheckedChange={() => toggleColumn(col.key)}
-                                            className="text-gray-300 focus:bg-gray-700 focus:text-white"
+                                            className="text-gray-700 dark:text-gray-300 focus:bg-gray-700 focus:text-gray-900 dark:text-white"
                                         >
                                             {col.label}
                                         </DropdownMenuCheckboxItem>
                                     ))}
                                     {allCustomColumns.length > 0 && (
                                         <>
-                                            <DropdownMenuSeparator className="bg-gray-700" />
+                                            <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-700" />
                                             <DropdownMenuLabel>Custom Columns</DropdownMenuLabel>
-                                            <DropdownMenuSeparator className="bg-gray-700" />
+                                            <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-700" />
                                             {allCustomColumns.map((col) => (
                                                 <DropdownMenuCheckboxItem
                                                     key={col.key}
                                                     checked={col.visible}
                                                     onCheckedChange={() => toggleColumn(col.key)}
-                                                    className="text-gray-300 focus:bg-gray-700 focus:text-white"
+                                                    className="text-gray-700 dark:text-gray-300 focus:bg-gray-700 focus:text-gray-900 dark:text-white"
                                                 >
                                                     {col.label}
                                                 </DropdownMenuCheckboxItem>
@@ -659,20 +659,20 @@ export default function InvoiceOrdersPage() {
 
                             {/* Search */}
                             <div className="relative w-64">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 <Input
                                     type="text"
                                     placeholder="Search invoices..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 bg-gray-700 border-gray-600 text-white placeholder-gray-400"
+                                    className="pl-10 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
                                 />
                             </div>
 
                             {/* Show Reconciled Toggle */}
                             <Button
                                 variant="outline"
-                                className={`border-gray-600 ${showReconciled ? "bg-gray-700 text-white" : "bg-gray-800 text-gray-400"
+                                className={`border-gray-300 dark:border-gray-600 ${showReconciled ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
                                     }`}
                                 onClick={() => setShowReconciled(!showReconciled)}
                             >
@@ -684,7 +684,7 @@ export default function InvoiceOrdersPage() {
                 </Card>
 
                 {/* Data Table */}
-                <Card className="bg-gray-800 border-gray-700">
+                <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
                     <CardContent className="p-0">
                         {loading ? (
                             <div className="flex items-center justify-center h-64">
@@ -696,7 +696,7 @@ export default function InvoiceOrdersPage() {
                                 {error}
                             </div>
                         ) : filteredData.length === 0 ? (
-                            <div className="flex flex-col items-center justify-center h-64 text-gray-400">
+                            <div className="flex flex-col items-center justify-center h-64 text-gray-500 dark:text-gray-400">
                                 <FileText className="h-12 w-12 mb-4 opacity-50" />
                                 <p className="text-lg">Nenhum Invoice Order encontrado</p>
                                 <p className="text-sm">Faça upload de um arquivo CSV para começar</p>
@@ -705,11 +705,11 @@ export default function InvoiceOrdersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="bg-gray-900/50 border-b border-gray-700">
+                                        <tr className="bg-gray-100 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
                                             {visibleColumns.map((col) => (
                                                 <th
                                                     key={col.key}
-                                                    className="px-3 py-2 text-left text-gray-400 font-medium cursor-pointer hover:bg-gray-700/50"
+                                                    className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium cursor-pointer hover:bg-gray-100 dark:bg-gray-700/50"
                                                     style={{ width: col.width }}
                                                     onClick={() => handleSort(col.key)}
                                                 >
@@ -727,17 +727,17 @@ export default function InvoiceOrdersPage() {
                                                     </div>
                                                 </th>
                                             ))}
-                                            <th className="px-3 py-2 text-right text-gray-400 font-medium w-24">Actions</th>
+                                            <th className="px-3 py-2 text-right text-gray-500 dark:text-gray-400 font-medium w-24">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {filteredData.map((row) => (
                                             <tr
                                                 key={row.id}
-                                                className="border-b border-gray-700/50 hover:bg-gray-700/30 transition-colors"
+                                                className="border-b border-gray-200 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700/30 transition-colors"
                                             >
                                                 {visibleColumns.map((col) => (
-                                                    <td key={col.key} className="px-3 py-2 text-gray-300">
+                                                    <td key={col.key} className="px-3 py-2 text-gray-700 dark:text-gray-300">
                                                         {getCellValue(row, col.key)}
                                                     </td>
                                                 ))}
@@ -746,10 +746,10 @@ export default function InvoiceOrdersPage() {
                                                         <Button
                                                             variant="ghost"
                                                             size="sm"
-                                                            className="h-7 w-7 p-0 hover:bg-gray-600"
+                                                            className="h-7 w-7 p-0 hover:bg-gray-100 dark:hover:bg-gray-600"
                                                             onClick={() => viewDetails(row)}
                                                         >
-                                                            <Eye className="h-4 w-4 text-gray-400" />
+                                                            <Eye className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                                         </Button>
                                                         <Button
                                                             variant="ghost"
@@ -778,13 +778,13 @@ export default function InvoiceOrdersPage() {
 
             {/* Details Dialog */}
             <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-                <DialogContent className="bg-gray-800 border-gray-700 text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-2xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <FileText className="h-5 w-5 text-blue-400" />
                             Invoice Details
                         </DialogTitle>
-                        <DialogDescription className="text-gray-400">
+                        <DialogDescription className="text-gray-500 dark:text-gray-400">
                             {selectedRow?.invoice_number}
                         </DialogDescription>
                     </DialogHeader>
@@ -794,25 +794,25 @@ export default function InvoiceOrdersPage() {
                             {/* Main Info */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
-                                    <Label className="text-gray-400 text-xs">Invoice Number</Label>
-                                    <p className="text-white font-mono">{selectedRow.invoice_number || "-"}</p>
+                                    <Label className="text-gray-500 dark:text-gray-400 text-xs">Invoice Number</Label>
+                                    <p className="text-gray-900 dark:text-white font-mono">{selectedRow.invoice_number || "-"}</p>
                                 </div>
                                 <div>
-                                    <Label className="text-gray-400 text-xs">Order Number</Label>
-                                    <p className="text-white font-mono">{selectedRow.order_number || "-"}</p>
+                                    <Label className="text-gray-500 dark:text-gray-400 text-xs">Order Number</Label>
+                                    <p className="text-gray-900 dark:text-white font-mono">{selectedRow.order_number || "-"}</p>
                                 </div>
                                 <div>
-                                    <Label className="text-gray-400 text-xs">Date</Label>
-                                    <p className="text-white">{formatDate(selectedRow.date)}</p>
+                                    <Label className="text-gray-500 dark:text-gray-400 text-xs">Date</Label>
+                                    <p className="text-gray-900 dark:text-white">{formatDate(selectedRow.date)}</p>
                                 </div>
                                 <div>
-                                    <Label className="text-gray-400 text-xs">Amount</Label>
-                                    <p className="text-white font-mono">
+                                    <Label className="text-gray-500 dark:text-gray-400 text-xs">Amount</Label>
+                                    <p className="text-gray-900 dark:text-white font-mono">
                                         {selectedRow.currency} {formatEuropeanNumber(selectedRow.amount)}
                                     </p>
                                 </div>
                                 <div>
-                                    <Label className="text-gray-400 text-xs">Status</Label>
+                                    <Label className="text-gray-500 dark:text-gray-400 text-xs">Status</Label>
                                     <p>
                                         {selectedRow.reconciled ? (
                                             <Badge className="bg-green-900/30 text-green-400 border border-green-700">
@@ -830,16 +830,16 @@ export default function InvoiceOrdersPage() {
                             {/* Custom Data */}
                             {selectedRow.custom_data && Object.keys(selectedRow.custom_data).length > 0 && (
                                 <div>
-                                    <Label className="text-gray-400 text-xs block mb-2">Additional Details</Label>
-                                    <div className="bg-gray-900/50 rounded-lg p-3 space-y-2">
+                                    <Label className="text-gray-500 dark:text-gray-400 text-xs block mb-2">Additional Details</Label>
+                                    <div className="bg-gray-100 dark:bg-gray-900/50 rounded-lg p-3 space-y-2">
                                         {Object.entries(selectedRow.custom_data)
                                             .filter(([key]) => !["file_name", "row_index"].includes(key))
                                             .map(([key, value]) => (
                                                 <div key={key} className="flex justify-between text-sm">
-                                                    <span className="text-gray-400">
+                                                    <span className="text-gray-500 dark:text-gray-400">
                                                         {key.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase())}
                                                     </span>
-                                                    <span className="text-white font-mono">
+                                                    <span className="text-gray-900 dark:text-white font-mono">
                                                         {value === null || value === undefined ? "-" : String(value)}
                                                     </span>
                                                 </div>

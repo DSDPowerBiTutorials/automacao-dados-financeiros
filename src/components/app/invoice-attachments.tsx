@@ -252,7 +252,7 @@ export function InvoiceAttachments({
                                 key={att.id}
                                 className="flex items-center gap-3 p-2 bg-gray-50 rounded-lg group"
                             >
-                                <Icon className="h-5 w-5 text-gray-400 flex-shrink-0" />
+                                <Icon className="h-5 w-5 text-gray-500 dark:text-gray-400 flex-shrink-0" />
                                 <div className="flex-1 min-w-0">
                                     <p className="text-sm font-medium text-gray-700 truncate">
                                         {att.file_name}

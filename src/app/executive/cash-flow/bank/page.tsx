@@ -255,11 +255,11 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
     quickbooks: { bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700" },
     continental: { bg: "bg-orange-900/30", text: "text-orange-400", border: "border-orange-700" },
     wise: { bg: "bg-teal-900/30", text: "text-teal-400", border: "border-teal-700" },
-    "sem-gateway": { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-600" },
+    "sem-gateway": { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-300 dark:border-gray-600" },
     "braintree (amex)": { bg: "bg-purple-900/30", text: "text-purple-400", border: "border-purple-700" },
 };
 
-const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" };
+const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700" };
 
 // ─── Chart stroke colors ───
 const BANK_CHART_COLORS: Record<string, string> = {
@@ -1035,8 +1035,8 @@ export default function BankCashFlowPage() {
 
     if (isLoading) {
         return (
-            <div className="h-full flex items-center justify-center bg-[#1e1f21]">
-                <RefreshCw className="h-8 w-8 animate-spin text-white" />
+            <div className="h-full flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+                <RefreshCw className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
             </div>
         );
     }
@@ -1044,26 +1044,26 @@ export default function BankCashFlowPage() {
     const showBankColumn = selectedBanks.size > 1;
 
     return (
-        <div className="h-full flex flex-col bg-[#1e1f21] text-white overflow-hidden">
+        <div className="h-full flex flex-col bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white overflow-hidden">
             {/* Main content area shifts when panel is open */}
             <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedRow ? "mr-[450px]" : ""}`}>
 
                 {/* ─── Header ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-4">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
                             <div className="bg-[#117ACA] p-2 rounded-lg">
-                                <Database className="h-6 w-6 text-white" />
+                                <Database className="h-6 w-6 text-gray-900 dark:text-white" />
                             </div>
                             <div>
                                 <h1 className="text-xl font-semibold">Bank Cash Flow</h1>
-                                <span className="text-gray-400 text-sm">
+                                <span className="text-gray-500 dark:text-gray-400 text-sm">
                                     {summary.transactionCount} transactions • {[...selectedBanks].map(b => BANK_ACCOUNTS.find(a => a.key === b)?.label).join(", ")}
                                 </span>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm text-gray-400">Net Balance</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Net Balance</p>
                             <p className={`text-2xl font-bold ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`}>
                                 {formatCurrency(summary.netCashFlow, dominantCurrency)}
                             </p>
@@ -1073,10 +1073,10 @@ export default function BankCashFlowPage() {
                     {/* Action buttons */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Button onClick={loadData} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                            <Button onClick={loadData} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <RefreshCw className="h-4 w-4 mr-1" />Refresh
                             </Button>
-                            <Button onClick={exportCSV} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                            <Button onClick={exportCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <Download className="h-4 w-4 mr-1" />CSV
                             </Button>
                             <Button onClick={runDeepReconciliation} disabled={isReconciling} variant="outline" size="sm" className="bg-emerald-900/30 border-emerald-700 text-emerald-400 hover:bg-emerald-800/50">
@@ -1086,10 +1086,10 @@ export default function BankCashFlowPage() {
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-56 bg-transparent border-gray-600 text-white placeholder:text-gray-500" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-56 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500" />
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => setShowReconciled(!showReconciled)} className={`bg-transparent border-gray-600 hover:bg-gray-700 ${showReconciled ? "text-white" : "text-green-400"}`}>
+                            <Button variant="outline" size="sm" onClick={() => setShowReconciled(!showReconciled)} className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${showReconciled ? "text-gray-900 dark:text-white" : "text-green-400"}`}>
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 {showReconciled ? "Hide Recon." : "Show Recon."}
                             </Button>
@@ -1098,7 +1098,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ─── Bank Account Tabs ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-[#252627]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#252627]">
                     <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mr-1">Accounts:</span>
                         {BANK_ACCOUNTS.map(bank => {
@@ -1107,13 +1107,13 @@ export default function BankCashFlowPage() {
                             const fresh = bankFreshness[bank.key];
                             return (
                                 <button key={bank.key} onClick={() => toggleBank(bank.key)} onDoubleClick={() => selectSingleBank(bank.key)}
-                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm ${isActive ? bank.bgColor + " text-white border-transparent" : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-500"} ${!stats?.count ? "opacity-40" : ""}`}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm ${isActive ? bank.bgColor + " text-gray-900 dark:text-white border-transparent" : "bg-transparent border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-500"} ${!stats?.count ? "opacity-40" : ""}`}
                                     title="Double-click to select only this one">
                                     <div className="flex flex-col items-start">
                                         <div className="flex items-center gap-2">
                                             <Building className="h-3.5 w-3.5" />
                                             <span className="font-medium">{bank.label}</span>
-                                            {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-700"}`}>{stats.count}</span> : null}
+                                            {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-100 dark:bg-gray-700"}`}>{stats.count}</span> : null}
                                         </div>
                                         {fresh && (
                                             <div className="flex items-center gap-2 mt-0.5">
@@ -1128,14 +1128,14 @@ export default function BankCashFlowPage() {
                                 </button>
                             );
                         })}
-                        <button onClick={() => setSelectedBanks(new Set(BANK_ACCOUNTS.map(b => b.key)))} className="text-xs text-gray-500 hover:text-white ml-auto">
+                        <button onClick={() => setSelectedBanks(new Set(BANK_ACCOUNTS.map(b => b.key)))} className="text-xs text-gray-500 hover:text-gray-900 dark:text-white ml-auto">
                             All
                         </button>
                     </div>
                 </div>
 
                 {/* ─── Stats Bar (KPI inline) ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-[#1e1f21]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-[#1e1f21]">
                     <div className="grid grid-cols-6 gap-4">
                         <div className="flex items-center gap-2 min-w-0">
                             <ArrowDownCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -1192,7 +1192,7 @@ export default function BankCashFlowPage() {
 
                 {/* ─── Monthly Highlights + Chart ─── */}
                 {chartData.length > 0 && (
-                    <div className="flex-shrink-0 border-b border-gray-700 px-6 py-4 bg-[#1e1f21]">
+                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-[#1e1f21]">
                         {/* Monthly cards */}
                         <div className="flex items-center gap-2 mb-3">
                             <TrendingUp className="h-4 w-4 text-gray-500" />
@@ -1200,7 +1200,7 @@ export default function BankCashFlowPage() {
                         </div>
                         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
                             {chartData.map(m => (
-                                <div key={m.month} className="flex-shrink-0 bg-[#252627] rounded-lg border border-gray-700 px-3 py-2 min-w-[130px]">
+                                <div key={m.month} className="flex-shrink-0 bg-gray-100 dark:bg-[#252627] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[130px]">
                                     <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">{m.label}</p>
                                     <div className="space-y-0.5">
                                         <div className="flex justify-between text-[10px]">
@@ -1211,7 +1211,7 @@ export default function BankCashFlowPage() {
                                             <span className="text-gray-500">Out</span>
                                             <span className="text-red-400 font-medium">{formatCompactCurrency(m.outflows, dominantCurrency)}</span>
                                         </div>
-                                        <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                        <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
                                             <span className="text-gray-500">Net</span>
                                             <span className={`font-bold ${m.balance >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(m.balance, dominantCurrency)}</span>
                                         </div>
@@ -1232,22 +1232,22 @@ export default function BankCashFlowPage() {
                                     {revenueViewMode === "bank" ? "Inflows by Bank Account" : revenueViewMode === "gateway" ? "Inflows by Payment Gateway" : "Inflows by P&L Line"}
                                 </span>
                             </div>
-                            <div className="flex items-center bg-[#1a1b1d] rounded-lg border border-gray-700 p-0.5">
+                            <div className="flex items-center bg-white dark:bg-[#1a1b1d] rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
                                 <button
                                     onClick={() => setRevenueViewMode("bank")}
-                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "bank" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "bank" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
                                 >
                                     <Building className="h-3 w-3" />Bank Account
                                 </button>
                                 <button
                                     onClick={() => setRevenueViewMode("gateway")}
-                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "gateway" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "gateway" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
                                 >
                                     <CreditCard className="h-3 w-3" />Gateway
                                 </button>
                                 <button
                                     onClick={() => setRevenueViewMode("pnl")}
-                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "pnl" ? "bg-[#117ACA] text-white" : "text-gray-400 hover:text-white"}`}
+                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "pnl" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
                                 >
                                     <BarChart3 className="h-3 w-3" />P&L Line
                                 </button>
@@ -1331,7 +1331,7 @@ export default function BankCashFlowPage() {
                                             const stats = revenueByBank[bank.key];
                                             const net = stats.inflows - stats.outflows;
                                             return (
-                                                <div key={bank.key} className="flex-shrink-0 bg-[#252627] rounded-lg border border-gray-700 px-3 py-2 min-w-[145px]">
+                                                <div key={bank.key} className="flex-shrink-0 bg-gray-100 dark:bg-[#252627] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[145px]">
                                                     <p className={`text-[10px] uppercase font-medium mb-1 ${bank.textColor}`}>{bank.label}</p>
                                                     <div className="space-y-0.5">
                                                         <div className="flex justify-between text-[10px]">
@@ -1342,13 +1342,13 @@ export default function BankCashFlowPage() {
                                                             <span className="text-gray-500">Out</span>
                                                             <span className="text-red-400 font-medium">{formatCompactCurrency(stats.outflows, bank.currency)}</span>
                                                         </div>
-                                                        <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                        <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
                                                             <span className="text-gray-500">Net</span>
                                                             <span className={`font-bold ${net >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(net, bank.currency)}</span>
                                                         </div>
                                                         <div className="flex justify-between text-[10px]">
                                                             <span className="text-gray-500">Txns</span>
-                                                            <span className="text-gray-300 font-medium">{stats.count}</span>
+                                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{stats.count}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1380,11 +1380,11 @@ export default function BankCashFlowPage() {
                                                             </div>
                                                             <div className="flex justify-between text-[10px]">
                                                                 <span className="text-gray-500">Txns</span>
-                                                                <span className="text-gray-300 font-medium">{stats.count}</span>
+                                                                <span className="text-gray-700 dark:text-gray-300 font-medium">{stats.count}</span>
                                                             </div>
-                                                            <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                            <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
                                                                 <span className="text-gray-500">Share</span>
-                                                                <span className="text-gray-300 font-medium">{pct}%</span>
+                                                                <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -1442,17 +1442,17 @@ export default function BankCashFlowPage() {
                                                                     </div>
                                                                     <div className="flex justify-between text-[10px]">
                                                                         <span className="text-gray-500">Orders</span>
-                                                                        <span className="text-gray-300 font-medium">{lineData.count}</span>
+                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{lineData.count}</span>
                                                                     </div>
                                                                     <div className="flex justify-between text-[10px]">
                                                                         <span className="text-gray-500">Products</span>
-                                                                        <span className="text-gray-300 font-medium">{productCount}</span>
+                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{productCount}</span>
                                                                     </div>
-                                                                    <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                                    <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
                                                                         <span className="text-gray-500">Share</span>
-                                                                        <span className="text-gray-300 font-medium">{pct}%</span>
+                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
                                                                     </div>
-                                                                    <div className="w-full bg-gray-700 rounded-full h-1 mt-0.5">
+                                                                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-0.5">
                                                                         <div className={`h-1 rounded-full ${line.border.replace('border-', 'bg-')}`} style={{ width: `${pct}%` }} />
                                                                     </div>
                                                                 </div>
@@ -1467,11 +1467,11 @@ export default function BankCashFlowPage() {
                                                         return (
                                                             <div
                                                                 onClick={() => setSelectedPnlLine("unclassified")}
-                                                                className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-gray-800/50 border-gray-700"
+                                                                className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
                                                             >
                                                                 <div className="flex items-center gap-1.5 mb-1">
                                                                     <span className="text-sm">❓</span>
-                                                                    <p className="text-[10px] uppercase font-medium text-gray-400">Unclassified</p>
+                                                                    <p className="text-[10px] uppercase font-medium text-gray-500 dark:text-gray-400">Unclassified</p>
                                                                 </div>
                                                                 <div className="space-y-0.5">
                                                                     <div className="flex justify-between text-[10px]">
@@ -1480,11 +1480,11 @@ export default function BankCashFlowPage() {
                                                                     </div>
                                                                     <div className="flex justify-between text-[10px]">
                                                                         <span className="text-gray-500">Orders</span>
-                                                                        <span className="text-gray-300 font-medium">{uncData.count}</span>
+                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{uncData.count}</span>
                                                                     </div>
-                                                                    <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                                    <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
                                                                         <span className="text-gray-500">Share</span>
-                                                                        <span className="text-gray-300 font-medium">{pct}%</span>
+                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
                                                                     </div>
                                                                 </div>
                                                                 <p className="text-[8px] text-gray-600 mt-1 text-center">Click for products</p>
@@ -1512,11 +1512,11 @@ export default function BankCashFlowPage() {
                                                                     </div>
                                                                     <div className="flex justify-between text-[10px]">
                                                                         <span className="text-gray-500">Txns</span>
-                                                                        <span className="text-gray-300 font-medium">{intData.count}</span>
+                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{intData.count}</span>
                                                                     </div>
-                                                                    <div className="flex justify-between text-[10px] border-t border-gray-700 pt-0.5">
+                                                                    <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
                                                                         <span className="text-gray-500">% of gross</span>
-                                                                        <span className="text-gray-300 font-medium">{pct}%</span>
+                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
                                                                     </div>
                                                                 </div>
                                                                 <p className="text-[8px] text-slate-600 mt-1 text-center">Non-revenue</p>
@@ -1539,41 +1539,41 @@ export default function BankCashFlowPage() {
                 )}
 
                 {/* ─── Filters ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-2 bg-[#252627]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#252627]">
                     <div className="flex items-center gap-3 flex-wrap">
                         <Filter className="h-3.5 w-3.5 text-gray-500" />
-                        <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-600 text-white text-xs" />
+                        <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
                         <span className="text-gray-600">→</span>
-                        <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-600 text-white text-xs" />
-                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-600 text-white hover:bg-gray-700 text-xs">
+                        <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
+                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 text-xs">
                             Apply
                         </Button>
                         <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree">Braintree</SelectItem><SelectItem value="stripe">Stripe</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gusto">Gusto</SelectItem><SelectItem value="quickbooks">QuickBooks</SelectItem></SelectContent>
                         </Select>
                         <Select value={flowFilter} onValueChange={setFlowFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="income">Inflows</SelectItem><SelectItem value="expense">Outflows</SelectItem></SelectContent>
                         </Select>
                         <Select value={reconFilter} onValueChange={setReconFilter}>
-                            <SelectTrigger className="w-32 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
+                            <SelectTrigger className="w-32 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="reconciled">Reconciled</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
                         </Select>
                         <Select value={gwReconFilter} onValueChange={setGwReconFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">GW All</SelectItem><SelectItem value="auto">Auto</SelectItem><SelectItem value="manual">Manual</SelectItem><SelectItem value="intercompany">Intercompany</SelectItem><SelectItem value="not-reconciled">Not Recon.</SelectItem></SelectContent>
                         </Select>
                         <Select value={orderFilter} onValueChange={setOrderFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
                         </Select>
                     </div>
                 </div>
 
                 {/* ─── Table Header ─── */}
-                <div className="flex-shrink-0 sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
-                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[1060px]">
+                <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[1060px]">
                         <div className="w-[60px] flex-shrink-0">Date</div>
                         {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
                         <div className="flex-1 min-w-[200px]">Description</div>
@@ -1590,11 +1590,11 @@ export default function BankCashFlowPage() {
                 {/* ─── Content (date-grouped rows) ─── */}
                 <div className="flex-1 overflow-y-auto overflow-x-auto">
                     {dateGroups.map(group => (
-                        <div key={group.date} className="border-b border-gray-800">
+                        <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
                             {/* Date group header */}
-                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
-                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                                <span className="font-medium text-white text-sm">{group.dateLabel}</span>
+                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
+                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+                                <span className="font-medium text-gray-900 dark:text-white text-sm">{group.dateLabel}</span>
                                 <span className="text-gray-500 text-xs ml-auto">
                                     {group.rows.length} txns <span className="mx-1">|</span>
                                     <span className="text-green-400">+{formatCurrency(group.totalCredits, dominantCurrency)}</span>
@@ -1612,17 +1612,17 @@ export default function BankCashFlowPage() {
 
                                 return (
                                     <div key={tx.id}
-                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 cursor-pointer min-w-[1060px] ${selectedRow?.id === tx.id ? "bg-gray-700/50" : ""}`}
+                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[1060px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-gray-700/50" : ""}`}
                                         onClick={() => handleRowSelect(tx)}>
-                                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-300">{formatShortDate(tx.date)}</div>
+                                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
                                         {showBankColumn && (
                                             <div className="w-[90px] flex-shrink-0">
-                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-400"} border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
+                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-500 dark:text-gray-400"} border-gray-300 dark:border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
                                             </div>
                                         )}
-                                        <div className="flex-1 min-w-[200px] text-[11px] text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
+                                        <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
                                         {/* Client column */}
-                                        <div className="w-[100px] flex-shrink-0 text-[10px] text-gray-300 truncate" title={tx.custom_data?.matched_customer_names?.join(', ') || ''}>
+                                        <div className="w-[100px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300 truncate" title={tx.custom_data?.matched_customer_names?.join(', ') || ''}>
                                             {tx.amount > 0 && tx.custom_data?.matched_customer_names?.length > 0
                                                 ? <span className="text-blue-300">{tx.custom_data.matched_customer_names[0]}{tx.custom_data.matched_customer_names.length > 1 ? ` +${tx.custom_data.matched_customer_names.length - 1}` : ''}</span>
                                                 : tx.amount < 0 && tx.custom_data?.matched_provider
@@ -1637,7 +1637,7 @@ export default function BankCashFlowPage() {
                                                     const lineCode = getPnlLineFromCode(facCode);
                                                     const lineConfig = getPnlLineConfig(lineCode);
                                                     return (
-                                                        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${lineConfig?.bg || 'bg-gray-800'} ${lineConfig?.text || 'text-gray-400'} ${lineConfig?.border || 'border-gray-600'}`}>
+                                                        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${lineConfig?.bg || 'bg-gray-100 dark:bg-gray-800'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
                                                             {lineConfig?.icon || ''} {facCode}
                                                         </Badge>
                                                     );
@@ -1697,14 +1697,14 @@ export default function BankCashFlowPage() {
             {/* ════════════════════════════════════════════════════════ */}
             {
                 selectedRow && (
-                    <div className="fixed right-0 top-0 h-full w-[450px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
+                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
                         {/* Panel Header */}
-                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                             <div className="flex items-center gap-2 min-w-0">
                                 {selectedRow.isReconciled ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />}
-                                <span className="font-medium text-white truncate">{selectedRow.description}</span>
+                                <span className="font-medium text-gray-900 dark:text-white truncate">{selectedRow.description}</span>
                             </div>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white flex-shrink-0" onClick={() => setSelectedRow(null)}>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white flex-shrink-0" onClick={() => setSelectedRow(null)}>
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
@@ -1712,13 +1712,13 @@ export default function BankCashFlowPage() {
                         {/* Panel Content */}
                         <div className="flex-1 overflow-y-auto">
                             {/* Transaction Info */}
-                            <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+                            <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="flex items-center gap-3">
                                         <Calendar className="h-4 w-4 text-gray-500" />
                                         <div>
                                             <p className="text-xs text-gray-500">Date</p>
-                                            <p className="text-sm text-white">{formatShortDate(selectedRow.date)}</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">{formatShortDate(selectedRow.date)}</p>
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-3">
@@ -1736,18 +1736,18 @@ export default function BankCashFlowPage() {
                                     <FileText className="h-4 w-4 text-gray-500" />
                                     <div className="flex-1">
                                         <p className="text-xs text-gray-500">Description</p>
-                                        <p className="text-sm text-white break-words">{selectedRow.description}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white break-words">{selectedRow.description}</p>
                                     </div>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-4">
                                     <div>
                                         <p className="text-xs text-gray-500">Bank</p>
-                                        <p className="text-sm text-gray-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.source)?.label || selectedRow.source}</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.source)?.label || selectedRow.source}</p>
                                     </div>
                                     <div>
                                         <p className="text-xs text-gray-500">Currency</p>
-                                        <p className="text-sm text-gray-300">{selectedRow.currency}</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.currency}</p>
                                     </div>
                                 </div>
 
@@ -1755,36 +1755,36 @@ export default function BankCashFlowPage() {
                                 {selectedRow.custom_data && Object.keys(selectedRow.custom_data).length > 0 && (
                                     <div className="space-y-2">
                                         {selectedRow.custom_data.details && (
-                                            <div><p className="text-xs text-gray-500">Type</p><p className="text-sm text-gray-300">{selectedRow.custom_data.details}</p></div>
+                                            <div><p className="text-xs text-gray-500">Type</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.details}</p></div>
                                         )}
                                         {selectedRow.custom_data.type && (
-                                            <div><p className="text-xs text-gray-500">Transaction Type</p><p className="text-sm text-gray-300">{selectedRow.custom_data.type}</p></div>
+                                            <div><p className="text-xs text-gray-500">Transaction Type</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.type}</p></div>
                                         )}
                                         {selectedRow.custom_data.balance != null && (
-                                            <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-white font-medium">{formatCurrency(selectedRow.custom_data.balance, selectedRow.currency)}</p></div>
+                                            <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-gray-900 dark:text-white font-medium">{formatCurrency(selectedRow.custom_data.balance, selectedRow.currency)}</p></div>
                                         )}
                                         {selectedRow.custom_data.saldo != null && (
-                                            <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-white font-medium">{formatCurrency(selectedRow.custom_data.saldo, selectedRow.currency)}</p></div>
+                                            <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-gray-900 dark:text-white font-medium">{formatCurrency(selectedRow.custom_data.saldo, selectedRow.currency)}</p></div>
                                         )}
                                         {selectedRow.custom_data.check_number && (
-                                            <div><p className="text-xs text-gray-500">Check/Slip #</p><p className="text-sm text-gray-300 font-mono">{selectedRow.custom_data.check_number}</p></div>
+                                            <div><p className="text-xs text-gray-500">Check/Slip #</p><p className="text-sm text-gray-700 dark:text-gray-300 font-mono">{selectedRow.custom_data.check_number}</p></div>
                                         )}
                                         {selectedRow.custom_data.referencia && (
-                                            <div><p className="text-xs text-gray-500">Reference</p><p className="text-sm text-gray-300 font-mono">{selectedRow.custom_data.referencia}</p></div>
+                                            <div><p className="text-xs text-gray-500">Reference</p><p className="text-sm text-gray-700 dark:text-gray-300 font-mono">{selectedRow.custom_data.referencia}</p></div>
                                         )}
                                         {selectedRow.custom_data.clave && (
-                                            <div><p className="text-xs text-gray-500">Key</p><p className="text-sm text-gray-300">{selectedRow.custom_data.clave}</p></div>
+                                            <div><p className="text-xs text-gray-500">Key</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.clave}</p></div>
                                         )}
                                         {selectedRow.custom_data.categoria && (
-                                            <div><p className="text-xs text-gray-500">Category</p><p className="text-sm text-gray-300">{selectedRow.custom_data.categoria}</p></div>
+                                            <div><p className="text-xs text-gray-500">Category</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.categoria}</p></div>
                                         )}
                                     </div>
                                 )}
                             </div>
 
                             {/* ─── RECONCILIATION STATUS ─── */}
-                            <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
-                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
+                                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                     {selectedRow.amount >= 0
                                         ? <><CreditCard className="h-4 w-4" /> Gateway Reconciliation</>
                                         : <><Building className="h-4 w-4" /> AP Reconciliation</>}
@@ -1818,11 +1818,11 @@ export default function BankCashFlowPage() {
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Confidence</p>
                                         <div className="flex items-center gap-2">
-                                            <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+                                            <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
                                                 <div className={`h-1.5 rounded-full ${selectedRow.custom_data.match_confidence >= 0.9 ? 'bg-green-500' : selectedRow.custom_data.match_confidence >= 0.7 ? 'bg-yellow-500' : 'bg-orange-500'}`}
                                                     style={{ width: `${Math.round(selectedRow.custom_data.match_confidence * 100)}%` }} />
                                             </div>
-                                            <span className="text-xs text-gray-300">{Math.round(selectedRow.custom_data.match_confidence * 100)}%</span>
+                                            <span className="text-xs text-gray-700 dark:text-gray-300">{Math.round(selectedRow.custom_data.match_confidence * 100)}%</span>
                                         </div>
                                     </div>
                                 )}
@@ -1845,7 +1845,7 @@ export default function BankCashFlowPage() {
                                             {selectedRow.custom_data.matched_customer_names.slice(0, 5).map((name: string, i: number) => (
                                                 <div key={i} className="flex items-center gap-1.5">
                                                     <User className="h-3 w-3 text-blue-400" />
-                                                    <span className="text-sm text-white">{name}</span>
+                                                    <span className="text-sm text-gray-900 dark:text-white">{name}</span>
                                                 </div>
                                             ))}
                                             {selectedRow.custom_data.matched_customer_names.length > 5 && (
@@ -1887,7 +1887,7 @@ export default function BankCashFlowPage() {
                                 {selectedRow.amount >= 0 && selectedRow.custom_data?.braintree_transaction_count && (
                                     <div>
                                         <p className="text-xs text-gray-500">Transactions in Batch</p>
-                                        <p className="text-sm text-white">{selectedRow.custom_data.braintree_transaction_count}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white">{selectedRow.custom_data.braintree_transaction_count}</p>
                                     </div>
                                 )}
 
@@ -1900,13 +1900,13 @@ export default function BankCashFlowPage() {
                                                 const lineCode = getPnlLineFromCode(selectedRow.custom_data.matched_invoice_fac);
                                                 const lineConfig = getPnlLineConfig(lineCode);
                                                 return (
-                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 ${lineConfig?.bg || 'bg-gray-800'} ${lineConfig?.text || 'text-gray-400'} ${lineConfig?.border || 'border-gray-600'}`}>
+                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 ${lineConfig?.bg || 'bg-gray-100 dark:bg-gray-800'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
                                                         {lineConfig?.icon || '📊'} {selectedRow.custom_data.matched_invoice_fac}
                                                     </Badge>
                                                 );
                                             })()}
                                             {selectedRow.custom_data.matched_invoice_fac_name && (
-                                                <span className="text-xs text-gray-300">{selectedRow.custom_data.matched_invoice_fac_name}</span>
+                                                <span className="text-xs text-gray-700 dark:text-gray-300">{selectedRow.custom_data.matched_invoice_fac_name}</span>
                                             )}
                                         </div>
                                     </div>
@@ -1924,7 +1924,7 @@ export default function BankCashFlowPage() {
                                                         const lc = getPnlLineFromCode(fac);
                                                         const lconf = getPnlLineConfig(lc);
                                                         return (
-                                                            <Badge key={i} variant="outline" className={`text-[9px] px-1 py-0 ${lconf?.bg || 'bg-gray-800'} ${lconf?.text || 'text-gray-400'} ${lconf?.border || 'border-gray-600'}`}>
+                                                            <Badge key={i} variant="outline" className={`text-[9px] px-1 py-0 ${lconf?.bg || 'bg-gray-100 dark:bg-gray-800'} ${lconf?.text || 'text-gray-500 dark:text-gray-400'} ${lconf?.border || 'border-gray-300 dark:border-gray-600'}`}>
                                                                 {lconf?.icon || ''} {fac}
                                                             </Badge>
                                                         );
@@ -1950,7 +1950,7 @@ export default function BankCashFlowPage() {
                                                 <p className="text-xs text-gray-500 mb-1">Countries</p>
                                                 <div className="flex flex-wrap gap-1">
                                                     {selectedRow.chainData.summary.countries.map((c: string, i: number) => (
-                                                        <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-800 text-gray-300 border-gray-600">
+                                                        <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600">
                                                             {c}
                                                         </Badge>
                                                     ))}
@@ -1972,7 +1972,7 @@ export default function BankCashFlowPage() {
                                         <p className="text-xs text-gray-500 mb-1">Disbursement Reference</p>
                                         <div className="flex items-center gap-2">
                                             <Key className="h-3 w-3 text-gray-500" />
-                                            <span className="text-xs font-mono text-gray-300">{selectedRow.custom_data.disbursement_reference}</span>
+                                            <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{selectedRow.custom_data.disbursement_reference}</span>
                                         </div>
                                     </div>
                                 )}
@@ -1981,7 +1981,7 @@ export default function BankCashFlowPage() {
                                 {selectedRow.amount < 0 && selectedRow.custom_data?.matched_provider && (
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Matched Provider</p>
-                                        <p className="text-sm text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
                                     </div>
                                 )}
 
@@ -2016,14 +2016,14 @@ export default function BankCashFlowPage() {
                                 {selectedRow.amount < 0 && selectedRow.custom_data?.matched_payment_date && (
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Payment Date (Excel)</p>
-                                        <span className="text-sm text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
                                     </div>
                                 )}
 
                                 {selectedRow.amount < 0 && selectedRow.custom_data?.ap_financial_account && (
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Financial Account</p>
-                                        <span className="text-sm text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
                                     </div>
                                 )}
 
@@ -2031,21 +2031,21 @@ export default function BankCashFlowPage() {
                                 {selectedRow.custom_data?.reconciled_at && (
                                     <div>
                                         <p className="text-xs text-gray-500">Reconciled at</p>
-                                        <p className="text-sm text-gray-300">{new Date(selectedRow.custom_data.reconciled_at).toLocaleString("pt-BR")}</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300">{new Date(selectedRow.custom_data.reconciled_at).toLocaleString("pt-BR")}</p>
                                     </div>
                                 )}
 
                                 {selectedRow.custom_data?.manual_note && (
                                     <div>
                                         <p className="text-xs text-gray-500">Note</p>
-                                        <p className="text-sm text-gray-300">{selectedRow.custom_data.manual_note}</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.manual_note}</p>
                                     </div>
                                 )}
 
                                 {selectedRow.custom_data?.match_type && (
                                     <div>
                                         <p className="text-xs text-gray-500">Match Type</p>
-                                        <p className="text-sm text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
+                                        <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
                                     </div>
                                 )}
 
@@ -2072,11 +2072,11 @@ export default function BankCashFlowPage() {
                                     </h3>
                                     <div className="space-y-2 text-sm">
                                         {selectedRow.custom_data.bank_match_date && (
-                                            <div className="flex justify-between"><span className="text-gray-400">Date:</span><span className="text-white">{formatShortDate(selectedRow.custom_data.bank_match_date)}</span></div>
+                                            <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Date:</span><span className="text-gray-900 dark:text-white">{formatShortDate(selectedRow.custom_data.bank_match_date)}</span></div>
                                         )}
-                                        <div className="flex justify-between"><span className="text-gray-400">Amount:</span><span className="text-green-400 font-medium">{formatCurrency(selectedRow.custom_data.bank_match_amount, selectedRow.currency)}</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Amount:</span><span className="text-green-400 font-medium">{formatCurrency(selectedRow.custom_data.bank_match_amount, selectedRow.currency)}</span></div>
                                         {selectedRow.custom_data.bank_match_description && (
-                                            <div><span className="text-gray-400">Description:</span><p className="text-white text-xs mt-1">{selectedRow.custom_data.bank_match_description}</p></div>
+                                            <div><span className="text-gray-500 dark:text-gray-400">Description:</span><p className="text-gray-900 dark:text-white text-xs mt-1">{selectedRow.custom_data.bank_match_description}</p></div>
                                         )}
                                     </div>
                                 </div>
@@ -2084,7 +2084,7 @@ export default function BankCashFlowPage() {
 
                             {/* Order Reconciliation — only for revenue */}
                             {selectedRow.amount >= 0 && (
-                                <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
+                                <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
                                     <h3 className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
                                         <FileText className="h-4 w-4" /> Orders &amp; Invoices
                                     </h3>
@@ -2094,15 +2094,15 @@ export default function BankCashFlowPage() {
                                         <div className="space-y-3">
                                             {/* Summary stats */}
                                             <div className="grid grid-cols-3 gap-2 text-center">
-                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
                                                     <p className="text-amber-400 text-lg font-bold">{selectedRow.chainData.orders.length}</p>
                                                     <p className="text-[10px] text-gray-500">Orders</p>
                                                 </div>
-                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
                                                     <p className="text-blue-400 text-lg font-bold">{[...new Set(selectedRow.chainData.orders.map(o => o.customer_name).filter(Boolean))].length}</p>
                                                     <p className="text-[10px] text-gray-500">Clients</p>
                                                 </div>
-                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
                                                     <p className="text-green-400 text-lg font-bold">{formatCurrency(selectedRow.chainData.orders.reduce((s, o) => s + o.amount, 0), selectedRow.currency)}</p>
                                                     <p className="text-[10px] text-gray-500">Total</p>
                                                 </div>
@@ -2118,11 +2118,11 @@ export default function BankCashFlowPage() {
                                                     {order.customer_name && (
                                                         <div className="flex items-center gap-1.5">
                                                             <User className="h-3 w-3 text-blue-400 flex-shrink-0" />
-                                                            <span className="text-white text-sm font-medium truncate">{order.customer_name}</span>
+                                                            <span className="text-gray-900 dark:text-white text-sm font-medium truncate">{order.customer_name}</span>
                                                         </div>
                                                     )}
                                                     {order.email && (
-                                                        <p className="text-gray-400 text-xs pl-[18px] truncate">{order.email}</p>
+                                                        <p className="text-gray-500 dark:text-gray-400 text-xs pl-[18px] truncate">{order.email}</p>
                                                     )}
                                                     {order.products && (
                                                         <div className="flex items-center gap-1.5">
@@ -2142,7 +2142,7 @@ export default function BankCashFlowPage() {
                                                             </Badge>
                                                         )}
                                                         {order.payment_method && (
-                                                            <Badge variant="outline" className="text-[10px] bg-gray-800 text-gray-400 border-gray-600">
+                                                            <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
                                                                 {order.payment_method}
                                                             </Badge>
                                                         )}
@@ -2167,7 +2167,7 @@ export default function BankCashFlowPage() {
                                                         Matched
                                                     </Badge>
                                                 ) : (
-                                                    <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
+                                                    <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800/50 text-gray-500 border-gray-200 dark:border-gray-700">
                                                         Not Matched
                                                     </Badge>
                                                 )}
@@ -2181,11 +2181,11 @@ export default function BankCashFlowPage() {
                                             {selectedRow.invoiceOrderId && (
                                                 <div className="mt-2">
                                                     <p className="text-xs text-gray-500 mb-1">Order ID</p>
-                                                    <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
+                                                    <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{selectedRow.invoiceOrderId}</span>
                                                 </div>
                                             )}
                                             {chainLoading && (
-                                                <div className="flex items-center gap-2 text-gray-400 text-sm mt-2">
+                                                <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm mt-2">
                                                     <RefreshCw className="h-3 w-3 animate-spin" /> Loading orders...
                                                 </div>
                                             )}
@@ -2199,15 +2199,15 @@ export default function BankCashFlowPage() {
                                                 🛒 E-Commerce Orders ({selectedRow.chainData.web_orders.length})
                                             </h4>
                                             <div className="grid grid-cols-3 gap-2 text-center">
-                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
                                                     <p className="text-teal-400 text-lg font-bold">{selectedRow.chainData.web_orders.length}</p>
                                                     <p className="text-[10px] text-gray-500">Orders</p>
                                                 </div>
-                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
                                                     <p className="text-blue-400 text-lg font-bold">{[...new Set(selectedRow.chainData.web_orders.map(o => o.customer_name).filter(Boolean))].length}</p>
                                                     <p className="text-[10px] text-gray-500">Clients</p>
                                                 </div>
-                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
                                                     <p className="text-green-400 text-lg font-bold">{formatCurrency(selectedRow.chainData.web_orders.reduce((s, o) => s + o.total_price, 0), selectedRow.currency)}</p>
                                                     <p className="text-[10px] text-gray-500">Total</p>
                                                 </div>
@@ -2221,11 +2221,11 @@ export default function BankCashFlowPage() {
                                                     {wo.customer_name && (
                                                         <div className="flex items-center gap-1.5">
                                                             <User className="h-3 w-3 text-blue-400 flex-shrink-0" />
-                                                            <span className="text-white text-sm font-medium truncate">{wo.customer_name}</span>
+                                                            <span className="text-gray-900 dark:text-white text-sm font-medium truncate">{wo.customer_name}</span>
                                                         </div>
                                                     )}
                                                     {wo.customer_email && (
-                                                        <p className="text-gray-400 text-xs pl-[18px] truncate">{wo.customer_email}</p>
+                                                        <p className="text-gray-500 dark:text-gray-400 text-xs pl-[18px] truncate">{wo.customer_email}</p>
                                                     )}
                                                     {wo.products && wo.products.length > 0 && (
                                                         <div className="flex items-start gap-1.5">
@@ -2247,7 +2247,7 @@ export default function BankCashFlowPage() {
                                                             </Badge>
                                                         )}
                                                         {wo.billing_country && (
-                                                            <Badge variant="outline" className="text-[10px] bg-gray-800 text-gray-400 border-gray-600">
+                                                            <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
                                                                 {wo.billing_country}
                                                             </Badge>
                                                         )}
@@ -2269,13 +2269,13 @@ export default function BankCashFlowPage() {
 
                             {/* ═══ Enriched Chain Data (loaded on-demand) ═══ */}
                             {selectedRow.amount >= 0 && (
-                                <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+                                <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800">
                                     <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-2">
                                         <Database className="h-4 w-4" /> Gateway &amp; Chain Details
                                     </h3>
 
                                     {chainLoading && (
-                                        <div className="flex items-center gap-2 text-gray-400 text-sm">
+                                        <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
                                             <RefreshCw className="h-4 w-4 animate-spin" /> Loading details...
                                         </div>
                                     )}
@@ -2284,12 +2284,12 @@ export default function BankCashFlowPage() {
                                         <>
                                             {/* Disbursement Info */}
                                             {selectedRow.chainData.disbursement && (
-                                                <div className="bg-[#252627] rounded-lg border border-gray-700 p-3 space-y-2">
+                                                <div className="bg-gray-100 dark:bg-[#252627] rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                                                     <p className="text-[10px] text-gray-500 uppercase font-medium">Disbursement (Payout)</p>
                                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                                         <div>
                                                             <span className="text-gray-500 text-xs">Date:</span>
-                                                            <span className="text-white ml-1">{formatShortDate(selectedRow.chainData.disbursement.date)}</span>
+                                                            <span className="text-gray-900 dark:text-white ml-1">{formatShortDate(selectedRow.chainData.disbursement.date)}</span>
                                                         </div>
                                                         <div>
                                                             <span className="text-gray-500 text-xs">Amount:</span>
@@ -2297,7 +2297,7 @@ export default function BankCashFlowPage() {
                                                         </div>
                                                         <div>
                                                             <span className="text-gray-500 text-xs">Transactions:</span>
-                                                            <span className="text-white ml-1">{selectedRow.chainData.disbursement.transaction_count}</span>
+                                                            <span className="text-gray-900 dark:text-white ml-1">{selectedRow.chainData.disbursement.transaction_count}</span>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -2306,25 +2306,25 @@ export default function BankCashFlowPage() {
                                             {/* Gateway Transactions — collapsible */}
                                             {selectedRow.chainData.gateway_transactions.length > 0 && (
                                                 <details className="group">
-                                                    <summary className="text-[10px] text-gray-500 uppercase font-medium cursor-pointer hover:text-gray-300 flex items-center gap-1">
+                                                    <summary className="text-[10px] text-gray-500 uppercase font-medium cursor-pointer hover:text-gray-700 dark:text-gray-300 flex items-center gap-1">
                                                         <span className="group-open:rotate-90 transition-transform">▸</span>
                                                         Gateway Transactions ({selectedRow.chainData.gateway_transactions.length})
                                                     </summary>
                                                     <div className="space-y-2 mt-2">
                                                         {selectedRow.chainData.gateway_transactions.slice(0, 15).map((tx, i) => (
-                                                            <div key={i} className="bg-[#252627] rounded-lg border border-gray-700 p-3 space-y-1">
+                                                            <div key={i} className="bg-gray-100 dark:bg-[#252627] rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-1">
                                                                 <div className="flex items-center justify-between">
-                                                                    <span className="text-xs text-gray-400 font-mono truncate max-w-[180px]">{tx.transaction_id}</span>
+                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[180px]">{tx.transaction_id}</span>
                                                                     <span className="text-green-400 font-medium text-sm">{formatCurrency(tx.amount, selectedRow.currency)}</span>
                                                                 </div>
                                                                 {tx.customer_name && (
                                                                     <div className="flex items-center gap-1.5">
                                                                         <User className="h-3 w-3 text-blue-400" />
-                                                                        <span className="text-white text-sm font-medium truncate">{tx.customer_name}</span>
+                                                                        <span className="text-gray-900 dark:text-white text-sm font-medium truncate">{tx.customer_name}</span>
                                                                     </div>
                                                                 )}
                                                                 {tx.customer_email && (
-                                                                    <p className="text-gray-400 text-xs pl-[18px] truncate">{tx.customer_email}</p>
+                                                                    <p className="text-gray-500 dark:text-gray-400 text-xs pl-[18px] truncate">{tx.customer_email}</p>
                                                                 )}
                                                                 {tx.order_id && (
                                                                     <div className="flex items-center gap-1.5">
@@ -2346,12 +2346,12 @@ export default function BankCashFlowPage() {
                                                                 {/* Enriched badges */}
                                                                 <div className="flex flex-wrap gap-1 mt-0.5">
                                                                     {tx.card_type && (
-                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-800/50 text-gray-400 border-gray-700">
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-100 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">
                                                                             {tx.card_type}
                                                                         </Badge>
                                                                     )}
                                                                     {tx.country_of_issuance && (
-                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-800/50 text-gray-400 border-gray-700">
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-100 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">
                                                                             {tx.country_of_issuance}
                                                                         </Badge>
                                                                     )}
@@ -2390,7 +2390,7 @@ export default function BankCashFlowPage() {
                                             {/* Linked Invoices — collapsible */}
                                             {selectedRow.chainData.invoices.length > 0 && (
                                                 <details className="group">
-                                                    <summary className="text-[10px] text-gray-500 uppercase font-medium cursor-pointer hover:text-gray-300 flex items-center gap-1">
+                                                    <summary className="text-[10px] text-gray-500 uppercase font-medium cursor-pointer hover:text-gray-700 dark:text-gray-300 flex items-center gap-1">
                                                         <span className="group-open:rotate-90 transition-transform">▸</span>
                                                         AR Invoices ({selectedRow.chainData.invoices.length})
                                                     </summary>
@@ -2403,7 +2403,7 @@ export default function BankCashFlowPage() {
                                                                 </div>
                                                                 <div className="flex items-center gap-1.5">
                                                                     <User className="h-3 w-3 text-blue-400" />
-                                                                    <span className="text-white text-sm">{inv.client_name || inv.company_name || 'N/A'}</span>
+                                                                    <span className="text-gray-900 dark:text-white text-sm">{inv.client_name || inv.company_name || 'N/A'}</span>
                                                                 </div>
                                                                 {inv.order_id && (
                                                                     <div className="flex items-center gap-1.5">
@@ -2434,7 +2434,7 @@ export default function BankCashFlowPage() {
                                     )}
 
                                     {!chainLoading && !selectedRow.chainData && (
-                                        <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700 text-xs"
+                                        <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 text-xs"
                                             onClick={() => loadChainData(selectedRow)}>
                                             <Database className="h-3 w-3 mr-1" /> Load Details
                                         </Button>
@@ -2444,8 +2444,8 @@ export default function BankCashFlowPage() {
                         </div>
 
                         {/* Panel Footer */}
-                        <div className="border-t border-gray-700 px-4 py-3 flex justify-end">
-                            <Button variant="ghost" size="sm" onClick={() => setSelectedRow(null)} className="text-gray-400 hover:text-white">
+                        <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-end">
+                            <Button variant="ghost" size="sm" onClick={() => setSelectedRow(null)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                                 Close
                             </Button>
                         </div>
@@ -2459,17 +2459,17 @@ export default function BankCashFlowPage() {
                     <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-900/90 border border-red-700 rounded-lg px-6 py-3 text-red-200 text-sm z-50 flex items-center gap-3">
                         <AlertCircle className="h-4 w-4" />
                         {error}
-                        <button onClick={() => setError(null)} className="text-red-400 hover:text-white ml-2">✕</button>
+                        <button onClick={() => setError(null)} className="text-red-400 hover:text-gray-900 dark:text-white ml-2">✕</button>
                     </div>
                 )
             }
 
             {/* ═══ P&L Line Products Popup ═══ */}
             <Dialog open={!!selectedPnlLine} onOpenChange={(open) => { if (!open) setSelectedPnlLine(null); }}>
-                <DialogContent className="bg-[#1e1f21] border-gray-700 text-white max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogContent className="bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
                     {(() => {
                         const lineConfig = selectedPnlLine === "unclassified"
-                            ? { code: "unclassified", label: "Unclassified", bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700", icon: "❓" }
+                            ? { code: "unclassified", label: "Unclassified", bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700", icon: "❓" }
                             : getPnlLineConfig(selectedPnlLine || "");
                         const lineData = selectedPnlLine ? pnlLineRevenue.byLine[selectedPnlLine] : null;
                         if (!lineConfig || !lineData) return null;
@@ -2479,16 +2479,16 @@ export default function BankCashFlowPage() {
                         return (
                             <>
                                 <DialogHeader>
-                                    <DialogTitle className="flex items-center gap-2 text-white">
+                                    <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                                         <span className="text-lg">{lineConfig.icon}</span>
                                         <span>{lineConfig.label} — Products</span>
                                     </DialogTitle>
                                     <div className="flex items-center gap-4 mt-2 text-sm">
                                         <span className="text-green-400 font-bold">{formatCurrency(lineData.amount, dominantCurrency)}</span>
                                         <span className="text-gray-500">•</span>
-                                        <span className="text-gray-400">{lineData.count} orders</span>
+                                        <span className="text-gray-500 dark:text-gray-400">{lineData.count} orders</span>
                                         <span className="text-gray-500">•</span>
-                                        <span className="text-gray-400">{sortedProducts.length} products</span>
+                                        <span className="text-gray-500 dark:text-gray-400">{sortedProducts.length} products</span>
                                     </div>
                                 </DialogHeader>
                                 <div className="flex-1 overflow-y-auto mt-4 space-y-2 pr-1">
@@ -2499,7 +2499,7 @@ export default function BankCashFlowPage() {
                                             <div key={product} className={`rounded-lg border p-3 ${pStyle.bg} ${pStyle.border}`}>
                                                 <div className="flex items-center justify-between mb-1">
                                                     <div className="flex items-center gap-2 min-w-0">
-                                                        <Package className="h-3.5 w-3.5 flex-shrink-0 text-gray-400" />
+                                                        <Package className="h-3.5 w-3.5 flex-shrink-0 text-gray-500 dark:text-gray-400" />
                                                         <span className={`text-sm font-medium truncate ${pStyle.text}`} title={product}>{product}</span>
                                                     </div>
                                                     <span className="text-green-400 font-bold text-sm flex-shrink-0 ml-2">{formatCurrency(stats.amount, dominantCurrency)}</span>
@@ -2510,9 +2510,9 @@ export default function BankCashFlowPage() {
                                                 <div className="flex items-center gap-4 ml-5 text-[10px]">
                                                     <span className="text-gray-500">{stats.count} orders</span>
                                                     <span className="text-gray-500">Avg: {formatCurrency(stats.amount / stats.count, dominantCurrency)}</span>
-                                                    <span className="text-gray-400 font-medium">{pct}%</span>
+                                                    <span className="text-gray-500 dark:text-gray-400 font-medium">{pct}%</span>
                                                 </div>
-                                                <div className="w-full bg-gray-700 rounded-full h-1 mt-1.5 ml-5" style={{ width: 'calc(100% - 20px)' }}>
+                                                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1.5 ml-5" style={{ width: 'calc(100% - 20px)' }}>
                                                     <div className={`h-1 rounded-full ${pStyle.border.replace('border-', 'bg-')}`} style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>

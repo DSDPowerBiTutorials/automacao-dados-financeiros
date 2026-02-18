@@ -78,7 +78,7 @@ export function TablerTopbar({
           {/* Lado Esquerdo: Logo + Nome */}
           <div className="d-flex align-items-center">
             <button
-              className="navbar-toggler border-gray-600 d-md-none me-2"
+              className="navbar-toggler border-gray-300 dark:border-gray-600 d-md-none me-2"
               type="button"
               onClick={onToggleMobileMenu}
               aria-controls="navbar-menu"

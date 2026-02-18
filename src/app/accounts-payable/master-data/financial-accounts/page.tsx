@@ -310,7 +310,7 @@ export default function FinancialAccountsPage() {
           </div>
 
           <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+            <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-500 dark:text-gray-400" />
             <Input
               type="text"
               placeholder="Search financial accounts..."

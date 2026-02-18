@@ -90,19 +90,19 @@ export function UserProfilePopup({
                 <div className="p-3 space-y-2">
                     {user.role && (
                         <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Shield className="h-4 w-4 text-gray-400" />
+                            <Shield className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                             <span>{getRoleLabel(user.role)}</span>
                         </div>
                     )}
                     {user.department && (
                         <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Building2 className="h-4 w-4 text-gray-400" />
+                            <Building2 className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                             <span>{user.department}</span>
                         </div>
                     )}
                     {user.email && (
                         <div className="flex items-center gap-2 text-sm text-gray-600">
-                            <Mail className="h-4 w-4 text-gray-400" />
+                            <Mail className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                             <span className="truncate">{user.email}</span>
                         </div>
                     )}

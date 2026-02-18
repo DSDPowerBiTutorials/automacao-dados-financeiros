@@ -161,7 +161,7 @@ export default function BraintreeSyncControls() {
             {/* Carga Inicial */}
             <Dialog open={isInitialSyncOpen} onOpenChange={setIsInitialSyncOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                    <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                         <Database className="h-4 w-4" />
                         Carga Inicial
                     </Button>
@@ -247,7 +247,7 @@ export default function BraintreeSyncControls() {
             {/* Sync Incremental */}
             <Dialog open={isIncrementalSyncOpen} onOpenChange={setIsIncrementalSyncOpen}>
                 <DialogTrigger asChild>
-                    <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                    <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                         <RefreshCw className="h-4 w-4" />
                         Atualizar
                     </Button>

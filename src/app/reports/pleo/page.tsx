@@ -580,7 +580,7 @@ export default function PleoReportPage() {
 
                                             <td className="py-3 px-2">
                                                 <div className="flex items-center gap-2">
-                                                    <CreditCard className="h-4 w-4 text-gray-400" />
+                                                    <CreditCard className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                                     <span className="text-sm font-medium">
                                                         {expense.custom_data?.merchant || '-'}
                                                     </span>
@@ -589,7 +589,7 @@ export default function PleoReportPage() {
 
                                             <td className="py-3 px-2">
                                                 <div className="flex items-center gap-2">
-                                                    <User className="h-4 w-4 text-gray-400" />
+                                                    <User className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                                     <div>
                                                         <div className="text-sm font-medium">
                                                             {expense.custom_data?.user_name}

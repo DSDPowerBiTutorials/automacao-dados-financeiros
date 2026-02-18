@@ -73,7 +73,7 @@ export default function RolesPage() {
                                         return (
                                             <div
                                                 key={perm.key}
-                                                className={`flex items-center gap-2 p-2 rounded text-sm ${hasPermission ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-400'
+                                                className={`flex items-center gap-2 p-2 rounded text-sm ${hasPermission ? 'bg-green-50 text-green-700' : 'bg-gray-50 text-gray-500 dark:text-gray-400'
                                                     }`}
                                             >
                                                 {hasPermission && <Check className="h-4 w-4" />}

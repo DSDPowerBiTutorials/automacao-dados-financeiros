@@ -722,7 +722,7 @@ export default function GoCardlessPage() {
     if (!account)
       return {
         bg: "bg-gray-100",
-        text: "text-gray-400",
+        text: "text-gray-500 dark:text-gray-400",
         border: "border-gray-200",
       };
     return (
@@ -748,7 +748,7 @@ export default function GoCardlessPage() {
       <div
         className={` transition-all duration-300 ${splitScreenUrl ? "md:pr-[50%]" : ""}`}
       >
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
+        <header className="border-b border-[#0f1c34] bg-blue-50 dark:bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
           <div className="container mx-auto px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -759,11 +759,11 @@ export default function GoCardlessPage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                     GoCardless - Payment Source
                   </h1>
                   <div className="flex items-center gap-4 mt-1">
-                    <p className="text-sm text-gray-300">
+                    <p className="text-sm text-gray-700 dark:text-gray-300">
                       {rows.length} records ({processedRows.length} filtered) - Page {adjustedCurrentPage} of {Math.max(1, totalPages)}
                     </p>
                     {mostRecentWebhookTransaction && (
@@ -773,7 +773,7 @@ export default function GoCardlessPage() {
                       </p>
                     )}
                     {lastSyncDate && (
-                      <p className="text-sm text-gray-300 flex items-center gap-1">
+                      <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1">
                         <Database className="h-3 w-3" />
                         Last sync: {lastSyncDate}
                       </p>
@@ -782,7 +782,7 @@ export default function GoCardlessPage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
@@ -805,7 +805,7 @@ export default function GoCardlessPage() {
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
-              <CardDescription className="text-white/80">
+              <CardDescription className="text-gray-900 dark:text-white/80">
                 Manage GoCardless transactions with filtering and sorting
               </CardDescription>
             </CardHeader>
@@ -839,7 +839,7 @@ export default function GoCardlessPage() {
                         variant={columnSelectorOpen ? "default" : "outline"}
                         size="sm"
                         onClick={openColumnSelector}
-                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-[#243140] hover:bg-[#1a2530] text-white" : ""}`}
+                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-gray-50 dark:bg-[#243140] hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white" : ""}`}
                       >
                         <Columns3 className="h-4 w-4 mr-2" />
                         Select Columns
@@ -875,7 +875,7 @@ export default function GoCardlessPage() {
                             >
                               <X className="h-3 w-3" />
                             </span>
-                            <span className="absolute -top-2 -right-2 bg-[#243140] text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
+                            <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-[#243140] text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
                               {visibleColumns.size}/17
                             </span>
                           </>
@@ -1381,7 +1381,7 @@ export default function GoCardlessPage() {
                                     {row.destinationAccount}
                                   </button>
                                 ) : (
-                                  <span className="text-gray-400 text-xs">
+                                  <span className="text-gray-500 dark:text-gray-400 text-xs">
                                     N/A
                                   </span>
                                 )}
@@ -1394,21 +1394,21 @@ export default function GoCardlessPage() {
                                     {row.reconciliationType === "automatic" ? (
                                       <div className="relative group">
                                         <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                           Automatic reconciliation
                                         </div>
                                       </div>
                                     ) : (
                                       <div className="relative group">
                                         <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                           Manual reconciliation
                                         </div>
                                       </div>
                                     )}
                                   </div>
                                 ) : (
-                                  <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                                  <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 mx-auto" />
                                 )}
                               </td>
                             )}

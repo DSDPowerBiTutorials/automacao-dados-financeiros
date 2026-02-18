@@ -388,7 +388,7 @@ export default function BotellaSettingsPage() {
                                             >
                                                 <div className="flex items-center gap-4">
                                                     <div className={`p-2 rounded-lg ${task.is_active ? 'bg-green-100' : 'bg-gray-100'}`}>
-                                                        <TypeIcon className={`h-5 w-5 ${task.is_active ? 'text-green-600' : 'text-gray-400'}`} />
+                                                        <TypeIcon className={`h-5 w-5 ${task.is_active ? 'text-green-600' : 'text-gray-500 dark:text-gray-400'}`} />
                                                     </div>
                                                     <div>
                                                         <div className="flex items-center gap-2">

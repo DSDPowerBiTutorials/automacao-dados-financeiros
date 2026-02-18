@@ -324,7 +324,7 @@ export default function BraintreePage() {
     <div className="min-h-screen bg-white">
 
       <div className="">
-        <header className="border-b border-[#0f1c34] bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
+        <header className="border-b border-[#0f1c34] bg-blue-50 dark:bg-[#1a2b4a] text-white shadow-lg sticky top-0 z-30">
           <div className="container mx-auto px-6 py-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
@@ -335,16 +335,16 @@ export default function BraintreePage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-white">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                     Braintree - Payment Gateway
                   </h1>
-                  <p className="text-sm text-white/70 mt-1">
+                  <p className="text-sm text-gray-900 dark:text-white/70 mt-1">
                     {rows.length} records
                   </p>
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Settings className="h-4 w-4" />
                   Settings
                 </Button>
@@ -353,7 +353,7 @@ export default function BraintreePage() {
                   disabled={isSaving || rows.length === 0}
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-white text-white hover:bg-white/10"
+                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
                 >
                   {isSaving ? (
                     <>
@@ -375,14 +375,14 @@ export default function BraintreePage() {
                   id="file-upload-braintree"
                 />
                 <label htmlFor="file-upload-braintree">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
+                  <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload CSV
                     </span>
                   </Button>
                 </label>
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
@@ -390,7 +390,7 @@ export default function BraintreePage() {
                   onClick={handleDeleteAll}
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-red-300 text-red-200 hover:bg-red-600 hover:text-white hover:border-red-600"
+                  className="gap-2 border-red-300 text-red-200 hover:bg-red-600 hover:text-gray-900 dark:hover:text-white hover:border-red-600"
                   disabled={isDeleting || rows.length === 0}
                 >
                   {isDeleting ? (
@@ -426,7 +426,7 @@ export default function BraintreePage() {
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Gateway Details</CardTitle>
-              <CardDescription className="text-white/80">
+              <CardDescription className="text-gray-900 dark:text-white/80">
                 Upload CSV files from Braintree payment gateway
               </CardDescription>
             </CardHeader>
@@ -528,7 +528,7 @@ export default function BraintreePage() {
                             {row.conciliado ? (
                               <CheckCircle className="h-5 w-5 text-green-600 mx-auto" />
                             ) : (
-                              <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                              <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 mx-auto" />
                             )}
                           </td>
                           <td className="py-3 px-4 text-center">

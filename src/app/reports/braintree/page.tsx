@@ -258,7 +258,7 @@ export default function BraintreeDashboard() {
                     <span className="text-4xl">{info.flag}</span>
                     <div>
                       <CardTitle className="text-2xl">{stat.currency}</CardTitle>
-                      <CardDescription className="text-white/90">{info.name}</CardDescription>
+                      <CardDescription className="text-gray-900 dark:text-white/90">{info.name}</CardDescription>
                     </div>
                   </div>
                   <CreditCard className="h-8 w-8 opacity-75" />
@@ -341,7 +341,7 @@ export default function BraintreeDashboard() {
       {stats.length === 0 && (
         <Card>
           <CardContent className="py-12 text-center">
-            <CreditCard className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+            <CreditCard className="h-12 w-12 text-gray-500 dark:text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">No Transactions Found</h3>
             <p className="text-gray-600 mb-4">
               Start by syncing transactions from Braintree API

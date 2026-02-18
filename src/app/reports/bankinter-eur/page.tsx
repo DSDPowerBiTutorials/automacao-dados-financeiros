@@ -1815,35 +1815,35 @@ export default function BankinterEURPage() {
   }
 
   const getPaymentSourceStyle = (source: string | null | undefined) => {
-    if (!source) return { bg: "bg-gray-800/50", text: "text-gray-500", border: "border-gray-700" }
-    return paymentSourceColors[source] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" }
+    if (!source) return { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500", border: "border-gray-200 dark:border-gray-700" }
+    return paymentSourceColors[source] || { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700" }
   }
 
   if (isLoading) {
     return (
-      <div className="h-full flex items-center justify-center bg-[#1e1f21]">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      <div className="h-full flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
       </div>
     )
   }
 
   return (
-    <div className="h-full flex flex-col bg-[#1e1f21] text-white overflow-hidden">
+    <div className="h-full flex flex-col bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white overflow-hidden">
       {/* Main Content */}
       <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedRow ? "mr-[450px]" : ""}`}>
         {/* Header */}
-        <div className="flex-shrink-0 border-b border-gray-700 px-6 py-4">
+        <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <div className="bg-[#FF7300] p-2 rounded-lg">
-                <Database className="h-6 w-6 text-white" />
+                <Database className="h-6 w-6 text-gray-900 dark:text-white" />
               </div>
               <div>
                 <h1 className="text-xl font-semibold">Bankinter EUR - Bank Statement</h1>
                 <div className="flex items-center gap-4 mt-1">
-                  <span className="text-gray-400 text-sm">{rows.length} records</span>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">{rows.length} records</span>
                   <span className="text-gray-600">•</span>
-                  <span className="text-gray-400 text-sm">ES91 0128 0823 3901 0005 8256</span>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">ES91 0128 0823 3901 0005 8256</span>
                   {lastSaved && (
                     <>
                       <span className="text-gray-600">•</span>
@@ -1857,7 +1857,7 @@ export default function BankinterEURPage() {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-400">Current Balance</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
               <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
                 €{formatEuropeanCurrency(stats.closingBalance)}
               </p>
@@ -1868,18 +1868,18 @@ export default function BankinterEURPage() {
             <div className="flex items-center gap-3">
               <input type="file" accept=".xlsx" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
               <label htmlFor="file-upload-bankinter">
-                <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" asChild>
+                <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" asChild>
                   <span><Upload className="h-4 w-4 mr-1" />Upload XLSX</span>
                 </Button>
               </label>
-              <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+              <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                 <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />Refresh
               </Button>
               <Button onClick={handleAutoReconcile} disabled={isAutoReconciling || stats.unreconciledCount === 0} variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30">
                 {isAutoReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
                 Auto-Reconcile
               </Button>
-              <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+              <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                 <Download className="h-4 w-4 mr-1" />Download
               </Button>
               <Button onClick={handleDeleteAll} variant="outline" size="sm" className="bg-transparent border-red-800 text-red-400 hover:bg-red-900/30" disabled={isDeleting || rows.length === 0}>
@@ -1890,19 +1890,19 @@ export default function BankinterEURPage() {
 
             <div className="flex items-center gap-3">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                 <Input
                   placeholder="Search..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 w-64 bg-transparent border-gray-600 text-white placeholder:text-gray-500"
+                  className="pl-9 w-64 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500"
                 />
               </div>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setShowReconciled(!showReconciled)}
-                className={`bg-transparent border-gray-600 hover:bg-gray-700 ${showReconciled ? "text-white" : "text-green-400"}`}
+                className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${showReconciled ? "text-gray-900 dark:text-white" : "text-green-400"}`}
               >
                 <CheckCircle className="h-4 w-4 mr-1" />
                 {showReconciled ? "Hide Reconciled" : "Show Reconciled"}
@@ -1911,7 +1911,7 @@ export default function BankinterEURPage() {
                 variant="outline"
                 size="sm"
                 onClick={() => setShowIntercompany(!showIntercompany)}
-                className={`bg-transparent border-gray-600 hover:bg-gray-700 ${showIntercompany ? "text-white" : "text-orange-400"}`}
+                className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${showIntercompany ? "text-gray-900 dark:text-white" : "text-orange-400"}`}
               >
                 <ArrowLeftRight className="h-4 w-4 mr-1" />
                 {showIntercompany ? "Hide Intercompany" : "Show Intercompany"}
@@ -1921,30 +1921,30 @@ export default function BankinterEURPage() {
         </div>
 
         {/* Stats Bar */}
-        <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-[#252627]">
+        <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#252627]">
           <div className="flex items-center gap-8">
             <div className="flex items-center gap-2">
-              <span className="text-gray-400 text-sm">Credits:</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">Credits:</span>
               <span className="text-green-400 font-medium">€{formatEuropeanCurrency(stats.totalCredits)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-gray-400 text-sm">Debits:</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">Debits:</span>
               <span className="text-red-400 font-medium">€{formatEuropeanCurrency(stats.totalDebits)}</span>
             </div>
             <div className="flex items-center gap-2">
               <CheckCircle className="h-4 w-4 text-green-500" />
-              <span className="text-gray-400 text-sm">Reconciled:</span>
-              <span className="text-white font-medium">{stats.reconciledCount}</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">Reconciled:</span>
+              <span className="text-gray-900 dark:text-white font-medium">{stats.reconciledCount}</span>
             </div>
             <div className="flex items-center gap-2">
               <XCircle className="h-4 w-4 text-yellow-500" />
-              <span className="text-gray-400 text-sm">Unreconciled:</span>
+              <span className="text-gray-500 dark:text-gray-400 text-sm">Unreconciled:</span>
               <span className="text-yellow-400 font-medium">{stats.unreconciledCount}</span>
             </div>
             {stats.intercompanyCount > 0 && (
-              <div className="flex items-center gap-2 border-l border-gray-600 pl-4">
+              <div className="flex items-center gap-2 border-l border-gray-300 dark:border-gray-600 pl-4">
                 <ArrowLeftRight className="h-4 w-4 text-orange-500" />
-                <span className="text-gray-400 text-sm">Intercompany:</span>
+                <span className="text-gray-500 dark:text-gray-400 text-sm">Intercompany:</span>
                 <span className="text-orange-400 font-medium">{stats.intercompanyCount}</span>
                 <span className="text-gray-500 text-xs">
                   (€{formatEuropeanCurrency(stats.intercompanyCredits - stats.intercompanyDebits)})
@@ -1955,8 +1955,8 @@ export default function BankinterEURPage() {
         </div>
 
         {/* Table Header */}
-        <div className="flex-shrink-0 sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
-          <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[900px]">
+        <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+          <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[900px]">
             <div className="w-[60px] flex-shrink-0">Date</div>
             <div className="w-[50px] flex-shrink-0">Key</div>
             <div className="w-[70px] flex-shrink-0">Ref</div>
@@ -1973,17 +1973,17 @@ export default function BankinterEURPage() {
         {/* Content */}
         <div className="flex-1 overflow-y-auto overflow-x-auto">
           {groups.map((group) => (
-            <div key={group.date} className="border-b border-gray-800">
+            <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
               <div
-                className="flex items-center gap-2 px-4 py-3 hover:bg-gray-800/50 cursor-pointer"
+                className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 dark:bg-gray-800/50 cursor-pointer"
                 onClick={() => toggleGroup(group.date)}
               >
                 {expandedGroups.has(group.date) ? (
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                  <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                  <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 )}
-                <span className="font-medium text-white">{group.dateLabel}</span>
+                <span className="font-medium text-gray-900 dark:text-white">{group.dateLabel}</span>
                 <Zap className="h-4 w-4 text-yellow-500" />
                 <span className="text-gray-500 text-sm ml-auto">
                   {group.rows.length} transactions
@@ -2005,11 +2005,11 @@ export default function BankinterEURPage() {
                     return (
                       <div
                         key={row.id}
-                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 group cursor-pointer min-w-[900px] ${selectedRow?.id === row.id ? "bg-gray-700/50" : ""}`}
+                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 group cursor-pointer min-w-[900px] ${selectedRow?.id === row.id ? "bg-gray-100 dark:bg-gray-700/50" : ""}`}
                         onClick={() => setSelectedRow(row)}
                       >
                         {/* Date */}
-                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-300">
+                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">
                           {formatShortDate(row.date)}
                         </div>
 
@@ -2024,7 +2024,7 @@ export default function BankinterEURPage() {
                         </div>
 
                         {/* Description */}
-                        <div className="flex-1 min-w-[150px] text-[11px] text-white truncate" title={row.description}>
+                        <div className="flex-1 min-w-[150px] text-[11px] text-gray-900 dark:text-white truncate" title={row.description}>
                           {row.description}
                         </div>
 
@@ -2047,7 +2047,7 @@ export default function BankinterEURPage() {
                         </div>
 
                         {/* Balance */}
-                        <div className="w-[85px] flex-shrink-0 text-right text-[10px] font-mono font-medium text-white">
+                        <div className="w-[85px] flex-shrink-0 text-right text-[10px] font-mono font-medium text-gray-900 dark:text-white">
                           €{formatEuropeanCurrency(customData.saldo)}
                         </div>
 
@@ -2094,16 +2094,16 @@ export default function BankinterEURPage() {
                               <Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30">
                                 <Save className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-400 hover:text-gray-300 hover:bg-gray-700">
+                              <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <X className="h-3 w-3" />
                               </Button>
                             </>
                           ) : (
                             <>
-                              <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700" disabled={isDeleting}>
+                              <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" disabled={isDeleting}>
                                 <Edit2 className="h-3 w-3" />
                               </Button>
-                              <Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30" disabled={isDeleting}>
+                              <Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-red-900/30" disabled={isDeleting}>
                                 {isDeleting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                               </Button>
                             </>
@@ -2131,18 +2131,18 @@ export default function BankinterEURPage() {
 
       {/* Detail Panel */}
       {selectedRow && (
-        <div className="fixed right-0 top-0 h-full w-[450px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
+        <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
           {/* Panel Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center gap-2">
               {selectedRow.reconciled ? (
                 <CheckCircle className="h-5 w-5 text-green-500" />
               ) : (
                 <AlertCircle className="h-5 w-5 text-yellow-500" />
               )}
-              <span className="font-medium text-white truncate max-w-[300px]">{selectedRow.description}</span>
+              <span className="font-medium text-gray-900 dark:text-white truncate max-w-[300px]">{selectedRow.description}</span>
             </div>
-            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white" onClick={() => setSelectedRow(null)}>
+            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white" onClick={() => setSelectedRow(null)}>
               <X className="h-4 w-4" />
             </Button>
           </div>
@@ -2150,13 +2150,13 @@ export default function BankinterEURPage() {
           {/* Panel Content */}
           <div className="flex-1 overflow-y-auto">
             {/* Transaction Info */}
-            <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+            <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800">
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-3">
                   <Calendar className="h-4 w-4 text-gray-500" />
                   <div>
                     <p className="text-xs text-gray-500">Date</p>
-                    <p className="text-sm text-white">{formatShortDate(selectedRow.date)}</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{formatShortDate(selectedRow.date)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3">
@@ -2174,36 +2174,36 @@ export default function BankinterEURPage() {
                 <FileText className="h-4 w-4 text-gray-500" />
                 <div className="flex-1">
                   <p className="text-xs text-gray-500">Description</p>
-                  <p className="text-sm text-white">{selectedRow.description}</p>
+                  <p className="text-sm text-gray-900 dark:text-white">{selectedRow.description}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500">Key</p>
-                  <p className="text-sm text-gray-300">{selectedRow.custom_data?.clave || "-"}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data?.clave || "-"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Reference</p>
-                  <p className="text-sm text-gray-300">{selectedRow.custom_data?.referencia || "-"}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data?.referencia || "-"}</p>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500">Category</p>
-                  <p className="text-sm text-gray-300">{selectedRow.custom_data?.categoria || "-"}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data?.categoria || "-"}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Balance</p>
-                  <p className="text-sm text-white font-medium">€{formatEuropeanCurrency(selectedRow.custom_data?.saldo)}</p>
+                  <p className="text-sm text-gray-900 dark:text-white font-medium">€{formatEuropeanCurrency(selectedRow.custom_data?.saldo)}</p>
                 </div>
               </div>
             </div>
 
             {/* Reconciliation Status */}
-            <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
-              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+            <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
+              <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                 <Link2 className="h-4 w-4" />
                 Reconciliation
               </h3>
@@ -2244,7 +2244,7 @@ export default function BankinterEURPage() {
                   {selectedRow.intercompanyNote && (
                     <div>
                       <p className="text-xs text-gray-500">Note</p>
-                      <p className="text-sm text-gray-300">{selectedRow.intercompanyNote}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.intercompanyNote}</p>
                     </div>
                   )}
                   <div className="flex items-center gap-2 pt-2 border-t border-orange-700/30">
@@ -2282,7 +2282,7 @@ export default function BankinterEURPage() {
                   <p className="text-xs text-gray-500 mb-1">Braintree Batch ID</p>
                   <div className="flex items-center gap-2">
                     <Key className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs font-mono text-gray-300">{selectedRow.braintreeSettlementBatchId}</span>
+                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{selectedRow.braintreeSettlementBatchId}</span>
                   </div>
                   {selectedRow.braintreeTransactionCount && (
                     <p className="text-xs text-gray-500 mt-1">{selectedRow.braintreeTransactionCount} transactions</p>
@@ -2293,7 +2293,7 @@ export default function BankinterEURPage() {
               {selectedRow.reconciledAt && (
                 <div>
                   <p className="text-xs text-gray-500">Reconciled At</p>
-                  <p className="text-sm text-gray-300">{formatTimestamp(new Date(selectedRow.reconciledAt))}</p>
+                  <p className="text-sm text-gray-700 dark:text-gray-300">{formatTimestamp(new Date(selectedRow.reconciledAt))}</p>
                 </div>
               )}
 
@@ -2301,7 +2301,7 @@ export default function BankinterEURPage() {
               {selectedRow.matchType && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Match Type</p>
-                  <Badge variant="outline" className="bg-gray-800/50 text-gray-300 border-gray-600 text-[10px]">
+                  <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 text-[10px]">
                     {selectedRow.matchType.replace(/_/g, " ")}
                   </Badge>
                 </div>
@@ -2313,7 +2313,7 @@ export default function BankinterEURPage() {
                   <p className="text-xs text-gray-500 mb-1">Disbursement Reference</p>
                   <div className="flex items-center gap-2">
                     <Key className="h-3 w-3 text-gray-500" />
-                    <span className="text-xs font-mono text-gray-300">{selectedRow.disbursementReference}</span>
+                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{selectedRow.disbursementReference}</span>
                   </div>
                 </div>
               )}
@@ -2328,7 +2328,7 @@ export default function BankinterEURPage() {
                   {selectedRow.disbursementDate && (
                     <div>
                       <p className="text-xs text-gray-500">Disbursement Date</p>
-                      <p className="text-sm text-gray-300">{formatShortDate(selectedRow.disbursementDate)}</p>
+                      <p className="text-sm text-gray-700 dark:text-gray-300">{formatShortDate(selectedRow.disbursementDate)}</p>
                     </div>
                   )}
                 </div>
@@ -2340,7 +2340,7 @@ export default function BankinterEURPage() {
                   <p className="text-xs text-gray-500 mb-1">Customer</p>
                   <div className="flex items-center gap-2">
                     <User className="h-3 w-3 text-blue-400" />
-                    <span className="text-sm text-white">{selectedRow.custom_data.matched_customer_name}</span>
+                    <span className="text-sm text-gray-900 dark:text-white">{selectedRow.custom_data.matched_customer_name}</span>
                   </div>
                 </div>
               )}
@@ -2363,7 +2363,7 @@ export default function BankinterEURPage() {
               {selectedRow.matchedWith && (
                 <div>
                   <p className="text-xs text-gray-500 mb-1">Matched With</p>
-                  <span className="text-[10px] font-mono text-gray-400 break-all">{selectedRow.matchedWith}</span>
+                  <span className="text-[10px] font-mono text-gray-500 dark:text-gray-400 break-all">{selectedRow.matchedWith}</span>
                 </div>
               )}
 
@@ -2396,18 +2396,18 @@ export default function BankinterEURPage() {
                 <div className="space-y-2 text-sm">
                   {selectedRow.bankMatchDate && (
                     <div className="flex justify-between">
-                      <span className="text-gray-400">Date:</span>
-                      <span className="text-white">{formatShortDate(selectedRow.bankMatchDate)}</span>
+                      <span className="text-gray-500 dark:text-gray-400">Date:</span>
+                      <span className="text-gray-900 dark:text-white">{formatShortDate(selectedRow.bankMatchDate)}</span>
                     </div>
                   )}
                   <div className="flex justify-between">
-                    <span className="text-gray-400">Amount:</span>
+                    <span className="text-gray-500 dark:text-gray-400">Amount:</span>
                     <span className="text-green-400 font-medium">€{formatEuropeanCurrency(selectedRow.bankMatchAmount)}</span>
                   </div>
                   {selectedRow.bankMatchDescription && (
                     <div>
-                      <span className="text-gray-400">Description:</span>
-                      <p className="text-white text-xs mt-1">{selectedRow.bankMatchDescription}</p>
+                      <span className="text-gray-500 dark:text-gray-400">Description:</span>
+                      <p className="text-gray-900 dark:text-white text-xs mt-1">{selectedRow.bankMatchDescription}</p>
                     </div>
                   )}
                 </div>
@@ -2416,7 +2416,7 @@ export default function BankinterEURPage() {
 
             {/* Linked Orders Section - Shows orders that compose this payment/disbursement */}
             {selectedRow.reconciled && (linkedOrders.length > 0 || loadingLinkedOrders) && (
-              <div className="px-4 py-4 space-y-3 bg-blue-900/10 border-t border-gray-800">
+              <div className="px-4 py-4 space-y-3 bg-blue-900/10 border-t border-gray-200 dark:border-gray-800">
                 <h3 className="text-xs font-semibold text-blue-400 uppercase tracking-wider flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   {selectedRow.amount > 0 ? "Orders in this Payment" : "Orders in this Disbursement"} ({linkedOrders.length})
@@ -2425,7 +2425,7 @@ export default function BankinterEURPage() {
                 {loadingLinkedOrders ? (
                   <div className="flex items-center justify-center py-4">
                     <Loader2 className="h-5 w-5 animate-spin text-blue-400" />
-                    <span className="ml-2 text-sm text-gray-400">Loading orders...</span>
+                    <span className="ml-2 text-sm text-gray-500 dark:text-gray-400">Loading orders...</span>
                   </div>
                 ) : (
                   <div className="space-y-2 max-h-[300px] overflow-y-auto">
@@ -2449,7 +2449,7 @@ export default function BankinterEURPage() {
                         {order.customerName && (
                           <div className="flex items-center gap-2">
                             <User className="h-3 w-3 text-gray-500" />
-                            <span className="text-xs text-gray-300 truncate">
+                            <span className="text-xs text-gray-700 dark:text-gray-300 truncate">
                               {order.customerName}
                             </span>
                           </div>
@@ -2471,7 +2471,7 @@ export default function BankinterEURPage() {
                     {/* Summary */}
                     <div className="pt-3 mt-2 border-t border-blue-700/30">
                       <div className="flex justify-between text-sm">
-                        <span className="text-gray-400">Total ({linkedOrders.length} orders):</span>
+                        <span className="text-gray-500 dark:text-gray-400">Total ({linkedOrders.length} orders):</span>
                         <span className="text-green-400 font-bold">
                           €{formatEuropeanCurrency(linkedOrders.reduce((sum, o) => sum + o.amount, 0))}
                         </span>
@@ -2489,15 +2489,15 @@ export default function BankinterEURPage() {
 
             {/* Edit Payment Source */}
             {editingRow === selectedRow.id && (
-              <div className="px-4 py-4 space-y-4 border-b border-gray-800">
-                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Edit</h3>
+              <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800">
+                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Edit</h3>
                 <div className="space-y-2">
-                  <label className="text-xs text-gray-400">Payment Source</label>
+                  <label className="text-xs text-gray-500 dark:text-gray-400">Payment Source</label>
                   <Select
                     value={editedData.paymentSource || ""}
                     onValueChange={(value) => setEditedData({ ...editedData, paymentSource: value })}
                   >
-                    <SelectTrigger className="bg-[#1e1f21] border-gray-600 text-white">
+                    <SelectTrigger className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
                       <SelectValue placeholder="Select source" />
                     </SelectTrigger>
                     <SelectContent>
@@ -2514,16 +2514,16 @@ export default function BankinterEURPage() {
           </div>
 
           {/* Panel Footer */}
-          <div className="border-t border-gray-700 px-4 py-3 flex justify-end gap-2">
+          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-end gap-2">
             {editingRow === selectedRow.id ? (
               <>
-                <Button variant="ghost" size="sm" onClick={cancelEdit} className="text-gray-400 hover:text-white">Cancel</Button>
+                <Button variant="ghost" size="sm" onClick={cancelEdit} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">Cancel</Button>
                 <Button size="sm" onClick={saveEdit} className="bg-green-600 hover:bg-green-700 text-white">
                   <Save className="h-4 w-4 mr-1" />Save
                 </Button>
               </>
             ) : (
-              <Button variant="outline" size="sm" onClick={() => startEditing(selectedRow)} className="border-gray-600 text-white hover:bg-gray-700">
+              <Button variant="outline" size="sm" onClick={() => startEditing(selectedRow)} className="border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                 <Edit2 className="h-4 w-4 mr-1" />Edit
               </Button>
             )}
@@ -2534,14 +2534,14 @@ export default function BankinterEURPage() {
       {/* Reconciliation Dialog */}
       {reconciliationDialogOpen && reconciliationTransaction && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-          <div className="bg-[#2a2b2d] rounded-lg w-[650px] max-h-[85vh] overflow-hidden flex flex-col">
+          <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg w-[650px] max-h-[85vh] overflow-hidden flex flex-col">
             {/* Dialog Header */}
-            <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                   {isDebitTransaction ? "Reconcile Payment (Debit)" : "Reconcile Receipt (Credit)"}
                 </h3>
-                <p className="text-sm text-gray-400">
+                <p className="text-sm text-gray-500 dark:text-gray-400">
                   {isDebitTransaction
                     ? "Match this outgoing payment to an invoice"
                     : "Match this incoming payment to a payment source"}
@@ -2551,18 +2551,18 @@ export default function BankinterEURPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setReconciliationDialogOpen(false)}
-                className="text-gray-400 hover:text-white"
+                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
               >
                 <X className="h-5 w-5" />
               </Button>
             </div>
 
             {/* Bank Transaction Info */}
-            <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
+            <div className="px-6 py-4 bg-gray-100 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
               <div className="grid grid-cols-3 gap-4 text-sm">
                 <div>
                   <span className="text-gray-500">Date</span>
-                  <p className="text-white font-medium">{formatShortDate(reconciliationTransaction.date)}</p>
+                  <p className="text-gray-900 dark:text-white font-medium">{formatShortDate(reconciliationTransaction.date)}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Amount</span>
@@ -2572,7 +2572,7 @@ export default function BankinterEURPage() {
                 </div>
                 <div>
                   <span className="text-gray-500">Description</span>
-                  <p className="text-white font-medium truncate" title={reconciliationTransaction.description}>
+                  <p className="text-gray-900 dark:text-white font-medium truncate" title={reconciliationTransaction.description}>
                     {reconciliationTransaction.description.substring(0, 30)}...
                   </p>
                 </div>
@@ -2636,12 +2636,12 @@ export default function BankinterEURPage() {
                             }}
                             className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedIntercompanyMatch === match.id
                               ? "border-green-500 bg-green-900/20"
-                              : "border-gray-700 hover:border-green-600 bg-gray-800/30"
+                              : "border-gray-200 dark:border-gray-700 hover:border-green-600 bg-gray-50 dark:bg-gray-800/30"
                               }`}
                           >
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="text-white text-sm font-medium">{match.sourceLabel}</p>
+                                <p className="text-gray-900 dark:text-white text-sm font-medium">{match.sourceLabel}</p>
                                 <p className="text-xs text-gray-500">{formatShortDate(match.date)} • {match.description.substring(0, 30)}</p>
                               </div>
                               <div className="text-right">
@@ -2658,14 +2658,14 @@ export default function BankinterEURPage() {
 
                     {/* Manual bank account selection */}
                     <div>
-                      <p className="text-xs text-gray-400 mb-2">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                         {reconciliationTransaction.amount > 0
                           ? "Select the account this money came FROM:"
                           : "Select the account this money went TO:"}
                       </p>
                       <div className="space-y-2 max-h-[150px] overflow-y-auto">
                         {bankAccounts.length === 0 ? (
-                          <div className="text-center py-3 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                          <div className="text-center py-3 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
                             <p className="text-sm">No other bank accounts found</p>
                           </div>
                         ) : (
@@ -2678,7 +2678,7 @@ export default function BankinterEURPage() {
                               }}
                               className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedBankAccount === acc.code && !selectedIntercompanyMatch
                                 ? "border-orange-500 bg-orange-900/20"
-                                : "border-gray-700 hover:border-orange-600 bg-gray-800/30"
+                                : "border-gray-200 dark:border-gray-700 hover:border-orange-600 bg-gray-50 dark:bg-gray-800/30"
                                 }`}
                             >
                               <div className="flex items-center gap-3">
@@ -2694,7 +2694,7 @@ export default function BankinterEURPage() {
                                 <div className="flex items-center gap-2">
                                   <Building2 className="h-4 w-4 text-orange-400" />
                                   <div>
-                                    <p className="text-white text-sm font-medium">{acc.name}</p>
+                                    <p className="text-gray-900 dark:text-white text-sm font-medium">{acc.name}</p>
                                     <p className="text-xs text-gray-500">{acc.bank_name || acc.code} • {acc.currency}</p>
                                   </div>
                                 </div>
@@ -2707,12 +2707,12 @@ export default function BankinterEURPage() {
 
                     {/* Note field */}
                     <div>
-                      <label className="text-xs text-gray-400 block mb-1">Note (optional)</label>
+                      <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Note (optional)</label>
                       <Input
                         placeholder="e.g., Monthly treasury transfer..."
                         value={intercompanyNote}
                         onChange={(e) => setIntercompanyNote(e.target.value)}
-                        className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm"
+                        className="bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm"
                       />
                     </div>
                   </div>
@@ -2729,10 +2729,10 @@ export default function BankinterEURPage() {
 
                   {loadingPaymentMatches ? (
                     <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                      <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
                     </div>
                   ) : paymentSourceMatches.length === 0 ? (
-                    <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
                       <p className="text-sm">No payment source matches found</p>
                       <p className="text-xs mt-1">Try marking as intercompany or manual reconciliation</p>
                     </div>
@@ -2746,7 +2746,7 @@ export default function BankinterEURPage() {
                             ? "border-blue-500 bg-blue-900/20"
                             : match.matchType === "exact"
                               ? "border-green-700/50 hover:border-green-600 bg-green-900/10"
-                              : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                              : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/30"
                             }`}
                         >
                           <div className="flex items-center justify-between">
@@ -2759,7 +2759,7 @@ export default function BankinterEURPage() {
                               />
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <span className="text-white text-sm font-medium">{match.sourceLabel}</span>
+                                  <span className="text-gray-900 dark:text-white text-sm font-medium">{match.sourceLabel}</span>
                                   {match.matchType === "exact" && (
                                     <span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">EXACT</span>
                                   )}
@@ -2793,21 +2793,21 @@ export default function BankinterEURPage() {
 
                   {/* Search */}
                   <div className="relative mb-3">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                     <Input
                       placeholder="Search by customer, invoice, order..."
                       value={revenueOrderSearchTerm}
                       onChange={(e) => setRevenueOrderSearchTerm(e.target.value)}
-                      className="pl-9 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm"
+                      className="pl-9 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm"
                     />
                   </div>
 
                   {loadingRevenueOrders ? (
                     <div className="flex items-center justify-center py-4">
-                      <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                      <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
                     </div>
                   ) : revenueOrderMatches.length === 0 ? (
-                    <div className="text-center py-3 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                    <div className="text-center py-3 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
                       <p className="text-sm">No matching customer orders found</p>
                     </div>
                   ) : (
@@ -2832,7 +2832,7 @@ export default function BankinterEURPage() {
                               ? "border-emerald-500 bg-emerald-900/20"
                               : match.matchType === "exact"
                                 ? "border-green-700/50 hover:border-green-600 bg-green-900/10"
-                                : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/30"
                               }`}
                           >
                             <div className="flex items-center justify-between">
@@ -2848,7 +2848,7 @@ export default function BankinterEURPage() {
                                 />
                                 <div>
                                   <div className="flex items-center gap-2">
-                                    <span className="text-white text-sm font-medium">{match.customerName.substring(0, 30)}</span>
+                                    <span className="text-gray-900 dark:text-white text-sm font-medium">{match.customerName.substring(0, 30)}</span>
                                     {match.matchType === "exact" && (
                                       <span className="text-[10px] text-green-400 bg-green-900/30 px-1.5 py-0.5 rounded">EXACT</span>
                                     )}
@@ -2865,7 +2865,7 @@ export default function BankinterEURPage() {
                                 <p className="font-medium text-green-400">
                                   €{formatEuropeanCurrency(match.amount)}
                                 </p>
-                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${match.matchScore >= 80 ? "text-green-400 bg-green-900/30" : match.matchScore >= 50 ? "text-amber-400 bg-amber-900/30" : "text-gray-400 bg-gray-800/50"}`}>
+                                <span className={`text-[10px] px-1.5 py-0.5 rounded ${match.matchScore >= 80 ? "text-green-400 bg-green-900/30" : match.matchScore >= 50 ? "text-amber-400 bg-amber-900/30" : "text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-800/50"}`}>
                                   {match.matchScore}%
                                 </span>
                               </div>
@@ -2889,10 +2889,10 @@ export default function BankinterEURPage() {
 
                     {loadingInvoices ? (
                       <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
                       </div>
                     ) : matchingInvoices.length === 0 ? (
-                      <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                      <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
                         <p className="text-sm">No exact match found</p>
                         <p className="text-xs mt-1">Search available invoices below</p>
                       </div>
@@ -2916,7 +2916,7 @@ export default function BankinterEURPage() {
                                   className="h-4 w-4 text-green-600"
                                 />
                                 <div>
-                                  <p className="text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
+                                  <p className="text-gray-900 dark:text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
                                   <p className="text-xs text-gray-500">
                                     {inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}
                                   </p>
@@ -2944,18 +2944,18 @@ export default function BankinterEURPage() {
 
                     {/* Search input */}
                     <div className="relative mb-3">
-                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                       <Input
                         placeholder="Search by provider, invoice number, amount..."
                         value={invoiceSearchTerm}
                         onChange={(e) => setInvoiceSearchTerm(e.target.value)}
-                        className="pl-9 bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm"
+                        className="pl-9 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm"
                       />
                     </div>
 
                     {loadingInvoices ? (
                       <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                        <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-[200px] overflow-y-auto">
@@ -2976,7 +2976,7 @@ export default function BankinterEURPage() {
                               onClick={() => setSelectedInvoice(inv.id)}
                               className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedInvoice === inv.id
                                 ? "border-blue-500 bg-blue-900/20"
-                                : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                                : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/30"
                                 }`}
                             >
                               <div className="flex items-center justify-between">
@@ -2988,7 +2988,7 @@ export default function BankinterEURPage() {
                                     className="h-4 w-4 text-blue-600"
                                   />
                                   <div>
-                                    <p className="text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
+                                    <p className="text-gray-900 dark:text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
                                     <p className="text-xs text-gray-500">
                                       {inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}
                                     </p>
@@ -3011,7 +3011,7 @@ export default function BankinterEURPage() {
                             String(inv.invoice_amount).includes(term)
                           )
                         }).length === 0 && (
-                            <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                            <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
                               <p className="text-sm">No invoices found</p>
                             </div>
                           )}
@@ -3045,7 +3045,7 @@ export default function BankinterEURPage() {
                                   className="h-4 w-4 text-purple-600"
                                 />
                                 <div>
-                                  <p className="text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
+                                  <p className="text-gray-900 dark:text-white text-sm">{inv.invoice_number || `Invoice #${inv.id}`}</p>
                                   <p className="text-xs text-gray-500">
                                     {inv.schedule_date ? formatShortDate(inv.schedule_date) : "No date"} • {inv.provider_code || "No provider"}
                                   </p>
@@ -3068,11 +3068,11 @@ export default function BankinterEURPage() {
             </div>
 
             {/* Dialog Footer */}
-            <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-end gap-3">
+            <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
               <Button
                 variant="outline"
                 onClick={() => setReconciliationDialogOpen(false)}
-                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
               >
                 Cancel
               </Button>

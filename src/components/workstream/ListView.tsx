@@ -83,7 +83,7 @@ export function ListView({
     return (
         <div className="h-full overflow-y-auto">
             {/* Sticky header */}
-            <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
+            <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
                 <div className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-6 py-2">
                     <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Task</div>
                     <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Status</div>
@@ -101,18 +101,18 @@ export function ListView({
                     const doneCount = sectionTasks.filter((t) => t.status === 'done').length;
 
                     return (
-                        <div key={section.id} className="border-b border-gray-800">
+                        <div key={section.id} className="border-b border-gray-200 dark:border-gray-800">
                             {/* Section header */}
                             <button
                                 onClick={() => toggleSection(section.id)}
-                                className="w-full flex items-center gap-2 px-6 py-2.5 hover:bg-gray-800/50 transition-colors"
+                                className="w-full flex items-center gap-2 px-6 py-2.5 hover:bg-gray-100 dark:bg-gray-800/50 transition-colors"
                             >
                                 {isExpanded ? (
                                     <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
                                 ) : (
                                     <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
                                 )}
-                                <span className="text-sm font-semibold text-gray-300">{section.title}</span>
+                                <span className="text-sm font-semibold text-gray-700 dark:text-gray-300">{section.title}</span>
                                 <span className="text-xs text-gray-600 ml-1">
                                     {doneCount}/{sectionTasks.length}
                                 </span>
@@ -131,7 +131,7 @@ export function ListView({
                                             <div
                                                 key={task.id}
                                                 onClick={() => onTaskClick(task)}
-                                                className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-6 py-2 border-t border-gray-800/50 hover:bg-gray-800/30 cursor-pointer transition-colors items-center"
+                                                className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-6 py-2 border-t border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-gray-800/30 cursor-pointer transition-colors items-center"
                                             >
                                                 {/* Title + checkbox */}
                                                 <div className="flex items-center gap-2 min-w-0">
@@ -145,11 +145,11 @@ export function ListView({
                                                         {isDone ? (
                                                             <CheckCircle2 className="h-4 w-4 text-green-500" />
                                                         ) : (
-                                                            <Circle className="h-4 w-4 text-gray-600 hover:text-gray-400" />
+                                                            <Circle className="h-4 w-4 text-gray-600 hover:text-gray-500 dark:text-gray-400" />
                                                         )}
                                                     </button>
                                                     <span
-                                                        className={`text-sm truncate ${isDone ? 'text-gray-500 line-through' : 'text-gray-200'
+                                                        className={`text-sm truncate ${isDone ? 'text-gray-500 line-through' : 'text-gray-600 dark:text-gray-200'
                                                             }`}
                                                     >
                                                         {task.title}
@@ -207,16 +207,16 @@ export function ListView({
                                                                 {(() => {
                                                                     const assignee = users.find(u => u.id === task.assignee_id);
                                                                     return assignee ? (
-                                                                        <span className="text-[10px] text-white font-medium">{assignee.name.charAt(0).toUpperCase()}</span>
+                                                                        <span className="text-[10px] text-gray-900 dark:text-white font-medium">{assignee.name.charAt(0).toUpperCase()}</span>
                                                                     ) : (
-                                                                        <User className="h-3 w-3 text-gray-400" />
+                                                                        <User className="h-3 w-3 text-gray-500 dark:text-gray-400" />
                                                                     );
                                                                 })()}
                                                             </div>
                                                             {(() => {
                                                                 const assignee = users.find(u => u.id === task.assignee_id);
                                                                 return assignee ? (
-                                                                    <span className="text-xs text-gray-400 truncate">{assignee.name.split(' ')[0]}</span>
+                                                                    <span className="text-xs text-gray-500 dark:text-gray-400 truncate">{assignee.name.split(' ')[0]}</span>
                                                                 ) : null;
                                                             })()}
                                                         </>
@@ -248,14 +248,14 @@ export function ListView({
 
                                     {/* Add task row */}
                                     {addingTaskSection === section.id ? (
-                                        <div className="px-6 py-2 border-t border-gray-800/50">
+                                        <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-800/50">
                                             <div className="flex items-center gap-2">
                                                 <Circle className="h-4 w-4 text-gray-600 flex-shrink-0" />
                                                 <input
                                                     value={newTaskTitle}
                                                     onChange={(e) => setNewTaskTitle(e.target.value)}
                                                     placeholder="Task title..."
-                                                    className="flex-1 bg-transparent border-none text-sm text-white placeholder-gray-500 focus:outline-none"
+                                                    className="flex-1 bg-transparent border-none text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none"
                                                     autoFocus
                                                     onKeyDown={(e) => {
                                                         if (e.key === 'Enter') handleAddTask(section.id);
@@ -274,7 +274,7 @@ export function ListView({
                                     ) : (
                                         <button
                                             onClick={() => setAddingTaskSection(section.id)}
-                                            className="w-full flex items-center gap-2 px-6 py-2 text-gray-600 hover:text-gray-400 hover:bg-gray-800/20 text-xs transition-colors"
+                                            className="w-full flex items-center gap-2 px-6 py-2 text-gray-600 hover:text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:bg-gray-800/20 text-xs transition-colors"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
                                             Add task...

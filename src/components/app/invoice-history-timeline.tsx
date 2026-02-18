@@ -156,8 +156,8 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
     const getConfig = (changeType: string) => {
         return changeTypeConfig[changeType] || {
             icon: Clock,
-            color: "text-gray-400",
-            bgColor: "bg-gray-900/30",
+            color: "text-gray-500 dark:text-gray-400",
+            bgColor: "bg-gray-50 dark:bg-gray-900/30",
             label: "Updated",
         };
     };
@@ -165,9 +165,9 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="max-w-none max-h-[90vh] bg-[#1e1f21] border-gray-700 text-white min-h-[400px]" style={{ width: '80vw' }}>
-                <DialogHeader className="pb-4 border-b border-gray-700">
-                    <DialogTitle className="flex items-center gap-3 text-white text-xl">
+            <DialogContent className="max-w-none max-h-[90vh] bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white min-h-[400px]" style={{ width: '80vw' }}>
+                <DialogHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
+                    <DialogTitle className="flex items-center gap-3 text-gray-900 dark:text-white text-xl">
                         <Clock className="h-6 w-6 text-yellow-500" />
                         Payment History
                     </DialogTitle>
@@ -176,10 +176,10 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
                 <div className="overflow-y-auto max-h-[70vh] py-4">
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                            <Loader2 className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-400" />
                         </div>
                     ) : history.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <div className="flex flex-col items-center justify-center py-16 text-gray-500 dark:text-gray-400">
                             <Clock className="h-16 w-16 mb-4 opacity-50" />
                             <p className="text-lg font-medium">No history yet</p>
                             <p className="text-sm text-gray-500 mt-2">Changes will appear here when you update this payment</p>
@@ -187,7 +187,7 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
                     ) : (
                         <div className="relative pl-4">
                             {/* Timeline line */}
-                            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-gray-700" />
+                            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-gray-100 dark:bg-gray-700" />
 
                             {/* Timeline entries */}
                             <div className="space-y-6">
@@ -200,23 +200,23 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
                                         <div key={entry.id} className="relative pl-14">
                                             {/* Icon circle */}
                                             <div
-                                                className={`absolute left-1 w-10 h-10 rounded-full flex items-center justify-center ${config.bgColor} border-2 border-gray-800`}
+                                                className={`absolute left-1 w-10 h-10 rounded-full flex items-center justify-center ${config.bgColor} border-2 border-gray-200 dark:border-gray-800`}
                                             >
                                                 <Icon className={`h-5 w-5 ${config.color}`} />
                                             </div>
 
                                             {/* Content card */}
-                                            <div className={`${config.bgColor} rounded-lg p-4 border border-gray-700/50`}>
+                                            <div className={`${config.bgColor} rounded-lg p-4 border border-gray-200 dark:border-gray-700/50`}>
                                                 <div className="flex items-center justify-between mb-2">
                                                     <span className={`text-base font-semibold ${config.color}`}>
                                                         {config.label}
                                                     </span>
-                                                    <span className="text-sm text-gray-400">
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">
                                                         {formatTime(entry.changed_at)}
                                                     </span>
                                                 </div>
 
-                                                <div className="text-sm text-gray-400">
+                                                <div className="text-sm text-gray-500 dark:text-gray-400">
                                                     {formatDate(entry.changed_at)}
                                                 </div>
 
@@ -224,7 +224,7 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
                                                 {entry.old_value || entry.new_value ? (
                                                     <div className="mt-3 flex items-center gap-3 text-sm">
                                                         {entry.old_value && (
-                                                            <span className="px-3 py-1.5 rounded-md bg-gray-800/50 text-gray-300">
+                                                            <span className="px-3 py-1.5 rounded-md bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300">
                                                                 {formatValue(entry.old_value, entry.field_name)}
                                                             </span>
                                                         )}

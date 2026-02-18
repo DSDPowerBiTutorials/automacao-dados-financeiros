@@ -379,7 +379,7 @@ export default function HubSpotCompaniesPage() {
                                         <td className="px-4 py-3 text-sm">
                                             <div>
                                                 <div className="flex items-center gap-2 font-medium">
-                                                    <Building2 className="w-4 h-4 text-gray-400" />
+                                                    <Building2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                     {company.name}
                                                 </div>
                                                 {company.domain && (
@@ -396,7 +396,7 @@ export default function HubSpotCompaniesPage() {
                                         <td className="px-4 py-3 text-sm">
                                             {company.city || company.country ? (
                                                 <div className="flex items-center gap-2">
-                                                    <MapPin className="w-4 h-4 text-gray-400" />
+                                                    <MapPin className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                     <span>
                                                         {[company.city, company.country]
                                                             .filter(Boolean)
@@ -413,7 +413,7 @@ export default function HubSpotCompaniesPage() {
                                         <td className="px-4 py-3 text-sm text-right font-medium">
                                             {company.annual_revenue ? (
                                                 <div className="flex items-center justify-end gap-2">
-                                                    <DollarSign className="w-4 h-4 text-gray-400" />
+                                                    <DollarSign className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                     {formatCurrency(company.annual_revenue)}
                                                 </div>
                                             ) : (

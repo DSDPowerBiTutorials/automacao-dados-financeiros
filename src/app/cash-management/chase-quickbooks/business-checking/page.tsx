@@ -391,7 +391,7 @@ export default function ChaseBusinessCheckingPage() {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/cash-management/chase-quickbooks">
-                            <Button variant="ghost" size="sm" className="gap-2 text-white hover:bg-white/10 h-8">
+                            <Button variant="ghost" size="sm" className="gap-2 text-gray-900 dark:text-white hover:bg-white/10 h-8">
                                 <ArrowLeft className="h-4 w-4" />
                                 Back
                             </Button>
@@ -409,7 +409,7 @@ export default function ChaseBusinessCheckingPage() {
 
                     <div className="flex items-center gap-2">
                         {lastSync && (
-                            <span className="text-xs text-white/70">
+                            <span className="text-xs text-gray-900 dark:text-white/70">
                                 Last sync: {formatTimestamp(new Date(lastSync))}
                             </span>
                         )}
@@ -418,7 +418,7 @@ export default function ChaseBusinessCheckingPage() {
                             variant="outline"
                             size="sm"
                             onClick={exportToCSV}
-                            className="border-white/50 text-white hover:bg-white/10 h-8"
+                            className="border-white/50 text-gray-900 dark:text-white hover:bg-white/10 h-8"
                         >
                             <Download className="w-4 h-4 mr-2" />
                             Export
@@ -448,9 +448,9 @@ export default function ChaseBusinessCheckingPage() {
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-4">
                                 <div className="bg-white/20 backdrop-blur-sm p-3 rounded-lg">
-                                    <Building2 className="h-8 w-8 text-white" />
+                                    <Building2 className="h-8 w-8 text-gray-900 dark:text-white" />
                                 </div>
-                                <div className="text-white">
+                                <div className="text-gray-900 dark:text-white">
                                     <h3 className="text-lg font-bold">Chase Business Complete Checking</h3>
                                     <div className="flex items-center gap-4 mt-1 text-sm">
                                         <span className="flex items-center gap-1">
@@ -462,7 +462,7 @@ export default function ChaseBusinessCheckingPage() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="text-right text-white">
+                            <div className="text-right text-gray-900 dark:text-white">
                                 <p className="text-sm opacity-90">Current Balance</p>
                                 <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-emerald-200" : "text-red-200"}`}>
                                     {formatUSD(stats.closingBalance)}
@@ -554,7 +554,7 @@ export default function ChaseBusinessCheckingPage() {
                             <CardTitle>Transactions</CardTitle>
                             <div className="flex items-center gap-2">
                                 <div className="relative">
-                                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                                    <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 dark:text-gray-400" />
                                     <Input
                                         placeholder="Search..."
                                         value={searchTerm}
@@ -569,7 +569,7 @@ export default function ChaseBusinessCheckingPage() {
                                     onChange={(e) => setDateFilter((prev) => ({ ...prev, start: e.target.value }))}
                                     className="w-36"
                                 />
-                                <span className="text-gray-400">to</span>
+                                <span className="text-gray-500 dark:text-gray-400">to</span>
                                 <Input
                                     type="date"
                                     value={dateFilter.end || ""}
@@ -629,7 +629,7 @@ export default function ChaseBusinessCheckingPage() {
                                                     <td className="max-w-md truncate">
                                                         {tx.description}
                                                         {tx.custom_data?.entity_name && (
-                                                            <span className="text-gray-400 ml-2">
+                                                            <span className="text-gray-500 dark:text-gray-400 ml-2">
                                                                 ({tx.custom_data.entity_name})
                                                             </span>
                                                         )}
@@ -642,7 +642,7 @@ export default function ChaseBusinessCheckingPage() {
                                                         {tx.reconciled ? (
                                                             <CheckCircle className="w-5 h-5 text-emerald-500 mx-auto" />
                                                         ) : (
-                                                            <XCircle className="w-5 h-5 text-gray-300 mx-auto" />
+                                                            <XCircle className="w-5 h-5 text-gray-700 dark:text-gray-300 mx-auto" />
                                                         )}
                                                     </td>
                                                 </tr>

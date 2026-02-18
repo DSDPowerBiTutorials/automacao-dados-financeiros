@@ -224,22 +224,22 @@ export default function ProvidersPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
-        <Loader2 className="h-8 w-8 animate-spin text-white" />
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+        <Loader2 className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#1e1f21] text-white">
+    <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
       {/* Header */}
-      <div className="border-b border-gray-700 px-6 py-4">
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
             <Building2 className="h-5 w-5 text-blue-400" />
             <h1 className="text-xl font-semibold">Providers</h1>
-            <span className="text-gray-400">•</span>
-            <span className="text-gray-400 text-sm">Manage supplier and vendor master data</span>
+            <span className="text-gray-500 dark:text-gray-400">•</span>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">Manage supplier and vendor master data</span>
           </div>
           <Button
             onClick={() => handleOpenForm()}
@@ -258,7 +258,7 @@ export default function ProvidersPage() {
                 onClick={() => setScopeFilter(scope)}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${scopeFilter === scope
                     ? "bg-blue-600 text-white"
-                    : "bg-transparent border border-gray-600 text-gray-300 hover:bg-gray-700"
+                    : "bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                   }`}
               >
                 {scope === "ES" ? "🇪🇸 ES" : scope === "US" ? "🇺🇸 US" : scope === "GLOBAL" ? "🌐 Global" : "All"}
@@ -268,22 +268,22 @@ export default function ProvidersPage() {
 
           <div className="flex items-center gap-3">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
               <Input
                 placeholder="Search providers..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 w-64 bg-transparent border-gray-600 text-white placeholder:text-gray-500"
+                className="pl-9 w-64 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500"
               />
             </div>
-            <span className="text-gray-400 text-sm">{filteredProviders.length} providers</span>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">{filteredProviders.length} providers</span>
           </div>
         </div>
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
-        <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-400 font-medium uppercase">
+      <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+        <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase">
           <div className="w-[40px] flex-shrink-0"></div>
           <div className="w-[50px] flex-shrink-0">Actions</div>
           <div className="w-[120px] flex-shrink-0">Code</div>
@@ -309,7 +309,7 @@ export default function ProvidersPage() {
           filteredProviders.map((provider) => (
             <div
               key={provider.code}
-              className="flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-b border-gray-800/50 group cursor-pointer"
+              className="flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-800/50 group cursor-pointer"
               onClick={() => handleOpenForm(provider)}
             >
               <div className="w-[40px] flex-shrink-0">
@@ -326,27 +326,27 @@ export default function ProvidersPage() {
                 </div>
               </div>
               <div className="w-[120px] flex-shrink-0">
-                <span className="font-mono text-[12px] text-gray-300">{provider.code}</span>
+                <span className="font-mono text-[12px] text-gray-700 dark:text-gray-300">{provider.code}</span>
               </div>
               <div className="flex-1 min-w-[180px]">
-                <span className="text-[13px] text-white font-medium">{provider.name}</span>
+                <span className="text-[13px] text-gray-900 dark:text-white font-medium">{provider.name}</span>
               </div>
               <div className="w-[100px] flex-shrink-0">
-                <span className="text-[12px] text-gray-400">{provider.tax_id || "\u2014"}</span>
+                <span className="text-[12px] text-gray-500 dark:text-gray-400">{provider.tax_id || "\u2014"}</span>
               </div>
               <div className="w-[180px] flex-shrink-0">
-                <span className="text-[12px] text-gray-400 truncate block">{provider.email || "\u2014"}</span>
+                <span className="text-[12px] text-gray-500 dark:text-gray-400 truncate block">{provider.email || "\u2014"}</span>
               </div>
               <div className="w-[80px] flex-shrink-0">
-                <span className="text-[11px] px-2 py-0.5 rounded border border-gray-600 text-gray-300">
+                <span className="text-[11px] px-2 py-0.5 rounded border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">
                   {provider.country || "\u2014"}
                 </span>
               </div>
               <div className="w-[80px] flex-shrink-0">
-                <span className="text-[12px] text-gray-400">{provider.currency || "\u2014"}</span>
+                <span className="text-[12px] text-gray-500 dark:text-gray-400">{provider.currency || "\u2014"}</span>
               </div>
               <div className="w-[100px] flex-shrink-0">
-                <span className="text-[12px] text-gray-400">{provider.payment_terms?.replace(/_/g, " ") || "\u2014"}</span>
+                <span className="text-[12px] text-gray-500 dark:text-gray-400">{provider.payment_terms?.replace(/_/g, " ") || "\u2014"}</span>
               </div>
               <div className="w-[80px] flex-shrink-0">
                 {provider.is_active ? (
@@ -366,101 +366,101 @@ export default function ProvidersPage() {
 
       {/* Side Panel Form */}
       {isFormOpen && (
-        <div className="fixed right-0 top-0 h-full w-[500px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
-          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+        <div className="fixed right-0 top-0 h-full w-[500px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+          <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
             <div>
-              <h2 className="text-lg font-semibold text-white">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {editingProvider ? "Edit Provider" : "New Provider"}
               </h2>
               {editingProvider && <span className="text-xs font-mono text-blue-400">{editingProvider.code}</span>}
               {!editingProvider && <span className="text-xs text-green-400">Code will be auto-generated</span>}
             </div>
-            <button onClick={() => setIsFormOpen(false)} className="text-gray-400 hover:text-white">
+            <button onClick={() => setIsFormOpen(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
               <X className="h-5 w-5" />
             </button>
           </div>
           <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-gray-400 uppercase font-medium">Name *</Label>
-              <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-[#2a2b2d] border-gray-600 text-white h-9" placeholder="Provider name" />
+              <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Name *</Label>
+              <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Provider name" />
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[11px] text-gray-400 uppercase font-medium">Country</Label>
-                <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full h-9 px-3 rounded-md bg-[#2a2b2d] border border-gray-600 text-white text-sm">
-                  <option value="ES" className="bg-gray-800">Spain</option>
-                  <option value="US" className="bg-gray-800">United States</option>
-                  <option value="PT" className="bg-gray-800">Portugal</option>
-                  <option value="FR" className="bg-gray-800">France</option>
-                  <option value="DE" className="bg-gray-800">Germany</option>
-                  <option value="GB" className="bg-gray-800">United Kingdom</option>
-                  <option value="GLOBAL" className="bg-gray-800">Global</option>
+                <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Country</Label>
+                <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
+                  <option value="ES" className="bg-gray-100 dark:bg-gray-800">Spain</option>
+                  <option value="US" className="bg-gray-100 dark:bg-gray-800">United States</option>
+                  <option value="PT" className="bg-gray-100 dark:bg-gray-800">Portugal</option>
+                  <option value="FR" className="bg-gray-100 dark:bg-gray-800">France</option>
+                  <option value="DE" className="bg-gray-100 dark:bg-gray-800">Germany</option>
+                  <option value="GB" className="bg-gray-100 dark:bg-gray-800">United Kingdom</option>
+                  <option value="GLOBAL" className="bg-gray-100 dark:bg-gray-800">Global</option>
                 </select>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] text-gray-400 uppercase font-medium">Currency</Label>
-                <select value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })} className="w-full h-9 px-3 rounded-md bg-[#2a2b2d] border border-gray-600 text-white text-sm">
-                  <option value="EUR" className="bg-gray-800">EUR</option>
-                  <option value="USD" className="bg-gray-800">USD</option>
-                  <option value="GBP" className="bg-gray-800">GBP</option>
+                <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Currency</Label>
+                <select value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
+                  <option value="EUR" className="bg-gray-100 dark:bg-gray-800">EUR</option>
+                  <option value="USD" className="bg-gray-100 dark:bg-gray-800">USD</option>
+                  <option value="GBP" className="bg-gray-100 dark:bg-gray-800">GBP</option>
                 </select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
-                <Label className="text-[11px] text-gray-400 uppercase font-medium">Tax ID</Label>
-                <Input value={formData.tax_id} onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })} className="bg-[#2a2b2d] border-gray-600 text-white h-9" placeholder="B12345678" />
+                <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Tax ID</Label>
+                <Input value={formData.tax_id} onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="B12345678" />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[11px] text-gray-400 uppercase font-medium">Payment Terms</Label>
-                <select value={formData.payment_terms} onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })} className="w-full h-9 px-3 rounded-md bg-[#2a2b2d] border border-gray-600 text-white text-sm">
-                  <option value="immediate" className="bg-gray-800">Immediate</option>
-                  <option value="net_15" className="bg-gray-800">Net 15</option>
-                  <option value="net_30" className="bg-gray-800">Net 30</option>
-                  <option value="net_45" className="bg-gray-800">Net 45</option>
-                  <option value="net_60" className="bg-gray-800">Net 60</option>
-                  <option value="net_90" className="bg-gray-800">Net 90</option>
+                <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Payment Terms</Label>
+                <select value={formData.payment_terms} onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
+                  <option value="immediate" className="bg-gray-100 dark:bg-gray-800">Immediate</option>
+                  <option value="net_15" className="bg-gray-100 dark:bg-gray-800">Net 15</option>
+                  <option value="net_30" className="bg-gray-100 dark:bg-gray-800">Net 30</option>
+                  <option value="net_45" className="bg-gray-100 dark:bg-gray-800">Net 45</option>
+                  <option value="net_60" className="bg-gray-100 dark:bg-gray-800">Net 60</option>
+                  <option value="net_90" className="bg-gray-100 dark:bg-gray-800">Net 90</option>
                 </select>
               </div>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-gray-400 uppercase font-medium">Email</Label>
-              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-[#2a2b2d] border-gray-600 text-white h-9" placeholder="provider@example.com" />
+              <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Email</Label>
+              <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="provider@example.com" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-gray-400 uppercase font-medium">Phone</Label>
-              <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-[#2a2b2d] border-gray-600 text-white h-9" placeholder="+34 123 456 789" />
+              <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Phone</Label>
+              <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="+34 123 456 789" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-gray-400 uppercase font-medium">Address</Label>
-              <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="bg-[#2a2b2d] border-gray-600 text-white h-9" placeholder="Street address" />
+              <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Address</Label>
+              <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Street address" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-gray-400 uppercase font-medium">City</Label>
-              <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="bg-[#2a2b2d] border-gray-600 text-white h-9" placeholder="Madrid" />
+              <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">City</Label>
+              <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Madrid" />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-gray-400 uppercase font-medium">Provider Type</Label>
-              <select value={formData.provider_type} onChange={(e) => setFormData({ ...formData, provider_type: e.target.value })} className="w-full h-9 px-3 rounded-md bg-[#2a2b2d] border border-gray-600 text-white text-sm">
-                <option value="professional_services" className="bg-gray-800">Professional Services</option>
-                <option value="software" className="bg-gray-800">Software</option>
-                <option value="supplies" className="bg-gray-800">Supplies</option>
-                <option value="utilities" className="bg-gray-800">Utilities</option>
-                <option value="rent" className="bg-gray-800">Rent</option>
-                <option value="other" className="bg-gray-800">Other</option>
+              <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Provider Type</Label>
+              <select value={formData.provider_type} onChange={(e) => setFormData({ ...formData, provider_type: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
+                <option value="professional_services" className="bg-gray-100 dark:bg-gray-800">Professional Services</option>
+                <option value="software" className="bg-gray-100 dark:bg-gray-800">Software</option>
+                <option value="supplies" className="bg-gray-100 dark:bg-gray-800">Supplies</option>
+                <option value="utilities" className="bg-gray-100 dark:bg-gray-800">Utilities</option>
+                <option value="rent" className="bg-gray-100 dark:bg-gray-800">Rent</option>
+                <option value="other" className="bg-gray-100 dark:bg-gray-800">Other</option>
               </select>
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-gray-400 uppercase font-medium">Notes</Label>
-              <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 rounded-md bg-[#2a2b2d] border border-gray-600 text-white text-sm min-h-[60px] resize-none placeholder:text-gray-500" placeholder="Additional notes..." />
+              <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Notes</Label>
+              <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm min-h-[60px] resize-none placeholder:text-gray-500" placeholder="Additional notes..." />
             </div>
             <div className="flex items-center gap-2 pt-2">
-              <input type="checkbox" id="is_active" checked={formData.is_active} onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} className="h-4 w-4 rounded border-gray-600" />
-              <Label htmlFor="is_active" className="text-sm text-gray-300 cursor-pointer">Active Provider</Label>
+              <input type="checkbox" id="is_active" checked={formData.is_active} onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })} className="h-4 w-4 rounded border-gray-300 dark:border-gray-600" />
+              <Label htmlFor="is_active" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer">Active Provider</Label>
             </div>
           </div>
-          <div className="border-t border-gray-700 px-6 py-3 flex items-center gap-3 justify-end">
-            <Button variant="outline" onClick={() => setIsFormOpen(false)} className="bg-transparent border-gray-600 text-gray-300 hover:bg-gray-700">Cancel</Button>
+          <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center gap-3 justify-end">
+            <Button variant="outline" onClick={() => setIsFormOpen(false)} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</Button>
             <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">{editingProvider ? "Update Provider" : "Create Provider"}</Button>
           </div>
         </div>

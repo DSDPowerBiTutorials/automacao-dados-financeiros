@@ -119,7 +119,7 @@ export function ClinicVariationsTable({
     const getChangeIcon = (change: number) => {
         if (change > 0) return <TrendingUp className="h-4 w-4 text-green-500" />;
         if (change < 0) return <TrendingDown className="h-4 w-4 text-red-500" />;
-        return <Minus className="h-4 w-4 text-gray-400" />;
+        return <Minus className="h-4 w-4 text-gray-500 dark:text-gray-400" />;
     };
 
     const formatChange = (change: number, percent: number) => {
@@ -144,12 +144,12 @@ export function ClinicVariationsTable({
 
     if (loading) {
         return (
-            <Card className="mt-4 bg-gray-800/50 border-gray-700">
+            <Card className="mt-4 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
                 <CardHeader className="py-3">
-                    <CardTitle className="text-sm font-medium text-gray-200">{title || defaultTitle}</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200">{title || defaultTitle}</CardTitle>
                 </CardHeader>
                 <CardContent className="flex justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-400" />
                 </CardContent>
             </Card>
         );
@@ -167,29 +167,29 @@ export function ClinicVariationsTable({
 
     if (variations.length === 0) {
         return (
-            <Card className="mt-4 bg-gray-800/50 border-gray-700">
+            <Card className="mt-4 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
                 <CardHeader className="py-3">
-                    <CardTitle className="text-sm font-medium text-gray-200">{title || defaultTitle}</CardTitle>
+                    <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200">{title || defaultTitle}</CardTitle>
                 </CardHeader>
                 <CardContent className="py-4">
-                    <p className="text-sm text-gray-400">No changes found for this period.</p>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">No changes found for this period.</p>
                 </CardContent>
             </Card>
         );
     }
 
     return (
-        <Card className="mt-4 bg-gray-800/50 border-gray-700">
+        <Card className="mt-4 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
             <CardHeader className="py-3">
                 <div className="flex items-center justify-between">
                     <div>
-                        <CardTitle className="text-sm font-medium text-gray-200">{title || defaultTitle}</CardTitle>
-                        <p className="text-xs text-gray-400">{period}</p>
+                        <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200">{title || defaultTitle}</CardTitle>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{period}</p>
                     </div>
                     {summary && (
                         <div className="flex items-center gap-4 text-xs">
-                            <div className="flex items-center gap-1 text-gray-300">
-                                <Users className="h-4 w-4 text-gray-400" />
+                            <div className="flex items-center gap-1 text-gray-700 dark:text-gray-300">
+                                <Users className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 <span>{summary.total_clinics}</span>
                             </div>
                             {summary.new_clinics > 0 && (
@@ -217,20 +217,20 @@ export function ClinicVariationsTable({
             <CardContent className="px-0 py-0">
                 <div className="max-h-80 overflow-auto">
                     <Table>
-                        <TableHeader className="sticky top-0 bg-gray-800 z-10">
-                            <TableRow className="border-gray-700">
-                                <TableHead className="text-xs text-gray-300 w-[200px]">Clinic</TableHead>
-                                <TableHead className="text-xs text-gray-300 w-[80px]">Level</TableHead>
-                                <TableHead className="text-xs text-gray-300 text-right w-[120px]">Monthly Revenue</TableHead>
-                                <TableHead className="text-xs text-gray-300 text-right w-[140px]">Change</TableHead>
-                                <TableHead className="text-xs text-gray-300 w-[100px]">Event</TableHead>
+                        <TableHeader className="sticky top-0 bg-gray-100 dark:bg-gray-800 z-10">
+                            <TableRow className="border-gray-200 dark:border-gray-700">
+                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-[200px]">Clinic</TableHead>
+                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-[80px]">Level</TableHead>
+                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right w-[120px]">Monthly Revenue</TableHead>
+                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right w-[140px]">Change</TableHead>
+                                <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-[100px]">Event</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {variations.map((v, idx) => (
                                 <TableRow
                                     key={v.clinic_id || idx}
-                                    className={`border-gray-700 ${v.is_churned ? "bg-red-900/20" :
+                                    className={`border-gray-200 dark:border-gray-700 ${v.is_churned ? "bg-red-900/20" :
                                             v.is_new ? "bg-green-900/20" :
                                                 v.event_type === "Pause" ? "bg-yellow-900/20" :
                                                     v.event_type === "Return" ? "bg-blue-900/20" :
@@ -238,16 +238,16 @@ export function ClinicVariationsTable({
                                         }`}
                                 >
                                     <TableCell className="py-2">
-                                        <span className="text-xs font-medium text-gray-200 truncate max-w-[180px] block" title={v.customer_name}>
+                                        <span className="text-xs font-medium text-gray-600 dark:text-gray-200 truncate max-w-[180px] block" title={v.customer_name}>
                                             {v.customer_name}
                                         </span>
                                     </TableCell>
                                     <TableCell className="py-2">
                                         {v.level && (
-                                            <span className="text-xs text-gray-400">{v.level}</span>
+                                            <span className="text-xs text-gray-500 dark:text-gray-400">{v.level}</span>
                                         )}
                                     </TableCell>
-                                    <TableCell className="py-2 text-right text-xs font-medium text-gray-200">
+                                    <TableCell className="py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-200">
                                         {formatCurrency(v.current_revenue, "EUR")}
                                     </TableCell>
                                     <TableCell className="py-2 text-right text-xs">
@@ -274,15 +274,15 @@ export function ClinicVariationsTable({
 
                 {/* Summary footer */}
                 {summary && (
-                    <div className="border-t border-gray-700 bg-gray-800 px-4 py-2 flex items-center justify-between text-xs">
-                        <span className="text-gray-400">
+                    <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-4 py-2 flex items-center justify-between text-xs">
+                        <span className="text-gray-500 dark:text-gray-400">
                             Total: {summary.total_clinics} clinics
                         </span>
                         <div className="flex items-center gap-4">
-                            <span className="text-gray-400">
+                            <span className="text-gray-500 dark:text-gray-400">
                                 Previous: {formatCurrency(summary.total_previous_revenue, "EUR")}
                             </span>
-                            <span className="font-medium text-gray-200">
+                            <span className="font-medium text-gray-600 dark:text-gray-200">
                                 Current: {formatCurrency(summary.total_current_revenue, "EUR")}
                             </span>
                             <span className={summary.total_change >= 0 ? "text-green-500" : "text-red-500"}>

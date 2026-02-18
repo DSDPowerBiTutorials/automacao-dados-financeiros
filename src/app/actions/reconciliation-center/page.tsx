@@ -189,7 +189,7 @@ export default function ReconciliationCenter() {
                 <CheckCircle2 className="h-5 w-5" />
                 <div>
                   <CardTitle className="text-xl">CSV Uploads</CardTitle>
-                  <CardDescription className="text-white/80 text-sm">
+                  <CardDescription className="text-gray-900 dark:text-white/80 text-sm">
                     Status and links of recent imports.
                   </CardDescription>
                 </div>

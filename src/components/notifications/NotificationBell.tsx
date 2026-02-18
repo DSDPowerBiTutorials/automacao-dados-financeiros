@@ -105,7 +105,7 @@ function NotificationItem({
                         {notification.message}
                     </p>
                 )}
-                <p className="text-xs text-gray-400 mt-1">{timeAgo}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{timeAgo}</p>
             </div>
 
             {/* Ações (aparecem no hover) */}
@@ -169,10 +169,10 @@ export function NotificationBell() {
             <button
                 type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="relative p-2 rounded-lg hover:bg-gray-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
+                className="relative p-2 rounded-lg hover:bg-gray-100 dark:bg-gray-700/50 transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500"
                 aria-label="Notificações"
             >
-                <Mail size={20} className="text-gray-300" />
+                <Mail size={20} className="text-gray-700 dark:text-gray-300" />
 
                 {/* Badge de contagem */}
                 {unreadCount > 0 && (
@@ -226,9 +226,9 @@ export function NotificationBell() {
                             </div>
                         ) : notifications.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
-                                <Mail size={40} className="text-gray-300 mb-3" />
+                                <Mail size={40} className="text-gray-700 dark:text-gray-300 mb-3" />
                                 <p className="text-sm font-medium">Nenhuma notificação</p>
-                                <p className="text-xs text-gray-400 mt-1">Você está em dia!</p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Você está em dia!</p>
                             </div>
                         ) : (
                             notifications.map((notification) => (

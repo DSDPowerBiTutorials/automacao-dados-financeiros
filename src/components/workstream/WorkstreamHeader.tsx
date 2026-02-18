@@ -30,7 +30,7 @@ export function WorkstreamHeader({ onToggleSidebar }: WorkstreamHeaderProps) {
                     {/* Mobile sidebar toggle */}
                     <button
                         onClick={onToggleSidebar}
-                        className="lg:hidden p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-white transition-colors"
+                        className="lg:hidden p-1.5 rounded hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white transition-colors"
                     >
                         <Menu className="h-5 w-5" />
                     </button>
@@ -38,14 +38,14 @@ export function WorkstreamHeader({ onToggleSidebar }: WorkstreamHeaderProps) {
                     {/* Back to Finance Hub */}
                     <Link
                         href="/dashboard"
-                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-gray-400 hover:text-white hover:bg-white/10 transition-colors text-sm no-underline"
+                        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-white/10 transition-colors text-sm no-underline"
                     >
                         <ArrowLeft className="h-3.5 w-3.5" />
                         <span className="hidden sm:inline">Finance Hub</span>
                     </Link>
 
                     {/* Divider */}
-                    <div className="h-6 w-px bg-gray-700" />
+                    <div className="h-6 w-px bg-gray-100 dark:bg-gray-700" />
 
                     {/* Logo */}
                     <Link href="/workstream" className="flex items-center gap-2.5 no-underline">
@@ -78,7 +78,7 @@ export function WorkstreamHeader({ onToggleSidebar }: WorkstreamHeaderProps) {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search tasks..."
-                            className="w-full bg-[#2a2b2d] border border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                            className="w-full bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                         />
                     </div>
                 </div>

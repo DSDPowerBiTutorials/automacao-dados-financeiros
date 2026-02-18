@@ -222,7 +222,7 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
     stripe: { bg: "bg-indigo-900/30", text: "text-indigo-400", border: "border-indigo-700" },
 };
 
-const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-800/50", text: "text-gray-400", border: "border-gray-700" };
+const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700" };
 
 /** String similarity using Sørensen-Dice coefficient on bigrams — returns 0-1 */
 function stringSimilarity(s1: string, s2: string): number {
@@ -1783,8 +1783,8 @@ export default function BankStatementsPage() {
 
     if (isLoading) {
         return (
-            <div className="h-full flex items-center justify-center bg-[#1e1f21]">
-                <Loader2 className="h-8 w-8 animate-spin text-white" />
+            <div className="h-full flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
             </div>
         );
     }
@@ -1792,26 +1792,26 @@ export default function BankStatementsPage() {
     const showBankColumn = selectedBanks.size > 1;
 
     return (
-        <div className="h-full flex flex-col bg-[#1e1f21] text-white overflow-hidden">
+        <div className="h-full flex flex-col bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white overflow-hidden">
             {/* Main content area shifts when panel is open */}
             <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedRow ? "mr-[450px]" : ""}`}>
 
                 {/* ─── Header ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-4">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
                             <div className="bg-[#117ACA] p-2 rounded-lg">
-                                <Database className="h-6 w-6 text-white" />
+                                <Database className="h-6 w-6 text-gray-900 dark:text-white" />
                             </div>
                             <div>
                                 <h1 className="text-xl font-semibold">Bank Statements</h1>
-                                <span className="text-gray-400 text-sm">
+                                <span className="text-gray-500 dark:text-gray-400 text-sm">
                                     {summary.transactionCount} transactions • {[...selectedBanks].map(b => BANK_ACCOUNTS.find(a => a.key === b)?.label).join(", ")}
                                 </span>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm text-gray-400">Net Balance</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Net Balance</p>
                             <p className={`text-2xl font-bold ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`}>
                                 {formatCurrency(summary.netCashFlow, dominantCurrency)}
                             </p>
@@ -1821,7 +1821,7 @@ export default function BankStatementsPage() {
                     {/* Action buttons */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Button onClick={() => runReconciliation(true)} disabled={isReconciling} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                            <Button onClick={() => runReconciliation(true)} disabled={isReconciling} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                                 {isReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Search className="h-4 w-4 mr-1" />}
                                 Preview
                             </Button>
@@ -1829,19 +1829,19 @@ export default function BankStatementsPage() {
                                 {isReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
                                 Auto-Reconcile
                             </Button>
-                            <Button onClick={loadData} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                            <Button onClick={loadData} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <RefreshCw className="h-4 w-4 mr-1" />Refresh
                             </Button>
-                            <Button onClick={exportCSV} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                            <Button onClick={exportCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <Download className="h-4 w-4 mr-1" />CSV
                             </Button>
                         </div>
                         <div className="flex items-center gap-3">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-56 bg-transparent border-gray-600 text-white placeholder:text-gray-500" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-56 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500" />
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => setShowReconciled(!showReconciled)} className={`bg-transparent border-gray-600 hover:bg-gray-700 ${showReconciled ? "text-white" : "text-green-400"}`}>
+                            <Button variant="outline" size="sm" onClick={() => setShowReconciled(!showReconciled)} className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${showReconciled ? "text-gray-900 dark:text-white" : "text-green-400"}`}>
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 {showReconciled ? "Hide Recon." : "Show Recon."}
                             </Button>
@@ -1850,7 +1850,7 @@ export default function BankStatementsPage() {
                 </div>
 
                 {/* ─── Bank Account Tabs ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-[#252627]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#252627]">
                     {/* Hidden file inputs for each bank upload */}
                     {BANK_ACCOUNTS.map(bank => (
                         <input key={`upload-${bank.key}`} type="file" accept={bank.uploadAccept} onChange={e => handleBankUpload(bank.key, e)}
@@ -1866,13 +1866,13 @@ export default function BankStatementsPage() {
                             return (
                                 <div key={bank.key} className="relative">
                                     <button onClick={() => toggleBank(bank.key)} onDoubleClick={() => selectSingleBank(bank.key)}
-                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm ${isActive ? bank.bgColor + " text-white border-transparent" : "bg-transparent border-gray-600 text-gray-400 hover:border-gray-500"} ${!stats?.count ? "opacity-40" : ""}`}
+                                        className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm ${isActive ? bank.bgColor + " text-gray-900 dark:text-white border-transparent" : "bg-transparent border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-500"} ${!stats?.count ? "opacity-40" : ""}`}
                                         title="Double-click to select only this one">
                                         <div className="flex flex-col items-start">
                                             <div className="flex items-center gap-2">
                                                 <Building className="h-3.5 w-3.5" />
                                                 <span className="font-medium">{bank.label}</span>
-                                                {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-700"}`}>{stats.count}</span> : null}
+                                                {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-100 dark:bg-gray-700"}`}>{stats.count}</span> : null}
                                             </div>
                                             {fresh && (
                                                 <div className="flex items-center gap-2 mt-0.5">
@@ -1887,30 +1887,30 @@ export default function BankStatementsPage() {
                                     </button>
                                     {/* Upload icon overlay */}
                                     <label htmlFor={`file-upload-${bank.key}`}
-                                        className="absolute -top-1.5 -right-1.5 bg-[#1e1f21] border border-gray-600 rounded-full p-0.5 cursor-pointer hover:bg-gray-700 hover:border-gray-400 transition-all"
+                                        className="absolute -top-1.5 -right-1.5 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded-full p-0.5 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 hover:border-gray-400 transition-all"
                                         title={`Upload ${bank.uploadAccept} for ${bank.label}`}
                                         onClick={e => e.stopPropagation()}>
-                                        {uploading ? <Loader2 className="h-3 w-3 text-gray-400 animate-spin" /> : <Upload className="h-3 w-3 text-gray-400" />}
+                                        {uploading ? <Loader2 className="h-3 w-3 text-gray-500 dark:text-gray-400 animate-spin" /> : <Upload className="h-3 w-3 text-gray-500 dark:text-gray-400" />}
                                     </label>
                                 </div>
                             );
                         })}
-                        <button onClick={() => setSelectedBanks(new Set(BANK_ACCOUNTS.map(b => b.key)))} className="text-xs text-gray-500 hover:text-white ml-auto">
+                        <button onClick={() => setSelectedBanks(new Set(BANK_ACCOUNTS.map(b => b.key)))} className="text-xs text-gray-500 hover:text-gray-900 dark:text-white ml-auto">
                             All
                         </button>
                     </div>
                 </div>
 
                 {/* ─── Stats Bar (KPI inline — clickable filters) ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-[#1e1f21]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-[#1e1f21]">
                     {kpiFilter && (
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs text-gray-400">Filtering by: <span className="text-white font-medium capitalize">{kpiFilter}</span></span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Filtering by: <span className="text-gray-900 dark:text-white font-medium capitalize">{kpiFilter}</span></span>
                             <button onClick={() => setKpiFilter(null)} className="text-xs text-red-400 hover:text-red-300 ml-2">✕ Clear</button>
                         </div>
                     )}
                     <div className="grid grid-cols-6 gap-4">
-                        <button onClick={() => setKpiFilter(kpiFilter === "inflows" ? null : "inflows")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "inflows" ? "bg-green-900/30 ring-1 ring-green-600" : "hover:bg-gray-800/50"}`}>
+                        <button onClick={() => setKpiFilter(kpiFilter === "inflows" ? null : "inflows")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "inflows" ? "bg-green-900/30 ring-1 ring-green-600" : "hover:bg-gray-100 dark:bg-gray-800/50"}`}>
                             <ArrowDownCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
                             <div className="min-w-0 text-left">
                                 <p className="text-[10px] text-gray-500 uppercase">Inflows</p>
@@ -1919,7 +1919,7 @@ export default function BankStatementsPage() {
                                 </p>
                             </div>
                         </button>
-                        <button onClick={() => setKpiFilter(kpiFilter === "outflows" ? null : "outflows")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "outflows" ? "bg-red-900/30 ring-1 ring-red-600" : "hover:bg-gray-800/50"}`}>
+                        <button onClick={() => setKpiFilter(kpiFilter === "outflows" ? null : "outflows")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "outflows" ? "bg-red-900/30 ring-1 ring-red-600" : "hover:bg-gray-100 dark:bg-gray-800/50"}`}>
                             <ArrowUpCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
                             <div className="min-w-0 text-left">
                                 <p className="text-[10px] text-gray-500 uppercase">Outflows</p>
@@ -1937,14 +1937,14 @@ export default function BankStatementsPage() {
                                 </p>
                             </div>
                         </div>
-                        <button onClick={() => setKpiFilter(kpiFilter === "reconciled" ? null : "reconciled")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "reconciled" ? "bg-emerald-900/30 ring-1 ring-emerald-600" : "hover:bg-gray-800/50"}`}>
+                        <button onClick={() => setKpiFilter(kpiFilter === "reconciled" ? null : "reconciled")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "reconciled" ? "bg-emerald-900/30 ring-1 ring-emerald-600" : "hover:bg-gray-100 dark:bg-gray-800/50"}`}>
                             <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
                             <div className="min-w-0 text-left">
                                 <p className="text-[10px] text-gray-500 uppercase">Reconciled</p>
                                 <p className="text-sm font-bold text-emerald-400">{summary.reconciledCount} <span className="text-xs text-gray-500">({summary.reconciledPct}%)</span></p>
                             </div>
                         </button>
-                        <button onClick={() => setKpiFilter(kpiFilter === "pending" ? null : "pending")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "pending" ? "bg-amber-900/30 ring-1 ring-amber-600" : "hover:bg-gray-800/50"}`}>
+                        <button onClick={() => setKpiFilter(kpiFilter === "pending" ? null : "pending")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "pending" ? "bg-amber-900/30 ring-1 ring-amber-600" : "hover:bg-gray-100 dark:bg-gray-800/50"}`}>
                             <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
                             <div className="min-w-0 text-left">
                                 <p className="text-[10px] text-gray-500 uppercase">Pending</p>
@@ -1965,16 +1965,16 @@ export default function BankStatementsPage() {
 
                 {/* ─── Reconciliation Results Banner ─── */}
                 {reconcileResults && (
-                    <div className="flex-shrink-0 border-b border-gray-700 px-6 py-3 bg-emerald-900/20">
+                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-emerald-900/20">
                         <div className="flex items-center gap-2 mb-2">
                             <CheckCircle2 className="h-4 w-4 text-emerald-400" />
                             <span className="text-sm font-medium text-emerald-400">Reconciliation Results</span>
-                            <button onClick={() => setReconcileResults(null)} className="ml-auto text-xs text-gray-500 hover:text-white">Close</button>
+                            <button onClick={() => setReconcileResults(null)} className="ml-auto text-xs text-gray-500 hover:text-gray-900 dark:text-white">Close</button>
                         </div>
                         <div className="flex gap-4">
                             {reconcileResults.map(r => (
                                 <div key={r.bankSource} className="text-xs">
-                                    <span className="text-gray-400">{BANK_ACCOUNTS.find(b => b.key === r.bankSource)?.label || r.bankSource}: </span>
+                                    <span className="text-gray-500 dark:text-gray-400">{BANK_ACCOUNTS.find(b => b.key === r.bankSource)?.label || r.bankSource}: </span>
                                     {r.success ? <><span className="text-emerald-400 font-semibold">{r.matched}</span> match | <span className="text-amber-400">{r.unmatched}</span> pend.</> : <span className="text-red-400">{r.error || "Failed"}</span>}
                                 </div>
                             ))}
@@ -1983,41 +1983,41 @@ export default function BankStatementsPage() {
                 )}
 
                 {/* ─── Filters ─── */}
-                <div className="flex-shrink-0 border-b border-gray-700 px-6 py-2 bg-[#252627]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#252627]">
                     <div className="flex items-center gap-3 flex-wrap">
                         <Filter className="h-3.5 w-3.5 text-gray-500" />
-                        <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-600 text-white text-xs" />
+                        <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
                         <span className="text-gray-600">→</span>
-                        <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-600 text-white text-xs" />
-                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-600 text-white hover:bg-gray-700 text-xs">
+                        <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
+                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 text-xs">
                             Apply
                         </Button>
                         <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree-eur">Braintree EUR</SelectItem><SelectItem value="braintree-usd">Braintree USD</SelectItem><SelectItem value="braintree-gbp">Braintree GBP</SelectItem><SelectItem value="braintree-amex">Braintree Amex</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="stripe">Stripe</SelectItem></SelectContent>
                         </Select>
                         <Select value={flowFilter} onValueChange={setFlowFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="income">Inflows</SelectItem><SelectItem value="expense">Outflows</SelectItem></SelectContent>
                         </Select>
                         <Select value={reconFilter} onValueChange={setReconFilter}>
-                            <SelectTrigger className="w-32 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
+                            <SelectTrigger className="w-32 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="reconciled">Reconciled</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
                         </Select>
                         <Select value={gwReconFilter} onValueChange={setGwReconFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">GW All</SelectItem><SelectItem value="auto">Auto</SelectItem><SelectItem value="manual">Manual</SelectItem><SelectItem value="intercompany">Intercompany</SelectItem><SelectItem value="not-reconciled">Not Recon.</SelectItem></SelectContent>
                         </Select>
                         <Select value={orderFilter} onValueChange={setOrderFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-600 text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
                             <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
                         </Select>
                     </div>
                 </div>
 
                 {/* ─── Table Header ─── */}
-                <div className="flex-shrink-0 sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
-                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[900px]">
+                <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[900px]">
                         <div className="w-[60px] flex-shrink-0">Date</div>
                         {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
                         <div className="flex-1 min-w-[200px]">Description</div>
@@ -2033,11 +2033,11 @@ export default function BankStatementsPage() {
                 {/* ─── Content (date-grouped rows) ─── */}
                 <div className="flex-1 overflow-y-auto overflow-x-auto">
                     {dateGroups.map(group => (
-                        <div key={group.date} className="border-b border-gray-800">
+                        <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
                             {/* Date group header */}
-                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
-                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                                <span className="font-medium text-white text-sm">{group.dateLabel}</span>
+                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
+                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+                                <span className="font-medium text-gray-900 dark:text-white text-sm">{group.dateLabel}</span>
                                 <span className="text-gray-500 text-xs ml-auto">
                                     {group.rows.length} txns <span className="mx-1">|</span>
                                     <span className="text-green-400">+{formatCurrency(group.totalCredits, dominantCurrency)}</span>
@@ -2055,15 +2055,15 @@ export default function BankStatementsPage() {
 
                                 return (
                                     <div key={tx.id}
-                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-700/50" : ""}`}
+                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-gray-700/50" : ""}`}
                                         onClick={() => setSelectedRow(tx)}>
-                                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-300">{formatShortDate(tx.date)}</div>
+                                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
                                         {showBankColumn && (
                                             <div className="w-[90px] flex-shrink-0">
-                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-400"} border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
+                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-500 dark:text-gray-400"} border-gray-300 dark:border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
                                             </div>
                                         )}
-                                        <div className="flex-1 min-w-[200px] text-[11px] text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
+                                        <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
                                         <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
                                             {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
                                         </div>
@@ -2121,14 +2121,14 @@ export default function BankStatementsPage() {
             {/* DETAIL PANEL (right side) */}
             {/* ════════════════════════════════════════════════════════ */}
             {selectedRow && (
-                <div className="fixed right-0 top-0 h-full w-[450px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
+                <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
                     {/* Panel Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2 min-w-0">
                             {selectedRow.isReconciled ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />}
-                            <span className="font-medium text-white truncate">{selectedRow.description}</span>
+                            <span className="font-medium text-gray-900 dark:text-white truncate">{selectedRow.description}</span>
                         </div>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white flex-shrink-0" onClick={() => setSelectedRow(null)}>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white flex-shrink-0" onClick={() => setSelectedRow(null)}>
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
@@ -2136,13 +2136,13 @@ export default function BankStatementsPage() {
                     {/* Panel Content */}
                     <div className="flex-1 overflow-y-auto">
                         {/* Transaction Info */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800">
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-3">
                                     <Calendar className="h-4 w-4 text-gray-500" />
                                     <div>
                                         <p className="text-xs text-gray-500">Date</p>
-                                        <p className="text-sm text-white">{formatShortDate(selectedRow.date)}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white">{formatShortDate(selectedRow.date)}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -2160,18 +2160,18 @@ export default function BankStatementsPage() {
                                 <FileText className="h-4 w-4 text-gray-500" />
                                 <div className="flex-1">
                                     <p className="text-xs text-gray-500">Description</p>
-                                    <p className="text-sm text-white break-words">{selectedRow.description}</p>
+                                    <p className="text-sm text-gray-900 dark:text-white break-words">{selectedRow.description}</p>
                                 </div>
                             </div>
 
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <p className="text-xs text-gray-500">Bank</p>
-                                    <p className="text-sm text-gray-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.source)?.label || selectedRow.source}</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.source)?.label || selectedRow.source}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500">Currency</p>
-                                    <p className="text-sm text-gray-300">{selectedRow.currency}</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.currency}</p>
                                 </div>
                             </div>
 
@@ -2179,36 +2179,36 @@ export default function BankStatementsPage() {
                             {selectedRow.custom_data && Object.keys(selectedRow.custom_data).length > 0 && (
                                 <div className="space-y-2">
                                     {selectedRow.custom_data.details && (
-                                        <div><p className="text-xs text-gray-500">Type</p><p className="text-sm text-gray-300">{selectedRow.custom_data.details}</p></div>
+                                        <div><p className="text-xs text-gray-500">Type</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.details}</p></div>
                                     )}
                                     {selectedRow.custom_data.type && (
-                                        <div><p className="text-xs text-gray-500">Transaction Type</p><p className="text-sm text-gray-300">{selectedRow.custom_data.type}</p></div>
+                                        <div><p className="text-xs text-gray-500">Transaction Type</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.type}</p></div>
                                     )}
                                     {selectedRow.custom_data.balance != null && (
-                                        <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-white font-medium">{formatCurrency(selectedRow.custom_data.balance, selectedRow.currency)}</p></div>
+                                        <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-gray-900 dark:text-white font-medium">{formatCurrency(selectedRow.custom_data.balance, selectedRow.currency)}</p></div>
                                     )}
                                     {selectedRow.custom_data.saldo != null && (
-                                        <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-white font-medium">{formatCurrency(selectedRow.custom_data.saldo, selectedRow.currency)}</p></div>
+                                        <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-gray-900 dark:text-white font-medium">{formatCurrency(selectedRow.custom_data.saldo, selectedRow.currency)}</p></div>
                                     )}
                                     {selectedRow.custom_data.check_number && (
-                                        <div><p className="text-xs text-gray-500">Check/Slip #</p><p className="text-sm text-gray-300 font-mono">{selectedRow.custom_data.check_number}</p></div>
+                                        <div><p className="text-xs text-gray-500">Check/Slip #</p><p className="text-sm text-gray-700 dark:text-gray-300 font-mono">{selectedRow.custom_data.check_number}</p></div>
                                     )}
                                     {selectedRow.custom_data.referencia && (
-                                        <div><p className="text-xs text-gray-500">Reference</p><p className="text-sm text-gray-300 font-mono">{selectedRow.custom_data.referencia}</p></div>
+                                        <div><p className="text-xs text-gray-500">Reference</p><p className="text-sm text-gray-700 dark:text-gray-300 font-mono">{selectedRow.custom_data.referencia}</p></div>
                                     )}
                                     {selectedRow.custom_data.clave && (
-                                        <div><p className="text-xs text-gray-500">Key</p><p className="text-sm text-gray-300">{selectedRow.custom_data.clave}</p></div>
+                                        <div><p className="text-xs text-gray-500">Key</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.clave}</p></div>
                                     )}
                                     {selectedRow.custom_data.categoria && (
-                                        <div><p className="text-xs text-gray-500">Category</p><p className="text-sm text-gray-300">{selectedRow.custom_data.categoria}</p></div>
+                                        <div><p className="text-xs text-gray-500">Category</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.categoria}</p></div>
                                     )}
                                 </div>
                             )}
                         </div>
 
                         {/* ── RECONCILIATION STATUS ── */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
+                            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                 {selectedRow.amount >= 0
                                     ? <><Link2 className="h-4 w-4" /> Gateway Reconciliation</>
                                     : <><Building className="h-4 w-4" /> AP Reconciliation</>}
@@ -2252,7 +2252,7 @@ export default function BankStatementsPage() {
                                     <p className="text-xs text-gray-500 mb-1">Disbursement Reference</p>
                                     <div className="flex items-center gap-2">
                                         <Key className="h-3 w-3 text-gray-500" />
-                                        <span className="text-xs font-mono text-gray-300">{selectedRow.custom_data.disbursement_reference}</span>
+                                        <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{selectedRow.custom_data.disbursement_reference}</span>
                                     </div>
                                 </div>
                             )}
@@ -2262,12 +2262,12 @@ export default function BankStatementsPage() {
                                 <div className="flex items-center justify-between">
                                     <div>
                                         <p className="text-xs text-gray-500">Transactions in Disbursement</p>
-                                        <p className="text-sm text-white font-medium">{selectedRow.custom_data.braintree_transaction_count} transactions</p>
+                                        <p className="text-sm text-gray-900 dark:text-white font-medium">{selectedRow.custom_data.braintree_transaction_count} transactions</p>
                                     </div>
                                     {selectedRow.custom_data?.settlement_batch_id && (
                                         <div className="text-right">
                                             <p className="text-xs text-gray-500">Settlement Batch</p>
-                                            <p className="text-[10px] font-mono text-gray-400">{selectedRow.custom_data.settlement_batch_id}</p>
+                                            <p className="text-[10px] font-mono text-gray-500 dark:text-gray-400">{selectedRow.custom_data.settlement_batch_id}</p>
                                         </div>
                                     )}
                                 </div>
@@ -2276,24 +2276,24 @@ export default function BankStatementsPage() {
 
                         {/* ══ DISBURSEMENT TRANSACTIONS BREAKDOWN ══ */}
                         {selectedRow.amount >= 0 && selectedRow.isReconciled && selectedRow.paymentSource && (
-                            <div className="border-b border-gray-800">
+                            <div className="border-b border-gray-200 dark:border-gray-800">
                                 <button
                                     onClick={() => setDisbursementExpanded(!disbursementExpanded)}
-                                    className="w-full px-4 py-3 flex items-center justify-between bg-[#1a1d23] hover:bg-[#1e2128] transition-colors"
+                                    className="w-full px-4 py-3 flex items-center justify-between bg-white dark:bg-[#1a1d23] hover:bg-gray-100 dark:hover:bg-[#1e2128] transition-colors"
                                 >
                                     <h3 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
                                         <Database className="h-4 w-4" />
                                         Revenue Breakdown ({disbursementTxns.length} transactions)
                                     </h3>
-                                    {disbursementExpanded ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                                    {disbursementExpanded ? <ChevronUp className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
                                 </button>
 
                                 {disbursementExpanded && (
-                                    <div className="bg-[#13151a]">
+                                    <div className="bg-white dark:bg-[#13151a]">
                                         {loadingDisbursementTxns ? (
                                             <div className="flex items-center justify-center py-6 gap-2">
                                                 <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
-                                                <span className="text-xs text-gray-400">Loading transactions...</span>
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">Loading transactions...</span>
                                             </div>
                                         ) : disbursementTxns.length === 0 ? (
                                             <div className="py-4 px-4 text-center text-xs text-gray-500">
@@ -2302,7 +2302,7 @@ export default function BankStatementsPage() {
                                         ) : (
                                             <div className="max-h-[400px] overflow-y-auto">
                                                 {/* Summary */}
-                                                <div className="px-4 py-2 border-b border-gray-800/50 flex items-center justify-between bg-[#1a1d23]">
+                                                <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800/50 flex items-center justify-between bg-white dark:bg-[#1a1d23]">
                                                     <span className="text-[10px] text-gray-500 uppercase">Total: {disbursementTxns.length} txns</span>
                                                     <span className="text-xs font-mono text-green-400 font-medium">
                                                         {formatCurrency(disbursementTxns.reduce((s, t) => s + t.amount, 0), selectedRow.currency)}
@@ -2311,10 +2311,10 @@ export default function BankStatementsPage() {
 
                                                 {/* Transaction rows */}
                                                 {disbursementTxns.map((txn, idx) => (
-                                                    <div key={txn.id} className={`px-4 py-2 border-b border-gray-800/30 hover:bg-gray-800/30 ${idx % 2 === 0 ? "bg-[#13151a]" : "bg-[#161821]"}`}>
+                                                    <div key={txn.id} className={`px-4 py-2 border-b border-gray-200 dark:border-gray-100 dark:border-gray-800/30 hover:bg-gray-50 dark:bg-gray-800/30 ${idx % 2 === 0 ? "bg-white dark:bg-[#13151a]" : "bg-[#161821]"}`}>
                                                         <div className="flex items-start justify-between gap-2">
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="text-xs text-white font-medium truncate" title={txn.customerName}>
+                                                                <p className="text-xs text-gray-900 dark:text-white font-medium truncate" title={txn.customerName}>
                                                                     {txn.customerName || "—"}
                                                                 </p>
                                                                 <div className="flex items-center gap-2 mt-0.5">
@@ -2357,11 +2357,11 @@ export default function BankStatementsPage() {
                         )}
 
                         {/* ── RECONCILIATION STATUS ── (continued - expenses) */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
                             {selectedRow.amount < 0 && selectedRow.custom_data?.matched_provider && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Matched Provider</p>
-                                    <p className="text-sm text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
+                                    <p className="text-sm text-gray-900 dark:text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
                                 </div>
                             )}
 
@@ -2396,14 +2396,14 @@ export default function BankStatementsPage() {
                             {selectedRow.amount < 0 && selectedRow.custom_data?.matched_payment_date && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Payment Date (Excel)</p>
-                                    <span className="text-sm text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
                                 </div>
                             )}
 
                             {selectedRow.amount < 0 && selectedRow.custom_data?.ap_financial_account && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Financial Account</p>
-                                    <span className="text-sm text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
                                 </div>
                             )}
 
@@ -2411,21 +2411,21 @@ export default function BankStatementsPage() {
                             {selectedRow.custom_data?.reconciled_at && (
                                 <div>
                                     <p className="text-xs text-gray-500">Reconciled at</p>
-                                    <p className="text-sm text-gray-300">{new Date(selectedRow.custom_data.reconciled_at).toLocaleString("pt-BR")}</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{new Date(selectedRow.custom_data.reconciled_at).toLocaleString("pt-BR")}</p>
                                 </div>
                             )}
 
                             {selectedRow.custom_data?.manual_note && (
                                 <div>
                                     <p className="text-xs text-gray-500">Note</p>
-                                    <p className="text-sm text-gray-300">{selectedRow.custom_data.manual_note}</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.manual_note}</p>
                                 </div>
                             )}
 
                             {selectedRow.custom_data?.match_type && (
                                 <div>
                                     <p className="text-xs text-gray-500">Match Type</p>
-                                    <p className="text-sm text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
                                 </div>
                             )}
 
@@ -2452,11 +2452,11 @@ export default function BankStatementsPage() {
                                 </h3>
                                 <div className="space-y-2 text-sm">
                                     {selectedRow.custom_data.bank_match_date && (
-                                        <div className="flex justify-between"><span className="text-gray-400">Date:</span><span className="text-white">{formatShortDate(selectedRow.custom_data.bank_match_date)}</span></div>
+                                        <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Date:</span><span className="text-gray-900 dark:text-white">{formatShortDate(selectedRow.custom_data.bank_match_date)}</span></div>
                                     )}
-                                    <div className="flex justify-between"><span className="text-gray-400">Amount:</span><span className="text-green-400 font-medium">{formatCurrency(selectedRow.custom_data.bank_match_amount, selectedRow.currency)}</span></div>
+                                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Amount:</span><span className="text-green-400 font-medium">{formatCurrency(selectedRow.custom_data.bank_match_amount, selectedRow.currency)}</span></div>
                                     {selectedRow.custom_data.bank_match_description && (
-                                        <div><span className="text-gray-400">Description:</span><p className="text-white text-xs mt-1">{selectedRow.custom_data.bank_match_description}</p></div>
+                                        <div><span className="text-gray-500 dark:text-gray-400">Description:</span><p className="text-gray-900 dark:text-white text-xs mt-1">{selectedRow.custom_data.bank_match_description}</p></div>
                                     )}
                                 </div>
                             </div>
@@ -2464,8 +2464,8 @@ export default function BankStatementsPage() {
 
                         {/* Order Reconciliation — only for revenue */}
                         {selectedRow.amount >= 0 && (
-                            <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
-                                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
+                                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                     <FileText className="h-4 w-4" /> Order Reconciliation
                                 </h3>
                                 <div>
@@ -2475,7 +2475,7 @@ export default function BankStatementsPage() {
                                             Matched
                                         </Badge>
                                     ) : (
-                                        <Badge variant="outline" className="bg-gray-800/50 text-gray-500 border-gray-700">
+                                        <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800/50 text-gray-500 border-gray-200 dark:border-gray-700">
                                             Not Matched
                                         </Badge>
                                     )}
@@ -2491,7 +2491,7 @@ export default function BankStatementsPage() {
                                 {selectedRow.invoiceOrderId && (
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Order ID</p>
-                                        <span className="text-sm font-mono text-gray-300">{selectedRow.invoiceOrderId}</span>
+                                        <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{selectedRow.invoiceOrderId}</span>
                                     </div>
                                 )}
                             </div>
@@ -2499,7 +2499,7 @@ export default function BankStatementsPage() {
                     </div>
 
                     {/* Panel Footer */}
-                    <div className="border-t border-gray-700 px-4 py-3 flex justify-between gap-2">
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-between gap-2">
                         {selectedRow.isReconciled ? (
                             <Button variant="outline" size="sm" onClick={() => revertReconciliation(selectedRow)} className="border-red-700 text-red-400 hover:bg-red-900/30">
                                 <X className="h-4 w-4 mr-1" /> Revert
@@ -2509,7 +2509,7 @@ export default function BankStatementsPage() {
                                 <Link2 className="h-4 w-4 mr-1" /> Manual Reconcile
                             </Button>
                         )}
-                        <Button variant="ghost" size="sm" onClick={() => setSelectedRow(null)} className="text-gray-400 hover:text-white">
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedRow(null)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                             Close
                         </Button>
                     </div>
@@ -2539,28 +2539,28 @@ export default function BankStatementsPage() {
 
                 return (
                     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-                        <div className="bg-[#2a2b2d] rounded-lg w-[900px] max-h-[85vh] overflow-hidden flex flex-col">
+                        <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg w-[900px] max-h-[85vh] overflow-hidden flex flex-col">
                             {/* Dialog Header */}
-                            <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                                 <div>
-                                    <h3 className="text-lg font-semibold text-white">
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                                         {isExpense ? "Expense Reconciliation" : "Revenue Reconciliation"}
                                     </h3>
-                                    <p className="text-sm text-gray-400">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
                                         {loadingMatches ? "Searching for matches..." : `${totalSuggestions} suggestion(s) found`}
                                     </p>
                                 </div>
-                                <Button variant="ghost" size="sm" onClick={() => setReconDialogOpen(false)} className="text-gray-400 hover:text-white">
+                                <Button variant="ghost" size="sm" onClick={() => setReconDialogOpen(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                                     <X className="h-5 w-5" />
                                 </Button>
                             </div>
 
                             {/* Transaction Info Bar */}
-                            <div className="px-6 py-3 bg-gray-800/50 border-b border-gray-700">
+                            <div className="px-6 py-3 bg-gray-100 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
                                 <div className="grid grid-cols-4 gap-4 text-sm">
                                     <div>
                                         <span className="text-gray-500 text-xs">Date</span>
-                                        <p className="text-white font-medium">{formatShortDate(reconTransaction.date)}</p>
+                                        <p className="text-gray-900 dark:text-white font-medium">{formatShortDate(reconTransaction.date)}</p>
                                     </div>
                                     <div>
                                         <span className="text-gray-500 text-xs">Amount</span>
@@ -2570,38 +2570,38 @@ export default function BankStatementsPage() {
                                     </div>
                                     <div>
                                         <span className="text-gray-500 text-xs">Bank</span>
-                                        <p className="text-white font-medium text-xs">{BANK_ACCOUNTS.find(b => b.key === reconTransaction.source)?.label}</p>
+                                        <p className="text-gray-900 dark:text-white font-medium text-xs">{BANK_ACCOUNTS.find(b => b.key === reconTransaction.source)?.label}</p>
                                     </div>
                                     <div>
                                         <span className="text-gray-500 text-xs">Description</span>
-                                        <p className="text-gray-300 text-xs truncate" title={reconTransaction.description}>{reconTransaction.description}</p>
+                                        <p className="text-gray-700 dark:text-gray-300 text-xs truncate" title={reconTransaction.description}>{reconTransaction.description}</p>
                                     </div>
                                 </div>
                             </div>
 
                             {/* Tab Bar */}
-                            <div className="px-6 py-2 border-b border-gray-700 flex gap-1">
+                            <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex gap-1">
                                 <button
                                     onClick={() => setReconTab("suggestions")}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "suggestions" ? "bg-cyan-600/20 text-cyan-400 border border-cyan-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "suggestions" ? "bg-cyan-600/20 text-cyan-400 border border-cyan-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"}`}
                                 >
                                     Suggestions {totalSuggestions > 0 && <span className="ml-1 bg-cyan-600/30 px-1.5 py-0.5 rounded-full text-[10px]">{totalSuggestions}</span>}
                                 </button>
                                 <button
                                     onClick={() => setReconTab("all")}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "all" ? "bg-violet-600/20 text-violet-400 border border-violet-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "all" ? "bg-violet-600/20 text-violet-400 border border-violet-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"}`}
                                 >
                                     {isExpense ? "All Invoices" : "All Orders"} <span className="ml-1 text-[10px] text-gray-500">({allAvailableInvoices.length})</span>
                                 </button>
                                 <button
                                     onClick={() => setReconTab("manual")}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "manual" ? "bg-orange-600/20 text-orange-400 border border-orange-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "manual" ? "bg-orange-600/20 text-orange-400 border border-orange-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"}`}
                                 >
                                     Manual
                                 </button>
                                 <button
                                     onClick={() => setReconTab("intercompany")}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "intercompany" ? "bg-amber-600/20 text-amber-400 border border-amber-700" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "intercompany" ? "bg-amber-600/20 text-amber-400 border border-amber-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"}`}
                                 >
                                     Intercompany {intercompanyMatches.length > 0 && <span className="ml-1 bg-amber-600/30 px-1.5 py-0.5 rounded-full text-[10px]">{intercompanyMatches.length}</span>}
                                 </button>
@@ -2610,7 +2610,7 @@ export default function BankStatementsPage() {
                             {/* Content Area */}
                             <div className="flex-1 overflow-auto px-6 py-4 space-y-4 min-h-0" style={{ maxHeight: "calc(85vh - 280px)" }}>
                                 {loadingMatches && (
-                                    <div className="flex items-center justify-center gap-2 py-8 text-gray-400">
+                                    <div className="flex items-center justify-center gap-2 py-8 text-gray-500 dark:text-gray-400">
                                         <Loader2 className="h-5 w-5 animate-spin" />
                                         <span>Searching for matching transactions...</span>
                                     </div>
@@ -2628,35 +2628,35 @@ export default function BankStatementsPage() {
                                                         <h4 className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1">
                                                             <Building className="h-3.5 w-3.5" /> Supplier Invoices ({providerNameMatches.length})
                                                         </h4>
-                                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
                                                             <span></span>
-                                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
                                                         </div>
                                                         <div className="space-y-1">
                                                             {sortInvoices(providerNameMatches).map(inv => (
                                                                 <button
                                                                     key={inv.id}
                                                                     onClick={() => toggleInvoiceSelection(inv.id)}
-                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
                                                                         <div className="flex items-center">
                                                                             <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
                                                                             </div>
                                                                         </div>
                                                                         <div className="min-w-0">
-                                                                            <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
+                                                                            <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">{inv.matchReason}</p>
                                                                         </div>
                                                                         <div className="text-center">
-                                                                            <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                            <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
                                                                         </div>
                                                                         <div className="text-center">
-                                                                            <span className="text-[10px] text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
                                                                         </div>
                                                                         <div className="text-right flex items-center gap-1.5">
                                                                             <span className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
@@ -2695,11 +2695,11 @@ export default function BankStatementsPage() {
                                                                 <button
                                                                     key={pm.id}
                                                                     onClick={() => { setSelectedPaymentMatch(pm.id); setSelectedInvoices(new Set()); setSelectedRevenueOrder(null); }}
-                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedPaymentMatch === pm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedPaymentMatch === pm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="flex items-center justify-between">
                                                                         <div className="flex-1 min-w-0">
-                                                                            <p className="text-xs text-white font-medium">{pm.sourceLabel}</p>
+                                                                            <p className="text-xs text-gray-900 dark:text-white font-medium">{pm.sourceLabel}</p>
                                                                             <p className="text-[10px] text-gray-500">{pm.matchReason}</p>
                                                                         </div>
                                                                         <div className="text-right ml-3 flex items-center gap-2">
@@ -2724,15 +2724,15 @@ export default function BankStatementsPage() {
                                                                 <button
                                                                     key={rm.id}
                                                                     onClick={() => { setSelectedRevenueOrder(rm.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); }}
-                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedRevenueOrder === rm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedRevenueOrder === rm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="flex items-center justify-between">
                                                                         <div className="flex-1 min-w-0">
                                                                             <div className="flex items-center gap-2">
-                                                                                <span className="text-xs font-mono text-gray-300">{rm.invoiceNumber || rm.orderId || "-"}</span>
+                                                                                <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{rm.invoiceNumber || rm.orderId || "-"}</span>
                                                                                 <Badge variant="outline" className={`text-[9px] px-1 py-0 ${rm.matchScore >= 80 ? "bg-green-900/20 text-green-400 border-green-700" : "bg-yellow-900/20 text-yellow-400 border-yellow-700"}`}>{rm.matchScore}%</Badge>
                                                                             </div>
-                                                                            <p className="text-xs text-white mt-0.5 font-medium">{rm.customerName}</p>
+                                                                            <p className="text-xs text-gray-900 dark:text-white mt-0.5 font-medium">{rm.customerName}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">{rm.matchReason}</p>
                                                                         </div>
                                                                         <div className="text-right ml-3">
@@ -2766,16 +2766,16 @@ export default function BankStatementsPage() {
                                                 placeholder="Search by supplier name or invoice number..."
                                                 value={invoiceSearchTerm}
                                                 onChange={e => setInvoiceSearchTerm(e.target.value)}
-                                                className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm h-8"
+                                                className="bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm h-8"
                                             />
                                         </div>
                                         {/* Column headers */}
-                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
                                             <span></span>
-                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
                                         </div>
                                         {isExpense ? (
                                             <div className="space-y-1">
@@ -2786,23 +2786,23 @@ export default function BankStatementsPage() {
                                                         <button
                                                             key={inv.id}
                                                             onClick={() => toggleInvoiceSelection(inv.id)}
-                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 hover:border-gray-500"}`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
                                                                 <div className="flex items-center">
                                                                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code}</p>
                                                                     {inv.description && <p className="text-[10px] text-gray-500 truncate">{inv.description}</p>}
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
@@ -2819,7 +2819,7 @@ export default function BankStatementsPage() {
                                             /* ── Revenue: Invoice-Order Search ── */
                                             <div className="space-y-3">
                                                 <div>
-                                                    <label className="text-xs text-gray-400 block mb-1">Search Invoice-Orders (customer, order ID, invoice #)</label>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Search Invoice-Orders (customer, order ID, invoice #)</label>
                                                     <div className="flex gap-2">
                                                         <Input
                                                             placeholder="Type customer name, order ID, invoice #..."
@@ -2830,14 +2830,14 @@ export default function BankStatementsPage() {
                                                                     await searchInvoiceOrders(orderSearchTerm, reconTransaction);
                                                                 }
                                                             }}
-                                                            className="flex-1 bg-gray-800 border-gray-700 text-white text-xs h-8"
+                                                            className="flex-1 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-xs h-8"
                                                         />
                                                         <Button
                                                             size="sm"
                                                             variant="outline"
                                                             disabled={isSearchingOrders || orderSearchTerm.length < 2}
                                                             onClick={() => reconTransaction && searchInvoiceOrders(orderSearchTerm, reconTransaction)}
-                                                            className="h-8 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                                                            className="h-8 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                                                         >
                                                             {isSearchingOrders ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
                                                         </Button>
@@ -2861,24 +2861,24 @@ export default function BankStatementsPage() {
                                                             onClick={() => toggleOrderSelection(order.id)}
                                                             className={`w-full text-left p-2 rounded border transition-colors ${selectedOrderIds.has(order.id)
                                                                     ? "bg-cyan-900/30 border-cyan-600"
-                                                                    : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
+                                                                    : "bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
                                                                 }`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
                                                                 <div className="flex items-center">
                                                                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-xs text-white font-medium truncate">{order.customerName}</p>
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{order.customerName}</p>
                                                                     <p className="text-[10px] text-gray-500 truncate">
                                                                         {order.orderId && <span className="text-cyan-400">#{order.orderId}</span>}
                                                                         {order.invoiceNumber && <span className="ml-2">Inv: {order.invoiceNumber}</span>}
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(order.date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(order.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-xs font-medium text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
@@ -2897,7 +2897,7 @@ export default function BankStatementsPage() {
                                     <div className="space-y-4">
                                         {/* Invoice search by supplier name / invoice number */}
                                         <div>
-                                            <label className="text-xs text-gray-400 block mb-1">Search Invoice by Supplier Name or Invoice Number</label>
+                                            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Search Invoice by Supplier Name or Invoice Number</label>
                                             <div className="flex gap-2">
                                                 <Input
                                                     placeholder="Type supplier name or invoice number..."
@@ -2930,7 +2930,7 @@ export default function BankStatementsPage() {
                                                             setIsSearchingManual(false);
                                                         }
                                                     }}
-                                                    className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm flex-1"
+                                                    className="bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm flex-1"
                                                 />
                                                 <Button
                                                     variant="outline"
@@ -2961,7 +2961,7 @@ export default function BankStatementsPage() {
                                                         } catch { /* silent */ }
                                                         setIsSearchingManual(false);
                                                     }}
-                                                    className="border-gray-600 text-gray-300 hover:bg-gray-700 h-9"
+                                                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 h-9"
                                                 >
                                                     {isSearchingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
                                                 </Button>
@@ -2972,34 +2972,34 @@ export default function BankStatementsPage() {
                                         {/* Manual search results */}
                                         {manualSearchResults.length > 0 && (
                                             <div>
-                                                <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
+                                                <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
                                                     <span></span>
-                                                    <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
                                                 </div>
                                                 <div className="space-y-1 max-h-[250px] overflow-auto">
                                                     {sortInvoices(manualSearchResults).slice(0, 50).map(inv => (
                                                         <button
                                                             key={inv.id}
                                                             onClick={() => toggleInvoiceSelection(inv.id)}
-                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 hover:border-gray-500"}`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
                                                                 <div className="flex items-center">
                                                                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-xs text-white font-medium truncate">{inv.provider_code}</p>
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code}</p>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-xs font-mono text-gray-300">{inv.invoice_number}</span>
+                                                                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
@@ -3019,8 +3019,8 @@ export default function BankStatementsPage() {
 
                                         {/* ── Gateway Transactions Search (Revenue only) ── */}
                                         {!isExpense && (
-                                            <div className="border-t border-gray-700 pt-3">
-                                                <label className="text-xs text-gray-400 block mb-1 flex items-center gap-1">
+                                            <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1 flex items-center gap-1">
                                                     <Package className="h-3.5 w-3.5" /> Link Gateway Transactions (Braintree, Stripe, GoCardless)
                                                 </label>
                                                 <div className="flex gap-2 mt-1">
@@ -3033,14 +3033,14 @@ export default function BankStatementsPage() {
                                                                 await searchGatewayTransactions(gatewayTxSearchTerm, reconTransaction);
                                                             }
                                                         }}
-                                                        className="flex-1 bg-gray-800 border-gray-700 text-white text-xs h-8"
+                                                        className="flex-1 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-xs h-8"
                                                     />
                                                     <Button
                                                         size="sm"
                                                         variant="outline"
                                                         disabled={isSearchingGatewayTx || gatewayTxSearchTerm.length < 2}
                                                         onClick={() => reconTransaction && searchGatewayTransactions(gatewayTxSearchTerm, reconTransaction)}
-                                                        className="h-8 bg-gray-800 border-gray-700 text-gray-300 hover:bg-gray-700"
+                                                        className="h-8 bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                                                     >
                                                         {isSearchingGatewayTx ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
                                                     </Button>
@@ -3063,17 +3063,17 @@ export default function BankStatementsPage() {
                                                             onClick={() => toggleGatewayTxSelection(gtx.id)}
                                                             className={`w-full text-left p-2 rounded border transition-colors ${selectedGatewayTxIds.has(gtx.id)
                                                                     ? "bg-purple-900/30 border-purple-600"
-                                                                    : "bg-gray-800/50 border-gray-700 hover:border-gray-600"
+                                                                    : "bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
                                                                 }`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center">
                                                                 <div className="flex items-center">
                                                                     <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedGatewayTxIds.has(gtx.id) ? "bg-purple-500 border-purple-500" : "border-gray-500"}`}>
-                                                                        {selectedGatewayTxIds.has(gtx.id) && <CheckCircle2 className="h-3 w-3 text-white" />}
+                                                                        {selectedGatewayTxIds.has(gtx.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-xs text-white font-medium truncate">{gtx.customerName}</p>
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{gtx.customerName}</p>
                                                                     <p className="text-[10px] text-gray-500 truncate">
                                                                         <span className="text-purple-400">{gtx.source}</span>
                                                                         {gtx.orderId && <span className="ml-1.5 text-cyan-400">#{gtx.orderId}</span>}
@@ -3081,7 +3081,7 @@ export default function BankStatementsPage() {
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(gtx.date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(gtx.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-xs font-medium text-emerald-400">{formatCurrency(gtx.amount, gtx.currency || "EUR")}</span>
@@ -3094,15 +3094,15 @@ export default function BankStatementsPage() {
                                         )}
 
                                         {/* Divider */}
-                                        <div className="border-t border-gray-700 pt-3">
-                                            <label className="text-xs text-gray-400 block mb-1">Or reconcile without invoice:</label>
+                                        <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Or reconcile without invoice:</label>
                                         </div>
                                         {/* Payment Source dropdown — ONLY for revenue, never for expenses */}
                                         {!isExpense && (
                                             <div>
-                                                <label className="text-xs text-gray-400 block mb-1">Payment Source (gateway)</label>
+                                                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Payment Source (gateway)</label>
                                                 <Select value={manualPaymentSource} onValueChange={setManualPaymentSource}>
-                                                    <SelectTrigger className="bg-[#1e1f21] border-gray-600 text-white">
+                                                    <SelectTrigger className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
                                                         <SelectValue placeholder="Select source..." />
                                                     </SelectTrigger>
                                                     <SelectContent>
@@ -3118,8 +3118,8 @@ export default function BankStatementsPage() {
                                             </div>
                                         )}
                                         <div>
-                                            <label className="text-xs text-gray-400 block mb-1">Note (optional)</label>
-                                            <Input placeholder="Description or reference..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-sm" />
+                                            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Note (optional)</label>
+                                            <Input placeholder="Description or reference..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm" />
                                         </div>
                                     </div>
                                 )}
@@ -3127,35 +3127,35 @@ export default function BankStatementsPage() {
                                 {/* ── INTERCOMPANY TAB ── */}
                                 {reconTab === "intercompany" && !loadingMatches && (
                                     <div>
-                                        <p className="text-xs text-gray-400 mb-3">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
                                             Matching transfers in other bank accounts (same day ±1, Fri→Mon). Includes cross-currency EUR↔USD matches.
                                         </p>
                                         {intercompanyMatches.length > 0 ? (
                                             <div>
-                                                <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-700/50 mb-1">
-                                                    <button onClick={() => toggleSort("bank")} className="flex items-center gap-0.5 hover:text-gray-300 text-left">Bank / Description {sortCol === "bank" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("currency")} className="flex items-center gap-0.5 hover:text-gray-300">Currency {sortCol === "currency" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("match")} className="flex items-center gap-0.5 hover:text-gray-300 justify-end">Match {sortCol === "match" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
+                                                    <button onClick={() => toggleSort("bank")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Bank / Description {sortCol === "bank" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("currency")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Currency {sortCol === "currency" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("match")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Match {sortCol === "match" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
                                                 </div>
                                                 <div className="space-y-1">
                                                     {sortIntercompany(intercompanyMatches).map(ic => (
                                                         <button
                                                             key={ic.id}
                                                             onClick={() => { setSelectedIntercompanyMatch(ic.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
-                                                            className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedIntercompanyMatch === ic.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-700 bg-gray-800/30 hover:border-gray-500"}`}
+                                                            className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedIntercompanyMatch === ic.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30 hover:border-gray-500"}`}
                                                         >
                                                             <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center">
                                                                 <div className="min-w-0">
-                                                                    <p className="text-xs text-white font-medium">{ic.sourceLabel}</p>
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium">{ic.sourceLabel}</p>
                                                                     <p className="text-[10px] text-gray-500 truncate">{ic.description}</p>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-600 text-gray-300">{ic.currency}</Badge>
+                                                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">{ic.currency}</Badge>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-400">{formatShortDate(ic.date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(ic.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-sm font-medium text-amber-400">{formatCurrency(ic.amount, ic.currency)}</span>
@@ -3181,13 +3181,13 @@ export default function BankStatementsPage() {
 
                             {/* Note input (always visible when in suggestions/all tabs) */}
                             {reconTab !== "manual" && (selectedInvoices.size > 0 || selectedPaymentMatch || selectedRevenueOrder || selectedIntercompanyMatch) && (
-                                <div className="px-6 py-2 border-t border-gray-700/50">
-                                    <Input placeholder="Note (optional)..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-800/50 border-gray-700 text-white placeholder:text-gray-500 text-xs h-7" />
+                                <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-700/50">
+                                    <Input placeholder="Note (optional)..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-xs h-7" />
                                 </div>
                             )}
 
                             {/* Dialog Footer */}
-                            <div className="px-6 py-3 border-t border-gray-700 flex items-center justify-between">
+                            <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                                 <div className="text-[10px] text-gray-500">
                                     {selectedInvoices.size > 0 && (() => {
                                         const allInvLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
@@ -3201,7 +3201,7 @@ export default function BankStatementsPage() {
                                     {selectedInvoices.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
                                 </div>
                                 <div className="flex gap-3">
-                                    <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-600 text-gray-300 hover:bg-gray-700 h-8 text-xs">Cancel</Button>
+                                    <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 h-8 text-xs">Cancel</Button>
                                     <Button
                                         onClick={performManualReconciliation}
                                         disabled={isSavingManual || (selectedInvoices.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !manualPaymentSource && !manualNote)}
@@ -3222,7 +3222,7 @@ export default function BankStatementsPage() {
                 <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-900/90 border border-red-700 rounded-lg px-6 py-3 text-red-200 text-sm z-50 flex items-center gap-3">
                     <AlertCircle className="h-4 w-4" />
                     {error}
-                    <button onClick={() => setError(null)} className="text-red-400 hover:text-white ml-2">✕</button>
+                    <button onClick={() => setError(null)} className="text-red-400 hover:text-gray-900 dark:text-white ml-2">✕</button>
                 </div>
             )}
         </div>

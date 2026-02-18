@@ -482,7 +482,7 @@ export default function SabadellPage() {
     }
 
     const getPaymentSourceStyle = (source: string | null | undefined) => {
-        if (!source) return { bg: "bg-gray-100", text: "text-gray-400", border: "border-gray-200" }
+        if (!source) return { bg: "bg-gray-100", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200" }
         return paymentSourceColors[source] || { bg: "bg-gray-100", text: "text-gray-600", border: "border-gray-200" }
     }
 
@@ -538,24 +538,24 @@ export default function SabadellPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1e1f21]">
                 <Loader2 className="h-12 w-12 animate-spin text-[#004E8C]" />
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-[#1e1f21] text-white">
-            <div className="border-b border-gray-700 px-6 py-4">
+        <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                 <div className="flex items-center justify-between mb-4">
                     <div className="flex items-center gap-4">
                         <div className="bg-[#004E8C] p-2 rounded-lg">
-                            <Database className="h-6 w-6 text-white" />
+                            <Database className="h-6 w-6 text-gray-900 dark:text-white" />
                         </div>
                         <div>
                             <h1 className="text-xl font-semibold">Sabadell EUR - Bank Statement</h1>
                             <div className="flex items-center gap-4 mt-1">
-                                <span className="text-gray-400 text-sm">{rows.length} records ({filteredRows.length} filtered)</span>
+                                <span className="text-gray-500 dark:text-gray-400 text-sm">{rows.length} records ({filteredRows.length} filtered)</span>
                                 {lastSaved && (
                                     <>
                                         <span className="text-gray-600">•</span>
@@ -569,7 +569,7 @@ export default function SabadellPage() {
                         </div>
                     </div>
                     <div className="text-right">
-                        <p className="text-sm text-gray-400">Current Balance</p>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
                         <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
                             €{formatEURCurrency(stats.closingBalance)}
                         </p>
@@ -578,18 +578,18 @@ export default function SabadellPage() {
                 <div className="flex items-center gap-2 flex-wrap">
                     <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-sabadell" />
                     <label htmlFor="file-upload-sabadell">
-                        <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" asChild>
+                        <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" asChild>
                             <span><Upload className="h-4 w-4 mr-1" />Upload CSV</span>
                         </Button>
                     </label>
-                    <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                    <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                         <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />Refresh
                     </Button>
                     <Button onClick={handleAutoReconcile} disabled={isAutoReconciling} variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30">
                         {isAutoReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
                         Auto-Reconcile
                     </Button>
-                    <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                    <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                         <Download className="h-4 w-4 mr-1" />Download
                     </Button>
                     <Button onClick={handleDeleteAll} variant="outline" size="sm" className="bg-transparent border-red-800 text-red-400 hover:bg-red-900/30" disabled={isDeleting || rows.length === 0}>
@@ -600,27 +600,27 @@ export default function SabadellPage() {
             </div>
 
             {/* Stats Bar */}
-            <div className="border-b border-gray-700 px-6 py-3 bg-[#252627]">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#252627]">
                 <div className="flex items-center gap-8">
                     <div className="flex items-center gap-2">
-                        <span className="text-gray-400 text-sm">Credits:</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">Credits:</span>
                         <span className="text-green-400 font-medium">€{formatEURCurrency(stats.totalIncomes)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-gray-400 text-sm">Debits:</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">Debits:</span>
                         <span className="text-red-400 font-medium">€{formatEURCurrency(stats.totalExpenses)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <XCircle className="h-4 w-4 text-yellow-500" />
-                        <span className="text-gray-400 text-sm">Unreconciled:</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">Unreconciled:</span>
                         <span className="text-yellow-400 font-medium">{stats.unreconciledCount}</span>
                     </div>
                 </div>
             </div>
 
             {/* Table Header */}
-            <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
-                <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[800px]">
+            <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[800px]">
                     <div className="w-[70px] flex-shrink-0">Date</div>
                     <div className="flex-1 min-w-[200px]">Description</div>
                     <div className="w-[90px] flex-shrink-0 text-right">Debit</div>
@@ -643,12 +643,12 @@ export default function SabadellPage() {
                     return (
                         <div
                             key={row.id}
-                            className="flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 min-w-[800px]"
+                            className="flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 min-w-[800px]"
                         >
-                            <div className="w-[70px] flex-shrink-0 text-[11px] text-gray-300">
+                            <div className="w-[70px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">
                                 {formatDate(row.date)}
                             </div>
-                            <div className="flex-1 min-w-[200px] text-[11px] text-white truncate" title={row.description}>
+                            <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={row.description}>
                                 {row.description}
                             </div>
                             <div className="w-[90px] flex-shrink-0 text-right text-[11px] font-mono">
@@ -665,7 +665,7 @@ export default function SabadellPage() {
                                     <span className="text-gray-600">-</span>
                                 )}
                             </div>
-                            <div className="w-[100px] flex-shrink-0 text-right text-[11px] font-mono font-medium text-white">
+                            <div className="w-[100px] flex-shrink-0 text-right text-[11px] font-mono font-medium text-gray-900 dark:text-white">
                                 €{formatEURCurrency(customData.balance || 0)}
                             </div>
                             <div className="w-[100px] flex-shrink-0 text-center">
@@ -696,16 +696,16 @@ export default function SabadellPage() {
                                         <Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30">
                                             <Save className="h-3 w-3" />
                                         </Button>
-                                        <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-400 hover:text-gray-300 hover:bg-gray-700">
+                                        <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                             <X className="h-3 w-3" />
                                         </Button>
                                     </>
                                 ) : (
                                     <>
-                                        <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700">
+                                        <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                                             <Edit2 className="h-3 w-3" />
                                         </Button>
-                                        <Button size="sm" variant="ghost" onClick={() => deleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30">
+                                        <Button size="sm" variant="ghost" onClick={() => deleteRow(row.id)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-red-900/30">
                                             <Trash2 className="h-3 w-3" />
                                         </Button>
                                     </>

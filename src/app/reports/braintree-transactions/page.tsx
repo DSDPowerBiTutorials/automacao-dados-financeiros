@@ -449,7 +449,7 @@ export default function BraintreeTransactionsPage() {
                   id="file-upload-transactions"
                 />
                 <label htmlFor="file-upload-transactions">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
+                  <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload CSV
@@ -465,14 +465,14 @@ export default function BraintreeTransactionsPage() {
                   disabled={isLoading}
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-white text-white hover:bg-white/10"
+                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
                   title="Force data refresh"
                 >
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
                   Atualizar
                 </Button>
 
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
@@ -499,26 +499,26 @@ export default function BraintreeTransactionsPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
             <Card className="shadow-xl border-2 border-[#e5e7eb]">
               <div className="bg-gradient-to-br from-[#1a2b4a] to-[#2c3e5f] p-6">
-                <p className="text-sm font-bold text-white/80 mb-2">
+                <p className="text-sm font-bold text-gray-900 dark:text-white/80 mb-2">
                   Total Transactions
                 </p>
-                <p className="text-4xl font-bold text-white">{rows.length}</p>
+                <p className="text-4xl font-bold text-gray-900 dark:text-white">{rows.length}</p>
               </div>
             </Card>
             <Card className="shadow-xl border-2 border-green-200">
               <div className="bg-gradient-to-br from-green-500 to-green-600 p-6">
-                <p className="text-sm font-bold text-white/80 mb-2">
+                <p className="text-sm font-bold text-gray-900 dark:text-white/80 mb-2">
                   Reconciled
                 </p>
-                <p className="text-4xl font-bold text-white">
+                <p className="text-4xl font-bold text-gray-900 dark:text-white">
                   {reconciledCount}
                 </p>
               </div>
             </Card>
             <Card className="shadow-xl border-2 border-orange-200">
               <div className="bg-gradient-to-br from-orange-500 to-orange-600 p-6">
-                <p className="text-sm font-bold text-white/80 mb-2">Pending</p>
-                <p className="text-4xl font-bold text-white">
+                <p className="text-sm font-bold text-gray-900 dark:text-white/80 mb-2">Pending</p>
+                <p className="text-4xl font-bold text-gray-900 dark:text-white">
                   {unreconciledCount}
                 </p>
               </div>
@@ -530,7 +530,7 @@ export default function BraintreeTransactionsPage() {
               <CardTitle>
                 All Braintree Transactions with Conciliation
               </CardTitle>
-              <CardDescription className="text-white/80">
+              <CardDescription className="text-gray-900 dark:text-white/80">
                 Automatic reconciliation with Braintree EUR payouts
               </CardDescription>
             </CardHeader>
@@ -628,14 +628,14 @@ export default function BraintreeTransactionsPage() {
                           {row.bank_conciliation ? (
                             <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
                           ) : (
-                            <XCircle className="h-4 w-4 text-gray-400 mx-auto" />
+                            <XCircle className="h-4 w-4 text-gray-500 dark:text-gray-400 mx-auto" />
                           )}
                         </td>
                         <td className="py-3 px-3 text-center">
                           {row.braintree_eur_conciliation ? (
                             <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />
                           ) : (
-                            <XCircle className="h-4 w-4 text-gray-400 mx-auto" />
+                            <XCircle className="h-4 w-4 text-gray-500 dark:text-gray-400 mx-auto" />
                           )}
                         </td>
                         <td className="py-3 px-3 text-center">

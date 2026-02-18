@@ -233,7 +233,7 @@ export default function BraintreePage({ source, title }: Props) {
                 </Button>
                 <Button
                   onClick={downloadCSV}
-                  className="gap-2 bg-[#1a2b4a] text-white"
+                  className="gap-2 bg-blue-50 dark:bg-[#1a2b4a] text-white"
                 >
                   <Download className="h-4 w-4" /> Download
                 </Button>
@@ -254,7 +254,7 @@ export default function BraintreePage({ source, title }: Props) {
           <Card>
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
-              <CardDescription className="text-white/80">
+              <CardDescription className="text-gray-900 dark:text-white/80">
                 Data for: <code>{source}</code>
               </CardDescription>
             </CardHeader>
@@ -303,14 +303,14 @@ export default function BraintreePage({ source, title }: Props) {
                         </td>
                         <td className="py-3 px-4 text-center text-sm">
                           {row.destinationAccount || (
-                            <span className="text-gray-400 text-xs">N/A</span>
+                            <span className="text-gray-500 dark:text-gray-400 text-xs">N/A</span>
                           )}
                         </td>
                         <td className="py-3 px-4 text-center">
                           {row.conciliado ? (
                             <Zap className="h-5 w-5 text-green-600 mx-auto" />
                           ) : (
-                            <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                            <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 mx-auto" />
                           )}
                         </td>
                       </tr>

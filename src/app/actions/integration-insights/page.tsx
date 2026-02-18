@@ -108,7 +108,7 @@ export default function IntegrationInsights() {
                 <PlugZap className="h-5 w-5" />
                 <div>
                   <CardTitle className="text-xl">APIs & Webhooks</CardTitle>
-                  <CardDescription className="text-white/80 text-sm">
+                  <CardDescription className="text-gray-900 dark:text-white/80 text-sm">
                     Connector priorities and implementation requirements.
                   </CardDescription>
                 </div>

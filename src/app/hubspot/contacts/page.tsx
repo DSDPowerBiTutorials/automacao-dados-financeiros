@@ -356,7 +356,7 @@ export default function HubSpotContactsPage() {
                                     <tr key={contact.id} className="hover:bg-gray-50">
                                         <td className="px-4 py-3 text-sm">
                                             <div className="flex items-center gap-2">
-                                                <User className="w-4 h-4 text-gray-400" />
+                                                <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                 <span className="font-medium">
                                                     {contact.first_name} {contact.last_name}
                                                 </span>
@@ -364,14 +364,14 @@ export default function HubSpotContactsPage() {
                                         </td>
                                         <td className="px-4 py-3 text-sm">
                                             <div className="flex items-center gap-2">
-                                                <Mail className="w-4 h-4 text-gray-400" />
+                                                <Mail className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                 {contact.email}
                                             </div>
                                         </td>
                                         <td className="px-4 py-3 text-sm">
                                             {contact.phone ? (
                                                 <div className="flex items-center gap-2">
-                                                    <Phone className="w-4 h-4 text-gray-400" />
+                                                    <Phone className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                     {contact.phone}
                                                 </div>
                                             ) : (
@@ -381,7 +381,7 @@ export default function HubSpotContactsPage() {
                                         <td className="px-4 py-3 text-sm">
                                             {contact.company ? (
                                                 <div className="flex items-center gap-2">
-                                                    <Building2 className="w-4 h-4 text-gray-400" />
+                                                    <Building2 className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                     {contact.company}
                                                 </div>
                                             ) : (

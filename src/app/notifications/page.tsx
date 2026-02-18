@@ -119,7 +119,7 @@ function NotificationCard({
                                 {notification.message}
                             </p>
                         )}
-                        <p className="text-xs text-gray-400 mt-2">{formattedDate}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">{formattedDate}</p>
                     </div>
 
                     {/* Ações */}
@@ -231,7 +231,7 @@ export default function NotificationsPage() {
                 ) : notifications.length === 0 ? (
                     <Card>
                         <CardContent className="flex flex-col items-center justify-center py-16">
-                            <Mail size={48} className="text-gray-300 mb-4" />
+                            <Mail size={48} className="text-gray-700 dark:text-gray-300 mb-4" />
                             <h3 className="text-lg font-medium text-gray-700">Nenhuma notificação</h3>
                             <p className="text-sm text-gray-500 mt-1">Você está em dia com tudo!</p>
                         </CardContent>

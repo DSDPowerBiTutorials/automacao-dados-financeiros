@@ -13,7 +13,7 @@ export default function ChaseQuickBooksPage() {
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/cash-management/bank-statements">
-                            <Button variant="ghost" size="sm" className="gap-2 text-white hover:bg-white/10">
+                            <Button variant="ghost" size="sm" className="gap-2 text-gray-900 dark:text-white hover:bg-white/10">
                                 <ArrowLeft className="h-4 w-4" />
                                 Back
                             </Button>

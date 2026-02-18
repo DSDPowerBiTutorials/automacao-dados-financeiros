@@ -1657,7 +1657,7 @@ export default function BraintreeEURPage() {
     if (!account)
       return {
         bg: "bg-gray-100",
-        text: "text-gray-400",
+        text: "text-gray-500 dark:text-gray-400",
         border: "border-gray-200",
       };
     return (
@@ -1694,11 +1694,11 @@ export default function BraintreeEURPage() {
                   </Button>
                 </Link>
                 <div>
-                  <h1 className="text-2xl font-bold text-white mb-2">
+                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                     Braintree EUR - Payment Source
                   </h1>
                   <SyncStatusBadge source="braintree-eur" />
-                  <div className="text-sm text-white/80 mt-1">
+                  <div className="text-sm text-gray-900 dark:text-white/80 mt-1">
                     {processedRows.length} records (loaded: {rows.length}{hasMoreServerRows ? "+" : ""})
                   </div>
                 </div>
@@ -1710,7 +1710,7 @@ export default function BraintreeEURPage() {
                   disabled={isLoading || isLoadingMore}
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-white text-white hover:bg-white/10"
+                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
                   title="Force data refresh"
                 >
                   <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
@@ -1723,7 +1723,7 @@ export default function BraintreeEURPage() {
                 {/* Update Pending/Force Update com timestamps */}
                 <BraintreeUpdatePendingButton />
 
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Export Data
                 </Button>
@@ -1732,7 +1732,7 @@ export default function BraintreeEURPage() {
 
             {/* Auto reconciliation status */}
             {ENABLE_AUTO_RECONCILIATION && (
-              <div className="mt-3 flex items-center gap-3 text-sm text-white/80">
+              <div className="mt-3 flex items-center gap-3 text-sm text-gray-900 dark:text-white/80">
                 <Badge variant="outline" className="border-emerald-300 text-emerald-50 bg-emerald-500/20">
                   ⚡ Auto reconciliation active
                 </Badge>
@@ -1774,7 +1774,7 @@ export default function BraintreeEURPage() {
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
-              <CardDescription className="text-white/80">
+              <CardDescription className="text-gray-900 dark:text-white/80">
                 Manage Braintree EUR transactions with filtering and sorting
               </CardDescription>
             </CardHeader>
@@ -1807,7 +1807,7 @@ export default function BraintreeEURPage() {
                       <Button
                         variant={columnSelectorOpen ? "default" : "outline"}
                         size="sm"
-                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-[#243140] hover:bg-[#1a2530] text-white" : ""}`}
+                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-gray-50 dark:bg-[#243140] hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white" : ""}`}
                       >
                         <Columns3 className="h-4 w-4 mr-2" />
                         Select Columns
@@ -1824,7 +1824,7 @@ export default function BraintreeEURPage() {
                             >
                               <X className="h-3 w-3" />
                             </span>
-                            <span className="absolute -top-2 -right-2 bg-[#243140] text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
+                            <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-[#243140] text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
                               {visibleColumns.size}/{TOTAL_COLUMNS}
                             </span>
                           </>
@@ -2472,7 +2472,7 @@ export default function BraintreeEURPage() {
                                     })()}
                                   </div>
                                 ) : (
-                                  <span className="text-xs text-gray-400">—</span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">—</span>
                                 )}
                               </td>
                             )}
@@ -2515,7 +2515,7 @@ export default function BraintreeEURPage() {
                                     {row.destinationAccount}
                                   </button>
                                 ) : (
-                                  <span className="text-gray-400 text-xs">
+                                  <span className="text-gray-500 dark:text-gray-400 text-xs">
                                     N/A
                                   </span>
                                 )}
@@ -2528,7 +2528,7 @@ export default function BraintreeEURPage() {
                                     {row.reconciliationType === "automatic" ? (
                                       <div className="relative group">
                                         <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
                                           <div className="font-bold mb-2 text-green-400">⚡ Auto-Reconciled</div>
                                           {row.bank_match_date && (
                                             <div className="flex items-center gap-1 mb-1">
@@ -2551,7 +2551,7 @@ export default function BraintreeEURPage() {
                                             </div>
                                           )}
                                           {row.settlement_batch_id && (
-                                            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-700">
+                                            <div className="flex items-center gap-1 mt-2 pt-2 border-t border-gray-200 dark:border-gray-700">
                                               <Key className="h-3 w-3" />
                                               <span className="text-[10px] font-mono">
                                                 {row.settlement_batch_id.substring(0, 20)}...
@@ -2563,14 +2563,14 @@ export default function BraintreeEURPage() {
                                     ) : (
                                       <div className="relative group">
                                         <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-900 text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                           👤 Manual reconciliation
                                         </div>
                                       </div>
                                     )}
                                   </div>
                                 ) : (
-                                  <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                                  <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 mx-auto" />
                                 )}
                               </td>
                             )}
@@ -2659,7 +2659,7 @@ export default function BraintreeEURPage() {
                                             <Eye className="h-4 w-4" />
                                             Status History
                                           </h4>
-                                          <p className="text-xs text-white/80 mt-1">
+                                          <p className="text-xs text-gray-900 dark:text-white/80 mt-1">
                                             Transaction: {row.transaction_id}
                                           </p>
                                         </div>
@@ -2756,7 +2756,7 @@ export default function BraintreeEURPage() {
                                     {row.settlement_batch_id.substring(0, 16)}...
                                   </span>
                                 ) : (
-                                  <span className="text-gray-400">N/A</span>
+                                  <span className="text-gray-500 dark:text-gray-400">N/A</span>
                                 )}
                               </td>
                             )}
@@ -2767,7 +2767,7 @@ export default function BraintreeEURPage() {
                                     {formatDate(row.settlement_date)}
                                   </span>
                                 ) : (
-                                  <span className="text-gray-400 text-xs">Not settled</span>
+                                  <span className="text-gray-500 dark:text-gray-400 text-xs">Not settled</span>
                                 )}
                               </td>
                             )}
@@ -2803,7 +2803,7 @@ export default function BraintreeEURPage() {
                                     );
                                   }
 
-                                  return <span className="text-gray-400">1.00000</span>;
+                                  return <span className="text-gray-500 dark:text-gray-400">1.00000</span>;
                                 })()}
                               </td>
                             )}
@@ -2964,7 +2964,7 @@ export default function BraintreeEURPage() {
                   variant="ghost"
                   size="sm"
                   onClick={closeSplitScreen}
-                  className="text-white hover:bg-white/10"
+                  className="text-gray-900 dark:text-white hover:bg-white/10"
                 >
                   <XIcon className="h-5 w-5" />
                 </Button>

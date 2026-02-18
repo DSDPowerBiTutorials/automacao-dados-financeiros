@@ -256,7 +256,7 @@ export default function BotLogsPage() {
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                        <Bot className="h-7 w-7 text-white" />
+                        <Bot className="h-7 w-7 text-gray-900 dark:text-white" />
                     </div>
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900">
@@ -398,7 +398,7 @@ export default function BotLogsPage() {
                                     {loading ? (
                                         <TableRow>
                                             <TableCell colSpan={7} className="text-center py-8">
-                                                <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
+                                                <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-500 dark:text-gray-400" />
                                             </TableCell>
                                         </TableRow>
                                     ) : logs.length === 0 ? (

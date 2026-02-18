@@ -92,17 +92,17 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-            <DialogContent className="max-w-none max-h-[90vh] bg-gray-900 border-gray-700 text-white overflow-hidden flex flex-col" style={{ width: '80vw' }}>
+            <DialogContent className="max-w-none max-h-[90vh] bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white overflow-hidden flex flex-col" style={{ width: '80vw' }}>
                 <DialogHeader className="flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <DialogTitle className="text-xl font-bold text-emerald-400">
                             {faCode} - {faName}
                         </DialogTitle>
-                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white">
+                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                             <X className="h-5 w-5" />
                         </Button>
                     </div>
-                    <p className="text-sm text-gray-400 mt-1">
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
                         {monthNames[month]} {year} • {total} transações
                     </p>
                 </DialogHeader>
@@ -118,21 +118,21 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                         </div>
                     ) : (
                         <table className="w-full text-sm">
-                            <thead className="bg-gray-800/80 sticky top-0">
+                            <thead className="bg-gray-200 dark:bg-gray-800/80 sticky top-0">
                                 <tr>
                                     <th
-                                        className="text-left px-3 py-2 text-gray-400 font-medium cursor-pointer hover:text-white"
+                                        className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium cursor-pointer hover:text-gray-900 dark:text-white"
                                         onClick={() => { setSortBy("date"); setSortDesc(sortBy === "date" ? !sortDesc : true); }}
                                     >
                                         <span className="flex items-center gap-1">
                                             Data <ArrowUpDown className="h-3 w-3" />
                                         </span>
                                     </th>
-                                    <th className="text-left px-3 py-2 text-gray-400 font-medium">Descrição</th>
-                                    <th className="text-left px-3 py-2 text-gray-400 font-medium">Cliente</th>
-                                    <th className="text-left px-3 py-2 text-gray-400 font-medium">Tipo</th>
+                                    <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium">Descrição</th>
+                                    <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium">Cliente</th>
+                                    <th className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium">Tipo</th>
                                     <th
-                                        className="text-right px-3 py-2 text-gray-400 font-medium cursor-pointer hover:text-white"
+                                        className="text-right px-3 py-2 text-gray-500 dark:text-gray-400 font-medium cursor-pointer hover:text-gray-900 dark:text-white"
                                         onClick={() => { setSortBy("amount"); setSortDesc(sortBy === "amount" ? !sortDesc : true); }}
                                     >
                                         <span className="flex items-center justify-end gap-1">
@@ -145,25 +145,25 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                                 {sortedTransactions.map((t, idx) => (
                                     <tr
                                         key={t.id}
-                                        className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""}`}
+                                        className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-100 dark:bg-gray-900/50" : ""}`}
                                     >
-                                        <td className="px-3 py-2 text-gray-300 whitespace-nowrap">{formatDate(t.date)}</td>
-                                        <td className="px-3 py-2 text-gray-200 max-w-xs truncate" title={t.description}>
+                                        <td className="px-3 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatDate(t.date)}</td>
+                                        <td className="px-3 py-2 text-gray-600 dark:text-gray-200 max-w-xs truncate" title={t.description}>
                                             {t.description}
                                         </td>
-                                        <td className="px-3 py-2 text-gray-300 max-w-[150px] truncate" title={t.customer}>
+                                        <td className="px-3 py-2 text-gray-700 dark:text-gray-300 max-w-[150px] truncate" title={t.customer}>
                                             {t.customer}
                                         </td>
-                                        <td className="px-3 py-2 text-gray-400 text-xs">{t.orderType}</td>
+                                        <td className="px-3 py-2 text-gray-500 dark:text-gray-400 text-xs">{t.orderType}</td>
                                         <td className={`px-3 py-2 text-right font-mono whitespace-nowrap ${t.amount >= 0 ? "text-emerald-400" : "text-red-400"}`}>
                                             {formatCurrency(t.amount)}
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
-                            <tfoot className="bg-gray-800/60 font-semibold">
+                            <tfoot className="bg-gray-100 dark:bg-gray-800/60 font-semibold">
                                 <tr>
-                                    <td colSpan={4} className="px-3 py-2 text-gray-300">
+                                    <td colSpan={4} className="px-3 py-2 text-gray-700 dark:text-gray-300">
                                         Total da página
                                     </td>
                                     <td className={`px-3 py-2 text-right font-mono ${totalAmount >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -177,8 +177,8 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
 
                 {/* Pagination */}
                 {totalPages > 1 && (
-                    <div className="flex items-center justify-between pt-4 border-t border-gray-700 flex-shrink-0">
-                        <span className="text-sm text-gray-400">
+                    <div className="flex items-center justify-between pt-4 border-t border-gray-200 dark:border-gray-700 flex-shrink-0">
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
                             Página {page} de {totalPages}
                         </span>
                         <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                                 size="sm"
                                 onClick={() => fetchData(page - 1)}
                                 disabled={page <= 1 || loading}
-                                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
@@ -196,7 +196,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                                 size="sm"
                                 onClick={() => fetchData(page + 1)}
                                 disabled={page >= totalPages || loading}
-                                className="border-gray-600 text-gray-300 hover:bg-gray-800"
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </Button>

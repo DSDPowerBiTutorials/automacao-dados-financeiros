@@ -334,7 +334,7 @@ export default function StripePage() {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Settings className="h-4 w-4" />
                   Settings
                 </Button>
@@ -363,7 +363,7 @@ export default function StripePage() {
                   id="file-upload-stripe"
                 />
                 <label htmlFor="file-upload-stripe">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10" asChild>
+                  <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10" asChild>
                     <span>
                       <Upload className="h-4 w-4" />
                       Upload CSV
@@ -375,13 +375,13 @@ export default function StripePage() {
                   disabled={isLoading}
                   variant="outline"
                   size="sm"
-                  className="gap-2 border-white text-white hover:bg-white/10"
+                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
                   title="Force data refresh"
                 >
                   <Download className="h-4 w-4" />
                   Atualizar
                 </Button>
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-white hover:bg-white/10">
+                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
                   <Download className="h-4 w-4" />
                   Download
                 </Button>
@@ -424,7 +424,7 @@ export default function StripePage() {
           <Card className="shadow-xl">
             <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
               <CardTitle>Payment Processing Details</CardTitle>
-              <CardDescription className="text-white/80">
+              <CardDescription className="text-gray-900 dark:text-white/80">
                 Upload CSV files from Stripe payment platform
               </CardDescription>
             </CardHeader>
@@ -526,7 +526,7 @@ export default function StripePage() {
                             {row.conciliado ? (
                               <CheckCircle className="h-5 w-5 text-green-600 mx-auto" />
                             ) : (
-                              <XCircle className="h-5 w-5 text-gray-400 mx-auto" />
+                              <XCircle className="h-5 w-5 text-gray-500 dark:text-gray-400 mx-auto" />
                             )}
                           </td>
                           <td className="py-3 px-4 text-center">

@@ -39,7 +39,7 @@ export function TaskCard({ task, onClick, overlay, users = [] }: TaskCardProps) 
         <div
             ref={overlay ? undefined : setNodeRef}
             style={overlay ? undefined : style}
-            className={`group bg-[#2a2b2d] hover:bg-[#333435] border border-gray-700 hover:border-gray-600 rounded-lg p-3 cursor-pointer transition-colors ${isDragging ? 'shadow-xl ring-1 ring-blue-500/50' : ''
+            className={`group bg-gray-50 dark:bg-[#2a2b2d] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 rounded-lg p-3 cursor-pointer transition-colors ${isDragging ? 'shadow-xl ring-1 ring-blue-500/50' : ''
                 }`}
             onClick={() => onClick(task)}
         >
@@ -57,7 +57,7 @@ export function TaskCard({ task, onClick, overlay, users = [] }: TaskCardProps) 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                     {/* Title */}
-                    <p className="text-sm text-white font-medium leading-snug line-clamp-2">
+                    <p className="text-sm text-gray-900 dark:text-white font-medium leading-snug line-clamp-2">
                         {task.title}
                     </p>
 
@@ -102,16 +102,16 @@ export function TaskCard({ task, onClick, overlay, users = [] }: TaskCardProps) 
                                 {(() => {
                                     const assignee = users.find(u => u.id === task.assignee_id);
                                     return assignee ? (
-                                        <span className="text-[9px] text-white font-medium">{assignee.name.charAt(0).toUpperCase()}</span>
+                                        <span className="text-[9px] text-gray-900 dark:text-white font-medium">{assignee.name.charAt(0).toUpperCase()}</span>
                                     ) : (
-                                        <User className="h-3 w-3 text-gray-400" />
+                                        <User className="h-3 w-3 text-gray-500 dark:text-gray-400" />
                                     );
                                 })()}
                             </div>
                             {(() => {
                                 const assignee = users.find(u => u.id === task.assignee_id);
                                 return assignee ? (
-                                    <span className="text-[10px] text-gray-400 truncate max-w-[120px]">{assignee.name}</span>
+                                    <span className="text-[10px] text-gray-500 dark:text-gray-400 truncate max-w-[120px]">{assignee.name}</span>
                                 ) : null;
                             })()}
                         </div>

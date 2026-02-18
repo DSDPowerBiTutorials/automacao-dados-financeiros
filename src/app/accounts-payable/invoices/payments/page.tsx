@@ -846,7 +846,7 @@ export default function PaymentsPage() {
             {toPayInPeriod.length === 0 && paidInPeriod.length === 0 && (
                 <Card>
                     <CardContent className="pt-12 text-center">
-                        <Calendar className="h-12 w-12 text-gray-300 mx-auto mb-4" />
+                        <Calendar className="h-12 w-12 text-gray-700 dark:text-gray-300 mx-auto mb-4" />
                         <p className="text-gray-500">No invoices found in the selected period</p>
                     </CardContent>
                 </Card>

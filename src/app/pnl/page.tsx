@@ -369,7 +369,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
         ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
         : paymentStatusLabel.toLowerCase().includes("scheduled")
             ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
-            : "bg-gray-600/30 text-gray-400 border-gray-500/30";
+            : "bg-gray-600/30 text-gray-500 dark:text-gray-400 border-gray-500/30";
 
     // Field display helper (supports editing)
     const Field = ({ label, value, fieldKey, highlight, mono, type }: { label: string; value?: string | null; fieldKey?: string; highlight?: string; mono?: boolean; type?: "text" | "date" | "number" }) => {
@@ -382,7 +382,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         type={inputType}
                         value={String(editFields[fieldKey] ?? "")}
                         onChange={(e) => updateField(fieldKey, inputType === "number" ? parseFloat(e.target.value) || 0 : e.target.value)}
-                        className="h-8 text-sm bg-[#1e1f21] border-gray-600 text-white focus:border-blue-500"
+                        className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500"
                     />
                 </div>
             );
@@ -390,7 +390,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
         return (
             <div>
                 <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-                <p className={`text-sm ${highlight || "text-white"} ${mono ? "font-mono" : ""}`}>{value || "-"}</p>
+                <p className={`text-sm ${highlight || "text-gray-900 dark:text-white"} ${mono ? "font-mono" : ""}`}>{value || "-"}</p>
             </div>
         );
     };
@@ -404,7 +404,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                     onClick={() => updateField(fieldKey, !isActive)}
                     className={`text-xs px-2.5 py-1.5 rounded border transition-colors ${isActive
                         ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                        : "bg-gray-700/50 text-gray-500 border-gray-600"
+                        : "bg-gray-100 dark:bg-gray-700/50 text-gray-500 border-gray-300 dark:border-gray-600"
                         }`}
                 >
                     {isActive && <Check className="h-3 w-3 inline mr-1" />}
@@ -426,48 +426,48 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
         return (
             <Dialog open onOpenChange={(open) => !open && onClose()}>
                 <DialogContent
-                    className="max-w-none max-h-[90vh] p-0 bg-[#1e1f21] border-gray-700 flex flex-col overflow-hidden"
+                    className="max-w-none max-h-[90vh] p-0 bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
                     style={{ width: '80vw' }}
                 >
-                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 flex-shrink-0">
+                    <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                         <div className="flex items-center gap-3">
-                            <button onClick={() => setHistoryViewInvoice(null)} className="text-gray-400 hover:text-white transition-colors">
+                            <button onClick={() => setHistoryViewInvoice(null)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white transition-colors">
                                 <ArrowLeft className="h-5 w-5" />
                             </button>
                             <div>
-                                <h3 className="text-lg font-semibold text-white">History Invoice Detail</h3>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">History Invoice Detail</h3>
                                 <p className="text-xs text-gray-500">
                                     {historyViewInvoice.invoiceNumber || "No number"} • {historyViewInvoice.faName || historyViewInvoice.faCode || "-"}
                                 </p>
                             </div>
                         </div>
-                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white h-8 w-8 p-0">
+                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white h-8 w-8 p-0">
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
                     <div className="flex-1 overflow-y-auto px-6 py-5 space-y-6">
                         {/* Dates */}
                         <div>
-                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <Calendar className="h-3.5 w-3.5" /> Dates
                             </h4>
-                            <div className="grid grid-cols-5 gap-4 bg-[#252627] rounded-lg p-4">
-                                <div><p className="text-xs text-gray-500 mb-0.5">Invoice Date</p><p className="text-sm text-white">{fmt(historyViewInvoice.invoiceDate)}</p></div>
-                                <div><p className="text-xs text-gray-500 mb-0.5">Benefit Date</p><p className="text-sm text-white">{fmt(historyViewInvoice.benefitDate)}</p></div>
-                                <div><p className="text-xs text-gray-500 mb-0.5">Due Date</p><p className="text-sm text-white">{fmt(historyViewInvoice.dueDate)}</p></div>
-                                <div><p className="text-xs text-gray-500 mb-0.5">Schedule Date</p><p className="text-sm text-white">{fmt(historyViewInvoice.scheduleDate)}</p></div>
-                                <div><p className="text-xs text-gray-500 mb-0.5">Payment Date</p><p className="text-sm text-white font-medium">{fmt(historyViewInvoice.paymentDate)}</p></div>
+                            <div className="grid grid-cols-5 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                                <div><p className="text-xs text-gray-500 mb-0.5">Invoice Date</p><p className="text-sm text-gray-900 dark:text-white">{fmt(historyViewInvoice.invoiceDate)}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-0.5">Benefit Date</p><p className="text-sm text-gray-900 dark:text-white">{fmt(historyViewInvoice.benefitDate)}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-0.5">Due Date</p><p className="text-sm text-gray-900 dark:text-white">{fmt(historyViewInvoice.dueDate)}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-0.5">Schedule Date</p><p className="text-sm text-gray-900 dark:text-white">{fmt(historyViewInvoice.scheduleDate)}</p></div>
+                                <div><p className="text-xs text-gray-500 mb-0.5">Payment Date</p><p className="text-sm text-gray-900 dark:text-white font-medium">{fmt(historyViewInvoice.paymentDate)}</p></div>
                             </div>
                         </div>
                         {/* Amount */}
                         <div>
-                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <DollarSign className="h-3.5 w-3.5" /> Amount
                             </h4>
-                            <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
+                            <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
-                                    <p className="text-lg text-white font-bold font-mono">{formatCurrency(historyViewInvoice.amount, historyViewInvoice.currency || "EUR")}</p>
+                                    <p className="text-lg text-gray-900 dark:text-white font-bold font-mono">{formatCurrency(historyViewInvoice.amount, historyViewInvoice.currency || "EUR")}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Currency</p>
@@ -481,28 +481,28 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Payment Status</p>
-                                    <p className="text-sm text-white">{historyViewInvoice.paymentStatus?.replace(/_/g, " ") || "-"}</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">{historyViewInvoice.paymentStatus?.replace(/_/g, " ") || "-"}</p>
                                 </div>
                             </div>
                         </div>
                         {/* Classification */}
                         <div>
-                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <Layers className="h-3.5 w-3.5" /> Classification
                             </h4>
-                            <div className="grid grid-cols-3 gap-4 bg-[#252627] rounded-lg p-4">
+                            <div className="grid grid-cols-3 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Type</p>
-                                    <p className="text-sm text-white">{historyViewInvoice.invoiceType || "-"}</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">{historyViewInvoice.invoiceType || "-"}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Financial Account</p>
-                                    <p className="text-sm text-white">{historyViewInvoice.faName || "-"}</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">{historyViewInvoice.faName || "-"}</p>
                                     {historyViewInvoice.faCode && <p className="text-xs text-gray-600 font-mono">{historyViewInvoice.faCode}</p>}
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Bank Account</p>
-                                    <p className="text-sm text-white">{historyViewInvoice.bankAccountName || historyViewInvoice.bankAccountCode || "-"}</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">{historyViewInvoice.bankAccountName || historyViewInvoice.bankAccountCode || "-"}</p>
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-2 mt-3">
@@ -513,9 +513,9 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         {/* Description */}
                         {historyViewInvoice.description && (
                             <div>
-                                <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Description</h4>
-                                <div className="bg-[#2a2b2d] rounded-lg p-4">
-                                    <p className="text-sm text-gray-300">{historyViewInvoice.description}</p>
+                                <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Description</h4>
+                                <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-4">
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{historyViewInvoice.description}</p>
                                 </div>
                             </div>
                         )}
@@ -528,17 +528,17 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
     return (
         <Dialog open onOpenChange={(open) => !open && onClose()}>
             <DialogContent
-                className="max-w-none max-h-[90vh] p-0 bg-[#1e1f21] border-gray-700 flex flex-col overflow-hidden"
+                className="max-w-none max-h-[90vh] p-0 bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
                 style={{ width: '80vw' }}
             >
                 {/* ── Header ── */}
-                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700 flex-shrink-0">
+                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-9 w-9 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0">
-                            <FileText className="h-4 w-4 text-gray-400" />
+                        <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                            <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                         </div>
                         <div className="min-w-0">
-                            <h3 className="text-lg font-semibold text-white truncate">
+                            <h3 className="text-lg font-semibold text-gray-900 dark:text-white truncate">
                                 {invoice.providerName || invoice.customer}
                             </h3>
                             <p className="text-xs text-gray-500">
@@ -556,13 +556,13 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         )}
                         {/* Edit / Save / Cancel buttons */}
                         {invoice.source === "invoices" && !isEditing && (
-                            <Button variant="ghost" size="sm" onClick={startEditing} className="text-gray-400 hover:text-blue-400 gap-1.5 text-xs">
+                            <Button variant="ghost" size="sm" onClick={startEditing} className="text-gray-500 dark:text-gray-400 hover:text-blue-400 gap-1.5 text-xs">
                                 <Pencil className="h-3.5 w-3.5" /> Edit
                             </Button>
                         )}
                         {isEditing && (
                             <>
-                                <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-gray-400 hover:text-red-400 gap-1 text-xs">
+                                <Button variant="ghost" size="sm" onClick={cancelEditing} className="text-gray-500 dark:text-gray-400 hover:text-red-400 gap-1 text-xs">
                                     <XCircle className="h-3.5 w-3.5" /> Cancel
                                 </Button>
                                 <Button size="sm" onClick={saveChanges} disabled={saving} className="bg-blue-600 hover:bg-blue-700 text-white gap-1 text-xs">
@@ -575,7 +575,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <Button
                             variant="ghost" size="sm"
                             onClick={() => setShowHistory(!showHistory)}
-                            className={`gap-1.5 text-xs ${showHistory ? "text-blue-400" : "text-gray-400 hover:text-blue-400"}`}
+                            className={`gap-1.5 text-xs ${showHistory ? "text-blue-400" : "text-gray-500 dark:text-gray-400 hover:text-blue-400"}`}
                         >
                             <History className="h-3.5 w-3.5" />
                             History ({providerHistory.length})
@@ -583,7 +583,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <Badge className={`text-xs ${paymentStatusColor}`}>
                             {paymentStatusLabel.replace(/_/g, " ")}
                         </Badge>
-                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white h-8 w-8 p-0">
+                        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white h-8 w-8 p-0">
                             <X className="h-4 w-4" />
                         </Button>
                     </div>
@@ -594,10 +594,10 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
 
                     {/* ═══ Section: Invoice Identification ═══ */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <FileText className="h-3.5 w-3.5" /> Invoice Identification
                         </h4>
-                        <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                             <Field label="Invoice Nº" value={invoice.invoiceNumber} fieldKey="invoiceNumber" mono />
                             <Field label="Invoice Type" value={invoice.orderType} />
                             <Field label="Entry Type" value={invoice.entryType} fieldKey="entryType" />
@@ -607,38 +607,38 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
 
                     {/* ═══ Section: Dates ═══ */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Calendar className="h-3.5 w-3.5" /> Dates
                         </h4>
-                        <div className="grid grid-cols-6 gap-4 bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-6 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                             <Field label="Input Date" value={fmt(invoice.inputDate)} />
                             <Field label="Invoice Date" value={isEditing ? undefined : fmt(invoice.invoiceDate)} fieldKey="invoiceDate" type="date" />
                             <Field label="Benefit Date" value={isEditing ? undefined : fmt(invoice.benefitDate)} fieldKey="benefitDate" type="date" />
                             <Field label="Due Date" value={isEditing ? undefined : fmt(invoice.dueDate)} fieldKey="dueDate" type="date" />
-                            <Field label="Schedule Date" value={isEditing ? undefined : fmt(invoice.scheduleDate)} fieldKey="scheduleDate" type="date" highlight={isScheduled && !isPaid ? "text-blue-300" : "text-white"} />
-                            <Field label="Payment Date" value={isEditing ? undefined : fmt(invoice.paymentDate)} fieldKey="paymentDate" type="date" highlight={isPaid ? "text-emerald-400" : "text-white"} />
+                            <Field label="Schedule Date" value={isEditing ? undefined : fmt(invoice.scheduleDate)} fieldKey="scheduleDate" type="date" highlight={isScheduled && !isPaid ? "text-blue-300" : "text-gray-900 dark:text-white"} />
+                            <Field label="Payment Date" value={isEditing ? undefined : fmt(invoice.paymentDate)} fieldKey="paymentDate" type="date" highlight={isPaid ? "text-emerald-400" : "text-gray-900 dark:text-white"} />
                         </div>
                     </div>
 
                     {/* ═══ Section: Amount ═══ */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <DollarSign className="h-3.5 w-3.5" /> Amount
                         </h4>
-                        <div className="grid grid-cols-5 gap-4 bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-5 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                             {isEditing ? (
                                 <Field label="Total Amount" fieldKey="invoiceAmount" type="number" />
                             ) : (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
-                                    <p className="text-lg text-white font-bold font-mono">{formatCurrency(invoice.amount, invoice.currency || "EUR")}</p>
+                                    <p className="text-lg text-gray-900 dark:text-white font-bold font-mono">{formatCurrency(invoice.amount, invoice.currency || "EUR")}</p>
                                 </div>
                             )}
                             <Field label="Currency" value={invoice.currency || "EUR"} fieldKey="currency" />
                             {isEditing ? (
                                 <Field label="Paid Amount" fieldKey="paidAmount" type="number" />
                             ) : (
-                                <Field label="Paid Amount" value={invoice.paidAmount ? formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR") : "-"} highlight={invoice.paidAmount ? "text-emerald-400 font-medium" : "text-white"} />
+                                <Field label="Paid Amount" value={invoice.paidAmount ? formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR") : "-"} highlight={invoice.paidAmount ? "text-emerald-400 font-medium" : "text-gray-900 dark:text-white"} />
                             )}
                             <Field label="Paid Currency" value={invoice.paidCurrency || "-"} fieldKey="paidCurrency" />
                             <Field label="EUR Exchange" value={isEditing ? undefined : (invoice.eurExchange ? String(invoice.eurExchange) : "-")} fieldKey="eurExchange" type="number" mono />
@@ -647,17 +647,17 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
 
                     {/* ═══ Section: Provider & Account ═══ */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Building2 className="h-3.5 w-3.5" /> Provider & Financial Account
                         </h4>
-                        <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                             <div>
                                 {isEditing ? (
                                     <Field label="Provider Code" fieldKey="providerCode" />
                                 ) : (
                                     <>
                                         <p className="text-xs text-gray-500 mb-0.5">Provider</p>
-                                        <p className="text-sm text-white font-medium">{invoice.providerName || invoice.customer}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white font-medium">{invoice.providerName || invoice.customer}</p>
                                         {invoice.customer && invoice.providerName && invoice.customer !== invoice.providerName && (
                                             <p className="text-xs text-gray-600 font-mono">{invoice.customer}</p>
                                         )}
@@ -675,7 +675,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 ) : (
                                     <>
                                         <p className="text-xs text-gray-500 mb-0.5">Financial Account</p>
-                                        <p className="text-sm text-white">{invoice.financialAccountName || "-"}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white">{invoice.financialAccountName || "-"}</p>
                                         {invoice.faCode && <p className="text-xs text-gray-600 font-mono">{invoice.faCode}</p>}
                                     </>
                                 )}
@@ -687,10 +687,10 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
 
                     {/* ═══ Section: Classification ═══ */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Layers className="h-3.5 w-3.5" /> Classification
                         </h4>
-                        <div className="grid grid-cols-4 gap-4 bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                             <Field label="Department" value={isEditing ? undefined : (invoice.costCenterName || invoice.costCenterCode || "-")} fieldKey="costCenterCode" />
                             <Field label="Sub-Department" value={isEditing ? undefined : (invoice.subDepartmentName || invoice.subDepartmentCode || "-")} />
                             <Field label="Cost Type" value={isEditing ? undefined : (invoice.costTypeName || invoice.costTypeCode || "-")} fieldKey="costTypeCode" />
@@ -705,10 +705,10 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
 
                     {/* ═══ Section: Payment & Reconciliation ═══ */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <CreditCard className="h-3.5 w-3.5" /> Payment & Reconciliation
                         </h4>
-                        <div className="bg-[#252627] rounded-lg p-4 space-y-4">
+                        <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4 space-y-4">
                             <div className="grid grid-cols-4 gap-4">
                                 <div>
                                     {isEditing ? (
@@ -716,20 +716,20 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                     ) : (
                                         <>
                                             <p className="text-xs text-gray-500 mb-0.5">Payment Method</p>
-                                            <p className="text-sm text-white">{invoice.paymentMethodName || invoice.paymentMethodCode || "-"}</p>
+                                            <p className="text-sm text-gray-900 dark:text-white">{invoice.paymentMethodName || invoice.paymentMethodCode || "-"}</p>
                                         </>
                                     )}
                                 </div>
                                 <Field label="Payment Status" value={isEditing ? undefined : paymentStatusLabel.replace(/_/g, " ")} fieldKey="paymentStatus" />
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Invoice Status</p>
-                                    <p className="text-sm text-white">{invoice.invoiceStatus?.replace(/_/g, " ") || "-"}</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">{invoice.invoiceStatus?.replace(/_/g, " ") || "-"}</p>
                                 </div>
                                 <div>
                                     {!isEditing && (
                                         <>
                                             <p className="text-xs text-gray-500 mb-0.5">Bank Account</p>
-                                            <p className="text-sm text-white font-medium">{invoice.bankAccountName || invoice.bankAccountCode || "-"}</p>
+                                            <p className="text-sm text-gray-900 dark:text-white font-medium">{invoice.bankAccountName || invoice.bankAccountCode || "-"}</p>
                                             {invoice.bankAccountCode && invoice.bankAccountName && <p className="text-xs text-gray-600 font-mono">{invoice.bankAccountCode}</p>}
                                         </>
                                     )}
@@ -738,7 +738,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
 
                             {/* Reconciliation Summary */}
                             {!isEditing && (
-                                <div className="border-t border-gray-700 pt-3">
+                                <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
                                     <div className="flex items-center gap-3">
                                         {isPaid ? (
                                             <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
@@ -760,9 +760,9 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                 </span>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-700/50 border border-gray-600 rounded-lg">
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg">
                                                 <div className="h-2.5 w-2.5 rounded-full bg-gray-500"></div>
-                                                <span className="text-sm text-gray-400">No payment scheduled</span>
+                                                <span className="text-sm text-gray-500 dark:text-gray-400">No payment scheduled</span>
                                             </div>
                                         )}
                                     </div>
@@ -774,8 +774,8 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                     {/* ═══ Section: Description & Notes ═══ */}
                     {(invoice.description || invoice.notes || isEditing) && (
                         <div>
-                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">Description & Notes</h4>
-                            <div className="bg-[#2a2b2d] rounded-lg p-4 space-y-3">
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Description & Notes</h4>
+                            <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-4 space-y-3">
                                 {isEditing ? (
                                     <>
                                         <div>
@@ -784,7 +784,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                 value={String(editFields.description || "")}
                                                 onChange={(e) => updateField("description", e.target.value)}
                                                 rows={2}
-                                                className="w-full text-sm bg-[#1e1f21] border border-gray-600 text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
+                                                className="w-full text-sm bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
                                             />
                                         </div>
                                         <div>
@@ -793,7 +793,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                 value={String(editFields.notes || "")}
                                                 onChange={(e) => updateField("notes", e.target.value)}
                                                 rows={2}
-                                                className="w-full text-sm bg-[#1e1f21] border border-gray-600 text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
+                                                className="w-full text-sm bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
                                             />
                                         </div>
                                     </>
@@ -802,13 +802,13 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                         {invoice.description && (
                                             <div>
                                                 <p className="text-xs text-gray-500 mb-1">Description</p>
-                                                <p className="text-sm text-gray-300">{invoice.description}</p>
+                                                <p className="text-sm text-gray-700 dark:text-gray-300">{invoice.description}</p>
                                             </div>
                                         )}
                                         {invoice.notes && (
                                             <div>
                                                 <p className="text-xs text-gray-500 mb-1">Internal Notes</p>
-                                                <p className="text-sm text-gray-300">{invoice.notes}</p>
+                                                <p className="text-sm text-gray-700 dark:text-gray-300">{invoice.notes}</p>
                                             </div>
                                         )}
                                     </>
@@ -819,10 +819,10 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
 
                     {/* ═══ Section: Attachments ═══ */}
                     <div>
-                        <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                        <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Paperclip className="h-3.5 w-3.5" /> Attachments & Documents
                         </h4>
-                        <div className="bg-[#252627] rounded-lg p-4">
+                        <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                             {loadingAttachments ? (
                                 <div className="flex items-center gap-2 py-2">
                                     <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
@@ -836,7 +836,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                             href={att.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-2 px-3 py-2.5 bg-[#1e1f21] rounded-lg hover:bg-gray-700 transition-colors group"
+                                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-[#1e1f21] rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
                                         >
                                             <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
                                             <span className="text-sm text-blue-300 group-hover:text-blue-200 truncate flex-1">{att.file_name}</span>
@@ -853,11 +853,11 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                     {/* ═══ Section: Invoice History ═══ */}
                     {showHistory && (
                         <div>
-                            <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                            <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <History className="h-3.5 w-3.5" /> {invoice.source === "invoices" ? "Provider" : "Customer"} Invoice History — {invoice.providerName || invoice.customer}
                                 <span className="text-gray-600 font-normal normal-case">({providerHistory.length} invoices)</span>
                             </h4>
-                            <div className="bg-[#252627] rounded-lg overflow-hidden">
+                            <div className="bg-gray-100 dark:bg-[#252627] rounded-lg overflow-hidden">
                                 {loadingHistory ? (
                                     <div className="flex items-center justify-center py-8">
                                         <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
@@ -868,14 +868,14 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 ) : (
                                     <>
                                         {/* Summary bar + FA filter */}
-                                        <div className="flex items-center justify-between px-4 py-3 bg-[#2a2b2d] border-b border-gray-700">
+                                        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center gap-4">
-                                                <span className="text-xs text-gray-400">
-                                                    Total: <span className="text-white font-medium">
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
+                                                    Total: <span className="text-gray-900 dark:text-white font-medium">
                                                         {historyFAFilter === "all" ? providerHistory.length : providerHistory.filter(i => i.faCode === historyFAFilter).length}
                                                     </span> invoices
                                                 </span>
-                                                <span className="text-xs text-gray-400">
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">
                                                     {invoice.source === "invoices" ? "Total spend" : "Total revenue"}: <span className={`${invoice.source === "invoices" ? "text-red-400" : "text-emerald-400"} font-mono font-medium`}>
                                                         {formatCurrency(
                                                             (historyFAFilter === "all" ? providerHistory : providerHistory.filter(i => i.faCode === historyFAFilter))
@@ -890,13 +890,13 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                 <div className="flex items-center gap-2">
                                                     <Filter className="h-3.5 w-3.5 text-gray-500" />
                                                     <Select value={historyFAFilter} onValueChange={setHistoryFAFilter}>
-                                                        <SelectTrigger className="h-7 w-[220px] text-xs bg-[#1e1f21] border-gray-600 text-white">
+                                                        <SelectTrigger className="h-7 w-[220px] text-xs bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
                                                             <SelectValue placeholder="All Financial Accounts" />
                                                         </SelectTrigger>
-                                                        <SelectContent className="bg-[#252627] border-gray-600">
-                                                            <SelectItem value="all" className="text-xs text-gray-300">All Financial Accounts</SelectItem>
+                                                        <SelectContent className="bg-gray-100 dark:bg-[#252627] border-gray-300 dark:border-gray-600">
+                                                            <SelectItem value="all" className="text-xs text-gray-700 dark:text-gray-300">All Financial Accounts</SelectItem>
                                                             {uniqueFACodes.map(fa => (
-                                                                <SelectItem key={fa} value={fa} className="text-xs text-gray-300">
+                                                                <SelectItem key={fa} value={fa} className="text-xs text-gray-700 dark:text-gray-300">
                                                                     {fa} ({providerHistory.filter(i => i.faCode === fa).length})
                                                                 </SelectItem>
                                                             ))}
@@ -908,7 +908,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                         {/* History table */}
                                         <div className="max-h-[300px] overflow-y-auto">
                                             <table className="w-full">
-                                                <thead className="bg-[#1e1f21] sticky top-0 z-10">
+                                                <thead className="bg-white dark:bg-[#1e1f21] sticky top-0 z-10">
                                                     <tr>
                                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2"></th>
                                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2">Date</th>
@@ -926,7 +926,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                         return (
                                                             <tr
                                                                 key={hi.id}
-                                                                className={`border-b border-gray-800 hover:bg-gray-700/30 transition-colors ${isCurrentInvoice ? "bg-blue-500/10 border-l-2 border-l-blue-500" : idx % 2 === 0 ? "bg-[#252627]" : "bg-[#2a2b2d]"}`}
+                                                                className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/30 transition-colors ${isCurrentInvoice ? "bg-blue-500/10 border-l-2 border-l-blue-500" : idx % 2 === 0 ? "bg-gray-100 dark:bg-[#252627]" : "bg-gray-50 dark:bg-[#2a2b2d]"}`}
                                                             >
                                                                 <td className="px-3 py-2">
                                                                     {!isCurrentInvoice && (
@@ -942,9 +942,9 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                                         <span className="text-blue-400 text-[10px] font-medium">CURRENT</span>
                                                                     )}
                                                                 </td>
-                                                                <td className="px-3 py-2 text-xs text-gray-300 font-mono">{fmt(hi.benefitDate || hi.invoiceDate)}</td>
-                                                                <td className="px-3 py-2 text-xs text-gray-400 font-mono">{hi.invoiceNumber || "-"}</td>
-                                                                <td className="px-3 py-2 text-xs text-gray-400 truncate max-w-[200px]" title={hi.description}>{hi.description || "-"}</td>
+                                                                <td className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 font-mono">{fmt(hi.benefitDate || hi.invoiceDate)}</td>
+                                                                <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 font-mono">{hi.invoiceNumber || "-"}</td>
+                                                                <td className="px-3 py-2 text-xs text-gray-500 dark:text-gray-400 truncate max-w-[200px]" title={hi.description}>{hi.description || "-"}</td>
                                                                 <td className="px-3 py-2 text-xs text-gray-500 font-mono">{hi.faCode || "-"}</td>
                                                                 <td className="px-3 py-2">
                                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${hiPaid
@@ -1006,18 +1006,18 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
         <>
             <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && onClose()}>
                 <DialogContent
-                    className="max-w-none max-h-[90vh] bg-gray-900 border-gray-700 flex flex-col"
+                    className="max-w-none max-h-[90vh] bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 flex flex-col"
                     style={{ width: '80vw' }}
                 >
-                    <DialogHeader className="border-b border-gray-700 pb-4 flex-shrink-0">
+                    <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4 flex-shrink-0">
                         <div className="flex items-center justify-between">
                             <div>
-                                <DialogTitle className="text-xl text-white flex items-center gap-2">
+                                <DialogTitle className="text-xl text-gray-900 dark:text-white flex items-center gap-2">
                                     <BarChart3 className={`h-5 w-5 ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
                                     Drill-Down: {drilldown.faName}
                                 </DialogTitle>
                                 <div className="flex items-center gap-3 mt-1">
-                                    <p className="text-sm text-gray-400">
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
                                         <span className={`font-mono ${isExpense ? "text-red-400" : "text-emerald-400"}`}>{drilldown.faCode}</span>
                                         {" • "}
                                         <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
@@ -1032,7 +1032,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                     )}
                                 </div>
                             </div>
-                            <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-400 hover:text-white">
+                            <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
@@ -1042,7 +1042,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                         {drilldown.loading ? (
                             <div className="flex items-center justify-center py-12">
                                 <Loader2 className={`h-8 w-8 animate-spin ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
-                                <span className="ml-3 text-gray-400">Loading transactions...</span>
+                                <span className="ml-3 text-gray-500 dark:text-gray-400">Loading transactions...</span>
                             </div>
                         ) : drilldown.transactions.length === 0 ? (
                             <div className="text-center py-12 text-gray-500">
@@ -1052,13 +1052,13 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                             <div className="flex flex-col h-full">
                                 <div className="overflow-x-auto flex-1">
                                     <table className="w-full min-w-[800px]">
-                                        <thead className="bg-gray-800 sticky top-0 z-10">
+                                        <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
                                             <tr>
-                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Date</th>
-                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">{isExpense ? "Provider" : "Customer"}</th>
-                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Description</th>
-                                                <th className="text-left text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Type</th>
-                                                <th className="text-right text-xs font-semibold text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Amount</th>
+                                                <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Date</th>
+                                                <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-4 py-3 whitespace-nowrap">{isExpense ? "Provider" : "Customer"}</th>
+                                                <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Description</th>
+                                                <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Type</th>
+                                                <th className="text-right text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Amount</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -1067,9 +1067,9 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                 return (
                                                     <tr
                                                         key={tx.id}
-                                                        className={`border-b border-gray-800 hover:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-900/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
+                                                        className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-100 dark:bg-gray-900/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
                                                     >
-                                                        <td className="px-4 py-2 text-sm text-gray-300 font-mono whitespace-nowrap">
+                                                        <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 font-mono whitespace-nowrap">
                                                             <div className="flex items-center gap-2">
                                                                 <button
                                                                     onClick={() => setSelectedInvoice(tx)}
@@ -1081,15 +1081,15 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                                 {tx.date ? `${tx.date.substring(8, 10)}/${tx.date.substring(5, 7)}/${tx.date.substring(0, 4)}` : "-"}
                                                             </div>
                                                         </td>
-                                                        <td className="px-4 py-2 text-sm text-white" title={tx.customer}>
+                                                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-white" title={tx.customer}>
                                                             {tx.customer}
                                                         </td>
-                                                        <td className="px-4 py-2 text-sm text-gray-400" title={tx.description}>
+                                                        <td className="px-4 py-2 text-sm text-gray-500 dark:text-gray-400" title={tx.description}>
                                                             {tx.description}
                                                         </td>
                                                         <td className="px-4 py-2 whitespace-nowrap">
                                                             <div className="flex items-center gap-2">
-                                                                <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                                                                <Badge variant="outline" className="text-xs text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
                                                                     {tx.orderType}
                                                                 </Badge>
                                                                 {isCreditNote && (
@@ -1106,9 +1106,9 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                 );
                                             })}
                                         </tbody>
-                                        <tfoot className="bg-gray-800">
+                                        <tfoot className="bg-gray-100 dark:bg-gray-800">
                                             <tr>
-                                                <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-white">
+                                                <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">
                                                     Total ({drilldown.count} transactions)
                                                 </td>
                                                 <td className={`px-4 py-3 text-right text-lg font-mono ${isExpense ? "text-red-300" : "text-emerald-300"} font-bold whitespace-nowrap`}>
@@ -1137,11 +1137,11 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                 {/* Clinic Variations - only for clinic FA codes */}
                                 {isClinicsFACode(drilldown.faCode) && (
                                     <>
-                                        <Separator className="my-6 bg-gray-700" />
+                                        <Separator className="my-6 bg-gray-100 dark:bg-gray-700" />
 
                                         {/* Monthly Changes */}
                                         <div className="px-4">
-                                            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                                                 <Building2 className="h-4 w-4 text-emerald-400" />
                                                 Contract Changes - {MONTHS_FULL[drilldown.month]} {selectedYear}
                                             </h3>
@@ -1154,11 +1154,11 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                             />
                                         </div>
 
-                                        <Separator className="my-6 bg-gray-700" />
+                                        <Separator className="my-6 bg-gray-100 dark:bg-gray-700" />
 
                                         {/* YTD Changes */}
                                         <div className="px-4 pb-4">
-                                            <h3 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                                                 <Calendar className="h-4 w-4 text-blue-400" />
                                                 YTD Changes - January to {MONTHS_FULL[drilldown.month]} {selectedYear}
                                             </h3>
@@ -1599,18 +1599,18 @@ export default function PnLReport() {
 
         return (
             <div key={line.code}>
-                <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-1.5 px-2 border-b border-gray-800 hover:bg-gray-800/50 transition-colors ${isChild ? "pl-6 bg-gray-900/30" : "bg-gray-900/60"}`}>
+                <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-1.5 px-2 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-gray-800/50 transition-colors ${isChild ? "pl-6 bg-gray-50 dark:bg-gray-900/30" : "bg-gray-100 dark:bg-gray-900/60"}`}>
                     {/* Account name */}
                     <div className="flex items-center gap-1 min-w-0">
                         {hasChildren ? (
-                            <button onClick={() => toggleSection(line.code)} className="p-0.5 hover:bg-gray-700 rounded shrink-0">
-                                {isExpanded ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
+                            <button onClick={() => toggleSection(line.code)} className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded shrink-0">
+                                {isExpanded ? <ChevronDown className="h-3 w-3 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-500 dark:text-gray-400" />}
                             </button>
                         ) : (
                             <div className="w-3" />
                         )}
                         <span className="text-[9px] text-gray-500 font-mono shrink-0">{line.code}</span>
-                        <span className={`text-[11px] truncate ${isChild ? "text-gray-400" : "font-medium text-white"}`} title={line.name}>{line.name}</span>
+                        <span className={`text-[11px] truncate ${isChild ? "text-gray-500 dark:text-gray-400" : "font-medium text-gray-900 dark:text-white"}`} title={line.name}>{line.name}</span>
                     </div>
 
                     {/* Monthly values - CLICKABLE for drill-down */}
@@ -1636,7 +1636,7 @@ export default function PnLReport() {
                     })}
 
                     {/* Total */}
-                    <div className="text-right bg-gray-800/50 px-1 rounded">
+                    <div className="text-right bg-gray-100 dark:bg-gray-800/50 px-1 rounded">
                         <span className={`text-[10px] font-mono font-bold ${line.type === "revenue" ? "text-emerald-300" : "text-red-300"}`}>
                             {formatCompact(total)}
                         </span>
@@ -1650,23 +1650,23 @@ export default function PnLReport() {
     // Subtotal row for monthly view
     const renderMonthlySubtotal = (label: string, monthlyData: typeof monthlyTotals.months, field: keyof typeof monthlyTotals.months[0], _ytd: number, total: number, isProfit = false) => {
         return (
-            <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-800/60 border-y border-gray-700"}`}>
+            <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-100 dark:bg-gray-800/60 border-y border-gray-200 dark:border-gray-700"}`}>
                 <div className="flex items-center gap-2">
                     <div className="w-3" />
-                    <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-white"} text-xs`}>{label}</span>
+                    <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-gray-900 dark:text-white"} text-xs`}>{label}</span>
                 </div>
                 {monthlyData.map((m, i) => {
                     const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month
                     return (
                         <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>
-                            <span className={`text-[10px] font-mono font-semibold ${isProfit ? "text-blue-300" : "text-gray-200"}`}>
+                            <span className={`text-[10px] font-mono font-semibold ${isProfit ? "text-blue-300" : "text-gray-600 dark:text-gray-200"}`}>
                                 {isNotClosed ? "-" : formatCompact(m[field] as number)}
                             </span>
                         </div>
                     );
                 })}
                 <div className="text-right bg-amber-900/30 px-1 rounded">
-                    <span className={`text-[10px] font-mono font-bold ${isProfit ? "text-amber-200" : "text-gray-100"}`}>{formatCompact(total)}</span>
+                    <span className={`text-[10px] font-mono font-bold ${isProfit ? "text-amber-200" : "text-gray-800 dark:text-gray-100"}`}>{formatCompact(total)}</span>
                 </div>
             </div>
         );
@@ -1674,50 +1674,50 @@ export default function PnLReport() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-gray-950 p-6">
+            <div className="min-h-screen bg-white dark:bg-gray-950 p-6">
                 <div className="animate-pulse space-y-4">
-                    <div className="h-16 bg-gray-800 rounded-lg"></div>
-                    <div className="grid grid-cols-5 gap-4">{[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-800 rounded-lg"></div>)}</div>
-                    <div className="h-96 bg-gray-800 rounded-lg"></div>
+                    <div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
+                    <div className="grid grid-cols-5 gap-4">{[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>)}</div>
+                    <div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-950">
+        <div className="min-h-screen bg-white dark:bg-gray-950">
             {/* Premium Dark Header */}
-            <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-800 px-6 py-5 sticky top-0 z-20">
+            <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5 sticky top-0 z-20">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-xl border border-emerald-500/30">
                             <BarChart3 className="h-7 w-7 text-emerald-400" />
                         </div>
                         <div>
-                            <h1 className="text-2xl font-bold text-white">
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
                                 P&L Statement
                             </h1>
-                            <p className="text-sm text-gray-400 mt-0.5">
+                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
                                 Income Statement • {selectedYear} • {selectedScope === "GLOBAL" ? "All Regions" : selectedScope}
                             </p>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-gray-800/60 rounded-lg p-1 border border-gray-700">
+                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
                             {[2024, 2025, 2026].map((year) => (
                                 <button
                                     key={year}
                                     onClick={() => setSelectedYear(year)}
-                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-400 hover:text-white hover:bg-gray-700"}`}
+                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"}`}
                                 >
                                     {year}
                                 </button>
                             ))}
                         </div>
-                        <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
                             <RefreshCw className="h-4 w-4 mr-2" />Sync
                         </Button>
-                        <Button variant="outline" size="sm" className="border-gray-700 text-gray-300 hover:bg-gray-800">
+                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
                             <FileSpreadsheet className="h-4 w-4 mr-2" />Excel
                         </Button>
                         <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
@@ -1737,7 +1737,7 @@ export default function PnLReport() {
                                 <span className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Revenue YTD</span>
                                 <TrendingUp className="h-4 w-4 text-emerald-400" />
                             </div>
-                            <p className="text-2xl font-bold text-white mb-1">{formatCompact(monthlyTotals.ytd.revenue)}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.revenue)}</p>
                             <div className="flex items-center gap-2">
                                 <Badge className="text-[10px] bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
                                     {((monthlyTotals.ytd.revenue / monthlyTotals.ytd.revenueBudget - 1) * 100).toFixed(1)}% vs Budget
@@ -1759,7 +1759,7 @@ export default function PnLReport() {
                                 <span className="text-xs font-semibold text-blue-300 uppercase tracking-wider">Gross Profit</span>
                                 <Layers className="h-4 w-4 text-blue-400" />
                             </div>
-                            <p className="text-2xl font-bold text-white mb-1">{formatCompact(monthlyTotals.ytd.grossProfit)}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.grossProfit)}</p>
                             <div className="flex items-center gap-2">
                                 <Badge className="text-[10px] bg-blue-500/20 text-blue-300 border-blue-500/30">
                                     {((monthlyTotals.ytd.grossProfit / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Margin
@@ -1781,7 +1781,7 @@ export default function PnLReport() {
                                 <span className="text-xs font-semibold text-purple-300 uppercase tracking-wider">EBITDA</span>
                                 <Building2 className="h-4 w-4 text-purple-400" />
                             </div>
-                            <p className="text-2xl font-bold text-white mb-1">{formatCompact(monthlyTotals.ytd.ebitda)}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.ebitda)}</p>
                             <div className="flex items-center gap-2">
                                 <Badge className="text-[10px] bg-purple-500/20 text-purple-300 border-purple-500/30">
                                     {((monthlyTotals.ytd.ebitda / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Margin
@@ -1803,7 +1803,7 @@ export default function PnLReport() {
                                 <span className="text-xs font-semibold text-red-300 uppercase tracking-wider">Expenses</span>
                                 <TrendingDown className="h-4 w-4 text-red-400" />
                             </div>
-                            <p className="text-2xl font-bold text-white mb-1">{formatCompact(monthlyTotals.ytd.totalExpenses)}</p>
+                            <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.totalExpenses)}</p>
                             <div className="flex items-center gap-2">
                                 <Badge className="text-[10px] bg-red-500/20 text-red-300 border-red-500/30">
                                     {((1 - monthlyTotals.ytd.totalExpenses / monthlyTotals.ytd.totalExpensesBudget) * 100).toFixed(1)}% Under
@@ -1826,7 +1826,7 @@ export default function PnLReport() {
                                 <DollarSign className="h-4 w-4 text-amber-400" />
                             </div>
                             <div className="flex items-baseline gap-4">
-                                <p className="text-3xl font-bold text-white">{formatCurrency(monthlyTotals.ytd.netIncome, "EUR")}</p>
+                                <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(monthlyTotals.ytd.netIncome, "EUR")}</p>
                                 <Badge className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30">
                                     {((monthlyTotals.ytd.netIncome / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Net Margin
                                 </Badge>
@@ -1854,15 +1854,15 @@ export default function PnLReport() {
                 </div>
 
                 {/* Monthly P&L Table */}
-                <Card className="bg-gray-900 border-gray-800 overflow-hidden">
-                    <CardHeader className="border-b border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800/80 py-4">
+                <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <CardHeader className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800/80 py-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
-                                <CardTitle className="text-white flex items-center gap-2">
-                                    <Calendar className="h-5 w-5 text-gray-400" />
+                                <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
+                                    <Calendar className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                                     Monthly Income Statement
                                 </CardTitle>
-                                <Badge variant="outline" className="text-xs text-gray-400 border-gray-600">
+                                <Badge variant="outline" className="text-xs text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
                                     {lastClosedMonth >= 0 ? `${MONTHS_FULL[lastClosedMonth]} ${selectedYear}` : `No closed months`}
                                 </Badge>
                                 <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
@@ -1887,7 +1887,7 @@ export default function PnLReport() {
                     </CardHeader>
 
                     {/* Table Header */}
-                    <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 bg-gray-800/80 border-b border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-400 sticky top-[73px] z-10">
+                    <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 bg-gray-200 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-[73px] z-10">
                         <div>Account</div>
                         {MONTHS.map((m, i) => (
                             <div key={m} className={`text-right ${i === lastClosedMonth ? "text-emerald-400" : ""} ${i > lastClosedMonth ? "opacity-40" : ""}`}>
@@ -1953,10 +1953,10 @@ export default function PnLReport() {
                 </Card>
 
                 {/* Budget vs Actual Comparison */}
-                <Card className="bg-gray-900 border-gray-800">
-                    <CardHeader className="border-b border-gray-800 py-4">
-                        <CardTitle className="text-white flex items-center gap-2 text-base">
-                            <Filter className="h-4 w-4 text-gray-400" />
+                <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+                    <CardHeader className="border-b border-gray-200 dark:border-gray-800 py-4">
+                        <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2 text-base">
+                            <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                             Budget vs Actual Variance Analysis
                         </CardTitle>
                     </CardHeader>
@@ -1975,17 +1975,17 @@ export default function PnLReport() {
 
                                 return (
                                     <div key={item.label} className={`bg-${item.color}-900/20 border border-${item.color}-800/40 rounded-lg p-4`}>
-                                        <div className="text-xs font-semibold text-gray-400 mb-3">{item.label}</div>
+                                        <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3">{item.label}</div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-gray-500">Budget</span>
-                                                <span className="text-gray-300 font-mono">{formatCompact(item.ytdBudget)}</span>
+                                                <span className="text-gray-700 dark:text-gray-300 font-mono">{formatCompact(item.ytdBudget)}</span>
                                             </div>
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-gray-500">Actual</span>
-                                                <span className="text-white font-mono font-semibold">{formatCompact(item.ytdActual)}</span>
+                                                <span className="text-gray-900 dark:text-white font-mono font-semibold">{formatCompact(item.ytdActual)}</span>
                                             </div>
-                                            <div className="border-t border-gray-700 pt-2 mt-2">
+                                            <div className="border-t border-gray-200 dark:border-gray-700 pt-2 mt-2">
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-xs text-gray-500">Variance</span>
                                                     <div className="flex items-center gap-2">

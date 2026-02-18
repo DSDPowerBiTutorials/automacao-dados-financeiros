@@ -54,8 +54,8 @@ export function PaginationControls({
 }: PaginationControlsProps) {
     if (totalPages <= 1) {
         return (
-            <div className={`flex items-center justify-between py-3 px-4 bg-gray-800/50 border-t border-gray-700 ${className}`}>
-                <span className="text-sm text-gray-400">
+            <div className={`flex items-center justify-between py-3 px-4 bg-gray-100 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 ${className}`}>
+                <span className="text-sm text-gray-500 dark:text-gray-400">
                     Mostrando {pageInfo.total} {pageInfo.total === 1 ? "registro" : "registros"}
                 </span>
             </div>
@@ -63,14 +63,14 @@ export function PaginationControls({
     }
 
     return (
-        <div className={`flex items-center justify-between py-3 px-4 bg-gray-800/50 border-t border-gray-700 ${className}`}>
+        <div className={`flex items-center justify-between py-3 px-4 bg-gray-100 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 ${className}`}>
             {/* Info de registros */}
-            <span className="text-sm text-gray-400">
-                Mostrando <span className="font-medium text-gray-200">{pageInfo.start}</span>
+            <span className="text-sm text-gray-500 dark:text-gray-400">
+                Mostrando <span className="font-medium text-gray-600 dark:text-gray-200">{pageInfo.start}</span>
                 {" - "}
-                <span className="font-medium text-gray-200">{pageInfo.end}</span>
+                <span className="font-medium text-gray-600 dark:text-gray-200">{pageInfo.end}</span>
                 {" de "}
-                <span className="font-medium text-gray-200">{pageInfo.total}</span>
+                <span className="font-medium text-gray-600 dark:text-gray-200">{pageInfo.total}</span>
                 {" registros"}
             </span>
 
@@ -82,7 +82,7 @@ export function PaginationControls({
                         size="sm"
                         onClick={onFirstPage}
                         disabled={!canGoPrev}
-                        className="h-8 w-8 p-0 text-gray-400 hover:text-white disabled:opacity-30"
+                        className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white disabled:opacity-30"
                         title="Primeira página"
                     >
                         <ChevronsLeftIcon className="h-4 w-4" />
@@ -94,7 +94,7 @@ export function PaginationControls({
                     size="sm"
                     onClick={onPrevPage}
                     disabled={!canGoPrev}
-                    className="h-8 px-2 text-gray-400 hover:text-white disabled:opacity-30"
+                    className="h-8 px-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white disabled:opacity-30"
                 >
                     <ChevronLeftIcon className="h-4 w-4 mr-1" />
                     Anterior
@@ -102,11 +102,11 @@ export function PaginationControls({
 
                 {/* Indicador de página */}
                 <div className="flex items-center gap-2 px-3">
-                    <span className="text-sm text-gray-400">
+                    <span className="text-sm text-gray-500 dark:text-gray-400">
                         Página{" "}
-                        <span className="font-medium text-white">{currentPage}</span>
+                        <span className="font-medium text-gray-900 dark:text-white">{currentPage}</span>
                         {" de "}
-                        <span className="font-medium text-gray-300">{totalPages}</span>
+                        <span className="font-medium text-gray-700 dark:text-gray-300">{totalPages}</span>
                     </span>
                 </div>
 
@@ -115,7 +115,7 @@ export function PaginationControls({
                     size="sm"
                     onClick={onNextPage}
                     disabled={!canGoNext}
-                    className="h-8 px-2 text-gray-400 hover:text-white disabled:opacity-30"
+                    className="h-8 px-2 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white disabled:opacity-30"
                 >
                     Próxima
                     <ChevronRightIcon className="h-4 w-4 ml-1" />
@@ -127,7 +127,7 @@ export function PaginationControls({
                         size="sm"
                         onClick={onLastPage}
                         disabled={!canGoNext}
-                        className="h-8 w-8 p-0 text-gray-400 hover:text-white disabled:opacity-30"
+                        className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white disabled:opacity-30"
                         title="Última página"
                     >
                         <ChevronsRightIcon className="h-4 w-4" />

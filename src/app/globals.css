@@ -105,8 +105,8 @@
   --workstream-text: #60a5fa;
   --workstream-border: rgba(59, 130, 246, 0.25);
   --workstream-bg-hover: rgba(59, 130, 246, 0.25);
-  --content-bg: white;
-  --content-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+  --content-bg: #1e1f21;
+  --content-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
   --overlay-from: rgba(0, 0, 0, 0.4);
   --overlay-via: rgba(0, 0, 0, 0.3);
   --overlay-to: rgba(36, 49, 64, 0.5);
@@ -186,6 +186,10 @@ aside nav::-webkit-scrollbar-thumb {
 * {
   scrollbar-width: thin;
   scrollbar-color: #d1d5db #ffffff;
+}
+
+.dark * {
+  scrollbar-color: #4b5563 #1a1b1e;
 }
 
 /* Container padrão para aproveitar melhor a largura da tela */
@@ -282,6 +286,11 @@ aside nav::-webkit-scrollbar-thumb {
   border-bottom: 2px solid #e5e7eb;
 }
 
+.dark .table-standard thead {
+  background-color: #252627;
+  border-bottom-color: #374151;
+}
+
 .table-standard thead th {
   padding: 0.75rem 1rem;
   text-align: left;
@@ -292,13 +301,25 @@ aside nav::-webkit-scrollbar-thumb {
   color: #374151;
 }
 
+.dark .table-standard thead th {
+  color: #9ca3af;
+}
+
 .table-standard tbody tr {
   border-bottom: 1px solid #f3f4f6;
   transition: background-color 0.15s ease;
 }
 
+.dark .table-standard tbody tr {
+  border-bottom-color: #2a2b2d;
+}
+
 .table-standard tbody tr:hover {
   background-color: #f9fafb;
+}
+
+.dark .table-standard tbody tr:hover {
+  background-color: #2a2b2d;
 }
 
 .table-standard tbody td {
@@ -308,9 +329,17 @@ aside nav::-webkit-scrollbar-thumb {
   vertical-align: middle;
 }
 
+.dark .table-standard tbody td {
+  color: #d1d5db;
+}
+
 /* Alternating row colors */
 .table-standard.table-striped tbody tr:nth-child(even) {
   background-color: #fafafa;
+}
+
+.dark .table-standard.table-striped tbody tr:nth-child(even) {
+  background-color: #252627;
 }
 
 /* ================================================
@@ -414,14 +443,26 @@ aside nav::-webkit-scrollbar-thumb {
   font-weight: 600;
 }
 
+.dark .amount-positive {
+  color: #34d399;
+}
+
 .amount-negative {
   color: #dc2626;
   font-weight: 600;
 }
 
+.dark .amount-negative {
+  color: #f87171;
+}
+
 .amount-neutral {
   color: #374151;
   font-weight: 600;
+}
+
+.dark .amount-neutral {
+  color: #d1d5db;
 }
 
 /* ================================================
@@ -745,4 +786,65 @@ aside nav::-webkit-scrollbar-thumb {
   box-shadow: none !important;
   border-radius: 0 !important;
   margin: 0 !important;
+}
+
+/* ================================================
+   LIGHT-MODE OVERRIDES FOR DARK-HARDCODED PAGES
+   Higher specificity CSS overrides for common patterns
+   ================================================ */
+
+/* Badge dark variants */
+.dark .badge-light-success {
+  background-color: rgba(22, 163, 74, 0.15);
+  color: #4ade80;
+}
+
+.dark .badge-light-danger {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.dark .badge-light-warning {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.dark .badge-light-info {
+  background-color: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.dark .badge-light-gray {
+  background-color: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.dark .badge-light-purple {
+  background-color: rgba(139, 92, 246, 0.15);
+  color: #a78bfa;
+}
+
+.dark .badge-light-orange {
+  background-color: rgba(249, 115, 22, 0.15);
+  color: #fb923c;
+}
+
+.dark .badge-light-teal {
+  background-color: rgba(20, 184, 166, 0.15);
+  color: #2dd4bf;
+}
+
+.dark .badge-reconciled {
+  background-color: rgba(22, 163, 74, 0.15);
+  color: #4ade80;
+}
+
+.dark .badge-unreconciled {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+}
+
+.dark .badge-pending {
+  background-color: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
 }

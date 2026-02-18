@@ -95,14 +95,14 @@ export function LoginForm() {
                                 Email Address
                             </Label>
                             <div className="relative">
-                                <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                                <Mail className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
                                 <Input
                                     id="email"
                                     type="email"
                                     placeholder="your.email@digitalsmiledesign.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="!pl-12 h-12 border-gray-300 text-base focus:border-[#243140] focus:ring-[#243140] rounded-lg"
+                                    className="!pl-12 h-12 border-gray-300 text-base focus:border-gray-200 dark:border-[#243140] focus:ring-[#243140] rounded-lg"
                                     required
                                     disabled={loading}
                                 />
@@ -114,14 +114,14 @@ export function LoginForm() {
                                 Password
                             </Label>
                             <div className="relative">
-                                <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
+                                <Lock className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-500 dark:text-gray-400" />
                                 <Input
                                     id="password"
                                     type="password"
                                     placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="!pl-12 h-12 border-gray-300 text-base focus:border-[#243140] focus:ring-[#243140] rounded-lg"
+                                    className="!pl-12 h-12 border-gray-300 text-base focus:border-gray-200 dark:border-[#243140] focus:ring-[#243140] rounded-lg"
                                     required
                                     disabled={loading}
                                 />
@@ -172,7 +172,7 @@ export function LoginForm() {
 
             {/* Footer */}
             <div className="absolute bottom-6 left-0 right-0 text-center z-10">
-                <p className="text-sm text-white/90 font-medium drop-shadow-lg">
+                <p className="text-sm text-gray-900 dark:text-white/90 font-medium drop-shadow-lg">
                     © 2025 Digital Smile Design. All rights reserved.
                 </p>
             </div>

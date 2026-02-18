@@ -518,9 +518,9 @@ export function PlatformChat() {
                     className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 flex transition-all duration-200 bottom-20 right-6 w-[380px] h-[400px] max-h-[60vh] overflow-hidden"
                 >
                     {/* Sidebar */}
-                    <div className="w-40 bg-gray-900 text-white rounded-l-lg flex flex-col overflow-hidden">
+                    <div className="w-40 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white rounded-l-lg flex flex-col overflow-hidden">
                         {/* Header */}
-                        <div className="p-2 border-b border-gray-700">
+                        <div className="p-2 border-b border-gray-200 dark:border-gray-700">
                             <h3 className="font-semibold text-xs">DSD Finance Hub</h3>
                         </div>
 
@@ -530,7 +530,7 @@ export function PlatformChat() {
                             <div className="p-2">
                                 <button
                                     onClick={() => setChannelsExpanded(!channelsExpanded)}
-                                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-white w-full"
+                                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white w-full"
                                 >
                                     {channelsExpanded ? (
                                         <ChevronDown className="h-3 w-3" />
@@ -561,7 +561,7 @@ export function PlatformChat() {
                                                     key={channel.id}
                                                     onClick={() => setSelectedChannel(channel)}
                                                     className={cn(
-                                                        "flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-800",
+                                                        "flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-100 dark:hover:bg-gray-800",
                                                         selectedChannel?.id === channel.id && "bg-blue-600"
                                                     )}
                                                 >
@@ -580,10 +580,10 @@ export function PlatformChat() {
                             </div>
 
                             {/* Direct Messages */}
-                            <div className="p-2 border-t border-gray-700">
+                            <div className="p-2 border-t border-gray-200 dark:border-gray-700">
                                 <button
                                     onClick={() => setDmsExpanded(!dmsExpanded)}
-                                    className="flex items-center gap-1 text-xs text-gray-400 hover:text-white w-full"
+                                    className="flex items-center gap-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white w-full"
                                 >
                                     {dmsExpanded ? (
                                         <ChevronDown className="h-3 w-3" />
@@ -601,7 +601,7 @@ export function PlatformChat() {
                                                 onClick={() => startDm(u)}
                                                 disabled={startingDm}
                                                 className={cn(
-                                                    "flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-800 min-w-0",
+                                                    "flex items-center gap-2 w-full px-2 py-1 rounded text-sm hover:bg-gray-100 dark:hover:bg-gray-800 min-w-0",
                                                     selectedChannel?.channel_type === "direct" && selectedChannel?.name === (u.full_name || u.username) && "bg-blue-600",
                                                     u._isBotella && "bg-gradient-to-r from-purple-900/30 to-transparent"
                                                 )}
@@ -650,7 +650,7 @@ export function PlatformChat() {
                         </div>
 
                         {/* User info */}
-                        <div className="p-2 border-t border-gray-700 flex items-center gap-2">
+                        <div className="p-2 border-t border-gray-200 dark:border-gray-700 flex items-center gap-2">
                             <UserAvatar
                                 user={{
                                     id: user?.id || null,
@@ -664,7 +664,7 @@ export function PlatformChat() {
                                 <p className="text-xs font-medium truncate">
                                     {profile?.name || user.email?.split("@")[0]}
                                 </p>
-                                <p className="text-[10px] text-gray-400">Online</p>
+                                <p className="text-[10px] text-gray-500 dark:text-gray-400">Online</p>
                             </div>
                         </div>
                     </div>
@@ -707,7 +707,7 @@ export function PlatformChat() {
                         <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50">
                             {loadingMessages ? (
                                 <div className="flex items-center justify-center h-full">
-                                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                    <Loader2 className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-400" />
                                 </div>
                             ) : messages.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-500">
@@ -744,7 +744,7 @@ export function PlatformChat() {
                                                     <span className="text-sm font-semibold text-gray-900">
                                                         {isOwnMessage ? "You" : userName}
                                                     </span>
-                                                    <span className="text-xs text-gray-400">
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">
                                                         {formatMessageTime(msg.created_at)}
                                                     </span>
                                                 </div>

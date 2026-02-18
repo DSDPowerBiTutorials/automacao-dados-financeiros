@@ -26,7 +26,7 @@ function getBankStyle(source: string) {
     for (const [key, style] of Object.entries(BANK_ICONS)) {
         if (lower.includes(key)) return style;
     }
-    return { bg: "bg-gray-500/10", text: "text-gray-400" };
+    return { bg: "bg-gray-500/10", text: "text-gray-500 dark:text-gray-400" };
 }
 
 export function BankBalancesCards({ data }: BankBalancesCardsProps) {

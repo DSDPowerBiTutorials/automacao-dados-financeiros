@@ -225,12 +225,12 @@ export default function BraintreeReconciliationPage() {
                     <Upload className="h-3.5 w-3.5" />
                     1. Upload CSV
                 </div>
-                <ArrowRight className="h-4 w-4 text-gray-400" />
+                <ArrowRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${currentStep >= 2 ? "bg-blue-100 text-blue-800" : "bg-gray-100 text-gray-500"}`}>
                     <FileSearch className="h-3.5 w-3.5" />
                     2. Reconciliar
                 </div>
-                <ArrowRight className="h-4 w-4 text-gray-400" />
+                <ArrowRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                 <div className={`flex items-center gap-1 px-3 py-1 rounded-full ${currentStep >= 3 ? "bg-green-100 text-green-800" : "bg-gray-100 text-gray-500"}`}>
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     3. Resultado
@@ -520,7 +520,7 @@ export default function BraintreeReconciliationPage() {
                                                     <td className="p-2 font-mono">{match.orderId || "—"}</td>
                                                     <td className="p-2">
                                                         <div>{match.customerName || "—"}</div>
-                                                        <div className="text-gray-400">{match.customerEmail || ""}</div>
+                                                        <div className="text-gray-500 dark:text-gray-400">{match.customerEmail || ""}</div>
                                                     </td>
                                                     <td className="p-2 text-right font-mono">
                                                         {formatCurrency(match.braintreeAmount)}
@@ -538,7 +538,7 @@ export default function BraintreeReconciliationPage() {
                                         </tbody>
                                     </table>
                                     {reconciliationResult.totalMatched > reconciliationResult.matches.length && (
-                                        <p className="text-xs text-gray-400 mt-2 text-center">
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
                                             Mostrando {reconciliationResult.matches.length} de {reconciliationResult.totalMatched} matches
                                         </p>
                                     )}

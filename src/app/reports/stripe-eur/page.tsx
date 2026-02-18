@@ -502,23 +502,23 @@ export default function StripeEURPage() {
     };
 
     return (
-        <div className="min-h-full bg-[#1e1f21] text-white">
+        <div className="min-h-full bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
             {/* Header */}
             <header className="bg-gradient-to-r from-[#635BFF] to-[#4B44C9] px-6 py-4">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
                         <Link href="/payment-channels">
-                            <Button variant="ghost" size="sm" className="text-white hover:bg-white/10">
+                            <Button variant="ghost" size="sm" className="text-gray-900 dark:text-white hover:bg-white/10">
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 Back
                             </Button>
                         </Link>
                         <div>
-                            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <CreditCard className="w-6 h-6 text-white" />
+                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                                <CreditCard className="w-6 h-6 text-gray-900 dark:text-white" />
                                 Stripe EUR
                             </h1>
-                            <p className="text-sm text-white/70">
+                            <p className="text-sm text-gray-900 dark:text-white/70">
                                 Transactions em Euro • {rows.length} records
                                 {lastSyncDate && (
                                     <span className="ml-2">
@@ -535,7 +535,7 @@ export default function StripeEURPage() {
                             size="sm"
                             onClick={handleSync}
                             disabled={isSyncing}
-                            className="border-white text-white hover:bg-white/10"
+                            className="border-white text-gray-900 dark:text-white hover:bg-white/10"
                         >
                             {isSyncing ? (
                                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -604,7 +604,7 @@ export default function StripeEURPage() {
                         <div className="text-xl font-bold text-green-600">
                             €{stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
-                        <div className="text-xs text-gray-400">{stats.salesCount} transactions</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{stats.salesCount} transactions</div>
                     </CardContent>
                 </Card>
 
@@ -617,7 +617,7 @@ export default function StripeEURPage() {
                         <div className="text-xl font-bold text-red-600">
                             €{stats.totalRefunds.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
-                        <div className="text-xs text-gray-400">{stats.refundsCount} transactions</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{stats.refundsCount} transactions</div>
                     </CardContent>
                 </Card>
 
@@ -640,7 +640,7 @@ export default function StripeEURPage() {
                             Reconciled
                         </div>
                         <div className="text-xl font-bold text-blue-600">{stats.reconciledCount}</div>
-                        <div className="text-xs text-gray-400">{stats.reconciledPercent}% of total</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{stats.reconciledPercent}% of total</div>
                     </CardContent>
                 </Card>
 
@@ -670,7 +670,7 @@ export default function StripeEURPage() {
             {/* Filters */}
             <div className="px-6 py-2 flex flex-wrap items-center gap-4 bg-white border-y border-gray-200">
                 <div className="flex items-center gap-2">
-                    <Search className="w-4 h-4 text-gray-400" />
+                    <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     <Input
                         placeholder="Search by name, email, order ID..."
                         value={searchTerm}
@@ -680,14 +680,14 @@ export default function StripeEURPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     <Input
                         type="date"
                         value={dateFilter.start}
                         onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
                         className="w-36"
                     />
-                    <span className="text-gray-400">to</span>
+                    <span className="text-gray-500 dark:text-gray-400">to</span>
                     <Input
                         type="date"
                         value={dateFilter.end}
@@ -726,12 +726,12 @@ export default function StripeEURPage() {
                     <CardContent className="p-0">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-20">
-                                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                <Loader2 className="w-8 h-8 animate-spin text-gray-500 dark:text-gray-400" />
                                 <span className="ml-2 text-gray-500">Loading...</span>
                             </div>
                         ) : filteredRows.length === 0 ? (
                             <div className="text-center py-20 text-gray-500">
-                                <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                                <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-700 dark:text-gray-300" />
                                 <p>No transactions found</p>
                                 <p className="text-sm">Try syncing with the Stripe API</p>
                             </div>
@@ -806,7 +806,7 @@ export default function StripeEURPage() {
                                                                 {row.description}
                                                             </div>
                                                             {row.order_id && (
-                                                                <div className="text-xs text-gray-400">
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400">
                                                                     Order: {row.order_id}
                                                                 </div>
                                                             )}
@@ -815,12 +815,12 @@ export default function StripeEURPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
-                                                        <User className="w-4 h-4 text-gray-400" />
+                                                        <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                         <div>
                                                             <div className="font-medium text-gray-900 text-sm">
                                                                 {row.customer_name || "—"}
                                                             </div>
-                                                            <div className="text-xs text-gray-400">
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400">
                                                                 {row.customer_email || "—"}
                                                             </div>
                                                         </div>

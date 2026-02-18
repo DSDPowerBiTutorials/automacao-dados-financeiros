@@ -563,14 +563,14 @@ export function TaskDetailPanel({
             <div className="fixed inset-0 bg-black/30 z-[90]" onClick={onClose} />
 
             {/* Panel */}
-            <div className="fixed right-0 top-[56px] h-[calc(100vh-56px)] w-[520px] bg-[#1e1f21] border-l border-gray-800 shadow-2xl z-[100] flex flex-col overflow-hidden">
+            <div className="fixed right-0 top-[56px] h-[calc(100vh-56px)] w-[520px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-800 shadow-2xl z-[100] flex flex-col overflow-hidden">
                 {/* Top bar — close + delete */}
-                <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-800 flex-shrink-0">
+                <div className="flex items-center justify-between px-5 py-2.5 border-b border-gray-200 dark:border-gray-800 flex-shrink-0">
                     {/* Breadcrumb when viewing a subtask */}
                     {isSubtaskView && taskStack.length > 0 ? (
                         <button
                             onClick={goBackToParent}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-400 hover:text-white bg-[#2a2b2d] border border-gray-700 hover:border-gray-500 transition-colors"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 hover:border-gray-500 transition-colors"
                         >
                             <ArrowRight className="h-3.5 w-3.5 rotate-180" />
                             Back to parent task
@@ -583,7 +583,7 @@ export function TaskDetailPanel({
                             }}
                             className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${isDone
                                 ? 'bg-green-900/30 text-green-400 border border-green-700 hover:bg-green-900/40'
-                                : 'bg-[#2a2b2d] text-gray-400 border border-gray-700 hover:text-white hover:border-gray-500'
+                                : 'bg-gray-50 dark:bg-[#2a2b2d] text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:text-gray-900 dark:text-white hover:border-gray-500'
                                 }`}
                         >
                             {isDone ? (
@@ -608,7 +608,7 @@ export function TaskDetailPanel({
                         </button>
                         <button
                             onClick={onClose}
-                            className="p-1.5 rounded hover:bg-white/10 text-gray-500 hover:text-white transition-colors"
+                            className="p-1.5 rounded hover:bg-white/10 text-gray-500 hover:text-gray-900 dark:text-white transition-colors"
                         >
                             <X className="h-4 w-4" />
                         </button>
@@ -641,12 +641,12 @@ export function TaskDetailPanel({
                                         setEditingTitle(false);
                                     }
                                 }}
-                                className="w-full bg-transparent border-none text-xl font-bold text-white focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1"
+                                className="w-full bg-transparent border-none text-xl font-bold text-gray-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1"
                                 autoFocus
                             />
                         ) : (
                             <h2
-                                className={`text-xl font-bold cursor-pointer hover:text-blue-400 transition-colors ${isDone ? 'text-gray-500 line-through' : 'text-white'
+                                className={`text-xl font-bold cursor-pointer hover:text-blue-400 transition-colors ${isDone ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'
                                     }`}
                                 onClick={() => {
                                     setTitleValue(task.title);
@@ -658,7 +658,7 @@ export function TaskDetailPanel({
                         )}
 
                         {/* =============== ASANA-STYLE HEADER FIELDS =============== */}
-                        <div className="bg-[#252627] rounded-lg p-4 space-y-3">
+                        <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4 space-y-3">
                             {/* Assignee — prominent like Asana */}
                             <div className="flex items-center gap-3">
                                 <label className="text-xs text-gray-500 w-24 flex-shrink-0 flex items-center gap-1">
@@ -667,18 +667,18 @@ export function TaskDetailPanel({
                                 <div className="relative flex-1" ref={assigneePickerRef}>
                                     <button
                                         onClick={() => setShowAssigneePicker(!showAssigneePicker)}
-                                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-[#1e1f21] border border-transparent hover:border-gray-600 transition-colors"
+                                        className="flex items-center gap-2 w-full px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-[#1e1f21] border border-transparent hover:border-gray-300 dark:border-gray-600 transition-colors"
                                     >
                                         {assignee ? (
                                             <>
                                                 <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-medium">
                                                     {assignee.name.charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className="text-sm text-white">{assignee.name}</span>
+                                                <span className="text-sm text-gray-900 dark:text-white">{assignee.name}</span>
                                             </>
                                         ) : (
                                             <>
-                                                <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
+                                                <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                                                     <UserPlus className="h-3 w-3 text-gray-500" />
                                                 </div>
                                                 <span className="text-sm text-gray-500">Unassigned</span>
@@ -687,13 +687,13 @@ export function TaskDetailPanel({
                                         <ChevronDown className="h-3 w-3 text-gray-500 ml-auto" />
                                     </button>
                                     {showAssigneePicker && (
-                                        <div className="absolute left-0 top-full mt-1 z-30 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl w-64 max-h-60 overflow-hidden">
-                                            <div className="p-2 border-b border-gray-700">
+                                        <div className="absolute left-0 top-full mt-1 z-30 bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl w-64 max-h-60 overflow-hidden">
+                                            <div className="p-2 border-b border-gray-200 dark:border-gray-700">
                                                 <input
                                                     value={assigneeSearch}
                                                     onChange={(e) => setAssigneeSearch(e.target.value)}
                                                     placeholder="Search people..."
-                                                    className="w-full bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                    className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                                                     autoFocus
                                                 />
                                             </div>
@@ -707,10 +707,10 @@ export function TaskDetailPanel({
                                                     }}
                                                     className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-left"
                                                 >
-                                                    <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center">
+                                                    <div className="w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
                                                         <X className="h-3 w-3 text-gray-500" />
                                                     </div>
-                                                    <span className="text-sm text-gray-400">Unassigned</span>
+                                                    <span className="text-sm text-gray-500 dark:text-gray-400">Unassigned</span>
                                                 </button>
                                                 {filteredAssigneeUsers.map((u) => (
                                                     <button
@@ -727,7 +727,7 @@ export function TaskDetailPanel({
                                                             {u.name.charAt(0).toUpperCase()}
                                                         </div>
                                                         <div className="flex-1 min-w-0">
-                                                            <p className="text-sm text-white truncate">{u.name}</p>
+                                                            <p className="text-sm text-gray-900 dark:text-white truncate">{u.name}</p>
                                                             <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
                                                         </div>
                                                         {task.assignee_id === u.id && (
@@ -754,13 +754,13 @@ export function TaskDetailPanel({
                                         {collaborators.map((c) => (
                                             <div
                                                 key={c.user_id}
-                                                className="group relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-[#1e1f21] border border-gray-700 text-xs"
+                                                className="group relative flex items-center gap-1 px-1.5 py-0.5 rounded bg-white dark:bg-[#1e1f21] border border-gray-200 dark:border-gray-700 text-xs"
                                                 title={`${c.user_name || ''} (${c.user_email || ''})`}
                                             >
                                                 <div className="w-4 h-4 rounded-full bg-purple-600 flex items-center justify-center text-white text-[8px] font-medium flex-shrink-0">
                                                     {(c.user_name || '?').charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className="text-gray-300 truncate max-w-[80px]">{c.user_name || c.user_email}</span>
+                                                <span className="text-gray-700 dark:text-gray-300 truncate max-w-[80px]">{c.user_name || c.user_email}</span>
                                                 <button
                                                     onClick={() => handleRemoveCollaborator(c.user_id)}
                                                     className="hidden group-hover:block text-gray-500 hover:text-red-400 ml-0.5"
@@ -771,19 +771,19 @@ export function TaskDetailPanel({
                                         ))}
                                         <button
                                             onClick={() => setShowCollabPicker(!showCollabPicker)}
-                                            className="w-6 h-6 rounded-full border border-dashed border-gray-600 flex items-center justify-center text-gray-500 hover:text-white hover:border-gray-400 transition-colors"
+                                            className="w-6 h-6 rounded-full border border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center text-gray-500 hover:text-gray-900 dark:text-white hover:border-gray-400 transition-colors"
                                         >
                                             <UserPlus className="h-3 w-3" />
                                         </button>
                                     </div>
                                     {showCollabPicker && (
-                                        <div className="absolute left-0 top-full mt-1 z-30 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl w-64 max-h-60 overflow-hidden">
-                                            <div className="p-2 border-b border-gray-700">
+                                        <div className="absolute left-0 top-full mt-1 z-30 bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl w-64 max-h-60 overflow-hidden">
+                                            <div className="p-2 border-b border-gray-200 dark:border-gray-700">
                                                 <input
                                                     value={collabSearch}
                                                     onChange={(e) => setCollabSearch(e.target.value)}
                                                     placeholder="Add collaborator..."
-                                                    className="w-full bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                    className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                                                     autoFocus
                                                 />
                                             </div>
@@ -805,7 +805,7 @@ export function TaskDetailPanel({
                                                                 {u.name.charAt(0).toUpperCase()}
                                                             </div>
                                                             <div className="flex-1 min-w-0">
-                                                                <p className="text-sm text-white truncate">{u.name}</p>
+                                                                <p className="text-sm text-gray-900 dark:text-white truncate">{u.name}</p>
                                                                 <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
                                                             </div>
                                                         </button>
@@ -826,9 +826,9 @@ export function TaskDetailPanel({
                                         type="date"
                                         value={task.due_date || ''}
                                         onChange={(e) => onUpdate(task.id, 'due_date', e.target.value || null)}
-                                        className={`flex-1 bg-[#1e1f21] border rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500 ${isOverdue
+                                        className={`flex-1 bg-white dark:bg-[#1e1f21] border rounded px-2 py-1.5 text-sm focus:outline-none focus:border-blue-500 ${isOverdue
                                             ? 'text-red-400 border-red-700'
-                                            : 'text-white border-gray-600'
+                                            : 'text-gray-900 dark:text-white border-gray-300 dark:border-gray-600'
                                             }`}
                                     />
                                     {isOverdue && (
@@ -848,7 +848,7 @@ export function TaskDetailPanel({
                                     type="date"
                                     value={task.start_date || ''}
                                     onChange={(e) => onUpdate(task.id, 'start_date', e.target.value || null)}
-                                    className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                    className="flex-1 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                                 />
                             </div>
 
@@ -858,7 +858,7 @@ export function TaskDetailPanel({
                                 <select
                                     value={task.status}
                                     onChange={(e) => onUpdate(task.id, 'status', e.target.value)}
-                                    className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                    className="flex-1 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                                 >
                                     {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
                                         <option key={key} value={key}>{cfg.label}</option>
@@ -872,7 +872,7 @@ export function TaskDetailPanel({
                                 <select
                                     value={task.priority}
                                     onChange={(e) => onUpdate(task.id, 'priority', e.target.value)}
-                                    className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                                    className="flex-1 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                                 >
                                     {Object.entries(PRIORITY_CONFIG).map(([key, cfg]) => (
                                         <option key={key} value={key}>{cfg.label}</option>
@@ -897,7 +897,7 @@ export function TaskDetailPanel({
                                                 {label.name}
                                                 <button
                                                     onClick={() => handleRemoveLabel(label.id)}
-                                                    className="hidden group-hover:block hover:text-white ml-0.5"
+                                                    className="hidden group-hover:block hover:text-gray-900 dark:text-white ml-0.5"
                                                 >
                                                     ×
                                                 </button>
@@ -905,14 +905,14 @@ export function TaskDetailPanel({
                                         ))}
                                         <button
                                             onClick={() => setShowLabelPicker(!showLabelPicker)}
-                                            className="px-2 py-0.5 text-xs rounded-full border border-dashed border-gray-600 text-gray-500 hover:text-white hover:border-gray-400 transition-colors"
+                                            className="px-2 py-0.5 text-xs rounded-full border border-dashed border-gray-300 dark:border-gray-600 text-gray-500 hover:text-gray-900 dark:text-white hover:border-gray-400 transition-colors"
                                         >
                                             + Label
                                         </button>
                                     </div>
                                     {showLabelPicker && (
-                                        <div className="absolute left-0 top-full mt-1 z-30 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl w-64 max-h-72 overflow-hidden">
-                                            <div className="p-2 border-b border-gray-700 text-[10px] text-gray-500 font-semibold uppercase tracking-wider px-3">
+                                        <div className="absolute left-0 top-full mt-1 z-30 bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl w-64 max-h-72 overflow-hidden">
+                                            <div className="p-2 border-b border-gray-200 dark:border-gray-700 text-[10px] text-gray-500 font-semibold uppercase tracking-wider px-3">
                                                 Project Labels
                                             </div>
                                             <div className="overflow-y-auto max-h-36">
@@ -923,20 +923,20 @@ export function TaskDetailPanel({
                                                         className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-left"
                                                     >
                                                         <span className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: pl.color }} />
-                                                        <span className="text-sm text-white">{pl.name}</span>
+                                                        <span className="text-sm text-gray-900 dark:text-white">{pl.name}</span>
                                                     </button>
                                                 ))}
                                                 {projectLabels.filter(pl => !taskLabels.some(tl => tl.id === pl.id)).length === 0 && (
                                                     <p className="px-3 py-2 text-xs text-gray-500">All labels applied</p>
                                                 )}
                                             </div>
-                                            <div className="border-t border-gray-700 p-2 space-y-1">
+                                            <div className="border-t border-gray-200 dark:border-gray-700 p-2 space-y-1">
                                                 <div className="flex gap-1">
                                                     <input
                                                         value={newLabelName}
                                                         onChange={(e) => setNewLabelName(e.target.value)}
                                                         placeholder="New label..."
-                                                        className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-xs text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                        className="flex-1 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-xs text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                                                         onKeyDown={(e) => e.key === 'Enter' && handleCreateLabel()}
                                                     />
                                                     <button onClick={handleCreateLabel} className="px-2 py-1 bg-blue-600 rounded text-xs text-white hover:bg-blue-500">
@@ -976,7 +976,7 @@ export function TaskDetailPanel({
                                                     const newTags = task.tags.filter((t) => t !== tag);
                                                     onUpdate(task.id, 'tags', newTags);
                                                 }}
-                                                className="hover:text-white"
+                                                className="hover:text-gray-900 dark:text-white"
                                             >
                                                 ×
                                             </button>
@@ -984,7 +984,7 @@ export function TaskDetailPanel({
                                     ))}
                                     <input
                                         placeholder="+ tag"
-                                        className="bg-transparent text-xs text-gray-400 focus:outline-none w-16"
+                                        className="bg-transparent text-xs text-gray-500 dark:text-gray-400 focus:outline-none w-16"
                                         onKeyDown={(e) => {
                                             if (e.key === 'Enter' && (e.target as HTMLInputElement).value.trim()) {
                                                 const newTag = (e.target as HTMLInputElement).value.trim();
@@ -1000,7 +1000,7 @@ export function TaskDetailPanel({
 
                         {/* Custom Fields */}
                         {customFields.length > 0 && (
-                            <div className="bg-[#252627] rounded-lg p-4 space-y-3">
+                            <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4 space-y-3">
                                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
                                     Custom Fields
                                 </h4>
@@ -1018,7 +1018,7 @@ export function TaskDetailPanel({
                                                         const newData = { ...(task.custom_data || {}), [cf.field_key]: e.target.value };
                                                         onUpdate(task.id, 'custom_data', newData);
                                                     }}
-                                                    className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500"
+                                                    className="flex-1 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                                                 >
                                                     <option value="">—</option>
                                                     {(cf.field_options as string[])?.map((opt) => (
@@ -1043,7 +1043,7 @@ export function TaskDetailPanel({
                                                         const newData = { ...(task.custom_data || {}), [cf.field_key]: e.target.value };
                                                         onUpdate(task.id, 'custom_data', newData);
                                                     }}
-                                                    className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-sm text-white focus:outline-none focus:border-blue-500"
+                                                    className="flex-1 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500"
                                                 />
                                             ) : (
                                                 <input
@@ -1055,7 +1055,7 @@ export function TaskDetailPanel({
                                                         onUpdate(task.id, 'custom_data', newData);
                                                     }}
                                                     placeholder={cf.field_name}
-                                                    className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                    className="flex-1 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                                                     step={cf.field_type === 'currency' ? '0.01' : undefined}
                                                 />
                                             )}
@@ -1078,7 +1078,7 @@ export function TaskDetailPanel({
                                         }
                                         setEditingDesc(false);
                                     }}
-                                    className="w-full bg-[#2a2b2d] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none min-h-[100px]"
+                                    className="w-full bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none min-h-[100px]"
                                     autoFocus
                                 />
                             ) : (
@@ -1087,7 +1087,7 @@ export function TaskDetailPanel({
                                         setDescValue(task.description || '');
                                         setEditingDesc(true);
                                     }}
-                                    className="bg-[#2a2b2d] rounded-lg p-3 text-sm text-gray-300 min-h-[60px] cursor-pointer hover:border-gray-600 border border-transparent transition-colors"
+                                    className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 text-sm text-gray-700 dark:text-gray-300 min-h-[60px] cursor-pointer hover:border-gray-300 dark:border-gray-600 border border-transparent transition-colors"
                                 >
                                     {task.description || (
                                         <span className="text-gray-600">Click to add a description...</span>
@@ -1098,7 +1098,7 @@ export function TaskDetailPanel({
 
                         {/* =============== SUBTASKS (hidden for subtask views) =============== */}
                         {!isSubtaskView && (
-                            <div className="bg-[#252627] rounded-lg p-4">
+                            <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                                 <div className="flex items-center justify-between mb-2">
                                     <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                                         <CheckCircle2 className="h-3 w-3" />
@@ -1117,7 +1117,7 @@ export function TaskDetailPanel({
                                     </button>
                                 </div>
                                 {subtasks.length > 0 && (
-                                    <div className="mb-2 h-1 bg-gray-700 rounded-full overflow-hidden">
+                                    <div className="mb-2 h-1 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                                         <div
                                             className="h-full bg-green-500 transition-all duration-300"
                                             style={{ width: `${(subtasks.filter(s => s.status === 'done').length / subtasks.length) * 100}%` }}
@@ -1132,19 +1132,19 @@ export function TaskDetailPanel({
                                         return (
                                             <div
                                                 key={sub.id}
-                                                className="group rounded-lg border border-gray-700/50 hover:border-gray-600 bg-[#1e1f21] hover:bg-[#232425] transition-all cursor-pointer"
+                                                className="group rounded-lg border border-gray-200 dark:border-gray-700/50 hover:border-gray-300 dark:border-gray-600 bg-white dark:bg-[#1e1f21] hover:bg-gray-100 dark:hover:bg-[#232425] transition-all cursor-pointer"
                                                 onClick={() => openSubtask(sub)}
                                             >
                                                 <div className="flex items-center gap-2 px-3 py-2">
                                                     {/* Status toggle */}
                                                     <button
                                                         onClick={(e) => { e.stopPropagation(); handleToggleSubtask(sub); }}
-                                                        className={`flex-shrink-0 ${sub.status === 'done' ? 'text-green-400' : 'text-gray-600 hover:text-gray-400'}`}
+                                                        className={`flex-shrink-0 ${sub.status === 'done' ? 'text-green-400' : 'text-gray-600 hover:text-gray-500 dark:text-gray-400'}`}
                                                     >
                                                         {sub.status === 'done' ? <CheckCircle2 className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
                                                     </button>
                                                     {/* Title */}
-                                                    <span className={`text-sm flex-1 truncate ${sub.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
+                                                    <span className={`text-sm flex-1 truncate ${sub.status === 'done' ? 'text-gray-500 line-through' : 'text-gray-600 dark:text-gray-200'}`}>
                                                         {sub.title}
                                                     </span>
                                                     {/* Priority badge */}
@@ -1188,7 +1188,7 @@ export function TaskDetailPanel({
                                             value={newSubtaskTitle}
                                             onChange={(e) => setNewSubtaskTitle(e.target.value)}
                                             placeholder="Subtask title..."
-                                            className="flex-1 bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                            className="flex-1 bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                                             autoFocus
                                             onKeyDown={(e) => {
                                                 if (e.key === 'Enter') handleCreateSubtask();
@@ -1207,7 +1207,7 @@ export function TaskDetailPanel({
                         )}
 
                         {/* =============== DEPENDENCIES =============== */}
-                        <div className="bg-[#252627] rounded-lg p-4">
+                        <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
                             <div className="flex items-center justify-between mb-2">
                                 <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex items-center gap-1.5">
                                     <GitBranch className="h-3 w-3" />
@@ -1221,13 +1221,13 @@ export function TaskDetailPanel({
                                         <Plus className="h-3 w-3" /> Add
                                     </button>
                                     {showDepPicker && (
-                                        <div className="absolute right-0 top-full mt-1 z-30 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl w-72 max-h-60 overflow-hidden">
-                                            <div className="p-2 border-b border-gray-700">
+                                        <div className="absolute right-0 top-full mt-1 z-30 bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl w-72 max-h-60 overflow-hidden">
+                                            <div className="p-2 border-b border-gray-200 dark:border-gray-700">
                                                 <input
                                                     value={depSearch}
                                                     onChange={(e) => setDepSearch(e.target.value)}
                                                     placeholder="Search tasks to add as blocker..."
-                                                    className="w-full bg-[#1e1f21] border border-gray-600 rounded px-2 py-1 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                    className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                                                     autoFocus
                                                 />
                                             </div>
@@ -1246,7 +1246,7 @@ export function TaskDetailPanel({
                                                             className="w-full flex items-center gap-2 px-3 py-2 hover:bg-white/10 text-left"
                                                         >
                                                             <Circle className="h-3 w-3 text-gray-500 flex-shrink-0" />
-                                                            <span className="text-sm text-white truncate">{t.title}</span>
+                                                            <span className="text-sm text-gray-900 dark:text-white truncate">{t.title}</span>
                                                         </button>
                                                     ))}
                                                 {allTasks.filter(t => t.id !== task.id).length === 0 && (
@@ -1263,9 +1263,9 @@ export function TaskDetailPanel({
                                     {dependencies.blockedBy.map((dep) => {
                                         const bt = allTasks.find(t => t.id === dep.blocking_task_id);
                                         return (
-                                            <div key={dep.id} className="group flex items-center gap-2 py-1 px-1 rounded hover:bg-[#1e1f21]">
+                                            <div key={dep.id} className="group flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-100 dark:hover:bg-[#1e1f21]">
                                                 <AlertCircle className="h-3 w-3 text-red-400 flex-shrink-0" />
-                                                <span className="text-sm text-gray-300 flex-1 truncate">{bt?.title || `Task #${dep.blocking_task_id}`}</span>
+                                                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{bt?.title || `Task #${dep.blocking_task_id}`}</span>
                                                 <button
                                                     onClick={() => handleRemoveDependency(dep.id)}
                                                     className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity"
@@ -1283,9 +1283,9 @@ export function TaskDetailPanel({
                                     {dependencies.blocking.map((dep) => {
                                         const dt = allTasks.find(t => t.id === dep.dependent_task_id);
                                         return (
-                                            <div key={dep.id} className="group flex items-center gap-2 py-1 px-1 rounded hover:bg-[#1e1f21]">
+                                            <div key={dep.id} className="group flex items-center gap-2 py-1 px-1 rounded hover:bg-gray-100 dark:hover:bg-[#1e1f21]">
                                                 <ArrowRight className="h-3 w-3 text-orange-400 flex-shrink-0" />
-                                                <span className="text-sm text-gray-300 flex-1 truncate">{dt?.title || `Task #${dep.dependent_task_id}`}</span>
+                                                <span className="text-sm text-gray-700 dark:text-gray-300 flex-1 truncate">{dt?.title || `Task #${dep.dependent_task_id}`}</span>
                                                 <button
                                                     onClick={() => handleRemoveDependency(dep.id)}
                                                     className="opacity-0 group-hover:opacity-100 text-gray-600 hover:text-red-400 transition-opacity"
@@ -1303,7 +1303,7 @@ export function TaskDetailPanel({
                         </div>
 
                         {/* Tab navigation */}
-                        <div className="flex gap-1 border-b border-gray-800">
+                        <div className="flex gap-1 border-b border-gray-200 dark:border-gray-800">
                             {[
                                 { key: 'comments' as const, label: 'Comments', icon: MessageSquare, count: comments.length },
                                 { key: 'attachments' as const, label: 'Attachments', icon: Paperclip, count: taskAttachments.length },
@@ -1314,13 +1314,13 @@ export function TaskDetailPanel({
                                     onClick={() => setActiveTab(key)}
                                     className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${activeTab === key
                                         ? 'border-blue-500 text-blue-400'
-                                        : 'border-transparent text-gray-500 hover:text-gray-300'
+                                        : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-300'
                                         }`}
                                 >
                                     <Icon className="h-3.5 w-3.5" />
                                     {label}
                                     {count !== undefined && count > 0 && (
-                                        <span className="bg-gray-700 text-gray-300 text-[10px] px-1.5 rounded-full">{count}</span>
+                                        <span className="bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-[10px] px-1.5 rounded-full">{count}</span>
                                     )}
                                 </button>
                             ))}
@@ -1338,18 +1338,18 @@ export function TaskDetailPanel({
                                         const commentUser = users.find(u => u.id === comment.user_id);
                                         const isEditing = editingCommentId === comment.id;
                                         return (
-                                            <div key={comment.id} className={`bg-[#2a2b2d] rounded-lg p-3 group ${comment.is_deleted ? 'opacity-50' : ''}`}>
+                                            <div key={comment.id} className={`bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 group ${comment.is_deleted ? 'opacity-50' : ''}`}>
                                                 <div className="flex items-center gap-2 mb-1.5">
                                                     <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center">
                                                         {commentUser ? (
-                                                            <span className="text-[10px] text-white font-medium">
+                                                            <span className="text-[10px] text-gray-900 dark:text-white font-medium">
                                                                 {commentUser.name.charAt(0).toUpperCase()}
                                                             </span>
                                                         ) : (
-                                                            <User className="h-3 w-3 text-white" />
+                                                            <User className="h-3 w-3 text-gray-900 dark:text-white" />
                                                         )}
                                                     </div>
-                                                    <span className="text-xs text-gray-400">
+                                                    <span className="text-xs text-gray-500 dark:text-gray-400">
                                                         {commentUser?.name || comment.user_email || 'User'}
                                                     </span>
                                                     <span className="text-xs text-gray-600">
@@ -1393,13 +1393,13 @@ export function TaskDetailPanel({
                                                         <textarea
                                                             value={editCommentValue}
                                                             onChange={(e) => setEditCommentValue(e.target.value)}
-                                                            className="w-full bg-[#1e1f21] border border-gray-600 rounded px-2 py-1.5 text-sm text-white focus:outline-none focus:border-blue-500 resize-none min-h-[60px]"
+                                                            className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-blue-500 resize-none min-h-[60px]"
                                                             autoFocus
                                                         />
                                                         <div className="flex gap-1.5 justify-end">
                                                             <button
                                                                 onClick={() => { setEditingCommentId(null); setEditCommentValue(''); }}
-                                                                className="px-2 py-1 text-xs text-gray-400 hover:text-white"
+                                                                className="px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
                                                             >
                                                                 Cancel
                                                             </button>
@@ -1412,7 +1412,7 @@ export function TaskDetailPanel({
                                                         </div>
                                                     </div>
                                                 ) : (
-                                                    <p className="text-sm text-gray-300 whitespace-pre-wrap">
+                                                    <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap">
                                                         {comment.content.split(/(@\w[\w\s]*?)(?=\s@|\s*$|[.,!?;])/).map((part, i) => {
                                                             if (part.startsWith('@')) {
                                                                 return (
@@ -1437,7 +1437,7 @@ export function TaskDetailPanel({
                             <div className="space-y-3">
                                 {/* Upload area */}
                                 <div
-                                    className="border-2 border-dashed border-gray-700 rounded-lg p-4 text-center hover:border-blue-500 transition-colors cursor-pointer"
+                                    className="border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg p-4 text-center hover:border-blue-500 transition-colors cursor-pointer"
                                     onClick={() => taskFileRef.current?.click()}
                                     onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                                     onDrop={(e) => {
@@ -1475,8 +1475,8 @@ export function TaskDetailPanel({
                                     </div>
                                 ) : (
                                     taskAttachments.map((att) => (
-                                        <div key={att.id} className="group flex items-center gap-3 bg-[#2a2b2d] rounded-lg p-3 hover:bg-[#303132]">
-                                            <div className="w-8 h-8 rounded bg-gray-700 flex items-center justify-center flex-shrink-0">
+                                        <div key={att.id} className="group flex items-center gap-3 bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 hover:bg-gray-100 dark:hover:bg-[#303132]">
+                                            <div className="w-8 h-8 rounded bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
                                                 {att.mime_type?.startsWith('image/') ? (
                                                     <ImageIcon className="h-4 w-4 text-blue-400" />
                                                 ) : (
@@ -1484,7 +1484,7 @@ export function TaskDetailPanel({
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <p className="text-sm text-white truncate">{att.file_name}</p>
+                                                <p className="text-sm text-gray-900 dark:text-white truncate">{att.file_name}</p>
                                                 <p className="text-[10px] text-gray-500">
                                                     {att.size_bytes ? `${(att.size_bytes / 1024).toFixed(0)} KB` : ''} · {new Date(att.created_at).toLocaleDateString()}
                                                 </p>
@@ -1495,14 +1495,14 @@ export function TaskDetailPanel({
                                                         href={att.url}
                                                         target="_blank"
                                                         rel="noopener noreferrer"
-                                                        className="p-1.5 rounded hover:bg-white/10 text-gray-400 hover:text-blue-400"
+                                                        className="p-1.5 rounded hover:bg-white/10 text-gray-500 dark:text-gray-400 hover:text-blue-400"
                                                     >
                                                         <Download className="h-3.5 w-3.5" />
                                                     </a>
                                                 )}
                                                 <button
                                                     onClick={() => handleDeleteAttachment(att.id)}
-                                                    className="p-1.5 rounded hover:bg-red-900/20 text-gray-400 hover:text-red-400"
+                                                    className="p-1.5 rounded hover:bg-red-900/20 text-gray-500 dark:text-gray-400 hover:text-red-400"
                                                 >
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
@@ -1525,23 +1525,23 @@ export function TaskDetailPanel({
                                         const actUser = users.find(u => u.id === act.user_id);
                                         return (
                                             <div key={act.id} className="flex items-start gap-2 py-1.5 px-1">
-                                                <div className="w-5 h-5 rounded-full bg-gray-700 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                                <div className="w-5 h-5 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 mt-0.5">
                                                     {actUser ? (
-                                                        <span className="text-[8px] text-white font-medium">{actUser.name.charAt(0).toUpperCase()}</span>
+                                                        <span className="text-[8px] text-gray-900 dark:text-white font-medium">{actUser.name.charAt(0).toUpperCase()}</span>
                                                     ) : (
                                                         <Activity className="h-2.5 w-2.5 text-gray-500" />
                                                     )}
                                                 </div>
                                                 <div className="flex-1 min-w-0">
-                                                    <p className="text-xs text-gray-400">
-                                                        <span className="text-gray-300 font-medium">{actUser?.name || act.user_email || 'System'}</span>
+                                                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{actUser?.name || act.user_email || 'System'}</span>
                                                         {' '}{act.action}
                                                         {act.field_name && (
                                                             <span className="text-gray-500"> {act.field_name}</span>
                                                         )}
                                                         {act.old_value && act.new_value && (
                                                             <span className="text-gray-500">
-                                                                {' '}from <span className="text-gray-400">{act.old_value}</span> to <span className="text-gray-300">{act.new_value}</span>
+                                                                {' '}from <span className="text-gray-500 dark:text-gray-400">{act.old_value}</span> to <span className="text-gray-700 dark:text-gray-300">{act.new_value}</span>
                                                             </span>
                                                         )}
                                                     </p>
@@ -1564,12 +1564,12 @@ export function TaskDetailPanel({
                 </div>
 
                 {/* Comment input (always visible) with @mention and attachment */}
-                <div className="flex-shrink-0 border-t border-gray-800 px-4 py-3 relative">
+                <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 px-4 py-3 relative">
                     {/* @Mention autocomplete dropdown */}
                     {showMentionList && filteredMentionUsers.length > 0 && (
                         <div
                             ref={mentionListRef}
-                            className="absolute bottom-full left-4 right-4 mb-1 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl max-h-44 overflow-y-auto z-50"
+                            className="absolute bottom-full left-4 right-4 mb-1 bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl max-h-44 overflow-y-auto z-50"
                         >
                             {filteredMentionUsers.map((u) => (
                                 <button
@@ -1581,7 +1581,7 @@ export function TaskDetailPanel({
                                         {u.name.charAt(0).toUpperCase()}
                                     </div>
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm text-white truncate">{u.name}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white truncate">{u.name}</p>
                                         <p className="text-[10px] text-gray-500 truncate">{u.email}</p>
                                     </div>
                                 </button>
@@ -1590,9 +1590,9 @@ export function TaskDetailPanel({
                     )}
                     {/* Pending file preview */}
                     {commentFile && (
-                        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-[#2a2b2d] rounded border border-gray-700 text-xs">
-                            <Paperclip className="h-3 w-3 text-gray-400" />
-                            <span className="text-gray-300 truncate flex-1">{commentFile.name}</span>
+                        <div className="flex items-center gap-2 mb-2 px-2 py-1.5 bg-gray-50 dark:bg-[#2a2b2d] rounded border border-gray-200 dark:border-gray-700 text-xs">
+                            <Paperclip className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+                            <span className="text-gray-700 dark:text-gray-300 truncate flex-1">{commentFile.name}</span>
                             <button onClick={() => setCommentFile(null)} className="text-gray-500 hover:text-red-400">
                                 <X className="h-3 w-3" />
                             </button>
@@ -1607,11 +1607,11 @@ export function TaskDetailPanel({
                                 onKeyDown={handleCommentKeyDown}
                                 placeholder="Add a comment... (use @ to mention)"
                                 rows={1}
-                                className="w-full bg-[#2a2b2d] border border-gray-700 rounded-lg px-3 py-2 pr-9 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+                                className="w-full bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 pr-9 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
                             />
                             <button
                                 onClick={() => commentFileRef.current?.click()}
-                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors"
                                 title="Attach file"
                             >
                                 <Paperclip className="h-3.5 w-3.5" />

@@ -139,7 +139,7 @@ export default function ConsolidatedReportsPage() {
                     <p className="text-sm text-gray-600 mt-1">{report.description}</p>
                     <div className="flex items-center gap-3 mt-2">
                       <span className="text-xs text-gray-500">{report.date}</span>
-                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400">•</span>
                       <span className="text-xs text-gray-500">{report.type}</span>
                     </div>
                   </div>

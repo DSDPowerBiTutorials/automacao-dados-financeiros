@@ -623,7 +623,7 @@ export default function RealCashFlowPage() {
                                 Search
                             </label>
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 <Input
                                     placeholder="Customer, email, order..."
                                     value={searchQuery}
@@ -804,7 +804,7 @@ export default function RealCashFlowPage() {
                                         >
                                             {/* Tooltip on hover */}
                                             <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
-                                                <div className="bg-gray-900 text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                                                <div className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded px-2 py-1 whitespace-nowrap">
                                                     <div className="font-semibold">Dia {dayData.day}</div>
                                                     <div>{formatCurrency(dayData.total)}</div>
                                                     <div>{dayData.count} transação(ões)</div>
@@ -822,7 +822,7 @@ export default function RealCashFlowPage() {
                                                 }}
                                             />
                                             {/* Label do dia */}
-                                            <span className={`text-xs mt-1 ${dayData.day % 5 === 0 || dayData.day === 1 ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
+                                            <span className={`text-xs mt-1 ${dayData.day % 5 === 0 || dayData.day === 1 ? 'text-gray-700 font-medium' : 'text-gray-500 dark:text-gray-400'}`}>
                                                 {dayData.day % 5 === 0 || dayData.day === 1 ? dayData.day : ''}
                                             </span>
                                         </div>
@@ -996,7 +996,7 @@ export default function RealCashFlowPage() {
                                             <div>
                                                 <div className="font-medium">{formatDateBR(tx.cash_flow_date)}</div>
                                                 {tx.date !== tx.cash_flow_date && (
-                                                    <div className="text-xs text-gray-400">Created: {formatDateBR(tx.date)}</div>
+                                                    <div className="text-xs text-gray-500 dark:text-gray-400">Created: {formatDateBR(tx.date)}</div>
                                                 )}
                                             </div>
                                         </TableCell>
@@ -1019,7 +1019,7 @@ export default function RealCashFlowPage() {
                                             {tx.order_id ? (
                                                 <code className="text-xs bg-gray-100 px-1 rounded">{tx.order_id}</code>
                                             ) : (
-                                                <span className="text-gray-400">—</span>
+                                                <span className="text-gray-500 dark:text-gray-400">—</span>
                                             )}
                                         </TableCell>
                                         <TableCell className={`text-right font-semibold ${tx.amount >= 0 ? "text-green-600" : "text-red-600"}`}>

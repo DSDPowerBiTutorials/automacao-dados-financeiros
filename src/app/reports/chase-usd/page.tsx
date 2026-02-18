@@ -839,7 +839,7 @@ export default function ChaseUSDPage() {
     }
 
     const getPaymentSourceStyle = (source: string | null | undefined) => {
-        if (!source) return { bg: "bg-gray-100", text: "text-gray-400", border: "border-gray-200" }
+        if (!source) return { bg: "bg-gray-100", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200" }
         return paymentSourceColors[source] || { bg: "bg-gray-100", text: "text-gray-600", border: "border-gray-200" }
     }
 
@@ -892,25 +892,25 @@ export default function ChaseUSDPage() {
 
     if (isLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1e1f21]">
                 <Loader2 className="h-12 w-12 animate-spin text-[#117ACA]" />
             </div>
         )
     }
 
     return (
-        <div className="min-h-screen bg-[#1e1f21] text-white">
+        <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
             <div>
-                <header className="border-b border-gray-700 px-6 py-4">
+                <header className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
                             <div className="bg-[#117ACA] p-2 rounded-lg">
-                                <Database className="h-6 w-6 text-white" />
+                                <Database className="h-6 w-6 text-gray-900 dark:text-white" />
                             </div>
                             <div>
                                 <h1 className="text-xl font-semibold">Chase 9186 - Bank Statement</h1>
                                 <div className="flex items-center gap-4 mt-1">
-                                    <span className="text-gray-400 text-sm">{rows.length} records ({filteredRows.length} filtered)</span>
+                                    <span className="text-gray-500 dark:text-gray-400 text-sm">{rows.length} records ({filteredRows.length} filtered)</span>
                                     {lastSaved && (
                                         <>
                                             <span className="text-gray-600">•</span>
@@ -924,7 +924,7 @@ export default function ChaseUSDPage() {
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm text-gray-400">Current Balance</p>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
                             <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
                                 {formatUSDCurrency(stats.closingBalance)}
                             </p>
@@ -933,18 +933,18 @@ export default function ChaseUSDPage() {
                     <div className="flex items-center gap-2 flex-wrap">
                         <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-chase" />
                         <label htmlFor="file-upload-chase">
-                            <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700" asChild>
+                            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" asChild>
                                 <span><Upload className="h-4 w-4 mr-1" />Upload CSV</span>
                             </Button>
                         </label>
-                        <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                        <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                             <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />Refresh
                         </Button>
                         <Button onClick={handleAutoReconcile} disabled={isAutoReconciling} variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30">
                             {isAutoReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
                             Auto-Reconcile
                         </Button>
-                        <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                        <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                             <Download className="h-4 w-4 mr-1" />Download
                         </Button>
                         <Button onClick={handleDeleteAll} variant="outline" size="sm" className="bg-transparent border-red-800 text-red-400 hover:bg-red-900/30" disabled={isDeleting || rows.length === 0}>
@@ -956,32 +956,32 @@ export default function ChaseUSDPage() {
             </div>
 
             {/* Stats Bar */}
-            <div className="border-b border-gray-700 px-6 py-3 bg-[#252627]">
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#252627]">
                 <div className="flex items-center gap-8">
                     <div className="flex items-center gap-2">
-                        <span className="text-gray-400 text-sm">Credits:</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">Credits:</span>
                         <span className="text-green-400 font-medium">{formatUSDCurrency(stats.totalIncomes)}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                        <span className="text-gray-400 text-sm">Debits:</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">Debits:</span>
                         <span className="text-red-400 font-medium">{formatUSDCurrency(stats.totalExpenses)}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <XCircle className="h-4 w-4 text-yellow-500" />
-                        <span className="text-gray-400 text-sm">Unreconciled:</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">Unreconciled:</span>
                         <span className="text-yellow-400 font-medium">{stats.unreconciledCount}</span>
                     </div>
                     <div className="flex items-center gap-2">
                         <ArrowLeftRight className="h-4 w-4 text-purple-400" />
-                        <span className="text-gray-400 text-sm">Intercompany:</span>
+                        <span className="text-gray-500 dark:text-gray-400 text-sm">Intercompany:</span>
                         <span className="text-purple-400 font-medium">{filteredRows.filter(r => r.isIntercompany).length}</span>
                     </div>
                 </div>
             </div>
 
             {/* Table Header */}
-            <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700 overflow-x-auto">
-                <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-400 font-medium uppercase min-w-[800px]">
+            <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[800px]">
                     <div className="w-[70px] flex-shrink-0">Date</div>
                     <div className="flex-1 min-w-[200px]">Description</div>
                     <div className="w-[90px] flex-shrink-0 text-right">Debit</div>
@@ -1004,12 +1004,12 @@ export default function ChaseUSDPage() {
                     return (
                         <div
                             key={row.id}
-                            className="flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 min-w-[800px]"
+                            className="flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 min-w-[800px]"
                         >
-                            <div className="w-[70px] flex-shrink-0 text-[11px] text-gray-300">
+                            <div className="w-[70px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">
                                 {formatDate(row.date)}
                             </div>
-                            <div className="flex-1 min-w-[200px] text-[11px] text-white truncate" title={row.description}>
+                            <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={row.description}>
                                 {row.description}
                             </div>
                             <div className="w-[90px] flex-shrink-0 text-right text-[11px] font-mono">
@@ -1026,7 +1026,7 @@ export default function ChaseUSDPage() {
                                     <span className="text-gray-600">-</span>
                                 )}
                             </div>
-                            <div className="w-[100px] flex-shrink-0 text-right text-[11px] font-mono font-medium text-white">
+                            <div className="w-[100px] flex-shrink-0 text-right text-[11px] font-mono font-medium text-gray-900 dark:text-white">
                                 {formatUSDCurrency(customData.balance || 0)}
                             </div>
                             <div className="w-[100px] flex-shrink-0 text-center">
@@ -1060,16 +1060,16 @@ export default function ChaseUSDPage() {
                                         <Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30">
                                             <Save className="h-3 w-3" />
                                         </Button>
-                                        <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-400 hover:text-gray-300 hover:bg-gray-700">
+                                        <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                             <X className="h-3 w-3" />
                                         </Button>
                                     </>
                                 ) : (
                                     <>
-                                        <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700">
+                                        <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                                             <Edit2 className="h-3 w-3" />
                                         </Button>
-                                        <Button size="sm" variant="ghost" onClick={() => deleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30">
+                                        <Button size="sm" variant="ghost" onClick={() => deleteRow(row.id)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-red-900/30">
                                             <Trash2 className="h-3 w-3" />
                                         </Button>
                                         {row.isIntercompany ? (
@@ -1077,7 +1077,7 @@ export default function ChaseUSDPage() {
                                                 <ArrowLeftRight className="h-3 w-3" />
                                             </Button>
                                         ) : (
-                                            <Button size="sm" variant="ghost" onClick={() => openReconciliationDialog(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-purple-400 hover:bg-purple-900/30" title="Intercompany">
+                                            <Button size="sm" variant="ghost" onClick={() => openReconciliationDialog(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-purple-400 hover:bg-purple-900/30" title="Intercompany">
                                                 <Link2 className="h-3 w-3" />
                                             </Button>
                                         )}
@@ -1092,11 +1092,11 @@ export default function ChaseUSDPage() {
             {/* Intercompany Reconciliation Dialog */}
             {reconciliationDialogOpen && reconciliationTransaction && (
                 <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-                    <div className="bg-[#1e1f21] border border-gray-700 rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
-                        <div className="p-4 border-b border-gray-700 flex items-center justify-between">
+                    <div className="bg-white dark:bg-[#1e1f21] border border-gray-200 dark:border-gray-700 rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto">
+                        <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <div>
-                                <h3 className="text-lg font-semibold text-white">Intercompany Reconciliation</h3>
-                                <p className="text-sm text-gray-400">
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Intercompany Reconciliation</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">
                                     {formatDate(reconciliationTransaction.date)} — {reconciliationTransaction.description}
                                 </p>
                                 <p className="text-sm font-mono mt-1">
@@ -1105,7 +1105,7 @@ export default function ChaseUSDPage() {
                                     </span>
                                 </p>
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => setReconciliationDialogOpen(false)} className="text-gray-400 hover:text-white">
+                            <Button variant="ghost" size="sm" onClick={() => setReconciliationDialogOpen(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                                 <X className="h-4 w-4" />
                             </Button>
                         </div>
@@ -1113,7 +1113,7 @@ export default function ChaseUSDPage() {
                             {/* Auto-detected matches */}
                             {intercompanyMatches.length > 0 && (
                                 <div>
-                                    <h4 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                    <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                                         <Zap className="h-4 w-4 text-yellow-400" />
                                         Suggested Matches
                                     </h4>
@@ -1127,16 +1127,16 @@ export default function ChaseUSDPage() {
                                                 }}
                                                 className={`p-3 rounded border cursor-pointer transition-all ${selectedIntercompanyMatch === match.id
                                                         ? "border-purple-500 bg-purple-900/20"
-                                                        : "border-gray-700 bg-gray-800/50 hover:border-gray-600"
+                                                        : "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50 hover:border-gray-300 dark:border-gray-600"
                                                     }`}
                                             >
                                                 <div className="flex justify-between">
-                                                    <span className="text-sm text-white">{match.sourceLabel}</span>
+                                                    <span className="text-sm text-gray-900 dark:text-white">{match.sourceLabel}</span>
                                                     <span className={`text-sm font-mono ${match.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
                                                         {match.currency === "EUR" ? "€" : "$"} {Math.abs(match.amount).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                                                     </span>
                                                 </div>
-                                                <div className="text-xs text-gray-400 mt-1">
+                                                <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                                                     {formatDate(match.date)} — {match.description}
                                                 </div>
                                             </div>
@@ -1147,14 +1147,14 @@ export default function ChaseUSDPage() {
 
                             {/* Manual bank account selection */}
                             <div>
-                                <h4 className="text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+                                <h4 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
                                     <Building2 className="h-4 w-4 text-blue-400" />
                                     Target Bank Account
                                 </h4>
                                 <select
                                     value={selectedBankAccount || ""}
                                     onChange={(e) => setSelectedBankAccount(e.target.value || null)}
-                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded px-3 py-2 text-sm"
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded px-3 py-2 text-sm"
                                 >
                                     <option value="">Select bank account...</option>
                                     {bankAccounts
@@ -1170,12 +1170,12 @@ export default function ChaseUSDPage() {
 
                             {/* Note */}
                             <div>
-                                <label className="text-sm text-gray-400 mb-1 block">Note (optional)</label>
+                                <label className="text-sm text-gray-500 dark:text-gray-400 mb-1 block">Note (optional)</label>
                                 <input
                                     type="text"
                                     value={intercompanyNote}
                                     onChange={(e) => setIntercompanyNote(e.target.value)}
-                                    className="w-full bg-gray-800 border border-gray-700 text-white rounded px-3 py-2 text-sm"
+                                    className="w-full bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white rounded px-3 py-2 text-sm"
                                     placeholder="e.g. FX transfer via Continental Exchange"
                                 />
                             </div>

@@ -119,7 +119,7 @@ export default function InboxPage() {
 
         return (
             <div
-                className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-gray-800/50 ${!notification.is_read
+                className={`group flex items-start gap-3 px-4 py-3 cursor-pointer transition-colors border-b border-gray-200 dark:border-gray-800/50 ${!notification.is_read
                     ? 'bg-blue-500/5 hover:bg-blue-500/10'
                     : 'hover:bg-white/5'
                     }`}
@@ -162,7 +162,7 @@ export default function InboxPage() {
                         </span>
                         <span className="text-[10px] text-gray-600">{timeAgo}</span>
                     </div>
-                    <p className={`text-sm mt-0.5 ${!notification.is_read ? 'text-white font-medium' : 'text-gray-300'}`}>
+                    <p className={`text-sm mt-0.5 ${!notification.is_read ? 'text-gray-900 dark:text-white font-medium' : 'text-gray-700 dark:text-gray-300'}`}>
                         {notification.title}
                     </p>
                     {notification.message && (
@@ -210,16 +210,16 @@ export default function InboxPage() {
     ];
 
     return (
-        <div className="h-full overflow-y-auto bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
             <div className="max-w-4xl mx-auto px-6 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
                             <Inbox className="h-6 w-6" />
                             Inbox
                         </h1>
-                        <p className="text-gray-400 text-sm mt-1">
+                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                             {unreadCount > 0
                                 ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
                                 : 'All caught up!'
@@ -230,7 +230,7 @@ export default function InboxPage() {
                         {unreadCount > 0 && (
                             <button
                                 onClick={markAllAsRead}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-300 bg-[#2a2b2d] hover:bg-[#333435] border border-gray-700 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 transition-colors"
                             >
                                 <CheckCheck className="h-3.5 w-3.5" />
                                 Mark all as read
@@ -241,7 +241,7 @@ export default function InboxPage() {
                                 onClick={() => {
                                     if (confirm('Clear all notifications?')) clearAllNotifications();
                                 }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-400 hover:text-red-400 bg-[#2a2b2d] hover:bg-[#333435] border border-gray-700 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-red-400 bg-gray-50 dark:bg-[#2a2b2d] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 transition-colors"
                             >
                                 <Archive className="h-3.5 w-3.5" />
                                 Clear all
@@ -251,14 +251,14 @@ export default function InboxPage() {
                 </div>
 
                 {/* Filter tabs */}
-                <div className="flex items-center gap-1 border-b border-gray-800 mb-4">
+                <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-800 mb-4">
                     {filterOptions.map(opt => (
                         <button
                             key={opt.key}
                             onClick={() => setActiveFilter(opt.key)}
                             className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors ${activeFilter === opt.key
-                                ? 'text-white border-blue-500'
-                                : 'text-gray-500 border-transparent hover:text-gray-300'
+                                ? 'text-gray-900 dark:text-white border-blue-500'
+                                : 'text-gray-500 border-transparent hover:text-gray-700 dark:text-gray-300'
                                 }`}
                         >
                             {opt.label}
@@ -269,12 +269,12 @@ export default function InboxPage() {
                 {/* Notification list */}
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
-                        <div className="animate-spin h-8 w-8 border-3 border-gray-600 border-t-blue-500 rounded-full" />
+                        <div className="animate-spin h-8 w-8 border-3 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full" />
                     </div>
                 ) : filteredNotifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <BellOff className="h-12 w-12 text-gray-700 mb-4" />
-                        <h2 className="text-lg font-medium text-gray-400 mb-1">
+                        <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-1">
                             {activeFilter === 'unread' ? 'No unread notifications' : 'No notifications'}
                         </h2>
                         <p className="text-sm text-gray-600">
@@ -285,10 +285,10 @@ export default function InboxPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-[#2a2b2d] rounded-lg border border-gray-800 overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
                         {Object.entries(groupedByDate).map(([dateLabel, notifs]) => (
                             <div key={dateLabel}>
-                                <div className="px-4 py-2 bg-[#252627] text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <div className="px-4 py-2 bg-gray-100 dark:bg-[#252627] text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                     {dateLabel}
                                 </div>
                                 {notifs.map(n => (

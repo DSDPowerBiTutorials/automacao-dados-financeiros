@@ -398,7 +398,7 @@ export default function DepartmentalAccountsPage() {
                     <div className="flex-1">
                         <Label className="text-sm font-medium mb-2 block">Search</Label>
                         <div className="relative">
-                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                             <Input
                                 type="text"
                                 placeholder="Search by code, name, or path..."

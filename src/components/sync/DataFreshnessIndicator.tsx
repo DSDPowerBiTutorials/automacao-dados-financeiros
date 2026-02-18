@@ -134,7 +134,7 @@ const STATUS_CONFIG = {
     },
     never: {
         icon: Clock,
-        color: "text-gray-400",
+        color: "text-gray-500 dark:text-gray-400",
         bgColor: "bg-gray-500/20",
         borderColor: "border-gray-500/50",
         label: "Never",
@@ -313,7 +313,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                     <Activity className={cn("h-5 w-5", overallConfig.color)} />
                     {!collapsed && (
                         <>
-                            <span className="text-sm font-medium text-white flex-1 text-left">Data Status</span>
+                            <span className="text-sm font-medium text-gray-900 dark:text-white flex-1 text-left">Data Status</span>
                             <Badge variant="outline" className={cn("text-xs", overallConfig.color, overallConfig.borderColor)}>
                                 {data.freshCount}/{data.sources.length}
                             </Badge>
@@ -333,21 +333,21 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
             <PopoverContent
                 side={placement === "topbar" ? "bottom" : "right"}
                 align={placement === "topbar" ? "end" : "start"}
-                className="!bg-[#1a1b1d] border-gray-700 w-96 p-0 shadow-2xl"
+                className="!bg-[#1a1b1d] border-gray-200 dark:border-gray-700 w-96 p-0 shadow-2xl"
                 sideOffset={placement === "topbar" ? 8 : 12}
             >
                 {/* Header */}
-                <div className="p-4 border-b border-gray-700 bg-gray-800/50">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <OverallIcon className={cn("h-5 w-5", overallConfig.color)} />
-                            <h3 className="font-semibold text-white">Data Freshness</h3>
+                            <h3 className="font-semibold text-gray-900 dark:text-white">Data Freshness</h3>
                         </div>
                         <div className="flex items-center gap-2">
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs border-gray-600 hover:bg-gray-700 text-gray-300"
+                                className="h-7 text-xs border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
                                 onClick={() => fetchFreshness()}
                             >
                                 <RefreshCw className="h-3 w-3 mr-1" />
@@ -369,7 +369,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                 </div>
 
                 {/* Sync All Button */}
-                <div className="p-3 border-b border-gray-700 bg-gray-900/50">
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/50">
                     <Button
                         size="sm"
                         className="w-full bg-[#FF7300] hover:bg-[#e66800] text-white"
@@ -398,17 +398,17 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                             return (
                                 <div
                                     key={source.source}
-                                    className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+                                    className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:bg-gray-800/50 transition-colors"
                                 >
                                     <StatusIcon className={cn("h-4 w-4 flex-shrink-0", config.color)} />
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-white truncate">{source.displayName}</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{source.displayName}</p>
                                         <p className="text-xs text-gray-500">{formatRelativeTime(source.lastSync)}</p>
                                     </div>
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-7 px-2 text-xs text-gray-400 hover:text-white hover:bg-gray-700"
+                                        className="h-7 px-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                                         onClick={() => handleSyncSingle(source)}
                                     >
                                         <RefreshCw className="h-3 w-3" />
@@ -419,7 +419,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                     </div>
 
                     {/* CSV Sources */}
-                    <div className="p-2 border-t border-gray-700">
+                    <div className="p-2 border-t border-gray-200 dark:border-gray-700">
                         <div className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-2 py-1 flex items-center gap-1">
                             <Upload className="h-3 w-3" /> CSV Uploads ({csvSources.length})
                         </div>
@@ -429,18 +429,18 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                             return (
                                 <div
                                     key={source.source}
-                                    className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-800/50 transition-colors"
+                                    className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:bg-gray-800/50 transition-colors"
                                 >
                                     <StatusIcon className={cn("h-4 w-4 flex-shrink-0", config.color)} />
                                     <div className="flex-1 min-w-0">
-                                        <p className="text-sm font-medium text-white truncate">{source.displayName}</p>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{source.displayName}</p>
                                         <p className="text-xs text-gray-500">{formatRelativeTime(source.lastSync)}</p>
                                     </div>
                                     <Link href={source.uploadPath || "#"}>
                                         <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="h-7 px-2 text-xs text-gray-400 hover:text-white hover:bg-gray-700"
+                                            className="h-7 px-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                                         >
                                             <Upload className="h-3 w-3 mr-1" />
                                             Upload
@@ -454,7 +454,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                 </div>
 
                 {/* Footer */}
-                <div className="p-2 border-t border-gray-700 bg-gray-800/30">
+                <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30">
                     <p className="text-xs text-gray-500 text-center">
                         Auto: 12h threshold • CSV: 4 days threshold
                     </p>

@@ -86,7 +86,7 @@ export default function HubSpotSyncStatus() {
                 ) : metadata?.status === "error" ? (
                     <AlertCircle className="h-5 w-5 text-red-600" />
                 ) : (
-                    <Clock className="h-5 w-5 text-gray-400" />
+                    <Clock className="h-5 w-5 text-gray-500 dark:text-gray-400" />
                 )}
 
                 <div className="flex flex-col">

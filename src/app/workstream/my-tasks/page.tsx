@@ -147,7 +147,7 @@ export default function MyTasksPage() {
         const priorityConfig = PRIORITY_CONFIG[task.priority];
 
         return (
-            <div className="group flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 border-b border-gray-800/50 transition-colors">
+            <div className="group flex items-center gap-3 px-4 py-2.5 hover:bg-white/5 border-b border-gray-200 dark:border-gray-800/50 transition-colors">
                 {/* Checkbox */}
                 <button
                     onClick={() => toggleTaskStatus(task.id, task.status)}
@@ -156,13 +156,13 @@ export default function MyTasksPage() {
                     {isDone ? (
                         <CheckCircle2 className="h-5 w-5 text-green-500" />
                     ) : (
-                        <Circle className="h-5 w-5 text-gray-600 hover:text-gray-400" />
+                        <Circle className="h-5 w-5 text-gray-600 hover:text-gray-500 dark:text-gray-400" />
                     )}
                 </button>
 
                 {/* Task info */}
                 <div className="flex-1 min-w-0">
-                    <p className={`text-sm truncate ${isDone ? 'text-gray-500 line-through' : 'text-white'}`}>
+                    <p className={`text-sm truncate ${isDone ? 'text-gray-500 line-through' : 'text-gray-900 dark:text-white'}`}>
                         {task.title}
                     </p>
                     {task.ws_projects && (
@@ -183,7 +183,7 @@ export default function MyTasksPage() {
 
                 {/* Due date */}
                 {task.due_date && (
-                    <span className={`text-xs flex items-center gap-1 ${isOverdue ? 'text-red-400' : isDone ? 'text-gray-600' : 'text-gray-400'}`}>
+                    <span className={`text-xs flex items-center gap-1 ${isOverdue ? 'text-red-400' : isDone ? 'text-gray-600' : 'text-gray-500 dark:text-gray-400'}`}>
                         {isOverdue && <AlertTriangle className="h-3 w-3" />}
                         <Calendar className="h-3 w-3" />
                         {format(new Date(task.due_date), 'dd MMM', { locale: ptBR })}
@@ -211,7 +211,7 @@ export default function MyTasksPage() {
                 >
                     {expanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-500" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-500" />}
                     <Icon className={`h-3.5 w-3.5 ${iconColor}`} />
-                    <span className="text-sm font-medium text-gray-300">{title}</span>
+                    <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{title}</span>
                     <span className="text-xs text-gray-600 ml-1">{tasks.length}</span>
                 </button>
                 {expanded && (
@@ -228,25 +228,25 @@ export default function MyTasksPage() {
     const firstName = profile?.name?.split(' ')[0] || 'User';
 
     return (
-        <div className="h-full overflow-y-auto bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
             <div className="max-w-4xl mx-auto px-6 py-8">
                 {/* Header */}
                 <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-white">My Tasks</h1>
-                    <p className="text-gray-400 text-sm mt-1">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Tasks</h1>
+                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
                         Tasks assigned to {firstName} across all projects
                     </p>
                 </div>
 
                 {/* Tabs */}
-                <div className="flex items-center gap-1 border-b border-gray-800 mb-6">
+                <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-800 mb-6">
                     {tabs.map(tab => (
                         <button
                             key={tab.key}
                             onClick={() => setActiveTab(tab.key)}
                             className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${activeTab === tab.key
-                                ? 'text-white border-blue-500'
-                                : 'text-gray-500 border-transparent hover:text-gray-300'
+                                ? 'text-gray-900 dark:text-white border-blue-500'
+                                : 'text-gray-500 border-transparent hover:text-gray-700 dark:text-gray-300'
                                 }`}
                         >
                             {tab.label}
@@ -257,12 +257,12 @@ export default function MyTasksPage() {
                 {/* Content */}
                 {loading ? (
                     <div className="flex items-center justify-center py-20">
-                        <div className="animate-spin h-8 w-8 border-3 border-gray-600 border-t-blue-500 rounded-full" />
+                        <div className="animate-spin h-8 w-8 border-3 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full" />
                     </div>
                 ) : tasks.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-20">
                         <CheckCircle2 className="h-12 w-12 text-gray-700 mb-4" />
-                        <h2 className="text-lg font-medium text-gray-400 mb-1">
+                        <h2 className="text-lg font-medium text-gray-500 dark:text-gray-400 mb-1">
                             {activeTab === 'completed' ? 'No completed tasks' : 'No tasks assigned'}
                         </h2>
                         <p className="text-sm text-gray-600">
@@ -273,7 +273,7 @@ export default function MyTasksPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-[#2a2b2d] rounded-lg border border-gray-800 overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
                         {activeTab === 'completed' ? (
                             tasks.map(task => <TaskRow key={task.id} task={task} />)
                         ) : (
@@ -311,7 +311,7 @@ export default function MyTasksPage() {
                                     tasks={groupedTasks.later}
                                     sectionKey="later"
                                     icon={Calendar}
-                                    iconColor="text-gray-400"
+                                    iconColor="text-gray-500 dark:text-gray-400"
                                 />
                                 <SectionGroup
                                     title="No due date"

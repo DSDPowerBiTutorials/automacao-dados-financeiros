@@ -532,7 +532,7 @@ export default function QuickBooksUSDPage() {
                                 }
                                 className="w-36"
                             />
-                            <span className="text-gray-400">to</span>
+                            <span className="text-gray-500 dark:text-gray-400">to</span>
                             <Input
                                 type="date"
                                 value={dateFilter.end || ""}
@@ -594,7 +594,7 @@ export default function QuickBooksUSDPage() {
                         <TabsContent value={activeTab} className="mt-0">
                             {isLoading ? (
                                 <div className="flex items-center justify-center py-12">
-                                    <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                    <Loader2 className="w-8 h-8 animate-spin text-gray-500 dark:text-gray-400" />
                                 </div>
                             ) : filteredRows.length === 0 ? (
                                 <div className="text-center py-12 text-gray-500">

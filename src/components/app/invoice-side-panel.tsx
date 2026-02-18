@@ -352,7 +352,7 @@ export function InvoiceSidePanel({
             <div className="flex-1 overflow-y-auto">
                 {loadingMasterData ? (
                     <div className="flex items-center justify-center py-20">
-                        <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                        <Loader2 className="h-8 w-8 animate-spin text-gray-500 dark:text-gray-400" />
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="p-5 space-y-5">

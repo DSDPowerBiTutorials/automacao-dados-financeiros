@@ -136,7 +136,7 @@ export default function BraintreeUpdatePendingButton() {
     return (
         <div className="flex flex-col gap-2">
             {/* Timestamps Header */}
-            <div className="flex items-center gap-3 text-xs text-white/70">
+            <div className="flex items-center gap-3 text-xs text-gray-900 dark:text-white/70">
                 {timestamps.automatic && (
                     <div className="flex items-center gap-1" title="Last automatic sync">
                         <Clock className="h-3 w-3" />
@@ -165,7 +165,7 @@ export default function BraintreeUpdatePendingButton() {
                     disabled={isUpdating}
                     variant="outline"
                     size="sm"
-                    className="gap-2 border-blue-400 text-blue-200 hover:bg-blue-500/20 hover:text-white"
+                    className="gap-2 border-blue-400 text-blue-200 hover:bg-blue-500/20 hover:text-gray-900 dark:hover:text-white"
                     title="Update pending transactions (preserves reconciliations)"
                 >
                     <RefreshCw className={`h-4 w-4 ${isUpdating ? "animate-spin" : ""}`} />
@@ -178,7 +178,7 @@ export default function BraintreeUpdatePendingButton() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="gap-2 border-orange-400 text-orange-200 hover:bg-orange-500/20 hover:text-white"
+                            className="gap-2 border-orange-400 text-orange-200 hover:bg-orange-500/20 hover:text-gray-900 dark:hover:text-white"
                             title="Force update all transactions (may override reconciliations)"
                             disabled={isUpdating}
                         >
@@ -231,7 +231,7 @@ export default function BraintreeUpdatePendingButton() {
                 {/* Info Dialog */}
                 <Dialog>
                     <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-white/70 hover:text-white hover:bg-white/10">
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-900 dark:text-white/70 hover:text-gray-900 dark:text-white hover:bg-white/10">
                             <Info className="h-4 w-4" />
                         </Button>
                     </DialogTrigger>

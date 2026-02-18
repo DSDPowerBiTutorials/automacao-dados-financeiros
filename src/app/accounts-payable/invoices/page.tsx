@@ -97,7 +97,7 @@ const INVOICE_TYPE_CONFIG = {
   },
   ADJUSTMENT: {
     label: "Adjustments",
-    color: "bg-gray-700/50 text-gray-300 border border-gray-600",
+    color: "bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600",
     icon: RefreshCw,
     description: "Balance adjustments - affects cash but not DRE"
   }
@@ -1437,9 +1437,9 @@ export default function InvoicesPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#1e1f21] px-6 py-6">
+      <div className="min-h-screen bg-white dark:bg-[#1e1f21] px-6 py-6">
         <div className="flex items-center justify-center h-64">
-          <p className="text-gray-400">Loading invoices...</p>
+          <p className="text-gray-500 dark:text-gray-400">Loading invoices...</p>
         </div>
       </div>
     );
@@ -1448,18 +1448,18 @@ export default function InvoicesPage() {
   return (
     <>
       {/* Fixed Header and Cards - Dark Theme */}
-      <div className="min-h-screen bg-[#1e1f21] text-white px-6 py-6 pb-0">
-        <div className="flex justify-between items-center mb-4 border-b border-gray-700 pb-4">
+      <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white px-6 py-6 pb-0">
+        <div className="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
           <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold text-white">Invoices</h1>
+            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Invoices</h1>
             <span className="text-gray-500">•</span>
-            <span className="text-gray-400 text-sm">{SCOPE_CONFIG[selectedScope].label}</span>
+            <span className="text-gray-500 dark:text-gray-400 text-sm">{SCOPE_CONFIG[selectedScope].label}</span>
           </div>
           <div className="flex items-center gap-2">
             <Button
               disabled={selectedScope === "GLOBAL"}
               variant="outline"
-              className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+              className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
               onClick={() => {
                 setEditingInvoice(null);
                 resetForm();
@@ -2575,7 +2575,7 @@ export default function InvoicesPage() {
                   variant={columnSelectorOpen ? "default" : "outline"}
                   size="sm"
                   onClick={openColumnSelector}
-                  className={`relative overflow-visible ${columnSelectorOpen ? 'bg-[#243140] hover:bg-[#1a2530] text-white' : ''}`}
+                  className={`relative overflow-visible ${columnSelectorOpen ? 'bg-[#243140] hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white' : ''}`}
                 >
                   <Columns3 className="h-4 w-4 mr-2" />
                   Select Columns
@@ -2593,7 +2593,7 @@ export default function InvoicesPage() {
                       >
                         <X className="h-3 w-3" />
                       </span>
-                      <span className="absolute -top-2 -right-2 bg-[#243140] text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
+                      <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-[#243140] text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
                         {visibleColumns.size}/23
                       </span>
                     </>
@@ -2687,13 +2687,13 @@ export default function InvoicesPage() {
             </Dialog>
 
             {/* Export to Excel */}
-            <Button variant="outline" size="sm" onClick={exportToExcel} className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+            <Button variant="outline" size="sm" onClick={exportToExcel} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Export Excel
             </Button>
 
             {/* Export to PDF */}
-            <Button variant="outline" size="sm" onClick={exportToPDF} className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+            <Button variant="outline" size="sm" onClick={exportToPDF} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
               <Download className="h-4 w-4 mr-2" />
               Export PDF
             </Button>
@@ -2712,7 +2712,7 @@ export default function InvoicesPage() {
               }}
               className={groupByProvider
                 ? "bg-purple-600 hover:bg-purple-700 text-white border-none text-xs"
-                : "bg-transparent border-gray-600 text-gray-300 hover:bg-gray-700 text-xs"
+                : "bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 text-xs"
               }
             >
               <Building2 className="h-4 w-4 mr-1" />
@@ -2720,10 +2720,10 @@ export default function InvoicesPage() {
             </Button>
             {groupByProvider && (
               <>
-                <Button variant="ghost" size="sm" onClick={expandAllProviders} className="text-xs text-gray-400 hover:text-white">
+                <Button variant="ghost" size="sm" onClick={expandAllProviders} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                   Expand All
                 </Button>
-                <Button variant="ghost" size="sm" onClick={collapseAllProviders} className="text-xs text-gray-400 hover:text-white">
+                <Button variant="ghost" size="sm" onClick={collapseAllProviders} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                   Collapse All
                 </Button>
               </>
@@ -2734,23 +2734,23 @@ export default function InvoicesPage() {
           <select
             value={selectedYear}
             onChange={(e) => setSelectedYear(e.target.value)}
-            className="h-9 rounded-md border border-gray-700 bg-transparent px-3 text-sm text-white"
+            className="h-9 rounded-md border border-gray-200 dark:border-gray-700 bg-transparent px-3 text-sm text-gray-900 dark:text-white"
           >
-            <option value="ALL" className="bg-gray-900">All Years</option>
+            <option value="ALL" className="bg-gray-50 dark:bg-gray-900">All Years</option>
             {[2026, 2025, 2024, 2023].map(y => (
-              <option key={y} value={String(y)} className="bg-gray-900">{y}</option>
+              <option key={y} value={String(y)} className="bg-gray-50 dark:bg-gray-900">{y}</option>
             ))}
           </select>
 
           {/* Search */}
           <div className="flex-1 max-w-md">
             <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-400 pointer-events-none" />
+              <Search className="absolute left-2.5 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-gray-500 dark:text-gray-400 pointer-events-none" />
               <Input
                 placeholder="Search..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 bg-transparent border-gray-700 text-white placeholder:text-gray-500 text-sm"
+                className="pl-8 bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm"
               />
             </div>
           </div>
@@ -2759,11 +2759,11 @@ export default function InvoicesPage() {
           {appliedFilters.length > 0 && (
             <div className="flex items-center gap-2 flex-wrap">
               {appliedFilters.map(filter => (
-                <Badge key={filter.field} variant="secondary" className="gap-1 pr-1 bg-gray-700 text-gray-200">
+                <Badge key={filter.field} variant="secondary" className="gap-1 pr-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200">
                   {filter.label}
                   <button
                     onClick={() => removeFilter(filter.field)}
-                    className="ml-1 hover:bg-gray-600 rounded-full p-0.5"
+                    className="ml-1 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-full p-0.5"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -2773,7 +2773,7 @@ export default function InvoicesPage() {
                 variant="ghost"
                 size="sm"
                 onClick={clearAllFilters}
-                className="h-6 text-xs text-gray-400 hover:text-white"
+                className="h-6 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
               >
                 Clear
               </Button>
@@ -2785,25 +2785,25 @@ export default function InvoicesPage() {
         {error ? (
           <div className="text-center py-8 text-red-400">{error}</div>
         ) : filteredByCreated.length === 0 ? (
-          <div className="text-center py-12 text-gray-400">
+          <div className="text-center py-12 text-gray-500 dark:text-gray-400">
             <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
             <p>No invoices found</p>
             <p className="text-sm">Create your first invoice to get started</p>
           </div>
         ) : (
-          <div className="border border-gray-700 rounded-lg overflow-hidden">
+          <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
             <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="w-full text-xs">
-                <thead className="sticky top-0 z-10 bg-[#2a2b2d] shadow-sm">
-                  <tr className="border-b border-gray-700 bg-[#2a2b2d]">
+                <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] shadow-sm">
+                  <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2a2b2d]">
                     {visibleColumns.has('actions') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Actions</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">Actions</th>
                     )}
                     {visibleColumns.has('split') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Split</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">Split</th>
                     )}
                     {/* Created By column */}
-                    <th className="px-2 py-1.5 text-center font-semibold text-gray-300 w-14 bg-[#2a2b2d]" title="Created by user or BOTella automation">
+                    <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 w-14 bg-gray-50 dark:bg-[#2a2b2d]" title="Created by user or BOTella automation">
                       <div className="flex items-center justify-center gap-1">
                         Created
                         <button
@@ -2829,13 +2829,13 @@ export default function InvoicesPage() {
                       </div>
                     </th>
                     {visibleColumns.has('scope') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Scope</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">Scope</th>
                     )}
                     {visibleColumns.has('impact') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Impact</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">Impact</th>
                     )}
                     {visibleColumns.has('type') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleSort("invoice_type")} className="flex items-center gap-1 hover:text-primary">
                             Type
@@ -2848,7 +2848,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('input_date') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleSort("input_date")} className="flex items-center gap-1 hover:text-primary">
                             Input Date
@@ -2861,7 +2861,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('invoice_date') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleSort("invoice_date")} className="flex items-center gap-1 hover:text-primary">
                             Invoice Date
@@ -2874,7 +2874,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('benefit_date') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleSort("benefit_date")} className="flex items-center gap-1 hover:text-primary">
                             Benefit Date
@@ -2887,7 +2887,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('due_date') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleSort("due_date")} className="flex items-center gap-1 hover:text-primary">
                             Due Date
@@ -2900,7 +2900,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('schedule_date') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleSort("schedule_date")} className="flex items-center gap-1 hover:text-primary">
                             Schedule Date
@@ -2913,7 +2913,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('provider') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleSort("provider_code")} className="flex items-center gap-1 hover:text-primary">
                             Provider
@@ -2942,7 +2942,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('description') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           Description
                           <button
@@ -2959,7 +2959,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('invoice_number') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           <button onClick={() => handleSort("invoice_number")} className="flex items-center gap-1 hover:text-primary">
                             Invoice ID
@@ -2972,7 +2972,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('amount') && (
-                      <th className="px-2 py-1.5 text-right font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-right font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => handleSort("invoice_amount")} className="flex items-center gap-1 hover:text-primary ml-auto">
                             Amount
@@ -3001,7 +3001,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('currency') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           Currency
                           <button onClick={(e) => openFilterPopover("currency", e)}
@@ -3014,7 +3014,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('financial_account') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           Financial Account
                           <button
@@ -3028,7 +3028,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('cost_center') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           Department
                           <button onClick={(e) => openFilterPopover("cost_center_code", e)} className="hover:text-primary" title="Filter by Department">
@@ -3038,14 +3038,14 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('sub_department') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           Sub-Department
                         </div>
                       </th>
                     )}
                     {visibleColumns.has('cost_type') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           Cost Type
                           <button onClick={(e) => openFilterPopover("cost_type_code", e)} className="hover:text-primary" title="Filter by Cost Type">
@@ -3055,7 +3055,7 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('dep_cost_type') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <div className="flex items-center gap-1">
                           Dep Cost Type
                           <button onClick={(e) => openFilterPopover("dep_cost_type_code", e)} className="hover:text-primary" title="Filter by Dep Cost Type">
@@ -3065,19 +3065,19 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('payment_status') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Status</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">Payment Status</th>
                     )}
                     {visibleColumns.has('is_reconciled') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Recon</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">Recon</th>
                     )}
                     {visibleColumns.has('payment_method') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Payment Method</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">Payment Method</th>
                     )}
                     {visibleColumns.has('bank_account') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-300 bg-[#2a2b2d]">Bank Account</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">Bank Account</th>
                     )}
                     {visibleColumns.has('payment_date') && (
-                      <th className="px-2 py-1.5 text-left font-semibold text-gray-300 bg-[#2a2b2d]">
+                      <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d]">
                         <button onClick={() => handleSort("payment_date")} className="flex items-center gap-1 hover:text-primary">
                           Payment Date
                           <ArrowUpDown className="h-3 w-3" />
@@ -3086,25 +3086,25 @@ export default function InvoicesPage() {
                     )}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-700">
+                <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
                   {groupByProvider && groupedByProvider ? (
                     groupedByProvider.map((group) => (
                       <React.Fragment key={group.provider}>
                         {/* Provider group header row */}
                         <tr
-                          className="bg-[#252627] hover:bg-[#2a2b2d] cursor-pointer border-b border-gray-600"
+                          className="bg-gray-100 dark:bg-[#252627] hover:bg-gray-100 dark:hover:bg-[#2a2b2d] cursor-pointer border-b border-gray-300 dark:border-gray-600"
                           onClick={() => toggleProviderGroup(group.provider)}
                         >
                           <td colSpan={100} className="px-3 py-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
                                 {expandedProviders.has(group.provider) ? (
-                                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                                  <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 ) : (
-                                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                                  <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 )}
-                                <span className="font-semibold text-white text-sm">{group.providerName}</span>
-                                <Badge variant="secondary" className="text-[10px] bg-gray-700 text-gray-300">
+                                <span className="font-semibold text-gray-900 dark:text-white text-sm">{group.providerName}</span>
+                                <Badge variant="secondary" className="text-[10px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
                                   {group.invoices.length} invoice{group.invoices.length !== 1 ? "s" : ""}
                                 </Badge>
                                 {group.reconciledCount > 0 && (
@@ -3113,7 +3113,7 @@ export default function InvoicesPage() {
                                   </Badge>
                                 )}
                               </div>
-                              <span className="text-sm font-mono font-bold text-white">
+                              <span className="text-sm font-mono font-bold text-gray-900 dark:text-white">
                                 € {formatEuropeanNumber(group.totalAmount)}
                               </span>
                             </div>
@@ -3128,18 +3128,18 @@ export default function InvoicesPage() {
                           const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
 
                           return (
-                            <tr key={invoice.id} className="hover:bg-gray-800/50 group">
+                            <tr key={invoice.id} className="hover:bg-gray-100 dark:bg-gray-800/50 group">
                               {/* Actions */}
                               {visibleColumns.has('actions') && (
                                 <td className="px-2 py-1 text-center">
                                   <div className="flex items-center justify-center gap-1">
-                                    <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700" title="Split Invoice">
+                                    <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700" title="Split Invoice">
                                       <Split className="h-3 w-3 text-blue-400" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700">
-                                      <Edit2 className="h-3 w-3 text-gray-400" />
+                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                      <Edit2 className="h-3 w-3 text-gray-500 dark:text-gray-400" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-700">
+                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                       <Trash2 className="h-3 w-3" />
                                     </Button>
                                   </div>
@@ -3150,7 +3150,7 @@ export default function InvoicesPage() {
                               {visibleColumns.has('split') && (
                                 <td className="px-2 py-1 text-center">
                                   {invoice.is_split && invoice.parent_invoice_id && (
-                                    <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0 hover:bg-gray-700" title={`Part ${invoice.split_number}/${invoice.total_splits}`}>
+                                    <Button variant="ghost" size="sm" onClick={() => viewSplits(invoice)} className="h-6 px-2 py-0 hover:bg-gray-100 dark:hover:bg-gray-700" title={`Part ${invoice.split_number}/${invoice.total_splits}`}>
                                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-900/30 text-blue-400 border border-blue-700">
                                         {invoice.split_number}/{invoice.total_splits}
                                       </Badge>
@@ -3165,7 +3165,7 @@ export default function InvoicesPage() {
                                     </Button>
                                   )}
                                   {!invoice.is_split && (
-                                    <span className="text-gray-300">-</span>
+                                    <span className="text-gray-700 dark:text-gray-300">-</span>
                                   )}
                                 </td>
                               )}
@@ -3177,8 +3177,8 @@ export default function InvoicesPage() {
                                     <Zap className="h-4 w-4 text-yellow-400" />
                                   </span>
                                 ) : (
-                                  <span title="Created manually by user" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-700">
-                                    <User className="h-3.5 w-3.5 text-gray-300" />
+                                  <span title="Created manually by user" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-gray-700">
+                                    <User className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
                                   </span>
                                 )}
                               </td>
@@ -3207,9 +3207,9 @@ export default function InvoicesPage() {
                               {visibleColumns.has('impact') && (
                                 <td className="px-2 py-1">
                                   <div className="flex gap-1 justify-center">
-                                    {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-700 text-gray-200">DRE</Badge>}
-                                    {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-700 text-gray-200">Cash</Badge>}
-                                    {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 border-gray-600 text-gray-300">IC</Badge>}
+                                    {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200">DRE</Badge>}
+                                    {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-200">Cash</Badge>}
+                                    {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">IC</Badge>}
                                   </div>
                                 </td>
                               )}
@@ -3265,7 +3265,7 @@ export default function InvoicesPage() {
                                         value={editValue}
                                         onValueChange={setEditValue}
                                       >
-                                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                        <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#2a2b2d] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-white max-h-[300px]">
@@ -3327,14 +3327,14 @@ export default function InvoicesPage() {
                                     </div>
                                   ) : (
                                     <div className="flex items-center justify-center gap-1">
-                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                         {getNameByCode(providers, invoice.provider_code)}
                                       </Badge>
                                       <button
                                         onClick={() => startInlineEdit(invoice.id, "provider_code", invoice.provider_code)}
                                         className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                       >
-                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-700 dark:text-gray-300" />
                                       </button>
                                     </div>
                                   )}
@@ -3379,7 +3379,7 @@ export default function InvoicesPage() {
                                         onClick={() => startInlineEdit(invoice.id, "description", invoice.description)}
                                         className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
                                       >
-                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-700 dark:text-gray-300" />
                                       </button>
                                     </div>
                                   )}
@@ -3432,7 +3432,7 @@ export default function InvoicesPage() {
                                         onClick={() => startInlineEdit(invoice.id, "invoice_number", invoice.invoice_number)}
                                         className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                       >
-                                        <Pencil className="h-3 w-3 text-gray-400 hover:text-white" />
+                                        <Pencil className="h-3 w-3 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white" />
                                       </button>
                                     </div>
                                   )}
@@ -3479,7 +3479,7 @@ export default function InvoicesPage() {
                                         onClick={() => startInlineEdit(invoice.id, "invoice_amount", invoice.invoice_amount.toString())}
                                         className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                       >
-                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-700 dark:text-gray-300" />
                                       </button>
                                     </div>
                                   )}
@@ -3489,7 +3489,7 @@ export default function InvoicesPage() {
                               {/* Currency */}
                               {visibleColumns.has('currency') && (
                                 <td className="px-2 py-1 text-center">
-                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-gray-700/50 text-gray-200 border-gray-600">{invoice.currency}</Badge>
+                                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">{invoice.currency}</Badge>
                                 </td>
                               )}
 
@@ -3502,7 +3502,7 @@ export default function InvoicesPage() {
                                         value={editValue}
                                         onValueChange={setEditValue}
                                       >
-                                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                        <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#2a2b2d] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-white max-h-[300px]">
@@ -3564,14 +3564,14 @@ export default function InvoicesPage() {
                                     </div>
                                   ) : (
                                     <div className="flex items-center gap-1">
-                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 max-w-[180px] truncate bg-gray-700/50 text-gray-200 border-gray-600" title={financialAccount?.name}>
+                                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0 max-w-[180px] truncate bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600" title={financialAccount?.name}>
                                         {financialAccount?.name || invoice.financial_account_code}
                                       </Badge>
                                       <button
                                         onClick={() => startInlineEdit(invoice.id, "financial_account_code", invoice.financial_account_code)}
                                         className="opacity-0 group-hover/cell:opacity-100 transition-opacity flex-shrink-0"
                                       >
-                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-700 dark:text-gray-300" />
                                       </button>
                                     </div>
                                   )}
@@ -3587,7 +3587,7 @@ export default function InvoicesPage() {
                                         value={editValue}
                                         onValueChange={setEditValue}
                                       >
-                                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                        <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#2a2b2d] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-white max-h-[300px]">
@@ -3639,17 +3639,17 @@ export default function InvoicesPage() {
                                   ) : (
                                     <div className="flex items-center gap-1">
                                       {invoice.cost_center_code ? (
-                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           {getNameByCode(costCenters, invoice.cost_center_code)}
                                         </Badge>
                                       ) : (
-                                        <span className="text-gray-400">-</span>
+                                        <span className="text-gray-500 dark:text-gray-400">-</span>
                                       )}
                                       <button
                                         onClick={() => startInlineEdit(invoice.id, "cost_center_code", invoice.cost_center_code)}
                                         className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                       >
-                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-700 dark:text-gray-300" />
                                       </button>
                                     </div>
                                   )}
@@ -3664,7 +3664,7 @@ export default function InvoicesPage() {
                                       {subDepartments.find(sd => sd.code === invoice.sub_department_code)?.name || invoice.sub_department_code}
                                     </Badge>
                                   ) : (
-                                    <span className="text-gray-400">-</span>
+                                    <span className="text-gray-500 dark:text-gray-400">-</span>
                                   )}
                                 </td>
                               )}
@@ -3678,7 +3678,7 @@ export default function InvoicesPage() {
                                         value={editValue}
                                         onValueChange={setEditValue}
                                       >
-                                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                        <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#2a2b2d] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-white max-h-[300px]">
@@ -3730,17 +3730,17 @@ export default function InvoicesPage() {
                                   ) : (
                                     <div className="flex items-center gap-1">
                                       {invoice.cost_type_code ? (
-                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           {getNameByCode(costTypes, invoice.cost_type_code)}
                                         </Badge>
                                       ) : (
-                                        <span className="text-gray-400">-</span>
+                                        <span className="text-gray-500 dark:text-gray-400">-</span>
                                       )}
                                       <button
                                         onClick={() => startInlineEdit(invoice.id, "cost_type_code", invoice.cost_type_code)}
                                         className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                       >
-                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-700 dark:text-gray-300" />
                                       </button>
                                     </div>
                                   )}
@@ -3756,7 +3756,7 @@ export default function InvoicesPage() {
                                         value={editValue}
                                         onValueChange={setEditValue}
                                       >
-                                        <SelectTrigger className="h-6 text-[10px] bg-[#2a2b2d] text-gray-200 border-gray-600">
+                                        <SelectTrigger className="h-6 text-[10px] bg-gray-50 dark:bg-[#2a2b2d] text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent className="bg-white max-h-[300px]">
@@ -3808,17 +3808,17 @@ export default function InvoicesPage() {
                                   ) : (
                                     <div className="flex items-center gap-1">
                                       {invoice.dep_cost_type_code ? (
-                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                        <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                           {getNameByCode(depCostTypes, invoice.dep_cost_type_code)}
                                         </Badge>
                                       ) : (
-                                        <span className="text-gray-400">-</span>
+                                        <span className="text-gray-500 dark:text-gray-400">-</span>
                                       )}
                                       <button
                                         onClick={() => startInlineEdit(invoice.id, "dep_cost_type_code", invoice.dep_cost_type_code)}
                                         className="opacity-0 group-hover/cell:opacity-100 transition-opacity"
                                       >
-                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-300" />
+                                        <Pencil className="h-3 w-3 text-gray-500 hover:text-gray-700 dark:text-gray-300" />
                                       </button>
                                     </div>
                                   )}
@@ -3830,7 +3830,7 @@ export default function InvoicesPage() {
                                 <td className="px-2 py-1 text-center">
                                   <Badge
                                     variant={paymentStatus === 'PAID' ? 'default' : paymentStatus === 'OVERDUE' ? 'destructive' : 'outline'}
-                                    className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600"
+                                    className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600"
                                   >
                                     {paymentStatus.replace('_', ' ')}
                                   </Badge>
@@ -3854,10 +3854,10 @@ export default function InvoicesPage() {
                               {visibleColumns.has('payment_method') && (
                                 <td className="px-2 py-1 text-center">
                                   {invoice.payment_method_code ? (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                       {getNameByCode(paymentMethods, invoice.payment_method_code)}
                                     </Badge>
-                                  ) : <span className="text-gray-400">-</span>}
+                                  ) : <span className="text-gray-500 dark:text-gray-400">-</span>}
                                 </td>
                               )}
 
@@ -3865,17 +3865,17 @@ export default function InvoicesPage() {
                               {visibleColumns.has('bank_account') && (
                                 <td className="px-2 py-1 text-center">
                                   {invoice.bank_account_code ? (
-                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                       {getNameByCode(bankAccounts, invoice.bank_account_code)}
                                     </Badge>
-                                  ) : <span className="text-gray-400">-</span>}
+                                  ) : <span className="text-gray-500 dark:text-gray-400">-</span>}
                                 </td>
                               )}
 
                               {/* Payment Date - NO INLINE EDIT (set by reconciliation) */}
                               {visibleColumns.has('payment_date') && (
                                 <td className="px-2 py-1 text-[11px]">
-                                  {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-400">-</span>}
+                                  {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
                                 </td>
                               )}
                             </tr>
@@ -3892,19 +3892,19 @@ export default function InvoicesPage() {
                       const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
 
                       return (
-                        <tr key={invoice.id} className="hover:bg-gray-800/50 group">
+                        <tr key={invoice.id} className="hover:bg-gray-100 dark:bg-gray-800/50 group">
 
                           {/* Actions - flat mode */}
                           {visibleColumns.has('actions') && (
                             <td className="px-2 py-1 text-center">
                               <div className="flex items-center justify-center gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700" title="Split Invoice">
+                                <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700" title="Split Invoice">
                                   <Split className="h-3 w-3 text-blue-400" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-700">
-                                  <Edit2 className="h-3 w-3 text-gray-400" />
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-gray-700">
+                                  <Edit2 className="h-3 w-3 text-gray-500 dark:text-gray-400" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-700">
+                                <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-100 dark:hover:bg-gray-700">
                                   <Trash2 className="h-3 w-3" />
                                 </Button>
                               </div>
@@ -3923,8 +3923,8 @@ export default function InvoicesPage() {
 
                           {/* Invoice Number */}
                           {visibleColumns.has('invoice_number') && (
-                            <td className="px-2 py-1 text-[11px] font-mono text-white whitespace-nowrap">
-                              {invoice.invoice_number || <span className="text-gray-400">-</span>}
+                            <td className="px-2 py-1 text-[11px] font-mono text-gray-900 dark:text-white whitespace-nowrap">
+                              {invoice.invoice_number || <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
 
@@ -3937,21 +3937,21 @@ export default function InvoicesPage() {
 
                           {/* Provider */}
                           {visibleColumns.has('provider') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-200 whitespace-nowrap max-w-[150px] truncate" title={getNameByCode(providers, invoice.provider_code)}>
+                            <td className="px-2 py-1 text-[11px] text-gray-600 dark:text-gray-200 whitespace-nowrap max-w-[150px] truncate" title={getNameByCode(providers, invoice.provider_code)}>
                               {getNameByCode(providers, invoice.provider_code)}
                             </td>
                           )}
 
                           {/* Description */}
                           {visibleColumns.has('description') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-300 max-w-[200px] truncate" title={invoice.description || undefined}>
+                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[200px] truncate" title={invoice.description || undefined}>
                               {invoice.description || <span className="text-gray-500">-</span>}
                             </td>
                           )}
 
                           {/* Amount */}
                           {visibleColumns.has('amount') && (
-                            <td className="px-2 py-1 text-right text-[11px] font-mono text-white whitespace-nowrap">
+                            <td className="px-2 py-1 text-right text-[11px] font-mono text-gray-900 dark:text-white whitespace-nowrap">
                               {invoice.currency !== "EUR" ? (
                                 <div>
                                   <span>{formatEuropeanNumber(invoice.invoice_amount)} {invoice.currency}</span>
@@ -3965,35 +3965,35 @@ export default function InvoicesPage() {
 
                           {/* Invoice Date */}
                           {visibleColumns.has('invoice_date') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-300 whitespace-nowrap">
-                              {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('pt-BR') : <span className="text-gray-400">-</span>}
+                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                              {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
 
                           {/* Due Date */}
                           {visibleColumns.has('due_date') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-300 whitespace-nowrap">
-                              {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('pt-BR') : <span className="text-gray-400">-</span>}
+                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                              {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
 
                           {/* Financial Account */}
                           {visibleColumns.has('financial_account') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-300 max-w-[120px] truncate" title={financialAccount?.name || invoice.financial_account_code}>
+                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[120px] truncate" title={financialAccount?.name || invoice.financial_account_code}>
                               {financialAccount?.name || invoice.financial_account_code || <span className="text-gray-500">-</span>}
                             </td>
                           )}
 
                           {/* Cost Center */}
                           {visibleColumns.has('cost_center') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-300 max-w-[100px] truncate" title={getNameByCode(costCenters, invoice.cost_center_code || '')}>
+                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[100px] truncate" title={getNameByCode(costCenters, invoice.cost_center_code || '')}>
                               {getNameByCode(costCenters, invoice.cost_center_code || '')}
                             </td>
                           )}
 
                           {/* Dep Cost Type */}
                           {visibleColumns.has('dep_cost_type') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-300 max-w-[100px] truncate" title={getNameByCode(depCostTypes, invoice.dep_cost_type_code || '')}>
+                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[100px] truncate" title={getNameByCode(depCostTypes, invoice.dep_cost_type_code || '')}>
                               {getNameByCode(depCostTypes, invoice.dep_cost_type_code || '')}
                             </td>
                           )}
@@ -4003,7 +4003,7 @@ export default function InvoicesPage() {
                             <td className="px-2 py-1 text-center text-[10px]">
                               <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${paymentStatus === 'PAID' ? 'bg-green-900/30 text-green-400 border-green-700' :
                                 paymentStatus === 'SCHEDULED' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-700' :
-                                  'bg-gray-700/50 text-gray-400 border-gray-600'
+                                  'bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600'
                                 }`}>
                                 {paymentStatus}
                               </Badge>
@@ -4031,10 +4031,10 @@ export default function InvoicesPage() {
                           {visibleColumns.has('payment_method') && (
                             <td className="px-2 py-1 text-center text-[10px]">
                               {invoice.payment_method_code ? (
-                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                   {invoice.payment_method_code}
                                 </Badge>
-                              ) : <span className="text-gray-400">-</span>}
+                              ) : <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
 
@@ -4042,17 +4042,17 @@ export default function InvoicesPage() {
                           {visibleColumns.has('bank_account') && (
                             <td className="px-2 py-1 text-center">
                               {invoice.bank_account_code ? (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-700/50 text-gray-200 border-gray-600">
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-gray-700/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
                                   {getNameByCode(bankAccounts, invoice.bank_account_code || '')}
                                 </Badge>
-                              ) : <span className="text-gray-400">-</span>}
+                              ) : <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
 
                           {/* Payment Date */}
                           {visibleColumns.has('payment_date') && (
                             <td className="px-2 py-1 text-[11px]">
-                              {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-400">-</span>}
+                              {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
                         </tr>
@@ -4066,7 +4066,7 @@ export default function InvoicesPage() {
         )
         }
 
-        <div className="mt-4 pb-6 text-sm text-gray-400">
+        <div className="mt-4 pb-6 text-sm text-gray-500 dark:text-gray-400">
           Showing {filteredInvoices.length} of {invoices.length} invoices{selectedYear !== "ALL" ? ` (${selectedYear})` : " (all years)"}
         </div>
       </div >
@@ -4125,7 +4125,7 @@ export default function InvoicesPage() {
                                 {calendarRange.to ? ` → ${calendarRange.to.toLocaleDateString('pt-PT')}` : " → ..."}
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-400">Clique para selecionar datas</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Clique para selecionar datas</span>
                             )}
                             <Button
                               size="sm"

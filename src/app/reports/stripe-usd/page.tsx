@@ -600,7 +600,7 @@ export default function StripeUSDPage() {
                         <div className="text-xl font-bold text-green-600">
                             ${stats.totalSales.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
-                        <div className="text-xs text-gray-400">{stats.salesCount} transactions</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{stats.salesCount} transactions</div>
                     </CardContent>
                 </Card>
 
@@ -613,7 +613,7 @@ export default function StripeUSDPage() {
                         <div className="text-xl font-bold text-red-600">
                             ${stats.totalRefunds.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                         </div>
-                        <div className="text-xs text-gray-400">{stats.refundsCount} transactions</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{stats.refundsCount} transactions</div>
                     </CardContent>
                 </Card>
 
@@ -636,7 +636,7 @@ export default function StripeUSDPage() {
                             Reconciliados
                         </div>
                         <div className="text-xl font-bold text-blue-600">{stats.reconciledCount}</div>
-                        <div className="text-xs text-gray-400">{stats.reconciledPercent}% do total</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">{stats.reconciledPercent}% do total</div>
                     </CardContent>
                 </Card>
 
@@ -666,7 +666,7 @@ export default function StripeUSDPage() {
             {/* Filters */}
             <div className="px-6 py-2 flex flex-wrap items-center gap-4 bg-white border-y border-gray-200">
                 <div className="flex items-center gap-2">
-                    <Search className="w-4 h-4 text-gray-400" />
+                    <Search className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     <Input
                         placeholder="Search by name, email, order ID..."
                         value={searchTerm}
@@ -676,14 +676,14 @@ export default function StripeUSDPage() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <Calendar className="w-4 h-4 text-gray-400" />
+                    <Calendar className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                     <Input
                         type="date"
                         value={dateFilter.start}
                         onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
                         className="w-36"
                     />
-                    <span className="text-gray-400">to</span>
+                    <span className="text-gray-500 dark:text-gray-400">to</span>
                     <Input
                         type="date"
                         value={dateFilter.end}
@@ -722,12 +722,12 @@ export default function StripeUSDPage() {
                     <CardContent className="p-0">
                         {isLoading ? (
                             <div className="flex items-center justify-center py-20">
-                                <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                <Loader2 className="w-8 h-8 animate-spin text-gray-500 dark:text-gray-400" />
                                 <span className="ml-2 text-gray-500">Loading...</span>
                             </div>
                         ) : filteredRows.length === 0 ? (
                             <div className="text-center py-20 text-gray-500">
-                                <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                                <CreditCard className="w-12 h-12 mx-auto mb-4 text-gray-700 dark:text-gray-300" />
                                 <p>No transactions found</p>
                                 <p className="text-sm">Try syncing with the Stripe API</p>
                             </div>
@@ -802,7 +802,7 @@ export default function StripeUSDPage() {
                                                                 {row.description}
                                                             </div>
                                                             {row.order_id && (
-                                                                <div className="text-xs text-gray-400">
+                                                                <div className="text-xs text-gray-500 dark:text-gray-400">
                                                                     Order: {row.order_id}
                                                                 </div>
                                                             )}
@@ -811,12 +811,12 @@ export default function StripeUSDPage() {
                                                 </td>
                                                 <td className="px-4 py-3">
                                                     <div className="flex items-center gap-2">
-                                                        <User className="w-4 h-4 text-gray-400" />
+                                                        <User className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                                         <div>
                                                             <div className="font-medium text-gray-900 text-sm">
                                                                 {row.customer_name || "—"}
                                                             </div>
-                                                            <div className="text-xs text-gray-400">
+                                                            <div className="text-xs text-gray-500 dark:text-gray-400">
                                                                 {row.customer_email || "—"}
                                                             </div>
                                                         </div>

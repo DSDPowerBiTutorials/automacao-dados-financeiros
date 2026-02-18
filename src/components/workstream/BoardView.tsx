@@ -188,12 +188,12 @@ export function BoardView({
 
         {/* Add column */}
         {isAddingSection ? (
-          <div className="flex-shrink-0 w-[300px] bg-[#252628] rounded-xl border border-gray-800 p-3">
+          <div className="flex-shrink-0 w-[300px] bg-gray-50 dark:bg-[#252628] rounded-xl border border-gray-200 dark:border-gray-800 p-3">
             <input
               value={newSectionTitle}
               onChange={(e) => setNewSectionTitle(e.target.value)}
               placeholder="Section name..."
-              className="w-full bg-[#1e1f21] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleAddSection();
@@ -216,7 +216,7 @@ export function BoardView({
                   setNewSectionTitle('');
                   setIsAddingSection(false);
                 }}
-                className="px-3 py-1 text-gray-400 hover:text-white text-xs rounded-md hover:bg-white/10"
+                className="px-3 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white text-xs rounded-md hover:bg-white/10"
               >
                 Cancel
               </button>
@@ -225,7 +225,7 @@ export function BoardView({
         ) : (
           <button
             onClick={() => setIsAddingSection(true)}
-            className="flex-shrink-0 w-[300px] flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-gray-700 hover:border-gray-600 text-gray-500 hover:text-gray-400 transition-colors"
+            className="flex-shrink-0 w-[300px] flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 text-gray-500 hover:text-gray-500 dark:text-gray-400 transition-colors"
           >
             <Plus className="h-4 w-4" />
             <span className="text-sm">Add Section</span>

@@ -92,7 +92,7 @@ export default function PerformanceAnalyticsPage() {
             <CardDescription>Monthly revenue trend (last 12 months)</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="h-80 flex items-center justify-center text-gray-400">
+            <div className="h-80 flex items-center justify-center text-gray-500 dark:text-gray-400">
               <div className="text-center">
                 <Activity className="h-12 w-12 mx-auto mb-2 opacity-50" />
                 <p>Chart integration pending</p>

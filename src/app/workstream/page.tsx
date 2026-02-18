@@ -167,19 +167,19 @@ export default function WorkstreamHomePage() {
 
     if (loading) {
         return (
-            <div className="h-full flex items-center justify-center bg-[#1e1f21]">
-                <div className="animate-spin h-8 w-8 border-3 border-gray-600 border-t-blue-500 rounded-full" />
+            <div className="h-full flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+                <div className="animate-spin h-8 w-8 border-3 border-gray-300 dark:border-gray-600 border-t-blue-500 rounded-full" />
             </div>
         );
     }
 
     return (
-        <div className="h-full overflow-y-auto bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
             <div className="max-w-6xl mx-auto px-6 py-8">
                 {/* Header greeting */}
                 <div className="mb-8">
                     <p className="text-sm text-gray-500 capitalize">{dayOfWeek}</p>
-                    <h1 className="text-2xl font-bold text-white mt-1">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
                         {greeting}, {firstName}!
                     </h1>
                 </div>
@@ -187,9 +187,9 @@ export default function WorkstreamHomePage() {
                 {/* Main grid — 2 columns like Asana */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     {/* LEFT COLUMN: My Tasks */}
-                    <div className="bg-[#2a2b2d] border border-gray-800 rounded-xl overflow-hidden">
-                        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-                            <h2 className="text-sm font-semibold text-white">My Tasks</h2>
+                    <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">My Tasks</h2>
                             <div className="text-[10px] text-gray-600">
                                 {overdueTasks.length > 0 && (
                                     <span className="text-red-400 mr-2">{overdueTasks.length} overdue</span>
@@ -198,14 +198,14 @@ export default function WorkstreamHomePage() {
                         </div>
 
                         {/* Task tabs */}
-                        <div className="flex border-b border-gray-800">
+                        <div className="flex border-b border-gray-200 dark:border-gray-800">
                             {(['upcoming', 'overdue', 'completed'] as const).map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTaskTab(tab)}
                                     className={`flex-1 px-3 py-2 text-xs font-medium border-b-2 transition-colors ${activeTaskTab === tab
-                                        ? 'text-white border-blue-500'
-                                        : 'text-gray-500 border-transparent hover:text-gray-300'
+                                        ? 'text-gray-900 dark:text-white border-blue-500'
+                                        : 'text-gray-500 border-transparent hover:text-gray-700 dark:text-gray-300'
                                         }`}
                                 >
                                     {tab === 'upcoming' ? 'Upcoming' : tab === 'overdue' ? `Overdue (${overdueTasks.length})` : 'Completed'}
@@ -227,7 +227,7 @@ export default function WorkstreamHomePage() {
                                     return (
                                         <div
                                             key={task.id}
-                                            className="group flex items-center gap-3 px-5 py-2.5 border-b border-gray-800/50 hover:bg-white/5 transition-colors"
+                                            className="group flex items-center gap-3 px-5 py-2.5 border-b border-gray-200 dark:border-gray-800/50 hover:bg-white/5 transition-colors"
                                         >
                                             <button
                                                 onClick={() => toggleTaskStatus(task.id, task.status)}
@@ -236,11 +236,11 @@ export default function WorkstreamHomePage() {
                                                 {isDone ? (
                                                     <CheckCircle2 className="h-4 w-4 text-green-500" />
                                                 ) : (
-                                                    <Circle className="h-4 w-4 text-gray-600 hover:text-gray-400" />
+                                                    <Circle className="h-4 w-4 text-gray-600 hover:text-gray-500 dark:text-gray-400" />
                                                 )}
                                             </button>
                                             <div className="flex-1 min-w-0">
-                                                <p className={`text-sm truncate ${isDone ? 'text-gray-500 line-through' : 'text-gray-200'}`}>
+                                                <p className={`text-sm truncate ${isDone ? 'text-gray-500 line-through' : 'text-gray-600 dark:text-gray-200'}`}>
                                                     {task.title}
                                                 </p>
                                             </div>
@@ -264,7 +264,7 @@ export default function WorkstreamHomePage() {
 
                         {/* Footer link */}
                         {myTasks.length > 10 && (
-                            <div className="px-5 py-3 border-t border-gray-800">
+                            <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-800">
                                 <button
                                     onClick={() => router.push('/workstream/my-tasks')}
                                     className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
@@ -277,13 +277,13 @@ export default function WorkstreamHomePage() {
                     </div>
 
                     {/* RIGHT COLUMN: Projects */}
-                    <div className="bg-[#2a2b2d] border border-gray-800 rounded-xl overflow-hidden">
-                        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-                            <h2 className="text-sm font-semibold text-white">Projects</h2>
+                    <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Projects</h2>
                             <div className="flex items-center gap-2">
                                 <button
                                     onClick={() => router.push('/workstream/portfolios')}
-                                    className="text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
+                                    className="text-[10px] text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors"
                                 >
                                     View all
                                 </button>
@@ -302,7 +302,7 @@ export default function WorkstreamHomePage() {
                                         <button
                                             key={project.id}
                                             onClick={() => router.push(`/workstream/${project.id}`)}
-                                            className="group text-left bg-[#333435] hover:bg-[#3d3e40] border border-gray-700 hover:border-gray-600 rounded-lg p-3 transition-all"
+                                            className="group text-left bg-gray-200 dark:bg-[#333435] hover:bg-gray-100 dark:hover:bg-[#3d3e40] border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 rounded-lg p-3 transition-all"
                                         >
                                             <div className="flex items-center gap-2.5 mb-2">
                                                 <div
@@ -311,7 +311,7 @@ export default function WorkstreamHomePage() {
                                                 >
                                                     {project.name.charAt(0).toUpperCase()}
                                                 </div>
-                                                <span className="text-xs text-white font-medium truncate group-hover:text-blue-400 transition-colors">
+                                                <span className="text-xs text-gray-900 dark:text-white font-medium truncate group-hover:text-blue-400 transition-colors">
                                                     {project.name}
                                                 </span>
                                             </div>
@@ -324,7 +324,7 @@ export default function WorkstreamHomePage() {
                                     {/* Create project card */}
                                     <button
                                         onClick={() => setShowCreateDialog(true)}
-                                        className="flex flex-col items-center justify-center bg-transparent border border-dashed border-gray-700 hover:border-gray-500 rounded-lg p-3 min-h-[70px] transition-all"
+                                        className="flex flex-col items-center justify-center bg-transparent border border-dashed border-gray-200 dark:border-gray-700 hover:border-gray-500 rounded-lg p-3 min-h-[70px] transition-all"
                                     >
                                         <Plus className="h-4 w-4 text-gray-600 mb-1" />
                                         <span className="text-[10px] text-gray-600">Create project</span>
@@ -335,9 +335,9 @@ export default function WorkstreamHomePage() {
                     </div>
 
                     {/* BOTTOM LEFT: People */}
-                    <div className="bg-[#2a2b2d] border border-gray-800 rounded-xl overflow-hidden">
-                        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-                            <h2 className="text-sm font-semibold text-white">People</h2>
+                    <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">People</h2>
                             <span className="text-[10px] text-gray-500">Frequent collaborators</span>
                         </div>
 
@@ -351,10 +351,10 @@ export default function WorkstreamHomePage() {
                                 <div className="space-y-2">
                                     {/* Invite button */}
                                     <div className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors">
-                                        <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center">
-                                            <UserPlus className="h-4 w-4 text-gray-400" />
+                                        <div className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                                            <UserPlus className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                         </div>
-                                        <span className="text-sm text-gray-400">Invite</span>
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">Invite</span>
                                     </div>
 
                                     {users.slice(0, 5).map((user) => (
@@ -363,7 +363,7 @@ export default function WorkstreamHomePage() {
                                             className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-white/5 cursor-pointer transition-colors"
                                         >
                                             <UserAvatar user={user} size="md" />
-                                            <span className="text-sm text-gray-300">{user.name}</span>
+                                            <span className="text-sm text-gray-700 dark:text-gray-300">{user.name}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -371,7 +371,7 @@ export default function WorkstreamHomePage() {
                         </div>
 
                         {users.length > 5 && (
-                            <div className="px-5 py-3 border-t border-gray-800">
+                            <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-800">
                                 <button
                                     onClick={() => router.push('/workstream/teams')}
                                     className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
@@ -384,22 +384,22 @@ export default function WorkstreamHomePage() {
                     </div>
 
                     {/* BOTTOM RIGHT: Customize / Quick Links */}
-                    <div className="bg-[#2a2b2d] border border-gray-800 rounded-xl overflow-hidden">
-                        <div className="px-5 py-4 border-b border-gray-800 flex items-center justify-between">
-                            <h2 className="text-sm font-semibold text-white">Customize</h2>
+                    <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                        <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+                            <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Customize</h2>
                             <Sparkles className="h-4 w-4 text-gray-500" />
                         </div>
 
                         <div className="p-5 space-y-3">
                             <button
                                 onClick={() => router.push('/workstream/reporting')}
-                                className="w-full flex items-center gap-3 px-4 py-3 bg-[#333435] hover:bg-[#3d3e40] border border-gray-700 rounded-lg transition-colors text-left"
+                                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-200 dark:bg-[#333435] hover:bg-gray-100 dark:hover:bg-[#3d3e40] border border-gray-200 dark:border-gray-700 rounded-lg transition-colors text-left"
                             >
                                 <div className="w-8 h-8 rounded-lg bg-purple-500/10 flex items-center justify-center">
                                     <Sparkles className="h-4 w-4 text-purple-400" />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-200 font-medium">Reporting</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-200 font-medium">Reporting</p>
                                     <p className="text-[10px] text-gray-500">View progress across all projects</p>
                                 </div>
                                 <ChevronRight className="h-4 w-4 text-gray-600 ml-auto" />
@@ -407,13 +407,13 @@ export default function WorkstreamHomePage() {
 
                             <button
                                 onClick={() => router.push('/workstream/goals')}
-                                className="w-full flex items-center gap-3 px-4 py-3 bg-[#333435] hover:bg-[#3d3e40] border border-gray-700 rounded-lg transition-colors text-left"
+                                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-200 dark:bg-[#333435] hover:bg-gray-100 dark:hover:bg-[#3d3e40] border border-gray-200 dark:border-gray-700 rounded-lg transition-colors text-left"
                             >
                                 <div className="w-8 h-8 rounded-lg bg-green-500/10 flex items-center justify-center">
                                     <CheckCircle2 className="h-4 w-4 text-green-400" />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-200 font-medium">Goals</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-200 font-medium">Goals</p>
                                     <p className="text-[10px] text-gray-500">Track team and company goals</p>
                                 </div>
                                 <ChevronRight className="h-4 w-4 text-gray-600 ml-auto" />
@@ -421,13 +421,13 @@ export default function WorkstreamHomePage() {
 
                             <button
                                 onClick={() => router.push('/workstream/portfolios')}
-                                className="w-full flex items-center gap-3 px-4 py-3 bg-[#333435] hover:bg-[#3d3e40] border border-gray-700 rounded-lg transition-colors text-left"
+                                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-200 dark:bg-[#333435] hover:bg-gray-100 dark:hover:bg-[#3d3e40] border border-gray-200 dark:border-gray-700 rounded-lg transition-colors text-left"
                             >
                                 <div className="w-8 h-8 rounded-lg bg-blue-500/10 flex items-center justify-center">
                                     <FolderKanban className="h-4 w-4 text-blue-400" />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-200 font-medium">Portfolios</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-200 font-medium">Portfolios</p>
                                     <p className="text-[10px] text-gray-500">Monitor project health at a glance</p>
                                 </div>
                                 <ChevronRight className="h-4 w-4 text-gray-600 ml-auto" />
@@ -435,13 +435,13 @@ export default function WorkstreamHomePage() {
 
                             <button
                                 onClick={() => router.push('/dashboard')}
-                                className="w-full flex items-center gap-3 px-4 py-3 bg-[#333435] hover:bg-[#3d3e40] border border-gray-700 rounded-lg transition-colors text-left"
+                                className="w-full flex items-center gap-3 px-4 py-3 bg-gray-200 dark:bg-[#333435] hover:bg-gray-100 dark:hover:bg-[#3d3e40] border border-gray-200 dark:border-gray-700 rounded-lg transition-colors text-left"
                             >
                                 <div className="w-8 h-8 rounded-lg bg-yellow-500/10 flex items-center justify-center">
                                     <Calendar className="h-4 w-4 text-yellow-400" />
                                 </div>
                                 <div>
-                                    <p className="text-sm text-gray-200 font-medium">Finance Hub</p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-200 font-medium">Finance Hub</p>
                                     <p className="text-[10px] text-gray-500">Go to financial dashboards</p>
                                 </div>
                                 <ChevronRight className="h-4 w-4 text-gray-600 ml-auto" />

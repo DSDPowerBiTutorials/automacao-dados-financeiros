@@ -38,7 +38,7 @@ export function SyncStatusBadge({ source }: SyncStatusBadgeProps) {
 
     if (loading) {
         return (
-            <div className="flex items-center gap-2 text-sm text-white/60">
+            <div className="flex items-center gap-2 text-sm text-gray-900 dark:text-white/60">
                 <Clock className="h-4 w-4 animate-spin" />
                 <span>Loading sync info...</span>
             </div>
@@ -47,7 +47,7 @@ export function SyncStatusBadge({ source }: SyncStatusBadgeProps) {
 
     if (!metadata) {
         return (
-            <div className="flex items-center gap-2 text-sm text-white/60">
+            <div className="flex items-center gap-2 text-sm text-gray-900 dark:text-white/60">
                 <AlertCircle className="h-4 w-4" />
                 <span>No sync data available</span>
             </div>
@@ -59,13 +59,13 @@ export function SyncStatusBadge({ source }: SyncStatusBadgeProps) {
     const mostRecent = metadata.most_recent_record_date;
 
     return (
-        <div className="flex flex-col gap-1 text-sm text-white/90">
+        <div className="flex flex-col gap-1 text-sm text-gray-900 dark:text-white/90">
             {/* Last Sync */}
             {lastSync && (
                 <div className="flex items-center gap-2">
                     <Database className="h-4 w-4 text-blue-400" />
-                    <span className="text-white/70">Last sync:</span>
-                    <span className="font-mono text-white">
+                    <span className="text-gray-900 dark:text-white/70">Last sync:</span>
+                    <span className="font-mono text-gray-900 dark:text-white">
                         {formatTimestamp(new Date(lastSync))}
                     </span>
                 </div>
@@ -75,8 +75,8 @@ export function SyncStatusBadge({ source }: SyncStatusBadgeProps) {
             {lastWebhook && (
                 <div className="flex items-center gap-2">
                     <Zap className="h-4 w-4 text-yellow-400" />
-                    <span className="text-white/70">Last webhook:</span>
-                    <span className="font-mono text-white">
+                    <span className="text-gray-900 dark:text-white/70">Last webhook:</span>
+                    <span className="font-mono text-gray-900 dark:text-white">
                         {formatTimestamp(new Date(lastWebhook))}
                     </span>
                 </div>
@@ -86,8 +86,8 @@ export function SyncStatusBadge({ source }: SyncStatusBadgeProps) {
             {mostRecent && (
                 <div className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-green-400" />
-                    <span className="text-white/70">Most recent:</span>
-                    <span className="font-mono text-white">
+                    <span className="text-gray-900 dark:text-white/70">Most recent:</span>
+                    <span className="font-mono text-gray-900 dark:text-white">
                         {new Date(mostRecent).toLocaleDateString('en-GB', {
                             day: '2-digit',
                             month: '2-digit',

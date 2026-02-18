@@ -79,11 +79,11 @@ export function BoardColumn({
         <div
             ref={setSortableRef}
             style={style}
-            className={`flex-shrink-0 w-[300px] flex flex-col bg-[#252628] rounded-xl border border-gray-800 max-h-full ${isDragging ? 'ring-1 ring-blue-500/50' : ''
+            className={`flex-shrink-0 w-[300px] flex flex-col bg-gray-50 dark:bg-[#252628] rounded-xl border border-gray-200 dark:border-gray-800 max-h-full ${isDragging ? 'ring-1 ring-blue-500/50' : ''
                 }`}
         >
             {/* Column Header */}
-            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-800">
+            <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-200 dark:border-gray-800">
                 {/* Drag handle */}
                 <div
                     {...attributes}
@@ -106,12 +106,12 @@ export function BoardColumn({
                                 setIsEditingTitle(false);
                             }
                         }}
-                        className="flex-1 bg-transparent border-none text-white text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1"
+                        className="flex-1 bg-transparent border-none text-gray-900 dark:text-white text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 rounded px-1"
                         autoFocus
                     />
                 ) : (
                     <h3
-                        className="flex-1 text-sm font-semibold text-gray-300 truncate cursor-pointer hover:text-white"
+                        className="flex-1 text-sm font-semibold text-gray-700 dark:text-gray-300 truncate cursor-pointer hover:text-gray-900 dark:text-white"
                         onDoubleClick={() => {
                             setEditTitle(section.title);
                             setIsEditingTitle(true);
@@ -122,7 +122,7 @@ export function BoardColumn({
                 )}
 
                 {/* Task count */}
-                <span className="text-xs text-gray-500 bg-gray-800 px-1.5 py-0.5 rounded">
+                <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
                     {tasks.length}
                 </span>
 
@@ -130,16 +130,16 @@ export function BoardColumn({
                 <div className="relative">
                     <button
                         onClick={() => setShowMenu(!showMenu)}
-                        className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+                        className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors"
                     >
                         <MoreHorizontal className="h-3.5 w-3.5" />
                     </button>
                     {showMenu && (
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                            <div className="absolute right-0 top-full mt-1 z-20 bg-[#2a2b2d] border border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px]">
+                            <div className="absolute right-0 top-full mt-1 z-20 bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px]">
                                 <button
-                                    className="w-full text-left px-3 py-1.5 text-sm text-gray-300 hover:bg-white/10"
+                                    className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-white/10"
                                     onClick={() => {
                                         setEditTitle(section.title);
                                         setIsEditingTitle(true);
@@ -165,7 +165,7 @@ export function BoardColumn({
                 {/* Add task */}
                 <button
                     onClick={() => setIsAddingTask(true)}
-                    className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-300 transition-colors"
+                    className="p-1 rounded hover:bg-white/10 text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors"
                 >
                     <Plus className="h-3.5 w-3.5" />
                 </button>
@@ -188,7 +188,7 @@ export function BoardColumn({
                             value={newTaskTitle}
                             onChange={(e) => setNewTaskTitle(e.target.value)}
                             placeholder="Task title..."
-                            className="w-full bg-[#1e1f21] border border-gray-600 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+                            className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
                             rows={2}
                             autoFocus
                             onKeyDown={(e) => {
@@ -215,7 +215,7 @@ export function BoardColumn({
                                     setNewTaskTitle('');
                                     setIsAddingTask(false);
                                 }}
-                                className="px-3 py-1 text-gray-400 hover:text-white text-xs rounded-md hover:bg-white/10 transition-colors"
+                                className="px-3 py-1 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white text-xs rounded-md hover:bg-white/10 transition-colors"
                             >
                                 Cancel
                             </button>
@@ -228,7 +228,7 @@ export function BoardColumn({
             {!isAddingTask && (
                 <button
                     onClick={() => setIsAddingTask(true)}
-                    className="flex items-center gap-1.5 mx-2 mb-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-300 hover:bg-white/5 transition-colors"
+                    className="flex items-center gap-1.5 mx-2 mb-2 px-3 py-1.5 rounded-lg text-xs text-gray-500 hover:text-gray-700 dark:text-gray-300 hover:bg-white/5 transition-colors"
                 >
                     <Plus className="h-3.5 w-3.5" />
                     Add task

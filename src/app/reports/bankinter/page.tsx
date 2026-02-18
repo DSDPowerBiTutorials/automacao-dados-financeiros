@@ -314,35 +314,35 @@ export default function BankinterPage() {
   }
 
   return (
-    <div className="min-h-full bg-[#1e1f21]">
+    <div className="min-h-full bg-white dark:bg-[#1e1f21]">
       {/* Dark Header */}
-      <header className="bg-[#1e1f21] border-b border-gray-800/50 px-6 py-4">
+      <header className="bg-white dark:bg-[#1e1f21] border-b border-gray-200 dark:border-gray-800/50 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/">
-              <Button variant="ghost" size="sm" className="gap-2 text-gray-300 hover:text-white hover:bg-gray-700">
+              <Button variant="ghost" size="sm" className="gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
             </Link>
             <div className="flex items-center gap-3">
               <div className="bg-[#FF7300] p-2 rounded-lg">
-                <Database className="h-5 w-5 text-white" />
+                <Database className="h-5 w-5 text-gray-900 dark:text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-semibold text-white">Bankinter GBP</h1>
-                <p className="text-sm text-gray-400">{rows.length} records</p>
+                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Bankinter GBP</h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400">{rows.length} records</p>
               </div>
             </div>
           </div>
           <div className="flex gap-2">
             <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
             <label htmlFor="file-upload-bankinter">
-              <Button variant="outline" size="sm" className="gap-2 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white" asChild>
+              <Button variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:text-white" asChild>
                 <span><Upload className="h-4 w-4" /> Upload</span>
               </Button>
             </label>
-            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-gray-600 text-gray-300 hover:bg-gray-700 hover:text-white">
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:text-white">
               <Download className="h-4 w-4" /> Download
             </Button>
             <Button onClick={handleDeleteAll} variant="outline" size="sm" className="gap-2 border-red-800 text-red-400 hover:bg-red-900/50" disabled={isDeleting || rows.length === 0}>
@@ -353,14 +353,14 @@ export default function BankinterPage() {
       </header>
 
       {/* Stats Bar */}
-      <div className="bg-[#252627] border-b border-gray-700 px-6 py-3">
+      <div className="bg-gray-100 dark:bg-[#252627] border-b border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <span className="text-gray-400">Total:</span>
-            <span className="text-white font-medium">{rows.length}</span>
+            <span className="text-gray-500 dark:text-gray-400">Total:</span>
+            <span className="text-gray-900 dark:text-white font-medium">{rows.length}</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-gray-400">Balance:</span>
+            <span className="text-gray-500 dark:text-gray-400">Balance:</span>
             <span className="text-[#4fc3f7] font-medium">£{rows.reduce((sum, r) => sum + r.amount, 0).toFixed(2)}</span>
           </div>
         </div>
@@ -370,7 +370,7 @@ export default function BankinterPage() {
       <div className="overflow-x-auto">
         <div className="min-w-[800px]">
           {/* Table Header */}
-          <div className="flex items-center bg-[#2a2b2d] border-b border-gray-700 px-4 py-2 text-xs font-medium text-gray-400 uppercase">
+          <div className="flex items-center bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
             <div className="w-[80px]">ID</div>
             <div className="w-[90px]">Date</div>
             <div className="flex-1">Description</div>
@@ -381,17 +381,17 @@ export default function BankinterPage() {
 
           {/* Table Rows */}
           {rows.map((row) => (
-            <div key={row.id} className="flex items-center px-4 py-2 border-b border-gray-800/50 hover:bg-[#252627] text-sm">
-              <div className="w-[80px] text-gray-300 font-mono text-xs">{row.id}</div>
-              <div className="w-[90px] text-gray-300">{row.date}</div>
-              <div className="flex-1 text-gray-200 truncate pr-4">{row.description}</div>
+            <div key={row.id} className="flex items-center px-4 py-2 border-b border-gray-200 dark:border-gray-800/50 hover:bg-gray-100 dark:hover:bg-[#252627] text-sm">
+              <div className="w-[80px] text-gray-700 dark:text-gray-300 font-mono text-xs">{row.id}</div>
+              <div className="w-[90px] text-gray-700 dark:text-gray-300">{row.date}</div>
+              <div className="flex-1 text-gray-600 dark:text-gray-200 truncate pr-4">{row.description}</div>
               <div className="w-[100px] text-right text-[#4fc3f7] font-medium">£{row.amount.toFixed(2)}</div>
-              <div className="w-[100px] text-right text-gray-300">£{row.saldo.toFixed(2)}</div>
+              <div className="w-[100px] text-right text-gray-700 dark:text-gray-300">£{row.saldo.toFixed(2)}</div>
               <div className="w-[80px] flex justify-center gap-1">
-                <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-400 hover:text-white hover:bg-gray-700">
+                <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                   <Edit2 className="h-3 w-3" />
                 </Button>
-                <Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-6 w-6 p-0 text-gray-400 hover:text-red-400 hover:bg-red-900/30" disabled={isDeleting}>
+                <Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-red-900/30" disabled={isDeleting}>
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>

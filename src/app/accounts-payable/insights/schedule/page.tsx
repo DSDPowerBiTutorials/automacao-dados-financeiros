@@ -1152,23 +1152,23 @@ export default function PaymentSchedulePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#1e1f21]">
-                <Loader2 className="h-8 w-8 animate-spin text-white" />
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+                <Loader2 className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-[#1e1f21] text-white flex">
+        <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white flex">
             {/* Main Content */}
             <div className={`flex-1 transition-all duration-300 ${detailPanelOpen ? "mr-[500px]" : ""}`}>
                 {/* Header */}
-                <div className="border-b border-gray-700 px-6 py-4">
+                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
                             <h1 className="text-xl font-semibold">Payments & Invoice Control</h1>
-                            <span className="text-gray-400">•</span>
-                            <span className="text-gray-400 text-sm">{SCOPE_CONFIG[selectedScope].label}</span>
+                            <span className="text-gray-500 dark:text-gray-400">•</span>
+                            <span className="text-gray-500 dark:text-gray-400 text-sm">{SCOPE_CONFIG[selectedScope].label}</span>
                         </div>
                     </div>
 
@@ -1176,7 +1176,7 @@ export default function PaymentSchedulePage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="bg-transparent border-gray-600 text-white hover:bg-gray-700"
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
                             onClick={() => {
                                 setDefaultScheduleDateForModal(null);
                                 setInvoiceModalOpen(true);
@@ -1188,14 +1188,14 @@ export default function PaymentSchedulePage() {
 
                         <div className="flex items-center gap-3">
                             <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-                                <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-64 bg-transparent border-gray-600 text-white placeholder:text-gray-500" />
+                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
+                                <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-64 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500" />
                             </div>
-                            <Button variant="outline" size="sm" className="bg-transparent border-gray-600 text-white hover:bg-gray-700">
+                            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
                                 <Filter className="h-4 w-4 mr-1" />
                                 Filter
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => setShowCompleted(!showCompleted)} className={`bg-transparent border-gray-600 hover:bg-gray-700 ${showCompleted ? "text-green-400" : "text-white"}`}>
+                            <Button variant="outline" size="sm" onClick={() => setShowCompleted(!showCompleted)} className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${showCompleted ? "text-green-400" : "text-gray-900 dark:text-white"}`}>
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 {showCompleted ? "Hide Completed" : "Show Completed"}
                             </Button>
@@ -1204,8 +1204,8 @@ export default function PaymentSchedulePage() {
                 </div>
 
                 {/* Table Header */}
-                <div className="sticky top-0 z-10 bg-[#2a2b2d] border-b border-gray-700">
-                    <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-400 font-medium uppercase">
+                <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase">
                         <div className="w-[130px] flex-shrink-0">Provider</div>
                         <div className="w-[85px] flex-shrink-0">Finance</div>
                         <div className="w-[75px] flex-shrink-0">Invoice</div>
@@ -1223,14 +1223,14 @@ export default function PaymentSchedulePage() {
                 {/* Content */}
                 <div className="pb-20">
                     {groups.map((group) => (
-                        <div key={group.date} className="border-b border-gray-800">
-                            <div className="flex items-center gap-2 px-4 py-3 hover:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
-                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-400" />}
-                                <span className="font-medium text-white">{group.dateLabel}</span>
+                        <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
+                            <div className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 dark:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
+                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+                                <span className="font-medium text-gray-900 dark:text-white">{group.dateLabel}</span>
                                 <Zap className="h-4 w-4 text-yellow-500" />
                                 <span className="text-gray-500 text-sm ml-auto">
                                     {group.invoices.length > 0 && (
-                                        <>TOT: <span className="text-white font-medium">
+                                        <>TOT: <span className="text-gray-900 dark:text-white font-medium">
                                             {group.totalEUR > 0 && `€${formatCurrency(group.totalEUR)}`}
                                             {group.totalEUR > 0 && group.totalUSD > 0 && " + "}
                                             {group.totalUSD > 0 && `$${formatCurrency(group.totalUSD)}`}
@@ -1265,16 +1265,16 @@ export default function PaymentSchedulePage() {
                                         return (
                                             <div
                                                 key={invoice.id}
-                                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-800/30 border-t border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-700/50" : ""} ${hasAmountDiscrepancy ? "bg-red-900/20" : ""}`}
+                                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-100 dark:bg-gray-700/50" : ""} ${hasAmountDiscrepancy ? "bg-red-900/20" : ""}`}
                                                 onClick={() => openDetailPanel(invoice)}
                                             >
                                                 {/* Provider */}
                                                 <div className="w-[130px] flex-shrink-0 flex items-center gap-2">
                                                     <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
-                                                        {updatingInvoice === invoice.id ? <Loader2 className="h-4 w-4 animate-spin text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Circle className="h-4 w-4 text-gray-500 hover:text-gray-300" />}
+                                                        {updatingInvoice === invoice.id ? <Loader2 className="h-4 w-4 animate-spin text-gray-500 dark:text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Circle className="h-4 w-4 text-gray-500 hover:text-gray-700 dark:text-gray-300" />}
                                                     </button>
                                                     <div className="flex flex-col min-w-0">
-                                                        <span className={`text-[12px] truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-white"}`}>{getProviderName(invoice.provider_code)}</span>
+                                                        <span className={`text-[12px] truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-gray-900 dark:text-white"}`}>{getProviderName(invoice.provider_code)}</span>
                                                     </div>
                                                 </div>
 
@@ -1285,10 +1285,10 @@ export default function PaymentSchedulePage() {
                                                         onChange={(e) => updateInvoiceField(invoice.id, "finance_payment_status", e.target.value)}
                                                         className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color} bg-transparent`}
                                                     >
-                                                        <option value="pending" className="bg-gray-800 text-white">Pending</option>
-                                                        <option value="uploaded" className="bg-gray-800 text-white">Uploaded</option>
-                                                        <option value="done" className="bg-gray-800 text-white">Done</option>
-                                                        <option value="info_required" className="bg-gray-800 text-white">Info Required</option>
+                                                        <option value="pending" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Pending</option>
+                                                        <option value="uploaded" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Uploaded</option>
+                                                        <option value="done" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Done</option>
+                                                        <option value="info_required" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Info Required</option>
                                                     </select>
                                                 </div>
 
@@ -1299,16 +1299,16 @@ export default function PaymentSchedulePage() {
                                                         onChange={(e) => updateInvoiceField(invoice.id, "invoice_status", e.target.value)}
                                                         className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color} bg-transparent`}
                                                     >
-                                                        <option value="pending" className="bg-gray-800 text-white">Pending</option>
-                                                        <option value="available" className="bg-gray-800 text-white">Available</option>
+                                                        <option value="pending" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Pending</option>
+                                                        <option value="available" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Available</option>
                                                     </select>
                                                 </div>
 
                                                 {/* Invoice Date */}
-                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
+                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
 
                                                 {/* Due Date */}
-                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
+                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
 
                                                 {/* Schedule Date - Editable */}
                                                 <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -1327,23 +1327,23 @@ export default function PaymentSchedulePage() {
                                                                 e.currentTarget.blur();
                                                             }
                                                         }}
-                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-white w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70"
+                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70"
                                                     />
                                                 </div>
 
                                                 {/* Payment Date */}
-                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-300">{invoice.payment_date ? formatShortDate(invoice.payment_date) : "—"}</div>
+                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.payment_date ? formatShortDate(invoice.payment_date) : "—"}</div>
 
                                                 {/* Payment Method - Editable */}
                                                 <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                                                     <select
                                                         value={invoice.payment_method_code || ""}
                                                         onChange={(e) => updateInvoiceField(invoice.id, "payment_method_code", e.target.value || null)}
-                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
+                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 w-full cursor-pointer"
                                                     >
-                                                        <option value="" className="bg-gray-800 text-white">—</option>
+                                                        <option value="" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">—</option>
                                                         {paymentMethods.map((pm) => (
-                                                            <option key={pm.code} value={pm.code} className="bg-gray-800 text-white">{pm.name}</option>
+                                                            <option key={pm.code} value={pm.code} className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">{pm.name}</option>
                                                         ))}
                                                     </select>
                                                 </div>
@@ -1353,11 +1353,11 @@ export default function PaymentSchedulePage() {
                                                     <select
                                                         value={invoice.bank_account_code || ""}
                                                         onChange={(e) => updateInvoiceField(invoice.id, "bank_account_code", e.target.value || null)}
-                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-600 bg-transparent text-gray-300 w-full cursor-pointer"
+                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 w-full cursor-pointer"
                                                     >
-                                                        <option value="" className="bg-gray-800 text-white">—</option>
+                                                        <option value="" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">—</option>
                                                         {bankAccounts.map((ba) => (
-                                                            <option key={ba.code} value={ba.code} className="bg-gray-800 text-white">{ba.name}</option>
+                                                            <option key={ba.code} value={ba.code} className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">{ba.name}</option>
                                                         ))}
                                                     </select>
                                                 </div>
@@ -1379,7 +1379,7 @@ export default function PaymentSchedulePage() {
                                                                         {reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled ? 'Total' : 'Partial'}
                                                                     </span>
                                                                     {!reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled && (
-                                                                        <span className="text-[8px] text-gray-400">
+                                                                        <span className="text-[8px] text-gray-500 dark:text-gray-400">
                                                                             Rem: {reconciliationBalances[invoice.reconciled_transaction_id].remaining.toFixed(2)}
                                                                         </span>
                                                                     )}
@@ -1404,7 +1404,7 @@ export default function PaymentSchedulePage() {
                                                             Match
                                                         </Button>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-gray-800/50 text-gray-500 border-gray-700">
+                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-gray-800/50 text-gray-500 border-gray-200 dark:border-gray-700">
                                                             Pending
                                                         </Badge>
                                                     )}
@@ -1416,7 +1416,7 @@ export default function PaymentSchedulePage() {
                                                         <div className="flex items-center justify-end gap-1">
                                                             {hasAmountDiscrepancy && <AlertCircle className="h-3 w-3 text-red-400" />}
                                                             <span className="text-[9px] text-gray-500">Inv:</span>
-                                                            <span className={`text-[11px] font-medium ${hasAmountDiscrepancy ? "text-red-400" : "text-white"}`}>
+                                                            <span className={`text-[11px] font-medium ${hasAmountDiscrepancy ? "text-red-400" : "text-gray-900 dark:text-white"}`}>
                                                                 {invoice.currency === "EUR" ? "€" : invoice.currency === "USD" ? "$" : invoice.currency}{formatCurrency(invoice.invoice_amount)}
                                                             </span>
                                                         </div>
@@ -1435,7 +1435,7 @@ export default function PaymentSchedulePage() {
                                         );
                                     })}
                                     <div
-                                        className="px-6 py-2 text-gray-500 text-sm hover:text-gray-300 cursor-pointer flex items-center gap-2"
+                                        className="px-6 py-2 text-gray-500 text-sm hover:text-gray-700 dark:text-gray-300 cursor-pointer flex items-center gap-2"
                                         onClick={() => {
                                             setDefaultScheduleDateForModal(group.date === "unscheduled" ? null : group.date);
                                             setInvoiceModalOpen(true);
@@ -1464,51 +1464,51 @@ export default function PaymentSchedulePage() {
 
             {/* Detail Panel */}
             {detailPanelOpen && selectedInvoice && (
-                <div className="fixed right-0 top-[64px] h-[calc(100vh-64px)] w-[500px] bg-[#1e1f21] border-l border-gray-700 flex flex-col z-[100] shadow-2xl">
+                <div className="fixed right-0 top-[64px] h-[calc(100vh-64px)] w-[500px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
                     {/* Panel Header */}
-                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-700">
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2">
                             <button onClick={() => togglePaid(selectedInvoice)} disabled={updatingInvoice === selectedInvoice.id}>
-                                {updatingInvoice === selectedInvoice.id ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" /> : selectedInvoice.payment_date ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-500 hover:text-gray-300" />}
+                                {updatingInvoice === selectedInvoice.id ? <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" /> : selectedInvoice.payment_date ? <CheckCircle className="h-5 w-5 text-green-500" /> : <Circle className="h-5 w-5 text-gray-500 hover:text-gray-700 dark:text-gray-300" />}
                             </button>
-                            <span className="font-medium text-white">{getProviderName(selectedInvoice.provider_code)}</span>
+                            <span className="font-medium text-gray-900 dark:text-white">{getProviderName(selectedInvoice.provider_code)}</span>
                         </div>
                         <div className="flex items-center gap-1">
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white"><ThumbsUp className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white"><Paperclip className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white"><Link2 className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white"><Maximize2 className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-white" onClick={closeDetailPanel}><X className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"><ThumbsUp className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"><Paperclip className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"><Link2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"><Maximize2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white" onClick={closeDetailPanel}><X className="h-4 w-4" /></Button>
                         </div>
                     </div>
 
                     {/* Panel Content */}
                     <div className="flex-1 overflow-y-auto">
                         {/* Section Badge */}
-                        <div className="px-4 py-3 border-b border-gray-800">
+                        <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
                             <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-400">Payments & Invoice Control</span>
+                                <span className="text-gray-500 dark:text-gray-400">Payments & Invoice Control</span>
                                 <span className="text-gray-600">•</span>
-                                <span className="text-gray-400">{selectedInvoice.schedule_date ? `Scheduled Payments - ${formatDateForHeader(selectedInvoice.schedule_date)}` : "Unscheduled"}</span>
+                                <span className="text-gray-500 dark:text-gray-400">{selectedInvoice.schedule_date ? `Scheduled Payments - ${formatDateForHeader(selectedInvoice.schedule_date)}` : "Unscheduled"}</span>
                             </div>
                         </div>
 
                         {/* Fields */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-800">
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800">
                             {/* Invoice Info (read-only) */}
                             <div className="grid grid-cols-2 gap-4">
                                 <div className="flex items-center gap-3">
                                     <Calendar className="h-4 w-4 text-gray-500" />
                                     <div>
                                         <p className="text-xs text-gray-500">Invoice Date</p>
-                                        <p className="text-sm text-white">{selectedInvoice.invoice_date ? formatShortDate(selectedInvoice.invoice_date) : "—"}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white">{selectedInvoice.invoice_date ? formatShortDate(selectedInvoice.invoice_date) : "—"}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     <FileText className="h-4 w-4 text-gray-500" />
                                     <div>
                                         <p className="text-xs text-gray-500">Invoice Nº</p>
-                                        <p className="text-sm text-white">{selectedInvoice.invoice_number || "—"}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white">{selectedInvoice.invoice_number || "—"}</p>
                                     </div>
                                 </div>
                             </div>
@@ -1518,7 +1518,7 @@ export default function PaymentSchedulePage() {
                                     <Hash className="h-4 w-4 text-gray-500" />
                                     <div>
                                         <p className="text-xs text-gray-500">Total Amount</p>
-                                        <p className="text-sm text-white font-medium">{formatCurrency(selectedInvoice.invoice_amount)}</p>
+                                        <p className="text-sm text-gray-900 dark:text-white font-medium">{formatCurrency(selectedInvoice.invoice_amount)}</p>
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-3">
@@ -1534,36 +1534,36 @@ export default function PaymentSchedulePage() {
                                 <Calendar className="h-4 w-4 text-gray-500" />
                                 <div>
                                     <p className="text-xs text-gray-500">Due Date</p>
-                                    <p className="text-sm text-white">{selectedInvoice.due_date ? formatShortDate(selectedInvoice.due_date) : "—"}</p>
+                                    <p className="text-sm text-gray-900 dark:text-white">{selectedInvoice.due_date ? formatShortDate(selectedInvoice.due_date) : "—"}</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* Payment Control (editable) */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-800 bg-[#252627]">
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
+                            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                 <CreditCard className="h-4 w-4" />
                                 Payment Control
                             </h3>
 
                             {/* Schedule Date */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Schedule Date</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Schedule Date</Label>
                                 <Input
                                     type="date"
                                     value={selectedInvoice.schedule_date || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "schedule_date", e.target.value || null)}
-                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                 />
                             </div>
 
                             {/* Bank Account */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Bank Account</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Bank Account</Label>
                                 <select
                                     value={selectedInvoice.bank_account_code || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "bank_account_code", e.target.value || null)}
-                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="">Select bank account...</option>
                                     {bankAccounts.map((ba) => (
@@ -1574,11 +1574,11 @@ export default function PaymentSchedulePage() {
 
                             {/* Payment Method */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Payment Method</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Payment Method</Label>
                                 <select
                                     value={selectedInvoice.payment_method_code || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "payment_method_code", e.target.value || null)}
-                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="">Select payment method...</option>
                                     {paymentMethods.map((pm) => (
@@ -1589,18 +1589,18 @@ export default function PaymentSchedulePage() {
 
                             {/* Payment Date */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Payment Date</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Payment Date</Label>
                                 <Input
                                     type="date"
                                     value={selectedInvoice.payment_date || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "payment_date", e.target.value || null)}
-                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                 />
                             </div>
 
                             {/* Paid Amount */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Paid Amount</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Paid Amount</Label>
                                 <Input
                                     type="number"
                                     step="any"
@@ -1618,17 +1618,17 @@ export default function PaymentSchedulePage() {
                                         }
                                     }}
                                     placeholder={selectedInvoice.invoice_amount.toString()}
-                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                 />
                             </div>
 
                             {/* Paid Currency */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Paid Currency</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Paid Currency</Label>
                                 <select
                                     value={selectedInvoice.paid_currency || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "paid_currency", e.target.value || null)}
-                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="">Select currency...</option>
                                     <option value="EUR">EUR</option>
@@ -1640,11 +1640,11 @@ export default function PaymentSchedulePage() {
 
                             {/* Finance Payment Status */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Finance Payment Status</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Finance Payment Status</Label>
                                 <select
                                     value={selectedInvoice.finance_payment_status || "pending"}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "finance_payment_status", e.target.value)}
-                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="pending">Pending</option>
                                     <option value="uploaded">Uploaded</option>
@@ -1655,11 +1655,11 @@ export default function PaymentSchedulePage() {
 
                             {/* Invoice Status */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Invoice Status</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Invoice Status</Label>
                                 <select
                                     value={selectedInvoice.invoice_status || "pending"}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "invoice_status", e.target.value)}
-                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="pending">Pending</option>
                                     <option value="available">Available</option>
@@ -1718,41 +1718,41 @@ export default function PaymentSchedulePage() {
 
                         {/* Reconciled Transaction Details */}
                         {selectedInvoice.is_reconciled && reconciledTransaction && (
-                            <div className="px-4 py-4 space-y-3 border-b border-gray-800 bg-green-900/10">
+                            <div className="px-4 py-4 space-y-3 border-b border-gray-200 dark:border-gray-800 bg-green-900/10">
                                 <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
                                     <Link2 className="h-4 w-4" />
                                     Matched Bank Transaction
                                 </h3>
                                 <div className="space-y-2 text-sm">
                                     <div className="flex justify-between">
-                                        <span className="text-gray-400">Source:</span>
-                                        <span className="text-white">{reconciledTransaction.source}</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Source:</span>
+                                        <span className="text-gray-900 dark:text-white">{reconciledTransaction.source}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-400">Date:</span>
-                                        <span className="text-white">{reconciledTransaction.date ? formatShortDate(reconciledTransaction.date) : "—"}</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Date:</span>
+                                        <span className="text-gray-900 dark:text-white">{reconciledTransaction.date ? formatShortDate(reconciledTransaction.date) : "—"}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-400">Amount:</span>
-                                        <span className="text-white font-medium">{formatCurrency(Math.abs(reconciledTransaction.amount))} {reconciledTransaction.source?.includes("eur") ? "EUR" : "USD"}</span>
+                                        <span className="text-gray-500 dark:text-gray-400">Amount:</span>
+                                        <span className="text-gray-900 dark:text-white font-medium">{formatCurrency(Math.abs(reconciledTransaction.amount))} {reconciledTransaction.source?.includes("eur") ? "EUR" : "USD"}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                        <span className="text-gray-400">Description:</span>
-                                        <span className="text-white text-right max-w-[200px] truncate" title={reconciledTransaction.description}>
+                                        <span className="text-gray-500 dark:text-gray-400">Description:</span>
+                                        <span className="text-gray-900 dark:text-white text-right max-w-[200px] truncate" title={reconciledTransaction.description}>
                                             {reconciledTransaction.description || "—"}
                                         </span>
                                     </div>
                                     {selectedInvoice.reconciled_at && (
-                                        <div className="flex justify-between pt-1 border-t border-gray-700">
+                                        <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-700">
                                             <span className="text-gray-500 text-xs">Reconciled at:</span>
-                                            <span className="text-gray-400 text-xs">{new Date(selectedInvoice.reconciled_at).toLocaleString()}</span>
+                                            <span className="text-gray-500 dark:text-gray-400 text-xs">{new Date(selectedInvoice.reconciled_at).toLocaleString()}</span>
                                         </div>
                                     )}
                                     {/* Partial Reconciliation Balance Info */}
                                     {selectedInvoice.reconciled_transaction_id && reconciliationBalances[selectedInvoice.reconciled_transaction_id] && (
-                                        <div className="pt-2 mt-2 border-t border-gray-700 space-y-1">
+                                        <div className="pt-2 mt-2 border-t border-gray-200 dark:border-gray-700 space-y-1">
                                             <div className="flex justify-between items-center">
-                                                <span className="text-gray-400 text-xs">Reconciliation Status:</span>
+                                                <span className="text-gray-500 dark:text-gray-400 text-xs">Reconciliation Status:</span>
                                                 <Badge
                                                     variant="outline"
                                                     className={`text-xs ${reconciliationBalances[selectedInvoice.reconciled_transaction_id].isFullyReconciled
@@ -1765,7 +1765,7 @@ export default function PaymentSchedulePage() {
                                             </div>
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500 text-xs">Transaction Amount:</span>
-                                                <span className="text-gray-300 text-xs">
+                                                <span className="text-gray-700 dark:text-gray-300 text-xs">
                                                     {formatCurrency(reconciliationBalances[selectedInvoice.reconciled_transaction_id].transactionAmount)}
                                                 </span>
                                             </div>
@@ -1785,7 +1785,7 @@ export default function PaymentSchedulePage() {
                                             )}
                                             <div className="flex justify-between">
                                                 <span className="text-gray-500 text-xs">Invoices Matched:</span>
-                                                <span className="text-gray-300 text-xs">
+                                                <span className="text-gray-700 dark:text-gray-300 text-xs">
                                                     {reconciliationBalances[selectedInvoice.reconciled_transaction_id].invoicesCount}
                                                 </span>
                                             </div>
@@ -1796,8 +1796,8 @@ export default function PaymentSchedulePage() {
                         )}
 
                         {/* Classification (read-only badges) */}
-                        <div className="px-4 py-4 space-y-3 border-b border-gray-800">
-                            <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Classification</h3>
+                        <div className="px-4 py-4 space-y-3 border-b border-gray-200 dark:border-gray-800">
+                            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">Classification</h3>
                             <div className="grid grid-cols-2 gap-3">
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">P&L Account</p>
@@ -1823,27 +1823,27 @@ export default function PaymentSchedulePage() {
                         </div>
 
                         {/* Description */}
-                        <div className="px-4 py-4 border-b border-gray-800">
-                            <h3 className="text-sm font-medium text-white mb-2">Description</h3>
-                            <div className="bg-[#2a2b2d] rounded-lg p-3 min-h-[80px]">
-                                <p className="text-sm text-gray-400">{selectedInvoice.description || selectedInvoice.notes || "No description provided."}</p>
+                        <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-800">
+                            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Description</h3>
+                            <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 min-h-[80px]">
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{selectedInvoice.description || selectedInvoice.notes || "No description provided."}</p>
                             </div>
                         </div>
 
                         {/* Activities & Comments */}
                         <div className="px-4 py-4">
-                            <div className="flex items-center gap-4 mb-4 border-b border-gray-800 pb-2">
-                                <button onClick={() => setActiveTab("comments")} className={`text-sm pb-2 border-b-2 ${activeTab === "comments" ? "text-white border-white" : "text-gray-500 border-transparent hover:text-gray-300"}`}>
+                            <div className="flex items-center gap-4 mb-4 border-b border-gray-200 dark:border-gray-800 pb-2">
+                                <button onClick={() => setActiveTab("comments")} className={`text-sm pb-2 border-b-2 ${activeTab === "comments" ? "text-gray-900 dark:text-white border-white" : "text-gray-500 border-transparent hover:text-gray-700 dark:text-gray-300"}`}>
                                     Comments
                                 </button>
-                                <button onClick={() => setActiveTab("all")} className={`text-sm pb-2 border-b-2 ${activeTab === "all" ? "text-white border-white" : "text-gray-500 border-transparent hover:text-gray-300"}`}>
+                                <button onClick={() => setActiveTab("all")} className={`text-sm pb-2 border-b-2 ${activeTab === "all" ? "text-gray-900 dark:text-white border-white" : "text-gray-500 border-transparent hover:text-gray-700 dark:text-gray-300"}`}>
                                     All Activities
                                 </button>
                             </div>
 
                             {loadingActivities ? (
                                 <div className="flex items-center justify-center py-8">
-                                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                                    <Loader2 className="h-6 w-6 animate-spin text-gray-500 dark:text-gray-400" />
                                 </div>
                             ) : (
                                 <div className="space-y-4 max-h-[300px] overflow-y-auto">
@@ -1927,21 +1927,21 @@ export default function PaymentSchedulePage() {
                                                                     }}
                                                                     side="bottom"
                                                                 >
-                                                                    <span className="text-sm font-medium text-white hover:underline cursor-pointer">{activity.user_name}</span>
+                                                                    <span className="text-sm font-medium text-gray-900 dark:text-white hover:underline cursor-pointer">{activity.user_name}</span>
                                                                 </UserProfilePopup>
                                                                 {activity.activity_type !== "comment" && (
-                                                                    <span className="text-sm text-gray-400">{getActivityDescription()}</span>
+                                                                    <span className="text-sm text-gray-500 dark:text-gray-400">{getActivityDescription()}</span>
                                                                 )}
                                                             </div>
                                                             <span className="text-xs text-gray-500">{formatActivityTime(activity.created_at)}</span>
                                                             {activity.activity_type === "comment" && activity.content && (
-                                                                <p className="text-sm text-gray-300 mt-1">{activity.content}</p>
+                                                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{activity.content}</p>
                                                             )}
                                                             {activity.activity_type === "attachment" && activity.metadata?.filename && (
-                                                                <div className="mt-2 flex items-center gap-2 bg-[#2a2b2d] rounded p-2">
+                                                                <div className="mt-2 flex items-center gap-2 bg-gray-50 dark:bg-[#2a2b2d] rounded p-2">
                                                                     <FileText className="h-8 w-8 text-red-500" />
                                                                     <div>
-                                                                        <p className="text-sm text-white">{activity.metadata.filename}</p>
+                                                                        <p className="text-sm text-gray-900 dark:text-white">{activity.metadata.filename}</p>
                                                                         <p className="text-xs text-gray-500">PDF • Download</p>
                                                                     </div>
                                                                 </div>
@@ -1957,17 +1957,17 @@ export default function PaymentSchedulePage() {
                     </div>
 
                     {/* Comment Input */}
-                    <div className="border-t border-gray-700 px-4 py-3">
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3">
                         <div className="flex items-start gap-3">
                             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
-                                <User className="h-4 w-4 text-white" />
+                                <User className="h-4 w-4 text-gray-900 dark:text-white" />
                             </div>
                             <div className="flex-1">
                                 <Textarea
                                     placeholder="Add a comment..."
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
-                                    className="bg-[#2a2b2d] border-gray-700 text-white placeholder:text-gray-500 min-h-[60px] resize-none"
+                                    className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 min-h-[60px] resize-none"
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {
                                             e.preventDefault();
@@ -1985,22 +1985,22 @@ export default function PaymentSchedulePage() {
                     </div>
 
                     {/* Collaborators */}
-                    <div className="border-t border-gray-700 px-4 py-3 flex items-center justify-between">
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <span className="text-sm text-gray-500">Collaborators</span>
                             <div className="flex -space-x-2">
-                                <div className="w-7 h-7 rounded-full bg-blue-600 border-2 border-[#1e1f21] flex items-center justify-center">
-                                    <span className="text-xs text-white font-medium">S</span>
+                                <div className="w-7 h-7 rounded-full bg-blue-600 border-2 border-gray-200 dark:border-[#1e1f21] flex items-center justify-center">
+                                    <span className="text-xs text-gray-900 dark:text-white font-medium">S</span>
                                 </div>
-                                <div className="w-7 h-7 rounded-full bg-gray-600 border-2 border-[#1e1f21] flex items-center justify-center">
-                                    <User className="h-3 w-3 text-gray-400" />
+                                <div className="w-7 h-7 rounded-full bg-gray-600 border-2 border-gray-200 dark:border-[#1e1f21] flex items-center justify-center">
+                                    <User className="h-3 w-3 text-gray-500 dark:text-gray-400" />
                                 </div>
                             </div>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 hover:text-white">
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-gray-500 hover:text-gray-900 dark:text-white">
                                 <Plus className="h-4 w-4" />
                             </Button>
                         </div>
-                        <Button variant="ghost" size="sm" className="text-gray-500 hover:text-white text-xs">
+                        <Button variant="ghost" size="sm" className="text-gray-500 hover:text-gray-900 dark:text-white text-xs">
                             <MessageCircle className="h-4 w-4 mr-1" />
                             Join task
                         </Button>
@@ -2011,17 +2011,17 @@ export default function PaymentSchedulePage() {
             {/* Payment Confirmation Dialog */}
             {paymentConfirmDialogOpen && paymentConfirmInvoice && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-                    <div className="bg-[#2a2b2d] rounded-lg w-[450px] overflow-hidden flex flex-col">
+                    <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg w-[450px] overflow-hidden flex flex-col">
                         {/* Dialog Header */}
-                        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <div>
-                                <h3 className="text-lg font-semibold text-white">Confirm Payment</h3>
-                                <p className="text-sm text-gray-400">{getProviderName(paymentConfirmInvoice.provider_code)}</p>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Confirm Payment</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">{getProviderName(paymentConfirmInvoice.provider_code)}</p>
                             </div>
                             <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-gray-400 hover:text-white"
+                                className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
                                 onClick={() => {
                                     setPaymentConfirmDialogOpen(false);
                                     setPaymentConfirmInvoice(null);
@@ -2034,37 +2034,37 @@ export default function PaymentSchedulePage() {
                         {/* Dialog Content */}
                         <div className="px-6 py-4 space-y-4">
                             {/* Invoice Info */}
-                            <div className="bg-[#1e1f21] rounded-lg p-3 space-y-2">
+                            <div className="bg-white dark:bg-[#1e1f21] rounded-lg p-3 space-y-2">
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-400">Invoice Amount:</span>
-                                    <span className="text-white font-medium">{formatCurrency(paymentConfirmInvoice.invoice_amount)} {paymentConfirmInvoice.currency}</span>
+                                    <span className="text-gray-500 dark:text-gray-400">Invoice Amount:</span>
+                                    <span className="text-gray-900 dark:text-white font-medium">{formatCurrency(paymentConfirmInvoice.invoice_amount)} {paymentConfirmInvoice.currency}</span>
                                 </div>
                                 <div className="flex justify-between text-sm">
-                                    <span className="text-gray-400">Schedule Date:</span>
-                                    <span className="text-white">{paymentConfirmInvoice.schedule_date ? formatShortDate(paymentConfirmInvoice.schedule_date) : "—"}</span>
+                                    <span className="text-gray-500 dark:text-gray-400">Schedule Date:</span>
+                                    <span className="text-gray-900 dark:text-white">{paymentConfirmInvoice.schedule_date ? formatShortDate(paymentConfirmInvoice.schedule_date) : "—"}</span>
                                 </div>
                             </div>
 
                             {/* Paid Amount */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Paid Amount *</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Paid Amount *</Label>
                                 <Input
                                     type="number"
                                     step="any"
                                     value={paymentConfirmData.paid_amount}
                                     onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, paid_amount: e.target.value })}
-                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                     placeholder="0.00"
                                 />
                             </div>
 
                             {/* Paid Currency */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Paid Currency *</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Paid Currency *</Label>
                                 <select
                                     value={paymentConfirmData.paid_currency}
                                     onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, paid_currency: e.target.value })}
-                                    className="w-full h-9 px-3 rounded-md bg-[#1e1f21] border border-gray-600 text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="">Select currency...</option>
                                     <option value="EUR">EUR - Euro</option>
@@ -2076,25 +2076,25 @@ export default function PaymentSchedulePage() {
 
                             {/* Payment Date */}
                             <div className="space-y-1">
-                                <Label className="text-xs text-gray-400">Payment Date *</Label>
+                                <Label className="text-xs text-gray-500 dark:text-gray-400">Payment Date *</Label>
                                 <Input
                                     type="date"
                                     value={paymentConfirmData.payment_date}
                                     onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, payment_date: e.target.value })}
-                                    className="bg-[#1e1f21] border-gray-600 text-white h-9"
+                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                 />
                             </div>
                         </div>
 
                         {/* Dialog Footer */}
-                        <div className="px-6 py-4 border-t border-gray-700 flex justify-end gap-2">
+                        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex justify-end gap-2">
                             <Button
                                 variant="ghost"
                                 onClick={() => {
                                     setPaymentConfirmDialogOpen(false);
                                     setPaymentConfirmInvoice(null);
                                 }}
-                                className="text-gray-400 hover:text-white"
+                                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
                             >
                                 Cancel
                             </Button>
@@ -2118,40 +2118,40 @@ export default function PaymentSchedulePage() {
             {/* Manual Reconciliation Dialog */}
             {reconciliationDialogOpen && reconciliationInvoice && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-                    <div className="bg-[#2a2b2d] rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+                    <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
                         {/* Dialog Header */}
-                        <div className="px-6 py-4 border-b border-gray-700 flex items-center justify-between">
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <div>
-                                <h3 className="text-lg font-semibold text-white">Manual Reconciliation</h3>
-                                <p className="text-sm text-gray-400">Match invoice with a bank transaction</p>
+                                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Manual Reconciliation</h3>
+                                <p className="text-sm text-gray-500 dark:text-gray-400">Match invoice with a bank transaction</p>
                             </div>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => setReconciliationDialogOpen(false)}
-                                className="text-gray-400 hover:text-white"
+                                className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
                             >
                                 <X className="h-5 w-5" />
                             </Button>
                         </div>
 
                         {/* Invoice Info */}
-                        <div className="px-6 py-4 bg-gray-800/50 border-b border-gray-700">
+                        <div className="px-6 py-4 bg-gray-100 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
                             <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
                                     <span className="text-gray-500">Provider</span>
-                                    <p className="text-white font-medium">{getProviderName(reconciliationInvoice.provider_code)}</p>
+                                    <p className="text-gray-900 dark:text-white font-medium">{getProviderName(reconciliationInvoice.provider_code)}</p>
                                 </div>
                                 <div>
                                     <span className="text-gray-500">Amount</span>
-                                    <p className="text-white font-medium">
+                                    <p className="text-gray-900 dark:text-white font-medium">
                                         {(reconciliationInvoice.paid_currency || reconciliationInvoice.currency) === "EUR" ? "€" : "$"}
                                         {formatCurrency(reconciliationInvoice.paid_amount ?? reconciliationInvoice.invoice_amount)}
                                     </p>
                                 </div>
                                 <div>
                                     <span className="text-gray-500">Bank Account</span>
-                                    <p className="text-white font-medium">{getBankAccountName(reconciliationInvoice.bank_account_code)}</p>
+                                    <p className="text-gray-900 dark:text-white font-medium">{getBankAccountName(reconciliationInvoice.bank_account_code)}</p>
                                 </div>
                             </div>
                         </div>
@@ -2167,10 +2167,10 @@ export default function PaymentSchedulePage() {
 
                                 {loadingTransactions ? (
                                     <div className="flex items-center justify-center py-4">
-                                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                                        <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
                                     </div>
                                 ) : bankTransactions.length === 0 ? (
-                                    <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                                    <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
                                         <p className="text-sm">No exact match found</p>
                                         <p className="text-xs mt-1">Select from available transactions below for partial reconciliation</p>
                                     </div>
@@ -2194,7 +2194,7 @@ export default function PaymentSchedulePage() {
                                                             className="h-4 w-4 text-green-600"
                                                         />
                                                         <div>
-                                                            <p className="text-white text-sm">{tx.description || "Bank Transaction"}</p>
+                                                            <p className="text-gray-900 dark:text-white text-sm">{tx.description || "Bank Transaction"}</p>
                                                             <p className="text-xs text-gray-500">{tx.date} • {tx.source}</p>
                                                         </div>
                                                     </div>
@@ -2220,10 +2220,10 @@ export default function PaymentSchedulePage() {
 
                                 {loadingTransactions ? (
                                     <div className="flex items-center justify-center py-4">
-                                        <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                                        <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
                                     </div>
                                 ) : allAvailableTransactions.length === 0 ? (
-                                    <div className="text-center py-4 text-gray-500 bg-gray-800/30 rounded-lg border border-gray-700">
+                                    <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
                                         <p className="text-sm">No other transactions available</p>
                                     </div>
                                 ) : (
@@ -2237,7 +2237,7 @@ export default function PaymentSchedulePage() {
                                                     onClick={() => setSelectedTransaction(tx.id)}
                                                     className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTransaction === tx.id
                                                         ? "border-blue-500 bg-blue-900/20"
-                                                        : "border-gray-700 hover:border-gray-600 bg-gray-800/30"
+                                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/30"
                                                         }`}
                                                 >
                                                     <div className="flex items-center justify-between">
@@ -2249,7 +2249,7 @@ export default function PaymentSchedulePage() {
                                                                 className="h-4 w-4 text-blue-600"
                                                             />
                                                             <div>
-                                                                <p className="text-white text-sm">{tx.description || "Bank Transaction"}</p>
+                                                                <p className="text-gray-900 dark:text-white text-sm">{tx.description || "Bank Transaction"}</p>
                                                                 <p className="text-xs text-gray-500">{tx.date} • {tx.source}</p>
                                                             </div>
                                                         </div>
@@ -2275,11 +2275,11 @@ export default function PaymentSchedulePage() {
                         </div>
 
                         {/* Dialog Footer */}
-                        <div className="px-6 py-4 border-t border-gray-700 flex items-center justify-end gap-3">
+                        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-end gap-3">
                             <Button
                                 variant="outline"
                                 onClick={() => setReconciliationDialogOpen(false)}
-                                className="border-gray-600 text-gray-300 hover:bg-gray-700"
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
                             >
                                 Cancel
                             </Button>

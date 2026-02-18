@@ -69,7 +69,7 @@ export default function ForecastsPage() {
           <CardDescription>12-month revenue projection with confidence intervals</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="h-96 flex items-center justify-center text-gray-400">
+          <div className="h-96 flex items-center justify-center text-gray-500 dark:text-gray-400">
             <div className="text-center">
               <LineChart className="h-16 w-16 mx-auto mb-4 opacity-50" />
               <p className="text-lg font-medium">Chart Visualization Pending</p>
