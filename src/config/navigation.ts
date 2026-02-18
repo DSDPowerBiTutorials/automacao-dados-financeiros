@@ -146,6 +146,16 @@ export const NAV: NavGroup[] = withUnderConstruction([
     ]
   },
   {
+    label: "Departmental Insights",
+    items: [
+      {
+        title: "Department P&L",
+        href: "/departmental/pnl",
+        icon: BarChart3
+      }
+    ]
+  },
+  {
     label: "Accounts Payable",
     items: [
       {

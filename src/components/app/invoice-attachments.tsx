@@ -118,7 +118,7 @@ export function InvoiceAttachments({
                         title: "Tipo inválido",
                         description: `${file.name}: Apenas PDF, JPG, PNG são permitidos.`,
                         variant: "destructive",
-                        
+
                     });
                     continue;
                 }
@@ -128,7 +128,7 @@ export function InvoiceAttachments({
                         title: "Arquivo muito grande",
                         description: `${file.name}: Máximo 20MB.`,
                         variant: "destructive",
-                        
+
                     });
                     continue;
                 }
@@ -157,7 +157,7 @@ export function InvoiceAttachments({
                     toast({
                         title: "Upload concluído",
                         description: file.name,
-                        
+
                     });
                 } else {
                     throw new Error(result.error || "Upload failed");
@@ -168,7 +168,7 @@ export function InvoiceAttachments({
                 title: "Erro no upload",
                 description: err.message,
                 variant: "destructive",
-                
+
             });
         } finally {
             setUploading(false);
