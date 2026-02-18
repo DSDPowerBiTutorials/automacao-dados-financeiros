@@ -1263,11 +1263,11 @@ export default function BankCashFlowPage() {
                                         <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
                                         <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
-                                            labelStyle={{ color: "#9CA3AF" }}
+                                            contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                            labelStyle={{ color: "var(--header-text, #6b7280)" }}
                                             formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
                                         />
-                                        <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
+                                        <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
                                         {activeBankKeys.map(bankKey => (
                                             <Line key={bankKey} type="monotone" dataKey={bankKey} name={BANK_ACCOUNTS.find(b => b.key === bankKey)?.label || bankKey} stroke={BANK_CHART_COLORS[bankKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: BANK_CHART_COLORS[bankKey] || "#9ca3af", r: 3 }} connectNulls />
                                         ))}
@@ -1278,11 +1278,11 @@ export default function BankCashFlowPage() {
                                         <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
                                         <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
-                                            labelStyle={{ color: "#9CA3AF" }}
+                                            contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                            labelStyle={{ color: "var(--header-text, #6b7280)" }}
                                             formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
                                         />
-                                        <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
+                                        <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
                                         {activeGatewayKeys.map(gwKey => (
                                             <Line key={gwKey} type="monotone" dataKey={gwKey} name={gwKey === "sem-gateway" ? "Sem Gateway" : (gwKey.charAt(0).toUpperCase() + gwKey.slice(1))} stroke={GATEWAY_CHART_COLORS[gwKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: GATEWAY_CHART_COLORS[gwKey] || "#9ca3af", r: 3 }} connectNulls />
                                         ))}
@@ -1293,11 +1293,11 @@ export default function BankCashFlowPage() {
                                         <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
                                         <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
-                                            labelStyle={{ color: "#9CA3AF" }}
+                                            contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                            labelStyle={{ color: "var(--header-text, #6b7280)" }}
                                             formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
                                         />
-                                        <Legend wrapperStyle={{ fontSize: 11, color: "#9CA3AF" }} />
+                                        <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
                                         {activePnlKeys.map(pnlKey => {
                                             const pnlConfig = PNL_LINES.find(l => l.code === pnlKey);
                                             const label = pnlConfig ? `${pnlConfig.icon} ${pnlConfig.label}` : (pnlKey === "unclassified" ? "❓ Unclassified" : pnlKey);
@@ -1311,8 +1311,8 @@ export default function BankCashFlowPage() {
                                         <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
                                         <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
                                         <Tooltip
-                                            contentStyle={{ backgroundColor: "#1e1f21", border: "1px solid #374151", borderRadius: "8px", fontSize: 12 }}
-                                            labelStyle={{ color: "#9CA3AF" }}
+                                            contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                            labelStyle={{ color: "var(--header-text, #6b7280)" }}
                                             formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
                                         />
                                         <Line type="monotone" dataKey="inflows" name="Inflows" stroke="#6b7280" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: "#6b7280", r: 3 }} />

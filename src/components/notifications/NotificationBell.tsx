@@ -185,14 +185,14 @@ export function NotificationBell() {
             {/* Dropdown */}
             {isOpen && (
                 <div
-                    className="absolute right-0 mt-2 w-96 bg-white rounded-xl shadow-2xl border border-gray-200 overflow-hidden"
+                    className="absolute right-0 mt-2 w-96 bg-white dark:bg-[#1e1f21] rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden"
                     style={{ zIndex: 9999 }}
                 >
                     {/* Header */}
-                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 border-b border-gray-200">
+                    <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#252627] border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2">
-                            <Mail size={18} className="text-gray-600" />
-                            <h3 className="font-semibold text-gray-900">Notificações</h3>
+                            <Mail size={18} className="text-gray-600 dark:text-gray-400" />
+                            <h3 className="font-semibold text-gray-900 dark:text-white">Notificações</h3>
                             {unreadCount > 0 && (
                                 <span className="px-2 py-0.5 text-xs font-medium text-blue-600 bg-blue-100 rounded-full">
                                     {unreadCount} nova{unreadCount > 1 ? 's' : ''}
@@ -203,7 +203,7 @@ export function NotificationBell() {
                             {unreadCount > 0 && (
                                 <button
                                     onClick={() => markAllAsRead()}
-                                    className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+                                    className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                                     title="Marcar todas como lidas"
                                 >
                                     <CheckCheck size={16} />
@@ -211,7 +211,7 @@ export function NotificationBell() {
                             )}
                             <button
                                 onClick={() => setIsOpen(false)}
-                                className="p-1.5 rounded-lg hover:bg-gray-200 text-gray-500 hover:text-gray-700 transition-colors"
+                                className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                             >
                                 <X size={16} />
                             </button>

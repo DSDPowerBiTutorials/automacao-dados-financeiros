@@ -72,11 +72,11 @@ export function UserProfilePopup({
                 sideOffset={8}
             >
                 {/* Header com avatar grande */}
-                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 p-4 border-b">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/30 dark:to-indigo-900/30 p-4 border-b dark:border-gray-700">
                     <div className="flex items-center gap-3">
                         <UserAvatar user={user} size="lg" />
                         <div className="flex-1 min-w-0">
-                            <p className="font-semibold text-gray-900 truncate">
+                            <p className="font-semibold text-gray-900 dark:text-white truncate">
                                 {user.name || 'Usuário'}
                             </p>
                             <p className="text-sm text-gray-500 truncate">

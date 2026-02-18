@@ -39,8 +39,7 @@ import {
 function SkeletonPulse({ className }: { className?: string }) {
   return (
     <div
-      className={`animate-pulse rounded-lg ${className || ""}`}
-      style={{ background: "#1e2433" }}
+      className={`animate-pulse rounded-lg bg-gray-200 dark:bg-[#1e2433] ${className || ""}`}
     />
   );
 }

@@ -356,7 +356,7 @@ export function InvoiceFormModal({
     if (loadingMasterData && open) {
         return (
             <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
+                <DialogContent className="max-w-none max-h-[90vh] bg-white dark:bg-[#1e1f21]" style={{ width: '80vw' }}>
                     <div className="flex items-center justify-center py-12">
                         <Loader2 className="h-8 w-8 animate-spin text-gray-500 dark:text-gray-400" />
                     </div>
@@ -367,7 +367,7 @@ export function InvoiceFormModal({
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-[95vw] w-[1600px] max-h-[95vh] overflow-y-auto bg-white">
+            <DialogContent className="max-w-[95vw] w-[1600px] max-h-[95vh] overflow-y-auto bg-white dark:bg-[#1e1f21]">
                 <DialogHeader className="pb-4">
                     <DialogTitle className="text-xl font-bold">
                         {editingInvoice ? "Edit Invoice" : "Create New Invoice"}
@@ -429,8 +429,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Scope *</Label>
                             <Select value={formData.scope} onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val as ScopeType, currency: val === "US" ? "USD" : "EUR" })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue /></SelectTrigger>
-                                <SelectContent className="bg-white">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627]">
                                     <SelectItem value="ES">🇪🇸 Spain</SelectItem>
                                     <SelectItem value="US">🇺🇸 USA</SelectItem>
                                 </SelectContent>
@@ -447,8 +447,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Currency *</Label>
                             <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue /></SelectTrigger>
-                                <SelectContent className="bg-white">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627]">
                                     <SelectItem value="EUR">EUR €</SelectItem>
                                     <SelectItem value="USD">USD $</SelectItem>
                                     <SelectItem value="GBP">GBP £</SelectItem>
@@ -466,8 +466,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Provider *</Label>
                             <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select provider" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select provider" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {providers.map((p) => (<SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
@@ -475,8 +475,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Financial Account *</Label>
                             <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select account" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select account" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {financialAccounts.filter((a: any) => a.level >= 2 && a.type === 'expense').map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
@@ -488,8 +488,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Cost Type *</Label>
                             <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {costTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
@@ -497,8 +497,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Dep Cost Type *</Label>
                             <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {depCostTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
@@ -506,8 +506,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Department *</Label>
                             <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val, sub_department_code: "" })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {costCenters.map((c) => (<SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
@@ -515,8 +515,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Sub-Department</Label>
                             <Select value={formData.sub_department_code || ""} onValueChange={(val) => setFormData({ ...formData, sub_department_code: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {subDepartments.filter((s) => s.parent_department_code === formData.cost_center_code).map((s) => (<SelectItem key={s.code} value={s.code}>{s.code} - {s.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
@@ -528,8 +528,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Bank Account</Label>
                             <Select value={formData.bank_account_code || ""} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {bankAccounts.map((b) => (<SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
@@ -537,8 +537,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Payment Method</Label>
                             <Select value={formData.payment_method_code || ""} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {paymentMethods.map((m) => (<SelectItem key={m.code} value={m.code}>{m.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>
@@ -546,8 +546,8 @@ export function InvoiceFormModal({
                         <div>
                             <Label className="text-xs font-medium text-gray-600">Course</Label>
                             <Select value={formData.course_code || ""} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
-                                <SelectTrigger className="mt-1 bg-white"><SelectValue placeholder="Select" /></SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
+                                <SelectTrigger className="mt-1 bg-white dark:bg-[#252627]"><SelectValue placeholder="Select" /></SelectTrigger>
+                                <SelectContent className="bg-white dark:bg-[#252627] max-h-[300px]">
                                     {courses.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}
                                 </SelectContent>
                             </Select>

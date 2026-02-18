@@ -313,7 +313,7 @@ export default function BraintreeUpdatePendingButton() {
                             {result.success && result.stats.total > 0 && (
                                 <AlertDescription className="mt-2 space-y-1">
                                     <div className="flex flex-wrap gap-2">
-                                        <Badge variant="outline" className="bg-white">
+                                        <Badge variant="outline" className="bg-white dark:bg-gray-800">
                                             {result.stats.total} processed
                                         </Badge>
                                         {result.stats.created > 0 && (

@@ -515,7 +515,7 @@ export function PlatformChat() {
             {/* Chat Window */}
             {isOpen && (
                 <div
-                    className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 flex transition-all duration-200 bottom-20 right-6 w-[380px] h-[400px] max-h-[60vh] overflow-hidden"
+                    className="fixed z-50 bg-white dark:bg-[#1e1f21] rounded-lg shadow-2xl border border-gray-200 dark:border-gray-700 flex transition-all duration-200 bottom-20 right-6 w-[380px] h-[400px] max-h-[60vh] overflow-hidden"
                 >
                     {/* Sidebar */}
                     <div className="w-40 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white rounded-l-lg flex flex-col overflow-hidden">
@@ -670,7 +670,7 @@ export function PlatformChat() {
                     </div>
 
                     {/* Main Content */}
-                    <div className="flex-1 flex flex-col bg-white rounded-r-lg min-w-0 overflow-hidden">
+                    <div className="flex-1 flex flex-col bg-white dark:bg-[#1e1f21] rounded-r-lg min-w-0 overflow-hidden">
                         {/* Header */}
                         <div className="flex items-center justify-between px-3 py-2 border-b">
                             <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -760,7 +760,7 @@ export function PlatformChat() {
                         </div>
 
                         {/* Input */}
-                        <div className="border-t p-3 bg-white rounded-br-lg">
+                        <div className="border-t dark:border-gray-700 p-3 bg-white dark:bg-[#1e1f21] rounded-br-lg">
                             <div className="flex items-end gap-2">
                                 <Textarea
                                     value={newMessage}
@@ -795,7 +795,7 @@ export function PlatformChat() {
 
             {/* Create Channel Dialog */}
             <Dialog open={createChannelOpen} onOpenChange={setCreateChannelOpen}>
-                <DialogContent className="max-w-md bg-white">
+                <DialogContent className="max-w-md bg-white dark:bg-[#1e1f21]">
                     <DialogHeader>
                         <DialogTitle>Create a Channel</DialogTitle>
                         <DialogDescription>

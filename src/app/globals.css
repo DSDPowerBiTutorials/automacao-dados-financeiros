@@ -418,6 +418,27 @@ aside nav::-webkit-scrollbar-thumb {
   color: #003087;
 }
 
+/* Dark mode overrides for badges */
+.dark .badge-braintree {
+  background-color: rgba(0, 41, 145, 0.3);
+  color: #6b8cff;
+}
+
+.dark .badge-stripe {
+  background-color: rgba(99, 91, 255, 0.2);
+  color: #a09aff;
+}
+
+.dark .badge-gocardless {
+  background-color: rgba(241, 242, 82, 0.15);
+  color: #e8e95c;
+}
+
+.dark .badge-paypal {
+  background-color: rgba(0, 48, 135, 0.3);
+  color: #5b8fd4;
+}
+
 /* Reconciliation Badges */
 .badge-reconciled {
   background-color: #dcfce7;
@@ -432,6 +453,21 @@ aside nav::-webkit-scrollbar-thumb {
 .badge-pending {
   background-color: #fef3c7;
   color: #92400e;
+}
+
+.dark .badge-reconciled {
+  background-color: rgba(22, 101, 52, 0.2);
+  color: #4ade80;
+}
+
+.dark .badge-unreconciled {
+  background-color: rgba(153, 27, 27, 0.2);
+  color: #fca5a5;
+}
+
+.dark .badge-pending {
+  background-color: rgba(146, 64, 14, 0.2);
+  color: #fcd34d;
 }
 
 /* ================================================

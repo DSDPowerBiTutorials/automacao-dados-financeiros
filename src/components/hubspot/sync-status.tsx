@@ -79,7 +79,7 @@ export default function HubSpotSyncStatus() {
     }
 
     return (
-        <div className="flex items-center gap-4 rounded-lg border bg-white p-3 shadow-sm">
+        <div className="flex items-center gap-4 rounded-lg border bg-white dark:bg-[#1e1f21] dark:border-gray-700 p-3 shadow-sm">
             <div className="flex items-center gap-2">
                 {metadata?.status === "success" ? (
                     <CheckCircle2 className="h-5 w-5 text-green-600" />

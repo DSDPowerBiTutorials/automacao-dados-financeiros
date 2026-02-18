@@ -333,7 +333,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
             <PopoverContent
                 side={placement === "topbar" ? "bottom" : "right"}
                 align={placement === "topbar" ? "end" : "start"}
-                className="!bg-[#1a1b1d] border-gray-200 dark:border-gray-700 w-96 p-0 shadow-2xl"
+                className="!bg-white dark:!bg-[#1a1b1d] border-gray-200 dark:border-gray-700 w-96 p-0 shadow-2xl"
                 sideOffset={placement === "topbar" ? 8 : 12}
             >
                 {/* Header */}

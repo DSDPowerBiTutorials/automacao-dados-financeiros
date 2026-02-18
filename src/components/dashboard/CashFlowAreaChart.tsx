@@ -36,8 +36,8 @@ function CustomTooltip({
 }) {
     if (!active || !payload) return null;
     return (
-        <div className="dashboard-tooltip" style={{ background: "#1a1f2e", border: "1px solid #2a3142", borderRadius: 8, padding: "12px 16px", boxShadow: "0 10px 25px rgba(0,0,0,0.4)" }}>
-            <p style={{ color: "#e5e7eb", fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
+        <div className="dashboard-tooltip" style={{ borderRadius: 8, padding: "12px 16px" }}>
+            <p className="dashboard-text-primary" style={{ fontWeight: 600, marginBottom: 6, fontSize: 13 }}>
                 {label}
             </p>
             {payload.map((entry) => (
@@ -51,8 +51,8 @@ function CustomTooltip({
                             display: "inline-block",
                         }}
                     />
-                    <span style={{ color: "#9ca3af", fontSize: 12 }}>{entry.name}:</span>
-                    <span style={{ color: "#e5e7eb", fontWeight: 600, fontSize: 12 }}>
+                    <span className="dashboard-text-muted" style={{ fontSize: 12 }}>{entry.name}:</span>
+                    <span className="dashboard-text-primary" style={{ fontWeight: 600, fontSize: 12 }}>
                         €{entry.value.toLocaleString("pt-BR", { minimumFractionDigits: 0 })}
                     </span>
                 </div>
@@ -116,11 +116,11 @@ export function CashFlowAreaChart({ data, showIntercompany }: CashFlowAreaChartP
                         />
                         <Tooltip content={<CustomTooltip />} />
                         <Legend
-                            wrapperStyle={{ paddingTop: 12, fontSize: 12, color: "#9ca3af" }}
+                            wrapperStyle={{ paddingTop: 12, fontSize: 12 }}
                             iconType="circle"
                             iconSize={8}
                             formatter={(value: string) => (
-                                <span style={{ color: "#9ca3af", fontSize: 12 }}>{value}</span>
+                                <span className="dashboard-text-muted" style={{ fontSize: 12 }}>{value}</span>
                             )}
                         />
                         <Area

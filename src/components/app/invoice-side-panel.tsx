@@ -335,10 +335,10 @@ export function InvoiceSidePanel({
     if (!open) return null;
 
     return (
-        <div className="fixed right-0 top-[64px] h-[calc(100vh-64px)] w-[520px] bg-white border-l border-gray-200 flex flex-col z-[9999] shadow-2xl">
+        <div className="fixed right-0 top-[64px] h-[calc(100vh-64px)] w-[520px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[9999] shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 bg-gray-50">
-                <h2 className="text-lg font-semibold text-gray-900">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#252627]">
+                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                     {editingInvoice ? "Edit Invoice" : "New Invoice"}
                 </h2>
                 <div className="flex items-center gap-1">
@@ -381,10 +381,10 @@ export function InvoiceSidePanel({
                         <div className="space-y-3">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase">Dates</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                <div><Label className="text-xs text-gray-700">Invoice Date *</Label><Input type="date" value={formData.invoice_date} onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })} required className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
-                                <div><Label className="text-xs text-gray-700">Benefit Date *</Label><Input type="date" value={formData.benefit_date} onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })} required className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
-                                <div><Label className="text-xs text-gray-700">Due Date *</Label><Input type="date" value={formData.due_date} onChange={(e) => { setFormData({ ...formData, due_date: e.target.value, schedule_date: formData.schedule_date || e.target.value }); }} required className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
-                                <div><Label className="text-xs text-gray-700">Schedule Date</Label><Input type="date" value={formData.schedule_date} onChange={(e) => setFormData({ ...formData, schedule_date: e.target.value })} className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Invoice Date *</Label><Input type="date" value={formData.invoice_date} onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })} required className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Benefit Date *</Label><Input type="date" value={formData.benefit_date} onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })} required className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Due Date *</Label><Input type="date" value={formData.due_date} onChange={(e) => { setFormData({ ...formData, due_date: e.target.value, schedule_date: formData.schedule_date || e.target.value }); }} required className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Schedule Date</Label><Input type="date" value={formData.schedule_date} onChange={(e) => setFormData({ ...formData, schedule_date: e.target.value })} className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
                             </div>
                         </div>
 
@@ -392,47 +392,47 @@ export function InvoiceSidePanel({
                         <div className="space-y-3">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase">Amount</h3>
                             <div className="grid grid-cols-4 gap-3">
-                                <div><Label className="text-xs text-gray-700">Scope</Label>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Scope</Label>
                                     <Select value={formData.scope} onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val as ScopeType, currency: val === "US" ? "USD" : "EUR" })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue /></SelectTrigger>
-                                        <SelectContent className="bg-white"><SelectItem value="ES">🇪🇸 ES</SelectItem><SelectItem value="US">🇺🇸 US</SelectItem></SelectContent>
+                                        <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="bg-white dark:bg-[#252627]"><SelectItem value="ES">🇪🇸 ES</SelectItem><SelectItem value="US">🇺🇸 US</SelectItem></SelectContent>
                                     </Select>
                                 </div>
-                                <div className="col-span-2"><Label className="text-xs text-gray-700">Amount *</Label><Input type="number" step="0.01" value={formData.invoice_amount} onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })} required className="mt-1 h-9 text-lg font-bold bg-white text-gray-900 border-gray-300" /></div>
-                                <div><Label className="text-xs text-gray-700">Currency</Label>
+                                <div className="col-span-2"><Label className="text-xs text-gray-700 dark:text-gray-300">Amount *</Label><Input type="number" step="0.01" value={formData.invoice_amount} onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })} required className="mt-1 h-9 text-lg font-bold bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Currency</Label>
                                     <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue /></SelectTrigger>
-                                        <SelectContent className="bg-white"><SelectItem value="EUR">€</SelectItem><SelectItem value="USD">$</SelectItem><SelectItem value="GBP">£</SelectItem></SelectContent>
+                                        <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue /></SelectTrigger>
+                                        <SelectContent className="bg-white dark:bg-[#252627]"><SelectItem value="EUR">€</SelectItem><SelectItem value="USD">$</SelectItem><SelectItem value="GBP">£</SelectItem></SelectContent>
                                     </Select>
                                 </div>
                             </div>
-                            <div><Label className="text-xs text-gray-700">Invoice #</Label><Input value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })} placeholder="Auto-generated" className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
+                            <div><Label className="text-xs text-gray-700 dark:text-gray-300">Invoice #</Label><Input value={formData.invoice_number} onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })} placeholder="Auto-generated" className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
 
                             {/* Paid Amount, Paid Currency, Payment Date */}
-                            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-200 mt-3">
-                                <div><Label className="text-xs text-gray-700">Paid Amount</Label><Input type="number" step="any" value={formData.paid_amount} onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })} placeholder="0.00" className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
-                                <div><Label className="text-xs text-gray-700">Paid Currency</Label>
+                            <div className="grid grid-cols-3 gap-3 pt-2 border-t border-gray-200 dark:border-gray-700 mt-3">
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Paid Amount</Label><Input type="number" step="any" value={formData.paid_amount} onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })} placeholder="0.00" className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Paid Currency</Label>
                                     <Select value={formData.paid_currency} onValueChange={(val) => setFormData({ ...formData, paid_currency: val })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent className="bg-white"><SelectItem value="EUR">€ EUR</SelectItem><SelectItem value="USD">$ USD</SelectItem><SelectItem value="GBP">£ GBP</SelectItem><SelectItem value="BRL">R$ BRL</SelectItem></SelectContent>
+                                        <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectContent className="bg-white dark:bg-[#252627]"><SelectItem value="EUR">€ EUR</SelectItem><SelectItem value="USD">$ USD</SelectItem><SelectItem value="GBP">£ GBP</SelectItem><SelectItem value="BRL">R$ BRL</SelectItem></SelectContent>
                                     </Select>
                                 </div>
-                                <div><Label className="text-xs text-gray-700">Payment Date</Label><Input type="date" value={formData.payment_date} onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })} className="mt-1 h-9 bg-white text-gray-900 border-gray-300" /></div>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Payment Date</Label><Input type="date" value={formData.payment_date} onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })} className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
                             </div>
                         </div>
 
                         {/* Section: Provider */}
                         <div className="space-y-3">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase">Provider & Account</h3>
-                            <div><Label className="text-xs text-gray-700">Provider *</Label>
+                            <div><Label className="text-xs text-gray-700 dark:text-gray-300">Provider *</Label>
                                 <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })}>
-                                    <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select provider" /></SelectTrigger>
+                                    <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select provider" /></SelectTrigger>
                                     <SelectContent className="bg-white max-h-[250px]">{providers.map((p) => (<SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>))}</SelectContent>
                                 </Select>
                             </div>
-                            <div><Label className="text-xs text-gray-700">Financial Account *</Label>
+                            <div><Label className="text-xs text-gray-700 dark:text-gray-300">Financial Account *</Label>
                                 <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })}>
-                                    <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select account" /></SelectTrigger>
+                                    <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select account" /></SelectTrigger>
                                     <SelectContent className="bg-white max-h-[250px]">{financialAccounts.filter((a: any) => a.level >= 2 && a.type === 'expense').map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}</SelectContent>
                                 </Select>
                             </div>
@@ -442,28 +442,28 @@ export function InvoiceSidePanel({
                         <div className="space-y-3">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase">Classification</h3>
                             <div className="grid grid-cols-3 gap-3">
-                                <div><Label className="text-xs text-gray-700">Cost Type *</Label>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Cost Type *</Label>
                                     <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
                                         <SelectContent className="bg-white max-h-[250px]">{costTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
-                                <div><Label className="text-xs text-gray-700">Dep Cost *</Label>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Dep Cost *</Label>
                                     <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
                                         <SelectContent className="bg-white max-h-[250px]">{depCostTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
-                                <div><Label className="text-xs text-gray-700">Department *</Label>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Department *</Label>
                                     <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val, sub_department_code: "" })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
                                         <SelectContent className="bg-white max-h-[250px]">{costCenters.map((c) => (<SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
                             </div>
-                            <div><Label className="text-xs text-gray-700">Sub-Department</Label>
+                            <div><Label className="text-xs text-gray-700 dark:text-gray-300">Sub-Department</Label>
                                 <Select value={formData.sub_department_code || ""} onValueChange={(val) => setFormData({ ...formData, sub_department_code: val })}>
-                                    <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent className="bg-white max-h-[250px]">{subDepartments.filter((s) => s.parent_department_code === formData.cost_center_code).map((s) => (<SelectItem key={s.code} value={s.code}>{s.code} - {s.name}</SelectItem>))}</SelectContent>
                                 </Select>
                             </div>
@@ -473,22 +473,22 @@ export function InvoiceSidePanel({
                         <div className="space-y-3">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase">Payment</h3>
                             <div className="grid grid-cols-2 gap-3">
-                                <div><Label className="text-xs text-gray-700">Bank Account</Label>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Bank Account</Label>
                                     <Select value={formData.bank_account_code || ""} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
                                         <SelectContent className="bg-white max-h-[250px]">{bankAccounts.map((b) => (<SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
-                                <div><Label className="text-xs text-gray-700">Payment Method</Label>
+                                <div><Label className="text-xs text-gray-700 dark:text-gray-300">Payment Method</Label>
                                     <Select value={formData.payment_method_code || ""} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                        <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
                                         <SelectContent className="bg-white max-h-[250px]">{paymentMethods.map((m) => (<SelectItem key={m.code} value={m.code}>{m.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
                             </div>
-                            <div><Label className="text-xs text-gray-700">Course</Label>
+                            <div><Label className="text-xs text-gray-700 dark:text-gray-300">Course</Label>
                                 <Select value={formData.course_code || ""} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
-                                    <SelectTrigger className="mt-1 h-9 bg-white text-gray-900 border-gray-300"><SelectValue placeholder="Select" /></SelectTrigger>
+                                    <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
                                     <SelectContent className="bg-white max-h-[250px]">{courses.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}</SelectContent>
                                 </Select>
                             </div>
@@ -497,8 +497,8 @@ export function InvoiceSidePanel({
                         {/* Section: Notes */}
                         <div className="space-y-3">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase">Notes</h3>
-                            <div><Label className="text-xs text-gray-700">Description</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} placeholder="Invoice description..." className="mt-1 resize-none bg-white text-gray-900 border-gray-300" /></div>
-                            <div><Label className="text-xs text-gray-700">Internal Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={2} placeholder="Internal notes..." className="mt-1 resize-none bg-white text-gray-900 border-gray-300" /></div>
+                            <div><Label className="text-xs text-gray-700 dark:text-gray-300">Description</Label><Textarea value={formData.description} onChange={(e) => setFormData({ ...formData, description: e.target.value })} rows={2} placeholder="Invoice description..." className="mt-1 resize-none bg-white dark:bg-[#252627] dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
+                            <div><Label className="text-xs text-gray-700 dark:text-gray-300">Internal Notes</Label><Textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} rows={2} placeholder="Internal notes..." className="mt-1 resize-none bg-white dark:bg-[#252627] dark:bg-[#252627] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
                         </div>
 
                         {/* Section: Attachments */}
@@ -514,10 +514,10 @@ export function InvoiceSidePanel({
                         </div>
 
                         {/* Flags */}
-                        <div className="flex items-center gap-5 py-3 px-4 bg-gray-50 rounded-lg">
-                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700"><Checkbox checked={formData.dre_impact} onCheckedChange={(checked) => setFormData({ ...formData, dre_impact: checked as boolean })} /><span>DRE</span></label>
-                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700"><Checkbox checked={formData.cash_impact} onCheckedChange={(checked) => setFormData({ ...formData, cash_impact: checked as boolean })} /><span>Cash</span></label>
-                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700"><Checkbox checked={formData.is_intercompany} onCheckedChange={(checked) => setFormData({ ...formData, is_intercompany: checked as boolean })} /><span>Intercompany</span></label>
+                        <div className="flex items-center gap-5 py-3 px-4 bg-gray-50 dark:bg-[#252627] rounded-lg">
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"><Checkbox checked={formData.dre_impact} onCheckedChange={(checked) => setFormData({ ...formData, dre_impact: checked as boolean })} /><span>DRE</span></label>
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"><Checkbox checked={formData.cash_impact} onCheckedChange={(checked) => setFormData({ ...formData, cash_impact: checked as boolean })} /><span>Cash</span></label>
+                            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-700 dark:text-gray-300"><Checkbox checked={formData.is_intercompany} onCheckedChange={(checked) => setFormData({ ...formData, is_intercompany: checked as boolean })} /><span>Intercompany</span></label>
                         </div>
 
                         {/* Actions */}

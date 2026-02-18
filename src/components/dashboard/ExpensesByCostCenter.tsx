@@ -33,18 +33,16 @@ function CustomTooltip({
     if (!active || !payload || !payload[0]) return null;
     return (
         <div
+            className="dashboard-tooltip"
             style={{
-                background: "#1a1f2e",
-                border: "1px solid #2a3142",
                 borderRadius: 8,
                 padding: "10px 14px",
-                boxShadow: "0 10px 25px rgba(0,0,0,0.4)",
             }}
         >
-            <p style={{ color: "#e5e7eb", fontWeight: 600, fontSize: 13 }}>
+            <p className="dashboard-text-primary" style={{ fontWeight: 600, fontSize: 13 }}>
                 {label}
             </p>
-            <p style={{ color: "#9ca3af", fontSize: 12, marginTop: 2 }}>
+            <p className="dashboard-text-muted" style={{ fontSize: 12, marginTop: 2 }}>
                 €{payload[0].value.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
             </p>
         </div>

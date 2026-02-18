@@ -233,7 +233,7 @@ export default function BraintreePage({ source, title }: Props) {
                 </Button>
                 <Button
                   onClick={downloadCSV}
-                  className="gap-2 bg-blue-50 dark:bg-[#1a2b4a] text-white"
+                  className="gap-2 bg-blue-600 dark:bg-[#1a2b4a] text-white"
                 >
                   <Download className="h-4 w-4" /> Download
                 </Button>
@@ -252,9 +252,9 @@ export default function BraintreePage({ source, title }: Props) {
         </header>
         <div className="container mx-auto px-6 py-8">
           <Card>
-            <CardHeader className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white">
+            <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-[#1a2b4a] dark:to-[#2c3e5f] text-white">
               <CardTitle>Payment Source Details</CardTitle>
-              <CardDescription className="text-gray-900 dark:text-white/80">
+              <CardDescription className="text-blue-100 dark:text-white/80">
                 Data for: <code>{source}</code>
               </CardDescription>
             </CardHeader>

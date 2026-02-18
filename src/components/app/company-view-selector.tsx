@@ -7,7 +7,7 @@ export function CompanyViewSelector() {
   return (
     <div className="px-3 py-2 border-b border-gray-200">
       <Select defaultValue="all">
-        <SelectTrigger className="w-full bg-white">
+        <SelectTrigger className="w-full bg-white dark:bg-[#252627]">
           <SelectValue />
         </SelectTrigger>
         <SelectContent>

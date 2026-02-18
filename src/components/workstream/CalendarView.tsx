@@ -119,7 +119,7 @@ export function CalendarView({ tasks, users, onTaskClick }: CalendarViewProps) {
                     return (
                         <div
                             key={idx}
-                            className={`border-b border-r border-gray-200 dark:border-gray-800 p-1 min-h-0 overflow-hidden ${cell.isCurrentMonth ? 'bg-white dark:bg-[#1e1f21]' : 'bg-[#171819]'
+                            className={`border-b border-r border-gray-200 dark:border-gray-800 p-1 min-h-0 overflow-hidden ${cell.isCurrentMonth ? 'bg-white dark:bg-[#1e1f21]' : 'bg-gray-100 dark:bg-[#171819]'
                                 }`}
                         >
                             <div className={`text-xs mb-0.5 ${isToday

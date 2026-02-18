@@ -1831,7 +1831,7 @@ export default function BraintreeEURPage() {
                         )}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="!bg-white dark:!bg-slate-900 text-slate-900 dark:text-slate-50 flex flex-col" style={{ backgroundColor: 'white' }}>
+                    <DialogContent className="!bg-white dark:!bg-slate-900 text-slate-900 dark:text-slate-50 flex flex-col">
                       <DialogHeader className="bg-white dark:bg-slate-900">
                         <DialogTitle className="text-slate-900 dark:text-slate-50">Select Visible Columns</DialogTitle>
                       </DialogHeader>
@@ -2652,9 +2652,8 @@ export default function BraintreeEURPage() {
                                       <PopoverContent
                                         className="w-80 p-0 !bg-white dark:!bg-slate-900 text-slate-900 dark:text-slate-50 border border-gray-200 dark:border-slate-700 shadow-xl !opacity-100"
                                         align="end"
-                                        style={{ backgroundColor: 'white' }}
                                       >
-                                        <div className="bg-gradient-to-r !from-[#1a2b4a] !to-[#2c3e5f] from-[#1a2b4a] to-[#2c3e5f] text-white px-4 py-3 rounded-t-lg">
+                                        <div className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-[#1a2b4a] dark:to-[#2c3e5f] text-white px-4 py-3 rounded-t-lg">
                                           <h4 className="font-bold flex items-center gap-2">
                                             <Eye className="h-4 w-4" />
                                             Status History
