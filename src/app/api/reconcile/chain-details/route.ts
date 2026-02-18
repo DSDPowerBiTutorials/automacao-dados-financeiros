@@ -79,6 +79,24 @@ interface DisbursementInfo {
     transaction_count: number;
 }
 
+interface WebOrderInfo {
+    order_reference: string;
+    craft_id: string;
+    customer_email: string | null;
+    customer_name: string | null;
+    currency: string;
+    total_price: number;
+    total_paid: number;
+    paid_status: string | null;
+    date_ordered: string | null;
+    order_type: string | null;
+    products: { sku: string; description: string; qty: number; price: number; subtotal: number }[];
+    braintree_tx_ids: string[];
+    billing_country: string | null;
+    billing_organization: string | null;
+    subscription_reference: string | null;
+}
+
 // ─── Helpers ───
 
 /** Parse a gateway row into a GatewayTransaction */
@@ -123,6 +141,65 @@ function dedupeGateway(txs: GatewayTransaction[]): GatewayTransaction[] {
         seen.add(t.transaction_id);
         return true;
     });
+}
+
+/** Lookup web_orders by order references */
+async function lookupWebOrders(orderRefs: string[]): Promise<WebOrderInfo[]> {
+    const results: WebOrderInfo[] = [];
+    const unique = [...new Set(orderRefs.filter(Boolean))].slice(0, 100);
+    for (let i = 0; i < unique.length; i += 30) {
+        const batch = unique.slice(i, i + 30);
+        const { data } = await supabaseAdmin
+            .from("web_orders")
+            .select("*")
+            .in("order_reference", batch)
+            .limit(50);
+        if (data) {
+            for (const wo of data) {
+                results.push({
+                    order_reference: wo.order_reference,
+                    craft_id: wo.craft_id,
+                    customer_email: wo.customer_email,
+                    customer_name: wo.customer_full_name || `${wo.customer_first_name || ""} ${wo.customer_last_name || ""}`.trim() || null,
+                    currency: wo.currency,
+                    total_price: parseFloat(wo.total_price) || 0,
+                    total_paid: parseFloat(wo.total_paid) || 0,
+                    paid_status: wo.paid_status,
+                    date_ordered: wo.date_ordered || null,
+                    order_type: wo.order_type,
+                    products: Array.isArray(wo.products) ? wo.products : [],
+                    braintree_tx_ids: wo.braintree_tx_ids || [],
+                    billing_country: wo.billing_country,
+                    billing_organization: wo.billing_organization,
+                    subscription_reference: wo.subscription_reference,
+                });
+            }
+        }
+    }
+    return results;
+}
+
+/** Lookup order_transaction_links by transaction IDs → returns order_ids */
+async function lookupOrdersByTxIds(txIds: string[]): Promise<string[]> {
+    const unique = [...new Set(txIds.filter(Boolean))].slice(0, 200);
+    const orderIds: string[] = [];
+    for (let i = 0; i < unique.length; i += 30) {
+        const batch = unique.slice(i, i + 30);
+        const { data } = await supabaseAdmin
+            .from("order_transaction_links")
+            .select("order_id")
+            .eq("provider", "braintree")
+            .in("transaction_id", batch)
+            .limit(50);
+        if (data) {
+            for (const link of data) {
+                if (link.order_id && !orderIds.includes(link.order_id)) {
+                    orderIds.push(link.order_id);
+                }
+            }
+        }
+    }
+    return orderIds;
 }
 
 /** Batch query gateway rows by transaction IDs using .in() */
@@ -473,11 +550,65 @@ export async function GET(req: NextRequest) {
         gatewayTransactions = dedupeGateway(gatewayTransactions);
 
         // ═══════════════════════════════════════════════
+        // FIND WEB ORDERS — via order_transaction_links + web_orders table
+        // Strategy: TX IDs → order_transaction_links → order_reference → web_orders
+        // Also: gateway order_ids → web_orders directly
+        // ═══════════════════════════════════════════════
+        const webOrders: WebOrderInfo[] = [];
+        const webOrderRefs = new Set<string>();
+
+        // 1. Collect order_ids already known from gateway transactions
+        const gatewayOrderIds = gatewayTransactions
+            .map(t => t.order_id)
+            .filter(Boolean) as string[];
+
+        // 2. Use order_transaction_links to find orders by BT TxIDs
+        const allTxIds = gatewayTransactions.map(t => t.transaction_id).filter(Boolean);
+        if (allTxIds.length > 0) {
+            const linkedOrderRefs = await lookupOrdersByTxIds(allTxIds);
+            for (const ref of linkedOrderRefs) {
+                webOrderRefs.add(ref);
+            }
+        }
+
+        // 3. Add gateway order_ids as potential web_order references
+        for (const oid of gatewayOrderIds) {
+            // Braintree Order ID can be "ref" (7 chars) or "ref-craftId" (15 chars)
+            const ref = oid.includes("-") ? oid.split("-")[0] : oid;
+            if (ref.length >= 7) webOrderRefs.add(ref.substring(0, 7));
+        }
+
+        // 4. Add order_ids from bank custom_data
+        if (cd.web_orders && Array.isArray(cd.web_orders)) {
+            for (const oid of cd.web_orders) {
+                if (oid) {
+                    const ref = typeof oid === "string" && oid.includes("-") ? oid.split("-")[0] : oid;
+                    webOrderRefs.add(typeof ref === "string" ? ref.substring(0, 7) : ref);
+                }
+            }
+        }
+
+        // 5. Fetch web_orders data
+        if (webOrderRefs.size > 0) {
+            const woResults = await lookupWebOrders([...webOrderRefs]);
+            for (const wo of woResults) {
+                webOrders.push(wo);
+            }
+        }
+
+        // ═══════════════════════════════════════════════
         // FIND LINKED INVOICES — from order_ids in gateway transactions + bank custom_data
         // ═══════════════════════════════════════════════
         const orderIds = gatewayTransactions
             .map(t => t.order_id)
             .filter(Boolean) as string[];
+
+        // Also include web_order references as potential order_ids for ar_invoices
+        for (const wo of webOrders) {
+            if (wo.order_reference && !orderIds.includes(wo.order_reference)) {
+                orderIds.push(wo.order_reference);
+            }
+        }
 
         if (cd.web_orders && Array.isArray(cd.web_orders)) {
             for (const oid of cd.web_orders) {
@@ -720,12 +851,25 @@ export async function GET(req: NextRequest) {
         if (cd.matched_invoice_fac) facCodes.add(cd.matched_invoice_fac);
         if (cd.matched_invoice_fac_name) facNames.add(cd.matched_invoice_fac_name);
 
+        // Enrich summary with web_orders data
+        for (const wo of webOrders) {
+            if (wo.billing_country) countries.add(wo.billing_country);
+            if (wo.subscription_reference) uniqueSubscriptions.add(wo.subscription_reference);
+        }
+
+        // Add web_order customer emails to customer count
+        const allCustomerEmails = new Set(gatewayTransactions.map(t => t.customer_email).filter(Boolean));
+        for (const wo of webOrders) {
+            if (wo.customer_email) allCustomerEmails.add(wo.customer_email);
+        }
+
         return NextResponse.json({
             success: true,
             chain: {
                 gateway_transactions: gatewayTransactions.slice(0, 100),
                 invoices: linkedInvoices,
                 orders: dedupedOrders,
+                web_orders: webOrders,
                 disbursement: disbursementInfo,
                 summary: {
                     fac_codes: [...facCodes],
@@ -734,10 +878,11 @@ export async function GET(req: NextRequest) {
                     total_refunded: Math.round(totalRefunded * 100) / 100,
                     countries: [...countries],
                     subscription_count: uniqueSubscriptions.size,
-                    customer_count: new Set(gatewayTransactions.map(t => t.customer_email).filter(Boolean)).size,
+                    customer_count: allCustomerEmails.size,
                     match_confidence: cd.match_confidence || null,
                     match_level: cd.match_level || null,
                     match_type: cd.match_type || null,
+                    web_orders_count: webOrders.length,
                 },
             },
         });

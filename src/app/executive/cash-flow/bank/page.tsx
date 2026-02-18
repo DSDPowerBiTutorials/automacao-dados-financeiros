@@ -144,6 +144,23 @@ interface ReconciliationChainData {
         country: string | null;
         date: string | null;
     }[];
+    web_orders?: {
+        order_reference: string;
+        craft_id: string;
+        customer_email: string | null;
+        customer_name: string | null;
+        currency: string;
+        total_price: number;
+        total_paid: number;
+        paid_status: string | null;
+        date_ordered: string | null;
+        order_type: string | null;
+        products: { sku: string; description: string; qty: number; price: number; subtotal: number }[];
+        braintree_tx_ids: string[];
+        billing_country: string | null;
+        billing_organization: string | null;
+        subscription_reference: string | null;
+    }[];
     disbursement?: {
         id: string;
         date: string;
@@ -161,6 +178,7 @@ interface ReconciliationChainData {
         match_confidence: number | null;
         match_level: number | null;
         match_type: string | null;
+        web_orders_count?: number;
     };
 }
 
@@ -2173,6 +2191,79 @@ export default function BankCashFlowPage() {
                                             )}
                                         </div>
                                     )}
+
+                                    {/* Web Orders (Craft Commerce) */}
+                                    {selectedRow.chainData?.web_orders && selectedRow.chainData.web_orders.length > 0 && (
+                                        <div className="space-y-3 mt-4">
+                                            <h4 className="text-[10px] font-semibold text-teal-400 uppercase tracking-wider">
+                                                🛒 E-Commerce Orders ({selectedRow.chainData.web_orders.length})
+                                            </h4>
+                                            <div className="grid grid-cols-3 gap-2 text-center">
+                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                    <p className="text-teal-400 text-lg font-bold">{selectedRow.chainData.web_orders.length}</p>
+                                                    <p className="text-[10px] text-gray-500">Orders</p>
+                                                </div>
+                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                    <p className="text-blue-400 text-lg font-bold">{[...new Set(selectedRow.chainData.web_orders.map(o => o.customer_name).filter(Boolean))].length}</p>
+                                                    <p className="text-[10px] text-gray-500">Clients</p>
+                                                </div>
+                                                <div className="bg-[#1a1b1c] rounded-lg p-2">
+                                                    <p className="text-green-400 text-lg font-bold">{formatCurrency(selectedRow.chainData.web_orders.reduce((s, o) => s + o.total_price, 0), selectedRow.currency)}</p>
+                                                    <p className="text-[10px] text-gray-500">Total</p>
+                                                </div>
+                                            </div>
+                                            {selectedRow.chainData.web_orders.slice(0, 30).map((wo, i) => (
+                                                <div key={`wo-${i}`} className="bg-teal-900/10 rounded-lg border border-teal-800/30 p-3 space-y-1.5">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-teal-300 text-xs font-mono">{wo.order_reference}</span>
+                                                        <span className="text-green-400 font-medium text-sm">{formatCurrency(wo.total_price, wo.currency)}</span>
+                                                    </div>
+                                                    {wo.customer_name && (
+                                                        <div className="flex items-center gap-1.5">
+                                                            <User className="h-3 w-3 text-blue-400 flex-shrink-0" />
+                                                            <span className="text-white text-sm font-medium truncate">{wo.customer_name}</span>
+                                                        </div>
+                                                    )}
+                                                    {wo.customer_email && (
+                                                        <p className="text-gray-400 text-xs pl-[18px] truncate">{wo.customer_email}</p>
+                                                    )}
+                                                    {wo.products && wo.products.length > 0 && (
+                                                        <div className="flex items-start gap-1.5">
+                                                            <CreditCard className="h-3 w-3 text-violet-400 flex-shrink-0 mt-0.5" />
+                                                            <span className="text-violet-300 text-xs">
+                                                                {wo.products.map(p => p.description || p.sku).join(", ")}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex flex-wrap gap-1.5 mt-1">
+                                                        {wo.order_type && (
+                                                            <Badge variant="outline" className="text-[10px] bg-purple-900/20 text-purple-400 border-purple-700/50">
+                                                                {wo.order_type}
+                                                            </Badge>
+                                                        )}
+                                                        {wo.paid_status && (
+                                                            <Badge variant="outline" className={`text-[10px] ${wo.paid_status === "paid" ? "bg-green-900/20 text-green-400 border-green-700/50" : "bg-red-900/20 text-red-400 border-red-700/50"}`}>
+                                                                {wo.paid_status}
+                                                            </Badge>
+                                                        )}
+                                                        {wo.billing_country && (
+                                                            <Badge variant="outline" className="text-[10px] bg-gray-800 text-gray-400 border-gray-600">
+                                                                {wo.billing_country}
+                                                            </Badge>
+                                                        )}
+                                                    </div>
+                                                    <div className="flex items-center gap-3 text-[10px] text-gray-500">
+                                                        {wo.date_ordered && <span>{formatShortDate(wo.date_ordered)}</span>}
+                                                        {wo.billing_organization && <span>{wo.billing_organization}</span>}
+                                                        {wo.subscription_reference && <span>Sub: {wo.subscription_reference}</span>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                            {selectedRow.chainData.web_orders.length > 30 && (
+                                                <p className="text-xs text-gray-500 text-center">+ {selectedRow.chainData.web_orders.length - 30} more orders</p>
+                                            )}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -2336,7 +2427,7 @@ export default function BankCashFlowPage() {
                                             )}
 
                                             {/* No data found */}
-                                            {selectedRow.chainData.gateway_transactions.length === 0 && selectedRow.chainData.invoices.length === 0 && (!selectedRow.chainData.orders || selectedRow.chainData.orders.length === 0) && (
+                                            {selectedRow.chainData.gateway_transactions.length === 0 && selectedRow.chainData.invoices.length === 0 && (!selectedRow.chainData.orders || selectedRow.chainData.orders.length === 0) && (!selectedRow.chainData.web_orders || selectedRow.chainData.web_orders.length === 0) && (
                                                 <p className="text-xs text-gray-500 italic">No linked transactions, invoices or orders found.</p>
                                             )}
                                         </>
