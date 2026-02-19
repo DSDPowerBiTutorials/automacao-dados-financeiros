@@ -146,6 +146,16 @@ export const NAV: NavGroup[] = withUnderConstruction([
     ]
   },
   {
+    label: "DSD Calendar",
+    items: [
+      {
+        title: "📅 DSD Calendar",
+        href: "/calendar",
+        icon: Calendar
+      }
+    ]
+  },
+  {
     label: "Departmental Insights",
     items: [
       {
