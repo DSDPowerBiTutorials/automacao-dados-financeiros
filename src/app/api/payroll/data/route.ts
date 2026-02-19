@@ -29,12 +29,14 @@ export async function GET(request: NextRequest) {
         const monthlyData: Record<string, unknown> = {};
         let latestData = null;
         let latestFileName = null;
+        let latestMonth = -1;
 
         for (const row of data || []) {
             const key = `${row.year}-${String(row.month).padStart(2, "0")}`;
             monthlyData[key] = row.data;
             // Track the most recent upload as "current"
-            if (!latestData || row.month > (latestData as { month?: number })?.month) {
+            if (row.month > latestMonth) {
+                latestMonth = row.month;
                 latestData = row.data;
                 latestFileName = row.file_name;
             }

@@ -102,7 +102,16 @@ function parsePayrollXLSX(buffer: ArrayBuffer): PayrollData {
         // Extract metadata from row 1-4
         if (!period && indData[3]) {
             const periodStr = String(indData[3][0] || "");
-            period = periodStr.replace(/^DEL\s+/, "").trim();
+            // Format: "DEL 01/01/2026 AL 31/01/2026" or "DEL 01/01/26 AL 31/01/26"
+            const dateMatch = periodStr.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
+            if (dateMatch) {
+                const mm = dateMatch[2]; // month
+                let yyyy = dateMatch[3]; // year (2 or 4 digits)
+                if (yyyy.length === 2) yyyy = `20${yyyy}`;
+                period = `${mm}/${yyyy}`; // "01/2026" (MM/YYYY)
+            } else {
+                period = periodStr.replace(/^DEL\s+/, "").trim();
+            }
         }
         if (!company && indData[4]) {
             const compStr = String(indData[4][0] || "");
@@ -473,14 +482,27 @@ export async function POST(request: NextRequest) {
 
         // Persist to Supabase - parse period "01/2026" → year=2026, month=1
         let year = new Date().getFullYear();
-        let month = new Date().getMonth() + 1;
+        let month = 1;
         if (data.period) {
-            const parts = data.period.split("/");
-            if (parts.length === 2) {
-                month = parseInt(parts[0], 10) || month;
-                year = parseInt(parts[1], 10) || year;
+            // Try MM/YYYY format first
+            const mmYyyy = data.period.match(/^(\d{1,2})\/(\d{2,4})$/);
+            if (mmYyyy) {
+                month = parseInt(mmYyyy[1], 10);
+                let yr = mmYyyy[2];
+                if (yr.length === 2) yr = `20${yr}`;
+                year = parseInt(yr, 10);
+            } else {
+                // Try to extract from longer format e.g. "01/01/2026 AL 31/01/2026"
+                const dateMatch = data.period.match(/(\d{2})\/(\d{2})\/(\d{2,4})/);
+                if (dateMatch) {
+                    month = parseInt(dateMatch[2], 10);
+                    let yr = dateMatch[3];
+                    if (yr.length === 2) yr = `20${yr}`;
+                    year = parseInt(yr, 10);
+                }
             }
         }
+        console.log(`Payroll period: "${data.period}" → month=${month}, year=${year}`);
 
         const { error: dbError } = await supabaseAdmin
             .from("payroll_uploads")
