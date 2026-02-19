@@ -3,32 +3,35 @@
 import { useState, useEffect, useCallback } from "react";
 import {
     Settings2,
-    Plus,
-    Pencil,
-    Trash2,
     Loader2,
     Search,
     FileText,
-    DollarSign,
-    Building2,
-    Briefcase,
+    TrendingUp,
+    TrendingDown,
+    CheckCircle2,
+    AlertCircle,
+    Pencil,
+    Save,
+    X,
+    RefreshCw,
 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type TargetCategory = "cogs" | "labour" | "office-rh-spain";
+
+interface PayrollConcept {
+    code: number;
+    description: string;
+    isDeduction: boolean;
+    monthsPresent: string[];
+    totalAmount: number;
+    employeeCount: number;
+}
 
 interface PayrollMapping {
     id: string;
@@ -42,142 +45,163 @@ interface PayrollMapping {
     created_at: string;
 }
 
-const CATEGORY_CONFIG: Record<TargetCategory, { label: string; emoji: string; color: string; badge: string }> = {
-    cogs: { label: "COGS", emoji: "📦", color: "text-red-600 dark:text-red-400", badge: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400" },
-    labour: { label: "Labour", emoji: "👷", color: "text-blue-600 dark:text-blue-400", badge: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400" },
-    "office-rh-spain": { label: "Office RH Spain", emoji: "🇪🇸", color: "text-amber-600 dark:text-amber-400", badge: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400" },
-};
-
-const EMPTY_FORM = {
-    concept_code: "",
-    concept_description: "",
-    target_category: "labour" as TargetCategory,
-    department_override: "",
-    financial_account_code: "",
-    financial_account_name: "",
-    notes: "",
+const CATEGORY_CONFIG: Record<TargetCategory, { label: string; emoji: string; badge: string }> = {
+    cogs: { label: "COGS", emoji: "📦", badge: "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-400 border-red-200 dark:border-red-800" },
+    labour: { label: "Labour", emoji: "👷", badge: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-400 border-blue-200 dark:border-blue-800" },
+    "office-rh-spain": { label: "Office RH Spain", emoji: "🏢", badge: "bg-amber-100 text-amber-700 dark:bg-amber-950 dark:text-amber-400 border-amber-200 dark:border-amber-800" },
 };
 
 export default function PayrollMasterDataPage() {
+    const [concepts, setConcepts] = useState<PayrollConcept[]>([]);
     const [mappings, setMappings] = useState<PayrollMapping[]>([]);
     const [loading, setLoading] = useState(true);
-    const [saving, setSaving] = useState(false);
-    const [dialogOpen, setDialogOpen] = useState(false);
-    const [editingId, setEditingId] = useState<string | null>(null);
-    const [form, setForm] = useState(EMPTY_FORM);
+    const [syncing, setSyncing] = useState(false);
     const [search, setSearch] = useState("");
-    const [catFilter, setCatFilter] = useState<string>("all");
-    const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+    const [filter, setFilter] = useState<"all" | "mapped" | "unmapped" | "earnings" | "deductions">("all");
 
-    const loadMappings = useCallback(async () => {
+    // Inline editing state
+    const [editingCode, setEditingCode] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({
+        target_category: "labour" as TargetCategory,
+        financial_account_code: "",
+        financial_account_name: "",
+        notes: "",
+    });
+    const [editSaving, setEditSaving] = useState(false);
+
+    const loadAll = useCallback(async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/payroll/master-data");
-            const json = await res.json();
-            if (json.success) setMappings(json.data || []);
+            const [conceptsRes, mappingsRes] = await Promise.all([
+                fetch("/api/payroll/concepts"),
+                fetch("/api/payroll/master-data"),
+            ]);
+            const conceptsJson = await conceptsRes.json();
+            const mappingsJson = await mappingsRes.json();
+            if (conceptsJson.success) setConcepts(conceptsJson.data || []);
+            if (mappingsJson.success) setMappings(mappingsJson.data || []);
         } catch (err) {
-            console.error("Failed to load mappings:", err);
+            console.error("Failed to load:", err);
         } finally {
             setLoading(false);
         }
     }, []);
 
-    useEffect(() => {
-        loadMappings();
-    }, [loadMappings]);
+    useEffect(() => { loadAll(); }, [loadAll]);
 
-    const filtered = mappings.filter((m) => {
-        if (catFilter !== "all" && m.target_category !== catFilter) return false;
+    // Build mapping lookup by concept_code
+    const mappingByCode = new Map<string, PayrollMapping>();
+    mappings.forEach((m) => mappingByCode.set(m.concept_code, m));
+
+    // Merged data: concepts from payroll + their mapping status
+    const merged = concepts.map((c) => {
+        const code = String(c.code).padStart(3, "0");
+        const mapping = mappingByCode.get(code);
+        return { ...c, codeStr: code, mapping };
+    });
+
+    // Filter
+    const filtered = merged.filter((c) => {
+        if (filter === "mapped" && !c.mapping) return false;
+        if (filter === "unmapped" && c.mapping) return false;
+        if (filter === "earnings" && c.isDeduction) return false;
+        if (filter === "deductions" && !c.isDeduction) return false;
         if (!search) return true;
         const q = search.toLowerCase();
         return (
-            m.concept_code.toLowerCase().includes(q) ||
-            (m.concept_description?.toLowerCase().includes(q)) ||
-            (m.financial_account_name?.toLowerCase().includes(q)) ||
-            (m.department_override?.toLowerCase().includes(q))
+            c.codeStr.includes(q) ||
+            c.description.toLowerCase().includes(q) ||
+            (c.mapping?.financial_account_name?.toLowerCase().includes(q)) ||
+            (c.mapping?.target_category?.toLowerCase().includes(q))
         );
     });
 
-    const openAdd = () => {
-        setEditingId(null);
-        setForm(EMPTY_FORM);
-        setDialogOpen(true);
-    };
+    // KPIs
+    const totalConcepts = concepts.length;
+    const mappedCount = merged.filter((c) => c.mapping).length;
+    const unmappedCount = totalConcepts - mappedCount;
+    const earningsCount = concepts.filter((c) => !c.isDeduction).length;
+    const deductionsCount = concepts.filter((c) => c.isDeduction).length;
 
-    const openEdit = (m: PayrollMapping) => {
-        setEditingId(m.id);
-        setForm({
-            concept_code: m.concept_code,
-            concept_description: m.concept_description || "",
-            target_category: m.target_category,
-            department_override: m.department_override || "",
-            financial_account_code: m.financial_account_code || "",
-            financial_account_name: m.financial_account_name || "",
-            notes: m.notes || "",
-        });
-        setDialogOpen(true);
-    };
-
-    const handleSave = async () => {
-        if (!form.concept_code || !form.target_category) return;
-        setSaving(true);
+    // Sync all unmapped concepts
+    const syncConcepts = async () => {
+        setSyncing(true);
         try {
-            const payload = {
-                concept_code: form.concept_code,
-                concept_description: form.concept_description || null,
-                target_category: form.target_category,
-                department_override: form.department_override || null,
-                financial_account_code: form.financial_account_code || null,
-                financial_account_name: form.financial_account_name || null,
-                notes: form.notes || null,
-            };
+            const res = await fetch("/api/payroll/concepts", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ concepts }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                toast({ title: `${json.inserted || 0} new concepts synced` });
+                loadAll();
+            } else {
+                throw new Error(json.error);
+            }
+        } catch (err) {
+            toast({ title: "Sync failed", description: String(err), variant: "destructive" });
+        } finally {
+            setSyncing(false);
+        }
+    };
 
-            if (editingId) {
+    // Start editing a mapping
+    const startEdit = (codeStr: string, mapping: PayrollMapping | undefined) => {
+        setEditingCode(codeStr);
+        setEditForm({
+            target_category: mapping?.target_category || "labour",
+            financial_account_code: mapping?.financial_account_code || "",
+            financial_account_name: mapping?.financial_account_name || "",
+            notes: mapping?.notes || "",
+        });
+    };
+
+    const cancelEdit = () => setEditingCode(null);
+
+    const saveEdit = async (codeStr: string, concept: PayrollConcept, existingMapping: PayrollMapping | undefined) => {
+        setEditSaving(true);
+        try {
+            if (existingMapping) {
                 const res = await fetch("/api/payroll/master-data", {
                     method: "PUT",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ id: editingId, ...payload }),
+                    body: JSON.stringify({
+                        id: existingMapping.id,
+                        target_category: editForm.target_category,
+                        financial_account_code: editForm.financial_account_code || null,
+                        financial_account_name: editForm.financial_account_name || null,
+                        notes: editForm.notes || null,
+                    }),
                 });
                 const json = await res.json();
                 if (!json.success) throw new Error(json.error);
-                toast({ title: "Mapping updated" });
+                toast({ title: `Updated ${codeStr}` });
             } else {
                 const res = await fetch("/api/payroll/master-data", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(payload),
+                    body: JSON.stringify({
+                        concept_code: codeStr,
+                        concept_description: concept.description,
+                        target_category: editForm.target_category,
+                        financial_account_code: editForm.financial_account_code || null,
+                        financial_account_name: editForm.financial_account_name || null,
+                        notes: editForm.notes || null,
+                    }),
                 });
                 const json = await res.json();
                 if (!json.success) throw new Error(json.error);
-                toast({ title: "Mapping created" });
+                toast({ title: `Mapped ${codeStr}` });
             }
-            setDialogOpen(false);
-            loadMappings();
+            setEditingCode(null);
+            loadAll();
         } catch (err) {
-            toast({ title: "Error saving mapping", description: String(err), variant: "destructive" });
+            toast({ title: "Error saving", description: String(err), variant: "destructive" });
         } finally {
-            setSaving(false);
+            setEditSaving(false);
         }
     };
-
-    const handleDelete = async (id: string) => {
-        try {
-            const res = await fetch(`/api/payroll/master-data?id=${id}`, { method: "DELETE" });
-            const json = await res.json();
-            if (!json.success) throw new Error(json.error);
-            toast({ title: "Mapping deleted" });
-            setDeleteConfirm(null);
-            loadMappings();
-        } catch (err) {
-            toast({ title: "Error deleting", description: String(err), variant: "destructive" });
-        }
-    };
-
-    // KPIs
-    const total = mappings.length;
-    const cogsCt = mappings.filter((m) => m.target_category === "cogs").length;
-    const labourCt = mappings.filter((m) => m.target_category === "labour").length;
-    const officeCt = mappings.filter((m) => m.target_category === "office-rh-spain").length;
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-6 lg:p-8 space-y-6">
@@ -187,29 +211,43 @@ export default function PayrollMasterDataPage() {
                     <Settings2 className="h-7 w-7 text-blue-600 dark:text-blue-400" />
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Payroll Master Data
+                            Payroll Concepts
                         </h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Map payroll concept codes to financial categories (COGS, Labour, Office RH Spain)
+                            All payroll concepts extracted from uploads — map each to an AP category
                         </p>
                     </div>
                 </div>
-                <Button
-                    size="sm"
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={openAdd}
-                >
-                    <Plus className="h-4 w-4 mr-1" />
-                    New Mapping
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={loadAll}
+                        disabled={loading}
+                        className="dark:border-gray-600 dark:text-gray-300"
+                    >
+                        <RefreshCw className={`h-4 w-4 mr-1 ${loading ? "animate-spin" : ""}`} />
+                        Refresh
+                    </Button>
+                    <Button
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={syncConcepts}
+                        disabled={syncing || unmappedCount === 0}
+                    >
+                        {syncing ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+                        Sync All ({unmappedCount} unmapped)
+                    </Button>
+                </div>
             </div>
 
             {/* KPI Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <KPICard label="Total Mappings" value={total} icon={<FileText className="h-5 w-5 text-gray-500" />} />
-                <KPICard label="COGS" value={cogsCt} icon={<DollarSign className="h-5 w-5 text-red-500" />} />
-                <KPICard label="Labour" value={labourCt} icon={<Briefcase className="h-5 w-5 text-blue-500" />} />
-                <KPICard label="Office RH Spain" value={officeCt} icon={<Building2 className="h-5 w-5 text-amber-500" />} />
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <KPICard label="Total Concepts" value={totalConcepts} icon={<FileText className="h-5 w-5 text-gray-500" />} />
+                <KPICard label="Mapped" value={mappedCount} icon={<CheckCircle2 className="h-5 w-5 text-green-500" />} />
+                <KPICard label="Unmapped" value={unmappedCount} icon={<AlertCircle className="h-5 w-5 text-orange-500" />} />
+                <KPICard label="Earnings" value={earningsCount} icon={<TrendingUp className="h-5 w-5 text-green-500" />} />
+                <KPICard label="Deductions" value={deductionsCount} icon={<TrendingDown className="h-5 w-5 text-red-500" />} />
             </div>
 
             {/* Filters */}
@@ -219,22 +257,22 @@ export default function PayrollMasterDataPage() {
                     <Input
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
-                        placeholder="Search concept code, description..."
+                        placeholder="Search code, description, account..."
                         className="pl-9 bg-transparent border-gray-300 dark:border-gray-600"
                     />
                 </div>
-                <div className="flex items-center gap-1">
-                    {["all", "cogs", "labour", "office-rh-spain"].map((c) => {
-                        const lbl = c === "all" ? "All" : (CATEGORY_CONFIG[c as TargetCategory]?.label || c);
+                <div className="flex items-center gap-1 flex-wrap">
+                    {(["all", "mapped", "unmapped", "earnings", "deductions"] as const).map((f) => {
+                        const labels: Record<string, string> = { all: "All", mapped: "Mapped", unmapped: "Unmapped", earnings: "Earnings", deductions: "Deductions" };
                         return (
                             <Button
-                                key={c}
-                                variant={catFilter === c ? "default" : "outline"}
+                                key={f}
+                                variant={filter === f ? "default" : "outline"}
                                 size="sm"
-                                onClick={() => setCatFilter(c)}
-                                className={catFilter === c ? "bg-blue-600 text-white" : "dark:border-gray-600 dark:text-gray-400"}
+                                onClick={() => setFilter(f)}
+                                className={filter === f ? "bg-blue-600 text-white" : "dark:border-gray-600 dark:text-gray-400"}
                             >
-                                {lbl}
+                                {labels[f]}
                             </Button>
                         );
                     })}
@@ -246,12 +284,12 @@ export default function PayrollMasterDataPage() {
                 <div className="flex items-center justify-center py-20">
                     <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
                 </div>
-            ) : filtered.length === 0 ? (
+            ) : concepts.length === 0 ? (
                 <Card className="dark:bg-[#0a0a0a] dark:border-gray-700">
                     <CardContent className="py-16 text-center text-gray-500 dark:text-gray-400">
                         <Settings2 className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                        <p className="text-lg font-medium mb-1">No mappings found</p>
-                        <p className="text-sm">Create a mapping to associate payroll concept codes with financial lines</p>
+                        <p className="text-lg font-medium mb-1">No payroll concepts found</p>
+                        <p className="text-sm">Upload payroll XLSX files first to extract concepts automatically</p>
                     </CardContent>
                 </Card>
             ) : (
@@ -260,62 +298,160 @@ export default function PayrollMasterDataPage() {
                         <table className="w-full text-sm">
                             <thead>
                                 <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#111111]">
-                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Code</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-12">Status</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-16">Code</th>
                                     <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Description</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Category</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Department Override</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Financial Account</th>
-                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Notes</th>
-                                    <th className="text-center py-3 px-4 font-medium text-gray-600 dark:text-gray-400">Actions</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-14">Type</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-32">AP Category</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-40">Financial Account</th>
+                                    <th className="text-left py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-32">Notes</th>
+                                    <th className="text-right py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-20">Months</th>
+                                    <th className="text-center py-3 px-4 font-medium text-gray-600 dark:text-gray-400 w-16">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {filtered.map((m) => {
-                                    const cfg = CATEGORY_CONFIG[m.target_category] || CATEGORY_CONFIG.labour;
+                                {filtered.map((c) => {
+                                    const isEditing = editingCode === c.codeStr;
+                                    const cat = c.mapping?.target_category;
+                                    const catCfg = cat ? CATEGORY_CONFIG[cat] : null;
+
                                     return (
-                                        <tr key={m.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111111]">
-                                            <td className="py-3 px-4 font-mono font-medium text-gray-900 dark:text-white">
-                                                {m.concept_code}
-                                            </td>
-                                            <td className="py-3 px-4 text-gray-700 dark:text-gray-300">
-                                                {m.concept_description || <span className="text-gray-400">—</span>}
-                                            </td>
-                                            <td className="py-3 px-4">
-                                                <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${cfg.badge}`}>
-                                                    {cfg.emoji} {cfg.label}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-4 text-gray-700 dark:text-gray-300">
-                                                {m.department_override || <span className="text-gray-400">—</span>}
-                                            </td>
-                                            <td className="py-3 px-4 text-gray-700 dark:text-gray-300">
-                                                {m.financial_account_code || m.financial_account_name ? (
-                                                    <span>
-                                                        {m.financial_account_code && <span className="font-mono text-xs">{m.financial_account_code}</span>}
-                                                        {m.financial_account_code && m.financial_account_name && " — "}
-                                                        {m.financial_account_name}
-                                                    </span>
+                                        <tr
+                                            key={c.codeStr + (c.isDeduction ? "-D" : "-E")}
+                                            className={`border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#111111] transition-colors ${!c.mapping ? "bg-orange-50/50 dark:bg-orange-950/10" : ""}`}
+                                        >
+                                            <td className="py-2.5 px-4">
+                                                {c.mapping ? (
+                                                    <CheckCircle2 className="h-4 w-4 text-green-500" />
                                                 ) : (
-                                                    <span className="text-gray-400">—</span>
+                                                    <AlertCircle className="h-4 w-4 text-orange-400" />
                                                 )}
                                             </td>
-                                            <td className="py-3 px-4 text-gray-500 dark:text-gray-400 text-xs truncate max-w-[160px]">
-                                                {m.notes || "—"}
+
+                                            <td className="py-2.5 px-4 font-mono font-medium text-gray-900 dark:text-white">
+                                                {c.codeStr}
                                             </td>
-                                            <td className="py-3 px-4 text-center">
-                                                <div className="flex items-center justify-center gap-1">
-                                                    <Button variant="ghost" size="sm" onClick={() => openEdit(m)} className="h-7 w-7 p-0">
-                                                        <Pencil className="h-3.5 w-3.5 text-gray-500" />
-                                                    </Button>
+
+                                            <td className="py-2.5 px-4 text-gray-700 dark:text-gray-300">
+                                                {c.description}
+                                            </td>
+
+                                            <td className="py-2.5 px-4">
+                                                {c.isDeduction ? (
+                                                    <Badge className="bg-red-100 text-red-600 dark:bg-red-950 dark:text-red-400 border-red-200 dark:border-red-800 text-[10px]">
+                                                        DED
+                                                    </Badge>
+                                                ) : (
+                                                    <Badge className="bg-green-100 text-green-600 dark:bg-green-950 dark:text-green-400 border-green-200 dark:border-green-800 text-[10px]">
+                                                        EARN
+                                                    </Badge>
+                                                )}
+                                            </td>
+
+                                            <td className="py-2.5 px-4">
+                                                {isEditing ? (
+                                                    <select
+                                                        value={editForm.target_category}
+                                                        onChange={(e) => setEditForm((p) => ({ ...p, target_category: e.target.value as TargetCategory }))}
+                                                        className="w-full h-8 px-2 rounded border border-blue-400 dark:border-blue-600 bg-white dark:bg-[#0a0a0a] text-xs"
+                                                    >
+                                                        {(Object.keys(CATEGORY_CONFIG) as TargetCategory[]).map((k) => (
+                                                            <option key={k} value={k}>
+                                                                {CATEGORY_CONFIG[k].emoji} {CATEGORY_CONFIG[k].label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                ) : catCfg ? (
+                                                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${catCfg.badge}`}>
+                                                        {catCfg.emoji} {catCfg.label}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400 text-xs italic">— not set —</span>
+                                                )}
+                                            </td>
+
+                                            <td className="py-2.5 px-4">
+                                                {isEditing ? (
+                                                    <div className="flex gap-1">
+                                                        <Input
+                                                            value={editForm.financial_account_code}
+                                                            onChange={(e) => setEditForm((p) => ({ ...p, financial_account_code: e.target.value }))}
+                                                            placeholder="Code"
+                                                            className="h-8 text-xs font-mono w-16 bg-transparent border-blue-400 dark:border-blue-600"
+                                                        />
+                                                        <Input
+                                                            value={editForm.financial_account_name}
+                                                            onChange={(e) => setEditForm((p) => ({ ...p, financial_account_name: e.target.value }))}
+                                                            placeholder="Account name"
+                                                            className="h-8 text-xs bg-transparent border-blue-400 dark:border-blue-600"
+                                                        />
+                                                    </div>
+                                                ) : c.mapping?.financial_account_code || c.mapping?.financial_account_name ? (
+                                                    <span className="text-xs">
+                                                        {c.mapping.financial_account_code && (
+                                                            <span className="font-mono text-gray-500 mr-1">{c.mapping.financial_account_code}</span>
+                                                        )}
+                                                        {c.mapping.financial_account_name && (
+                                                            <span className="text-gray-700 dark:text-gray-300">{c.mapping.financial_account_name}</span>
+                                                        )}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-300 dark:text-gray-700">—</span>
+                                                )}
+                                            </td>
+
+                                            <td className="py-2.5 px-4">
+                                                {isEditing ? (
+                                                    <Input
+                                                        value={editForm.notes}
+                                                        onChange={(e) => setEditForm((p) => ({ ...p, notes: e.target.value }))}
+                                                        placeholder="Notes"
+                                                        className="h-8 text-xs bg-transparent border-blue-400 dark:border-blue-600"
+                                                    />
+                                                ) : (
+                                                    <span className="text-xs text-gray-500 truncate block max-w-[120px]">
+                                                        {c.mapping?.notes || "—"}
+                                                    </span>
+                                                )}
+                                            </td>
+
+                                            <td className="text-right py-2.5 px-4">
+                                                <span className="text-xs font-mono text-gray-500">
+                                                    {c.monthsPresent.length}
+                                                </span>
+                                            </td>
+
+                                            <td className="text-center py-2.5 px-4">
+                                                {isEditing ? (
+                                                    <div className="flex items-center justify-center gap-1">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0 text-green-600 hover:text-green-700"
+                                                            onClick={() => saveEdit(c.codeStr, c, c.mapping)}
+                                                            disabled={editSaving}
+                                                        >
+                                                            {editSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="h-7 w-7 p-0 text-gray-500"
+                                                            onClick={cancelEdit}
+                                                        >
+                                                            <X className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    </div>
+                                                ) : (
                                                     <Button
                                                         variant="ghost"
                                                         size="sm"
-                                                        onClick={() => setDeleteConfirm(m.id)}
-                                                        className="h-7 w-7 p-0 hover:text-red-600"
+                                                        className="h-7 w-7 p-0"
+                                                        onClick={() => startEdit(c.codeStr, c.mapping)}
                                                     >
-                                                        <Trash2 className="h-3.5 w-3.5 text-gray-500" />
+                                                        <Pencil className="h-3.5 w-3.5 text-gray-500" />
                                                     </Button>
-                                                </div>
+                                                )}
                                             </td>
                                         </tr>
                                     );
@@ -325,128 +461,6 @@ export default function PayrollMasterDataPage() {
                     </div>
                 </Card>
             )}
-
-            {/* Add/Edit Dialog */}
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-lg">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            <Settings2 className="h-5 w-5 text-blue-500" />
-                            {editingId ? "Edit Mapping" : "New Payroll Mapping"}
-                        </DialogTitle>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="text-xs text-gray-500">Concept Code *</Label>
-                                <Input
-                                    value={form.concept_code}
-                                    onChange={(e) => setForm((p) => ({ ...p, concept_code: e.target.value }))}
-                                    placeholder="e.g. 001, MV01"
-                                    className="bg-transparent border-gray-300 dark:border-gray-600 font-mono"
-                                />
-                            </div>
-                            <div>
-                                <Label className="text-xs text-gray-500">Category *</Label>
-                                <select
-                                    value={form.target_category}
-                                    onChange={(e) => setForm((p) => ({ ...p, target_category: e.target.value as TargetCategory }))}
-                                    className="w-full h-9 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-transparent text-sm"
-                                >
-                                    {(Object.keys(CATEGORY_CONFIG) as TargetCategory[]).map((c) => (
-                                        <option key={c} value={c}>
-                                            {CATEGORY_CONFIG[c].emoji} {CATEGORY_CONFIG[c].label}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        </div>
-                        <div>
-                            <Label className="text-xs text-gray-500">Concept Description</Label>
-                            <Input
-                                value={form.concept_description}
-                                onChange={(e) => setForm((p) => ({ ...p, concept_description: e.target.value }))}
-                                placeholder="e.g. Mejora Voluntaria, Salario Base"
-                                className="bg-transparent border-gray-300 dark:border-gray-600"
-                            />
-                        </div>
-                        <div>
-                            <Label className="text-xs text-gray-500">Department Override</Label>
-                            <Input
-                                value={form.department_override}
-                                onChange={(e) => setForm((p) => ({ ...p, department_override: e.target.value }))}
-                                placeholder="e.g. Development, Sales, Marketing"
-                                className="bg-transparent border-gray-300 dark:border-gray-600"
-                            />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <div>
-                                <Label className="text-xs text-gray-500">Financial Account Code</Label>
-                                <Input
-                                    value={form.financial_account_code}
-                                    onChange={(e) => setForm((p) => ({ ...p, financial_account_code: e.target.value }))}
-                                    placeholder="e.g. 6400, 6410"
-                                    className="bg-transparent border-gray-300 dark:border-gray-600 font-mono"
-                                />
-                            </div>
-                            <div>
-                                <Label className="text-xs text-gray-500">Financial Account Name</Label>
-                                <Input
-                                    value={form.financial_account_name}
-                                    onChange={(e) => setForm((p) => ({ ...p, financial_account_name: e.target.value }))}
-                                    placeholder="e.g. Sueldos y Salarios"
-                                    className="bg-transparent border-gray-300 dark:border-gray-600"
-                                />
-                            </div>
-                        </div>
-                        <div>
-                            <Label className="text-xs text-gray-500">Notes</Label>
-                            <Input
-                                value={form.notes}
-                                onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))}
-                                placeholder="Additional notes"
-                                className="bg-transparent border-gray-300 dark:border-gray-600"
-                            />
-                        </div>
-                    </div>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                            onClick={handleSave}
-                            disabled={!form.concept_code || !form.target_category || saving}
-                        >
-                            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
-                            {editingId ? "Save Changes" : "Create Mapping"}
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
-
-            {/* Delete Confirm */}
-            <Dialog open={!!deleteConfirm} onOpenChange={() => setDeleteConfirm(null)}>
-                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-sm">
-                    <DialogHeader>
-                        <DialogTitle className="text-red-600">Delete Mapping</DialogTitle>
-                    </DialogHeader>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                        This will permanently delete this payroll mapping. Continue?
-                    </p>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setDeleteConfirm(null)}>
-                            Cancel
-                        </Button>
-                        <Button
-                            className="bg-red-600 hover:bg-red-700 text-white"
-                            onClick={() => deleteConfirm && handleDelete(deleteConfirm)}
-                        >
-                            Delete
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </div>
     );
 }
