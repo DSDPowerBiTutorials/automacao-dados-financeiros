@@ -1332,101 +1332,89 @@ function MonthlyView({
                                     </td>
                                 </tr>
 
-                                {/* Expanded: all concept lines per month */}
-                                {isExpanded && availableMonths.length > 0 && (
-                                    <tr className="bg-gray-50/80 dark:bg-[#060606]">
-                                        <td colSpan={totalCols} className="p-0">
-                                            <div className="px-4 py-3 space-y-4 max-h-[600px] overflow-y-auto">
-                                                {availableMonths.map((m) => {
-                                                    const detail = emp.monthDetails[m];
-                                                    if (!detail) return null;
-                                                    const earnings = detail.concepts.filter((c) => !c.isDeduction);
-                                                    const deductions = detail.concepts.filter((c) => c.isDeduction);
+                                {/* Expanded: concept lines as sub-rows aligned under month columns */}
+                                {isExpanded && (() => {
+                                    // Build unified concept list from all months
+                                    const conceptMap = new Map<string, { code: number; description: string; isDeduction: boolean; amounts: Record<number, number> }>();
+                                    availableMonths.forEach((m) => {
+                                        const detail = emp.monthDetails[m];
+                                        if (!detail) return;
+                                        detail.concepts.forEach((c) => {
+                                            const key = `${c.code}-${c.isDeduction ? "D" : "E"}`;
+                                            let entry = conceptMap.get(key);
+                                            if (!entry) {
+                                                entry = { code: c.code, description: c.description, isDeduction: c.isDeduction, amounts: {} };
+                                                conceptMap.set(key, entry);
+                                            }
+                                            entry.amounts[m] = c.amount;
+                                        });
+                                    });
+                                    const allConcepts = Array.from(conceptMap.values()).sort((a, b) => {
+                                        if (a.isDeduction !== b.isDeduction) return a.isDeduction ? 1 : -1;
+                                        return a.code - b.code;
+                                    });
+                                    const earnings = allConcepts.filter((c) => !c.isDeduction);
+                                    const deductions = allConcepts.filter((c) => c.isDeduction);
 
-                                                    return (
-                                                        <div key={m} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-                                                            {/* Month header */}
-                                                            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 flex items-center justify-between">
-                                                                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide flex items-center gap-2">
-                                                                    <Calendar className="h-3 w-3 text-blue-500" />
-                                                                    {MONTH_NAMES[m]} {selectedYear}
-                                                                </h4>
-                                                                <div className="flex items-center gap-4 text-[10px]">
-                                                                    <span className="text-green-500 font-mono">Gross: {fmtEur(detail.totalBruto)}</span>
-                                                                    <span className="text-red-400 font-mono">Ded: {fmtEur(detail.totalDeducciones)}</span>
-                                                                    <span className="text-emerald-400 font-mono font-bold">Net: {fmtEur(detail.totalLiquido)}</span>
-                                                                    <span className="text-amber-400 font-mono font-bold">Cost: {fmtEur(detail.costeEmpresa)}</span>
-                                                                </div>
-                                                            </div>
+                                    const renderConceptRow = (c: typeof allConcepts[0], idx: number, color: string) => (
+                                        <tr key={`${c.code}-${c.isDeduction}-${idx}`} className="border-b border-gray-100/50 dark:border-gray-800/30">
+                                            <td className="px-1 py-1"></td>
+                                            <td className="px-2 py-1 sticky left-0 bg-gray-50 dark:bg-[#060606]">
+                                                <span className="text-[10px] text-gray-500">
+                                                    <span className="font-mono text-gray-400 mr-1.5">{String(c.code).padStart(3, "0")}</span>
+                                                    {c.description}
+                                                </span>
+                                            </td>
+                                            <td className="px-2 py-1"></td>
+                                            {Array.from({ length: 12 }, (_, m) => (
+                                                <td key={m} className="text-right px-2 py-1 font-mono text-[10px]">
+                                                    {c.amounts[m] != null ? (
+                                                        <span className={color}>{fmtEur(c.amounts[m])}</span>
+                                                    ) : (
+                                                        <span className="text-gray-200 dark:text-gray-800">—</span>
+                                                    )}
+                                                </td>
+                                            ))}
+                                            <td className="text-right px-2 py-1 font-mono text-[10px] bg-gray-100/30 dark:bg-gray-900/20">
+                                                <span className={color}>
+                                                    {fmtEur(Object.values(c.amounts).reduce((s, v) => s + v, 0))}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    );
 
-                                                            {/* Concept lines table */}
-                                                            <table className="w-full text-xs">
-                                                                <thead>
-                                                                    <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                                                                        <th className="text-left px-4 py-1.5 text-[10px] text-gray-400 font-medium w-16">Code</th>
-                                                                        <th className="text-left px-2 py-1.5 text-[10px] text-gray-400 font-medium">Description</th>
-                                                                        <th className="text-right px-4 py-1.5 text-[10px] text-gray-400 font-medium w-28">Amount</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    {/* Earnings section */}
-                                                                    {earnings.length > 0 && (
-                                                                        <tr>
-                                                                            <td colSpan={3} className="px-4 pt-2 pb-1">
-                                                                                <span className="text-[10px] font-semibold text-green-600 dark:text-green-400 uppercase flex items-center gap-1">
-                                                                                    <TrendingUp className="h-2.5 w-2.5" /> Earnings
-                                                                                </span>
-                                                                            </td>
-                                                                        </tr>
-                                                                    )}
-                                                                    {earnings.map((c, idx) => (
-                                                                        <tr key={`e-${idx}`} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-white/50 dark:hover:bg-gray-800/30">
-                                                                            <td className="px-4 py-1 font-mono text-gray-400">{String(c.code).padStart(3, "0")}</td>
-                                                                            <td className="px-2 py-1 text-gray-600 dark:text-gray-400">{c.description}</td>
-                                                                            <td className={`text-right px-4 py-1 font-mono ${c.amount < 0 ? "text-red-400" : "text-green-500"}`}>{fmtEur(c.amount)}</td>
-                                                                        </tr>
-                                                                    ))}
+                                    return (
+                                        <>
+                                            {/* Earnings header */}
+                                            {earnings.length > 0 && (
+                                                <tr className="bg-gray-50 dark:bg-[#060606]">
+                                                    <td className="px-1 py-1"></td>
+                                                    <td className="px-2 py-1 sticky left-0 bg-gray-50 dark:bg-[#060606]" colSpan={2}>
+                                                        <span className="text-[10px] font-semibold text-green-600 dark:text-green-400 uppercase flex items-center gap-1">
+                                                            <TrendingUp className="h-2.5 w-2.5" /> Earnings
+                                                        </span>
+                                                    </td>
+                                                    {Array.from({ length: 13 }, (_, i) => <td key={i} className="py-1"></td>)}
+                                                </tr>
+                                            )}
+                                            {earnings.map((c, idx) => renderConceptRow(c, idx, c.amounts[Object.keys(c.amounts).map(Number)[0]] < 0 ? "text-red-400" : "text-green-600 dark:text-green-400"))}
 
-                                                                    {/* Deductions section */}
-                                                                    {deductions.length > 0 && (
-                                                                        <tr>
-                                                                            <td colSpan={3} className="px-4 pt-3 pb-1">
-                                                                                <span className="text-[10px] font-semibold text-red-500 dark:text-red-400 uppercase flex items-center gap-1">
-                                                                                    <TrendingDown className="h-2.5 w-2.5" /> Deductions
-                                                                                </span>
-                                                                            </td>
-                                                                        </tr>
-                                                                    )}
-                                                                    {deductions.map((c, idx) => (
-                                                                        <tr key={`d-${idx}`} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-white/50 dark:hover:bg-gray-800/30">
-                                                                            <td className="px-4 py-1 font-mono text-gray-400">{String(c.code).padStart(3, "0")}</td>
-                                                                            <td className="px-2 py-1 text-gray-600 dark:text-gray-400">{c.description}</td>
-                                                                            <td className="text-right px-4 py-1 font-mono text-red-400">{fmtEur(c.amount)}</td>
-                                                                        </tr>
-                                                                    ))}
-
-                                                                    {/* Summary row */}
-                                                                    <tr className="border-t border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/40">
-                                                                        <td className="px-4 py-2" colSpan={2}>
-                                                                            <div className="flex items-center gap-6 text-[10px]">
-                                                                                <span className="text-gray-500">SS Emp: <span className="font-mono text-blue-400 font-bold">{fmtEur(detail.ssEmpresa)}</span></span>
-                                                                                <span className="text-gray-500">SS Trab: <span className="font-mono text-blue-300 font-bold">{fmtEur(detail.ssTrabajador)}</span></span>
-                                                                                <span className="text-gray-500">IRPF ({fmtPct(detail.irpfPercent)}): <span className="font-mono text-orange-400 font-bold">{fmtEur(detail.irpf)}</span></span>
-                                                                            </div>
-                                                                        </td>
-                                                                        <td className="text-right px-4 py-2">
-                                                                            <span className="font-mono font-bold text-amber-400">{fmtEur(detail.costeEmpresa)}</span>
-                                                                        </td>
-                                                                    </tr>
-                                                                </tbody>
-                                                            </table>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </td>
-                                    </tr>
-                                )}
+                                            {/* Deductions header */}
+                                            {deductions.length > 0 && (
+                                                <tr className="bg-gray-50 dark:bg-[#060606]">
+                                                    <td className="px-1 py-1"></td>
+                                                    <td className="px-2 py-1 sticky left-0 bg-gray-50 dark:bg-[#060606]" colSpan={2}>
+                                                        <span className="text-[10px] font-semibold text-red-500 dark:text-red-400 uppercase flex items-center gap-1">
+                                                            <TrendingDown className="h-2.5 w-2.5" /> Deductions
+                                                        </span>
+                                                    </td>
+                                                    {Array.from({ length: 13 }, (_, i) => <td key={i} className="py-1"></td>)}
+                                                </tr>
+                                            )}
+                                            {deductions.map((c, idx) => renderConceptRow(c, idx, "text-red-400"))}
+                                        </>
+                                    );
+                                })()}
                             </React.Fragment>
                         );
                     })}
