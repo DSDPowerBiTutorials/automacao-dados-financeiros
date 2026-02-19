@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as XLSX from "xlsx";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+const supabaseAdmin = createClient(supabaseUrl, supabaseKey);
 
 // ════════════════════════════════════════════════════════
 // Types
@@ -466,11 +471,45 @@ export async function POST(request: NextRequest) {
         const buffer = await file.arrayBuffer();
         const data = parsePayrollXLSX(buffer);
 
+        // Persist to Supabase - parse period "01/2026" → year=2026, month=1
+        let year = new Date().getFullYear();
+        let month = new Date().getMonth() + 1;
+        if (data.period) {
+            const parts = data.period.split("/");
+            if (parts.length === 2) {
+                month = parseInt(parts[0], 10) || month;
+                year = parseInt(parts[1], 10) || year;
+            }
+        }
+
+        const { error: dbError } = await supabaseAdmin
+            .from("payroll_uploads")
+            .upsert(
+                {
+                    year,
+                    month,
+                    period: data.period,
+                    company: data.company,
+                    nif: data.nif,
+                    currency: data.currency,
+                    file_name: file.name,
+                    data: data,
+                    updated_at: new Date().toISOString(),
+                },
+                { onConflict: "year,month" },
+            );
+
+        if (dbError) {
+            console.error("Supabase payroll persist error:", dbError);
+            // Don't fail the request — data was parsed successfully
+        }
+
         return NextResponse.json({
             success: true,
             data,
             fileName: file.name,
             fileSize: file.size,
+            persisted: !dbError,
         });
     } catch (error: unknown) {
         console.error("Payroll upload error:", error);
