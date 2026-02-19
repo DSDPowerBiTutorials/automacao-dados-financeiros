@@ -35,6 +35,7 @@ import {
   Bot,
   Plug,
   UserCheck,
+  GraduationCap,
   type LucideIcon
 } from "lucide-react"
 
@@ -144,16 +145,16 @@ export const NAV: NavGroup[] = withUnderConstruction([
         title: "Clinics Overview",
         href: "/sales-insights/clinics",
         icon: Building2
-      }
-    ]
-  },
-  {
-    label: "DSD Calendar",
-    items: [
+      },
       {
         title: "📅 DSD Calendar",
         href: "/calendar",
         icon: Calendar
+      },
+      {
+        title: "🎓 DSD Courses",
+        href: "/sales-insights/courses",
+        icon: GraduationCap
       }
     ]
   },
@@ -386,12 +387,17 @@ export const NAV: NavGroup[] = withUnderConstruction([
     ]
   },
   {
-    label: "People",
+    label: "Payroll",
     items: [
       {
         title: "👥 Payroll",
         href: "/people/payroll",
         icon: UserCheck
+      },
+      {
+        title: "Master Data",
+        href: "/people/payroll/master-data",
+        icon: Boxes
       }
     ]
   },

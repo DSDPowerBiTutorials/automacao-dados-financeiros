@@ -166,6 +166,17 @@ export default function ARInvoicesPage() {
   const [activeFilterColumn, setActiveFilterColumn] = useState<string | null>(null);
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({ from: undefined, to: undefined });
 
+  // DSD Courses for dropdown
+  const [dsdCourses, setDsdCourses] = useState<{ id: string; name: string; location: string | null; start_date: string }[]>([]);
+
+  // Load DSD courses
+  useEffect(() => {
+    fetch("/api/dsd-courses")
+      .then(r => r.json())
+      .then(json => { if (json.success) setDsdCourses(json.data || []); })
+      .catch(() => { });
+  }, []);
+
   const loadInvoices = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -1516,9 +1527,28 @@ export default function ARInvoicesPage() {
                   <TrendingUp className="h-3.5 w-3.5" /> Product & Details
                 </h4>
                 <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4 space-y-3">
-                  <div>
-                    <p className="text-xs text-gray-500 mb-1">Products</p>
-                    <Input value={editingInvoice.products || ""} onChange={e => setEditingInvoice({ ...editingInvoice, products: e.target.value })} placeholder="Level 1 Subscription - DO NOT DELETE" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Products</p>
+                      <Input value={editingInvoice.products || ""} onChange={e => setEditingInvoice({ ...editingInvoice, products: e.target.value })} placeholder="Level 1 Subscription - DO NOT DELETE" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">DSD Course</p>
+                      <Select
+                        value={(editingInvoice as any).course_id || "none"}
+                        onValueChange={v => setEditingInvoice({ ...editingInvoice, course_id: v === "none" ? null : v } as any)}
+                      >
+                        <SelectTrigger className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select course" /></SelectTrigger>
+                        <SelectContent className="bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 max-h-[300px]">
+                          <SelectItem value="none" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">— None —</SelectItem>
+                          {dsdCourses.map(c => (
+                            <SelectItem key={c.id} value={c.id} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
+                              {c.name}{c.location ? ` (${c.location})` : ""}{c.start_date ? ` — ${c.start_date}` : ""}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Discount Names</p>

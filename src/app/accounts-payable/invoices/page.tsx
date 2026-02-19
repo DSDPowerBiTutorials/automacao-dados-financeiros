@@ -284,7 +284,7 @@ export default function InvoicesPage() {
         bankAccountsQuery = bankAccountsQuery.or(`country.eq.${selectedScope},applies_to_all_countries.eq.true`);
       }
 
-      const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, entryTypesRes, financialAccountsRes, coursesRes] = await Promise.all([
+      const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, entryTypesRes, financialAccountsRes, coursesRes, dsdCoursesRes] = await Promise.all([
         supabase.from("providers").select("*").eq("is_active", true),
         bankAccountsQuery,
         supabase.from("payment_methods").select("*").eq("is_active", true),
@@ -294,7 +294,8 @@ export default function InvoicesPage() {
         supabase.from("sub_departments").select("*").eq("is_active", true),
         supabase.from("entry_types").select("*").eq("is_active", true),
         supabase.from("financial_accounts").select("*").eq("is_active", true),
-        supabase.from("courses").select("*").eq("is_active", true)
+        supabase.from("courses").select("*").eq("is_active", true),
+        supabase.from("dsd_courses").select("*").eq("is_active", true).order("start_date", { ascending: true })
       ]);
 
       setProviders(providersRes.data || []);
@@ -306,7 +307,14 @@ export default function InvoicesPage() {
       setSubDepartments(subDepartmentsRes.data || []);
       setEntryTypes(entryTypesRes.data || []);
       setFinancialAccounts(financialAccountsRes.data || []);
-      setCourses(coursesRes.data || []);
+      // Merge existing courses with DSD courses (normalized: code + name)
+      const existingCourses = (coursesRes.data || []);
+      const dsdCourses = (dsdCoursesRes.data || []).map((c: any) => ({
+        code: c.id,
+        name: `${c.name}${c.location ? ` (${c.location})` : ""}${c.start_date ? ` — ${c.start_date}` : ""}`,
+        is_active: c.is_active,
+      }));
+      setCourses([...existingCourses, ...dsdCourses]);
     } catch (e: any) {
       console.error("Failed to load master data:", e);
     }

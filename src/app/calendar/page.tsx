@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
     Calendar as CalendarIcon,
     Building2,
@@ -10,15 +10,28 @@ import {
     BookOpen,
     Filter,
     X,
+    Plus,
+    Trash2,
+    Loader2,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
     Popover,
     PopoverContent,
     PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogFooter,
+} from "@/components/ui/dialog";
+import { toast } from "@/hooks/use-toast";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type EventType =
@@ -27,7 +40,8 @@ type EventType =
     | "pc-level-3"
     | "pc-level-2"
     | "pc-level-1"
-    | "dsd-course";
+    | "dsd-course"
+    | "custom";
 
 interface CalendarEvent {
     id: string;
@@ -35,6 +49,7 @@ interface CalendarEvent {
     title: string;
     type: EventType;
     description?: string;
+    isUserCreated?: boolean;
 }
 
 // ── Event type configuration ───────────────────────────────────────────────
@@ -89,6 +104,14 @@ const EVENT_CONFIG: Record<
         dot: "bg-orange-500",
         bg: "bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800",
         icon: BookOpen,
+    },
+    "custom": {
+        label: "Custom Event",
+        emoji: "📌",
+        color: "text-gray-600 dark:text-gray-400",
+        dot: "bg-gray-500",
+        bg: "bg-gray-50 dark:bg-gray-950/40 border-gray-200 dark:border-gray-800",
+        icon: CalendarIcon,
     },
 };
 
@@ -154,10 +177,10 @@ const MOCK_EVENTS: CalendarEvent[] = [
 
 // ── Helpers ────────────────────────────────────────────────────────────────
 const MONTH_NAMES = [
-    "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro",
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
 ];
-const DAY_HEADERS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const DAY_HEADERS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 function getDaysInMonth(year: number, month: number) {
     return new Date(year, month + 1, 0).getDate();
@@ -186,6 +209,7 @@ function getComputedDotColor(type: EventType): string {
         "pc-level-2": "#a855f7",
         "pc-level-1": "#3b82f6",
         "dsd-course": "#f97316",
+        "custom": "#6b7280",
     };
     return map[type];
 }
@@ -197,29 +221,70 @@ export default function DSDCalendarPage() {
         new Set(Object.keys(EVENT_CONFIG) as EventType[])
     );
     const [showFilterMenu, setShowFilterMenu] = useState(false);
+    const [userEvents, setUserEvents] = useState<CalendarEvent[]>([]);
+    const [addDialogOpen, setAddDialogOpen] = useState(false);
+    const [saving, setSaving] = useState(false);
+
+    // New event form
+    const [newEvent, setNewEvent] = useState({
+        date: "",
+        title: "",
+        type: "custom" as EventType,
+        description: "",
+    });
+
+    // Load user events from API
+    const loadUserEvents = useCallback(async () => {
+        try {
+            const res = await fetch("/api/calendar-events");
+            const json = await res.json();
+            if (json.success && json.data) {
+                setUserEvents(
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    json.data.map((ev: any) => ({
+                        ...ev,
+                        isUserCreated: true,
+                    }))
+                );
+            }
+        } catch {
+            // Silently fail — mock data still works
+        }
+    }, []);
+
+    useEffect(() => {
+        loadUserEvents();
+    }, [loadUserEvents]);
+
+    // All events = mock + user
+    const allEvents = useMemo(
+        () => [...MOCK_EVENTS, ...userEvents],
+        [userEvents]
+    );
 
     // Build a map date→events
     const eventsByDate = useMemo(() => {
         const map: Record<string, CalendarEvent[]> = {};
-        for (const ev of MOCK_EVENTS) {
+        for (const ev of allEvents) {
             if (!activeFilters.has(ev.type)) continue;
             if (!map[ev.date]) map[ev.date] = [];
             map[ev.date].push(ev);
         }
         return map;
-    }, [activeFilters]);
+    }, [allEvents, activeFilters]);
 
     // Summary KPIs
     const stats = useMemo(
         () => ({
-            courses: MOCK_EVENTS.filter((e) => e.type === "dsd-course").length,
-            newClinics: MOCK_EVENTS.filter((e) => e.type === "new-clinic").length,
-            clinicExits: MOCK_EVENTS.filter((e) => e.type === "clinic-exit").length,
-            pcLvl3: MOCK_EVENTS.filter((e) => e.type === "pc-level-3").length,
-            pcLvl2: MOCK_EVENTS.filter((e) => e.type === "pc-level-2").length,
-            pcLvl1: MOCK_EVENTS.filter((e) => e.type === "pc-level-1").length,
+            courses: allEvents.filter((e) => e.type === "dsd-course").length,
+            newClinics: allEvents.filter((e) => e.type === "new-clinic").length,
+            clinicExits: allEvents.filter((e) => e.type === "clinic-exit").length,
+            pcLvl3: allEvents.filter((e) => e.type === "pc-level-3").length,
+            pcLvl2: allEvents.filter((e) => e.type === "pc-level-2").length,
+            pcLvl1: allEvents.filter((e) => e.type === "pc-level-1").length,
+            custom: allEvents.filter((e) => e.type === "custom").length,
         }),
-        []
+        [allEvents]
     );
 
     function toggleFilter(type: EventType) {
@@ -231,6 +296,52 @@ export default function DSDCalendarPage() {
         });
     }
 
+    // Add event
+    const handleAddEvent = async () => {
+        if (!newEvent.date || !newEvent.title) return;
+        setSaving(true);
+        try {
+            const res = await fetch("/api/calendar-events", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(newEvent),
+            });
+            const json = await res.json();
+            if (json.success) {
+                toast({ title: "Event added to calendar" });
+                setAddDialogOpen(false);
+                setNewEvent({ date: "", title: "", type: "custom", description: "" });
+                loadUserEvents();
+            } else {
+                setUserEvents((prev) => [
+                    ...prev,
+                    { id: `local-${Date.now()}`, ...newEvent, isUserCreated: true },
+                ]);
+                setAddDialogOpen(false);
+                setNewEvent({ date: "", title: "", type: "custom", description: "" });
+            }
+        } catch {
+            setUserEvents((prev) => [
+                ...prev,
+                { id: `local-${Date.now()}`, ...newEvent, isUserCreated: true },
+            ]);
+            setAddDialogOpen(false);
+            setNewEvent({ date: "", title: "", type: "custom", description: "" });
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    // Delete user event
+    const handleDeleteEvent = async (id: string) => {
+        try {
+            await fetch(`/api/calendar-events?id=${id}`, { method: "DELETE" });
+        } catch {
+            // ignore
+        }
+        setUserEvents((prev) => prev.filter((e) => e.id !== id));
+    };
+
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-6 lg:p-8 space-y-6">
             {/* Header */}
@@ -241,15 +352,25 @@ export default function DSDCalendarPage() {
                         DSD Calendar 2026
                     </h1>
                 </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setShowFilterMenu(!showFilterMenu)}
-                    className="dark:border-gray-700 dark:text-gray-300 dark:hover:bg-[#111111]"
-                >
-                    <Filter className="h-4 w-4 mr-2" />
-                    Filtros
-                </Button>
+                <div className="flex items-center gap-2">
+                    <Button
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        onClick={() => setAddDialogOpen(true)}
+                    >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Add Event
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowFilterMenu(!showFilterMenu)}
+                        className="dark:border-gray-700 dark:text-gray-300 dark:hover:bg-[#111111]"
+                    >
+                        <Filter className="h-4 w-4 mr-2" />
+                        Filters
+                    </Button>
+                </div>
             </div>
 
             {/* Filter toggles */}
@@ -286,13 +407,14 @@ export default function DSDCalendarPage() {
             )}
 
             {/* KPI Summary */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
                 <KPICard label="Courses" value={stats.courses} emoji="📚" color="text-orange-600 dark:text-orange-400" />
                 <KPICard label="New Clinics" value={stats.newClinics} emoji="🏥" color="text-green-600 dark:text-green-400" />
                 <KPICard label="Clinic Exits" value={stats.clinicExits} emoji="🏥" color="text-red-600 dark:text-red-400" />
                 <KPICard label="PC Level 3" value={stats.pcLvl3} emoji="👑" color="text-amber-600 dark:text-amber-400" />
                 <KPICard label="PC Level 2" value={stats.pcLvl2} emoji="⭐" color="text-purple-600 dark:text-purple-400" />
                 <KPICard label="PC Level 1" value={stats.pcLvl1} emoji="🎓" color="text-blue-600 dark:text-blue-400" />
+                <KPICard label="Custom" value={stats.custom} emoji="📌" color="text-gray-600 dark:text-gray-400" />
             </div>
 
             {/* Legend */}
@@ -316,9 +438,77 @@ export default function DSDCalendarPage() {
             {/* 12-month calendar grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
                 {Array.from({ length: 12 }, (_, i) => (
-                    <MonthGrid key={i} year={YEAR} month={i} eventsByDate={eventsByDate} />
+                    <MonthGrid key={i} year={YEAR} month={i} eventsByDate={eventsByDate} onDeleteEvent={handleDeleteEvent} />
                 ))}
             </div>
+
+            {/* Add Event Dialog */}
+            <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+                <DialogContent className="bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <Plus className="h-5 w-5 text-blue-500" />
+                            Add Calendar Event
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div>
+                            <Label className="text-xs text-gray-500">Date *</Label>
+                            <Input
+                                type="date"
+                                value={newEvent.date}
+                                onChange={(e) => setNewEvent((p) => ({ ...p, date: e.target.value }))}
+                                className="bg-transparent border-gray-300 dark:border-gray-600"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-gray-500">Title *</Label>
+                            <Input
+                                value={newEvent.title}
+                                onChange={(e) => setNewEvent((p) => ({ ...p, title: e.target.value }))}
+                                placeholder="Event name"
+                                className="bg-transparent border-gray-300 dark:border-gray-600"
+                            />
+                        </div>
+                        <div>
+                            <Label className="text-xs text-gray-500">Type</Label>
+                            <select
+                                value={newEvent.type}
+                                onChange={(e) => setNewEvent((p) => ({ ...p, type: e.target.value as EventType }))}
+                                className="w-full h-9 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-transparent text-sm"
+                            >
+                                {(Object.keys(EVENT_CONFIG) as EventType[]).map((type) => (
+                                    <option key={type} value={type}>
+                                        {EVENT_CONFIG[type].emoji} {EVENT_CONFIG[type].label}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                        <div>
+                            <Label className="text-xs text-gray-500">Description</Label>
+                            <Input
+                                value={newEvent.description}
+                                onChange={(e) => setNewEvent((p) => ({ ...p, description: e.target.value }))}
+                                placeholder="Optional description"
+                                className="bg-transparent border-gray-300 dark:border-gray-600"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+                            Cancel
+                        </Button>
+                        <Button
+                            className="bg-blue-600 hover:bg-blue-700 text-white"
+                            onClick={handleAddEvent}
+                            disabled={!newEvent.date || !newEvent.title || saving}
+                        >
+                            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+                            Add Event
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }
@@ -328,10 +518,12 @@ function MonthGrid({
     year,
     month,
     eventsByDate,
+    onDeleteEvent,
 }: {
     year: number;
     month: number;
     eventsByDate: Record<string, CalendarEvent[]>;
+    onDeleteEvent: (id: string) => void;
 }) {
     const daysInMonth = getDaysInMonth(year, month);
     const startDay = getStartDayOfWeek(year, month);
@@ -385,7 +577,7 @@ function MonthGrid({
                                         {events.slice(0, 4).map((ev, i) => (
                                             <span
                                                 key={i}
-                                                className={`h-1.5 w-1.5 rounded-full ${EVENT_CONFIG[ev.type].dot}`}
+                                                className={`h-1.5 w-1.5 rounded-full ${EVENT_CONFIG[ev.type]?.dot || "bg-gray-400"}`}
                                             />
                                         ))}
                                         {events.length > 4 && (
@@ -413,17 +605,27 @@ function MonthGrid({
                                     </p>
                                     <div className="space-y-2">
                                         {events.map((ev) => {
-                                            const cfg = EVENT_CONFIG[ev.type];
+                                            const cfg = EVENT_CONFIG[ev.type] || EVENT_CONFIG["custom"];
                                             return (
                                                 <div
                                                     key={ev.id}
                                                     className={`rounded-md border p-2 ${cfg.bg}`}
                                                 >
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
-                                                        <span className={`text-xs font-semibold ${cfg.color}`}>
-                                                            {cfg.emoji} {ev.title}
-                                                        </span>
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className={`h-2 w-2 rounded-full ${cfg.dot}`} />
+                                                            <span className={`text-xs font-semibold ${cfg.color}`}>
+                                                                {cfg.emoji} {ev.title}
+                                                            </span>
+                                                        </div>
+                                                        {ev.isUserCreated && (
+                                                            <button
+                                                                onClick={() => onDeleteEvent(ev.id)}
+                                                                className="text-red-400 hover:text-red-600 p-0.5"
+                                                            >
+                                                                <Trash2 className="h-3 w-3" />
+                                                            </button>
+                                                        )}
                                                     </div>
                                                     {ev.description && (
                                                         <p className="text-[11px] text-gray-600 dark:text-gray-400 mt-1 ml-3.5">
