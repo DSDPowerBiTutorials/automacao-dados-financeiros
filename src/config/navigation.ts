@@ -33,6 +33,8 @@ import {
   Settings2,
   Package,
   Bot,
+  Plug,
+  UserCheck,
   type LucideIcon
 } from "lucide-react"
 
@@ -357,75 +359,9 @@ export const NAV: NavGroup[] = withUnderConstruction([
         icon: Building2
       },
       {
-        title: "Payment Channels",
+        title: "💳 Payment Channels",
         href: "/cash-management/payment-channels",
-        icon: Wallet,
-        children: [
-          {
-            title: "Stripe",
-            href: "/reports/stripe",
-            icon: CreditCard,
-            children: [
-              {
-                title: "Stripe (EUR)",
-                href: "/reports/stripe-eur",
-                icon: CreditCard
-              },
-              {
-                title: "Stripe (USD)",
-                href: "/reports/stripe-usd",
-                icon: CreditCard
-              }
-            ]
-          },
-          {
-            title: "PayPal",
-            href: "/reports/paypal",
-            icon: Wallet
-          },
-          {
-            title: "GoCardless",
-            href: "/reports/gocardless",
-            icon: Wallet
-          },
-          {
-            title: "Braintree",
-            href: "/reports/braintree",
-            icon: CreditCard,
-            children: [
-              {
-                title: "Braintree (EUR)",
-                href: "/reports/braintree-eur",
-                icon: CreditCard
-              },
-              {
-                title: "Braintree (USD)",
-                href: "/reports/braintree-usd",
-                icon: CreditCard
-              },
-              {
-                title: "Braintree (GBP)",
-                href: "/reports/braintree-gbp",
-                icon: CreditCard
-              },
-              {
-                title: "Braintree (AUD)",
-                href: "/reports/braintree-aud",
-                icon: CreditCard
-              },
-              {
-                title: "Braintree (Amex)",
-                href: "/reports/braintree-amex",
-                icon: CreditCard
-              },
-              {
-                title: "Braintree (Transactions)",
-                href: "/reports/braintree-transactions",
-                icon: Split
-              }
-            ]
-          }
-        ]
+        icon: Wallet
       },
       {
         title: "Expenses (Pleo)",
@@ -450,7 +386,17 @@ export const NAV: NavGroup[] = withUnderConstruction([
     ]
   },
   {
-    label: "DSD US QuickBooks",
+    label: "People",
+    items: [
+      {
+        title: "👥 Payroll",
+        href: "/people/payroll",
+        icon: UserCheck
+      }
+    ]
+  },
+  {
+    label: "Integrations",
     items: [
       {
         title: "QuickBooks Dashboard",
@@ -483,12 +429,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
             icon: TrendingDown
           }
         ]
-      }
-    ]
-  },
-  {
-    label: "DSD ESP Web Sales",
-    items: [
+      },
       {
         title: "HubSpot",
         href: "/hubspot",
