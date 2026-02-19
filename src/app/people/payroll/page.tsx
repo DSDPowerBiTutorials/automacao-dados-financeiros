@@ -1199,9 +1199,26 @@ function MonthlyView({
     selectedYear: number;
     employees: PayrollEmployee[];
 }) {
+    const [expandedEmps, setExpandedEmps] = useState<Set<string>>(new Set());
+
+    const toggleEmp = (id: string) => {
+        setExpandedEmps((prev) => {
+            const next = new Set(prev);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
+            return next;
+        });
+    };
+
     // Build unique employee list from all months of the selected year
+    // Store full employee data per month for expansion
     const yearEmployees = useMemo(() => {
-        const empMap = new Map<string, { fullName: string; department: string; months: Record<number, number> }>();
+        const empMap = new Map<string, {
+            fullName: string;
+            department: string;
+            months: Record<number, number>;
+            monthDetails: Record<number, PayrollEmployee>;
+        }>();
 
         // First populate from current loaded employees
         employees.forEach((emp) => {
@@ -1210,6 +1227,7 @@ function MonthlyView({
                     fullName: emp.fullName,
                     department: emp.department,
                     months: {},
+                    monthDetails: {},
                 });
             }
         });
@@ -1222,10 +1240,11 @@ function MonthlyView({
             data.employees.forEach((emp) => {
                 let entry = empMap.get(emp.employeeId);
                 if (!entry) {
-                    entry = { fullName: emp.fullName, department: emp.department, months: {} };
+                    entry = { fullName: emp.fullName, department: emp.department, months: {}, monthDetails: {} };
                     empMap.set(emp.employeeId, entry);
                 }
                 entry.months[m] = emp.costeEmpresa;
+                entry.monthDetails[m] = emp;
             });
         }
 
@@ -1233,6 +1252,15 @@ function MonthlyView({
             .map(([id, data]) => ({ id, ...data }))
             .sort((a, b) => a.department.localeCompare(b.department) || a.fullName.localeCompare(b.fullName));
     }, [monthlyData, selectedYear, employees]);
+
+    // Find the latest month that has data for expansion fallback
+    const latestMonthWithData = useMemo(() => {
+        for (let m = 11; m >= 0; m--) {
+            const key = `${selectedYear}-${String(m + 1).padStart(2, "0")}`;
+            if (monthlyData[key]) return m;
+        }
+        return -1;
+    }, [monthlyData, selectedYear]);
 
     // Month totals
     const monthTotals = useMemo(() => {
@@ -1246,12 +1274,14 @@ function MonthlyView({
     }, [yearEmployees]);
 
     const grandTotal = monthTotals.reduce((s, v) => s + v, 0);
+    const totalCols = 15; // chevron + employee + dept + 12 months + total
 
     return (
         <div className="overflow-auto">
             <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-[#0a0a0a]">
                     <tr className="border-b border-gray-200 dark:border-gray-700">
+                        <th className="w-6 px-1 py-2.5"></th>
                         <th className="text-left px-2 py-2.5 text-xs text-gray-500 uppercase font-medium sticky left-0 bg-gray-100 dark:bg-[#0a0a0a] min-w-[200px]">
                             Employee
                         </th>
@@ -1272,35 +1302,140 @@ function MonthlyView({
                     {yearEmployees.map((emp) => {
                         const rowTotal = Object.values(emp.months).reduce((s, v) => s + v, 0);
                         const deptColor = getDeptColor(emp.department);
+                        const isExpanded = expandedEmps.has(emp.id);
+                        // Get concepts from the latest available month
+                        const detailEmp = emp.monthDetails[latestMonthWithData] || Object.values(emp.monthDetails)[0];
+
                         return (
-                            <tr
-                                key={emp.id}
-                                className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#0a0a0a] transition-colors"
-                            >
-                                <td className="px-2 py-2 font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-black">
-                                    {emp.fullName}
-                                </td>
-                                <td className="px-2 py-2">
-                                    <Badge className={`${deptColor.bg} ${deptColor.text} text-[10px] border ${deptColor.border}`}>
-                                        {emp.department}
-                                    </Badge>
-                                </td>
-                                {Array.from({ length: 12 }, (_, m) => (
-                                    <td key={m} className="text-right px-2 py-2 font-mono text-amber-600 dark:text-amber-400">
-                                        {emp.months[m] != null ? fmtEur(emp.months[m]) : (
-                                            <span className="text-gray-300 dark:text-gray-700">—</span>
+                            <React.Fragment key={emp.id}>
+                                <tr
+                                    onClick={() => toggleEmp(emp.id)}
+                                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#0a0a0a] cursor-pointer transition-colors"
+                                >
+                                    <td className="px-1 py-2">
+                                        {isExpanded ? (
+                                            <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                                        ) : (
+                                            <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
                                         )}
                                     </td>
-                                ))}
-                                <td className="text-right px-2 py-2 font-mono font-bold text-amber-500 bg-gray-50/50 dark:bg-gray-900/30">
-                                    {rowTotal > 0 ? fmtEur(rowTotal) : "—"}
-                                </td>
-                            </tr>
+                                    <td className="px-2 py-2 font-medium text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-black">
+                                        {emp.fullName}
+                                    </td>
+                                    <td className="px-2 py-2">
+                                        <Badge className={`${deptColor.bg} ${deptColor.text} text-[10px] border ${deptColor.border}`}>
+                                            {emp.department}
+                                        </Badge>
+                                    </td>
+                                    {Array.from({ length: 12 }, (_, m) => (
+                                        <td key={m} className="text-right px-2 py-2 font-mono text-amber-600 dark:text-amber-400">
+                                            {emp.months[m] != null ? fmtEur(emp.months[m]) : (
+                                                <span className="text-gray-300 dark:text-gray-700">—</span>
+                                            )}
+                                        </td>
+                                    ))}
+                                    <td className="text-right px-2 py-2 font-mono font-bold text-amber-500 bg-gray-50/50 dark:bg-gray-900/30">
+                                        {rowTotal > 0 ? fmtEur(rowTotal) : "—"}
+                                    </td>
+                                </tr>
+
+                                {/* Expanded: concept breakdown */}
+                                {isExpanded && detailEmp && (
+                                    <tr className="bg-gray-50 dark:bg-[#0a0a0a]">
+                                        <td colSpan={totalCols} className="px-6 py-4">
+                                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-5xl">
+                                                {/* Earnings */}
+                                                <div>
+                                                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                                        <TrendingUp className="h-3 w-3 text-green-500" />
+                                                        Earnings
+                                                    </h4>
+                                                    <div className="space-y-1">
+                                                        {detailEmp.concepts
+                                                            .filter((c) => !c.isDeduction)
+                                                            .map((c, idx) => (
+                                                                <div key={idx} className="flex justify-between text-xs">
+                                                                    <span className="text-gray-600 dark:text-gray-400">
+                                                                        <span className="font-mono text-gray-400 mr-2">{String(c.code).padStart(3, "0")}</span>
+                                                                        {c.description}
+                                                                    </span>
+                                                                    <span className={`font-mono ${c.amount < 0 ? "text-red-400" : "text-green-500"}`}>
+                                                                        {fmtEur(c.amount)}
+                                                                    </span>
+                                                                </div>
+                                                            ))}
+                                                        <div className="flex justify-between text-xs font-semibold border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
+                                                            <span className="text-gray-900 dark:text-white">TOTAL GROSS</span>
+                                                            <span className="text-green-500">{fmtEur(detailEmp.totalBruto)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Deductions */}
+                                                <div>
+                                                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                                        <TrendingDown className="h-3 w-3 text-red-500" />
+                                                        Deductions
+                                                    </h4>
+                                                    <div className="space-y-1">
+                                                        {detailEmp.concepts
+                                                            .filter((c) => c.isDeduction)
+                                                            .map((c, idx) => (
+                                                                <div key={idx} className="flex justify-between text-xs">
+                                                                    <span className="text-gray-600 dark:text-gray-400">
+                                                                        <span className="font-mono text-gray-400 mr-2">{String(c.code).padStart(3, "0")}</span>
+                                                                        {c.description}
+                                                                    </span>
+                                                                    <span className="font-mono text-red-400">{fmtEur(c.amount)}</span>
+                                                                </div>
+                                                            ))}
+                                                        <div className="flex justify-between text-xs font-semibold border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
+                                                            <span className="text-gray-900 dark:text-white">TOTAL DEDUCTIONS</span>
+                                                            <span className="text-red-400">{fmtEur(detailEmp.totalDeducciones)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Summary */}
+                                                <div>
+                                                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                                        <Briefcase className="h-3 w-3 text-amber-500" />
+                                                        Summary
+                                                    </h4>
+                                                    <div className="space-y-2">
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-gray-500">Net (Liquid)</span>
+                                                            <span className="font-mono font-bold text-emerald-400">{fmtEur(detailEmp.totalLiquido)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-gray-500">SS Company</span>
+                                                            <span className="font-mono font-bold text-blue-400">{fmtEur(detailEmp.ssEmpresa)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-gray-500">SS Employee</span>
+                                                            <span className="font-mono font-bold text-blue-300">{fmtEur(detailEmp.ssTrabajador)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs">
+                                                            <span className="text-gray-500">IRPF ({fmtPct(detailEmp.irpfPercent)})</span>
+                                                            <span className="font-mono font-bold text-orange-400">{fmtEur(detailEmp.irpf)}</span>
+                                                        </div>
+                                                        <div className="flex justify-between text-xs border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
+                                                            <span className="text-gray-900 dark:text-white font-semibold">Company Cost</span>
+                                                            <span className="font-mono font-bold text-amber-400">{fmtEur(detailEmp.costeEmpresa)}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                )}
+                            </React.Fragment>
                         );
                     })}
 
                     {/* Grand total row */}
                     <tr className="border-t-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-[#0a0a0a] font-medium sticky bottom-0">
+                        <td className="px-1 py-3"></td>
                         <td className="px-2 py-3 font-semibold text-gray-900 dark:text-white sticky left-0 bg-gray-100 dark:bg-[#0a0a0a]">
                             TOTAL ({yearEmployees.length} employees)
                         </td>
