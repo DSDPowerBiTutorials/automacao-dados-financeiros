@@ -1253,15 +1253,6 @@ function MonthlyView({
             .sort((a, b) => a.department.localeCompare(b.department) || a.fullName.localeCompare(b.fullName));
     }, [monthlyData, selectedYear, employees]);
 
-    // Find the latest month that has data for expansion fallback
-    const latestMonthWithData = useMemo(() => {
-        for (let m = 11; m >= 0; m--) {
-            const key = `${selectedYear}-${String(m + 1).padStart(2, "0")}`;
-            if (monthlyData[key]) return m;
-        }
-        return -1;
-    }, [monthlyData, selectedYear]);
-
     // Month totals
     const monthTotals = useMemo(() => {
         const totals: number[] = new Array(12).fill(0);
@@ -1303,8 +1294,10 @@ function MonthlyView({
                         const rowTotal = Object.values(emp.months).reduce((s, v) => s + v, 0);
                         const deptColor = getDeptColor(emp.department);
                         const isExpanded = expandedEmps.has(emp.id);
-                        // Get concepts from the latest available month
-                        const detailEmp = emp.monthDetails[latestMonthWithData] || Object.values(emp.monthDetails)[0];
+                        // Months that have data for this employee
+                        const availableMonths = Object.keys(emp.monthDetails)
+                            .map(Number)
+                            .sort((a, b) => a - b);
 
                         return (
                             <React.Fragment key={emp.id}>
@@ -1339,92 +1332,97 @@ function MonthlyView({
                                     </td>
                                 </tr>
 
-                                {/* Expanded: concept breakdown */}
-                                {isExpanded && detailEmp && (
-                                    <tr className="bg-gray-50 dark:bg-[#0a0a0a]">
-                                        <td colSpan={totalCols} className="px-6 py-4">
-                                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 max-w-5xl">
-                                                {/* Earnings */}
-                                                <div>
-                                                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-                                                        <TrendingUp className="h-3 w-3 text-green-500" />
-                                                        Earnings
-                                                    </h4>
-                                                    <div className="space-y-1">
-                                                        {detailEmp.concepts
-                                                            .filter((c) => !c.isDeduction)
-                                                            .map((c, idx) => (
-                                                                <div key={idx} className="flex justify-between text-xs">
-                                                                    <span className="text-gray-600 dark:text-gray-400">
-                                                                        <span className="font-mono text-gray-400 mr-2">{String(c.code).padStart(3, "0")}</span>
-                                                                        {c.description}
-                                                                    </span>
-                                                                    <span className={`font-mono ${c.amount < 0 ? "text-red-400" : "text-green-500"}`}>
-                                                                        {fmtEur(c.amount)}
-                                                                    </span>
-                                                                </div>
-                                                            ))}
-                                                        <div className="flex justify-between text-xs font-semibold border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
-                                                            <span className="text-gray-900 dark:text-white">TOTAL GROSS</span>
-                                                            <span className="text-green-500">{fmtEur(detailEmp.totalBruto)}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                {/* Expanded: all concept lines per month */}
+                                {isExpanded && availableMonths.length > 0 && (
+                                    <tr className="bg-gray-50/80 dark:bg-[#060606]">
+                                        <td colSpan={totalCols} className="p-0">
+                                            <div className="px-4 py-3 space-y-4 max-h-[600px] overflow-y-auto">
+                                                {availableMonths.map((m) => {
+                                                    const detail = emp.monthDetails[m];
+                                                    if (!detail) return null;
+                                                    const earnings = detail.concepts.filter((c) => !c.isDeduction);
+                                                    const deductions = detail.concepts.filter((c) => c.isDeduction);
 
-                                                {/* Deductions */}
-                                                <div>
-                                                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-                                                        <TrendingDown className="h-3 w-3 text-red-500" />
-                                                        Deductions
-                                                    </h4>
-                                                    <div className="space-y-1">
-                                                        {detailEmp.concepts
-                                                            .filter((c) => c.isDeduction)
-                                                            .map((c, idx) => (
-                                                                <div key={idx} className="flex justify-between text-xs">
-                                                                    <span className="text-gray-600 dark:text-gray-400">
-                                                                        <span className="font-mono text-gray-400 mr-2">{String(c.code).padStart(3, "0")}</span>
-                                                                        {c.description}
-                                                                    </span>
-                                                                    <span className="font-mono text-red-400">{fmtEur(c.amount)}</span>
+                                                    return (
+                                                        <div key={m} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                                                            {/* Month header */}
+                                                            <div className="bg-gray-100 dark:bg-gray-800 px-4 py-2 flex items-center justify-between">
+                                                                <h4 className="text-xs font-bold text-gray-700 dark:text-gray-200 uppercase tracking-wide flex items-center gap-2">
+                                                                    <Calendar className="h-3 w-3 text-blue-500" />
+                                                                    {MONTH_NAMES[m]} {selectedYear}
+                                                                </h4>
+                                                                <div className="flex items-center gap-4 text-[10px]">
+                                                                    <span className="text-green-500 font-mono">Gross: {fmtEur(detail.totalBruto)}</span>
+                                                                    <span className="text-red-400 font-mono">Ded: {fmtEur(detail.totalDeducciones)}</span>
+                                                                    <span className="text-emerald-400 font-mono font-bold">Net: {fmtEur(detail.totalLiquido)}</span>
+                                                                    <span className="text-amber-400 font-mono font-bold">Cost: {fmtEur(detail.costeEmpresa)}</span>
                                                                 </div>
-                                                            ))}
-                                                        <div className="flex justify-between text-xs font-semibold border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
-                                                            <span className="text-gray-900 dark:text-white">TOTAL DEDUCTIONS</span>
-                                                            <span className="text-red-400">{fmtEur(detailEmp.totalDeducciones)}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                            </div>
 
-                                                {/* Summary */}
-                                                <div>
-                                                    <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
-                                                        <Briefcase className="h-3 w-3 text-amber-500" />
-                                                        Summary
-                                                    </h4>
-                                                    <div className="space-y-2">
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-gray-500">Net (Liquid)</span>
-                                                            <span className="font-mono font-bold text-emerald-400">{fmtEur(detailEmp.totalLiquido)}</span>
+                                                            {/* Concept lines table */}
+                                                            <table className="w-full text-xs">
+                                                                <thead>
+                                                                    <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                                                                        <th className="text-left px-4 py-1.5 text-[10px] text-gray-400 font-medium w-16">Code</th>
+                                                                        <th className="text-left px-2 py-1.5 text-[10px] text-gray-400 font-medium">Description</th>
+                                                                        <th className="text-right px-4 py-1.5 text-[10px] text-gray-400 font-medium w-28">Amount</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody>
+                                                                    {/* Earnings section */}
+                                                                    {earnings.length > 0 && (
+                                                                        <tr>
+                                                                            <td colSpan={3} className="px-4 pt-2 pb-1">
+                                                                                <span className="text-[10px] font-semibold text-green-600 dark:text-green-400 uppercase flex items-center gap-1">
+                                                                                    <TrendingUp className="h-2.5 w-2.5" /> Earnings
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                    {earnings.map((c, idx) => (
+                                                                        <tr key={`e-${idx}`} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-white/50 dark:hover:bg-gray-800/30">
+                                                                            <td className="px-4 py-1 font-mono text-gray-400">{String(c.code).padStart(3, "0")}</td>
+                                                                            <td className="px-2 py-1 text-gray-600 dark:text-gray-400">{c.description}</td>
+                                                                            <td className={`text-right px-4 py-1 font-mono ${c.amount < 0 ? "text-red-400" : "text-green-500"}`}>{fmtEur(c.amount)}</td>
+                                                                        </tr>
+                                                                    ))}
+
+                                                                    {/* Deductions section */}
+                                                                    {deductions.length > 0 && (
+                                                                        <tr>
+                                                                            <td colSpan={3} className="px-4 pt-3 pb-1">
+                                                                                <span className="text-[10px] font-semibold text-red-500 dark:text-red-400 uppercase flex items-center gap-1">
+                                                                                    <TrendingDown className="h-2.5 w-2.5" /> Deductions
+                                                                                </span>
+                                                                            </td>
+                                                                        </tr>
+                                                                    )}
+                                                                    {deductions.map((c, idx) => (
+                                                                        <tr key={`d-${idx}`} className="border-b border-gray-100 dark:border-gray-800/50 hover:bg-white/50 dark:hover:bg-gray-800/30">
+                                                                            <td className="px-4 py-1 font-mono text-gray-400">{String(c.code).padStart(3, "0")}</td>
+                                                                            <td className="px-2 py-1 text-gray-600 dark:text-gray-400">{c.description}</td>
+                                                                            <td className="text-right px-4 py-1 font-mono text-red-400">{fmtEur(c.amount)}</td>
+                                                                        </tr>
+                                                                    ))}
+
+                                                                    {/* Summary row */}
+                                                                    <tr className="border-t border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/40">
+                                                                        <td className="px-4 py-2" colSpan={2}>
+                                                                            <div className="flex items-center gap-6 text-[10px]">
+                                                                                <span className="text-gray-500">SS Emp: <span className="font-mono text-blue-400 font-bold">{fmtEur(detail.ssEmpresa)}</span></span>
+                                                                                <span className="text-gray-500">SS Trab: <span className="font-mono text-blue-300 font-bold">{fmtEur(detail.ssTrabajador)}</span></span>
+                                                                                <span className="text-gray-500">IRPF ({fmtPct(detail.irpfPercent)}): <span className="font-mono text-orange-400 font-bold">{fmtEur(detail.irpf)}</span></span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="text-right px-4 py-2">
+                                                                            <span className="font-mono font-bold text-amber-400">{fmtEur(detail.costeEmpresa)}</span>
+                                                                        </td>
+                                                                    </tr>
+                                                                </tbody>
+                                                            </table>
                                                         </div>
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-gray-500">SS Company</span>
-                                                            <span className="font-mono font-bold text-blue-400">{fmtEur(detailEmp.ssEmpresa)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-gray-500">SS Employee</span>
-                                                            <span className="font-mono font-bold text-blue-300">{fmtEur(detailEmp.ssTrabajador)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-xs">
-                                                            <span className="text-gray-500">IRPF ({fmtPct(detailEmp.irpfPercent)})</span>
-                                                            <span className="font-mono font-bold text-orange-400">{fmtEur(detailEmp.irpf)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-xs border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
-                                                            <span className="text-gray-900 dark:text-white font-semibold">Company Cost</span>
-                                                            <span className="font-mono font-bold text-amber-400">{fmtEur(detailEmp.costeEmpresa)}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                    );
+                                                })}
                                             </div>
                                         </td>
                                     </tr>
