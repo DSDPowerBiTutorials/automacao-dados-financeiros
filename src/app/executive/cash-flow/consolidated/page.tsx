@@ -168,7 +168,7 @@ export default function RevenueCashflowPage() {
     // ─────────────────────────────────────────
 
     const MonthHeader = () => (
-        <div className={`${grid} py-2 px-3 bg-gray-200 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 z-10`}>
+        <div className={`${grid} py-2 px-3 bg-gray-200 dark:bg-black/80 border-b border-gray-200 dark:border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-0 z-10`}>
             <div>Account</div>
             {MONTHS.map(m => <div key={m} className="text-right">{m}</div>)}
             <div className="text-right text-amber-400 bg-amber-900/20 px-1 rounded">Total</div>
@@ -185,7 +185,7 @@ export default function RevenueCashflowPage() {
         const paddingLeft = indent * 16 + 12;
         return (
             <div
-                className={`${grid} py-1.5 px-3 border-b border-gray-200 dark:border-gray-800/60 hover:bg-gray-100 dark:bg-gray-800/40 transition-colors ${onClick ? "cursor-pointer" : ""}`}
+                className={`${grid} py-1.5 px-3 border-b border-gray-200 dark:border-gray-800/60 hover:bg-gray-100 dark:bg-black/40 transition-colors ${onClick ? "cursor-pointer" : ""}`}
                 style={{ paddingLeft }}
                 onClick={onClick}
             >
@@ -216,7 +216,7 @@ export default function RevenueCashflowPage() {
                         </div>
                     );
                 })}
-                <div className="text-right bg-gray-100 dark:bg-gray-800/40 px-1 rounded">
+                <div className="text-right bg-gray-100 dark:bg-black/40 px-1 rounded">
                     <span className={`text-[10px] font-mono font-bold text-${color}-300`}>
                         {total === 0 ? "–" : fmt(total)}
                     </span>
@@ -258,7 +258,7 @@ export default function RevenueCashflowPage() {
 
     // Percentage row for reconciliation
     const PctRow = ({ monthly, overallPct }: { monthly: MonthlyData; overallPct: number }) => (
-        <div className={`${grid} py-1.5 px-3 border-b border-gray-200 dark:border-gray-800/60 bg-gray-50 dark:bg-gray-900/40`}>
+        <div className={`${grid} py-1.5 px-3 border-b border-gray-200 dark:border-gray-800/60 bg-gray-50 dark:bg-black/40`}>
             <div className="flex items-center gap-1.5">
                 <ShieldCheck className="h-3 w-3 text-teal-400" />
                 <span className="text-[10px] font-semibold text-teal-400">Reconciliation %</span>
@@ -273,7 +273,7 @@ export default function RevenueCashflowPage() {
                     </div>
                 );
             })}
-            <div className="text-right bg-gray-100 dark:bg-gray-800/40 px-1 rounded">
+            <div className="text-right bg-gray-100 dark:bg-black/40 px-1 rounded">
                 <span className={`text-[10px] font-mono font-bold ${overallPct >= 80 ? "text-emerald-300" : overallPct >= 50 ? "text-amber-300" : "text-red-300"}`}>
                     {overallPct}%
                 </span>
@@ -336,7 +336,7 @@ export default function RevenueCashflowPage() {
     // ─────────────────────────────────────────
     if (loading) {
         return (
-            <div className="min-h-screen bg-white dark:bg-gray-950">
+            <div className="min-h-screen bg-white dark:bg-black">
                 <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5">
                     <div className="flex items-center gap-4">
                         <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl border border-emerald-500/30">
@@ -349,8 +349,8 @@ export default function RevenueCashflowPage() {
                     </div>
                 </header>
                 <div className="p-6 space-y-6 animate-pulse">
-                    <div className="grid grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-gray-100 dark:bg-gray-800 rounded-lg" />)}</div>
-                    <div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-lg" />
+                    <div className="grid grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-gray-100 dark:bg-black rounded-lg" />)}</div>
+                    <div className="h-96 bg-gray-100 dark:bg-black rounded-lg" />
                 </div>
             </div>
         );
@@ -360,7 +360,7 @@ export default function RevenueCashflowPage() {
     // Main
     // ─────────────────────────────────────────
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-950">
+        <div className="min-h-screen bg-white dark:bg-black">
             {/* Header */}
             <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5 sticky top-0 z-20">
                 <div className="flex items-center justify-between">
@@ -376,15 +376,15 @@ export default function RevenueCashflowPage() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-black/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
                             {[2024, 2025, 2026].map(y => (
                                 <button key={y} onClick={() => setSelectedYear(y)}
-                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === y ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"}`}>
+                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === y ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}>
                                     {y}
                                 </button>
                             ))}
                         </div>
-                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                             onClick={() => { setLoading(true); setTimeout(() => setSelectedYear(selectedYear), 0); }}>
                             <RefreshCw className="h-4 w-4 mr-2" />Refresh
                         </Button>
@@ -401,7 +401,7 @@ export default function RevenueCashflowPage() {
                 {/* ═══════════════════════════════════════════════════════════════
                     UNIFIED GRID: Bank Inflows → Gateways → Revenue → Outflows
                    ═══════════════════════════════════════════════════════════════ */}
-                <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 overflow-hidden">
+                <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-800 overflow-hidden">
                     <CardHeader className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800/80 py-4">
                         <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2 text-base">
                             <Landmark className="h-5 w-5 text-emerald-400" />
@@ -587,7 +587,7 @@ export default function RevenueCashflowPage() {
                                 }
                                 const totalGap = sumM(gap);
                                 return (
-                                    <div className="px-3 py-3 border-t border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-gray-900/60">
+                                    <div className="px-3 py-3 border-t border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-black/60">
                                         <div className={grid}>
                                             <div className="flex items-center gap-1.5">
                                                 <CreditCard className="h-3 w-3 text-purple-400" />
@@ -605,7 +605,7 @@ export default function RevenueCashflowPage() {
                                                     </div>
                                                 );
                                             })}
-                                            <div className="text-right bg-gray-100 dark:bg-gray-800/40 px-1 rounded">
+                                            <div className="text-right bg-gray-100 dark:bg-black/40 px-1 rounded">
                                                 <span className={`text-[10px] font-mono font-bold ${totalGap >= 0 ? "text-emerald-300" : "text-red-300"}`}>
                                                     {(totalGap > 0 ? "+" : "") + fmt(totalGap)}
                                                 </span>

@@ -83,7 +83,7 @@ export function ListView({
     return (
         <div className="h-full overflow-y-auto">
             {/* Sticky header */}
-            <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+            <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
                 <div className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-6 py-2">
                     <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Task</div>
                     <div className="text-[11px] text-gray-500 font-medium uppercase tracking-wider">Status</div>
@@ -105,7 +105,7 @@ export function ListView({
                             {/* Section header */}
                             <button
                                 onClick={() => toggleSection(section.id)}
-                                className="w-full flex items-center gap-2 px-6 py-2.5 hover:bg-gray-100 dark:bg-gray-800/50 transition-colors"
+                                className="w-full flex items-center gap-2 px-6 py-2.5 hover:bg-gray-100 dark:bg-black/50 transition-colors"
                             >
                                 {isExpanded ? (
                                     <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
@@ -131,7 +131,7 @@ export function ListView({
                                             <div
                                                 key={task.id}
                                                 onClick={() => onTaskClick(task)}
-                                                className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-6 py-2 border-t border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-gray-800/30 cursor-pointer transition-colors items-center"
+                                                className="grid grid-cols-[1fr_120px_100px_100px_120px] gap-2 px-6 py-2 border-t border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-black/30 cursor-pointer transition-colors items-center"
                                             >
                                                 {/* Title + checkbox */}
                                                 <div className="flex items-center gap-2 min-w-0">
@@ -274,7 +274,7 @@ export function ListView({
                                     ) : (
                                         <button
                                             onClick={() => setAddingTaskSection(section.id)}
-                                            className="w-full flex items-center gap-2 px-6 py-2 text-gray-600 hover:text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:bg-gray-800/20 text-xs transition-colors"
+                                            className="w-full flex items-center gap-2 px-6 py-2 text-gray-600 hover:text-gray-500 dark:text-gray-400 hover:bg-gray-50 dark:bg-black/20 text-xs transition-colors"
                                         >
                                             <Plus className="h-3.5 w-3.5" />
                                             Add task...

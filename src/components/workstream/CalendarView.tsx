@@ -79,7 +79,7 @@ export function CalendarView({ tasks, users, onTaskClick }: CalendarViewProps) {
                     </h2>
                     <button
                         onClick={goToday}
-                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 hover:border-gray-500 transition-colors"
+                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded px-2 py-1 hover:border-gray-500 transition-colors"
                     >
                         Today
                     </button>
@@ -119,7 +119,7 @@ export function CalendarView({ tasks, users, onTaskClick }: CalendarViewProps) {
                     return (
                         <div
                             key={idx}
-                            className={`border-b border-r border-gray-200 dark:border-gray-800 p-1 min-h-0 overflow-hidden ${cell.isCurrentMonth ? 'bg-white dark:bg-[#1e1f21]' : 'bg-gray-100 dark:bg-[#171819]'
+                            className={`border-b border-r border-gray-200 dark:border-gray-800 p-1 min-h-0 overflow-hidden ${cell.isCurrentMonth ? 'bg-white dark:bg-black' : 'bg-gray-100 dark:bg-black'
                                 }`}
                         >
                             <div className={`text-xs mb-0.5 ${isToday

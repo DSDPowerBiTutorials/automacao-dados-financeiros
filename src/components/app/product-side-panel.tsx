@@ -253,16 +253,16 @@ export function ProductSidePanel({
     if (!open) return null;
 
     return (
-        <div className="fixed right-0 top-0 h-screen w-[520px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[9999] shadow-2xl">
+        <div className="fixed right-0 top-0 h-screen w-[520px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[9999] shadow-2xl">
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2a2b2d]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#0a0a0a]">
                 <div className="flex items-center gap-3">
                     <Package className="h-5 w-5 text-blue-400" />
                     <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
                         {editingProduct ? "Edit Product" : "New Product"}
                     </h2>
                 </div>
-                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" onClick={onClose}>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={onClose}>
                     <X className="h-5 w-5" />
                 </Button>
             </div>
@@ -286,13 +286,13 @@ export function ProductSidePanel({
                                         value={formData.code}
                                         onChange={(e) => setFormData({ ...formData, code: e.target.value })}
                                         placeholder="Auto-generated"
-                                        className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder:text-gray-500"
+                                        className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder:text-gray-500"
                                     />
                                 </div>
                                 <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Scope</Label>
                                     <Select value={formData.scope} onValueChange={(v) => setFormData({ ...formData, scope: v })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
+                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -311,7 +311,7 @@ export function ProductSidePanel({
                                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                                     placeholder="Product name"
                                     required
-                                    className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder:text-gray-500"
+                                    className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder:text-gray-500"
                                 />
                             </div>
 
@@ -322,7 +322,7 @@ export function ProductSidePanel({
                                     onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                                     placeholder="Product description"
                                     rows={3}
-                                    className="mt-1 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder:text-gray-500 resize-none"
+                                    className="mt-1 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder:text-gray-500 resize-none"
                                 />
                             </div>
                         </div>
@@ -335,7 +335,7 @@ export function ProductSidePanel({
                                 <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Type</Label>
                                     <Select value={formData.product_type} onValueChange={(v) => setFormData({ ...formData, product_type: v })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
+                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -348,7 +348,7 @@ export function ProductSidePanel({
                                 <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Category</Label>
                                     <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
+                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -364,7 +364,7 @@ export function ProductSidePanel({
                                 <div>
                                     <Label className="text-xs text-gray-700 dark:text-gray-300">Currency</Label>
                                     <Select value={formData.currency} onValueChange={(v) => setFormData({ ...formData, currency: v })}>
-                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
+                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
                                             <SelectValue />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -380,7 +380,7 @@ export function ProductSidePanel({
                                         value={formData.financial_account_id || "none"}
                                         onValueChange={(v) => setFormData({ ...formData, financial_account_id: v === "none" ? "" : v })}
                                     >
-                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
+                                        <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -410,7 +410,7 @@ export function ProductSidePanel({
                                         departmental_account_subgroup_id: ""
                                     })}
                                 >
-                                    <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
+                                    <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
                                         <SelectValue placeholder="Select group..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -431,7 +431,7 @@ export function ProductSidePanel({
                                     onValueChange={(v) => setFormData({ ...formData, departmental_account_subgroup_id: v === "none" ? "" : v })}
                                     disabled={!formData.departmental_account_group_id}
                                 >
-                                    <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
+                                    <SelectTrigger className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600">
                                         <SelectValue placeholder={formData.departmental_account_group_id ? "Select subgroup..." : "Select group first"} />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -455,7 +455,7 @@ export function ProductSidePanel({
                                     value={formData.alternative_names}
                                     onChange={(e) => setFormData({ ...formData, alternative_names: e.target.value })}
                                     placeholder="Name 1, Name 2, Name 3..."
-                                    className="mt-1 h-9 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder:text-gray-500"
+                                    className="mt-1 h-9 bg-gray-100 dark:bg-black text-gray-900 dark:text-white border-gray-300 dark:border-gray-600 placeholder:text-gray-500"
                                 />
                                 <p className="text-[10px] text-gray-500 mt-1">
                                     Use to map name variations, typos, etc.
@@ -480,12 +480,12 @@ export function ProductSidePanel({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#2a2b2d]">
+            <div className="flex items-center justify-end gap-3 px-5 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#0a0a0a]">
                 <Button
                     type="button"
                     variant="outline"
                     onClick={onClose}
-                    className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                    className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
                 >
                     Cancel
                 </Button>

@@ -170,7 +170,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                 className={`
                     fixed lg:relative top-0 left-0 h-full z-50 lg:z-auto
                     w-64 flex-shrink-0 flex flex-col
-                    bg-white dark:bg-[#1e1f21] border-r border-gray-200 dark:border-gray-800
+                    bg-white dark:bg-black border-r border-gray-200 dark:border-gray-800
                     transition-transform duration-200 ease-in-out
                     ${open ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
                 `}
@@ -350,7 +350,7 @@ export function WorkstreamSidebar({ open, onClose }: WorkstreamSidebarProps) {
                 <>
                     <div className="fixed inset-0 z-[60]" onClick={() => setContextMenu(null)} />
                     <div
-                        className="fixed z-[61] bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[160px]"
+                        className="fixed z-[61] bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[160px]"
                         style={{ left: contextMenu.x, top: contextMenu.y }}
                     >
                         {(() => {

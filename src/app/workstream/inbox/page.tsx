@@ -210,7 +210,7 @@ export default function InboxPage() {
     ];
 
     return (
-        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-4xl mx-auto px-6 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
@@ -230,7 +230,7 @@ export default function InboxPage() {
                         {unreadCount > 0 && (
                             <button
                                 onClick={markAllAsRead}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#2a2b2d] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#0a0a0a] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 transition-colors"
                             >
                                 <CheckCheck className="h-3.5 w-3.5" />
                                 Mark all as read
@@ -241,7 +241,7 @@ export default function InboxPage() {
                                 onClick={() => {
                                     if (confirm('Clear all notifications?')) clearAllNotifications();
                                 }}
-                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-red-400 bg-gray-50 dark:bg-[#2a2b2d] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 transition-colors"
+                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-gray-500 dark:text-gray-400 hover:text-red-400 bg-gray-50 dark:bg-[#0a0a0a] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 transition-colors"
                             >
                                 <Archive className="h-3.5 w-3.5" />
                                 Clear all
@@ -285,10 +285,10 @@ export default function InboxPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
                         {Object.entries(groupedByDate).map(([dateLabel, notifs]) => (
                             <div key={dateLabel}>
-                                <div className="px-4 py-2 bg-gray-100 dark:bg-[#252627] text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                                <div className="px-4 py-2 bg-gray-100 dark:bg-[#0a0a0a] text-xs font-semibold text-gray-500 uppercase tracking-wider">
                                     {dateLabel}
                                 </div>
                                 {notifs.map(n => (

@@ -1152,14 +1152,14 @@ export default function PaymentSchedulePage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white flex">
+        <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white flex">
             {/* Main Content */}
             <div className={`flex-1 transition-all duration-300 ${detailPanelOpen ? "mr-[500px]" : ""}`}>
                 {/* Header */}
@@ -1176,7 +1176,7 @@ export default function PaymentSchedulePage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
                             onClick={() => {
                                 setDefaultScheduleDateForModal(null);
                                 setInvoiceModalOpen(true);
@@ -1191,11 +1191,11 @@ export default function PaymentSchedulePage() {
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 <Input placeholder="Search..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9 w-64 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500" />
                             </div>
-                            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                 <Filter className="h-4 w-4 mr-1" />
                                 Filter
                             </Button>
-                            <Button variant="outline" size="sm" onClick={() => setShowCompleted(!showCompleted)} className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${showCompleted ? "text-green-400" : "text-gray-900 dark:text-white"}`}>
+                            <Button variant="outline" size="sm" onClick={() => setShowCompleted(!showCompleted)} className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111] ${showCompleted ? "text-green-400" : "text-gray-900 dark:text-white"}`}>
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 {showCompleted ? "Hide Completed" : "Show Completed"}
                             </Button>
@@ -1204,7 +1204,7 @@ export default function PaymentSchedulePage() {
                 </div>
 
                 {/* Table Header */}
-                <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+                <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase">
                         <div className="w-[130px] flex-shrink-0">Provider</div>
                         <div className="w-[85px] flex-shrink-0">Finance</div>
@@ -1224,7 +1224,7 @@ export default function PaymentSchedulePage() {
                 <div className="pb-20">
                     {groups.map((group) => (
                         <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
-                            <div className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 dark:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
+                            <div className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
                                 {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
                                 <span className="font-medium text-gray-900 dark:text-white">{group.dateLabel}</span>
                                 <Zap className="h-4 w-4 text-yellow-500" />
@@ -1265,7 +1265,7 @@ export default function PaymentSchedulePage() {
                                         return (
                                             <div
                                                 key={invoice.id}
-                                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-100 dark:bg-gray-700/50" : ""} ${hasAmountDiscrepancy ? "bg-red-900/20" : ""}`}
+                                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""} ${hasAmountDiscrepancy ? "bg-red-900/20" : ""}`}
                                                 onClick={() => openDetailPanel(invoice)}
                                             >
                                                 {/* Provider */}
@@ -1285,10 +1285,10 @@ export default function PaymentSchedulePage() {
                                                         onChange={(e) => updateInvoiceField(invoice.id, "finance_payment_status", e.target.value)}
                                                         className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color} bg-transparent`}
                                                     >
-                                                        <option value="pending" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Pending</option>
-                                                        <option value="uploaded" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Uploaded</option>
-                                                        <option value="done" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Done</option>
-                                                        <option value="info_required" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Info Required</option>
+                                                        <option value="pending" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Pending</option>
+                                                        <option value="uploaded" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Uploaded</option>
+                                                        <option value="done" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Done</option>
+                                                        <option value="info_required" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Info Required</option>
                                                     </select>
                                                 </div>
 
@@ -1299,8 +1299,8 @@ export default function PaymentSchedulePage() {
                                                         onChange={(e) => updateInvoiceField(invoice.id, "invoice_status", e.target.value)}
                                                         className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color} bg-transparent`}
                                                     >
-                                                        <option value="pending" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Pending</option>
-                                                        <option value="available" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">Available</option>
+                                                        <option value="pending" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Pending</option>
+                                                        <option value="available" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Available</option>
                                                     </select>
                                                 </div>
 
@@ -1341,9 +1341,9 @@ export default function PaymentSchedulePage() {
                                                         onChange={(e) => updateInvoiceField(invoice.id, "payment_method_code", e.target.value || null)}
                                                         className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 w-full cursor-pointer"
                                                     >
-                                                        <option value="" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">—</option>
+                                                        <option value="" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">—</option>
                                                         {paymentMethods.map((pm) => (
-                                                            <option key={pm.code} value={pm.code} className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">{pm.name}</option>
+                                                            <option key={pm.code} value={pm.code} className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">{pm.name}</option>
                                                         ))}
                                                     </select>
                                                 </div>
@@ -1355,9 +1355,9 @@ export default function PaymentSchedulePage() {
                                                         onChange={(e) => updateInvoiceField(invoice.id, "bank_account_code", e.target.value || null)}
                                                         className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 w-full cursor-pointer"
                                                     >
-                                                        <option value="" className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">—</option>
+                                                        <option value="" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">—</option>
                                                         {bankAccounts.map((ba) => (
-                                                            <option key={ba.code} value={ba.code} className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white">{ba.name}</option>
+                                                            <option key={ba.code} value={ba.code} className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">{ba.name}</option>
                                                         ))}
                                                     </select>
                                                 </div>
@@ -1404,7 +1404,7 @@ export default function PaymentSchedulePage() {
                                                             Match
                                                         </Button>
                                                     ) : (
-                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-gray-800/50 text-gray-500 border-gray-200 dark:border-gray-700">
+                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-black/50 text-gray-500 border-gray-200 dark:border-gray-700">
                                                             Pending
                                                         </Badge>
                                                     )}
@@ -1464,7 +1464,7 @@ export default function PaymentSchedulePage() {
 
             {/* Detail Panel */}
             {detailPanelOpen && selectedInvoice && (
-                <div className="fixed right-0 top-[64px] h-[calc(100vh-64px)] w-[500px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+                <div className="fixed right-0 top-[64px] h-[calc(100vh-64px)] w-[500px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
                     {/* Panel Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2">
@@ -1540,7 +1540,7 @@ export default function PaymentSchedulePage() {
                         </div>
 
                         {/* Payment Control (editable) */}
-                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#0a0a0a]">
                             <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                 <CreditCard className="h-4 w-4" />
                                 Payment Control
@@ -1553,7 +1553,7 @@ export default function PaymentSchedulePage() {
                                     type="date"
                                     value={selectedInvoice.schedule_date || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "schedule_date", e.target.value || null)}
-                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
+                                    className="bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                 />
                             </div>
 
@@ -1563,7 +1563,7 @@ export default function PaymentSchedulePage() {
                                 <select
                                     value={selectedInvoice.bank_account_code || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "bank_account_code", e.target.value || null)}
-                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-black border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="">Select bank account...</option>
                                     {bankAccounts.map((ba) => (
@@ -1578,7 +1578,7 @@ export default function PaymentSchedulePage() {
                                 <select
                                     value={selectedInvoice.payment_method_code || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "payment_method_code", e.target.value || null)}
-                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-black border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="">Select payment method...</option>
                                     {paymentMethods.map((pm) => (
@@ -1594,7 +1594,7 @@ export default function PaymentSchedulePage() {
                                     type="date"
                                     value={selectedInvoice.payment_date || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "payment_date", e.target.value || null)}
-                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
+                                    className="bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                 />
                             </div>
 
@@ -1618,7 +1618,7 @@ export default function PaymentSchedulePage() {
                                         }
                                     }}
                                     placeholder={selectedInvoice.invoice_amount.toString()}
-                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
+                                    className="bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                 />
                             </div>
 
@@ -1628,7 +1628,7 @@ export default function PaymentSchedulePage() {
                                 <select
                                     value={selectedInvoice.paid_currency || ""}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "paid_currency", e.target.value || null)}
-                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-black border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="">Select currency...</option>
                                     <option value="EUR">EUR</option>
@@ -1644,7 +1644,7 @@ export default function PaymentSchedulePage() {
                                 <select
                                     value={selectedInvoice.finance_payment_status || "pending"}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "finance_payment_status", e.target.value)}
-                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-black border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="pending">Pending</option>
                                     <option value="uploaded">Uploaded</option>
@@ -1659,7 +1659,7 @@ export default function PaymentSchedulePage() {
                                 <select
                                     value={selectedInvoice.invoice_status || "pending"}
                                     onChange={(e) => updateInvoiceField(selectedInvoice.id, "invoice_status", e.target.value)}
-                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-black border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="pending">Pending</option>
                                     <option value="available">Available</option>
@@ -1825,7 +1825,7 @@ export default function PaymentSchedulePage() {
                         {/* Description */}
                         <div className="px-4 py-4 border-b border-gray-200 dark:border-gray-800">
                             <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Description</h3>
-                            <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 min-h-[80px]">
+                            <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg p-3 min-h-[80px]">
                                 <p className="text-sm text-gray-500 dark:text-gray-400">{selectedInvoice.description || selectedInvoice.notes || "No description provided."}</p>
                             </div>
                         </div>
@@ -1938,7 +1938,7 @@ export default function PaymentSchedulePage() {
                                                                 <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{activity.content}</p>
                                                             )}
                                                             {activity.activity_type === "attachment" && activity.metadata?.filename && (
-                                                                <div className="mt-2 flex items-center gap-2 bg-gray-50 dark:bg-[#2a2b2d] rounded p-2">
+                                                                <div className="mt-2 flex items-center gap-2 bg-gray-50 dark:bg-[#0a0a0a] rounded p-2">
                                                                     <FileText className="h-8 w-8 text-red-500" />
                                                                     <div>
                                                                         <p className="text-sm text-gray-900 dark:text-white">{activity.metadata.filename}</p>
@@ -1967,7 +1967,7 @@ export default function PaymentSchedulePage() {
                                     placeholder="Add a comment..."
                                     value={newComment}
                                     onChange={(e) => setNewComment(e.target.value)}
-                                    className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 min-h-[60px] resize-none"
+                                    className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 min-h-[60px] resize-none"
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter" && !e.shiftKey) {
                                             e.preventDefault();
@@ -2011,7 +2011,7 @@ export default function PaymentSchedulePage() {
             {/* Payment Confirmation Dialog */}
             {paymentConfirmDialogOpen && paymentConfirmInvoice && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-                    <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg w-[450px] overflow-hidden flex flex-col">
+                    <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg w-[450px] overflow-hidden flex flex-col">
                         {/* Dialog Header */}
                         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <div>
@@ -2034,7 +2034,7 @@ export default function PaymentSchedulePage() {
                         {/* Dialog Content */}
                         <div className="px-6 py-4 space-y-4">
                             {/* Invoice Info */}
-                            <div className="bg-white dark:bg-[#1e1f21] rounded-lg p-3 space-y-2">
+                            <div className="bg-white dark:bg-black rounded-lg p-3 space-y-2">
                                 <div className="flex justify-between text-sm">
                                     <span className="text-gray-500 dark:text-gray-400">Invoice Amount:</span>
                                     <span className="text-gray-900 dark:text-white font-medium">{formatCurrency(paymentConfirmInvoice.invoice_amount)} {paymentConfirmInvoice.currency}</span>
@@ -2053,7 +2053,7 @@ export default function PaymentSchedulePage() {
                                     step="any"
                                     value={paymentConfirmData.paid_amount}
                                     onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, paid_amount: e.target.value })}
-                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
+                                    className="bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                     placeholder="0.00"
                                 />
                             </div>
@@ -2064,7 +2064,7 @@ export default function PaymentSchedulePage() {
                                 <select
                                     value={paymentConfirmData.paid_currency}
                                     onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, paid_currency: e.target.value })}
-                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
+                                    className="w-full h-9 px-3 rounded-md bg-white dark:bg-black border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm"
                                 >
                                     <option value="">Select currency...</option>
                                     <option value="EUR">EUR - Euro</option>
@@ -2081,7 +2081,7 @@ export default function PaymentSchedulePage() {
                                     type="date"
                                     value={paymentConfirmData.payment_date}
                                     onChange={(e) => setPaymentConfirmData({ ...paymentConfirmData, payment_date: e.target.value })}
-                                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
+                                    className="bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9"
                                 />
                             </div>
                         </div>
@@ -2118,7 +2118,7 @@ export default function PaymentSchedulePage() {
             {/* Manual Reconciliation Dialog */}
             {reconciliationDialogOpen && reconciliationInvoice && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
-                    <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
+                    <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg w-[600px] max-h-[80vh] overflow-hidden flex flex-col">
                         {/* Dialog Header */}
                         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
                             <div>
@@ -2136,7 +2136,7 @@ export default function PaymentSchedulePage() {
                         </div>
 
                         {/* Invoice Info */}
-                        <div className="px-6 py-4 bg-gray-100 dark:bg-gray-800/50 border-b border-gray-200 dark:border-gray-700">
+                        <div className="px-6 py-4 bg-gray-100 dark:bg-black/50 border-b border-gray-200 dark:border-gray-700">
                             <div className="grid grid-cols-3 gap-4 text-sm">
                                 <div>
                                     <span className="text-gray-500">Provider</span>
@@ -2170,7 +2170,7 @@ export default function PaymentSchedulePage() {
                                         <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
                                     </div>
                                 ) : bankTransactions.length === 0 ? (
-                                    <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-black/30 rounded-lg border border-gray-200 dark:border-gray-700">
                                         <p className="text-sm">No exact match found</p>
                                         <p className="text-xs mt-1">Select from available transactions below for partial reconciliation</p>
                                     </div>
@@ -2223,7 +2223,7 @@ export default function PaymentSchedulePage() {
                                         <Loader2 className="h-5 w-5 animate-spin text-gray-500 dark:text-gray-400" />
                                     </div>
                                 ) : allAvailableTransactions.length === 0 ? (
-                                    <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-gray-800/30 rounded-lg border border-gray-200 dark:border-gray-700">
+                                    <div className="text-center py-4 text-gray-500 bg-gray-50 dark:bg-black/30 rounded-lg border border-gray-200 dark:border-gray-700">
                                         <p className="text-sm">No other transactions available</p>
                                     </div>
                                 ) : (
@@ -2237,7 +2237,7 @@ export default function PaymentSchedulePage() {
                                                     onClick={() => setSelectedTransaction(tx.id)}
                                                     className={`p-3 rounded-lg border cursor-pointer transition-all ${selectedTransaction === tx.id
                                                         ? "border-blue-500 bg-blue-900/20"
-                                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/30"
+                                                        : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-black/30"
                                                         }`}
                                                 >
                                                     <div className="flex items-center justify-between">
@@ -2279,7 +2279,7 @@ export default function PaymentSchedulePage() {
                             <Button
                                 variant="outline"
                                 onClick={() => setReconciliationDialogOpen(false)}
-                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                             >
                                 Cancel
                             </Button>

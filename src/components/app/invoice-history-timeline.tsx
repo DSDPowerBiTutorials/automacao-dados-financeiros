@@ -157,7 +157,7 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
         return changeTypeConfig[changeType] || {
             icon: Clock,
             color: "text-gray-500 dark:text-gray-400",
-            bgColor: "bg-gray-50 dark:bg-gray-900/30",
+            bgColor: "bg-gray-50 dark:bg-black/30",
             label: "Updated",
         };
     };
@@ -165,7 +165,7 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
     return (
         <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>{trigger}</DialogTrigger>
-            <DialogContent className="max-w-none max-h-[90vh] bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white min-h-[400px]" style={{ width: '80vw' }}>
+            <DialogContent className="max-w-none max-h-[90vh] bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white min-h-[400px]" style={{ width: '80vw' }}>
                 <DialogHeader className="pb-4 border-b border-gray-200 dark:border-gray-700">
                     <DialogTitle className="flex items-center gap-3 text-gray-900 dark:text-white text-xl">
                         <Clock className="h-6 w-6 text-yellow-500" />
@@ -187,7 +187,7 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
                     ) : (
                         <div className="relative pl-4">
                             {/* Timeline line */}
-                            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-gray-100 dark:bg-gray-700" />
+                            <div className="absolute left-7 top-0 bottom-0 w-0.5 bg-gray-100 dark:bg-[#0a0a0a]" />
 
                             {/* Timeline entries */}
                             <div className="space-y-6">
@@ -224,7 +224,7 @@ export function InvoiceHistoryTimeline({ invoiceId, trigger }: InvoiceHistoryTim
                                                 {entry.old_value || entry.new_value ? (
                                                     <div className="mt-3 flex items-center gap-3 text-sm">
                                                         {entry.old_value && (
-                                                            <span className="px-3 py-1.5 rounded-md bg-gray-100 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300">
+                                                            <span className="px-3 py-1.5 rounded-md bg-gray-100 dark:bg-black/50 text-gray-700 dark:text-gray-300">
                                                                 {formatValue(entry.old_value, entry.field_name)}
                                                             </span>
                                                         )}

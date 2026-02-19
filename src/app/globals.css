@@ -62,50 +62,50 @@
 }
 
 .dark {
-  /* shadcn — dark */
-  --background: 220 15% 10%;
+  /* shadcn — dark (true black) */
+  --background: 0 0% 0%;
   --foreground: 0 0% 95%;
-  --popover: 220 15% 12%;
+  --popover: 0 0% 0%;
   --popover-foreground: 0 0% 95%;
-  --card: 220 15% 12%;
+  --card: 0 0% 0%;
   --card-foreground: 0 0% 95%;
   --primary: 210 100% 50%;
   --primary-foreground: 0 0% 100%;
-  --secondary: 220 15% 20%;
+  --secondary: 0 0% 7%;
   --secondary-foreground: 0 0% 95%;
-  --muted: 220 15% 20%;
+  --muted: 0 0% 7%;
   --muted-foreground: 0 0% 65%;
-  --accent: 220 15% 22%;
+  --accent: 0 0% 9%;
   --accent-foreground: 0 0% 95%;
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
-  --border: 220 10% 28%;
-  --input: 220 10% 28%;
+  --border: 0 0% 15%;
+  --input: 0 0% 12%;
   --ring: 210 100% 50%;
 
-  /* Header / nav — dark */
-  --header-bg: #1e1f21;
-  --header-border: #333333;
+  /* Header / nav — dark (true black) */
+  --header-bg: #000000;
+  --header-border: #1a1a1a;
   --header-text: #ffffff;
   --header-text-muted: #888888;
-  --nav-bg: #252628;
-  --nav-border: #333333;
+  --nav-bg: #000000;
+  --nav-border: #1a1a1a;
   --nav-text: #cccccc;
   --nav-text-muted: #888888;
   --nav-text-active: #FF7300;
-  --input-bg: #2a2b2e;
-  --input-border: #444444;
+  --input-bg: #0a0a0a;
+  --input-border: #222222;
   --input-text: #ffffff;
-  --dropdown-bg: #1e1f21;
-  --dropdown-border: #444444;
+  --dropdown-bg: #000000;
+  --dropdown-border: #222222;
   --dropdown-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
-  --scope-inactive-bg: #2a2b2e;
+  --scope-inactive-bg: #0a0a0a;
   --scope-inactive-text: #aaaaaa;
   --workstream-bg: rgba(59, 130, 246, 0.15);
   --workstream-text: #60a5fa;
   --workstream-border: rgba(59, 130, 246, 0.25);
   --workstream-bg-hover: rgba(59, 130, 246, 0.25);
-  --content-bg: #1e1f21;
+  --content-bg: #000000;
   --content-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
   --overlay-from: rgba(0, 0, 0, 0.4);
   --overlay-via: rgba(0, 0, 0, 0.3);
@@ -125,7 +125,7 @@ body {
 
 html.dark,
 html.dark body {
-  background-color: #1a1b1e;
+  background-color: #000000;
   color: #e5e7eb;
 }
 
@@ -160,12 +160,12 @@ html.dark body {
 
 /* Dark scrollbar */
 .dark ::-webkit-scrollbar-track {
-  background: #1a1b1e;
+  background: #000000;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-  background-color: #4b5563;
-  border: 2px solid #1a1b1e;
+  background-color: #333333;
+  border: 2px solid #000000;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
@@ -189,7 +189,7 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark * {
-  scrollbar-color: #4b5563 #1a1b1e;
+  scrollbar-color: #333333 #000000;
 }
 
 /* Container padrão para aproveitar melhor a largura da tela */
@@ -256,8 +256,8 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .page-header-dark {
-  background: #1e1f21;
-  border-bottom-color: #374151;
+  background: #000000;
+  border-bottom-color: #1a1a1a;
   color: white;
 }
 
@@ -287,8 +287,8 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .table-standard thead {
-  background-color: #252627;
-  border-bottom-color: #374151;
+  background-color: #0a0a0a;
+  border-bottom-color: #1a1a1a;
 }
 
 .table-standard thead th {
@@ -311,7 +311,7 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .table-standard tbody tr {
-  border-bottom-color: #2a2b2d;
+  border-bottom-color: #111111;
 }
 
 .table-standard tbody tr:hover {
@@ -319,7 +319,7 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .table-standard tbody tr:hover {
-  background-color: #2a2b2d;
+  background-color: #0a0a0a;
 }
 
 .table-standard tbody td {
@@ -339,7 +339,7 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .table-standard.table-striped tbody tr:nth-child(even) {
-  background-color: #252627;
+  background-color: #050505;
 }
 
 /* ================================================
@@ -523,8 +523,8 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .dashboard-card {
-  background: #1a1f2e;
-  border-color: #2a3142;
+  background: #000000;
+  border-color: #1a1a1a;
 }
 
 .dashboard-card:hover {
@@ -533,8 +533,8 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .dashboard-card:hover {
-  background: #222838;
-  border-color: #3a4152;
+  background: #0a0a0a;
+  border-color: #222222;
 }
 
 .dashboard-card-header {
@@ -642,8 +642,8 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .dashboard-kpi {
-  background: linear-gradient(135deg, #1a1f2e 0%, #1e2538 100%);
-  border-color: #2a3142;
+  background: linear-gradient(135deg, #000000 0%, #050505 100%);
+  border-color: #1a1a1a;
 }
 
 .dashboard-kpi::after {
@@ -800,8 +800,8 @@ aside nav::-webkit-scrollbar-thumb {
 }
 
 .dark .dashboard-tooltip {
-  background: #1a1f2e !important;
-  border-color: #2a3142 !important;
+  background: #000000 !important;
+  border-color: #1a1a1a !important;
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4) !important;
 }
 

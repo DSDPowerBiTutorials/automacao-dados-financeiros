@@ -39,7 +39,7 @@ export function TaskCard({ task, onClick, overlay, users = [] }: TaskCardProps) 
         <div
             ref={overlay ? undefined : setNodeRef}
             style={overlay ? undefined : style}
-            className={`group bg-gray-50 dark:bg-[#2a2b2d] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 rounded-lg p-3 cursor-pointer transition-colors ${isDragging ? 'shadow-xl ring-1 ring-blue-500/50' : ''
+            className={`group bg-gray-50 dark:bg-[#0a0a0a] hover:bg-gray-100 dark:hover:bg-[#333435] border border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 rounded-lg p-3 cursor-pointer transition-colors ${isDragging ? 'shadow-xl ring-1 ring-blue-500/50' : ''
                 }`}
             onClick={() => onClick(task)}
         >

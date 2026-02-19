@@ -78,7 +78,7 @@ export default function PortfoliosPage() {
     }
 
     return (
-        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-5xl mx-auto px-6 py-8">
                 <div className="flex items-center justify-between mb-8">
                     <div>
@@ -120,7 +120,7 @@ export default function PortfoliosPage() {
                                 <div
                                     key={project.id}
                                     onClick={() => router.push(`/workstream/${project.id}`)}
-                                    className="grid grid-cols-12 gap-4 items-center bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333435] cursor-pointer transition-colors"
+                                    className="grid grid-cols-12 gap-4 items-center bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-lg px-4 py-3 hover:bg-gray-100 dark:hover:bg-[#333435] cursor-pointer transition-colors"
                                 >
                                     {/* Project name */}
                                     <div className="col-span-4 flex items-center gap-3">
@@ -147,7 +147,7 @@ export default function PortfoliosPage() {
 
                                     {/* Progress */}
                                     <div className="col-span-3 flex items-center gap-2">
-                                        <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                        <div className="flex-1 h-2 bg-gray-100 dark:bg-black rounded-full overflow-hidden">
                                             <div
                                                 className="h-full bg-green-500 rounded-full transition-all"
                                                 style={{ width: `${project.completion_rate}%` }}

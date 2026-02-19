@@ -110,12 +110,12 @@ export function ClinicEventDropdown({
             <SelectTrigger
                 className={`w-24 h-8 text-xs border ${colors
                     ? `${colors.bg} ${colors.text} ${colors.border}`
-                    : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+                    : "bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600"
                     }`}
             >
                 <SelectValue placeholder="-" />
             </SelectTrigger>
-            <SelectContent className="bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600">
+            <SelectContent className="bg-gray-100 dark:bg-black border-gray-300 dark:border-gray-600">
                 <SelectItem value="none" className="text-gray-500 dark:text-gray-400 focus:bg-gray-700 focus:text-gray-600 dark:text-gray-200">
                     -
                 </SelectItem>

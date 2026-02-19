@@ -68,7 +68,7 @@ export default function Sidebar() {
       collapsed ? "justify-center px-2" : "",
       active
         ? "bg-[#FF7300] text-white font-medium shadow-lg shadow-orange-500/20"
-        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-700/50 hover:text-gray-900 dark:text-white"
+        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-[#0a0a0a]/50 hover:text-gray-900 dark:text-white"
     );
 
   const labelClass = cn(
@@ -99,7 +99,7 @@ export default function Sidebar() {
   const renderFlyout = (items: any[]) => {
     return (
       <div
-        className="fixed bg-white dark:bg-[#1e1f21] border border-gray-200 dark:border-gray-700 shadow-2xl p-2 z-[100] min-w-[260px] rounded-xl"
+        className="fixed bg-white dark:bg-black border border-gray-200 dark:border-gray-700 shadow-2xl p-2 z-[100] min-w-[260px] rounded-xl"
         style={{ top: `${flyoutPosition.top}px`, left: `${flyoutPosition.left}px` }}
         onMouseEnter={() => setIsHovering(true)}
         onMouseLeave={() => { setIsHovering(false); setHoveredItem(null); }}
@@ -113,7 +113,7 @@ export default function Sidebar() {
                   "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all",
                   isActive(child.href)
                     ? "bg-[#FF7300] text-white font-medium"
-                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-700/50 hover:text-gray-900 dark:text-white"
+                    : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-[#0a0a0a]/50 hover:text-gray-900 dark:text-white"
                 )}
               >
                 {child.icon && <child.icon className="h-4 w-4" />}
@@ -130,7 +130,7 @@ export default function Sidebar() {
                         "flex items-center gap-2 px-3 py-2 text-sm rounded-md transition-all",
                         isActive(subChild.href)
                           ? "bg-[#FF7300] text-white font-medium"
-                          : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-gray-700/50 hover:text-gray-900 dark:text-white"
+                          : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-[#0a0a0a]/50 hover:text-gray-900 dark:text-white"
                       )}
                     >
                       {subChild.icon && <subChild.icon className="h-3 w-3" />}
@@ -153,7 +153,7 @@ export default function Sidebar() {
       <Button
         variant="ghost"
         size="icon"
-        className="md:hidden fixed top-4 left-4 z-[60] bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+        className="md:hidden fixed top-4 left-4 z-[60] bg-gray-100 dark:bg-black text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -165,7 +165,7 @@ export default function Sidebar() {
         onMouseEnter={handleSidebarMouseEnter}
         onMouseLeave={handleSidebarMouseLeave}
         className={cn(
-          "fixed top-0 left-0 h-full bg-white dark:bg-[#1e1f21] border-r border-gray-200 dark:border-gray-800 z-50 flex flex-col shadow-2xl overflow-hidden",
+          "fixed top-0 left-0 h-full bg-white dark:bg-black border-r border-gray-200 dark:border-gray-800 z-50 flex flex-col shadow-2xl overflow-hidden",
           "transition-all duration-300 ease-in-out",
           collapsed ? "w-16" : "w-72",
           "max-md:-translate-x-full",
@@ -204,7 +204,7 @@ export default function Sidebar() {
                   "flex items-center justify-center w-10 h-8 border transition-all rounded-lg",
                   selectedScope === "ES"
                     ? "border-[#FF7300] bg-[#FF7300]/20 ring-2 ring-[#FF7300]"
-                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111]"
                 )}
                 title="Spain"
               >
@@ -216,7 +216,7 @@ export default function Sidebar() {
                   "flex items-center justify-center w-10 h-8 border transition-all rounded-lg",
                   selectedScope === "US"
                     ? "border-[#FF7300] bg-[#FF7300]/20 ring-2 ring-[#FF7300]"
-                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111]"
                 )}
                 title="United States"
               >
@@ -228,7 +228,7 @@ export default function Sidebar() {
                   "flex items-center justify-center w-10 h-8 border transition-all rounded-lg",
                   selectedScope === "GLOBAL"
                     ? "border-[#FF7300] bg-[#FF7300]/20 ring-2 ring-[#FF7300]"
-                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800"
+                    : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111]"
                 )}
                 title="Global (Consolidated)"
               >
@@ -255,7 +255,7 @@ export default function Sidebar() {
               <Input
                 type="text"
                 placeholder="Search..."
-                className="pl-10 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 focus:border-[#FF7300] focus:ring-[#FF7300]/20"
+                className="pl-10 bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 focus:border-[#FF7300] focus:ring-[#FF7300]/20"
               />
             </div>
           </div>
@@ -309,7 +309,7 @@ export default function Sidebar() {
                                 "flex items-center gap-2 px-3 py-2 text-sm transition-all rounded-lg",
                                 isActive(child.href)
                                   ? "bg-[#FF7300] text-white font-medium"
-                                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-gray-700/50 hover:text-gray-900 dark:text-white"
+                                  : "text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:bg-[#0a0a0a]/50 hover:text-gray-900 dark:text-white"
                               )}
                             >
                               {child.icon && <child.icon className="h-3.5 w-3.5" />}
@@ -326,7 +326,7 @@ export default function Sidebar() {
                                       "flex items-center gap-2 px-2 py-1.5 text-xs transition-all rounded-md",
                                       isActive(subChild.href)
                                         ? "bg-[#FF7300] text-white font-medium"
-                                        : "text-gray-500 hover:bg-gray-100 dark:bg-gray-700/50 hover:text-gray-700 dark:text-gray-300"
+                                        : "text-gray-500 hover:bg-gray-100 dark:bg-[#0a0a0a]/50 hover:text-gray-700 dark:text-gray-300"
                                     )}
                                   >
                                     {subChild.icon && <subChild.icon className="h-3 w-3" />}

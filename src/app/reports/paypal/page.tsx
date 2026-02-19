@@ -777,7 +777,7 @@ export default function PaypalPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
+                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-black">
                       <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white w-24">
                         ID
                       </th>
@@ -819,7 +819,7 @@ export default function PaypalPage() {
                         return (
                           <tr
                             key={row.id}
-                            className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                            className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-[#111111]/50"
                           >
                             <td className="py-3 px-4 text-sm font-bold">
                               {row.id.substring(0, 8)}...
@@ -923,14 +923,14 @@ export default function PaypalPage() {
                                   {row.reconciliationType === "automatic" ? (
                                     <div className="relative group">
                                       <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                         Automatic reconciliation
                                       </div>
                                     </div>
                                   ) : (
                                     <div className="relative group">
                                       <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                         Manual reconciliation
                                       </div>
                                     </div>
@@ -1000,7 +1000,7 @@ export default function PaypalPage() {
 
       {/* Split Screen Panel */}
       {splitScreenUrl && (
-        <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-slate-900 shadow-2xl z-40 border-l-4 border-blue-500">
+        <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-black shadow-2xl z-40 border-l-4 border-blue-500">
           <div className="h-full flex flex-col">
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Bank Statement Details</h2>

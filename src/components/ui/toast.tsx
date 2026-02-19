@@ -29,10 +29,10 @@ const toastVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-gray-200 dark:border-gray-700 bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white",
-        destructive: "border-red-200 dark:border-red-800 bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white",
-        success: "border-green-200 dark:border-green-800 bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white",
-        warning: "border-amber-200 dark:border-amber-800 bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white",
+        default: "border-gray-200 dark:border-gray-700 bg-white dark:bg-black text-gray-900 dark:text-white",
+        destructive: "border-red-200 dark:border-red-800 bg-white dark:bg-black text-gray-900 dark:text-white",
+        success: "border-green-200 dark:border-green-800 bg-white dark:bg-black text-gray-900 dark:text-white",
+        warning: "border-amber-200 dark:border-amber-800 bg-white dark:bg-black text-gray-900 dark:text-white",
       },
     },
     defaultVariants: {
@@ -63,7 +63,7 @@ const ToastAction = React.forwardRef<
   <ToastPrimitives.Action
     ref={ref}
     className={cn(
-      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 bg-transparent px-3 text-[10px] font-medium text-gray-900 dark:text-white ring-offset-background transition-colors hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+      "inline-flex h-8 shrink-0 items-center justify-center rounded-md border border-gray-200 dark:border-gray-700 bg-transparent px-3 text-[10px] font-medium text-gray-900 dark:text-white ring-offset-background transition-colors hover:bg-gray-100 dark:hover:bg-[#111111] focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
       className,
     )}
     {...props}

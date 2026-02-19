@@ -204,7 +204,7 @@ export function InvoiceAttachments({
                     <select
                         value={selectedKind}
                         onChange={(e) => setSelectedKind(e.target.value)}
-                        className="text-sm border rounded px-2 py-1 bg-white dark:bg-[#252627] text-gray-700 dark:text-gray-300"
+                        className="text-sm border rounded px-2 py-1 bg-white dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300"
                     >
                         {KIND_OPTIONS.map(opt => (
                             <option key={opt.value} value={opt.value}>{opt.label}</option>

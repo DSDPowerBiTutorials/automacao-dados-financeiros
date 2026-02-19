@@ -47,7 +47,7 @@ export function UserAvatarGroup({ users, max = 4, size = 'sm', className }: User
                 <div
                     className={cn(
                         'flex items-center justify-center rounded-full',
-                        'bg-gray-100 dark:bg-gray-700',
+                        'bg-gray-100 dark:bg-[#0a0a0a]',
                         'ring-2 ring-white dark:ring-gray-900',
                         'text-gray-600 dark:text-gray-300 font-medium',
                         sizeClasses[size]

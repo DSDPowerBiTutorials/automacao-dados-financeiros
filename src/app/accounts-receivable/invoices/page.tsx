@@ -58,13 +58,13 @@ interface ARInvoice {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  draft: { label: "Rascunho", color: "bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" },
+  draft: { label: "Rascunho", color: "bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600" },
   pending: { label: "Pendente", color: "bg-yellow-900/30 text-yellow-400 border border-yellow-700" },
   sent: { label: "Enviada", color: "bg-blue-900/30 text-blue-400 border border-blue-700" },
   paid: { label: "Paga", color: "bg-green-900/30 text-green-400 border border-green-700" },
   partial: { label: "Parcial", color: "bg-orange-900/30 text-orange-400 border border-orange-700" },
   overdue: { label: "Vencida", color: "bg-red-900/30 text-red-400 border border-red-700" },
-  cancelled: { label: "Cancelada", color: "bg-gray-100 dark:bg-gray-800/50 text-gray-500 border border-gray-200 dark:border-gray-700" }
+  cancelled: { label: "Cancelada", color: "bg-gray-100 dark:bg-black/50 text-gray-500 border border-gray-200 dark:border-gray-700" }
 };
 
 const PAYMENT_METHODS = ["Braintree", "Stripe", "GoCardless", "PayPal", "Bank Transfer", "Credit Card", "Other"];
@@ -970,7 +970,7 @@ export default function ARInvoicesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
       {/* Header */}
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between mb-3">
@@ -983,7 +983,7 @@ export default function ARInvoicesPage() {
         </div>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" onClick={runAutoReconcile} disabled={reconciling}>
+            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={runAutoReconcile} disabled={reconciling}>
               {reconciling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Link2 className="h-4 w-4 mr-1" />}
               Reconcile
             </Button>
@@ -991,11 +991,11 @@ export default function ARInvoicesPage() {
               {bankReconciling ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <DollarSign className="h-4 w-4 mr-1" />}
               Bank Reconcile
             </Button>
-            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" onClick={syncFromHubSpot} disabled={syncing}>
+            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={syncFromHubSpot} disabled={syncing}>
               {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
               Sync
             </Button>
-            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" onClick={exportToExcel}>
+            <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={exportToExcel}>
               <Download className="h-4 w-4 mr-1" /> Export
             </Button>
             <div className="relative">
@@ -1028,10 +1028,10 @@ export default function ARInvoicesPage() {
             </div>
             <Select value={selectedStatus} onValueChange={setSelectedStatus}>
               <SelectTrigger className="w-[130px] bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
-              <SelectContent className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                <SelectItem value="ALL" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Todos</SelectItem>
+              <SelectContent className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
+                <SelectItem value="ALL" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">Todos</SelectItem>
                 {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                  <SelectItem key={key} value={key} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">{config.label}</SelectItem>
+                  <SelectItem key={key} value={key} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">{config.label}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1040,7 +1040,7 @@ export default function ARInvoicesPage() {
       </div>
 
       {/* Summary Stats Bar */}
-      <div className="flex items-center gap-6 px-6 py-3 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 text-sm">
+      <div className="flex items-center gap-6 px-6 py-3 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 text-sm">
         <div className="flex items-center gap-2">
           <Link2 className="h-4 w-4 text-purple-400" />
           <span className="text-gray-500 dark:text-gray-400">Reconciliado:</span>
@@ -1074,7 +1074,7 @@ export default function ARInvoicesPage() {
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+      <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-1 px-3 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase">
           <div className="w-[55px] flex-shrink-0"></div>
           {/* Invoice */}
@@ -1085,8 +1085,8 @@ export default function ARInvoicesPage() {
               <Filter className={`h-2.5 w-2.5 ${columnFilters.invoice_number ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'invoice_number' ? null : 'invoice_number'); }} />
             </div>
             {activeFilterColumn === 'invoice_number' && (
-              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
-                <input type="text" placeholder="Filtrar..." value={columnFilters.invoice_number || ''} onChange={(e) => setColumnFilters({ ...columnFilters, invoice_number: e.target.value })} className="w-24 bg-gray-100 dark:bg-gray-700 border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
+              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
+                <input type="text" placeholder="Filtrar..." value={columnFilters.invoice_number || ''} onChange={(e) => setColumnFilters({ ...columnFilters, invoice_number: e.target.value })} className="w-24 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
               </div>
             )}
           </div>
@@ -1101,7 +1101,7 @@ export default function ARInvoicesPage() {
                     <CalendarIcon className="h-2.5 w-2.5" />
                   </button>
                 </PopoverTrigger>
-                <PopoverContent className="w-auto p-0 bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600" align="start">
+                <PopoverContent className="w-auto p-0 bg-gray-100 dark:bg-black border-gray-300 dark:border-gray-600" align="start">
                   <div className="p-2">
                     <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">Selecionar intervalo de datas</div>
                     <Calendar
@@ -1109,7 +1109,7 @@ export default function ARInvoicesPage() {
                       selected={{ from: dateRange.from, to: dateRange.to }}
                       onSelect={(range) => setDateRange({ from: range?.from, to: range?.to })}
                       numberOfMonths={2}
-                      className="bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+                      className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white"
                     />
                     <div className="flex gap-2 mt-2">
                       <Button size="sm" variant="outline" className="text-xs h-6" onClick={() => setDateRange({ from: undefined, to: undefined })}>
@@ -1134,8 +1134,8 @@ export default function ARInvoicesPage() {
               <Filter className={`h-2.5 w-2.5 ${columnFilters.order_id ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'order_id' ? null : 'order_id'); }} />
             </div>
             {activeFilterColumn === 'order_id' && (
-              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
-                <input type="text" placeholder="Filtrar..." value={columnFilters.order_id || ''} onChange={(e) => setColumnFilters({ ...columnFilters, order_id: e.target.value })} className="w-20 bg-gray-100 dark:bg-gray-700 border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
+              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
+                <input type="text" placeholder="Filtrar..." value={columnFilters.order_id || ''} onChange={(e) => setColumnFilters({ ...columnFilters, order_id: e.target.value })} className="w-20 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
               </div>
             )}
           </div>
@@ -1149,8 +1149,8 @@ export default function ARInvoicesPage() {
               <Filter className={`h-2.5 w-2.5 ${columnFilters.order_status ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'order_status' ? null : 'order_status'); }} />
             </div>
             {activeFilterColumn === 'order_status' && (
-              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[100px]">
-                <select value={columnFilters.order_status || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, order_status: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
+              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[100px]">
+                <select value={columnFilters.order_status || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, order_status: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
                   <option value="">Todos</option>
                   {columnUniqueValues.order_status.map(v => <option key={v} value={v || ''}>{v}</option>)}
                 </select>
@@ -1165,8 +1165,8 @@ export default function ARInvoicesPage() {
               <Filter className={`h-2.5 w-2.5 ${columnFilters.deal_status ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'deal_status' ? null : 'deal_status'); }} />
             </div>
             {activeFilterColumn === 'deal_status' && (
-              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[130px]">
-                <select value={columnFilters.deal_status || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, deal_status: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
+              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[130px]">
+                <select value={columnFilters.deal_status || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, deal_status: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
                   <option value="">Todos</option>
                   {columnUniqueValues.deal_status.map(v => <option key={v} value={v || ''}>{v}</option>)}
                 </select>
@@ -1181,8 +1181,8 @@ export default function ARInvoicesPage() {
               <Filter className={`h-2.5 w-2.5 ${columnFilters.products ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'products' ? null : 'products'); }} />
             </div>
             {activeFilterColumn === 'products' && (
-              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[180px] max-h-[200px] overflow-y-auto">
-                <select value={columnFilters.products || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, products: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
+              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[180px] max-h-[200px] overflow-y-auto">
+                <select value={columnFilters.products || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, products: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
                   <option value="">Todos</option>
                   {columnUniqueValues.products.map(v => <option key={v} value={v || ''}>{v?.substring(0, 40)}</option>)}
                 </select>
@@ -1197,8 +1197,8 @@ export default function ARInvoicesPage() {
               <Filter className={`h-2.5 w-2.5 ${columnFilters.company_name ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'company_name' ? null : 'company_name'); }} />
             </div>
             {activeFilterColumn === 'company_name' && (
-              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[150px] max-h-[200px] overflow-y-auto">
-                <select value={columnFilters.company_name || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, company_name: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
+              <div className="absolute top-full left-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20 min-w-[150px] max-h-[200px] overflow-y-auto">
+                <select value={columnFilters.company_name || ''} onChange={(e) => { setColumnFilters({ ...columnFilters, company_name: e.target.value }); setActiveFilterColumn(null); }} className="w-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white text-[10px] p-1 rounded border-none" autoFocus>
                   <option value="">Todos</option>
                   {columnUniqueValues.company_name.map(v => <option key={v} value={v || ''}>{v?.substring(0, 30)}</option>)}
                 </select>
@@ -1221,8 +1221,8 @@ export default function ARInvoicesPage() {
               <Filter className={`h-2.5 w-2.5 ${columnFilters.total_amount ? 'text-blue-400' : 'opacity-30'}`} onClick={(e) => { e.stopPropagation(); setActiveFilterColumn(activeFilterColumn === 'total_amount' ? null : 'total_amount'); }} />
             </div>
             {activeFilterColumn === 'total_amount' && (
-              <div className="absolute top-full right-0 mt-1 bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
-                <input type="text" placeholder="Filtrar..." value={columnFilters.total_amount || ''} onChange={(e) => setColumnFilters({ ...columnFilters, total_amount: e.target.value })} className="w-20 bg-gray-100 dark:bg-gray-700 border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
+              <div className="absolute top-full right-0 mt-1 bg-gray-100 dark:bg-black border border-gray-300 dark:border-gray-600 rounded p-1 z-20">
+                <input type="text" placeholder="Filtrar..." value={columnFilters.total_amount || ''} onChange={(e) => setColumnFilters({ ...columnFilters, total_amount: e.target.value })} className="w-20 bg-gray-100 dark:bg-[#0a0a0a] border-none text-gray-900 dark:text-white text-[10px] p-1 rounded" autoFocus />
               </div>
             )}
           </div>
@@ -1252,7 +1252,7 @@ export default function ARInvoicesPage() {
             return (
               <div
                 key={inv.id}
-                className={`flex items-center gap-1 px-3 py-1.5 border-b border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-gray-800/30 text-[11px] ${inv.reconciled ? 'bg-green-900/10' : ''}`}
+                className={`flex items-center gap-1 px-3 py-1.5 border-b border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-black/30 text-[11px] ${inv.reconciled ? 'bg-green-900/10' : ''}`}
               >
                 {/* Actions */}
                 <div className="w-[55px] flex-shrink-0 flex items-center gap-0.5">
@@ -1270,7 +1270,7 @@ export default function ARInvoicesPage() {
                   ) : inv.source === 'hubspot' ? (
                     <span className="text-[8px] px-1 py-0.5 rounded bg-blue-900/30 text-blue-400 border border-blue-700/50 flex-shrink-0">HS</span>
                   ) : inv.source === 'manual' ? (
-                    <span className="text-[8px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 flex-shrink-0">M</span>
+                    <span className="text-[8px] px-1 py-0.5 rounded bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-500 dark:text-gray-400 border border-gray-300 dark:border-gray-600 flex-shrink-0">M</span>
                   ) : null}
                   <span className="truncate">{inv.invoice_number.replace(/^(HS-|CC-)/, '')}</span>
                 </div>
@@ -1301,7 +1301,7 @@ export default function ARInvoicesPage() {
                   ) : (
                     <span className={`text-[9px] px-1.5 py-0.5 rounded ${inv.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
                       inv.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
-                        'bg-gray-100 dark:bg-gray-700/50 text-gray-500 dark:text-gray-400'
+                        'bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-500 dark:text-gray-400'
                       }`}>{inv.order_status || "-"}</span>
                   )}
                 </div>
@@ -1362,13 +1362,13 @@ export default function ARInvoicesPage() {
       {/* Edit/Create Dialog — P&L style sectioned layout */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent
-          className="max-w-none max-h-[90vh] p-0 bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden text-gray-900 dark:text-white"
+          className="max-w-none max-h-[90vh] p-0 bg-white dark:bg-black border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden text-gray-900 dark:text-white"
           style={{ width: '80vw', maxWidth: 960 }}
         >
           {/* ── Header ── */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
             <div className="flex items-center gap-3 min-w-0">
-              <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+              <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-[#0a0a0a] flex items-center justify-center flex-shrink-0">
                 <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400" />
               </div>
               <div className="min-w-0">
@@ -1382,7 +1382,7 @@ export default function ARInvoicesPage() {
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {editingInvoice?.status && (
-                <Badge className={`text-xs ${STATUS_CONFIG[editingInvoice.status]?.color || "bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300"}`}>
+                <Badge className={`text-xs ${STATUS_CONFIG[editingInvoice.status]?.color || "bg-gray-100 dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300"}`}>
                   {STATUS_CONFIG[editingInvoice.status]?.label || editingInvoice.status}
                 </Badge>
               )}
@@ -1404,29 +1404,29 @@ export default function ARInvoicesPage() {
                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <FileText className="h-3.5 w-3.5" /> Invoice Identification
                 </h4>
-                <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Invoice Nº *</p>
-                    <Input value={editingInvoice.invoice_number || ""} onChange={e => setEditingInvoice({ ...editingInvoice, invoice_number: e.target.value })} placeholder="#DSDFS4F46AC9" className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
+                    <Input value={editingInvoice.invoice_number || ""} onChange={e => setEditingInvoice({ ...editingInvoice, invoice_number: e.target.value })} placeholder="#DSDFS4F46AC9" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Order ID</p>
-                    <Input value={editingInvoice.order_id || ""} onChange={e => setEditingInvoice({ ...editingInvoice, order_id: e.target.value })} placeholder="4f46ac9" className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
+                    <Input value={editingInvoice.order_id || ""} onChange={e => setEditingInvoice({ ...editingInvoice, order_id: e.target.value })} placeholder="4f46ac9" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Status</p>
                     <Select value={editingInvoice.status || "pending"} onValueChange={v => setEditingInvoice({ ...editingInvoice, status: v })}>
-                      <SelectTrigger className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-gray-100 dark:bg-[#252627] border-gray-300 dark:border-gray-600">
+                      <SelectTrigger className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600">
                         {Object.entries(STATUS_CONFIG).map(([key, config]) => (
-                          <SelectItem key={key} value={key} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">{config.label}</SelectItem>
+                          <SelectItem key={key} value={key} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">{config.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Order Status</p>
-                    <Input value={editingInvoice.order_status || ""} onChange={e => setEditingInvoice({ ...editingInvoice, order_status: e.target.value })} placeholder="Subscription Plan" className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input value={editingInvoice.order_status || ""} onChange={e => setEditingInvoice({ ...editingInvoice, order_status: e.target.value })} placeholder="Subscription Plan" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                 </div>
               </div>
@@ -1436,22 +1436,22 @@ export default function ARInvoicesPage() {
                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <CalendarIcon className="h-3.5 w-3.5" /> Dates
                 </h4>
-                <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Order Date</p>
-                    <Input type="date" value={editingInvoice.order_date || ""} onChange={e => setEditingInvoice({ ...editingInvoice, order_date: e.target.value })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input type="date" value={editingInvoice.order_date || ""} onChange={e => setEditingInvoice({ ...editingInvoice, order_date: e.target.value })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Invoice Date *</p>
-                    <Input type="date" value={editingInvoice.invoice_date || ""} onChange={e => setEditingInvoice({ ...editingInvoice, invoice_date: e.target.value })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input type="date" value={editingInvoice.invoice_date || ""} onChange={e => setEditingInvoice({ ...editingInvoice, invoice_date: e.target.value })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Due Date</p>
-                    <Input type="date" value={editingInvoice.due_date || ""} onChange={e => setEditingInvoice({ ...editingInvoice, due_date: e.target.value })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input type="date" value={editingInvoice.due_date || ""} onChange={e => setEditingInvoice({ ...editingInvoice, due_date: e.target.value })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Payment Date</p>
-                    <Input type="date" value={editingInvoice.payment_date || ""} onChange={e => setEditingInvoice({ ...editingInvoice, payment_date: e.target.value })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input type="date" value={editingInvoice.payment_date || ""} onChange={e => setEditingInvoice({ ...editingInvoice, payment_date: e.target.value })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                 </div>
               </div>
@@ -1461,30 +1461,30 @@ export default function ARInvoicesPage() {
                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <DollarSign className="h-3.5 w-3.5" /> Amount
                 </h4>
-                <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Total Amount *</p>
-                    <Input type="number" step="0.01" value={editingInvoice.total_amount || 0} onChange={e => setEditingInvoice({ ...editingInvoice, total_amount: parseFloat(e.target.value) || 0 })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
+                    <Input type="number" step="0.01" value={editingInvoice.total_amount || 0} onChange={e => setEditingInvoice({ ...editingInvoice, total_amount: parseFloat(e.target.value) || 0 })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Currency</p>
                     <Select value={editingInvoice.currency || "EUR"} onValueChange={v => setEditingInvoice({ ...editingInvoice, currency: v })}>
-                      <SelectTrigger className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
-                      <SelectContent className="bg-gray-100 dark:bg-[#252627] border-gray-300 dark:border-gray-600">
-                        <SelectItem value="EUR" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">EUR (€)</SelectItem>
-                        <SelectItem value="USD" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">USD ($)</SelectItem>
-                        <SelectItem value="GBP" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">GBP (£)</SelectItem>
-                        <SelectItem value="AUD" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">AUD (A$)</SelectItem>
+                      <SelectTrigger className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
+                      <SelectContent className="bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600">
+                        <SelectItem value="EUR" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">EUR (€)</SelectItem>
+                        <SelectItem value="USD" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">USD ($)</SelectItem>
+                        <SelectItem value="GBP" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">GBP (£)</SelectItem>
+                        <SelectItem value="AUD" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">AUD (A$)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Charged Amount</p>
-                    <Input type="number" step="0.01" value={editingInvoice.charged_amount ?? ""} onChange={e => setEditingInvoice({ ...editingInvoice, charged_amount: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
+                    <Input type="number" step="0.01" value={editingInvoice.charged_amount ?? ""} onChange={e => setEditingInvoice({ ...editingInvoice, charged_amount: e.target.value ? parseFloat(e.target.value) : null })} placeholder="—" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Discount</p>
-                    <Input value={editingInvoice.discount_code || ""} onChange={e => setEditingInvoice({ ...editingInvoice, discount_code: e.target.value })} placeholder="Coupon code" className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input value={editingInvoice.discount_code || ""} onChange={e => setEditingInvoice({ ...editingInvoice, discount_code: e.target.value })} placeholder="Coupon code" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                 </div>
               </div>
@@ -1494,18 +1494,18 @@ export default function ARInvoicesPage() {
                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <User className="h-3.5 w-3.5" /> Customer & Company
                 </h4>
-                <div className="grid grid-cols-3 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                <div className="grid grid-cols-3 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Client Name</p>
-                    <Input value={editingInvoice.client_name || ""} onChange={e => setEditingInvoice({ ...editingInvoice, client_name: e.target.value })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input value={editingInvoice.client_name || ""} onChange={e => setEditingInvoice({ ...editingInvoice, client_name: e.target.value })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Company</p>
-                    <Input value={editingInvoice.company_name || ""} onChange={e => setEditingInvoice({ ...editingInvoice, company_name: e.target.value })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input value={editingInvoice.company_name || ""} onChange={e => setEditingInvoice({ ...editingInvoice, company_name: e.target.value })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Email</p>
-                    <Input type="email" value={editingInvoice.email || ""} onChange={e => setEditingInvoice({ ...editingInvoice, email: e.target.value })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input type="email" value={editingInvoice.email || ""} onChange={e => setEditingInvoice({ ...editingInvoice, email: e.target.value })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                 </div>
               </div>
@@ -1515,14 +1515,14 @@ export default function ARInvoicesPage() {
                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <TrendingUp className="h-3.5 w-3.5" /> Product & Details
                 </h4>
-                <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4 space-y-3">
+                <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4 space-y-3">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Products</p>
-                    <Input value={editingInvoice.products || ""} onChange={e => setEditingInvoice({ ...editingInvoice, products: e.target.value })} placeholder="Level 1 Subscription - DO NOT DELETE" className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input value={editingInvoice.products || ""} onChange={e => setEditingInvoice({ ...editingInvoice, products: e.target.value })} placeholder="Level 1 Subscription - DO NOT DELETE" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Discount Names</p>
-                    <Input value={editingInvoice.discount_names || ""} onChange={e => setEditingInvoice({ ...editingInvoice, discount_names: e.target.value })} className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
+                    <Input value={editingInvoice.discount_names || ""} onChange={e => setEditingInvoice({ ...editingInvoice, discount_names: e.target.value })} className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500" />
                   </div>
                 </div>
               </div>
@@ -1532,28 +1532,28 @@ export default function ARInvoicesPage() {
                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                   <Link2 className="h-3.5 w-3.5" /> Payment & Billing
                 </h4>
-                <div className="grid grid-cols-3 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                <div className="grid grid-cols-3 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Payment Method</p>
                     <Select value={editingInvoice.payment_method || ""} onValueChange={v => setEditingInvoice({ ...editingInvoice, payment_method: v })}>
-                      <SelectTrigger className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent className="bg-gray-100 dark:bg-[#252627] border-gray-300 dark:border-gray-600">
-                        {PAYMENT_METHODS.map(pm => <SelectItem key={pm} value={pm} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">{pm}</SelectItem>)}
+                      <SelectTrigger className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select..." /></SelectTrigger>
+                      <SelectContent className="bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600">
+                        {PAYMENT_METHODS.map(pm => <SelectItem key={pm} value={pm} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">{pm}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Billing Entity</p>
                     <Select value={editingInvoice.billing_entity || ""} onValueChange={v => setEditingInvoice({ ...editingInvoice, billing_entity: v })}>
-                      <SelectTrigger className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select..." /></SelectTrigger>
-                      <SelectContent className="bg-gray-100 dark:bg-[#252627] border-gray-300 dark:border-gray-600">
-                        {BILLING_ENTITIES.map(be => <SelectItem key={be} value={be} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">{be}</SelectItem>)}
+                      <SelectTrigger className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue placeholder="Select..." /></SelectTrigger>
+                      <SelectContent className="bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600">
+                        {BILLING_ENTITIES.map(be => <SelectItem key={be} value={be} className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">{be}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 mb-1">Payment Reference</p>
-                    <Input value={editingInvoice.payment_reference || ""} onChange={e => setEditingInvoice({ ...editingInvoice, payment_reference: e.target.value })} placeholder="Transaction ID" className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
+                    <Input value={editingInvoice.payment_reference || ""} onChange={e => setEditingInvoice({ ...editingInvoice, payment_reference: e.target.value })} placeholder="Transaction ID" className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white font-mono focus:border-blue-500" />
                   </div>
                 </div>
               </div>
@@ -1561,13 +1561,13 @@ export default function ARInvoicesPage() {
               {/* ═══ Section: Notes ═══ */}
               <div>
                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Notes</h4>
-                <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                   <Textarea
                     value={editingInvoice.note || ""}
                     onChange={e => setEditingInvoice({ ...editingInvoice, note: e.target.value })}
                     placeholder="*Exención IVA Artículo 20..."
                     rows={3}
-                    className="bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 resize-none focus:border-blue-500"
+                    className="bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-sm text-gray-700 dark:text-gray-300 resize-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -1590,7 +1590,7 @@ export default function ARInvoicesPage() {
 
       {/* Manual Reconciliation Dialog */}
       <Dialog open={manualReconcileDialog} onOpenChange={setManualReconcileDialog}>
-        <DialogContent className="max-w-md bg-gray-50 dark:bg-[#2a2b2d] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
+        <DialogContent className="max-w-md bg-gray-50 dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white">
           <DialogHeader>
             <DialogTitle className="text-gray-900 dark:text-white">Manual Reconciliation</DialogTitle>
             <DialogDescription className="text-gray-500 dark:text-gray-400">
@@ -1606,14 +1606,14 @@ export default function ARInvoicesPage() {
             <div className="space-y-2">
               <Label className="text-gray-700 dark:text-gray-300">Payment Source</Label>
               <Select value={reconcileSource} onValueChange={setReconcileSource}>
-                <SelectTrigger className="bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
-                <SelectContent className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
-                  <SelectItem value="credit-payment" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Credit Payment</SelectItem>
-                  <SelectItem value="bank-transfer" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Bank Transfer</SelectItem>
-                  <SelectItem value="hubspot-confirmed" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">HubSpot Confirmed</SelectItem>
-                  <SelectItem value="check" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Check</SelectItem>
-                  <SelectItem value="cash" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Cash</SelectItem>
-                  <SelectItem value="other" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">Other</SelectItem>
+                <SelectTrigger className="bg-gray-100 dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white"><SelectValue /></SelectTrigger>
+                <SelectContent className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
+                  <SelectItem value="credit-payment" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">Credit Payment</SelectItem>
+                  <SelectItem value="bank-transfer" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">Bank Transfer</SelectItem>
+                  <SelectItem value="hubspot-confirmed" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">HubSpot Confirmed</SelectItem>
+                  <SelectItem value="check" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">Check</SelectItem>
+                  <SelectItem value="cash" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">Cash</SelectItem>
+                  <SelectItem value="other" className="text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1624,7 +1624,7 @@ export default function ARInvoicesPage() {
                 value={reconcileReference}
                 onChange={e => setReconcileReference(e.target.value)}
                 placeholder="e.g.: Transaction ID, check number..."
-                className="bg-gray-100 dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500"
+                className="bg-gray-100 dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500"
               />
               <p className="text-xs text-gray-500">
                 Optional. If empty, will be auto-generated.
@@ -1633,7 +1633,7 @@ export default function ARInvoicesPage() {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" onClick={() => setManualReconcileDialog(false)}>Cancel</Button>
+            <Button variant="outline" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={() => setManualReconcileDialog(false)}>Cancel</Button>
             <Button onClick={handleManualReconcile} className="bg-purple-600 hover:bg-purple-700">
               <Link2 className="h-4 w-4 mr-2" />
               Reconcile
@@ -1644,7 +1644,7 @@ export default function ARInvoicesPage() {
 
       {/* Transaction Details Dialog */}
       <Dialog open={transactionDetailsDialog} onOpenChange={setTransactionDetailsDialog}>
-        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto !bg-gray-50 dark:bg-[#2a2b2d] !border-gray-300 dark:border-gray-600 [&>button]:text-gray-900 dark:text-white" style={{ width: '80vw' }}>
+        <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto !bg-gray-50 dark:bg-[#0a0a0a] !border-gray-300 dark:border-gray-600 [&>button]:text-gray-900 dark:text-white" style={{ width: '80vw' }}>
           <DialogHeader>
             <DialogTitle className="text-gray-900 dark:text-white flex items-center gap-2">
               <Eye className="h-5 w-5 text-blue-400" />
@@ -1667,7 +1667,7 @@ export default function ARInvoicesPage() {
           ) : transactionDetails?.type === 'manual' ? (
             <div className="space-y-4">
               {/* Reconciliation Info */}
-              <div className="p-4 bg-white dark:bg-[#1e1f21] rounded-lg border border-gray-300 dark:border-gray-600">
+              <div className="p-4 bg-white dark:bg-black rounded-lg border border-gray-300 dark:border-gray-600">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 text-green-400" />
                   {transactionDetails.source === 'hubspot-confirmed' ? 'HubSpot Confirmed Payment' :
@@ -1687,7 +1687,7 @@ export default function ARInvoicesPage() {
               </div>
 
               {/* Invoice Details */}
-              <div className="p-4 bg-white dark:bg-[#1e1f21] rounded-lg border border-gray-300 dark:border-gray-600">
+              <div className="p-4 bg-white dark:bg-black rounded-lg border border-gray-300 dark:border-gray-600">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Invoice Details</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -1713,7 +1713,7 @@ export default function ARInvoicesPage() {
                     <span className="text-gray-500">Order Status:</span>
                     <span className={`ml-2 px-2 py-0.5 rounded text-xs ${transactionDetails.invoice.order_status === 'Paid' ? 'bg-green-900/30 text-green-400' :
                       transactionDetails.invoice.order_status === 'Partial' ? 'bg-orange-900/30 text-orange-400' :
-                        'bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300'
+                        'bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-700 dark:text-gray-300'
                       }`}>{transactionDetails.invoice.order_status || '-'}</span>
                   </div>
                   <div>
@@ -1724,7 +1724,7 @@ export default function ARInvoicesPage() {
               </div>
 
               {/* Payment Method Details */}
-              <div className="p-4 bg-white dark:bg-[#1e1f21] rounded-lg border border-gray-300 dark:border-gray-600">
+              <div className="p-4 bg-white dark:bg-black rounded-lg border border-gray-300 dark:border-gray-600">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Payment Method</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -1750,7 +1750,7 @@ export default function ARInvoicesPage() {
               </div>
 
               {/* Customer Details */}
-              <div className="p-4 bg-white dark:bg-[#1e1f21] rounded-lg border border-gray-300 dark:border-gray-600">
+              <div className="p-4 bg-white dark:bg-black rounded-lg border border-gray-300 dark:border-gray-600">
                 <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Customer Details</h4>
                 <div className="grid grid-cols-2 gap-3 text-sm">
                   <div>
@@ -1774,7 +1774,7 @@ export default function ARInvoicesPage() {
 
               {/* Note if exists */}
               {transactionDetails.invoice.note && (
-                <div className="p-4 bg-white dark:bg-[#1e1f21] rounded-lg border border-gray-300 dark:border-gray-600">
+                <div className="p-4 bg-white dark:bg-black rounded-lg border border-gray-300 dark:border-gray-600">
                   <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Notes</h4>
                   <p className="text-sm text-gray-500 dark:text-gray-400">{transactionDetails.invoice.note}</p>
                 </div>
@@ -1783,7 +1783,7 @@ export default function ARInvoicesPage() {
           ) : transactionDetails?.type === 'payment' ? (
             <div className="space-y-4">
               {/* Transaction Info */}
-              <div className="p-4 bg-white dark:bg-[#1e1f21] rounded-lg border border-gray-300 dark:border-gray-600">
+              <div className="p-4 bg-white dark:bg-black rounded-lg border border-gray-300 dark:border-gray-600">
                 <div className="flex items-center justify-between mb-3">
                   <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">{transactionDetails.source.toUpperCase()} Transaction</h4>
                   {transactionDetails.source === 'braintree' && transactionDetails.custom_data?.transaction_id && (
@@ -1875,7 +1875,7 @@ export default function ARInvoicesPage() {
 
               {/* Settlement Info */}
               {transactionDetails.settlement && (
-                <div className="p-4 bg-white dark:bg-[#1e1f21] rounded-lg border border-blue-900/50">
+                <div className="p-4 bg-white dark:bg-black rounded-lg border border-blue-900/50">
                   <h4 className="text-sm font-medium text-blue-400 mb-3 flex items-center gap-2">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                     Settlement &amp; Bank Reconciliation
@@ -1956,7 +1956,7 @@ export default function ARInvoicesPage() {
 
               {/* Status History */}
               {transactionDetails.custom_data?.status_history && Array.isArray(transactionDetails.custom_data.status_history) && transactionDetails.custom_data.status_history.length > 0 && (
-                <div className="p-4 bg-white dark:bg-[#1e1f21]/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="p-4 bg-white dark:bg-black/50 rounded-lg border border-gray-200 dark:border-gray-700">
                   <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-3">Status History</h4>
                   <div className="space-y-2 max-h-40 overflow-y-auto">
                     {transactionDetails.custom_data.status_history.map((entry: any, idx: number) => (
@@ -1968,7 +1968,7 @@ export default function ARInvoicesPage() {
                               ? 'bg-green-900/50 text-green-400'
                               : entry.status === 'authorized' || entry.status === 'submitted_for_settlement'
                                 ? 'bg-blue-900/50 text-blue-400'
-                                : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                                : 'bg-gray-100 dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300'
                               }`}>
                               {entry.status?.replace(/_/g, ' ').toUpperCase()}
                             </span>
@@ -2008,7 +2008,7 @@ export default function ARInvoicesPage() {
 
               {/* Additional Details */}
               {transactionDetails.custom_data && Object.keys(transactionDetails.custom_data).filter(key => !['transaction_id', 'payment_id', 'charge_id', 'status', 'customer_name', 'customer_email', 'payment_method', 'order_id', 'currency', 'created_at', 'customer_id', 'billing_name', 'company_name', 'merchant_account_id', 'status_history'].includes(key)).length > 0 && (
-                <div className="p-4 bg-white dark:bg-[#1e1f21]/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="p-4 bg-white dark:bg-black/50 rounded-lg border border-gray-200 dark:border-gray-700">
                   <h4 className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Additional Details</h4>
                   <div className="text-xs space-y-1 max-h-20 overflow-y-auto">
                     {Object.entries(transactionDetails.custom_data)
@@ -2039,7 +2039,7 @@ export default function ARInvoicesPage() {
           ) : null}
 
           <DialogFooter>
-            <Button variant="outline" className="bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600" onClick={() => setTransactionDetailsDialog(false)}>
+            <Button variant="outline" className="bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-600" onClick={() => setTransactionDetailsDialog(false)}>
               Close
             </Button>
           </DialogFooter>

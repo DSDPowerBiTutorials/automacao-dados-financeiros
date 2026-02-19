@@ -804,7 +804,7 @@ export default function RealCashFlowPage() {
                                         >
                                             {/* Tooltip on hover */}
                                             <div className="absolute bottom-full mb-2 hidden group-hover:block z-10">
-                                                <div className="bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded px-2 py-1 whitespace-nowrap">
+                                                <div className="bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded px-2 py-1 whitespace-nowrap">
                                                     <div className="font-semibold">Dia {dayData.day}</div>
                                                     <div>{formatCurrency(dayData.total)}</div>
                                                     <div>{dayData.count} transação(ões)</div>

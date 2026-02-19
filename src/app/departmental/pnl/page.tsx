@@ -435,7 +435,7 @@ export default function DepartmentalPnLPage() {
     // ── Render ──────────────────────────────────────────────────────────────
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-[#0f1011] px-4 py-6 sm:px-6 lg:px-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-black px-4 py-6 sm:px-6 lg:px-8">
             {/* Header */}
             <div className="mb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -450,22 +450,22 @@ export default function DepartmentalPnLPage() {
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
                         <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="w-[100px] bg-white dark:bg-[#252627] border-gray-200 dark:border-gray-700">
+                            <SelectTrigger className="w-[100px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
                                 <Calendar className="h-4 w-4 mr-1 text-gray-400" />
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-white dark:bg-[#252627]">
+                            <SelectContent className="bg-white dark:bg-[#0a0a0a]">
                                 <SelectItem value="2024">2024</SelectItem>
                                 <SelectItem value="2025">2025</SelectItem>
                                 <SelectItem value="2026">2026</SelectItem>
                             </SelectContent>
                         </Select>
                         <Select value={selectedDept} onValueChange={setSelectedDept}>
-                            <SelectTrigger className="w-[200px] bg-white dark:bg-[#252627] border-gray-200 dark:border-gray-700">
+                            <SelectTrigger className="w-[200px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
                                 <Filter className="h-4 w-4 mr-1 text-gray-400" />
                                 <SelectValue placeholder="Department" />
                             </SelectTrigger>
-                            <SelectContent className="bg-white dark:bg-[#252627]">
+                            <SelectContent className="bg-white dark:bg-[#0a0a0a]">
                                 <SelectItem value="all">All Departments</SelectItem>
                                 {DEPARTMENTS.map(d => (
                                     <SelectItem key={d.id} value={d.id}>{d.icon} {d.name}</SelectItem>
@@ -473,10 +473,10 @@ export default function DepartmentalPnLPage() {
                             </SelectContent>
                         </Select>
                         <Select value={viewMode} onValueChange={(v: "monthly" | "quarterly" | "ytd") => setViewMode(v)}>
-                            <SelectTrigger className="w-[130px] bg-white dark:bg-[#252627] border-gray-200 dark:border-gray-700">
+                            <SelectTrigger className="w-[130px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
                                 <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="bg-white dark:bg-[#252627]">
+                            <SelectContent className="bg-white dark:bg-[#0a0a0a]">
                                 <SelectItem value="monthly">Mensal</SelectItem>
                                 <SelectItem value="quarterly">Trimestral</SelectItem>
                                 <SelectItem value="ytd">YTD</SelectItem>
@@ -549,7 +549,7 @@ export default function DepartmentalPnLPage() {
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
                 {/* Monthly Trend */}
-                <Card className="lg:col-span-2 bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700">
+                <Card className="lg:col-span-2 bg-white dark:bg-black border-gray-200 dark:border-gray-700">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             Tendência Mensal — Revenue vs Expenses
@@ -579,7 +579,7 @@ export default function DepartmentalPnLPage() {
                 </Card>
 
                 {/* Expense Distribution Pie */}
-                <Card className="bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700">
+                <Card className="bg-white dark:bg-black border-gray-200 dark:border-gray-700">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             Distribuição de Despesas
@@ -615,7 +615,7 @@ export default function DepartmentalPnLPage() {
 
             {/* Department Comparison Bar Chart */}
             {selectedDept === "all" && (
-                <Card className="mb-6 bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700">
+                <Card className="mb-6 bg-white dark:bg-black border-gray-200 dark:border-gray-700">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-sm font-medium text-gray-700 dark:text-gray-300">
                             Comparação entre Departamentos
@@ -678,7 +678,7 @@ export default function DepartmentalPnLPage() {
             </div>
 
             {/* Consolidated Total */}
-            <Card className="mt-6 bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 border-t-4 border-t-blue-500">
+            <Card className="mt-6 bg-white dark:bg-black border-gray-200 dark:border-gray-700 border-t-4 border-t-blue-500">
                 <CardContent className="pt-4">
                     <ConsolidatedRow
                         label="CONSOLIDATED REVENUE"
@@ -735,7 +735,7 @@ function KPICard({
     const isGood = invertVariance ? (variance ?? 0) <= 0 : (variance ?? 0) >= 0;
 
     return (
-        <Card className="bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700">
+        <Card className="bg-white dark:bg-black border-gray-200 dark:border-gray-700">
             <CardContent className="p-3">
                 <div className="flex items-center justify-between mb-1">
                     <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">{title}</span>
@@ -780,11 +780,11 @@ function DepartmentCard({
             : ["YTD"];
 
     return (
-        <Card className="bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 overflow-hidden">
+        <Card className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 overflow-hidden">
             {/* Department Header */}
             <button
                 onClick={onToggle}
-                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors"
+                className="w-full flex items-center justify-between p-4 hover:bg-gray-50 dark:hover:bg-[#111111]/50 transition-colors"
             >
                 <div className="flex items-center gap-3">
                     <div className="w-1 h-10 rounded-full" style={{ backgroundColor: dept.color }} />
@@ -817,8 +817,8 @@ function DepartmentCard({
                 <div className="overflow-x-auto border-t border-gray-200 dark:border-gray-700">
                     <table className="w-full text-xs">
                         <thead>
-                            <tr className="bg-gray-50 dark:bg-[#252627]">
-                                <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-400 min-w-[200px] sticky left-0 bg-gray-50 dark:bg-[#252627] z-10">
+                            <tr className="bg-gray-50 dark:bg-[#0a0a0a]">
+                                <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-400 min-w-[200px] sticky left-0 bg-gray-50 dark:bg-[#0a0a0a] z-10">
                                     Line Item
                                 </th>
                                 {colHeaders.map(h => (
@@ -904,7 +904,7 @@ function DepartmentCard({
 
                             {/* Net Result */}
                             <tr className="border-t-2 border-gray-300 dark:border-gray-600">
-                                <td className="px-4 py-2 font-bold text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-[#1e1f21] z-10">
+                                <td className="px-4 py-2 font-bold text-gray-900 dark:text-white sticky left-0 bg-white dark:bg-black z-10">
                                     NET RESULT
                                 </td>
                                 {viewMode === "monthly" &&
@@ -959,8 +959,8 @@ function PnLRow({
     const budgetTotal = sumAll(line.budget);
 
     return (
-        <tr className="hover:bg-gray-50 dark:hover:bg-gray-800/30 transition-colors">
-            <td className="px-4 py-1.5 text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-[#1e1f21] z-10">
+        <tr className="hover:bg-gray-50 dark:hover:bg-[#111111]/30 transition-colors">
+            <td className="px-4 py-1.5 text-gray-700 dark:text-gray-300 sticky left-0 bg-white dark:bg-black z-10">
                 <div className="flex items-center gap-2">
                     <span className="text-[10px] text-gray-400 dark:text-gray-500 font-mono">{line.code}</span>
                     <span>{line.name}</span>
@@ -1015,7 +1015,7 @@ function SubtotalRow({
 
     return (
         <tr className={`border-t border-gray-200 dark:border-gray-700 font-semibold ${className}`}>
-            <td className="px-4 py-1.5 sticky left-0 bg-white dark:bg-[#1e1f21] z-10">{label}</td>
+            <td className="px-4 py-1.5 sticky left-0 bg-white dark:bg-black z-10">{label}</td>
             {viewMode === "monthly" &&
                 monthKeys.map(k => (
                     <td key={k} className="text-right px-2 py-1.5 tabular-nums">{fmtFull(actual[k])}</td>

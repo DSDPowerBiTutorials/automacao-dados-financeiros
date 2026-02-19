@@ -273,7 +273,7 @@ export default function CustomersPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
             </div>
         );
@@ -283,7 +283,7 @@ export default function CustomersPage() {
     if (showAnalysis && analysisResult) {
         const variationsOnly = analysisResult.customers.filter((c) => c.homogenization_notes.length > 0);
         return (
-            <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
+            <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
                 <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                     <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
@@ -294,7 +294,7 @@ export default function CustomersPage() {
                             <Button
                                 variant="outline"
                                 onClick={() => setShowAnalysis(false)}
-                                className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                             >
                                 Back to Customers
                             </Button>
@@ -349,7 +349,7 @@ export default function CustomersPage() {
                 </div>
 
                 {/* Table Header */}
-                <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+                <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
                     <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase">
                         <div className="w-[30px] flex-shrink-0"></div>
                         <div className="flex-1 min-w-[200px]">Canonical Name</div>
@@ -374,7 +374,7 @@ export default function CustomersPage() {
                         return (
                             <div
                                 key={idx}
-                                className={`flex items-center gap-1 px-4 py-2 border-b border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-gray-800/30 cursor-pointer ${hasVariations ? "bg-yellow-900/10" : ""}`}
+                                className={`flex items-center gap-1 px-4 py-2 border-b border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-black/30 cursor-pointer ${hasVariations ? "bg-yellow-900/10" : ""}`}
                                 onClick={() => setSelectedVariation(selectedVariation === group ? null : group)}
                             >
                                 <div className="w-[30px] flex-shrink-0">
@@ -430,7 +430,7 @@ export default function CustomersPage() {
 
                 {/* Variation Detail Popup */}
                 {selectedVariation && (
-                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedVariation.canonical_name}</h2>
@@ -441,7 +441,7 @@ export default function CustomersPage() {
                             </button>
                         </div>
                         <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
-                            <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 space-y-2">
+                            <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg p-3 space-y-2">
                                 <h3 className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Summary</h3>
                                 <div className="grid grid-cols-2 gap-2 text-sm">
                                     <div><span className="text-gray-500 dark:text-gray-400">Invoices:</span> <span className="text-gray-900 dark:text-white">{selectedVariation.invoice_count}</span></div>
@@ -452,7 +452,7 @@ export default function CustomersPage() {
                             </div>
 
                             {selectedVariation.name_variations.length > 1 && (
-                                <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 space-y-2">
+                                <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg p-3 space-y-2">
                                     <h3 className="text-xs text-yellow-400 uppercase font-medium flex items-center gap-1">
                                         <AlertTriangle className="h-3 w-3" /> Name Variations
                                     </h3>
@@ -468,7 +468,7 @@ export default function CustomersPage() {
                             )}
 
                             {selectedVariation.email_variations.length > 1 && (
-                                <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 space-y-2">
+                                <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg p-3 space-y-2">
                                     <h3 className="text-xs text-blue-400 uppercase font-medium flex items-center gap-1">
                                         <Info className="h-3 w-3" /> Email Variations
                                     </h3>
@@ -484,7 +484,7 @@ export default function CustomersPage() {
                             )}
 
                             {selectedVariation.homogenization_notes.length > 0 && (
-                                <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-3 space-y-2">
+                                <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg p-3 space-y-2">
                                     <h3 className="text-xs text-gray-500 dark:text-gray-400 uppercase font-medium">Homogenization Notes</h3>
                                     {selectedVariation.homogenization_notes.map((note, i) => (
                                         <p key={i} className="text-sm text-gray-700 dark:text-gray-300">{note}</p>
@@ -500,7 +500,7 @@ export default function CustomersPage() {
 
     // Main Customers View
     return (
-        <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
+        <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
             {/* Header */}
             <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                 <div className="flex items-center justify-between mb-4">
@@ -538,7 +538,7 @@ export default function CustomersPage() {
                                 onClick={() => setStatusFilter(status)}
                                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${statusFilter === status
                                     ? "bg-blue-600 text-white"
-                                    : "bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+                                    : "bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                                     }`}
                             >
                                 {status === "ALL" ? "All" : status === "ACTIVE" ? "Active" : "Inactive"}
@@ -562,7 +562,7 @@ export default function CustomersPage() {
             </div>
 
             {/* Table Header */}
-            <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+            <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase">
                     <div className="w-[50px] flex-shrink-0">Actions</div>
                     <div className="w-[120px] flex-shrink-0">Code</div>
@@ -591,7 +591,7 @@ export default function CustomersPage() {
                         return (
                             <div
                                 key={customer.code}
-                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-b border-gray-200 dark:border-gray-800/50 group cursor-pointer ${hasNotes ? "bg-yellow-900/5" : ""}`}
+                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-b border-gray-200 dark:border-gray-800/50 group cursor-pointer ${hasNotes ? "bg-yellow-900/5" : ""}`}
                                 onClick={() => handleOpenForm(customer)}
                             >
                                 <div className="w-[50px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
@@ -656,7 +656,7 @@ export default function CustomersPage() {
 
             {/* Side Panel Form */}
             {isFormOpen && (
-                <div className="fixed right-0 top-0 h-full w-[500px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+                <div className="fixed right-0 top-0 h-full w-[500px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
@@ -672,79 +672,79 @@ export default function CustomersPage() {
                     <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
                         <div className="space-y-1.5">
                             <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Name *</Label>
-                            <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Customer name" />
+                            <Input value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Customer name" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Country *</Label>
-                                <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
-                                    <option value="ES" className="bg-gray-100 dark:bg-gray-800">Spain</option>
-                                    <option value="US" className="bg-gray-100 dark:bg-gray-800">United States</option>
-                                    <option value="PT" className="bg-gray-100 dark:bg-gray-800">Portugal</option>
-                                    <option value="FR" className="bg-gray-100 dark:bg-gray-800">France</option>
-                                    <option value="DE" className="bg-gray-100 dark:bg-gray-800">Germany</option>
-                                    <option value="GB" className="bg-gray-100 dark:bg-gray-800">United Kingdom</option>
+                                <select value={formData.country} onChange={(e) => setFormData({ ...formData, country: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
+                                    <option value="ES" className="bg-gray-100 dark:bg-black">Spain</option>
+                                    <option value="US" className="bg-gray-100 dark:bg-black">United States</option>
+                                    <option value="PT" className="bg-gray-100 dark:bg-black">Portugal</option>
+                                    <option value="FR" className="bg-gray-100 dark:bg-black">France</option>
+                                    <option value="DE" className="bg-gray-100 dark:bg-black">Germany</option>
+                                    <option value="GB" className="bg-gray-100 dark:bg-black">United Kingdom</option>
                                 </select>
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Currency</Label>
-                                <select value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
-                                    <option value="EUR" className="bg-gray-100 dark:bg-gray-800">EUR</option>
-                                    <option value="USD" className="bg-gray-100 dark:bg-gray-800">USD</option>
-                                    <option value="GBP" className="bg-gray-100 dark:bg-gray-800">GBP</option>
+                                <select value={formData.currency} onChange={(e) => setFormData({ ...formData, currency: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
+                                    <option value="EUR" className="bg-gray-100 dark:bg-black">EUR</option>
+                                    <option value="USD" className="bg-gray-100 dark:bg-black">USD</option>
+                                    <option value="GBP" className="bg-gray-100 dark:bg-black">GBP</option>
                                 </select>
                             </div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Tax ID / VAT</Label>
-                                <Input value={formData.tax_id} onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="B12345678" />
+                                <Input value={formData.tax_id} onChange={(e) => setFormData({ ...formData, tax_id: e.target.value })} className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="B12345678" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Payment Terms</Label>
-                                <select value={formData.payment_terms} onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
-                                    <option value="immediate" className="bg-gray-100 dark:bg-gray-800">Immediate</option>
-                                    <option value="net_15" className="bg-gray-100 dark:bg-gray-800">Net 15</option>
-                                    <option value="net_30" className="bg-gray-100 dark:bg-gray-800">Net 30</option>
-                                    <option value="net_45" className="bg-gray-100 dark:bg-gray-800">Net 45</option>
-                                    <option value="net_60" className="bg-gray-100 dark:bg-gray-800">Net 60</option>
-                                    <option value="net_90" className="bg-gray-100 dark:bg-gray-800">Net 90</option>
+                                <select value={formData.payment_terms} onChange={(e) => setFormData({ ...formData, payment_terms: e.target.value })} className="w-full h-9 px-3 rounded-md bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm">
+                                    <option value="immediate" className="bg-gray-100 dark:bg-black">Immediate</option>
+                                    <option value="net_15" className="bg-gray-100 dark:bg-black">Net 15</option>
+                                    <option value="net_30" className="bg-gray-100 dark:bg-black">Net 30</option>
+                                    <option value="net_45" className="bg-gray-100 dark:bg-black">Net 45</option>
+                                    <option value="net_60" className="bg-gray-100 dark:bg-black">Net 60</option>
+                                    <option value="net_90" className="bg-gray-100 dark:bg-black">Net 90</option>
                                 </select>
                             </div>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Email *</Label>
-                            <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="customer@example.com" />
+                            <Input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="customer@example.com" />
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Phone</Label>
-                            <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="+34 123 456 789" />
+                            <Input value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value })} className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="+34 123 456 789" />
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Address</Label>
-                            <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Street address" />
+                            <Input value={formData.address} onChange={(e) => setFormData({ ...formData, address: e.target.value })} className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Street address" />
                         </div>
                         <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">City</Label>
-                                <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Madrid" />
+                                <Input value={formData.city} onChange={(e) => setFormData({ ...formData, city: e.target.value })} className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="Madrid" />
                             </div>
                             <div className="space-y-1.5">
                                 <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Postal Code</Label>
-                                <Input value={formData.postal_code} onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="28001" />
+                                <Input value={formData.postal_code} onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })} className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="28001" />
                             </div>
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Credit Limit</Label>
-                            <Input type="number" step="0.01" value={formData.credit_limit} onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })} className="bg-gray-50 dark:bg-[#2a2b2d] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="50000.00" />
+                            <Input type="number" step="0.01" value={formData.credit_limit} onChange={(e) => setFormData({ ...formData, credit_limit: e.target.value })} className="bg-gray-50 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white h-9" placeholder="50000.00" />
                         </div>
                         <div className="space-y-1.5">
                             <Label className="text-[11px] text-gray-500 dark:text-gray-400 uppercase font-medium">Notes</Label>
-                            <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 rounded-md bg-gray-50 dark:bg-[#2a2b2d] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm min-h-[80px] resize-none placeholder:text-gray-500" placeholder="Additional notes..." />
+                            <textarea value={formData.notes} onChange={(e) => setFormData({ ...formData, notes: e.target.value })} className="w-full px-3 py-2 rounded-md bg-gray-50 dark:bg-[#0a0a0a] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm min-h-[80px] resize-none placeholder:text-gray-500" placeholder="Additional notes..." />
                         </div>
                     </div>
                     <div className="border-t border-gray-200 dark:border-gray-700 px-6 py-3 flex items-center gap-3 justify-end">
-                        <Button variant="outline" onClick={() => setIsFormOpen(false)} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">Cancel</Button>
+                        <Button variant="outline" onClick={() => setIsFormOpen(false)} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]">Cancel</Button>
                         <Button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white">{editingCustomer ? "Update Customer" : "Create Customer"}</Button>
                     </div>
                 </div>

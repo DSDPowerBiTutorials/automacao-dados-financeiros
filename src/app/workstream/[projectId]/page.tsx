@@ -370,7 +370,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
 
     if (loading) {
         return (
-            <div className="h-full flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+            <div className="h-full flex items-center justify-center bg-white dark:bg-black">
                 <Loader2 className="h-8 w-8 text-blue-500 animate-spin" />
             </div>
         );
@@ -378,7 +378,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
 
     if (!project) {
         return (
-            <div className="h-full flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+            <div className="h-full flex items-center justify-center bg-white dark:bg-black">
                 <div className="text-center">
                     <p className="text-gray-500 dark:text-gray-400 mb-4">Project not found</p>
                     <button
@@ -396,7 +396,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
     const doneTasks = tasks.filter((t) => t.status === 'done').length;
 
     return (
-        <div className="h-full flex flex-col bg-white dark:bg-[#1e1f21]">
+        <div className="h-full flex flex-col bg-white dark:bg-black">
             {/* Project Header */}
             <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3">
                 <div className="flex items-center justify-between">
@@ -430,7 +430,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                                     </div>
                                 ))}
                                 {members.length > 5 && (
-                                    <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 border-2 border-gray-200 dark:border-[#1e1f21] flex items-center justify-center text-gray-700 dark:text-gray-300 text-[10px] font-medium">
+                                    <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-[#0a0a0a] border-2 border-gray-200 dark:border-[#1e1f21] flex items-center justify-center text-gray-700 dark:text-gray-300 text-[10px] font-medium">
                                         +{members.length - 5}
                                     </div>
                                 )}
@@ -439,7 +439,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                             <div className="relative ml-1">
                                 <button
                                     onClick={() => setShowMemberPicker(!showMemberPicker)}
-                                    className="w-7 h-7 rounded-full bg-gray-50 dark:bg-[#2a2b2d] border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors"
+                                    className="w-7 h-7 rounded-full bg-gray-50 dark:bg-[#0a0a0a] border border-dashed border-gray-300 dark:border-gray-600 hover:border-gray-400 flex items-center justify-center text-gray-500 hover:text-gray-700 dark:text-gray-300 transition-colors"
                                     title="Add member"
                                 >
                                     <UserPlus className="h-3 w-3" />
@@ -447,13 +447,13 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                                 {showMemberPicker && (
                                     <>
                                         <div className="fixed inset-0 z-10" onClick={() => setShowMemberPicker(false)} />
-                                        <div className="absolute left-0 top-full mt-2 z-20 bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl w-72 max-h-80 overflow-hidden">
+                                        <div className="absolute left-0 top-full mt-2 z-20 bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl w-72 max-h-80 overflow-hidden">
                                             <div className="p-2 border-b border-gray-200 dark:border-gray-700">
                                                 <input
                                                     value={memberSearch}
                                                     onChange={(e) => setMemberSearch(e.target.value)}
                                                     placeholder="Search people..."
-                                                    className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+                                                    className="w-full bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded px-2 py-1.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
                                                     autoFocus
                                                 />
                                             </div>
@@ -524,7 +524,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
                                 placeholder="Filter tasks..."
-                                className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 w-48"
+                                className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 w-48"
                             />
                         </div>
 
@@ -532,7 +532,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                         <select
                             value={filterStatus}
                             onChange={(e) => setFilterStatus(e.target.value)}
-                            className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:border-blue-500"
+                            className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-lg px-2 py-1.5 text-xs text-gray-700 dark:text-gray-300 focus:outline-none focus:border-blue-500"
                         >
                             <option value="all">All Status</option>
                             <option value="todo">To Do</option>
@@ -543,7 +543,7 @@ export default function ProjectPage({ params }: { params: Promise<{ projectId: s
                         </select>
 
                         {/* View toggle */}
-                        <div className="flex bg-gray-50 dark:bg-[#2a2b2d] rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
+                        <div className="flex bg-gray-50 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
                             <button
                                 onClick={() => setViewMode('board')}
                                 className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${viewMode === 'board'

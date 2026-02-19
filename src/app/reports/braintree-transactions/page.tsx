@@ -538,7 +538,7 @@ export default function BraintreeTransactionsPage() {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
+                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-black">
                       <th className="text-left py-4 px-3 font-bold text-xs text-[#1a2b4a] dark:text-white">
                         ID
                       </th>
@@ -587,7 +587,7 @@ export default function BraintreeTransactionsPage() {
                     {rows.map((row) => (
                       <tr
                         key={row.id}
-                        className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                        className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-[#111111]/50"
                       >
                         <td className="py-3 px-3 text-xs font-bold">
                           {row.id}

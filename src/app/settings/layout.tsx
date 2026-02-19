@@ -38,9 +38,9 @@ export default function SettingsLayout({ children }: { children: React.ReactNode
     const isAdmin = currentUser.role === 'admin'
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-gray-50 dark:bg-black">
             {/* Header */}
-            <div className="border-b bg-white dark:bg-gray-800">
+            <div className="border-b bg-white dark:bg-black">
                 <div className="container mx-auto px-4 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-4">

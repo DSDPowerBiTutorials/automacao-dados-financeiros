@@ -205,7 +205,7 @@ export default function BraintreePage({ source, title }: Props) {
   };
 
   return (
-    <div className="min-h-screen bg-white dark:bg-slate-900">
+    <div className="min-h-screen bg-white dark:bg-black">
       <Sidebar currentPage={source} paymentSourceDates={{}} />
       <div className="md:pl-64">
         <header className="bg-white dark:bg-[#1a2b4a] shadow sticky top-0 z-30">
@@ -262,7 +262,7 @@ export default function BraintreePage({ source, title }: Props) {
               <div className="overflow-x-auto">
                 <table className="w-full">
                   <thead>
-                    <tr className="border-b bg-gray-50 dark:bg-slate-800">
+                    <tr className="border-b bg-gray-50 dark:bg-black">
                       <th className="text-left py-4 px-4 font-bold text-sm">
                         ID
                       </th>
@@ -287,7 +287,7 @@ export default function BraintreePage({ source, title }: Props) {
                     {rows.map((row) => (
                       <tr
                         key={row.id}
-                        className="border-b hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                        className="border-b hover:bg-gray-50 dark:hover:bg-[#111111]/50"
                       >
                         <td className="py-3 px-4 text-sm font-bold">
                           {row.id.substring(0, 8)}...

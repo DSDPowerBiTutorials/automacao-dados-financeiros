@@ -57,7 +57,7 @@ export function LoginForm() {
             </div>
 
             {/* Login Card - Centralizado */}
-            <Card className="relative z-10 w-full max-w-md shadow-2xl border-0 bg-white/95 dark:bg-[#1e1f21]/95 backdrop-blur-sm">
+            <Card className="relative z-10 w-full max-w-md shadow-2xl border-0 bg-white/95 dark:bg-black/95 backdrop-blur-sm">
                 <CardHeader className="space-y-4 text-center pb-8 pt-10">
                     {/* Logo e Título */}
                     <div className="mx-auto space-y-4">

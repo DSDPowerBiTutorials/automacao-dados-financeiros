@@ -701,14 +701,14 @@ export default function BankinterUSDPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+      <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
         <Loader2 className="h-12 w-12 animate-spin text-[#FF7300]" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
+    <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
       <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
@@ -743,18 +743,18 @@ export default function BankinterUSDPage() {
           <div className="flex items-center gap-2 flex-wrap">
             <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
             <label htmlFor="file-upload-bankinter">
-              <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700" asChild>
+              <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" asChild>
                 <span><Upload className="h-4 w-4 mr-1" />Upload CSV</span>
               </Button>
             </label>
-            <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+            <Button onClick={loadData} disabled={isLoading} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
               <RefreshCw className={`h-4 w-4 mr-1 ${isLoading ? 'animate-spin' : ''}`} />Refresh
             </Button>
             <Button onClick={handleAutoReconcile} disabled={isAutoReconciling} variant="outline" size="sm" className="bg-transparent border-green-700 text-green-400 hover:bg-green-900/30">
               {isAutoReconciling ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Zap className="h-4 w-4 mr-1" />}
               Auto-Reconcile
             </Button>
-            <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
               <Download className="h-4 w-4 mr-1" />Download
             </Button>
             <Button onClick={handleDeleteAll} variant="outline" size="sm" className="bg-transparent border-red-800 text-red-400 hover:bg-red-900/30" disabled={isDeleting || rows.length === 0}>
@@ -769,7 +769,7 @@ export default function BankinterUSDPage() {
             <Input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className="w-36 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
             <span className="text-sm text-gray-500 dark:text-gray-400">To:</span>
             <Input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className="w-36 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white" />
-            <Button variant="outline" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+            <Button variant="outline" size="sm" onClick={() => { setDateFrom(""); setDateTo(""); }} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
               <X className="h-4 w-4 mr-1" />Clear
             </Button>
           </div>
@@ -777,7 +777,7 @@ export default function BankinterUSDPage() {
       </div>
 
       {/* Stats Bar */}
-      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#252627]">
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#0a0a0a]">
         <div className="flex items-center gap-8">
           <div className="flex items-center gap-2">
             <span className="text-gray-500 dark:text-gray-400 text-sm">Credits:</span>
@@ -801,7 +801,7 @@ export default function BankinterUSDPage() {
       </div>
 
       {/* Table Header */}
-      <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+      <div className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
         <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[900px]">
           <div className="w-[70px] flex-shrink-0">Date</div>
           <div className="flex-1 min-w-[200px]">Description</div>
@@ -825,7 +825,7 @@ export default function BankinterUSDPage() {
           return (
             <div
               key={row.id}
-              className="flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 min-w-[900px]"
+              className="flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 min-w-[900px]"
             >
               <div className="w-[70px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">
                 {formatDate(row.date)}
@@ -878,13 +878,13 @@ export default function BankinterUSDPage() {
                     <Button size="sm" variant="ghost" onClick={saveEdit} className="h-6 w-6 p-0 text-green-400 hover:text-green-300 hover:bg-green-900/30">
                       <Save className="h-3 w-3" />
                     </Button>
-                    <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <Button size="sm" variant="ghost" onClick={cancelEdit} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
                       <X className="h-3 w-3" />
                     </Button>
                   </>
                 ) : (
                   <>
-                    <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                       <Edit2 className="h-3 w-3" />
                     </Button>
                     <Button size="sm" variant="ghost" onClick={() => deleteRow(row.id)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-red-900/30">

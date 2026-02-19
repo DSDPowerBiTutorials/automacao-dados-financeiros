@@ -34,7 +34,7 @@ export function Sidebar() {
       "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-all relative group",
       active
         ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-lg shadow-blue-500/50"
-        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-700/50 hover:text-gray-900 dark:text-white",
+        : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-[#0a0a0a]/50 hover:text-gray-900 dark:text-white",
       isChild && "ml-3"
     );
 
@@ -76,7 +76,7 @@ export function Sidebar() {
 
     return (
       <div
-        className="fixed bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 min-w-[220px] z-60"
+        className="fixed bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 min-w-[220px] z-60"
         style={{ top: `${flyoutPosition.top}px`, left: `${flyoutPosition.left}px` }}
         onMouseEnter={() => setHoveredItem(hoveredItem)}
         onMouseLeave={() => setHoveredItem(null)}
@@ -95,13 +95,13 @@ export function Sidebar() {
     if (hasChildren) {
       return (
         <div key={item.href} className="group/submenu relative">
-          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-700/50 hover:text-gray-900 dark:text-white transition-all cursor-pointer">
+          <div className="flex items-center gap-2 px-3 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-[#0a0a0a]/50 hover:text-gray-900 dark:text-white transition-all cursor-pointer">
             <Icon className="h-4 w-4 flex-shrink-0" />
             <span className="flex-1">{item.title}</span>
             <ChevronRight className="h-4 w-4" />
           </div>
           <div className="hidden group-hover/submenu:block absolute left-full top-0 ml-2">
-            <div className="bg-gray-50 dark:bg-[#1e293b] border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 min-w-[200px]">
+            <div className="bg-gray-50 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl p-2 min-w-[200px]">
               <div className="space-y-0.5">
                 {item.children!.map((child) => renderFlyoutItem(child))}
               </div>
@@ -119,7 +119,7 @@ export function Sidebar() {
           "flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all",
           isActive(item.href)
             ? "bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium"
-            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-gray-700/50 hover:text-gray-900 dark:text-white"
+            : "text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:bg-[#0a0a0a]/50 hover:text-gray-900 dark:text-white"
         )}
         onClick={() => {
           setMobileOpen(false);
@@ -180,7 +180,7 @@ export function Sidebar() {
 
       {/* Mobile menu button */}
       <button
-        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+        className="fixed top-4 left-4 z-50 md:hidden p-2 rounded-lg bg-gray-100 dark:bg-black text-gray-900 dark:text-white"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -193,7 +193,7 @@ export function Sidebar() {
       <aside
         ref={sidebarRef}
         className={cn(
-          "fixed top-0 left-0 h-full bg-gray-50 dark:bg-[#1e293b] border-r border-gray-200 dark:border-gray-700 z-50 flex flex-col",
+          "fixed top-0 left-0 h-full bg-gray-50 dark:bg-black border-r border-gray-200 dark:border-gray-700 z-50 flex flex-col",
           "transition-all duration-300 rounded-r-3xl",
           collapsed && !isHovering ? "w-20" : "w-72",
           mobileOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
@@ -217,7 +217,7 @@ export function Sidebar() {
             </div>
           )}
           <button
-            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
+            className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white p-1.5 hover:bg-gray-100 dark:hover:bg-[#111111] rounded-lg transition-all"
             onClick={() => setCollapsed(!collapsed)}
           >
             {collapsed ? (
@@ -235,9 +235,9 @@ export function Sidebar() {
               <input
                 type="text"
                 placeholder="Search"
-                className="w-full bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-200 text-sm px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-gray-500 transition-all"
+                className="w-full bg-gray-100 dark:bg-black text-gray-600 dark:text-gray-200 text-sm px-3 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 placeholder:text-gray-500 transition-all"
               />
-              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-xs text-gray-500 bg-gray-100 dark:bg-gray-700 rounded border border-gray-300 dark:border-gray-600">
+              <kbd className="absolute right-2 top-1/2 -translate-y-1/2 px-1.5 py-0.5 text-xs text-gray-500 bg-gray-100 dark:bg-[#0a0a0a] rounded border border-gray-300 dark:border-gray-600">
                 ⌘F
               </kbd>
             </div>
@@ -260,7 +260,7 @@ export function Sidebar() {
         <div className="border-t border-gray-200 dark:border-gray-700">
           {(!collapsed || isHovering) && (
             <>
-              <button className="flex items-center gap-3 px-4 py-3 w-full hover:bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white transition-all rounded-xl mx-2 my-2">
+              <button className="flex items-center gap-3 px-4 py-3 w-full hover:bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white transition-all rounded-xl mx-2 my-2">
                 <span className="h-8 w-8 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-lg">
                   HC
                 </span>
@@ -272,7 +272,7 @@ export function Sidebar() {
               </button>
 
               <button 
-                className="flex items-center gap-3 px-4 py-3 w-full hover:bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white transition-all text-sm rounded-xl mx-2 mb-2"
+                className="flex items-center gap-3 px-4 py-3 w-full hover:bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white transition-all text-sm rounded-xl mx-2 mb-2"
                 onClick={() => setCollapsed(true)}
               >
                 <span className="text-gray-500 dark:text-gray-400">▾</span>
@@ -282,7 +282,7 @@ export function Sidebar() {
           )}
           {(collapsed && !isHovering) && (
             <button
-              className="flex items-center justify-center py-4 w-full hover:bg-gray-100 dark:bg-gray-700/50 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white transition-all"
+              className="flex items-center justify-center py-4 w-full hover:bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white transition-all"
               onClick={() => setCollapsed(false)}
             >
               <ChevronRight className="h-5 w-5" />

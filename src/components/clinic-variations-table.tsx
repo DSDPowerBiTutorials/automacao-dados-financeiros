@@ -144,7 +144,7 @@ export function ClinicVariationsTable({
 
     if (loading) {
         return (
-            <Card className="mt-4 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
+            <Card className="mt-4 bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700">
                 <CardHeader className="py-3">
                     <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200">{title || defaultTitle}</CardTitle>
                 </CardHeader>
@@ -167,7 +167,7 @@ export function ClinicVariationsTable({
 
     if (variations.length === 0) {
         return (
-            <Card className="mt-4 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
+            <Card className="mt-4 bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700">
                 <CardHeader className="py-3">
                     <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200">{title || defaultTitle}</CardTitle>
                 </CardHeader>
@@ -179,7 +179,7 @@ export function ClinicVariationsTable({
     }
 
     return (
-        <Card className="mt-4 bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700">
+        <Card className="mt-4 bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700">
             <CardHeader className="py-3">
                 <div className="flex items-center justify-between">
                     <div>
@@ -217,7 +217,7 @@ export function ClinicVariationsTable({
             <CardContent className="px-0 py-0">
                 <div className="max-h-80 overflow-auto">
                     <Table>
-                        <TableHeader className="sticky top-0 bg-gray-100 dark:bg-gray-800 z-10">
+                        <TableHeader className="sticky top-0 bg-gray-100 dark:bg-black z-10">
                             <TableRow className="border-gray-200 dark:border-gray-700">
                                 <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-[200px]">Clinic</TableHead>
                                 <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-[80px]">Level</TableHead>
@@ -274,7 +274,7 @@ export function ClinicVariationsTable({
 
                 {/* Summary footer */}
                 {summary && (
-                    <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-4 py-2 flex items-center justify-between text-xs">
+                    <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black px-4 py-2 flex items-center justify-between text-xs">
                         <span className="text-gray-500 dark:text-gray-400">
                             Total: {summary.total_clinics} clinics
                         </span>

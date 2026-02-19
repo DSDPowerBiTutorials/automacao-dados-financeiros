@@ -460,7 +460,7 @@ export default function InvoiceOrdersPage() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white">
+        <div className="min-h-screen bg-gray-50 dark:bg-black text-gray-900 dark:text-white">
             <div className="p-4 md:p-6 space-y-4">
                 {/* Header */}
                 <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -488,7 +488,7 @@ export default function InvoiceOrdersPage() {
 
                 {/* Stats Cards */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -500,7 +500,7 @@ export default function InvoiceOrdersPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -512,7 +512,7 @@ export default function InvoiceOrdersPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -524,7 +524,7 @@ export default function InvoiceOrdersPage() {
                         </CardContent>
                     </Card>
 
-                    <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                    <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
                         <CardContent className="p-4">
                             <div className="flex items-center justify-between">
                                 <div>
@@ -540,7 +540,7 @@ export default function InvoiceOrdersPage() {
                 </div>
 
                 {/* Actions Bar */}
-                <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
                     <CardContent className="p-4">
                         <div className="flex flex-wrap items-center gap-3">
                             {/* Upload Button */}
@@ -569,7 +569,7 @@ export default function InvoiceOrdersPage() {
                             {/* Refresh */}
                             <Button
                                 variant="outline"
-                                className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600"
+                                className="bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600"
                                 onClick={loadData}
                                 disabled={loading}
                             >
@@ -595,7 +595,7 @@ export default function InvoiceOrdersPage() {
                             {/* Export */}
                             <Button
                                 variant="outline"
-                                className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600"
+                                className="bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600"
                                 onClick={exportToExcel}
                             >
                                 <Download className="h-4 w-4 mr-2" />
@@ -605,14 +605,14 @@ export default function InvoiceOrdersPage() {
                             {/* Column Selector */}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="outline" className="bg-gray-100 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600">
+                                    <Button variant="outline" className="bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-100 dark:hover:bg-gray-600 border-gray-300 dark:border-gray-600">
                                         <Columns className="h-4 w-4 mr-2" />
                                         Columns
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white w-56">
+                                <DropdownMenuContent className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white w-56">
                                     <DropdownMenuLabel>Standard Columns</DropdownMenuLabel>
-                                    <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-700" />
+                                    <DropdownMenuSeparator className="bg-gray-100 dark:bg-[#0a0a0a]" />
                                     {columns.map((col) => (
                                         <DropdownMenuCheckboxItem
                                             key={col.key}
@@ -625,9 +625,9 @@ export default function InvoiceOrdersPage() {
                                     ))}
                                     {allCustomColumns.length > 0 && (
                                         <>
-                                            <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-700" />
+                                            <DropdownMenuSeparator className="bg-gray-100 dark:bg-[#0a0a0a]" />
                                             <DropdownMenuLabel>Custom Columns</DropdownMenuLabel>
-                                            <DropdownMenuSeparator className="bg-gray-100 dark:bg-gray-700" />
+                                            <DropdownMenuSeparator className="bg-gray-100 dark:bg-[#0a0a0a]" />
                                             {allCustomColumns.map((col) => (
                                                 <DropdownMenuCheckboxItem
                                                     key={col.key}
@@ -665,14 +665,14 @@ export default function InvoiceOrdersPage() {
                                     placeholder="Search invoices..."
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
-                                    className="pl-10 bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
+                                    className="pl-10 bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder-gray-400"
                                 />
                             </div>
 
                             {/* Show Reconciled Toggle */}
                             <Button
                                 variant="outline"
-                                className={`border-gray-300 dark:border-gray-600 ${showReconciled ? "bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white" : "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400"
+                                className={`border-gray-300 dark:border-gray-600 ${showReconciled ? "bg-gray-100 dark:bg-[#0a0a0a] text-gray-900 dark:text-white" : "bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400"
                                     }`}
                                 onClick={() => setShowReconciled(!showReconciled)}
                             >
@@ -684,7 +684,7 @@ export default function InvoiceOrdersPage() {
                 </Card>
 
                 {/* Data Table */}
-                <Card className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+                <Card className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700">
                     <CardContent className="p-0">
                         {loading ? (
                             <div className="flex items-center justify-center h-64">
@@ -705,11 +705,11 @@ export default function InvoiceOrdersPage() {
                             <div className="overflow-x-auto">
                                 <table className="w-full text-sm">
                                     <thead>
-                                        <tr className="bg-gray-100 dark:bg-gray-900/50 border-b border-gray-200 dark:border-gray-700">
+                                        <tr className="bg-gray-100 dark:bg-black/50 border-b border-gray-200 dark:border-gray-700">
                                             {visibleColumns.map((col) => (
                                                 <th
                                                     key={col.key}
-                                                    className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium cursor-pointer hover:bg-gray-100 dark:bg-gray-700/50"
+                                                    className="px-3 py-2 text-left text-gray-500 dark:text-gray-400 font-medium cursor-pointer hover:bg-gray-100 dark:bg-[#0a0a0a]/50"
                                                     style={{ width: col.width }}
                                                     onClick={() => handleSort(col.key)}
                                                 >
@@ -734,7 +734,7 @@ export default function InvoiceOrdersPage() {
                                         {filteredData.map((row) => (
                                             <tr
                                                 key={row.id}
-                                                className="border-b border-gray-200 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700/30 transition-colors"
+                                                className="border-b border-gray-200 dark:border-gray-700/50 hover:bg-gray-100 dark:hover:bg-[#111111]/30 transition-colors"
                                             >
                                                 {visibleColumns.map((col) => (
                                                     <td key={col.key} className="px-3 py-2 text-gray-700 dark:text-gray-300">
@@ -778,7 +778,7 @@ export default function InvoiceOrdersPage() {
 
             {/* Details Dialog */}
             <Dialog open={detailsDialogOpen} onOpenChange={setDetailsDialogOpen}>
-                <DialogContent className="bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogContent className="bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-2xl max-h-[80vh] overflow-y-auto">
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2">
                             <FileText className="h-5 w-5 text-blue-400" />
@@ -831,7 +831,7 @@ export default function InvoiceOrdersPage() {
                             {selectedRow.custom_data && Object.keys(selectedRow.custom_data).length > 0 && (
                                 <div>
                                     <Label className="text-gray-500 dark:text-gray-400 text-xs block mb-2">Additional Details</Label>
-                                    <div className="bg-gray-100 dark:bg-gray-900/50 rounded-lg p-3 space-y-2">
+                                    <div className="bg-gray-100 dark:bg-black/50 rounded-lg p-3 space-y-2">
                                         {Object.entries(selectedRow.custom_data)
                                             .filter(([key]) => !["file_name", "row_index"].includes(key))
                                             .map(([key, value]) => (

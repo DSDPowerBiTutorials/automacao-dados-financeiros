@@ -333,11 +333,11 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
             <PopoverContent
                 side={placement === "topbar" ? "bottom" : "right"}
                 align={placement === "topbar" ? "end" : "start"}
-                className="!bg-white dark:!bg-[#1a1b1d] border-gray-200 dark:border-gray-700 w-96 p-0 shadow-2xl"
+                className="!bg-white dark:!bg-black border-gray-200 dark:border-gray-700 w-96 p-0 shadow-2xl"
                 sideOffset={placement === "topbar" ? 8 : 12}
             >
                 {/* Header */}
-                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800/50">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/50">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                             <OverallIcon className={cn("h-5 w-5", overallConfig.color)} />
@@ -347,7 +347,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                             <Button
                                 size="sm"
                                 variant="outline"
-                                className="h-7 text-xs border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+                                className="h-7 text-xs border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111] text-gray-700 dark:text-gray-300"
                                 onClick={() => fetchFreshness()}
                             >
                                 <RefreshCw className="h-3 w-3 mr-1" />
@@ -369,7 +369,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                 </div>
 
                 {/* Sync All Button */}
-                <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-900/50">
+                <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/50">
                     <Button
                         size="sm"
                         className="w-full bg-[#FF7300] hover:bg-[#e66800] text-white"
@@ -398,7 +398,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                             return (
                                 <div
                                     key={source.source}
-                                    className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:bg-gray-800/50 transition-colors"
+                                    className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:bg-black/50 transition-colors"
                                 >
                                     <StatusIcon className={cn("h-4 w-4 flex-shrink-0", config.color)} />
                                     <div className="flex-1 min-w-0">
@@ -408,7 +408,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                                     <Button
                                         size="sm"
                                         variant="ghost"
-                                        className="h-7 px-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                                        className="h-7 px-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
                                         onClick={() => handleSyncSingle(source)}
                                     >
                                         <RefreshCw className="h-3 w-3" />
@@ -429,7 +429,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                             return (
                                 <div
                                     key={source.source}
-                                    className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:bg-gray-800/50 transition-colors"
+                                    className="flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-100 dark:bg-black/50 transition-colors"
                                 >
                                     <StatusIcon className={cn("h-4 w-4 flex-shrink-0", config.color)} />
                                     <div className="flex-1 min-w-0">
@@ -440,7 +440,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                                         <Button
                                             size="sm"
                                             variant="ghost"
-                                            className="h-7 px-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            className="h-7 px-2 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
                                         >
                                             <Upload className="h-3 w-3 mr-1" />
                                             Upload
@@ -454,7 +454,7 @@ export function DataFreshnessIndicator({ collapsed = false, placement = "sidebar
                 </div>
 
                 {/* Footer */}
-                <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30">
+                <div className="p-2 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30">
                     <p className="text-xs text-gray-500 text-center">
                         Auto: 12h threshold • CSV: 4 days threshold
                     </p>

@@ -502,7 +502,7 @@ export default function StripeEURPage() {
     };
 
     return (
-        <div className="min-h-full bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
+        <div className="min-h-full bg-white dark:bg-black text-gray-900 dark:text-white">
             {/* Header */}
             <header className="bg-gradient-to-r from-[#635BFF] to-[#4B44C9] px-6 py-4">
                 <div className="flex items-center justify-between">

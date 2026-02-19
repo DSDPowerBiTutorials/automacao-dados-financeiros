@@ -71,7 +71,7 @@ export default function GoalsPage() {
     const behindCount = goals.filter(g => g.status === 'behind').length;
 
     return (
-        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-5xl mx-auto px-6 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
@@ -92,21 +92,21 @@ export default function GoalsPage() {
 
                 {/* Status summary */}
                 <div className="grid grid-cols-3 gap-4 mb-8">
-                    <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+                    <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-2 h-2 rounded-full bg-green-500" />
                             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">On Track</span>
                         </div>
                         <p className="text-2xl font-bold text-green-400">{onTrackCount}</p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+                    <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-2 h-2 rounded-full bg-yellow-500" />
                             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">At Risk</span>
                         </div>
                         <p className="text-2xl font-bold text-yellow-400">{atRiskCount}</p>
                     </div>
-                    <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+                    <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl p-4">
                         <div className="flex items-center gap-2 mb-2">
                             <div className="w-2 h-2 rounded-full bg-red-500" />
                             <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Behind</span>
@@ -122,7 +122,7 @@ export default function GoalsPage() {
                         return (
                             <div
                                 key={goal.id}
-                                className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:bg-gray-100 dark:hover:bg-[#333435] transition-colors cursor-pointer"
+                                className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl p-5 hover:bg-gray-100 dark:hover:bg-[#333435] transition-colors cursor-pointer"
                             >
                                 <div className="flex items-start gap-4">
                                     <div className="flex-shrink-0 pt-1">
@@ -139,7 +139,7 @@ export default function GoalsPage() {
 
                                         {/* Progress bar */}
                                         <div className="flex items-center gap-3 mb-3">
-                                            <div className="flex-1 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                            <div className="flex-1 h-2 bg-gray-100 dark:bg-black rounded-full overflow-hidden">
                                                 <div
                                                     className={`h-full ${config.barColor} rounded-full transition-all`}
                                                     style={{ width: `${goal.progress}%` }}

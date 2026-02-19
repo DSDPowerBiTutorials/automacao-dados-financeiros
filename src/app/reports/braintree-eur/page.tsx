@@ -551,7 +551,7 @@ export default function BraintreeEURPage() {
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-56 p-2 bg-white dark:bg-slate-900 border border-gray-200 dark:border-slate-700 shadow-lg"
+          className="w-56 p-2 bg-white dark:bg-black border border-gray-200 dark:border-slate-700 shadow-lg"
           align="start"
         >
           <div className="space-y-1">
@@ -1807,7 +1807,7 @@ export default function BraintreeEURPage() {
                       <Button
                         variant={columnSelectorOpen ? "default" : "outline"}
                         size="sm"
-                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-gray-50 dark:bg-[#243140] hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white" : ""}`}
+                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-gray-50 dark:bg-black hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white" : ""}`}
                       >
                         <Columns3 className="h-4 w-4 mr-2" />
                         Select Columns
@@ -1824,22 +1824,22 @@ export default function BraintreeEURPage() {
                             >
                               <X className="h-3 w-3" />
                             </span>
-                            <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-[#243140] text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
+                            <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
                               {visibleColumns.size}/{TOTAL_COLUMNS}
                             </span>
                           </>
                         )}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="!bg-white dark:!bg-slate-900 text-slate-900 dark:text-slate-50 flex flex-col">
-                      <DialogHeader className="bg-white dark:bg-slate-900">
+                    <DialogContent className="!bg-white dark:!bg-black text-slate-900 dark:text-slate-50 flex flex-col">
+                      <DialogHeader className="bg-white dark:bg-black">
                         <DialogTitle className="text-slate-900 dark:text-slate-50">Select Visible Columns</DialogTitle>
                       </DialogHeader>
                       {/*
                         Nota: evitamos a classe 'grid' aqui porque o Tabler pode redefinir '.grid'
                         e quebrar o layout (lista fica "vazia").
                       */}
-                      <div className="flex flex-col gap-3 py-4 max-h-[60vh] overflow-y-auto pr-1 bg-white dark:bg-slate-900">
+                      <div className="flex flex-col gap-3 py-4 max-h-[60vh] overflow-y-auto pr-1 bg-white dark:bg-black">
                         {[
                           { id: "id", label: "ID" },
                           { id: "date", label: "📅 Created Date" },
@@ -1904,7 +1904,7 @@ export default function BraintreeEURPage() {
                           )
                         })}
                       </div>
-                      <div className="flex justify-end gap-2 bg-white dark:bg-slate-900 pt-4 border-t border-gray-200 dark:border-slate-700">
+                      <div className="flex justify-end gap-2 bg-white dark:bg-black pt-4 border-t border-gray-200 dark:border-slate-700">
                         <Button
                           variant="outline"
                           onClick={cancelColumnSelection}
@@ -2069,7 +2069,7 @@ export default function BraintreeEURPage() {
               <div className="overflow-x-auto">{/* Tabela aqui */}
                 <table className="w-full min-w-max table-auto">
                   <thead>
-                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-slate-800">
+                    <tr className="border-b-2 border-[#e5e7eb] dark:border-[#2c3e5f] bg-gray-50 dark:bg-black">
                       {visibleColumns.has("id") && (
                         <th className="text-left py-4 px-4 font-bold text-sm text-[#1a2b4a] dark:text-white w-24">
                           <button
@@ -2377,7 +2377,7 @@ export default function BraintreeEURPage() {
                         return (
                           <tr
                             key={row.id}
-                            className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-slate-800/50"
+                            className="border-b border-[#e5e7eb] dark:border-[#2c3e5f] hover:bg-gray-50 dark:hover:bg-[#111111]/50"
                           >
                             {visibleColumns.has("id") && (
                               <td className="py-3 px-4 text-sm font-bold">
@@ -2528,7 +2528,7 @@ export default function BraintreeEURPage() {
                                     {row.reconciliationType === "automatic" ? (
                                       <div className="relative group">
                                         <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
                                           <div className="font-bold mb-2 text-green-400">⚡ Auto-Reconciled</div>
                                           {row.bank_match_date && (
                                             <div className="flex items-center gap-1 mb-1">
@@ -2563,7 +2563,7 @@ export default function BraintreeEURPage() {
                                     ) : (
                                       <div className="relative group">
                                         <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                           👤 Manual reconciliation
                                         </div>
                                       </div>
@@ -2650,7 +2650,7 @@ export default function BraintreeEURPage() {
                                         </Button>
                                       </PopoverTrigger>
                                       <PopoverContent
-                                        className="w-80 p-0 !bg-white dark:!bg-slate-900 text-slate-900 dark:text-slate-50 border border-gray-200 dark:border-slate-700 shadow-xl !opacity-100"
+                                        className="w-80 p-0 !bg-white dark:!bg-black text-slate-900 dark:text-slate-50 border border-gray-200 dark:border-slate-700 shadow-xl !opacity-100"
                                         align="end"
                                       >
                                         <div className="bg-gradient-to-r from-blue-600 to-blue-800 dark:from-[#1a2b4a] dark:to-[#2c3e5f] text-white px-4 py-3 rounded-t-lg">
@@ -2662,7 +2662,7 @@ export default function BraintreeEURPage() {
                                             Transaction: {row.transaction_id}
                                           </p>
                                         </div>
-                                        <div className="p-4 max-h-[300px] overflow-y-auto bg-white dark:bg-slate-900">
+                                        <div className="p-4 max-h-[300px] overflow-y-auto bg-white dark:bg-black">
                                           <div className="space-y-3">
                                             {row.status_history
                                               .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -2718,7 +2718,7 @@ export default function BraintreeEURPage() {
                                           </div>
                                         </div>
                                         {row.settlement_batch_id && (
-                                          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-slate-800/50 rounded-b-lg">
+                                          <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 bg-gray-50 dark:bg-black/50 rounded-b-lg">
                                             <div className="flex items-start gap-2">
                                               <Key className="h-3 w-3 text-gray-500 mt-0.5 flex-shrink-0" />
                                               <div className="min-w-0 flex-1">
@@ -2852,7 +2852,7 @@ export default function BraintreeEURPage() {
                                   return (
                                     <Badge
                                       variant="outline"
-                                      className={colorClass ? cardBrandColors[colorClass] : 'bg-gray-50 dark:bg-gray-900/20 text-gray-700 dark:text-gray-400'}
+                                      className={colorClass ? cardBrandColors[colorClass] : 'bg-gray-50 dark:bg-black/20 text-gray-700 dark:text-gray-400'}
                                     >
                                       {cleanMethod || "Card"}
                                     </Badge>
@@ -2884,7 +2884,7 @@ export default function BraintreeEURPage() {
               </div>
 
               {/* Pagination Controls */}
-              <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+              <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-black rounded-lg border border-gray-200 dark:border-slate-700">
                 <div className="text-sm text-gray-600 dark:text-gray-300">
                   Showing {processedRows.length === 0 ? 0 : startIndex + 1} to {Math.min(endIndex, processedRows.length)} of {processedRows.length} results
                   {hasMoreServerRows ? " (more on server)" : ""}
@@ -2955,7 +2955,7 @@ export default function BraintreeEURPage() {
       {/* Split Screen Panel */}
       {
         splitScreenUrl && (
-          <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-slate-900 shadow-2xl z-40 border-l-4 border-blue-500">
+          <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-black shadow-2xl z-40 border-l-4 border-blue-500">
             <div className="h-full flex flex-col">
               <div className="bg-gradient-to-r from-[#1a2b4a] to-[#2c3e5f] text-white p-4 flex items-center justify-between">
                 <h2 className="text-lg font-bold">Bank Statement Details</h2>

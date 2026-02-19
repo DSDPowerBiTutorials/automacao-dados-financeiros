@@ -95,7 +95,7 @@ export function KPIStrip({ data, showIntercompany, onToggleIntercompany }: KPISt
                         onClick={onToggleIntercompany}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${showIntercompany
                             ? "bg-violet-500/20 text-violet-300 border border-violet-500/40"
-                            : "bg-gray-100 dark:bg-gray-800/60 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:bg-gray-700/60"
+                            : "bg-gray-100 dark:bg-black/60 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:bg-[#0a0a0a]/60"
                             }`}
                     >
                         <ArrowLeftRight className="w-3.5 h-3.5" />

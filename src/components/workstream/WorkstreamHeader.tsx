@@ -45,7 +45,7 @@ export function WorkstreamHeader({ onToggleSidebar }: WorkstreamHeaderProps) {
                     </Link>
 
                     {/* Divider */}
-                    <div className="h-6 w-px bg-gray-100 dark:bg-gray-700" />
+                    <div className="h-6 w-px bg-gray-100 dark:bg-[#0a0a0a]" />
 
                     {/* Logo */}
                     <Link href="/workstream" className="flex items-center gap-2.5 no-underline">
@@ -78,7 +78,7 @@ export function WorkstreamHeader({ onToggleSidebar }: WorkstreamHeaderProps) {
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
                             placeholder="Search tasks..."
-                            className="w-full bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
+                            className="w-full bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-lg pl-9 pr-3 py-1.5 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors"
                         />
                     </div>
                 </div>

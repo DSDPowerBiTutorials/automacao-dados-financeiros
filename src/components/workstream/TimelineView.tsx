@@ -99,7 +99,7 @@ export function TimelineView({ tasks, sections, users, onTaskClick }: TimelineVi
             {/* Scrollable area */}
             <div className="flex-1 flex overflow-hidden">
                 {/* Sidebar: task names */}
-                <div className="flex-shrink-0 border-r border-gray-200 dark:border-gray-800 overflow-y-auto bg-white dark:bg-[#1e1f21]" style={{ width: SIDEBAR_WIDTH }}>
+                <div className="flex-shrink-0 border-r border-gray-200 dark:border-gray-800 overflow-y-auto bg-white dark:bg-black" style={{ width: SIDEBAR_WIDTH }}>
                     {/* Header */}
                     <div className="h-12 border-b border-gray-200 dark:border-gray-800 px-3 flex items-center">
                         <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Tasks</span>
@@ -133,7 +133,7 @@ export function TimelineView({ tasks, sections, users, onTaskClick }: TimelineVi
                 <div className="flex-1 overflow-auto" ref={scrollRef}>
                     <div style={{ width: totalDays * DAY_WIDTH, minHeight: '100%' }} className="relative">
                         {/* Date header */}
-                        <div className="h-12 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white dark:bg-[#1e1f21] flex">
+                        <div className="h-12 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-10 bg-white dark:bg-black flex">
                             {weekStarts.map((ws, idx) => {
                                 const offset = diffDays(ws, startDate) * DAY_WIDTH;
                                 return (

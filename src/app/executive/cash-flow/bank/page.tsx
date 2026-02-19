@@ -255,11 +255,11 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
     quickbooks: { bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700" },
     continental: { bg: "bg-orange-900/30", text: "text-orange-400", border: "border-orange-700" },
     wise: { bg: "bg-teal-900/30", text: "text-teal-400", border: "border-teal-700" },
-    "sem-gateway": { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-300 dark:border-gray-600" },
+    "sem-gateway": { bg: "bg-gray-100 dark:bg-black/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-300 dark:border-gray-600" },
     "braintree (amex)": { bg: "bg-purple-900/30", text: "text-purple-400", border: "border-purple-700" },
 };
 
-const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700" };
+const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-black/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700" };
 
 // ─── Chart stroke colors ───
 const BANK_CHART_COLORS: Record<string, string> = {
@@ -1035,7 +1035,7 @@ export default function BankCashFlowPage() {
 
     if (isLoading) {
         return (
-            <div className="h-full flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+            <div className="h-full flex items-center justify-center bg-white dark:bg-black">
                 <RefreshCw className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
             </div>
         );
@@ -1044,7 +1044,7 @@ export default function BankCashFlowPage() {
     const showBankColumn = selectedBanks.size > 1;
 
     return (
-        <div className="h-full flex flex-col bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white overflow-hidden">
+        <div className="h-full flex flex-col bg-white dark:bg-black text-gray-900 dark:text-white overflow-hidden">
             {/* Main content area shifts when panel is open */}
             <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedRow ? "mr-[450px]" : ""}`}>
 
@@ -1073,10 +1073,10 @@ export default function BankCashFlowPage() {
                     {/* Action buttons */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Button onClick={loadData} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <Button onClick={loadData} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                 <RefreshCw className="h-4 w-4 mr-1" />Refresh
                             </Button>
-                            <Button onClick={exportCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                            <Button onClick={exportCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                 <Download className="h-4 w-4 mr-1" />CSV
                             </Button>
                             <Button onClick={runDeepReconciliation} disabled={isReconciling} variant="outline" size="sm" className="bg-emerald-900/30 border-emerald-700 text-emerald-400 hover:bg-emerald-800/50">
@@ -1089,7 +1089,7 @@ export default function BankCashFlowPage() {
                                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-56 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500" />
                             </div>
-                            <Button variant="outline" size="sm" onClick={() => setShowReconciled(!showReconciled)} className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${showReconciled ? "text-gray-900 dark:text-white" : "text-green-400"}`}>
+                            <Button variant="outline" size="sm" onClick={() => setShowReconciled(!showReconciled)} className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111] ${showReconciled ? "text-gray-900 dark:text-white" : "text-green-400"}`}>
                                 <CheckCircle className="h-4 w-4 mr-1" />
                                 {showReconciled ? "Hide Recon." : "Show Recon."}
                             </Button>
@@ -1098,7 +1098,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ─── Bank Account Tabs ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#252627]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#0a0a0a]">
                     <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mr-1">Accounts:</span>
                         {BANK_ACCOUNTS.map(bank => {
@@ -1113,7 +1113,7 @@ export default function BankCashFlowPage() {
                                         <div className="flex items-center gap-2">
                                             <Building className="h-3.5 w-3.5" />
                                             <span className="font-medium">{bank.label}</span>
-                                            {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-100 dark:bg-gray-700"}`}>{stats.count}</span> : null}
+                                            {stats?.count ? <span className={`text-xs px-1.5 py-0.5 rounded-full ${isActive ? "bg-white/20" : "bg-gray-100 dark:bg-[#0a0a0a]"}`}>{stats.count}</span> : null}
                                         </div>
                                         {fresh && (
                                             <div className="flex items-center gap-2 mt-0.5">
@@ -1135,7 +1135,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ─── Stats Bar (KPI inline) ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-[#1e1f21]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
                     <div className="grid grid-cols-6 gap-4">
                         <div className="flex items-center gap-2 min-w-0">
                             <ArrowDownCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
@@ -1192,7 +1192,7 @@ export default function BankCashFlowPage() {
 
                 {/* ─── Monthly Highlights + Chart ─── */}
                 {chartData.length > 0 && (
-                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-[#1e1f21]">
+                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
                         {/* Monthly cards */}
                         <div className="flex items-center gap-2 mb-3">
                             <TrendingUp className="h-4 w-4 text-gray-500" />
@@ -1200,7 +1200,7 @@ export default function BankCashFlowPage() {
                         </div>
                         <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
                             {chartData.map(m => (
-                                <div key={m.month} className="flex-shrink-0 bg-gray-100 dark:bg-[#252627] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[130px]">
+                                <div key={m.month} className="flex-shrink-0 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[130px]">
                                     <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">{m.label}</p>
                                     <div className="space-y-0.5">
                                         <div className="flex justify-between text-[10px]">
@@ -1232,7 +1232,7 @@ export default function BankCashFlowPage() {
                                     {revenueViewMode === "bank" ? "Inflows by Bank Account" : revenueViewMode === "gateway" ? "Inflows by Payment Gateway" : "Inflows by P&L Line"}
                                 </span>
                             </div>
-                            <div className="flex items-center bg-white dark:bg-[#1a1b1d] rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
+                            <div className="flex items-center bg-white dark:bg-black rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
                                 <button
                                     onClick={() => setRevenueViewMode("bank")}
                                     className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "bank" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
@@ -1331,7 +1331,7 @@ export default function BankCashFlowPage() {
                                             const stats = revenueByBank[bank.key];
                                             const net = stats.inflows - stats.outflows;
                                             return (
-                                                <div key={bank.key} className="flex-shrink-0 bg-gray-100 dark:bg-[#252627] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[145px]">
+                                                <div key={bank.key} className="flex-shrink-0 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[145px]">
                                                     <p className={`text-[10px] uppercase font-medium mb-1 ${bank.textColor}`}>{bank.label}</p>
                                                     <div className="space-y-0.5">
                                                         <div className="flex justify-between text-[10px]">
@@ -1452,7 +1452,7 @@ export default function BankCashFlowPage() {
                                                                         <span className="text-gray-500">Share</span>
                                                                         <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
                                                                     </div>
-                                                                    <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-0.5">
+                                                                    <div className="w-full bg-gray-100 dark:bg-[#0a0a0a] rounded-full h-1 mt-0.5">
                                                                         <div className={`h-1 rounded-full ${line.border.replace('border-', 'bg-')}`} style={{ width: `${pct}%` }} />
                                                                     </div>
                                                                 </div>
@@ -1467,7 +1467,7 @@ export default function BankCashFlowPage() {
                                                         return (
                                                             <div
                                                                 onClick={() => setSelectedPnlLine("unclassified")}
-                                                                className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-gray-100 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700"
+                                                                className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700"
                                                             >
                                                                 <div className="flex items-center gap-1.5 mb-1">
                                                                     <span className="text-sm">❓</span>
@@ -1539,13 +1539,13 @@ export default function BankCashFlowPage() {
                 )}
 
                 {/* ─── Filters ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#252627]">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#0a0a0a]">
                     <div className="flex items-center gap-3 flex-wrap">
                         <Filter className="h-3.5 w-3.5 text-gray-500" />
                         <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
                         <span className="text-gray-600">→</span>
                         <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
-                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 text-xs">
+                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111] text-xs">
                             Apply
                         </Button>
                         <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
@@ -1572,7 +1572,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ─── Table Header ─── */}
-                <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
                     <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[1060px]">
                         <div className="w-[60px] flex-shrink-0">Date</div>
                         {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
@@ -1592,7 +1592,7 @@ export default function BankCashFlowPage() {
                     {dateGroups.map(group => (
                         <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
                             {/* Date group header */}
-                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-gray-800/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
+                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
                                 {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
                                 <span className="font-medium text-gray-900 dark:text-white text-sm">{group.dateLabel}</span>
                                 <span className="text-gray-500 text-xs ml-auto">
@@ -1612,7 +1612,7 @@ export default function BankCashFlowPage() {
 
                                 return (
                                     <div key={tx.id}
-                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-gray-800/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[1060px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-gray-700/50" : ""}`}
+                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[1060px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""}`}
                                         onClick={() => handleRowSelect(tx)}>
                                         <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
                                         {showBankColumn && (
@@ -1637,7 +1637,7 @@ export default function BankCashFlowPage() {
                                                     const lineCode = getPnlLineFromCode(facCode);
                                                     const lineConfig = getPnlLineConfig(lineCode);
                                                     return (
-                                                        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${lineConfig?.bg || 'bg-gray-100 dark:bg-gray-800'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
+                                                        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${lineConfig?.bg || 'bg-gray-100 dark:bg-black'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
                                                             {lineConfig?.icon || ''} {facCode}
                                                         </Badge>
                                                     );
@@ -1697,7 +1697,7 @@ export default function BankCashFlowPage() {
             {/* ════════════════════════════════════════════════════════ */}
             {
                 selectedRow && (
-                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-[#1e1f21] border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
                         {/* Panel Header */}
                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                             <div className="flex items-center gap-2 min-w-0">
@@ -1783,7 +1783,7 @@ export default function BankCashFlowPage() {
                             </div>
 
                             {/* ─── RECONCILIATION STATUS ─── */}
-                            <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
+                            <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#0a0a0a]">
                                 <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
                                     {selectedRow.amount >= 0
                                         ? <><CreditCard className="h-4 w-4" /> Gateway Reconciliation</>
@@ -1818,7 +1818,7 @@ export default function BankCashFlowPage() {
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Confidence</p>
                                         <div className="flex items-center gap-2">
-                                            <div className="flex-1 bg-gray-100 dark:bg-gray-700 rounded-full h-1.5">
+                                            <div className="flex-1 bg-gray-100 dark:bg-[#0a0a0a] rounded-full h-1.5">
                                                 <div className={`h-1.5 rounded-full ${selectedRow.custom_data.match_confidence >= 0.9 ? 'bg-green-500' : selectedRow.custom_data.match_confidence >= 0.7 ? 'bg-yellow-500' : 'bg-orange-500'}`}
                                                     style={{ width: `${Math.round(selectedRow.custom_data.match_confidence * 100)}%` }} />
                                             </div>
@@ -1900,7 +1900,7 @@ export default function BankCashFlowPage() {
                                                 const lineCode = getPnlLineFromCode(selectedRow.custom_data.matched_invoice_fac);
                                                 const lineConfig = getPnlLineConfig(lineCode);
                                                 return (
-                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 ${lineConfig?.bg || 'bg-gray-100 dark:bg-gray-800'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
+                                                    <Badge variant="outline" className={`text-[10px] px-1.5 py-0.5 ${lineConfig?.bg || 'bg-gray-100 dark:bg-black'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
                                                         {lineConfig?.icon || '📊'} {selectedRow.custom_data.matched_invoice_fac}
                                                     </Badge>
                                                 );
@@ -1924,7 +1924,7 @@ export default function BankCashFlowPage() {
                                                         const lc = getPnlLineFromCode(fac);
                                                         const lconf = getPnlLineConfig(lc);
                                                         return (
-                                                            <Badge key={i} variant="outline" className={`text-[9px] px-1 py-0 ${lconf?.bg || 'bg-gray-100 dark:bg-gray-800'} ${lconf?.text || 'text-gray-500 dark:text-gray-400'} ${lconf?.border || 'border-gray-300 dark:border-gray-600'}`}>
+                                                            <Badge key={i} variant="outline" className={`text-[9px] px-1 py-0 ${lconf?.bg || 'bg-gray-100 dark:bg-black'} ${lconf?.text || 'text-gray-500 dark:text-gray-400'} ${lconf?.border || 'border-gray-300 dark:border-gray-600'}`}>
                                                                 {lconf?.icon || ''} {fac}
                                                             </Badge>
                                                         );
@@ -1950,7 +1950,7 @@ export default function BankCashFlowPage() {
                                                 <p className="text-xs text-gray-500 mb-1">Countries</p>
                                                 <div className="flex flex-wrap gap-1">
                                                     {selectedRow.chainData.summary.countries.map((c: string, i: number) => (
-                                                        <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600">
+                                                        <Badge key={i} variant="outline" className="text-[9px] px-1.5 py-0 bg-gray-100 dark:bg-black text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600">
                                                             {c}
                                                         </Badge>
                                                     ))}
@@ -2084,7 +2084,7 @@ export default function BankCashFlowPage() {
 
                             {/* Order Reconciliation — only for revenue */}
                             {selectedRow.amount >= 0 && (
-                                <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#252627]">
+                                <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#0a0a0a]">
                                     <h3 className="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
                                         <FileText className="h-4 w-4" /> Orders &amp; Invoices
                                     </h3>
@@ -2094,15 +2094,15 @@ export default function BankCashFlowPage() {
                                         <div className="space-y-3">
                                             {/* Summary stats */}
                                             <div className="grid grid-cols-3 gap-2 text-center">
-                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-black rounded-lg p-2">
                                                     <p className="text-amber-400 text-lg font-bold">{selectedRow.chainData.orders.length}</p>
                                                     <p className="text-[10px] text-gray-500">Orders</p>
                                                 </div>
-                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-black rounded-lg p-2">
                                                     <p className="text-blue-400 text-lg font-bold">{[...new Set(selectedRow.chainData.orders.map(o => o.customer_name).filter(Boolean))].length}</p>
                                                     <p className="text-[10px] text-gray-500">Clients</p>
                                                 </div>
-                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-black rounded-lg p-2">
                                                     <p className="text-green-400 text-lg font-bold">{formatCurrency(selectedRow.chainData.orders.reduce((s, o) => s + o.amount, 0), selectedRow.currency)}</p>
                                                     <p className="text-[10px] text-gray-500">Total</p>
                                                 </div>
@@ -2142,7 +2142,7 @@ export default function BankCashFlowPage() {
                                                             </Badge>
                                                         )}
                                                         {order.payment_method && (
-                                                            <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
+                                                            <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
                                                                 {order.payment_method}
                                                             </Badge>
                                                         )}
@@ -2167,7 +2167,7 @@ export default function BankCashFlowPage() {
                                                         Matched
                                                     </Badge>
                                                 ) : (
-                                                    <Badge variant="outline" className="bg-gray-100 dark:bg-gray-800/50 text-gray-500 border-gray-200 dark:border-gray-700">
+                                                    <Badge variant="outline" className="bg-gray-100 dark:bg-black/50 text-gray-500 border-gray-200 dark:border-gray-700">
                                                         Not Matched
                                                     </Badge>
                                                 )}
@@ -2199,15 +2199,15 @@ export default function BankCashFlowPage() {
                                                 🛒 E-Commerce Orders ({selectedRow.chainData.web_orders.length})
                                             </h4>
                                             <div className="grid grid-cols-3 gap-2 text-center">
-                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-black rounded-lg p-2">
                                                     <p className="text-teal-400 text-lg font-bold">{selectedRow.chainData.web_orders.length}</p>
                                                     <p className="text-[10px] text-gray-500">Orders</p>
                                                 </div>
-                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-black rounded-lg p-2">
                                                     <p className="text-blue-400 text-lg font-bold">{[...new Set(selectedRow.chainData.web_orders.map(o => o.customer_name).filter(Boolean))].length}</p>
                                                     <p className="text-[10px] text-gray-500">Clients</p>
                                                 </div>
-                                                <div className="bg-gray-50 dark:bg-[#1a1b1c] rounded-lg p-2">
+                                                <div className="bg-gray-50 dark:bg-black rounded-lg p-2">
                                                     <p className="text-green-400 text-lg font-bold">{formatCurrency(selectedRow.chainData.web_orders.reduce((s, o) => s + o.total_price, 0), selectedRow.currency)}</p>
                                                     <p className="text-[10px] text-gray-500">Total</p>
                                                 </div>
@@ -2247,7 +2247,7 @@ export default function BankCashFlowPage() {
                                                             </Badge>
                                                         )}
                                                         {wo.billing_country && (
-                                                            <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
+                                                            <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
                                                                 {wo.billing_country}
                                                             </Badge>
                                                         )}
@@ -2284,7 +2284,7 @@ export default function BankCashFlowPage() {
                                         <>
                                             {/* Disbursement Info */}
                                             {selectedRow.chainData.disbursement && (
-                                                <div className="bg-gray-100 dark:bg-[#252627] rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
+                                                <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-2">
                                                     <p className="text-[10px] text-gray-500 uppercase font-medium">Disbursement (Payout)</p>
                                                     <div className="grid grid-cols-2 gap-2 text-sm">
                                                         <div>
@@ -2312,7 +2312,7 @@ export default function BankCashFlowPage() {
                                                     </summary>
                                                     <div className="space-y-2 mt-2">
                                                         {selectedRow.chainData.gateway_transactions.slice(0, 15).map((tx, i) => (
-                                                            <div key={i} className="bg-gray-100 dark:bg-[#252627] rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-1">
+                                                            <div key={i} className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 p-3 space-y-1">
                                                                 <div className="flex items-center justify-between">
                                                                     <span className="text-xs text-gray-500 dark:text-gray-400 font-mono truncate max-w-[180px]">{tx.transaction_id}</span>
                                                                     <span className="text-green-400 font-medium text-sm">{formatCurrency(tx.amount, selectedRow.currency)}</span>
@@ -2346,12 +2346,12 @@ export default function BankCashFlowPage() {
                                                                 {/* Enriched badges */}
                                                                 <div className="flex flex-wrap gap-1 mt-0.5">
                                                                     {tx.card_type && (
-                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-100 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-100 dark:bg-black/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">
                                                                             {tx.card_type}
                                                                         </Badge>
                                                                     )}
                                                                     {tx.country_of_issuance && (
-                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-100 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">
+                                                                        <Badge variant="outline" className="text-[8px] px-1 py-0 bg-gray-100 dark:bg-black/50 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700">
                                                                             {tx.country_of_issuance}
                                                                         </Badge>
                                                                     )}
@@ -2434,7 +2434,7 @@ export default function BankCashFlowPage() {
                                     )}
 
                                     {!chainLoading && !selectedRow.chainData && (
-                                        <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700 text-xs"
+                                        <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111] text-xs"
                                             onClick={() => loadChainData(selectedRow)}>
                                             <Database className="h-3 w-3 mr-1" /> Load Details
                                         </Button>
@@ -2466,10 +2466,10 @@ export default function BankCashFlowPage() {
 
             {/* ═══ P&L Line Products Popup ═══ */}
             <Dialog open={!!selectedPnlLine} onOpenChange={(open) => { if (!open) setSelectedPnlLine(null); }}>
-                <DialogContent className="bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
+                <DialogContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
                     {(() => {
                         const lineConfig = selectedPnlLine === "unclassified"
-                            ? { code: "unclassified", label: "Unclassified", bg: "bg-gray-100 dark:bg-gray-800/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700", icon: "❓" }
+                            ? { code: "unclassified", label: "Unclassified", bg: "bg-gray-100 dark:bg-black/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700", icon: "❓" }
                             : getPnlLineConfig(selectedPnlLine || "");
                         const lineData = selectedPnlLine ? pnlLineRevenue.byLine[selectedPnlLine] : null;
                         if (!lineConfig || !lineData) return null;
@@ -2512,7 +2512,7 @@ export default function BankCashFlowPage() {
                                                     <span className="text-gray-500">Avg: {formatCurrency(stats.amount / stats.count, dominantCurrency)}</span>
                                                     <span className="text-gray-500 dark:text-gray-400 font-medium">{pct}%</span>
                                                 </div>
-                                                <div className="w-full bg-gray-100 dark:bg-gray-700 rounded-full h-1 mt-1.5 ml-5" style={{ width: 'calc(100% - 20px)' }}>
+                                                <div className="w-full bg-gray-100 dark:bg-[#0a0a0a] rounded-full h-1 mt-1.5 ml-5" style={{ width: 'calc(100% - 20px)' }}>
                                                     <div className={`h-1 rounded-full ${pStyle.border.replace('border-', 'bg-')}`} style={{ width: `${pct}%` }} />
                                                 </div>
                                             </div>

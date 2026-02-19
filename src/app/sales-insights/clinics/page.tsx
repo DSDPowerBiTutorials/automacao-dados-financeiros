@@ -136,7 +136,7 @@ export default function ClinicsOverviewPage() {
         title: string; value: string | number; subtitle?: string;
         icon: React.ElementType; color: string;
     }) => (
-        <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+        <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
             <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                     <div>
@@ -144,7 +144,7 @@ export default function ClinicsOverviewPage() {
                         <p className={`text-2xl font-bold mt-1 ${color}`}>{value}</p>
                         {subtitle && <p className="text-xs text-gray-500 mt-0.5">{subtitle}</p>}
                     </div>
-                    <div className={`p-2 rounded-lg bg-gray-100 dark:bg-gray-800`}>
+                    <div className={`p-2 rounded-lg bg-gray-100 dark:bg-black`}>
                         <Icon className={`h-5 w-5 ${color}`} />
                     </div>
                 </div>
@@ -164,7 +164,7 @@ export default function ClinicsOverviewPage() {
                 </div>
                 <div className="flex items-center gap-3">
                     <Select value={String(year)} onValueChange={v => setYear(parseInt(v))}>
-                        <SelectTrigger className="w-[100px] bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
+                        <SelectTrigger className="w-[100px] bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -174,7 +174,7 @@ export default function ClinicsOverviewPage() {
                         </SelectContent>
                     </Select>
                     <Select value={String(month)} onValueChange={v => setMonth(parseInt(v))}>
-                        <SelectTrigger className="w-[120px] bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
+                        <SelectTrigger className="w-[120px] bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -184,7 +184,7 @@ export default function ClinicsOverviewPage() {
                         </SelectContent>
                     </Select>
                     <Select value={region} onValueChange={setRegion}>
-                        <SelectTrigger className="w-[120px] bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
+                        <SelectTrigger className="w-[120px] bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
@@ -197,7 +197,7 @@ export default function ClinicsOverviewPage() {
                         variant="outline"
                         size="sm"
                         onClick={fetchData}
-                        className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                        className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                     >
                         <RefreshCw className="h-4 w-4" />
                     </Button>
@@ -268,7 +268,7 @@ export default function ClinicsOverviewPage() {
                     </div>
 
                     {/* Monthly Timeline */}
-                    <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                    <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
                         <CardHeader className="py-3 px-4">
                             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
                                 <Activity className="h-4 w-4 text-gray-500 dark:text-gray-400" />
@@ -341,7 +341,7 @@ export default function ClinicsOverviewPage() {
                     </Card>
 
                     {/* Clinic Table */}
-                    <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700">
+                    <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
                         <CardHeader className="py-3 px-4">
                             <div className="flex items-center justify-between">
                                 <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-200 flex items-center gap-2">
@@ -354,10 +354,10 @@ export default function ClinicsOverviewPage() {
                                         placeholder="Search clinic..."
                                         value={searchTerm}
                                         onChange={e => setSearchTerm(e.target.value)}
-                                        className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                                        className="px-3 py-1.5 text-xs bg-gray-100 dark:bg-black border border-gray-200 dark:border-gray-700 rounded-md text-gray-600 dark:text-gray-200 placeholder-gray-500 w-48 focus:outline-none focus:ring-1 focus:ring-blue-500"
                                     />
                                     <Select value={statusFilter} onValueChange={setStatusFilter}>
-                                        <SelectTrigger className="w-[120px] h-8 text-xs bg-gray-100 dark:bg-gray-800 border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
+                                        <SelectTrigger className="w-[120px] h-8 text-xs bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
                                             <SelectValue placeholder="Status" />
                                         </SelectTrigger>
                                         <SelectContent>
@@ -374,7 +374,7 @@ export default function ClinicsOverviewPage() {
                         <CardContent className="px-0 py-0">
                             <div className="max-h-[600px] overflow-auto">
                                 <Table>
-                                    <TableHeader className="sticky top-0 bg-gray-100 dark:bg-gray-800 z-10">
+                                    <TableHeader className="sticky top-0 bg-gray-100 dark:bg-black z-10">
                                         <TableRow className="border-gray-200 dark:border-gray-700">
                                             <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-8"></TableHead>
                                             <TableHead className="text-xs text-gray-700 dark:text-gray-300">Clinic</TableHead>
@@ -391,7 +391,7 @@ export default function ClinicsOverviewPage() {
                                         {filteredClinics.map((clinic, idx) => (
                                             <React.Fragment key={clinic.name}>
                                                 <TableRow
-                                                    className={`border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:bg-gray-800/50 ${clinic.status === "churned" ? "bg-red-900/10" :
+                                                    className={`border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:bg-black/50 ${clinic.status === "churned" ? "bg-red-900/10" :
                                                             clinic.status === "paused" ? "bg-yellow-900/10" :
                                                                 clinic.status === "new" ? "bg-green-900/10" : ""
                                                         }`}
@@ -418,7 +418,7 @@ export default function ClinicsOverviewPage() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell className="py-2">
-                                                        <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
+                                                        <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-black text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
                                                             {clinic.region}
                                                         </Badge>
                                                     </TableCell>
@@ -460,7 +460,7 @@ export default function ClinicsOverviewPage() {
 
                                                 {/* Expanded detail */}
                                                 {expandedClinic === clinic.name && (
-                                                    <TableRow className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/30">
+                                                    <TableRow className="border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30">
                                                         <TableCell colSpan={9} className="p-4">
                                                             <ClinicDetail clinic={clinic} year={year} />
                                                         </TableCell>
@@ -481,7 +481,7 @@ export default function ClinicsOverviewPage() {
 
                             {/* Summary footer */}
                             {data.kpis && (
-                                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 px-4 py-2 flex items-center justify-between text-xs">
+                                <div className="border-t border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black px-4 py-2 flex items-center justify-between text-xs">
                                     <span className="text-gray-500 dark:text-gray-400">
                                         Showing {filteredClinics.length} of {data.clinics.length} clinics
                                     </span>
@@ -534,9 +534,9 @@ function ClinicDetail({ clinic, year }: { clinic: Clinic; year: number }) {
                 </h4>
                 <div className="space-y-1.5">
                     {clinic.products.length > 0 ? clinic.products.map(p => (
-                        <div key={p.code} className="flex items-center justify-between bg-gray-100 dark:bg-gray-800/50 rounded px-3 py-1.5">
+                        <div key={p.code} className="flex items-center justify-between bg-gray-100 dark:bg-black/50 rounded px-3 py-1.5">
                             <div className="flex items-center gap-2">
-                                <Badge variant="outline" className="text-[9px] bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 font-mono">
+                                <Badge variant="outline" className="text-[9px] bg-gray-100 dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300 border-gray-300 dark:border-gray-600 font-mono">
                                     {p.code}
                                 </Badge>
                                 <span className="text-xs text-gray-700 dark:text-gray-300">{p.name}</span>
@@ -562,23 +562,23 @@ function ClinicDetail({ clinic, year }: { clinic: Clinic; year: number }) {
                     Clinic Information
                 </h4>
                 <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between bg-gray-100 dark:bg-gray-800/50 rounded px-3 py-1.5">
+                    <div className="flex justify-between bg-gray-100 dark:bg-black/50 rounded px-3 py-1.5">
                         <span className="text-gray-500">First Transaction</span>
                         <span className="text-gray-700 dark:text-gray-300">{formatDate(clinic.first_date)}</span>
                     </div>
-                    <div className="flex justify-between bg-gray-100 dark:bg-gray-800/50 rounded px-3 py-1.5">
+                    <div className="flex justify-between bg-gray-100 dark:bg-black/50 rounded px-3 py-1.5">
                         <span className="text-gray-500">Last Transaction</span>
                         <span className="text-gray-700 dark:text-gray-300">{formatDate(clinic.last_date)}</span>
                     </div>
-                    <div className="flex justify-between bg-gray-100 dark:bg-gray-800/50 rounded px-3 py-1.5">
+                    <div className="flex justify-between bg-gray-100 dark:bg-black/50 rounded px-3 py-1.5">
                         <span className="text-gray-500">Total Transactions</span>
                         <span className="text-gray-700 dark:text-gray-300">{clinic.tx_count}</span>
                     </div>
-                    <div className="flex justify-between bg-gray-100 dark:bg-gray-800/50 rounded px-3 py-1.5">
+                    <div className="flex justify-between bg-gray-100 dark:bg-black/50 rounded px-3 py-1.5">
                         <span className="text-gray-500">Consecutive Months</span>
                         <span className="text-gray-700 dark:text-gray-300">{clinic.consecutive_months}</span>
                     </div>
-                    <div className="flex justify-between bg-gray-100 dark:bg-gray-800/50 rounded px-3 py-1.5">
+                    <div className="flex justify-between bg-gray-100 dark:bg-black/50 rounded px-3 py-1.5">
                         <span className="text-gray-500">Monthly Fee YTD</span>
                         <span className="text-gray-700 dark:text-gray-300">{formatCurrency(clinic.total_monthly_fee_ytd, "EUR")}</span>
                     </div>
@@ -610,7 +610,7 @@ function ClinicDetail({ clinic, year }: { clinic: Clinic; year: number }) {
                                         <span className="font-medium">{e.type}</span>
                                         <span className="text-gray-500">— {e.month}</span>
                                         {e.confirmed && (
-                                            <Badge variant="outline" className="text-[8px] bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 py-0 px-1">
+                                            <Badge variant="outline" className="text-[8px] bg-gray-100 dark:bg-[#0a0a0a] text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600 py-0 px-1">
                                                 confirmed
                                             </Badge>
                                         )}

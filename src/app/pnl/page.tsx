@@ -382,7 +382,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         type={inputType}
                         value={String(editFields[fieldKey] ?? "")}
                         onChange={(e) => updateField(fieldKey, inputType === "number" ? parseFloat(e.target.value) || 0 : e.target.value)}
-                        className="h-8 text-sm bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500"
+                        className="h-8 text-sm bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white focus:border-blue-500"
                     />
                 </div>
             );
@@ -404,7 +404,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                     onClick={() => updateField(fieldKey, !isActive)}
                     className={`text-xs px-2.5 py-1.5 rounded border transition-colors ${isActive
                         ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                        : "bg-gray-100 dark:bg-gray-700/50 text-gray-500 border-gray-300 dark:border-gray-600"
+                        : "bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-500 border-gray-300 dark:border-gray-600"
                         }`}
                 >
                     {isActive && <Check className="h-3 w-3 inline mr-1" />}
@@ -426,7 +426,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
         return (
             <Dialog open onOpenChange={(open) => !open && onClose()}>
                 <DialogContent
-                    className="max-w-none max-h-[90vh] p-0 bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+                    className="max-w-none max-h-[90vh] p-0 bg-white dark:bg-black border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
                     style={{ width: '80vw' }}
                 >
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
@@ -451,7 +451,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                             <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <Calendar className="h-3.5 w-3.5" /> Dates
                             </h4>
-                            <div className="grid grid-cols-5 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                            <div className="grid grid-cols-5 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                                 <div><p className="text-xs text-gray-500 mb-0.5">Invoice Date</p><p className="text-sm text-gray-900 dark:text-white">{fmt(historyViewInvoice.invoiceDate)}</p></div>
                                 <div><p className="text-xs text-gray-500 mb-0.5">Benefit Date</p><p className="text-sm text-gray-900 dark:text-white">{fmt(historyViewInvoice.benefitDate)}</p></div>
                                 <div><p className="text-xs text-gray-500 mb-0.5">Due Date</p><p className="text-sm text-gray-900 dark:text-white">{fmt(historyViewInvoice.dueDate)}</p></div>
@@ -464,7 +464,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                             <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <DollarSign className="h-3.5 w-3.5" /> Amount
                             </h4>
-                            <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                            <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Total Amount</p>
                                     <p className="text-lg text-gray-900 dark:text-white font-bold font-mono">{formatCurrency(historyViewInvoice.amount, historyViewInvoice.currency || "EUR")}</p>
@@ -490,7 +490,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                             <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                                 <Layers className="h-3.5 w-3.5" /> Classification
                             </h4>
-                            <div className="grid grid-cols-3 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                            <div className="grid grid-cols-3 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Type</p>
                                     <p className="text-sm text-gray-900 dark:text-white">{historyViewInvoice.invoiceType || "-"}</p>
@@ -514,7 +514,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         {historyViewInvoice.description && (
                             <div>
                                 <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Description</h4>
-                                <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-4">
+                                <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg p-4">
                                     <p className="text-sm text-gray-700 dark:text-gray-300">{historyViewInvoice.description}</p>
                                 </div>
                             </div>
@@ -528,13 +528,13 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
     return (
         <Dialog open onOpenChange={(open) => !open && onClose()}>
             <DialogContent
-                className="max-w-none max-h-[90vh] p-0 bg-white dark:bg-[#1e1f21] border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
+                className="max-w-none max-h-[90vh] p-0 bg-white dark:bg-black border-gray-200 dark:border-gray-700 flex flex-col overflow-hidden"
                 style={{ width: '80vw' }}
             >
                 {/* ── Header ── */}
                 <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                     <div className="flex items-center gap-3 min-w-0">
-                        <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+                        <div className="h-9 w-9 rounded-full bg-gray-100 dark:bg-[#0a0a0a] flex items-center justify-center flex-shrink-0">
                             <FileText className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                         </div>
                         <div className="min-w-0">
@@ -597,7 +597,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <FileText className="h-3.5 w-3.5" /> Invoice Identification
                         </h4>
-                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                             <Field label="Invoice Nº" value={invoice.invoiceNumber} fieldKey="invoiceNumber" mono />
                             <Field label="Invoice Type" value={invoice.orderType} />
                             <Field label="Entry Type" value={invoice.entryType} fieldKey="entryType" />
@@ -610,7 +610,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Calendar className="h-3.5 w-3.5" /> Dates
                         </h4>
-                        <div className="grid grid-cols-6 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-6 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                             <Field label="Input Date" value={fmt(invoice.inputDate)} />
                             <Field label="Invoice Date" value={isEditing ? undefined : fmt(invoice.invoiceDate)} fieldKey="invoiceDate" type="date" />
                             <Field label="Benefit Date" value={isEditing ? undefined : fmt(invoice.benefitDate)} fieldKey="benefitDate" type="date" />
@@ -625,7 +625,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <DollarSign className="h-3.5 w-3.5" /> Amount
                         </h4>
-                        <div className="grid grid-cols-5 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-5 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                             {isEditing ? (
                                 <Field label="Total Amount" fieldKey="invoiceAmount" type="number" />
                             ) : (
@@ -650,7 +650,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Building2 className="h-3.5 w-3.5" /> Provider & Financial Account
                         </h4>
-                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                             <div>
                                 {isEditing ? (
                                     <Field label="Provider Code" fieldKey="providerCode" />
@@ -690,7 +690,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Layers className="h-3.5 w-3.5" /> Classification
                         </h4>
-                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                        <div className="grid grid-cols-4 gap-4 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                             <Field label="Department" value={isEditing ? undefined : (invoice.costCenterName || invoice.costCenterCode || "-")} fieldKey="costCenterCode" />
                             <Field label="Sub-Department" value={isEditing ? undefined : (invoice.subDepartmentName || invoice.subDepartmentCode || "-")} />
                             <Field label="Cost Type" value={isEditing ? undefined : (invoice.costTypeName || invoice.costTypeCode || "-")} fieldKey="costTypeCode" />
@@ -708,7 +708,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <CreditCard className="h-3.5 w-3.5" /> Payment & Reconciliation
                         </h4>
-                        <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4 space-y-4">
+                        <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4 space-y-4">
                             <div className="grid grid-cols-4 gap-4">
                                 <div>
                                     {isEditing ? (
@@ -760,7 +760,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                 </span>
                                             </div>
                                         ) : (
-                                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700/50 border border-gray-300 dark:border-gray-600 rounded-lg">
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 dark:bg-[#0a0a0a]/50 border border-gray-300 dark:border-gray-600 rounded-lg">
                                                 <div className="h-2.5 w-2.5 rounded-full bg-gray-500"></div>
                                                 <span className="text-sm text-gray-500 dark:text-gray-400">No payment scheduled</span>
                                             </div>
@@ -775,7 +775,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                     {(invoice.description || invoice.notes || isEditing) && (
                         <div>
                             <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3">Description & Notes</h4>
-                            <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg p-4 space-y-3">
+                            <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg p-4 space-y-3">
                                 {isEditing ? (
                                     <>
                                         <div>
@@ -784,7 +784,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                 value={String(editFields.description || "")}
                                                 onChange={(e) => updateField("description", e.target.value)}
                                                 rows={2}
-                                                className="w-full text-sm bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
+                                                className="w-full text-sm bg-white dark:bg-black border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
                                             />
                                         </div>
                                         <div>
@@ -793,7 +793,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                 value={String(editFields.notes || "")}
                                                 onChange={(e) => updateField("notes", e.target.value)}
                                                 rows={2}
-                                                className="w-full text-sm bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
+                                                className="w-full text-sm bg-white dark:bg-black border border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white rounded-md p-2 focus:border-blue-500 focus:outline-none resize-none"
                                             />
                                         </div>
                                     </>
@@ -822,7 +822,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <h4 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                             <Paperclip className="h-3.5 w-3.5" /> Attachments & Documents
                         </h4>
-                        <div className="bg-gray-100 dark:bg-[#252627] rounded-lg p-4">
+                        <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-4">
                             {loadingAttachments ? (
                                 <div className="flex items-center gap-2 py-2">
                                     <Loader2 className="h-4 w-4 animate-spin text-gray-500" />
@@ -836,7 +836,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                             href={att.url}
                                             target="_blank"
                                             rel="noopener noreferrer"
-                                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-[#1e1f21] rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors group"
+                                            className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-black rounded-lg hover:bg-gray-100 dark:hover:bg-[#111111] transition-colors group"
                                         >
                                             <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
                                             <span className="text-sm text-blue-300 group-hover:text-blue-200 truncate flex-1">{att.file_name}</span>
@@ -857,7 +857,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 <History className="h-3.5 w-3.5" /> {invoice.source === "invoices" ? "Provider" : "Customer"} Invoice History — {invoice.providerName || invoice.customer}
                                 <span className="text-gray-600 font-normal normal-case">({providerHistory.length} invoices)</span>
                             </h4>
-                            <div className="bg-gray-100 dark:bg-[#252627] rounded-lg overflow-hidden">
+                            <div className="bg-gray-100 dark:bg-[#0a0a0a] rounded-lg overflow-hidden">
                                 {loadingHistory ? (
                                     <div className="flex items-center justify-center py-8">
                                         <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
@@ -868,7 +868,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 ) : (
                                     <>
                                         {/* Summary bar + FA filter */}
-                                        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+                                        <div className="flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
                                             <div className="flex items-center gap-4">
                                                 <span className="text-xs text-gray-500 dark:text-gray-400">
                                                     Total: <span className="text-gray-900 dark:text-white font-medium">
@@ -890,10 +890,10 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                 <div className="flex items-center gap-2">
                                                     <Filter className="h-3.5 w-3.5 text-gray-500" />
                                                     <Select value={historyFAFilter} onValueChange={setHistoryFAFilter}>
-                                                        <SelectTrigger className="h-7 w-[220px] text-xs bg-white dark:bg-[#1e1f21] border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                                        <SelectTrigger className="h-7 w-[220px] text-xs bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
                                                             <SelectValue placeholder="All Financial Accounts" />
                                                         </SelectTrigger>
-                                                        <SelectContent className="bg-gray-100 dark:bg-[#252627] border-gray-300 dark:border-gray-600">
+                                                        <SelectContent className="bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600">
                                                             <SelectItem value="all" className="text-xs text-gray-700 dark:text-gray-300">All Financial Accounts</SelectItem>
                                                             {uniqueFACodes.map(fa => (
                                                                 <SelectItem key={fa} value={fa} className="text-xs text-gray-700 dark:text-gray-300">
@@ -908,7 +908,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                         {/* History table */}
                                         <div className="max-h-[300px] overflow-y-auto">
                                             <table className="w-full">
-                                                <thead className="bg-white dark:bg-[#1e1f21] sticky top-0 z-10">
+                                                <thead className="bg-white dark:bg-black sticky top-0 z-10">
                                                     <tr>
                                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2"></th>
                                                         <th className="text-left text-[10px] font-semibold text-gray-500 uppercase px-3 py-2">Date</th>
@@ -926,7 +926,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                         return (
                                                             <tr
                                                                 key={hi.id}
-                                                                className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700/30 transition-colors ${isCurrentInvoice ? "bg-blue-500/10 border-l-2 border-l-blue-500" : idx % 2 === 0 ? "bg-gray-100 dark:bg-[#252627]" : "bg-gray-50 dark:bg-[#2a2b2d]"}`}
+                                                                className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-[#111111]/30 transition-colors ${isCurrentInvoice ? "bg-blue-500/10 border-l-2 border-l-blue-500" : idx % 2 === 0 ? "bg-gray-100 dark:bg-[#0a0a0a]" : "bg-gray-50 dark:bg-[#0a0a0a]"}`}
                                                             >
                                                                 <td className="px-3 py-2">
                                                                     {!isCurrentInvoice && (
@@ -1006,7 +1006,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
         <>
             <Dialog open={drilldown.isOpen} onOpenChange={(open) => !open && onClose()}>
                 <DialogContent
-                    className="max-w-none max-h-[90vh] bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 flex flex-col"
+                    className="max-w-none max-h-[90vh] bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700 flex flex-col"
                     style={{ width: '80vw' }}
                 >
                     <DialogHeader className="border-b border-gray-200 dark:border-gray-700 pb-4 flex-shrink-0">
@@ -1052,7 +1052,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                             <div className="flex flex-col h-full">
                                 <div className="overflow-x-auto flex-1">
                                     <table className="w-full min-w-[800px]">
-                                        <thead className="bg-gray-100 dark:bg-gray-800 sticky top-0 z-10">
+                                        <thead className="bg-gray-100 dark:bg-black sticky top-0 z-10">
                                             <tr>
                                                 <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-4 py-3 whitespace-nowrap">Date</th>
                                                 <th className="text-left text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase px-4 py-3 whitespace-nowrap">{isExpense ? "Provider" : "Customer"}</th>
@@ -1067,7 +1067,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                 return (
                                                     <tr
                                                         key={tx.id}
-                                                        className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-100 dark:bg-gray-900/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
+                                                        className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-black/50 ${idx % 2 === 0 ? "bg-gray-100 dark:bg-black/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
                                                     >
                                                         <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 font-mono whitespace-nowrap">
                                                             <div className="flex items-center gap-2">
@@ -1106,7 +1106,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                 );
                                             })}
                                         </tbody>
-                                        <tfoot className="bg-gray-100 dark:bg-gray-800">
+                                        <tfoot className="bg-gray-100 dark:bg-black">
                                             <tr>
                                                 <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">
                                                     Total ({drilldown.count} transactions)
@@ -1137,7 +1137,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                 {/* Clinic Variations - only for clinic FA codes */}
                                 {isClinicsFACode(drilldown.faCode) && (
                                     <>
-                                        <Separator className="my-6 bg-gray-100 dark:bg-gray-700" />
+                                        <Separator className="my-6 bg-gray-100 dark:bg-[#0a0a0a]" />
 
                                         {/* Monthly Changes */}
                                         <div className="px-4">
@@ -1154,7 +1154,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                             />
                                         </div>
 
-                                        <Separator className="my-6 bg-gray-100 dark:bg-gray-700" />
+                                        <Separator className="my-6 bg-gray-100 dark:bg-[#0a0a0a]" />
 
                                         {/* YTD Changes */}
                                         <div className="px-4 pb-4">
@@ -1599,11 +1599,11 @@ export default function PnLReport() {
 
         return (
             <div key={line.code}>
-                <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-1.5 px-2 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-gray-800/50 transition-colors ${isChild ? "pl-6 bg-gray-50 dark:bg-gray-900/30" : "bg-gray-100 dark:bg-gray-900/60"}`}>
+                <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-1.5 px-2 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-black/50 transition-colors ${isChild ? "pl-6 bg-gray-50 dark:bg-black/30" : "bg-gray-100 dark:bg-black/60"}`}>
                     {/* Account name */}
                     <div className="flex items-center gap-1 min-w-0">
                         {hasChildren ? (
-                            <button onClick={() => toggleSection(line.code)} className="p-0.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded shrink-0">
+                            <button onClick={() => toggleSection(line.code)} className="p-0.5 hover:bg-gray-100 dark:hover:bg-[#111111] rounded shrink-0">
                                 {isExpanded ? <ChevronDown className="h-3 w-3 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-500 dark:text-gray-400" />}
                             </button>
                         ) : (
@@ -1636,7 +1636,7 @@ export default function PnLReport() {
                     })}
 
                     {/* Total */}
-                    <div className="text-right bg-gray-100 dark:bg-gray-800/50 px-1 rounded">
+                    <div className="text-right bg-gray-100 dark:bg-black/50 px-1 rounded">
                         <span className={`text-[10px] font-mono font-bold ${line.type === "revenue" ? "text-emerald-300" : "text-red-300"}`}>
                             {formatCompact(total)}
                         </span>
@@ -1650,7 +1650,7 @@ export default function PnLReport() {
     // Subtotal row for monthly view
     const renderMonthlySubtotal = (label: string, monthlyData: typeof monthlyTotals.months, field: keyof typeof monthlyTotals.months[0], _ytd: number, total: number, isProfit = false) => {
         return (
-            <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-100 dark:bg-gray-800/60 border-y border-gray-200 dark:border-gray-700"}`}>
+            <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-100 dark:bg-black/60 border-y border-gray-200 dark:border-gray-700"}`}>
                 <div className="flex items-center gap-2">
                     <div className="w-3" />
                     <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-gray-900 dark:text-white"} text-xs`}>{label}</span>
@@ -1674,18 +1674,18 @@ export default function PnLReport() {
 
     if (loading) {
         return (
-            <div className="min-h-screen bg-white dark:bg-gray-950 p-6">
+            <div className="min-h-screen bg-white dark:bg-black p-6">
                 <div className="animate-pulse space-y-4">
-                    <div className="h-16 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
-                    <div className="grid grid-cols-5 gap-4">{[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>)}</div>
-                    <div className="h-96 bg-gray-100 dark:bg-gray-800 rounded-lg"></div>
+                    <div className="h-16 bg-gray-100 dark:bg-black rounded-lg"></div>
+                    <div className="grid grid-cols-5 gap-4">{[...Array(5)].map((_, i) => <div key={i} className="h-32 bg-gray-100 dark:bg-black rounded-lg"></div>)}</div>
+                    <div className="h-96 bg-gray-100 dark:bg-black rounded-lg"></div>
                 </div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-950">
+        <div className="min-h-screen bg-white dark:bg-black">
             {/* Premium Dark Header */}
             <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5 sticky top-0 z-20">
                 <div className="flex items-center justify-between">
@@ -1703,21 +1703,21 @@ export default function PnLReport() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-black/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
                             {[2024, 2025, 2026].map((year) => (
                                 <button
                                     key={year}
                                     onClick={() => setSelectedYear(year)}
-                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700"}`}
+                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
                                 >
                                     {year}
                                 </button>
                             ))}
                         </div>
-                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
                             <RefreshCw className="h-4 w-4 mr-2" />Sync
                         </Button>
-                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800">
+                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
                             <FileSpreadsheet className="h-4 w-4 mr-2" />Excel
                         </Button>
                         <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
@@ -1854,7 +1854,7 @@ export default function PnLReport() {
                 </div>
 
                 {/* Monthly P&L Table */}
-                <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 overflow-hidden">
+                <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-800 overflow-hidden">
                     <CardHeader className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800/80 py-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
@@ -1887,7 +1887,7 @@ export default function PnLReport() {
                     </CardHeader>
 
                     {/* Table Header */}
-                    <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 bg-gray-200 dark:bg-gray-800/80 border-b border-gray-200 dark:border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-[73px] z-10">
+                    <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 bg-gray-200 dark:bg-black/80 border-b border-gray-200 dark:border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-[73px] z-10">
                         <div>Account</div>
                         {MONTHS.map((m, i) => (
                             <div key={m} className={`text-right ${i === lastClosedMonth ? "text-emerald-400" : ""} ${i > lastClosedMonth ? "opacity-40" : ""}`}>
@@ -1953,7 +1953,7 @@ export default function PnLReport() {
                 </Card>
 
                 {/* Budget vs Actual Comparison */}
-                <Card className="bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800">
+                <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-800">
                     <CardHeader className="border-b border-gray-200 dark:border-gray-800 py-4">
                         <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2 text-base">
                             <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />

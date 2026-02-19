@@ -79,7 +79,7 @@ export function BoardColumn({
         <div
             ref={setSortableRef}
             style={style}
-            className={`flex-shrink-0 w-[300px] flex flex-col bg-gray-50 dark:bg-[#252628] rounded-xl border border-gray-200 dark:border-gray-800 max-h-full ${isDragging ? 'ring-1 ring-blue-500/50' : ''
+            className={`flex-shrink-0 w-[300px] flex flex-col bg-gray-50 dark:bg-[#0a0a0a] rounded-xl border border-gray-200 dark:border-gray-800 max-h-full ${isDragging ? 'ring-1 ring-blue-500/50' : ''
                 }`}
         >
             {/* Column Header */}
@@ -122,7 +122,7 @@ export function BoardColumn({
                 )}
 
                 {/* Task count */}
-                <span className="text-xs text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                <span className="text-xs text-gray-500 bg-gray-100 dark:bg-black px-1.5 py-0.5 rounded">
                     {tasks.length}
                 </span>
 
@@ -137,7 +137,7 @@ export function BoardColumn({
                     {showMenu && (
                         <>
                             <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
-                            <div className="absolute right-0 top-full mt-1 z-20 bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px]">
+                            <div className="absolute right-0 top-full mt-1 z-20 bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl py-1 min-w-[140px]">
                                 <button
                                     className="w-full text-left px-3 py-1.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-white/10"
                                     onClick={() => {
@@ -188,7 +188,7 @@ export function BoardColumn({
                             value={newTaskTitle}
                             onChange={(e) => setNewTaskTitle(e.target.value)}
                             placeholder="Task title..."
-                            className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+                            className="w-full bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
                             rows={2}
                             autoFocus
                             onKeyDown={(e) => {

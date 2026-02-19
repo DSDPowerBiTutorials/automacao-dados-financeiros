@@ -1435,7 +1435,7 @@ ${result.recommendations.join('\n')}
 
             {/* Order Details Dialog */}
             <Dialog open={!!orderDetailsDialog} onOpenChange={(open) => !open && setOrderDetailsDialog(null)}>
-                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto !bg-white dark:!bg-slate-900">
+                <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto !bg-white dark:!bg-black">
                     <DialogHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-slate-800 dark:to-slate-700 p-4 rounded-t-lg -mt-6 -mx-6 mb-4">
                         <DialogTitle className="text-xl font-bold text-blue-900 dark:text-blue-100">
                             Order Details
@@ -1446,9 +1446,9 @@ ${result.recommendations.join('\n')}
                     </DialogHeader>
 
                     {orderDetailsDialog && (
-                        <div className="space-y-6 bg-white dark:bg-slate-900">
+                        <div className="space-y-6 bg-white dark:bg-black">
                             {/* Order IDs Section */}
-                            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                            <div className="bg-gray-50 dark:bg-black p-4 rounded-lg">
                                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                                     <Key className="w-4 h-4" />
                                     Order Identification
@@ -1482,7 +1482,7 @@ ${result.recommendations.join('\n')}
                             </div>
 
                             {/* Status & Dates Section */}
-                            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                            <div className="bg-gray-50 dark:bg-black p-4 rounded-lg">
                                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                                     <Calendar className="w-4 h-4" />
                                     Status & Timeline
@@ -1519,7 +1519,7 @@ ${result.recommendations.join('\n')}
                             </div>
 
                             {/* Customer Section */}
-                            <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                            <div className="bg-gray-50 dark:bg-black p-4 rounded-lg">
                                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                                     <User className="w-4 h-4" />
                                     Customer Information
@@ -1570,13 +1570,13 @@ ${result.recommendations.join('\n')}
 
                             {/* Products Section (if available) */}
                             {(orderDetailsDialog.custom_data?.product_name || orderDetailsDialog.description) && (
-                                <div className="bg-gray-50 dark:bg-slate-800 p-4 rounded-lg">
+                                <div className="bg-gray-50 dark:bg-black p-4 rounded-lg">
                                     <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
                                         <Package className="w-4 h-4" />
                                         Products
                                     </h3>
                                     <div className="space-y-3">
-                                        <div className="bg-white dark:bg-slate-700 p-3 rounded border border-gray-200 dark:border-slate-600">
+                                        <div className="bg-white dark:bg-[#0a0a0a] p-3 rounded border border-gray-200 dark:border-slate-600">
                                             <p className="font-medium text-gray-900 dark:text-gray-100 mb-2">
                                                 {orderDetailsDialog.custom_data?.product_name || orderDetailsDialog.description || 'N/A'}
                                             </p>

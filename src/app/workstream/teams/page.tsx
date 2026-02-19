@@ -70,7 +70,7 @@ export default function TeamsPage() {
     }, []);
 
     return (
-        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-5xl mx-auto px-6 py-8">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-8">
@@ -105,7 +105,7 @@ export default function TeamsPage() {
                 ) : (
                     <div className="space-y-6">
                         {teams.map((team) => (
-                            <div key={team.type} className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                            <div key={team.type} className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                                 {/* Team header */}
                                 <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
@@ -137,7 +137,7 @@ export default function TeamsPage() {
                                                 </div>
                                             ))}
                                             {team.members.length > 6 && (
-                                                <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-[10px] text-gray-700 dark:text-gray-300 font-medium border-2 border-[#2a2b2d]">
+                                                <div className="w-7 h-7 rounded-full bg-gray-100 dark:bg-[#0a0a0a] flex items-center justify-center text-[10px] text-gray-700 dark:text-gray-300 font-medium border-2 border-[#2a2b2d]">
                                                     +{team.members.length - 6}
                                                 </div>
                                             )}
@@ -168,7 +168,7 @@ export default function TeamsPage() {
                         ))}
 
                         {/* All Members section */}
-                        <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                        <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                             <div className="px-5 py-4 border-b border-gray-200 dark:border-gray-800">
                                 <h3 className="text-sm font-semibold text-gray-900 dark:text-white">All Members</h3>
                                 <p className="text-xs text-gray-500 mt-0.5">{allUsers.length} people in your organization</p>
@@ -181,7 +181,7 @@ export default function TeamsPage() {
                                             <p className="text-sm text-gray-900 dark:text-white truncate">{user.name}</p>
                                             <p className="text-xs text-gray-500 truncate">{user.email}</p>
                                         </div>
-                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400">
+                                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-gray-100 dark:bg-[#0a0a0a] text-gray-500 dark:text-gray-400">
                                             {user.role}
                                         </span>
                                     </div>

@@ -1235,7 +1235,7 @@ export default function BraintreeGBPPage() {
                         variant={columnSelectorOpen ? "default" : "outline"}
                         size="sm"
                         onClick={openColumnSelector}
-                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-gray-50 dark:bg-[#243140] hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white" : ""}`}
+                        className={`relative overflow-visible ${columnSelectorOpen ? "bg-gray-50 dark:bg-black hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white" : ""}`}
                       >
                         <Columns3 className="h-4 w-4 mr-2" />
                         Select Columns
@@ -1252,14 +1252,14 @@ export default function BraintreeGBPPage() {
                             >
                               <X className="h-3 w-3" />
                             </span>
-                            <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-[#243140] text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
+                            <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
                               {visibleColumns.size}/{TOTAL_COLUMNS}
                             </span>
                           </>
                         )}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white dark:bg-slate-900">
+                    <DialogContent className="bg-white dark:bg-black">
                       <DialogHeader>
                         <DialogTitle>Select Visible Columns</DialogTitle>
                       </DialogHeader>
@@ -1559,7 +1559,7 @@ export default function BraintreeGBPPage() {
 
                         return (
                           <div className="space-y-3">
-                            <div className="flex justify-between items-center p-3 bg-white dark:bg-slate-800 rounded-lg">
+                            <div className="flex justify-between items-center p-3 bg-white dark:bg-black rounded-lg">
                               <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
                                 Transactions:
                               </span>
@@ -1622,7 +1622,7 @@ export default function BraintreeGBPPage() {
               <div className="overflow-x-auto">
                 <table className="w-full min-w-max table-auto">
                   <thead>
-                    <tr className="border-b-2 border-[#1a2b4a] bg-gray-50 dark:bg-slate-800">
+                    <tr className="border-b-2 border-[#1a2b4a] bg-gray-50 dark:bg-black">
                       {/* Coluna de Grupo de Payout */}
                       {visibleColumns.has("disbursement_id") && (
                         <th className="px-4 py-3 text-left text-sm font-semibold text-[#1a2b4a] dark:text-white cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-700"
@@ -2127,7 +2127,7 @@ export default function BraintreeGBPPage() {
                                   {row.reconciliationType === "automatic" ? (
                                     <div className="relative group">
                                       <Zap className="h-5 w-5 text-green-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 shadow-lg min-w-[220px]">
                                         <div className="font-bold mb-2 text-green-400">⚡ Auto-Reconciled</div>
                                         {row.bank_match_date && (
                                           <div className="flex items-center gap-1 mb-1">
@@ -2162,7 +2162,7 @@ export default function BraintreeGBPPage() {
                                   ) : (
                                     <div className="relative group">
                                       <User className="h-5 w-5 text-blue-600 mx-auto" />
-                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
+                                      <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-xs rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">
                                         👤 Manual reconciliation
                                       </div>
                                     </div>
@@ -2403,7 +2403,7 @@ export default function BraintreeGBPPage() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-slate-800 rounded-lg border border-gray-200 dark:border-slate-700">
+                <div className="flex items-center justify-between mt-6 p-4 bg-gray-50 dark:bg-black rounded-lg border border-gray-200 dark:border-slate-700">
                   <div className="text-sm text-gray-600 dark:text-gray-300">
                     Showing {startIndex + 1} to {Math.min(endIndex, processedRows.length)} of {processedRows.length} results
                   </div>
@@ -2455,7 +2455,7 @@ export default function BraintreeGBPPage() {
 
       {/* Split Screen Panel */}
       {splitScreenUrl && (
-        <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-slate-900 shadow-2xl z-40 border-l-4 border-blue-500">
+        <div className="fixed top-0 right-0 w-1/2 h-screen bg-white dark:bg-black shadow-2xl z-40 border-l-4 border-blue-500">
           <div className="h-full flex flex-col">
             <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white p-4 flex items-center justify-between">
               <h2 className="text-lg font-bold">Bank Statement Details</h2>

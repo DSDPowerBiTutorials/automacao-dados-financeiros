@@ -51,7 +51,7 @@ export function BankBalancesCards({ data }: BankBalancesCardsProps) {
                         return (
                             <div
                                 key={item.source}
-                                className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-gray-800/40"
+                                className="flex items-center gap-3 p-3 rounded-lg bg-gray-50 dark:bg-black/40"
                             >
                                 <div
                                     className={`w-9 h-9 rounded-lg flex items-center justify-center ${style.bg}`}

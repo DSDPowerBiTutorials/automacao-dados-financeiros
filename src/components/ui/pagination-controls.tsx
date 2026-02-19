@@ -54,7 +54,7 @@ export function PaginationControls({
 }: PaginationControlsProps) {
     if (totalPages <= 1) {
         return (
-            <div className={`flex items-center justify-between py-3 px-4 bg-gray-100 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 ${className}`}>
+            <div className={`flex items-center justify-between py-3 px-4 bg-gray-100 dark:bg-black/50 border-t border-gray-200 dark:border-gray-700 ${className}`}>
                 <span className="text-sm text-gray-500 dark:text-gray-400">
                     Mostrando {pageInfo.total} {pageInfo.total === 1 ? "registro" : "registros"}
                 </span>
@@ -63,7 +63,7 @@ export function PaginationControls({
     }
 
     return (
-        <div className={`flex items-center justify-between py-3 px-4 bg-gray-100 dark:bg-gray-800/50 border-t border-gray-200 dark:border-gray-700 ${className}`}>
+        <div className={`flex items-center justify-between py-3 px-4 bg-gray-100 dark:bg-black/50 border-t border-gray-200 dark:border-gray-700 ${className}`}>
             {/* Info de registros */}
             <span className="text-sm text-gray-500 dark:text-gray-400">
                 Mostrando <span className="font-medium text-gray-600 dark:text-gray-200">{pageInfo.start}</span>

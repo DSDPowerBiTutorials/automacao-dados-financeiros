@@ -8,7 +8,7 @@ export default function WorkstreamLayout({ children }: { children: React.ReactNo
     const [sidebarOpen, setSidebarOpen] = useState(false);
 
     return (
-        <div className="h-screen flex flex-col bg-white dark:bg-[#1e1f21] overflow-hidden">
+        <div className="h-screen flex flex-col bg-white dark:bg-black overflow-hidden">
             {/* Header */}
             <WorkstreamHeader
                 onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}

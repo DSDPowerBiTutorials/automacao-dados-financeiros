@@ -92,7 +92,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
 
     return (
         <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
-            <DialogContent className="max-w-none max-h-[90vh] bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white overflow-hidden flex flex-col" style={{ width: '80vw' }}>
+            <DialogContent className="max-w-none max-h-[90vh] bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white overflow-hidden flex flex-col" style={{ width: '80vw' }}>
                 <DialogHeader className="flex-shrink-0">
                     <div className="flex items-center justify-between">
                         <DialogTitle className="text-xl font-bold text-emerald-400">
@@ -118,7 +118,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                         </div>
                     ) : (
                         <table className="w-full text-sm">
-                            <thead className="bg-gray-200 dark:bg-gray-800/80 sticky top-0">
+                            <thead className="bg-gray-200 dark:bg-black/80 sticky top-0">
                                 <tr>
                                     <th
                                         className="text-left px-3 py-2 text-gray-500 dark:text-gray-400 font-medium cursor-pointer hover:text-gray-900 dark:text-white"
@@ -145,7 +145,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                                 {sortedTransactions.map((t, idx) => (
                                     <tr
                                         key={t.id}
-                                        className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-gray-800/50 ${idx % 2 === 0 ? "bg-gray-100 dark:bg-gray-900/50" : ""}`}
+                                        className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-black/50 ${idx % 2 === 0 ? "bg-gray-100 dark:bg-black/50" : ""}`}
                                     >
                                         <td className="px-3 py-2 text-gray-700 dark:text-gray-300 whitespace-nowrap">{formatDate(t.date)}</td>
                                         <td className="px-3 py-2 text-gray-600 dark:text-gray-200 max-w-xs truncate" title={t.description}>
@@ -161,7 +161,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                                     </tr>
                                 ))}
                             </tbody>
-                            <tfoot className="bg-gray-100 dark:bg-gray-800/60 font-semibold">
+                            <tfoot className="bg-gray-100 dark:bg-black/60 font-semibold">
                                 <tr>
                                     <td colSpan={4} className="px-3 py-2 text-gray-700 dark:text-gray-300">
                                         Total da página
@@ -187,7 +187,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                                 size="sm"
                                 onClick={() => fetchData(page - 1)}
                                 disabled={page <= 1 || loading}
-                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                             >
                                 <ChevronLeft className="h-4 w-4" />
                             </Button>
@@ -196,7 +196,7 @@ export function DrillDownModal({ open, onClose, faCode, faName, year, month }: D
                                 size="sm"
                                 onClick={() => fetchData(page + 1)}
                                 disabled={page >= totalPages || loading}
-                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                             >
                                 <ChevronRight className="h-4 w-4" />
                             </Button>

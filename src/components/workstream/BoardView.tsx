@@ -188,12 +188,12 @@ export function BoardView({
 
         {/* Add column */}
         {isAddingSection ? (
-          <div className="flex-shrink-0 w-[300px] bg-gray-50 dark:bg-[#252628] rounded-xl border border-gray-200 dark:border-gray-800 p-3">
+          <div className="flex-shrink-0 w-[300px] bg-gray-50 dark:bg-[#0a0a0a] rounded-xl border border-gray-200 dark:border-gray-800 p-3">
             <input
               value={newSectionTitle}
               onChange={(e) => setNewSectionTitle(e.target.value)}
               placeholder="Section name..."
-              className="w-full bg-white dark:bg-[#1e1f21] border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full bg-white dark:bg-black border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white placeholder-gray-500 focus:outline-none focus:border-blue-500"
               autoFocus
               onKeyDown={(e) => {
                 if (e.key === 'Enter') handleAddSection();

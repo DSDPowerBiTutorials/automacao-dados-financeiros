@@ -314,13 +314,13 @@ export default function BankinterPage() {
   }
 
   return (
-    <div className="min-h-full bg-white dark:bg-[#1e1f21]">
+    <div className="min-h-full bg-white dark:bg-black">
       {/* Dark Header */}
-      <header className="bg-white dark:bg-[#1e1f21] border-b border-gray-200 dark:border-gray-800/50 px-6 py-4">
+      <header className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800/50 px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link href="/">
-              <Button variant="ghost" size="sm" className="gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+              <Button variant="ghost" size="sm" className="gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
@@ -338,11 +338,11 @@ export default function BankinterPage() {
           <div className="flex gap-2">
             <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
             <label htmlFor="file-upload-bankinter">
-              <Button variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:text-white" asChild>
+              <Button variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] hover:text-gray-900 dark:text-white" asChild>
                 <span><Upload className="h-4 w-4" /> Upload</span>
               </Button>
             </label>
-            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 hover:text-gray-900 dark:text-white">
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] hover:text-gray-900 dark:text-white">
               <Download className="h-4 w-4" /> Download
             </Button>
             <Button onClick={handleDeleteAll} variant="outline" size="sm" className="gap-2 border-red-800 text-red-400 hover:bg-red-900/50" disabled={isDeleting || rows.length === 0}>
@@ -353,7 +353,7 @@ export default function BankinterPage() {
       </header>
 
       {/* Stats Bar */}
-      <div className="bg-gray-100 dark:bg-[#252627] border-b border-gray-200 dark:border-gray-700 px-6 py-3">
+      <div className="bg-gray-100 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
             <span className="text-gray-500 dark:text-gray-400">Total:</span>
@@ -370,7 +370,7 @@ export default function BankinterPage() {
       <div className="overflow-x-auto">
         <div className="min-w-[800px]">
           {/* Table Header */}
-          <div className="flex items-center bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700 px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
+          <div className="flex items-center bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 px-4 py-2 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">
             <div className="w-[80px]">ID</div>
             <div className="w-[90px]">Date</div>
             <div className="flex-1">Description</div>
@@ -388,7 +388,7 @@ export default function BankinterPage() {
               <div className="w-[100px] text-right text-[#4fc3f7] font-medium">£{row.amount.toFixed(2)}</div>
               <div className="w-[100px] text-right text-gray-700 dark:text-gray-300">£{row.saldo.toFixed(2)}</div>
               <div className="w-[80px] flex justify-center gap-1">
-                <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700">
+                <Button size="sm" variant="ghost" onClick={() => startEditing(row)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                   <Edit2 className="h-3 w-3" />
                 </Button>
                 <Button size="sm" variant="ghost" onClick={() => handleDeleteRow(row.id)} className="h-6 w-6 p-0 text-gray-500 dark:text-gray-400 hover:text-red-400 hover:bg-red-900/30" disabled={isDeleting}>

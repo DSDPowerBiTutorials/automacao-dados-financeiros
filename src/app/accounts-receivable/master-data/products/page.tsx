@@ -488,14 +488,14 @@ export default function ProductsPage() {
 
     if (loading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#1e1f21]">
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
                 <Loader2 className="h-8 w-8 animate-spin text-gray-900 dark:text-white" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-white dark:bg-[#1e1f21] text-gray-900 dark:text-white">
+        <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
             {/* Header */}
             <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                 <div className="flex items-center justify-between mb-4">
@@ -514,7 +514,7 @@ export default function ProductsPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
                             onClick={() => openSidePanel(null)}
                         >
                             <Plus className="h-4 w-4 mr-1" />
@@ -523,7 +523,7 @@ export default function ProductsPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
                             onClick={async () => {
                                 setSyncing(true);
                                 try {
@@ -556,7 +556,7 @@ export default function ProductsPage() {
                         <Button
                             variant="outline"
                             size="sm"
-                            className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${selectedForMerge.length >= 2 ? "text-blue-400" : "text-gray-500"
+                            className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111] ${selectedForMerge.length >= 2 ? "text-blue-400" : "text-gray-500"
                                 }`}
                             onClick={() => {
                                 if (selectedForMerge.length >= 2) {
@@ -599,7 +599,7 @@ export default function ProductsPage() {
                             variant="outline"
                             size="sm"
                             onClick={() => setShowInactive(!showInactive)}
-                            className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 ${showInactive ? "text-yellow-400" : "text-gray-900 dark:text-white"
+                            className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111] ${showInactive ? "text-yellow-400" : "text-gray-900 dark:text-white"
                                 }`}
                         >
                             <CheckCircle className="h-4 w-4 mr-1" />
@@ -610,7 +610,7 @@ export default function ProductsPage() {
             </div>
 
             {/* Table Header */}
-            <div className="sticky top-0 z-[5] bg-gray-50 dark:bg-[#2a2b2d] border-b border-gray-200 dark:border-gray-700">
+            <div className="sticky top-0 z-[5] bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center gap-1 px-4 py-2 text-[11px] text-gray-500 dark:text-gray-400 font-medium uppercase">
                     <div className="w-[30px] flex-shrink-0"></div>
                     <div className="w-[30px] flex-shrink-0"></div>
@@ -636,7 +636,7 @@ export default function ProductsPage() {
                         <div key={product.id}>
                             {/* Main Product Row */}
                             <div
-                                className={`flex items-center gap-1 px-4 py-2 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-gray-800/50 ${selectedForMerge.find((p) => p.id === product.id)
+                                className={`flex items-center gap-1 px-4 py-2 border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-black/50 ${selectedForMerge.find((p) => p.id === product.id)
                                     ? "bg-blue-900/30"
                                     : ""
                                     }`}
@@ -645,7 +645,7 @@ export default function ProductsPage() {
                                 <div className="w-[30px] flex-shrink-0">
                                     <input
                                         type="checkbox"
-                                        className="rounded bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600"
+                                        className="rounded bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600"
                                         checked={!!selectedForMerge.find((p) => p.id === product.id)}
                                         onChange={() => toggleMergeSelection(product)}
                                     />
@@ -655,7 +655,7 @@ export default function ProductsPage() {
                                 <div className="w-[30px] flex-shrink-0">
                                     <button
                                         onClick={() => openSidePanel(product)}
-                                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
+                                        className="p-1 rounded hover:bg-gray-100 dark:hover:bg-[#111111] text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white"
                                     >
                                         <Edit className="h-3.5 w-3.5" />
                                     </button>
@@ -666,7 +666,7 @@ export default function ProductsPage() {
                                     {hasChildren && (
                                         <button
                                             onClick={() => toggleProductExpansion(product.id)}
-                                            className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+                                            className="p-0.5 rounded hover:bg-gray-100 dark:hover:bg-[#111111]"
                                         >
                                             {isExpanded ? (
                                                 <ChevronDown className="h-3 w-3 text-gray-500 dark:text-gray-400" />
@@ -703,7 +703,7 @@ export default function ProductsPage() {
                                         value={product.category || "none"}
                                         onValueChange={(v) => updateProductCategory(product.id, v === "none" ? null : v)}
                                     >
-                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800">
+                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
                                         <SelectContent className="z-[9999] bg-white border-gray-300 max-h-[300px]">
@@ -723,7 +723,7 @@ export default function ProductsPage() {
                                         value={product.financial_account_code || "none"}
                                         onValueChange={(v) => updateProductFinancialAccount(product.id, v === "none" ? null : v)}
                                     >
-                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800">
+                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
                                         <SelectContent className="z-[9999] bg-white border-gray-300">
@@ -743,7 +743,7 @@ export default function ProductsPage() {
                                         value={product.departmental_account_group_id || "none"}
                                         onValueChange={(v) => updateProductDepartmentalGroup(product.id, v === "none" ? null : v)}
                                     >
-                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800">
+                                        <SelectTrigger className="h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
                                             <SelectValue placeholder="Select..." />
                                         </SelectTrigger>
                                         <SelectContent className="z-[9999] bg-white border-gray-300">
@@ -764,7 +764,7 @@ export default function ProductsPage() {
                                         onValueChange={(v) => updateProductDepartmentalSubgroup(product.id, v === "none" ? null : v)}
                                         disabled={!product.departmental_account_group_id}
                                     >
-                                        <SelectTrigger className={`h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-800 ${!product.departmental_account_group_id ? "opacity-50" : ""}`}>
+                                        <SelectTrigger className={`h-7 text-[10px] bg-transparent border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111] ${!product.departmental_account_group_id ? "opacity-50" : ""}`}>
                                             <SelectValue placeholder={product.departmental_account_group_id ? "Select..." : "—"} />
                                         </SelectTrigger>
                                         <SelectContent className="z-[9999] bg-white border-gray-300">
@@ -804,11 +804,11 @@ export default function ProductsPage() {
 
                             {/* Merged Children Rows */}
                             {hasChildren && isExpanded && (
-                                <div className="bg-gray-50 dark:bg-gray-900/30">
+                                <div className="bg-gray-50 dark:bg-black/30">
                                     {children.map((child) => (
                                         <div
                                             key={child.id}
-                                            className="flex items-center gap-1 px-4 py-1.5 border-b border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-gray-800/30"
+                                            className="flex items-center gap-1 px-4 py-1.5 border-b border-gray-200 dark:border-gray-800/50 hover:bg-gray-50 dark:bg-black/30"
                                         >
                                             <div className="w-[30px] flex-shrink-0"></div>
                                             <div className="w-[30px] flex-shrink-0"></div>
@@ -836,7 +836,7 @@ export default function ProductsPage() {
                                             <div className="w-[150px] flex-shrink-0"></div>
                                             <div className="w-[60px] flex-shrink-0"></div>
                                             <div className="w-[60px] flex-shrink-0">
-                                                <span className="text-[9px] px-1 py-0.5 rounded bg-gray-100 dark:bg-gray-800 text-gray-500">
+                                                <span className="text-[9px] px-1 py-0.5 rounded bg-gray-100 dark:bg-black text-gray-500">
                                                     Merged
                                                 </span>
                                             </div>
@@ -868,7 +868,7 @@ export default function ProductsPage() {
 
             {/* Merge Dialog */}
             <Dialog open={isMergeDialogOpen} onOpenChange={setIsMergeDialogOpen}>
-                <DialogContent className="max-w-none max-h-[90vh] bg-gray-50 dark:bg-[#2a2b2d] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" style={{ width: '80vw' }}>
+                <DialogContent className="max-w-none max-h-[90vh] bg-gray-50 dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white" style={{ width: '80vw' }}>
                     <DialogHeader>
                         <DialogTitle className="flex items-center gap-2 text-gray-900 dark:text-white">
                             <Merge className="h-5 w-5" />
@@ -934,7 +934,7 @@ export default function ProductsPage() {
                                 setSelectedForMerge([]);
                                 setMergeTarget("");
                             }}
-                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-gray-700"
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
                         >
                             Cancel
                         </Button>

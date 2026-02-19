@@ -228,7 +228,7 @@ export default function MyTasksPage() {
     const firstName = profile?.name?.split(' ')[0] || 'User';
 
     return (
-        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-4xl mx-auto px-6 py-8">
                 {/* Header */}
                 <div className="mb-6">
@@ -273,7 +273,7 @@ export default function MyTasksPage() {
                         </p>
                     </div>
                 ) : (
-                    <div className="bg-gray-50 dark:bg-[#2a2b2d] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
+                    <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-800 overflow-hidden">
                         {activeTab === 'completed' ? (
                             tasks.map(task => <TaskRow key={task.id} task={task} />)
                         ) : (

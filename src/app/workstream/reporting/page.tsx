@@ -92,7 +92,7 @@ export default function ReportingPage() {
     ];
 
     return (
-        <div className="h-full overflow-y-auto bg-white dark:bg-[#1e1f21]">
+        <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-5xl mx-auto px-6 py-8">
                 <div className="mb-8">
                     <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
@@ -113,7 +113,7 @@ export default function ReportingPage() {
                         {/* Summary cards */}
                         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
                             {summaryCards.map((card) => (
-                                <div key={card.label} className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl p-4">
+                                <div key={card.label} className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl p-4">
                                     <div className={`w-10 h-10 rounded-lg ${card.bg} flex items-center justify-center mb-3`}>
                                         <card.icon className={`h-5 w-5 ${card.color}`} />
                                     </div>
@@ -124,12 +124,12 @@ export default function ReportingPage() {
                         </div>
 
                         {/* Completion rate bar */}
-                        <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-8">
+                        <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl p-6 mb-8">
                             <div className="flex items-center justify-between mb-3">
                                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Overall Completion Rate</h3>
                                 <span className="text-2xl font-bold text-gray-900 dark:text-white">{completionRate}%</span>
                             </div>
-                            <div className="w-full h-3 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                            <div className="w-full h-3 bg-gray-100 dark:bg-black rounded-full overflow-hidden">
                                 <div
                                     className="h-full bg-gradient-to-r from-blue-500 to-green-500 rounded-full transition-all duration-500"
                                     style={{ width: `${completionRate}%` }}
@@ -138,7 +138,7 @@ export default function ReportingPage() {
                         </div>
 
                         {/* Per-project breakdown */}
-                        <div className="bg-gray-50 dark:bg-[#2a2b2d] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
+                        <div className="bg-gray-50 dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-800 rounded-xl overflow-hidden">
                             <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-800">
                                 <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">Project Breakdown</h3>
                             </div>
@@ -166,7 +166,7 @@ export default function ReportingPage() {
                                                         <span className="text-red-400">{stat.overdue_tasks} overdue</span>
                                                     )}
                                                 </div>
-                                                <div className="w-24 h-2 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
+                                                <div className="w-24 h-2 bg-gray-100 dark:bg-black rounded-full overflow-hidden">
                                                     <div
                                                         className="h-full bg-green-500 rounded-full"
                                                         style={{ width: `${rate}%` }}
