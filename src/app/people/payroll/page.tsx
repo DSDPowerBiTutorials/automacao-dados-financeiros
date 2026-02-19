@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useMemo, useRef } from "react";
+import React, { useState, useMemo, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -12,151 +12,165 @@ import {
     DollarSign,
     Calendar,
     TrendingUp,
+    TrendingDown,
     ChevronDown,
     ChevronRight,
-    UserCheck,
-    Briefcase,
     Building2,
     FileSpreadsheet,
+    Loader2,
+    AlertCircle,
+    CheckCircle2,
+    Briefcase,
+    Euro,
+    Shield,
+    Percent,
+    X,
 } from "lucide-react";
 
 // ════════════════════════════════════════════════════════
-// Types & Mock Data
+// Types
 // ════════════════════════════════════════════════════════
 
-interface Employee {
-    id: string;
-    name: string;
-    role: string;
-    department: string;
-    location: string;
-    startDate: string;
-    status: "active" | "inactive";
-    payroll: Record<string, number[]>; // year -> 12 monthly values
+interface PayrollConcept {
+    code: number;
+    description: string;
+    amount: number;
+    isDeduction: boolean;
 }
 
-const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+interface PayrollEmployee {
+    employeeId: string;
+    lastName1: string;
+    lastName2: string;
+    firstName: string;
+    fullName: string;
+    department: string;
+    departmentCode: string;
+    concepts: PayrollConcept[];
+    totalBruto: number;
+    totalDeducciones: number;
+    totalLiquido: number;
+    ssEmpresa: number;
+    ssTrabajador: number;
+    costeEmpresa: number;
+    irpf: number;
+    irpfPercent: number;
+    diasCotizados: number;
+}
 
-const MOCK_EMPLOYEES: Employee[] = [
-    {
-        id: "EMP-001", name: "María García López", role: "Senior Developer", department: "Engineering", location: "Madrid", startDate: "2021-03-15", status: "active",
-        payroll: {
-            "2025": [3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 3200, 6400],
-            "2026": [3400, 3400, 3400, 3400, 3400, 3400, 3400, 3400, 3400, 3400, 3400, 6800],
-        }
-    },
-    {
-        id: "EMP-002", name: "Carlos Fernández Ruiz", role: "Product Manager", department: "Product", location: "Barcelona", startDate: "2020-06-01", status: "active",
-        payroll: {
-            "2025": [3800, 3800, 3800, 3800, 3800, 3800, 3800, 3800, 3800, 3800, 3800, 7600],
-            "2026": [4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 8000],
-        }
-    },
-    {
-        id: "EMP-003", name: "Ana Martínez Sánchez", role: "UX Designer", department: "Design", location: "Madrid", startDate: "2022-01-10", status: "active",
-        payroll: {
-            "2025": [2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 5600],
-            "2026": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 6000],
-        }
-    },
-    {
-        id: "EMP-004", name: "David López Herrera", role: "Backend Developer", department: "Engineering", location: "Valencia", startDate: "2023-04-20", status: "active",
-        payroll: {
-            "2025": [2900, 2900, 2900, 2900, 2900, 2900, 2900, 2900, 2900, 2900, 2900, 5800],
-            "2026": [3100, 3100, 3100, 3100, 3100, 3100, 3100, 3100, 3100, 3100, 3100, 6200],
-        }
-    },
-    {
-        id: "EMP-005", name: "Laura Torres Vega", role: "Finance Manager", department: "Finance", location: "Madrid", startDate: "2019-09-01", status: "active",
-        payroll: {
-            "2025": [4200, 4200, 4200, 4200, 4200, 4200, 4200, 4200, 4200, 4200, 4200, 8400],
-            "2026": [4500, 4500, 4500, 4500, 4500, 4500, 4500, 4500, 4500, 4500, 4500, 9000],
-        }
-    },
-    {
-        id: "EMP-006", name: "Javier Romero Gil", role: "DevOps Engineer", department: "Engineering", location: "Remote", startDate: "2022-07-15", status: "active",
-        payroll: {
-            "2025": [3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 3500, 7000],
-            "2026": [3700, 3700, 3700, 3700, 3700, 3700, 3700, 3700, 3700, 3700, 3700, 7400],
-        }
-    },
-    {
-        id: "EMP-007", name: "Isabel Navarro Ruiz", role: "Marketing Lead", department: "Marketing", location: "Barcelona", startDate: "2021-11-01", status: "active",
-        payroll: {
-            "2025": [3100, 3100, 3100, 3100, 3100, 3100, 3100, 3100, 3100, 3100, 3100, 6200],
-            "2026": [3300, 3300, 3300, 3300, 3300, 3300, 3300, 3300, 3300, 3300, 3300, 6600],
-        }
-    },
-    {
-        id: "EMP-008", name: "Miguel Ángel Santos", role: "QA Engineer", department: "Engineering", location: "Madrid", startDate: "2023-02-01", status: "active",
-        payroll: {
-            "2025": [2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600, 2600, 5200],
-            "2026": [2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 5600],
-        }
-    },
-    {
-        id: "EMP-009", name: "Patricia Díaz Moreno", role: "HR Manager", department: "People", location: "Madrid", startDate: "2020-01-15", status: "active",
-        payroll: {
-            "2025": [3600, 3600, 3600, 3600, 3600, 3600, 3600, 3600, 3600, 3600, 3600, 7200],
-            "2026": [3800, 3800, 3800, 3800, 3800, 3800, 3800, 3800, 3800, 3800, 3800, 7600],
-        }
-    },
-    {
-        id: "EMP-010", name: "Roberto Jiménez Alonso", role: "Sales Director", department: "Sales", location: "Barcelona", startDate: "2019-05-01", status: "active",
-        payroll: {
-            "2025": [4800, 4800, 4800, 4800, 4800, 4800, 4800, 4800, 4800, 4800, 4800, 9600],
-            "2026": [5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 5000, 10000],
-        }
-    },
-    {
-        id: "EMP-011", name: "Carmen Ruiz Delgado", role: "Customer Success", department: "Sales", location: "Remote", startDate: "2022-09-01", status: "active",
-        payroll: {
-            "2025": [2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 2500, 5000],
-            "2026": [2700, 2700, 2700, 2700, 2700, 2700, 2700, 2700, 2700, 2700, 2700, 5400],
-        }
-    },
-    {
-        id: "EMP-012", name: "Fernando Blanco Reyes", role: "Data Analyst", department: "Finance", location: "Madrid", startDate: "2023-06-15", status: "active",
-        payroll: {
-            "2025": [2700, 2700, 2700, 2700, 2700, 2700, 2700, 2700, 2700, 2700, 2700, 5400],
-            "2026": [2900, 2900, 2900, 2900, 2900, 2900, 2900, 2900, 2900, 2900, 2900, 5800],
-        }
-    },
-    {
-        id: "EMP-013", name: "Elena Vargas Prieto", role: "Office Manager", department: "Operations", location: "Madrid", startDate: "2021-08-01", status: "inactive",
-        payroll: {
-            "2025": [2200, 2200, 2200, 2200, 2200, 2200, 0, 0, 0, 0, 0, 0],
-            "2026": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        }
-    },
-    {
-        id: "EMP-014", name: "Álvaro Medina Castro", role: "Frontend Developer", department: "Engineering", location: "Valencia", startDate: "2024-01-08", status: "active",
-        payroll: {
-            "2025": [2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 2800, 5600],
-            "2026": [3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 3000, 6000],
-        }
-    },
-    {
-        id: "EMP-015", name: "Sofía Herrero Gómez", role: "Legal Counsel", department: "Legal", location: "Madrid", startDate: "2022-03-01", status: "active",
-        payroll: {
-            "2025": [4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 4000, 8000],
-            "2026": [4200, 4200, 4200, 4200, 4200, 4200, 4200, 4200, 4200, 4200, 4200, 8400],
-        }
-    },
-];
+interface DepartmentSummary {
+    name: string;
+    code: string;
+    employeeCount: number;
+    totalBruto: number;
+    totalDeducciones: number;
+    totalLiquido: number;
+    ssEmpresa: number;
+    costeEmpresa: number;
+    concepts: PayrollConcept[];
+}
+
+interface PayrollData {
+    period: string;
+    company: string;
+    nif: string;
+    currency: string;
+    departments: DepartmentSummary[];
+    employees: PayrollEmployee[];
+    totals: {
+        totalBruto: number;
+        totalDeducciones: number;
+        totalLiquido: number;
+        ssEmpresa: number;
+        ssTrabajador: number;
+        ssTotal: number;
+        costeEmpresa: number;
+        employeeCount: number;
+        irpfTotal: number;
+    };
+}
+
+type ViewMode = "employees" | "departments";
 
 // ════════════════════════════════════════════════════════
 // Formatters
 // ════════════════════════════════════════════════════════
 
-function formatCurrency(value: number): string {
-    return new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
+function fmtEur(value: number): string {
+    return new Intl.NumberFormat("es-ES", {
+        style: "currency",
+        currency: "EUR",
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    }).format(value);
 }
 
-function formatCompactCurrency(value: number): string {
-    if (Math.abs(value) >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M €`;
+function fmtCompact(value: number): string {
+    if (Math.abs(value) >= 1_000_000)
+        return `${(value / 1_000_000).toFixed(1)}M €`;
     if (Math.abs(value) >= 1_000) return `${(value / 1_000).toFixed(1)}K €`;
-    return formatCurrency(value);
+    return fmtEur(value);
+}
+
+function fmtPct(value: number): string {
+    return `${value.toFixed(2)}%`;
+}
+
+// ════════════════════════════════════════════════════════
+// Department color mapping
+// ════════════════════════════════════════════════════════
+
+const DEPT_COLORS: Record<
+    string,
+    { bg: string; text: string; border: string; dot: string }
+> = {
+    EDUCATION: {
+        bg: "bg-blue-900/20",
+        text: "text-blue-400",
+        border: "border-blue-700/50",
+        dot: "bg-blue-400",
+    },
+    MARKETING: {
+        bg: "bg-purple-900/20",
+        text: "text-purple-400",
+        border: "border-purple-700/50",
+        dot: "bg-purple-400",
+    },
+    "PLANNING CENTER": {
+        bg: "bg-emerald-900/20",
+        text: "text-emerald-400",
+        border: "border-emerald-700/50",
+        dot: "bg-emerald-400",
+    },
+    "CORPORATE FUNCTIONS": {
+        bg: "bg-amber-900/20",
+        text: "text-amber-400",
+        border: "border-amber-700/50",
+        dot: "bg-amber-400",
+    },
+    "DELIGHT ROW": {
+        bg: "bg-rose-900/20",
+        text: "text-rose-400",
+        border: "border-rose-700/50",
+        dot: "bg-rose-400",
+    },
+    LAB: {
+        bg: "bg-cyan-900/20",
+        text: "text-cyan-400",
+        border: "border-cyan-700/50",
+        dot: "bg-cyan-400",
+    },
+};
+
+function getDeptColor(dept: string) {
+    return (
+        DEPT_COLORS[dept.toUpperCase()] || {
+            bg: "bg-gray-900/20",
+            text: "text-gray-400",
+            border: "border-gray-700/50",
+            dot: "bg-gray-400",
+        }
+    );
 }
 
 // ════════════════════════════════════════════════════════
@@ -164,304 +178,938 @@ function formatCompactCurrency(value: number): string {
 // ════════════════════════════════════════════════════════
 
 export default function PayrollPage() {
-    const [selectedYear, setSelectedYear] = useState<"2025" | "2026">("2025");
+    const [payrollData, setPayrollData] = useState<PayrollData | null>(null);
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [fileName, setFileName] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState("");
     const [departmentFilter, setDepartmentFilter] = useState("all");
-    const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive">("all");
+    const [viewMode, setViewMode] = useState<ViewMode>("employees");
     const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+    const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // ─── Upload handler ───
+    const handleUpload = useCallback(async (file: File) => {
+        setLoading(true);
+        setError(null);
+
+        try {
+            const formData = new FormData();
+            formData.append("file", file);
+
+            const res = await fetch("/api/payroll/upload", {
+                method: "POST",
+                body: formData,
+            });
+
+            const json = await res.json();
+
+            if (!json.success) {
+                throw new Error(json.error || "Upload failed");
+            }
+
+            setPayrollData(json.data);
+            setFileName(file.name);
+            setExpandedRows(new Set());
+            setExpandedDepts(new Set());
+        } catch (err: unknown) {
+            setError(
+                err instanceof Error ? err.message : "Erro ao processar arquivo",
+            );
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    const handleFileChange = useCallback(
+        (e: React.ChangeEvent<HTMLInputElement>) => {
+            const file = e.target.files?.[0];
+            if (file) handleUpload(file);
+            e.target.value = "";
+        },
+        [handleUpload],
+    );
+
+    // ─── Auto-load default file ───
+    const handleLoadDefault = useCallback(async () => {
+        setLoading(true);
+        setError(null);
+        try {
+            const res = await fetch("/Costes%20Enero%20DSD.xlsx");
+            if (!res.ok) throw new Error("Arquivo padrão não encontrado");
+            const blob = await res.blob();
+            const file = new File([blob], "Costes Enero DSD.xlsx", {
+                type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            });
+            await handleUpload(file);
+        } catch (err: unknown) {
+            setError(
+                err instanceof Error ? err.message : "Erro ao carregar arquivo padrão",
+            );
+            setLoading(false);
+        }
+    }, [handleUpload]);
+
+    const handleDrop = useCallback(
+        (e: React.DragEvent) => {
+            e.preventDefault();
+            const file = e.dataTransfer.files[0];
+            if (
+                file &&
+                (file.name.endsWith(".xlsx") || file.name.endsWith(".xls"))
+            ) {
+                handleUpload(file);
+            }
+        },
+        [handleUpload],
+    );
 
     // ─── Filtered employees ───
     const filteredEmployees = useMemo(() => {
-        return MOCK_EMPLOYEES.filter(emp => {
-            if (statusFilter !== "all" && emp.status !== statusFilter) return false;
-            if (departmentFilter !== "all" && emp.department !== departmentFilter) return false;
+        if (!payrollData) return [];
+        return payrollData.employees.filter((emp) => {
+            if (departmentFilter !== "all" && emp.department !== departmentFilter)
+                return false;
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
-                return emp.name.toLowerCase().includes(q) || emp.role.toLowerCase().includes(q) || emp.id.toLowerCase().includes(q);
+                return (
+                    emp.fullName.toLowerCase().includes(q) ||
+                    emp.employeeId.toLowerCase().includes(q) ||
+                    emp.department.toLowerCase().includes(q)
+                );
             }
             return true;
         });
-    }, [searchQuery, departmentFilter, statusFilter]);
+    }, [payrollData, searchQuery, departmentFilter]);
 
-    // ─── Summary KPIs ───
-    const summary = useMemo(() => {
-        const activeCount = MOCK_EMPLOYEES.filter(e => e.status === "active").length;
-        const inactiveCount = MOCK_EMPLOYEES.filter(e => e.status === "inactive").length;
-        const totalAnnual = filteredEmployees.reduce((sum, emp) => {
-            const yearly = emp.payroll[selectedYear] || [];
-            return sum + yearly.reduce((s, v) => s + v, 0);
-        }, 0);
-        const monthlyAvg = totalAnnual / 12;
-        const departments = [...new Set(MOCK_EMPLOYEES.map(e => e.department))];
-
-        // Per-month totals
-        const monthlyTotals = MONTHS.map((_, i) =>
-            filteredEmployees.reduce((sum, emp) => sum + ((emp.payroll[selectedYear] || [])[i] || 0), 0)
-        );
-
-        return { activeCount, inactiveCount, totalAnnual, monthlyAvg, departments, monthlyTotals };
-    }, [filteredEmployees, selectedYear]);
-
-    const departments = useMemo(() => [...new Set(MOCK_EMPLOYEES.map(e => e.department))].sort(), []);
+    const departments = useMemo(
+        () => payrollData?.departments.map((d) => d.name).sort() || [],
+        [payrollData],
+    );
 
     const toggleRow = (id: string) => {
-        setExpandedRows(prev => {
+        setExpandedRows((prev) => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id); else next.add(id);
+            if (next.has(id)) next.delete(id);
+            else next.add(id);
             return next;
         });
     };
 
-    const handleUploadClick = () => {
-        fileInputRef.current?.click();
-    };
-
-    const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        // Placeholder — would parse xlsx and update state
-        alert(`File selected: ${file.name}\n\nXLSX parsing will be implemented with backend integration.`);
-        e.target.value = "";
-    };
-
-    const exportCSV = () => {
-        const headers = ["ID", "Name", "Role", "Department", "Location", "Status", ...MONTHS.map(m => `${m} ${selectedYear}`), "Annual Total"];
-        const csvRows = [headers.join(",")];
-        filteredEmployees.forEach(emp => {
-            const yearly = emp.payroll[selectedYear] || [];
-            const annual = yearly.reduce((s, v) => s + v, 0);
-            csvRows.push([
-                emp.id,
-                `"${emp.name}"`,
-                `"${emp.role}"`,
-                emp.department,
-                emp.location,
-                emp.status,
-                ...yearly.map(v => v.toFixed(2)),
-                annual.toFixed(2),
-            ].join(","));
+    const toggleDept = (name: string) => {
+        setExpandedDepts((prev) => {
+            const next = new Set(prev);
+            if (next.has(name)) next.delete(name);
+            else next.add(name);
+            return next;
         });
-        const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+    };
+
+    // ─── Export CSV ───
+    const exportCSV = () => {
+        if (!payrollData) return;
+        const headers = [
+            "ID Empleado",
+            "Nombre Completo",
+            "Departamento",
+            "Salario Bruto",
+            "Deducciones",
+            "Salario Neto",
+            "IRPF",
+            "% IRPF",
+            "SS Empresa",
+            "SS Trabajador",
+            "Coste Empresa",
+            "Días Cotizados",
+        ];
+        const rows = [headers.join(";")];
+        filteredEmployees.forEach((emp) => {
+            rows.push(
+                [
+                    emp.employeeId,
+                    `"${emp.fullName}"`,
+                    `"${emp.department}"`,
+                    emp.totalBruto.toFixed(2),
+                    emp.totalDeducciones.toFixed(2),
+                    emp.totalLiquido.toFixed(2),
+                    emp.irpf.toFixed(2),
+                    emp.irpfPercent.toFixed(2),
+                    emp.ssEmpresa.toFixed(2),
+                    emp.ssTrabajador.toFixed(2),
+                    emp.costeEmpresa.toFixed(2),
+                    emp.diasCotizados.toString(),
+                ].join(";"),
+            );
+        });
+        const blob = new Blob(["\uFEFF" + rows.join("\n")], {
+            type: "text/csv;charset=utf-8",
+        });
         const url = URL.createObjectURL(blob);
         const a = document.createElement("a");
         a.href = url;
-        a.download = `payroll-${selectedYear}-${new Date().toISOString().split("T")[0]}.csv`;
+        a.download = `nominas-${payrollData.period.replace(/\//g, "-")}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     };
 
     // ════════════════════════════════════════════════════════
-    // RENDER
+    // RENDER — Empty State (no data loaded)
     // ════════════════════════════════════════════════════════
+
+    if (!payrollData && !loading) {
+        return (
+            <div className="flex flex-col h-full bg-white dark:bg-black text-gray-900 dark:text-white">
+                <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileChange}
+                    className="hidden"
+                />
+
+                {/* Header */}
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
+                    <h1 className="text-xl font-bold flex items-center gap-2">
+                        <Users className="h-5 w-5 text-violet-500" />
+                        Nóminas — Folha de Pagamento
+                    </h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        DSD Planning Center S.L. · Sede España
+                    </p>
+                </div>
+
+                {/* Upload area */}
+                <div className="flex-1 flex items-center justify-center p-8">
+                    <div
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={handleDrop}
+                        className="max-w-lg w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-xl p-10 text-center hover:border-violet-500 dark:hover:border-violet-500 transition-colors cursor-pointer"
+                        onClick={() => fileInputRef.current?.click()}
+                    >
+                        <FileSpreadsheet className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+                        <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                            Carregar arquivo de nóminas
+                        </h2>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Arraste o arquivo .xlsx aqui ou clique para selecionar
+                        </p>
+                        <p className="text-xs text-gray-400 mb-6">
+                            Formato esperado: Exportação de Costes Laborais (Excel) com
+                            separação por departamento
+                        </p>
+
+                        {error && (
+                            <div className="flex items-center gap-2 text-red-500 text-sm mb-4 justify-center">
+                                <AlertCircle className="h-4 w-4" />
+                                {error}
+                            </div>
+                        )}
+
+                        <div className="flex gap-3 justify-center">
+                            <Button
+                                size="sm"
+                                className="bg-violet-600 hover:bg-violet-700 text-white"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    fileInputRef.current?.click();
+                                }}
+                            >
+                                <Upload className="h-4 w-4 mr-1" />
+                                Selecionar Arquivo
+                            </Button>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleLoadDefault();
+                                }}
+                            >
+                                <FileSpreadsheet className="h-4 w-4 mr-1" />
+                                Carregar Janeiro 2026
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    // ════════════════════════════════════════════════════════
+    // RENDER — Loading
+    // ════════════════════════════════════════════════════════
+
+    if (loading) {
+        return (
+            <div className="flex flex-col h-full bg-white dark:bg-black text-gray-900 dark:text-white items-center justify-center">
+                <Loader2 className="h-10 w-10 text-violet-500 animate-spin mb-4" />
+                <p className="text-sm text-gray-500">
+                    Processando arquivo de nóminas...
+                </p>
+            </div>
+        );
+    }
+
+    // ════════════════════════════════════════════════════════
+    // RENDER — Data Loaded
+    // ════════════════════════════════════════════════════════
+
+    const data = payrollData!;
+    const totals = data.totals;
 
     return (
         <div className="flex flex-col h-full bg-white dark:bg-black text-gray-900 dark:text-white">
-            {/* Hidden file input */}
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={handleFileUpload} className="hidden" />
+            <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx,.xls"
+                onChange={handleFileChange}
+                className="hidden"
+            />
 
             {/* ─── Header ─── */}
             <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
                 <div className="flex items-center justify-between">
                     <div>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        <h1 className="text-xl font-bold flex items-center gap-2">
                             <Users className="h-5 w-5 text-violet-500" />
-                            Payroll Management
+                            Nóminas — Folha de Pagamento
                         </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            {summary.activeCount} active employees · {filteredEmployees.length} showing
+                        <p className="text-sm text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
+                            <Building2 className="h-3.5 w-3.5" />
+                            {data.company} · NIF: {data.nif} ·{" "}
+                            <Calendar className="h-3.5 w-3.5" />
+                            {data.period}
+                            {fileName && (
+                                <span className="text-gray-400">
+                                    {" "}
+                                    ·{" "}
+                                    <CheckCircle2 className="h-3.5 w-3.5 inline text-emerald-500" />{" "}
+                                    {fileName}
+                                </span>
+                            )}
                         </p>
                     </div>
                     <div className="flex items-center gap-3">
-                        {/* Year toggle */}
+                        {/* View toggle */}
                         <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
-                            {(["2025", "2026"] as const).map(year => (
+                            {(
+                                [
+                                    ["employees", "Empleados"],
+                                    ["departments", "Departamentos"],
+                                ] as const
+                            ).map(([mode, label]) => (
                                 <button
-                                    key={year}
-                                    onClick={() => setSelectedYear(year)}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${selectedYear === year
+                                    key={mode}
+                                    onClick={() => setViewMode(mode)}
+                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === mode
                                             ? "bg-violet-600 text-white shadow-sm"
                                             : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                                         }`}
                                 >
-                                    {year}
+                                    {label}
                                 </button>
                             ))}
                         </div>
-                        {/* Upload XLSX */}
-                        <Button size="sm" variant="outline" onClick={handleUploadClick} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
+                        {/* Upload another */}
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => fileInputRef.current?.click()}
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
+                        >
                             <Upload className="h-4 w-4 mr-1" />
-                            <FileSpreadsheet className="h-4 w-4 mr-1" />
-                            Upload XLSX
+                            Otro Archivo
                         </Button>
                         {/* Export */}
-                        <Button size="sm" variant="outline" onClick={exportCSV} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-                            <Download className="h-4 w-4 mr-1" /> Export
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={exportCSV}
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
+                        >
+                            <Download className="h-4 w-4 mr-1" /> Exportar
+                        </Button>
+                        {/* Clear */}
+                        <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                                setPayrollData(null);
+                                setFileName(null);
+                            }}
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
+                        >
+                            <X className="h-4 w-4" />
                         </Button>
                     </div>
                 </div>
-                {/* Search & filter bar */}
-                <div className="flex items-center gap-3 mt-3">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                        <Input placeholder="Search by name, role or ID..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-64 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500" />
+
+                {/* Search & filter (employees view only) */}
+                {viewMode === "employees" && (
+                    <div className="flex items-center gap-3 mt-3">
+                        <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
+                            <Input
+                                placeholder="Buscar por nombre, ID o departamento..."
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                                className="pl-9 w-72 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500"
+                            />
+                        </div>
+                        <select
+                            value={departmentFilter}
+                            onChange={(e) => setDepartmentFilter(e.target.value)}
+                            className="h-9 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-transparent text-sm text-gray-900 dark:text-white"
+                        >
+                            <option value="all">Todos Departamentos</option>
+                            {departments.map((d) => (
+                                <option key={d} value={d}>
+                                    {d}
+                                </option>
+                            ))}
+                        </select>
+                        <span className="text-xs text-gray-500">
+                            {filteredEmployees.length} de {data.employees.length} empleados
+                        </span>
                     </div>
-                    <select
-                        value={departmentFilter}
-                        onChange={e => setDepartmentFilter(e.target.value)}
-                        className="h-9 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-transparent text-sm text-gray-900 dark:text-white"
-                    >
-                        <option value="all">All Departments</option>
-                        {departments.map(d => <option key={d} value={d}>{d}</option>)}
-                    </select>
-                    <select
-                        value={statusFilter}
-                        onChange={e => setStatusFilter(e.target.value as any)}
-                        className="h-9 px-3 rounded-md border border-gray-300 dark:border-gray-600 bg-transparent text-sm text-gray-900 dark:text-white"
-                    >
-                        <option value="all">All Status</option>
-                        <option value="active">Active</option>
-                        <option value="inactive">Inactive</option>
-                    </select>
-                </div>
+                )}
             </div>
 
             {/* ─── KPI Bar ─── */}
             <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-50 dark:bg-[#0a0a0a]">
-                <div className="grid grid-cols-5 gap-4">
-                    <div className="flex items-center gap-2">
-                        <Users className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                        <div>
-                            <p className="text-[10px] text-gray-500 uppercase">Active</p>
-                            <p className="text-sm font-bold text-violet-400">{summary.activeCount}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <UserCheck className="h-4 w-4 text-gray-500 flex-shrink-0" />
-                        <div>
-                            <p className="text-[10px] text-gray-500 uppercase">Inactive</p>
-                            <p className="text-sm font-bold text-gray-400">{summary.inactiveCount}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <DollarSign className="h-4 w-4 text-green-500 flex-shrink-0" />
-                        <div>
-                            <p className="text-[10px] text-gray-500 uppercase">Annual Total ({selectedYear})</p>
-                            <p className="text-sm font-bold text-green-400">{formatCompactCurrency(summary.totalAnnual)}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                        <div>
-                            <p className="text-[10px] text-gray-500 uppercase">Monthly Avg</p>
-                            <p className="text-sm font-bold text-blue-400">{formatCompactCurrency(summary.monthlyAvg)}</p>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Building2 className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                        <div>
-                            <p className="text-[10px] text-gray-500 uppercase">Departments</p>
-                            <p className="text-sm font-bold text-amber-400">{summary.departments.length}</p>
-                        </div>
-                    </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+                    <KpiCard
+                        icon={<Users className="h-4 w-4 text-violet-500" />}
+                        label="Empleados"
+                        value={String(totals.employeeCount)}
+                    />
+                    <KpiCard
+                        icon={<Euro className="h-4 w-4 text-green-500" />}
+                        label="Total Bruto"
+                        value={fmtCompact(totals.totalBruto)}
+                        valueColor="text-green-400"
+                    />
+                    <KpiCard
+                        icon={<TrendingDown className="h-4 w-4 text-red-500" />}
+                        label="Deducciones"
+                        value={fmtCompact(totals.totalDeducciones)}
+                        valueColor="text-red-400"
+                    />
+                    <KpiCard
+                        icon={<DollarSign className="h-4 w-4 text-emerald-500" />}
+                        label="Neto (Líquido)"
+                        value={fmtCompact(totals.totalLiquido)}
+                        valueColor="text-emerald-400"
+                    />
+                    <KpiCard
+                        icon={<Shield className="h-4 w-4 text-blue-500" />}
+                        label="SS Empresa"
+                        value={fmtCompact(totals.ssEmpresa)}
+                        valueColor="text-blue-400"
+                    />
+                    <KpiCard
+                        icon={<Percent className="h-4 w-4 text-orange-500" />}
+                        label="IRPF Total"
+                        value={fmtCompact(totals.irpfTotal)}
+                        valueColor="text-orange-400"
+                    />
+                    <KpiCard
+                        icon={<Briefcase className="h-4 w-4 text-amber-500" />}
+                        label="Coste Empresa"
+                        value={fmtCompact(totals.costeEmpresa)}
+                        valueColor="text-amber-400"
+                    />
                 </div>
             </div>
 
-            {/* ─── Main Table ─── */}
+            {/* ─── Main Content ─── */}
             <div className="flex-1 overflow-auto">
-                <table className="w-full text-sm">
-                    <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-[#0a0a0a]">
-                        <tr className="border-b border-gray-200 dark:border-gray-700">
-                            <th className="text-left px-4 py-2.5 text-xs text-gray-500 uppercase font-medium w-8"></th>
-                            <th className="text-left px-4 py-2.5 text-xs text-gray-500 uppercase font-medium">Employee</th>
-                            <th className="text-left px-4 py-2.5 text-xs text-gray-500 uppercase font-medium">Department</th>
-                            <th className="text-left px-4 py-2.5 text-xs text-gray-500 uppercase font-medium">Location</th>
-                            <th className="text-center px-2 py-2.5 text-xs text-gray-500 uppercase font-medium">Status</th>
-                            {MONTHS.map(m => (
-                                <th key={m} className="text-right px-2 py-2.5 text-xs text-gray-500 uppercase font-medium w-20">{m}</th>
-                            ))}
-                            <th className="text-right px-4 py-2.5 text-xs text-gray-500 uppercase font-medium bg-gray-200/50 dark:bg-gray-800/50">Annual</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {filteredEmployees.map(emp => {
-                            const yearly = emp.payroll[selectedYear] || [];
-                            const annual = yearly.reduce((s, v) => s + v, 0);
-                            const isExpanded = expandedRows.has(emp.id);
-                            return (
-                                <React.Fragment key={emp.id}>
-                                    <tr
-                                        onClick={() => toggleRow(emp.id)}
-                                        className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#0a0a0a] cursor-pointer transition-colors"
+                {viewMode === "employees" ? (
+                    <EmployeesTable
+                        employees={filteredEmployees}
+                        expandedRows={expandedRows}
+                        toggleRow={toggleRow}
+                    />
+                ) : (
+                    <DepartmentsView
+                        departments={data.departments}
+                        employees={data.employees}
+                        expandedDepts={expandedDepts}
+                        toggleDept={toggleDept}
+                    />
+                )}
+            </div>
+        </div>
+    );
+}
+
+// ════════════════════════════════════════════════════════
+// KPI Card
+// ════════════════════════════════════════════════════════
+
+function KpiCard({
+    icon,
+    label,
+    value,
+    valueColor = "text-gray-900 dark:text-white",
+}: {
+    icon: React.ReactNode;
+    label: string;
+    value: string;
+    valueColor?: string;
+}) {
+    return (
+        <div className="flex items-center gap-2">
+            <div className="flex-shrink-0">{icon}</div>
+            <div>
+                <p className="text-[10px] text-gray-500 uppercase tracking-wide">
+                    {label}
+                </p>
+                <p className={`text-sm font-bold ${valueColor}`}>{value}</p>
+            </div>
+        </div>
+    );
+}
+
+// ════════════════════════════════════════════════════════
+// Employees Table
+// ════════════════════════════════════════════════════════
+
+function EmployeesTable({
+    employees,
+    expandedRows,
+    toggleRow,
+}: {
+    employees: PayrollEmployee[];
+    expandedRows: Set<string>;
+    toggleRow: (id: string) => void;
+}) {
+    const sorted = useMemo(
+        () =>
+            [...employees].sort((a, b) => {
+                const deptCompare = a.department.localeCompare(b.department);
+                if (deptCompare !== 0) return deptCompare;
+                return a.fullName.localeCompare(b.fullName);
+            }),
+        [employees],
+    );
+
+    const grandBruto = sorted.reduce((s, e) => s + e.totalBruto, 0);
+    const grandDeduc = sorted.reduce((s, e) => s + e.totalDeducciones, 0);
+    const grandNet = sorted.reduce((s, e) => s + e.totalLiquido, 0);
+    const grandCoste = sorted.reduce((s, e) => s + e.costeEmpresa, 0);
+
+    return (
+        <table className="w-full text-sm">
+            <thead className="sticky top-0 z-10 bg-gray-100 dark:bg-[#0a0a0a]">
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                    <th className="text-left px-3 py-2.5 text-xs text-gray-500 uppercase font-medium w-8"></th>
+                    <th className="text-left px-3 py-2.5 text-xs text-gray-500 uppercase font-medium">
+                        ID
+                    </th>
+                    <th className="text-left px-3 py-2.5 text-xs text-gray-500 uppercase font-medium">
+                        Empleado
+                    </th>
+                    <th className="text-left px-3 py-2.5 text-xs text-gray-500 uppercase font-medium">
+                        Departamento
+                    </th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 uppercase font-medium">
+                        Bruto
+                    </th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 uppercase font-medium">
+                        Deducciones
+                    </th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 uppercase font-medium">
+                        IRPF
+                    </th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 uppercase font-medium">
+                        % IRPF
+                    </th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 uppercase font-medium">
+                        Neto
+                    </th>
+                    <th className="text-right px-3 py-2.5 text-xs text-gray-500 uppercase font-medium bg-gray-200/50 dark:bg-gray-800/50">
+                        Coste Empresa
+                    </th>
+                </tr>
+            </thead>
+            <tbody>
+                {sorted.map((emp) => {
+                    const isExpanded = expandedRows.has(emp.employeeId);
+                    const deptColor = getDeptColor(emp.department);
+
+                    return (
+                        <React.Fragment key={emp.employeeId}>
+                            <tr
+                                onClick={() => toggleRow(emp.employeeId)}
+                                className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-[#0a0a0a] cursor-pointer transition-colors"
+                            >
+                                <td className="px-3 py-2.5">
+                                    {isExpanded ? (
+                                        <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                                    ) : (
+                                        <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+                                    )}
+                                </td>
+                                <td className="px-3 py-2.5 font-mono text-xs text-gray-500">
+                                    {emp.employeeId}
+                                </td>
+                                <td className="px-3 py-2.5">
+                                    <p className="font-medium text-gray-900 dark:text-white text-sm">
+                                        {emp.fullName}
+                                    </p>
+                                </td>
+                                <td className="px-3 py-2.5">
+                                    <Badge
+                                        className={`${deptColor.bg} ${deptColor.text} text-xs border ${deptColor.border}`}
                                     >
-                                        <td className="px-4 py-2.5">
-                                            {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-gray-500" /> : <ChevronRight className="h-3.5 w-3.5 text-gray-500" />}
-                                        </td>
-                                        <td className="px-4 py-2.5">
+                                        {emp.department}
+                                    </Badge>
+                                </td>
+                                <td className="text-right px-3 py-2.5 font-mono text-xs text-green-600 dark:text-green-400">
+                                    {fmtEur(emp.totalBruto)}
+                                </td>
+                                <td className="text-right px-3 py-2.5 font-mono text-xs text-red-600 dark:text-red-400">
+                                    {fmtEur(emp.totalDeducciones)}
+                                </td>
+                                <td className="text-right px-3 py-2.5 font-mono text-xs text-orange-600 dark:text-orange-400">
+                                    {fmtEur(emp.irpf)}
+                                </td>
+                                <td className="text-right px-3 py-2.5 font-mono text-xs text-orange-500">
+                                    {fmtPct(emp.irpfPercent)}
+                                </td>
+                                <td className="text-right px-3 py-2.5 font-mono text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                    {fmtEur(emp.totalLiquido)}
+                                </td>
+                                <td className="text-right px-3 py-2.5 font-mono text-xs font-medium text-amber-600 dark:text-amber-400 bg-gray-50/50 dark:bg-gray-900/30">
+                                    {fmtEur(emp.costeEmpresa)}
+                                </td>
+                            </tr>
+
+                            {/* Expanded detail row */}
+                            {isExpanded && (
+                                <tr className="bg-gray-50 dark:bg-[#0a0a0a]">
+                                    <td colSpan={10} className="px-6 py-4">
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 max-w-4xl">
+                                            {/* Earnings */}
                                             <div>
-                                                <p className="font-medium text-gray-900 dark:text-white">{emp.name}</p>
-                                                <p className="text-xs text-gray-500">{emp.role}</p>
-                                            </div>
-                                        </td>
-                                        <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">{emp.department}</td>
-                                        <td className="px-4 py-2.5 text-gray-600 dark:text-gray-400">{emp.location}</td>
-                                        <td className="px-2 py-2.5 text-center">
-                                            {emp.status === "active" ? (
-                                                <Badge className="bg-emerald-900/30 text-emerald-400 text-xs border border-emerald-700/50">Active</Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="text-gray-400 text-xs border-gray-600">Inactive</Badge>
-                                            )}
-                                        </td>
-                                        {yearly.map((val, i) => (
-                                            <td key={i} className={`text-right px-2 py-2.5 font-mono text-xs ${val > 0 ? "text-gray-900 dark:text-gray-200" : "text-gray-400"}`}>
-                                                {val > 0 ? formatCurrency(val) : "—"}
-                                            </td>
-                                        ))}
-                                        <td className="text-right px-4 py-2.5 font-mono font-medium text-green-500 bg-gray-50/50 dark:bg-gray-900/30">
-                                            {annual > 0 ? formatCurrency(annual) : "—"}
-                                        </td>
-                                    </tr>
-                                    {isExpanded && (
-                                        <tr className="bg-gray-50 dark:bg-[#0a0a0a]">
-                                            <td colSpan={17} className="px-8 py-3">
-                                                <div className="grid grid-cols-4 gap-4 text-xs">
-                                                    <div>
-                                                        <span className="text-gray-500">ID:</span> <span className="text-gray-900 dark:text-white font-mono">{emp.id}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-500">Start Date:</span> <span className="text-gray-900 dark:text-white">{new Date(emp.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-500">Annual Gross:</span> <span className="text-green-400 font-medium">{formatCurrency(annual)}</span>
-                                                    </div>
-                                                    <div>
-                                                        <span className="text-gray-500">Monthly Avg:</span> <span className="text-blue-400 font-medium">{formatCurrency(annual / 12)}</span>
+                                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                                    <TrendingUp className="h-3 w-3 text-green-500" />
+                                                    Devengos (Percepciones)
+                                                </h4>
+                                                <div className="space-y-1">
+                                                    {emp.concepts
+                                                        .filter((c) => !c.isDeduction)
+                                                        .map((c, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="flex justify-between text-xs"
+                                                            >
+                                                                <span className="text-gray-600 dark:text-gray-400">
+                                                                    <span className="font-mono text-gray-400 mr-2">
+                                                                        {String(c.code).padStart(3, "0")}
+                                                                    </span>
+                                                                    {c.description}
+                                                                </span>
+                                                                <span
+                                                                    className={`font-mono ${c.amount < 0 ? "text-red-400" : "text-green-500"}`}
+                                                                >
+                                                                    {fmtEur(c.amount)}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    <div className="flex justify-between text-xs font-semibold border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
+                                                        <span className="text-gray-900 dark:text-white">
+                                                            TOTAL BRUTO
+                                                        </span>
+                                                        <span className="text-green-500">
+                                                            {fmtEur(emp.totalBruto)}
+                                                        </span>
                                                     </div>
                                                 </div>
-                                            </td>
-                                        </tr>
+                                            </div>
+
+                                            {/* Deductions */}
+                                            <div>
+                                                <h4 className="text-xs font-semibold text-gray-500 uppercase mb-2 flex items-center gap-1">
+                                                    <TrendingDown className="h-3 w-3 text-red-500" />
+                                                    Deducciones
+                                                </h4>
+                                                <div className="space-y-1">
+                                                    {emp.concepts
+                                                        .filter((c) => c.isDeduction)
+                                                        .map((c, idx) => (
+                                                            <div
+                                                                key={idx}
+                                                                className="flex justify-between text-xs"
+                                                            >
+                                                                <span className="text-gray-600 dark:text-gray-400">
+                                                                    <span className="font-mono text-gray-400 mr-2">
+                                                                        {String(c.code).padStart(3, "0")}
+                                                                    </span>
+                                                                    {c.description}
+                                                                </span>
+                                                                <span className="font-mono text-red-400">
+                                                                    {fmtEur(c.amount)}
+                                                                </span>
+                                                            </div>
+                                                        ))}
+                                                    <div className="flex justify-between text-xs font-semibold border-t border-gray-200 dark:border-gray-700 pt-1 mt-1">
+                                                        <span className="text-gray-900 dark:text-white">
+                                                            TOTAL DEDUCCIONES
+                                                        </span>
+                                                        <span className="text-red-400">
+                                                            {fmtEur(emp.totalDeducciones)}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            {/* Summary row */}
+                                            <div className="lg:col-span-2 grid grid-cols-4 gap-4 border-t border-gray-200 dark:border-gray-700 pt-3 mt-1">
+                                                <div>
+                                                    <span className="text-[10px] text-gray-500 uppercase block">
+                                                        Neto (Líquido)
+                                                    </span>
+                                                    <span className="text-sm font-bold text-emerald-400">
+                                                        {fmtEur(emp.totalLiquido)}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] text-gray-500 uppercase block">
+                                                        SS Empresa
+                                                    </span>
+                                                    <span className="text-sm font-bold text-blue-400">
+                                                        {fmtEur(emp.ssEmpresa)}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] text-gray-500 uppercase block">
+                                                        SS Trabajador
+                                                    </span>
+                                                    <span className="text-sm font-bold text-blue-300">
+                                                        {fmtEur(emp.ssTrabajador)}
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <span className="text-[10px] text-gray-500 uppercase block">
+                                                        Días Cotizados
+                                                    </span>
+                                                    <span className="text-sm font-bold text-gray-400">
+                                                        {emp.diasCotizados}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
+
+                {/* Grand total row */}
+                <tr className="border-t-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-[#0a0a0a] font-medium sticky bottom-0">
+                    <td className="px-3 py-3"></td>
+                    <td className="px-3 py-3"></td>
+                    <td className="px-3 py-3 text-gray-900 dark:text-white font-semibold">
+                        TOTAL ({sorted.length} empleados)
+                    </td>
+                    <td className="px-3 py-3"></td>
+                    <td className="text-right px-3 py-3 font-mono text-xs text-green-500 font-bold">
+                        {fmtEur(grandBruto)}
+                    </td>
+                    <td className="text-right px-3 py-3 font-mono text-xs text-red-400 font-bold">
+                        {fmtEur(grandDeduc)}
+                    </td>
+                    <td className="text-right px-3 py-3"></td>
+                    <td className="text-right px-3 py-3"></td>
+                    <td className="text-right px-3 py-3 font-mono text-xs text-emerald-400 font-bold">
+                        {fmtEur(grandNet)}
+                    </td>
+                    <td className="text-right px-3 py-3 font-mono text-xs text-amber-400 font-bold bg-gray-200/50 dark:bg-gray-800/50">
+                        {fmtEur(grandCoste)}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    );
+}
+
+// ════════════════════════════════════════════════════════
+// Departments View
+// ════════════════════════════════════════════════════════
+
+function DepartmentsView({
+    departments,
+    employees,
+    expandedDepts,
+    toggleDept,
+}: {
+    departments: DepartmentSummary[];
+    employees: PayrollEmployee[];
+    expandedDepts: Set<string>;
+    toggleDept: (name: string) => void;
+}) {
+    return (
+        <div className="p-6 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {departments.map((dept) => {
+                    const deptColor = getDeptColor(dept.name);
+                    const isExpanded = expandedDepts.has(dept.name);
+                    const deptEmployees = employees
+                        .filter((e) => e.department === dept.name)
+                        .sort((a, b) => b.totalBruto - a.totalBruto);
+
+                    return (
+                        <div
+                            key={dept.code}
+                            className={`rounded-xl border ${deptColor.border} ${deptColor.bg} overflow-hidden`}
+                        >
+                            {/* Department header */}
+                            <div
+                                className="px-5 py-4 cursor-pointer hover:opacity-90 transition-opacity"
+                                onClick={() => toggleDept(dept.name)}
+                            >
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <div
+                                            className={`w-2 h-2 rounded-full ${deptColor.dot}`}
+                                        />
+                                        <h3
+                                            className={`font-bold text-sm ${deptColor.text} uppercase`}
+                                        >
+                                            {dept.code} {dept.name}
+                                        </h3>
+                                    </div>
+                                    <Badge
+                                        className={`${deptColor.bg} ${deptColor.text} text-xs border ${deptColor.border}`}
+                                    >
+                                        {dept.employeeCount} emp.
+                                    </Badge>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 uppercase">Bruto</p>
+                                        <p className="text-sm font-bold text-green-400">
+                                            {fmtCompact(dept.totalBruto)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 uppercase">Neto</p>
+                                        <p className="text-sm font-bold text-emerald-400">
+                                            {fmtCompact(dept.totalLiquido)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 uppercase">
+                                            Deducciones
+                                        </p>
+                                        <p className="text-sm font-bold text-red-400">
+                                            {fmtCompact(dept.totalDeducciones)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <p className="text-[10px] text-gray-500 uppercase">
+                                            Coste Empresa
+                                        </p>
+                                        <p className="text-sm font-bold text-amber-400">
+                                            {fmtCompact(dept.costeEmpresa)}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {/* Progress bar: net vs deductions */}
+                                <div className="mt-3 h-2 rounded-full bg-gray-700/30 overflow-hidden flex">
+                                    {dept.totalBruto > 0 && (
+                                        <>
+                                            <div
+                                                className="h-full bg-emerald-500"
+                                                style={{
+                                                    width: `${(dept.totalLiquido / dept.totalBruto) * 100}%`,
+                                                }}
+                                            />
+                                            <div
+                                                className="h-full bg-red-500"
+                                                style={{
+                                                    width: `${(dept.totalDeducciones / dept.totalBruto) * 100}%`,
+                                                }}
+                                            />
+                                        </>
                                     )}
-                                </React.Fragment>
-                            );
-                        })}
-                        {/* Totals row */}
-                        <tr className="border-t-2 border-gray-300 dark:border-gray-600 bg-gray-100 dark:bg-[#0a0a0a] font-medium sticky bottom-0">
-                            <td className="px-4 py-3"></td>
-                            <td className="px-4 py-3 text-gray-900 dark:text-white">TOTAL ({filteredEmployees.length} employees)</td>
-                            <td className="px-4 py-3"></td>
-                            <td className="px-4 py-3"></td>
-                            <td className="px-2 py-3"></td>
-                            {summary.monthlyTotals.map((val, i) => (
-                                <td key={i} className="text-right px-2 py-3 font-mono text-xs text-violet-500">
-                                    {val > 0 ? formatCurrency(val) : "—"}
-                                </td>
-                            ))}
-                            <td className="text-right px-4 py-3 font-mono font-bold text-green-400 bg-gray-200/50 dark:bg-gray-800/50">
-                                {formatCurrency(summary.totalAnnual)}
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
+                                </div>
+                                <div className="flex justify-between mt-1">
+                                    <span className="text-[10px] text-emerald-500">
+                                        Neto{" "}
+                                        {dept.totalBruto > 0
+                                            ? `${((dept.totalLiquido / dept.totalBruto) * 100).toFixed(0)}%`
+                                            : ""}
+                                    </span>
+                                    <span className="text-[10px] text-red-400">
+                                        Deduc.{" "}
+                                        {dept.totalBruto > 0
+                                            ? `${((dept.totalDeducciones / dept.totalBruto) * 100).toFixed(0)}%`
+                                            : ""}
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center justify-center mt-2">
+                                    {isExpanded ? (
+                                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                                    ) : (
+                                        <ChevronRight className="h-4 w-4 text-gray-500" />
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* Expanded: employee list */}
+                            {isExpanded && (
+                                <div className="border-t border-gray-700/30 px-4 py-3 max-h-80 overflow-auto">
+                                    <table className="w-full text-xs">
+                                        <thead>
+                                            <tr className="text-gray-500 uppercase">
+                                                <th className="text-left py-1 font-medium">
+                                                    Empleado
+                                                </th>
+                                                <th className="text-right py-1 font-medium">Bruto</th>
+                                                <th className="text-right py-1 font-medium">Neto</th>
+                                                <th className="text-right py-1 font-medium">Coste</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {deptEmployees.map((emp) => (
+                                                <tr
+                                                    key={emp.employeeId}
+                                                    className="border-t border-gray-700/20"
+                                                >
+                                                    <td className="py-1.5 text-gray-300 dark:text-gray-200">
+                                                        <span className="font-mono text-gray-500 mr-1.5">
+                                                            {emp.employeeId}
+                                                        </span>
+                                                        {emp.fullName}
+                                                    </td>
+                                                    <td className="text-right py-1.5 font-mono text-green-400">
+                                                        {fmtEur(emp.totalBruto)}
+                                                    </td>
+                                                    <td className="text-right py-1.5 font-mono text-emerald-400">
+                                                        {fmtEur(emp.totalLiquido)}
+                                                    </td>
+                                                    <td className="text-right py-1.5 font-mono text-amber-400">
+                                                        {fmtEur(emp.costeEmpresa)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );

@@ -20,7 +20,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Sidebar } from "@/components/custom/sidebar";
+import Sidebar from "@/components/custom/sidebar";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
@@ -206,7 +206,7 @@ export default function BraintreePage({ source, title }: Props) {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black">
-      <Sidebar currentPage={source} paymentSourceDates={{}} />
+      <Sidebar />
       <div className="md:pl-64">
         <header className="bg-white dark:bg-[#1a2b4a] shadow sticky top-0 z-30">
           <div className="container mx-auto px-6 py-5">
@@ -232,7 +232,7 @@ export default function BraintreePage({ source, title }: Props) {
                   <Upload className="h-4 w-4" /> Upload
                 </Button>
                 <Button
-                  onClick={downloadCSV}
+                  onClick={exportToCSV}
                   className="gap-2 bg-blue-600 dark:bg-[#1a2b4a] text-white"
                 >
                   <Download className="h-4 w-4" /> Download
