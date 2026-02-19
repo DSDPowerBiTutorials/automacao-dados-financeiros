@@ -120,6 +120,10 @@ export default function InvoiceOrdersPage() {
     const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
     const [reconciling, setReconciling] = useState(false);
     const [bankReconciling, setBankReconciling] = useState(false);
+    const [selectedYear, setSelectedYear] = useState<number | "all">("all");
+    const [page, setPage] = useState(1);
+    const [totalRows, setTotalRows] = useState(0);
+    const PAGE_SIZE = 200;
 
     // Column visibility
     const [columns, setColumns] = useState<ColumnConfig[]>(DEFAULT_COLUMNS);
@@ -130,11 +134,39 @@ export default function InvoiceOrdersPage() {
         setLoading(true);
         setError(null);
         try {
-            const { data, error: fetchError } = await supabase
+            // First get total count
+            let countQuery = supabase
+                .from("csv_rows")
+                .select("*", { count: "exact", head: true })
+                .eq("source", "invoice-orders");
+
+            if (selectedYear !== "all") {
+                countQuery = countQuery
+                    .gte("date", `${selectedYear}-01-01`)
+                    .lte("date", `${selectedYear}-12-31`);
+            }
+
+            const { count } = await countQuery;
+            setTotalRows(count || 0);
+
+            // Then fetch paginated data
+            const from = (page - 1) * PAGE_SIZE;
+            const to = from + PAGE_SIZE - 1;
+
+            let query = supabase
                 .from("csv_rows")
                 .select("*")
                 .eq("source", "invoice-orders")
-                .order("date", { ascending: false });
+                .order("date", { ascending: false })
+                .range(from, to);
+
+            if (selectedYear !== "all") {
+                query = query
+                    .gte("date", `${selectedYear}-01-01`)
+                    .lte("date", `${selectedYear}-12-31`);
+            }
+
+            const { data, error: fetchError } = await query;
 
             if (fetchError) throw fetchError;
 
@@ -177,11 +209,11 @@ export default function InvoiceOrdersPage() {
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [page, selectedYear]);
 
     useEffect(() => {
         loadData();
-    }, [loadData]);
+    }, [page, selectedYear]);
 
     // Handle file upload
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -482,6 +514,21 @@ export default function InvoiceOrdersPage() {
                     </div>
 
                     <div className="flex items-center gap-2">
+                        {/* Year toggle */}
+                        <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
+                            {(["all", 2024, 2025, 2026] as const).map((year) => (
+                                <button
+                                    key={year}
+                                    onClick={() => { setSelectedYear(year); setPage(1); }}
+                                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${selectedYear === year
+                                        ? "bg-blue-600 text-white shadow-sm"
+                                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                                        }`}
+                                >
+                                    {year === "all" ? "All" : year}
+                                </button>
+                            ))}
+                        </div>
                         <ScopeSelector value={selectedScope} onValueChange={setSelectedScope} />
                     </div>
                 </div>
@@ -770,9 +817,38 @@ export default function InvoiceOrdersPage() {
                     </CardContent>
                 </Card>
 
-                {/* Footer Stats */}
-                <div className="text-center text-gray-500 text-sm">
-                    Showing {filteredData.length} of {invoiceOrders.length} invoice orders
+                {/* Footer Stats & Pagination */}
+                <div className="flex flex-col md:flex-row items-center justify-between gap-3">
+                    <div className="text-gray-500 text-sm">
+                        Showing {filteredData.length} of {invoiceOrders.length} loaded
+                        {totalRows > 0 && ` (${totalRows} total in database)`}
+                        {selectedYear !== "all" && ` · Year: ${selectedYear}`}
+                    </div>
+                    {totalRows > PAGE_SIZE && (
+                        <div className="flex items-center gap-2">
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={page <= 1}
+                                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                                className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white disabled:opacity-40"
+                            >
+                                ← Prev
+                            </Button>
+                            <span className="text-sm text-gray-500">
+                                Page {page} of {Math.ceil(totalRows / PAGE_SIZE)}
+                            </span>
+                            <Button
+                                size="sm"
+                                variant="outline"
+                                disabled={page >= Math.ceil(totalRows / PAGE_SIZE)}
+                                onClick={() => setPage((p) => p + 1)}
+                                className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white disabled:opacity-40"
+                            >
+                                Next →
+                            </Button>
+                        </div>
+                    )}
                 </div>
             </div>
 

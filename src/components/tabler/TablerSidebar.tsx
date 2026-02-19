@@ -77,20 +77,23 @@ function SidebarItem({
 }) {
   const active = isActive(pathname, flattenFirstHref(item));
   const hasChildren = !!item.children?.length;
+  const isUC = item.underConstruction;
 
   if (!hasChildren) {
     const Icon = item.icon;
     return (
       <li className="nav-item">
         <Link
-          className={"nav-link" + (active ? " active" : "")}
+          className={"nav-link" + (active ? " active" : "") + (isUC ? " opacity-40 pointer-events-none" : "")}
           href={item.href}
           onClick={onNavigate}
+          aria-disabled={isUC}
+          tabIndex={isUC ? -1 : undefined}
         >
           <span className="nav-link-icon d-md-none d-lg-inline-block">
             <Icon size={18} />
           </span>
-          <span className="nav-link-title">{item.title}</span>
+          <span className="nav-link-title" style={isUC ? { textDecoration: "line-through", color: "#6b7280" } : undefined}>{item.title}</span>
         </Link>
       </li>
     );
@@ -142,19 +145,22 @@ function SidebarLeaf({
   const active = isActive(pathname, item.href);
   const Icon = item.icon;
   const hasChildren = !!item.children?.length;
+  const isUC = item.underConstruction;
 
   if (!hasChildren) {
     return (
       <li className="nav-item">
         <Link
-          className={"nav-link" + (active ? " active" : "")}
+          className={"nav-link" + (active ? " active" : "") + (isUC ? " opacity-40 pointer-events-none" : "")}
           href={item.href}
           onClick={onNavigate}
+          aria-disabled={isUC}
+          tabIndex={isUC ? -1 : undefined}
         >
           <span className="nav-link-icon d-md-none d-lg-inline-block">
             <Icon size={16} />
           </span>
-          <span className="nav-link-title">{item.title}</span>
+          <span className="nav-link-title" style={isUC ? { textDecoration: "line-through", color: "#6b7280" } : undefined}>{item.title}</span>
         </Link>
       </li>
     );
