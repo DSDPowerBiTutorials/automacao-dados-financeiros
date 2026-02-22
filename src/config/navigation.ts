@@ -84,12 +84,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
         icon: LayoutDashboard,
         children: [
           {
-            title: "Performance Analytics",
-            href: "/executive/performance",
-            icon: Activity,
-            underConstruction: true
-          },
-          {
             title: "P&L",
             href: "/pnl",
             icon: TrendingUp,
@@ -100,11 +94,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
             href: "/executive/cash-flow",
             icon: TrendingDown,
             underConstruction: true
-          },
-          {
-            title: "💰 Cash Flow Real",
-            href: "/executive/cash-flow/real",
-            icon: DollarSign
           },
           {
             title: "🏦 Cash Flow Bancário",
@@ -122,11 +111,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
             href: "/executive/forecasts",
             icon: LineChart,
             underConstruction: true
-          },
-          {
-            title: "� Revenue Cashflow",
-            href: "/executive/cash-flow/consolidated",
-            icon: BarChart3
           },
           {
             title: "Consolidated Reports",
@@ -187,29 +171,11 @@ export const NAV: NavGroup[] = withUnderConstruction([
         icon: BarChart3,
         children: [
           {
-            title: "Aging Report",
-            href: "/accounts-payable/insights/aging",
-            icon: Clock,
-            underConstruction: true
-          },
-          {
-            title: "Cash Flow Forecast",
-            href: "/accounts-payable/insights/cash-flow",
-            icon: TrendingDown,
-            underConstruction: true
-          },
-          {
             title: "Payment Schedule",
             href: "/accounts-payable/insights/schedule",
             icon: Calendar,
             underConstruction: true
           },
-          {
-            title: "Reports",
-            href: "/accounts-payable/insights/reports",
-            icon: FileText,
-            underConstruction: true
-          }
         ]
       },
       {
@@ -271,50 +237,12 @@ export const NAV: NavGroup[] = withUnderConstruction([
             icon: FileText,
             underConstruction: true
           },
-          {
-            title: "Payments",
-            href: "/accounts-receivable/transactions/payments",
-            icon: DollarSign,
-            underConstruction: true
-          },
-          {
-            title: "Receipts",
-            href: "/accounts-receivable/transactions/receipts",
-            icon: CheckCircle2,
-            underConstruction: true
-          },
-          {
-            title: "Payment Channels",
-            href: "/accounts-receivable/transactions/channels",
-            icon: Wallet,
-            underConstruction: true
-          }
         ]
       },
       {
         title: "Insights",
         href: "/accounts-receivable/insights",
-        icon: BarChart3,
-        children: [
-          {
-            title: "Aging Report",
-            href: "/accounts-receivable/insights/aging",
-            icon: Clock,
-            underConstruction: true
-          },
-          {
-            title: "Collection Performance",
-            href: "/accounts-receivable/insights/collection",
-            icon: TrendingUp,
-            underConstruction: true
-          },
-          {
-            title: "Reports",
-            href: "/accounts-receivable/insights/reports",
-            icon: FileText,
-            underConstruction: true
-          }
-        ]
+        icon: BarChart3
       },
       {
         title: "Master Data",
@@ -368,11 +296,6 @@ export const NAV: NavGroup[] = withUnderConstruction([
         title: "Expenses (Pleo)",
         href: "/reports/pleo",
         icon: Receipt
-      },
-      {
-        title: "Reconciliation Center",
-        href: "/actions/reconciliation-center",
-        icon: CheckCircle2
       },
       {
         title: "Braintree ↔ Orders",
