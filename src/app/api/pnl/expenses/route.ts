@@ -107,7 +107,10 @@ export async function GET(request: NextRequest) {
             if (monthIndex < 0 || monthIndex > 11) continue;
             const monthKey = monthKeys[monthIndex];
 
-            const fa = row.financial_account_code;
+            // financial_account_code may contain the name (e.g. "201.2 - COGS Delight")
+            // Extract only the numeric code portion before " - "
+            const rawFA = row.financial_account_code;
+            const fa = rawFA.includes(" - ") ? rawFA.split(" - ")[0].trim() : rawFA;
 
             // Map unassigned FA code "0000" → "210.0" (Balance Adjustments)
             const mappedFA = fa === "0000" ? "210.0" : fa;

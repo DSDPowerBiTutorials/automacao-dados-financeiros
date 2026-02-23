@@ -62,13 +62,14 @@ export async function GET(request: NextRequest) {
                 .limit(500);
 
             if (faCode === "210.0") {
-                // Balance Adjustments: include 210.0 and unassigned "0000"
-                query = query.or(`financial_account_code.eq.210.0,financial_account_code.eq.0000,financial_account_code.like.210.%`);
+                // Balance Adjustments: include 210.x and unassigned "0000"
+                query = query.or(`financial_account_code.like.210.%,financial_account_code.like.0000%`);
             } else if (isParentCode) {
                 // Parent code: query all sub-codes (e.g., 202.% matches 202.0, 202.1, 202.2, ...)
                 query = query.like("financial_account_code", `${prefix}.%`);
             } else {
-                query = query.eq("financial_account_code", faCode);
+                // Specific code: use like to handle "201.1 - COGS Growth" format
+                query = query.like("financial_account_code", `${faCode}%`);
             }
 
             const { data, error } = await query;

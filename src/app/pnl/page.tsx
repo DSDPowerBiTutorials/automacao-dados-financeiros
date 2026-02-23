@@ -366,10 +366,10 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
         || (isPaid ? "PAID" : isScheduled ? "SCHEDULED" : "NOT_SCHEDULED");
 
     const paymentStatusColor = paymentStatusLabel.toLowerCase().includes("paid")
-        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+        ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30"
         : paymentStatusLabel.toLowerCase().includes("scheduled")
-            ? "bg-blue-500/20 text-blue-300 border-blue-500/30"
-            : "bg-gray-600/30 text-gray-500 dark:text-gray-400 border-gray-500/30";
+            ? "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-500/30"
+            : "bg-gray-100 dark:bg-gray-600/30 text-gray-600 dark:text-gray-400 border-gray-300 dark:border-gray-500/30";
 
     // Field display helper (supports editing)
     const Field = ({ label, value, fieldKey, highlight, mono, type }: { label: string; value?: string | null; fieldKey?: string; highlight?: string; mono?: boolean; type?: "text" | "date" | "number" }) => {
@@ -403,7 +403,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                 <button
                     onClick={() => updateField(fieldKey, !isActive)}
                     className={`text-xs px-2.5 py-1.5 rounded border transition-colors ${isActive
-                        ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
+                        ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30"
                         : "bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-500 border-gray-300 dark:border-gray-600"
                         }`}
                 >
@@ -414,9 +414,9 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
         }
         if (!value) return null;
         return (
-            <Badge className={`text-xs ${label === "DRE Impact" ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/30"
-                : label === "Cash Impact" ? "bg-cyan-500/20 text-cyan-300 border-cyan-500/30"
-                    : "bg-red-500/20 text-red-300 border-red-500/30"
+            <Badge className={`text-xs ${label === "DRE Impact" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30"
+                : label === "Cash Impact" ? "bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-300 dark:border-cyan-500/30"
+                    : "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/30"
                 }`}>{label}</Badge>
         );
     };
@@ -506,8 +506,8 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 </div>
                             </div>
                             <div className="flex flex-wrap gap-2 mt-3">
-                                {historyViewInvoice.dreImpact && <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">DRE Impact</Badge>}
-                                {historyViewInvoice.cashImpact && <Badge className="text-xs bg-cyan-500/20 text-cyan-300 border-cyan-500/30">Cash Impact</Badge>}
+                                {historyViewInvoice.dreImpact && <Badge className="text-xs bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-500/30">DRE Impact</Badge>}
+                                {historyViewInvoice.cashImpact && <Badge className="text-xs bg-cyan-100 dark:bg-cyan-500/20 text-cyan-700 dark:text-cyan-300 border-cyan-300 dark:border-cyan-500/30">Cash Impact</Badge>}
                             </div>
                         </div>
                         {/* Description */}
@@ -550,7 +550,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                     <div className="flex items-center gap-2 flex-shrink-0">
                         {/* Save message */}
                         {saveMessage && (
-                            <span className={`text-xs px-2 py-1 rounded ${saveMessage.type === "success" ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"}`}>
+                            <span className={`text-xs px-2 py-1 rounded ${saveMessage.type === "success" ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300"}`}>
                                 {saveMessage.text}
                             </span>
                         )}
@@ -615,8 +615,8 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                             <Field label="Invoice Date" value={isEditing ? undefined : fmt(invoice.invoiceDate)} fieldKey="invoiceDate" type="date" />
                             <Field label="Benefit Date" value={isEditing ? undefined : fmt(invoice.benefitDate)} fieldKey="benefitDate" type="date" />
                             <Field label="Due Date" value={isEditing ? undefined : fmt(invoice.dueDate)} fieldKey="dueDate" type="date" />
-                            <Field label="Schedule Date" value={isEditing ? undefined : fmt(invoice.scheduleDate)} fieldKey="scheduleDate" type="date" highlight={isScheduled && !isPaid ? "text-blue-300" : "text-gray-900 dark:text-white"} />
-                            <Field label="Payment Date" value={isEditing ? undefined : fmt(invoice.paymentDate)} fieldKey="paymentDate" type="date" highlight={isPaid ? "text-emerald-400" : "text-gray-900 dark:text-white"} />
+                            <Field label="Schedule Date" value={isEditing ? undefined : fmt(invoice.scheduleDate)} fieldKey="scheduleDate" type="date" highlight={isScheduled && !isPaid ? "text-blue-600 dark:text-blue-300" : "text-gray-900 dark:text-white"} />
+                            <Field label="Payment Date" value={isEditing ? undefined : fmt(invoice.paymentDate)} fieldKey="paymentDate" type="date" highlight={isPaid ? "text-emerald-600 dark:text-emerald-400" : "text-gray-900 dark:text-white"} />
                         </div>
                     </div>
 
@@ -638,7 +638,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                             {isEditing ? (
                                 <Field label="Paid Amount" fieldKey="paidAmount" type="number" />
                             ) : (
-                                <Field label="Paid Amount" value={invoice.paidAmount ? formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR") : "-"} highlight={invoice.paidAmount ? "text-emerald-400 font-medium" : "text-gray-900 dark:text-white"} />
+                                <Field label="Paid Amount" value={invoice.paidAmount ? formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR") : "-"} highlight={invoice.paidAmount ? "text-emerald-600 dark:text-emerald-400 font-medium" : "text-gray-900 dark:text-white"} />
                             )}
                             <Field label="Paid Currency" value={invoice.paidCurrency || "-"} fieldKey="paidCurrency" />
                             <Field label="EUR Exchange" value={isEditing ? undefined : (invoice.eurExchange ? String(invoice.eurExchange) : "-")} fieldKey="eurExchange" type="number" mono />
@@ -741,21 +741,21 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
                                     <div className="flex items-center gap-3">
                                         {isPaid ? (
-                                            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                                                <div className="h-2.5 w-2.5 rounded-full bg-emerald-400"></div>
-                                                <span className="text-sm text-emerald-300 font-medium">
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-lg">
+                                                <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 dark:bg-emerald-400"></div>
+                                                <span className="text-sm text-emerald-700 dark:text-emerald-300 font-medium">
                                                     Paid {invoice.bankAccountName ? `via ${invoice.bankAccountName}` : ""} {invoice.paymentDate ? `on ${fmt(invoice.paymentDate)}` : ""}
                                                 </span>
                                                 {invoice.paidAmount ? (
-                                                    <span className="text-sm text-emerald-400 font-mono font-bold ml-2">
+                                                    <span className="text-sm text-emerald-600 dark:text-emerald-400 font-mono font-bold ml-2">
                                                         {formatCurrency(invoice.paidAmount, invoice.paidCurrency || invoice.currency || "EUR")}
                                                     </span>
                                                 ) : null}
                                             </div>
                                         ) : isScheduled ? (
-                                            <div className="flex items-center gap-2 px-3 py-2 bg-blue-500/10 border border-blue-500/20 rounded-lg">
-                                                <div className="h-2.5 w-2.5 rounded-full bg-blue-400"></div>
-                                                <span className="text-sm text-blue-300 font-medium">
+                                            <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-lg">
+                                                <div className="h-2.5 w-2.5 rounded-full bg-blue-500 dark:bg-blue-400"></div>
+                                                <span className="text-sm text-blue-700 dark:text-blue-300 font-medium">
                                                     Scheduled for {fmt(invoice.scheduleDate)} {invoice.bankAccountName ? `via ${invoice.bankAccountName}` : ""}
                                                 </span>
                                             </div>
@@ -838,9 +838,9 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                             rel="noopener noreferrer"
                                             className="flex items-center gap-2 px-3 py-2.5 bg-white dark:bg-black rounded-lg hover:bg-gray-100 dark:hover:bg-[#111111] transition-colors group"
                                         >
-                                            <FileText className="h-4 w-4 text-blue-400 flex-shrink-0" />
-                                            <span className="text-sm text-blue-300 group-hover:text-blue-200 truncate flex-1">{att.file_name}</span>
-                                            <ExternalLink className="h-3 w-3 text-gray-500 group-hover:text-blue-400 flex-shrink-0" />
+                                            <FileText className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+                                            <span className="text-sm text-blue-600 dark:text-blue-300 group-hover:text-blue-500 dark:group-hover:text-blue-200 truncate flex-1">{att.file_name}</span>
+                                            <ExternalLink className="h-3 w-3 text-gray-500 group-hover:text-blue-600 dark:group-hover:text-blue-400 flex-shrink-0" />
                                         </a>
                                     ))}
                                 </div>
@@ -876,7 +876,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                     </span> invoices
                                                 </span>
                                                 <span className="text-xs text-gray-500 dark:text-gray-400">
-                                                    {invoice.source === "invoices" ? "Total spend" : "Total revenue"}: <span className={`${invoice.source === "invoices" ? "text-red-400" : "text-emerald-400"} font-mono font-medium`}>
+                                                    {invoice.source === "invoices" ? "Total spend" : "Total revenue"}: <span className={`${invoice.source === "invoices" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"} font-mono font-medium`}>
                                                         {formatCurrency(
                                                             (historyFAFilter === "all" ? providerHistory : providerHistory.filter(i => i.faCode === historyFAFilter))
                                                                 .reduce((s, i) => s + (i.amount || 0), 0),
@@ -948,15 +948,15 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                                 <td className="px-3 py-2 text-xs text-gray-500 font-mono">{hi.faCode || "-"}</td>
                                                                 <td className="px-3 py-2">
                                                                     <span className={`text-[10px] px-1.5 py-0.5 rounded ${hiPaid
-                                                                        ? "bg-emerald-500/20 text-emerald-300"
+                                                                        ? "bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300"
                                                                         : hi.scheduleDate
-                                                                            ? "bg-blue-500/20 text-blue-300"
-                                                                            : "bg-gray-600/30 text-gray-500"
+                                                                            ? "bg-blue-100 dark:bg-blue-500/20 text-blue-700 dark:text-blue-300"
+                                                                            : "bg-gray-100 dark:bg-gray-600/30 text-gray-600 dark:text-gray-500"
                                                                         }`}>
                                                                         {hiPaid ? "PAID" : hi.scheduleDate ? "SCHED" : "OPEN"}
                                                                     </span>
                                                                 </td>
-                                                                <td className={`px-3 py-2 text-right text-xs font-mono ${invoice.source === "invoices" ? "text-red-400" : "text-emerald-400"}`}>{formatCurrency(hi.amount, hi.currency || "EUR")}</td>
+                                                                <td className={`px-3 py-2 text-right text-xs font-mono ${invoice.source === "invoices" ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>{formatCurrency(hi.amount, hi.currency || "EUR")}</td>
                                                             </tr>
                                                         );
                                                     })}
@@ -1013,19 +1013,19 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                         <div className="flex items-center justify-between">
                             <div>
                                 <DialogTitle className="text-xl text-gray-900 dark:text-white flex items-center gap-2">
-                                    <BarChart3 className={`h-5 w-5 ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
+                                    <BarChart3 className={`h-5 w-5 ${isExpense ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`} />
                                     Drill-Down: {drilldown.faName}
                                 </DialogTitle>
                                 <div className="flex items-center gap-3 mt-1">
                                     <p className="text-sm text-gray-500 dark:text-gray-400">
-                                        <span className={`font-mono ${isExpense ? "text-red-400" : "text-emerald-400"}`}>{drilldown.faCode}</span>
+                                        <span className={`font-mono ${isExpense ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>{drilldown.faCode}</span>
                                         {" • "}
                                         <span>{MONTHS_FULL[drilldown.month]} {selectedYear}</span>
                                         {" • "}
-                                        <span className={isExpense ? "text-red-300" : "text-emerald-300"}>{drilldown.count} transactions</span>
+                                        <span className={isExpense ? "text-red-600 dark:text-red-300" : "text-emerald-600 dark:text-emerald-300"}>{drilldown.count} transactions</span>
                                     </p>
                                     {creditNoteCount > 0 && (
-                                        <Badge className="text-xs bg-red-500/20 text-red-300 border-red-500/30">
+                                        <Badge className="text-xs bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-300 border-red-300 dark:border-red-500/30">
                                             <AlertCircle className="h-3 w-3 mr-1" />
                                             {creditNoteCount} Credit Notes ({formatCurrency(creditNoteTotal, "EUR")})
                                         </Badge>
@@ -1041,7 +1041,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                     <div className="flex-1 overflow-auto mt-4">
                         {drilldown.loading ? (
                             <div className="flex items-center justify-center py-12">
-                                <Loader2 className={`h-8 w-8 animate-spin ${isExpense ? "text-red-400" : "text-emerald-400"}`} />
+                                <Loader2 className={`h-8 w-8 animate-spin ${isExpense ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`} />
                                 <span className="ml-3 text-gray-500 dark:text-gray-400">Loading transactions...</span>
                             </div>
                         ) : drilldown.transactions.length === 0 ? (
@@ -1067,7 +1067,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                 return (
                                                     <tr
                                                         key={tx.id}
-                                                        className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:bg-black/50 ${idx % 2 === 0 ? "bg-gray-100 dark:bg-black/50" : ""} ${isCreditNote ? "bg-red-950/30" : ""}`}
+                                                        className={`border-b border-gray-200 dark:border-gray-800 hover:bg-gray-100 dark:hover:bg-black/50 ${idx % 2 === 0 ? "bg-gray-50 dark:bg-black/50" : ""} ${isCreditNote ? "bg-red-50 dark:bg-red-950/30" : ""}`}
                                                     >
                                                         <td className="px-4 py-2 text-sm text-gray-700 dark:text-gray-300 font-mono whitespace-nowrap">
                                                             <div className="flex items-center gap-2">
@@ -1093,13 +1093,13 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                                     {tx.orderType}
                                                                 </Badge>
                                                                 {isCreditNote && (
-                                                                    <Badge className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">
+                                                                    <Badge className="text-[10px] bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 border-red-300 dark:border-red-500/30">
                                                                         Credit Note
                                                                     </Badge>
                                                                 )}
                                                             </div>
                                                         </td>
-                                                        <td className={`px-4 py-2 text-right text-sm font-mono font-semibold whitespace-nowrap ${(isExpense || isCreditNote) ? "text-red-400" : "text-emerald-400"}`}>
+                                                        <td className={`px-4 py-2 text-right text-sm font-mono font-semibold whitespace-nowrap ${(isExpense || isCreditNote) ? "text-red-600 dark:text-red-400" : "text-emerald-600 dark:text-emerald-400"}`}>
                                                             {formatCurrency(tx.amount, "EUR")}
                                                         </td>
                                                     </tr>
@@ -1111,7 +1111,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                 <td colSpan={4} className="px-4 py-3 text-sm font-semibold text-gray-900 dark:text-white">
                                                     Total ({drilldown.count} transactions)
                                                 </td>
-                                                <td className={`px-4 py-3 text-right text-lg font-mono ${isExpense ? "text-red-300" : "text-emerald-300"} font-bold whitespace-nowrap`}>
+                                                <td className={`px-4 py-3 text-right text-lg font-mono ${isExpense ? "text-red-700 dark:text-red-300" : "text-emerald-700 dark:text-emerald-300"} font-bold whitespace-nowrap`}>
                                                     {formatCurrency(drilldown.total, "EUR")}
                                                 </td>
                                             </tr>
@@ -1619,8 +1619,8 @@ export default function PnLReport() {
                         const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month
                         const canClick = isClickable && realVal !== 0 && !isNotClosed;
                         const hoverClass = line.type === "revenue"
-                            ? "cursor-pointer hover:bg-emerald-900/30 rounded transition-colors"
-                            : "cursor-pointer hover:bg-red-900/30 rounded transition-colors";
+                            ? "cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/30 rounded transition-colors"
+                            : "cursor-pointer hover:bg-red-100 dark:hover:bg-red-900/30 rounded transition-colors";
                         return (
                             <div
                                 key={i}
@@ -1628,7 +1628,7 @@ export default function PnLReport() {
                                 onClick={canClick ? () => openDrilldown(line.code, line.name, i) : undefined}
                                 title={canClick ? `Clique para ver detalhes de ${line.name} em ${MONTHS[i]}` : undefined}
                             >
-                                <span className={`text-[10px] font-mono ${line.type === "revenue" ? "text-emerald-400" : "text-red-400"} ${canClick ? "underline decoration-dotted underline-offset-2" : ""}`}>
+                                <span className={`text-[10px] font-mono ${line.type === "revenue" ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"} ${canClick ? "underline decoration-dotted underline-offset-2" : ""}`}>
                                     {isNotClosed ? "-" : formatCompact(val)}
                                 </span>
                             </div>
@@ -1637,7 +1637,7 @@ export default function PnLReport() {
 
                     {/* Total */}
                     <div className="text-right bg-gray-100 dark:bg-black/50 px-1 rounded">
-                        <span className={`text-[10px] font-mono font-bold ${line.type === "revenue" ? "text-emerald-300" : "text-red-300"}`}>
+                        <span className={`text-[10px] font-mono font-bold ${line.type === "revenue" ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
                             {formatCompact(total)}
                         </span>
                     </div>
@@ -1650,23 +1650,23 @@ export default function PnLReport() {
     // Subtotal row for monthly view
     const renderMonthlySubtotal = (label: string, monthlyData: typeof monthlyTotals.months, field: keyof typeof monthlyTotals.months[0], _ytd: number, total: number, isProfit = false) => {
         return (
-            <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 ${isProfit ? "bg-gradient-to-r from-blue-900/40 to-purple-900/40 border-y border-blue-500/30" : "bg-gray-100 dark:bg-black/60 border-y border-gray-200 dark:border-gray-700"}`}>
+            <div className={`grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 ${isProfit ? "bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/40 dark:to-purple-900/40 border-y border-blue-300 dark:border-blue-500/30" : "bg-gray-100 dark:bg-black/60 border-y border-gray-200 dark:border-gray-700"}`}>
                 <div className="flex items-center gap-2">
                     <div className="w-3" />
-                    <span className={`font-semibold ${isProfit ? "text-blue-300" : "text-gray-900 dark:text-white"} text-xs`}>{label}</span>
+                    <span className={`font-semibold ${isProfit ? "text-blue-700 dark:text-blue-300" : "text-gray-900 dark:text-white"} text-xs`}>{label}</span>
                 </div>
                 {monthlyData.map((m, i) => {
                     const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month
                     return (
                         <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>
-                            <span className={`text-[10px] font-mono font-semibold ${isProfit ? "text-blue-300" : "text-gray-600 dark:text-gray-200"}`}>
+                            <span className={`text-[10px] font-mono font-semibold ${isProfit ? "text-blue-700 dark:text-blue-300" : "text-gray-600 dark:text-gray-200"}`}>
                                 {isNotClosed ? "-" : formatCompact(m[field] as number)}
                             </span>
                         </div>
                     );
                 })}
-                <div className="text-right bg-amber-900/30 px-1 rounded">
-                    <span className={`text-[10px] font-mono font-bold ${isProfit ? "text-amber-200" : "text-gray-800 dark:text-gray-100"}`}>{formatCompact(total)}</span>
+                <div className="text-right bg-amber-100 dark:bg-amber-900/30 px-1 rounded">
+                    <span className={`text-[10px] font-mono font-bold ${isProfit ? "text-amber-800 dark:text-amber-200" : "text-gray-800 dark:text-gray-100"}`}>{formatCompact(total)}</span>
                 </div>
             </div>
         );
@@ -1687,11 +1687,11 @@ export default function PnLReport() {
     return (
         <div className="min-h-screen bg-white dark:bg-black">
             {/* Premium Dark Header */}
-            <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5 sticky top-0 z-20">
+            <header className="bg-gradient-to-r from-gray-100 via-gray-100 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5 sticky top-0 z-20">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-4">
-                        <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-blue-500/20 rounded-xl border border-emerald-500/30">
-                            <BarChart3 className="h-7 w-7 text-emerald-400" />
+                        <div className="p-3 bg-gradient-to-br from-emerald-100 to-blue-100 dark:from-emerald-500/20 dark:to-blue-500/20 rounded-xl border border-emerald-300 dark:border-emerald-500/30">
+                            <BarChart3 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <div>
                             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -1703,12 +1703,12 @@ export default function PnLReport() {
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-black/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2 bg-gray-200 dark:bg-black/60 rounded-lg p-1 border border-gray-300 dark:border-gray-700">
                             {[2024, 2025, 2026].map((year) => (
                                 <button
                                     key={year}
                                     onClick={() => setSelectedYear(year)}
-                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-[#111111]"}`}
                                 >
                                     {year}
                                 </button>
@@ -1731,120 +1731,120 @@ export default function PnLReport() {
                 {/* Executive Summary KPIs */}
                 <div className="grid grid-cols-6 gap-4">
                     {/* Revenue Card */}
-                    <Card className="bg-gradient-to-br from-emerald-900/50 to-emerald-950/80 border-emerald-700/50 col-span-1">
+                    <Card className="bg-gradient-to-br from-emerald-50 to-emerald-100 dark:from-emerald-900/50 dark:to-emerald-950/80 border-emerald-200 dark:border-emerald-700/50 col-span-1">
                         <CardContent className="pt-5 pb-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold text-emerald-300 uppercase tracking-wider">Revenue YTD</span>
-                                <TrendingUp className="h-4 w-4 text-emerald-400" />
+                                <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Revenue YTD</span>
+                                <TrendingUp className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                             </div>
                             <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.revenue)}</p>
                             <div className="flex items-center gap-2">
-                                <Badge className="text-[10px] bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                                <Badge className="text-[10px] bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
                                     {((monthlyTotals.ytd.revenue / monthlyTotals.ytd.revenueBudget - 1) * 100).toFixed(1)}% vs Budget
                                 </Badge>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-emerald-800/50">
+                            <div className="mt-3 pt-3 border-t border-emerald-200 dark:border-emerald-800/50">
                                 <div className="flex justify-between text-xs">
-                                    <span className="text-emerald-400/70">Full Year</span>
-                                    <span className="text-emerald-300 font-semibold">{formatCompact(monthlyTotals.annual.revenue)}</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400/70">Full Year</span>
+                                    <span className="text-emerald-700 dark:text-emerald-300 font-semibold">{formatCompact(monthlyTotals.annual.revenue)}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* Gross Profit Card */}
-                    <Card className="bg-gradient-to-br from-blue-900/50 to-blue-950/80 border-blue-700/50 col-span-1">
+                    <Card className="bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/50 dark:to-blue-950/80 border-blue-200 dark:border-blue-700/50 col-span-1">
                         <CardContent className="pt-5 pb-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold text-blue-300 uppercase tracking-wider">Gross Profit</span>
-                                <Layers className="h-4 w-4 text-blue-400" />
+                                <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 uppercase tracking-wider">Gross Profit</span>
+                                <Layers className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                             </div>
                             <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.grossProfit)}</p>
                             <div className="flex items-center gap-2">
-                                <Badge className="text-[10px] bg-blue-500/20 text-blue-300 border-blue-500/30">
+                                <Badge className="text-[10px] bg-blue-500/20 text-blue-700 dark:text-blue-300 border-blue-500/30">
                                     {((monthlyTotals.ytd.grossProfit / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Margin
                                 </Badge>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-blue-800/50">
+                            <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800/50">
                                 <div className="flex justify-between text-xs">
-                                    <span className="text-blue-400/70">Full Year</span>
-                                    <span className="text-blue-300 font-semibold">{formatCompact(monthlyTotals.annual.grossProfit)}</span>
+                                    <span className="text-blue-600 dark:text-blue-400/70">Full Year</span>
+                                    <span className="text-blue-700 dark:text-blue-300 font-semibold">{formatCompact(monthlyTotals.annual.grossProfit)}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* EBITDA Card */}
-                    <Card className="bg-gradient-to-br from-purple-900/50 to-purple-950/80 border-purple-700/50 col-span-1">
+                    <Card className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-950/80 border-purple-200 dark:border-purple-700/50 col-span-1">
                         <CardContent className="pt-5 pb-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold text-purple-300 uppercase tracking-wider">EBITDA</span>
-                                <Building2 className="h-4 w-4 text-purple-400" />
+                                <span className="text-xs font-semibold text-purple-700 dark:text-purple-300 uppercase tracking-wider">EBITDA</span>
+                                <Building2 className="h-4 w-4 text-purple-600 dark:text-purple-400" />
                             </div>
                             <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.ebitda)}</p>
                             <div className="flex items-center gap-2">
-                                <Badge className="text-[10px] bg-purple-500/20 text-purple-300 border-purple-500/30">
+                                <Badge className="text-[10px] bg-purple-500/20 text-purple-700 dark:text-purple-300 border-purple-500/30">
                                     {((monthlyTotals.ytd.ebitda / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Margin
                                 </Badge>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-purple-800/50">
+                            <div className="mt-3 pt-3 border-t border-purple-200 dark:border-purple-800/50">
                                 <div className="flex justify-between text-xs">
-                                    <span className="text-purple-400/70">Full Year</span>
-                                    <span className="text-purple-300 font-semibold">{formatCompact(monthlyTotals.annual.ebitda)}</span>
+                                    <span className="text-purple-600 dark:text-purple-400/70">Full Year</span>
+                                    <span className="text-purple-700 dark:text-purple-300 font-semibold">{formatCompact(monthlyTotals.annual.ebitda)}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* Expenses Card */}
-                    <Card className="bg-gradient-to-br from-red-900/50 to-red-950/80 border-red-700/50 col-span-1">
+                    <Card className="bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/50 dark:to-red-950/80 border-red-200 dark:border-red-700/50 col-span-1">
                         <CardContent className="pt-5 pb-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold text-red-300 uppercase tracking-wider">Expenses</span>
-                                <TrendingDown className="h-4 w-4 text-red-400" />
+                                <span className="text-xs font-semibold text-red-700 dark:text-red-300 uppercase tracking-wider">Expenses</span>
+                                <TrendingDown className="h-4 w-4 text-red-600 dark:text-red-400" />
                             </div>
                             <p className="text-2xl font-bold text-gray-900 dark:text-white mb-1">{formatCompact(monthlyTotals.ytd.totalExpenses)}</p>
                             <div className="flex items-center gap-2">
-                                <Badge className="text-[10px] bg-red-500/20 text-red-300 border-red-500/30">
+                                <Badge className="text-[10px] bg-red-500/20 text-red-700 dark:text-red-300 border-red-500/30">
                                     {((1 - monthlyTotals.ytd.totalExpenses / monthlyTotals.ytd.totalExpensesBudget) * 100).toFixed(1)}% Under
                                 </Badge>
                             </div>
-                            <div className="mt-3 pt-3 border-t border-red-800/50">
+                            <div className="mt-3 pt-3 border-t border-red-200 dark:border-red-800/50">
                                 <div className="flex justify-between text-xs">
-                                    <span className="text-red-400/70">Full Year</span>
-                                    <span className="text-red-300 font-semibold">{formatCompact(monthlyTotals.annual.totalExpenses)}</span>
+                                    <span className="text-red-600 dark:text-red-400/70">Full Year</span>
+                                    <span className="text-red-700 dark:text-red-300 font-semibold">{formatCompact(monthlyTotals.annual.totalExpenses)}</span>
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
 
                     {/* Net Income Card */}
-                    <Card className="bg-gradient-to-br from-amber-900/50 to-amber-950/80 border-amber-700/50 col-span-2">
+                    <Card className="bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-900/50 dark:to-amber-950/80 border-amber-200 dark:border-amber-700/50 col-span-2">
                         <CardContent className="pt-5 pb-4">
                             <div className="flex items-center justify-between mb-3">
-                                <span className="text-xs font-semibold text-amber-300 uppercase tracking-wider">Net Income YTD</span>
-                                <DollarSign className="h-4 w-4 text-amber-400" />
+                                <span className="text-xs font-semibold text-amber-700 dark:text-amber-300 uppercase tracking-wider">Net Income YTD</span>
+                                <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                             </div>
                             <div className="flex items-baseline gap-4">
                                 <p className="text-3xl font-bold text-gray-900 dark:text-white">{formatCurrency(monthlyTotals.ytd.netIncome, "EUR")}</p>
-                                <Badge className="text-xs bg-amber-500/20 text-amber-300 border-amber-500/30">
+                                <Badge className="text-xs bg-amber-500/20 text-amber-700 dark:text-amber-300 border-amber-500/30">
                                     {((monthlyTotals.ytd.netIncome / monthlyTotals.ytd.revenue) * 100).toFixed(1)}% Net Margin
                                 </Badge>
                             </div>
-                            <div className="mt-4 grid grid-cols-3 gap-4 pt-3 border-t border-amber-800/50">
+                            <div className="mt-4 grid grid-cols-3 gap-4 pt-3 border-t border-amber-200 dark:border-amber-800/50">
                                 <div>
-                                    <span className="text-[10px] text-amber-400/70 uppercase">vs Budget</span>
-                                    <p className={`text-sm font-semibold ${monthlyTotals.ytd.netIncome >= monthlyTotals.ytd.netIncomeBudget ? "text-emerald-400" : "text-red-400"}`}>
+                                    <span className="text-[10px] text-amber-600 dark:text-amber-400/70 uppercase">vs Budget</span>
+                                    <p className={`text-sm font-semibold ${monthlyTotals.ytd.netIncome >= monthlyTotals.ytd.netIncomeBudget ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
                                         {monthlyTotals.ytd.netIncome >= monthlyTotals.ytd.netIncomeBudget ? "+" : ""}{formatCompact(monthlyTotals.ytd.netIncome - monthlyTotals.ytd.netIncomeBudget)}
                                     </p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-amber-400/70 uppercase">Full Year Est.</span>
-                                    <p className="text-sm font-semibold text-amber-300">{formatCompact(monthlyTotals.annual.netIncome)}</p>
+                                    <span className="text-[10px] text-amber-600 dark:text-amber-400/70 uppercase">Full Year Est.</span>
+                                    <p className="text-sm font-semibold text-amber-700 dark:text-amber-300">{formatCompact(monthlyTotals.annual.netIncome)}</p>
                                 </div>
                                 <div>
-                                    <span className="text-[10px] text-amber-400/70 uppercase">Variance %</span>
-                                    <p className={`text-sm font-semibold ${monthlyTotals.ytd.netIncome >= monthlyTotals.ytd.netIncomeBudget ? "text-emerald-400" : "text-red-400"}`}>
+                                    <span className="text-[10px] text-amber-600 dark:text-amber-400/70 uppercase">Variance %</span>
+                                    <p className={`text-sm font-semibold ${monthlyTotals.ytd.netIncome >= monthlyTotals.ytd.netIncomeBudget ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
                                         {((monthlyTotals.ytd.netIncome / monthlyTotals.ytd.netIncomeBudget - 1) * 100).toFixed(1)}%
                                     </p>
                                 </div>
@@ -1855,7 +1855,7 @@ export default function PnLReport() {
 
                 {/* Monthly P&L Table */}
                 <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-800 overflow-hidden">
-                    <CardHeader className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-gray-900 to-gray-800/80 py-4">
+                    <CardHeader className="border-b border-gray-200 dark:border-gray-800 bg-gradient-to-r from-gray-100 to-gray-50 dark:from-gray-900 dark:to-gray-800/80 py-4">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <CardTitle className="text-gray-900 dark:text-white flex items-center gap-2">
@@ -1865,7 +1865,7 @@ export default function PnLReport() {
                                 <Badge variant="outline" className="text-xs text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600">
                                     {lastClosedMonth >= 0 ? `${MONTHS_FULL[lastClosedMonth]} ${selectedYear}` : `No closed months`}
                                 </Badge>
-                                <Badge className="text-xs bg-emerald-500/20 text-emerald-300 border-emerald-500/30">
+                                <Badge className="text-xs bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border-emerald-500/30">
                                     📊 Invoice Orders: Dados Reais
                                 </Badge>
                             </div>
@@ -1890,16 +1890,16 @@ export default function PnLReport() {
                     <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1 py-2 px-2 bg-gray-200 dark:bg-black/80 border-b border-gray-200 dark:border-gray-700 text-[9px] font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400 sticky top-[73px] z-10">
                         <div>Account</div>
                         {MONTHS.map((m, i) => (
-                            <div key={m} className={`text-right ${i === lastClosedMonth ? "text-emerald-400" : ""} ${i > lastClosedMonth ? "opacity-40" : ""}`}>
+                            <div key={m} className={`text-right ${i === lastClosedMonth ? "text-emerald-700 dark:text-emerald-400" : ""} ${i > lastClosedMonth ? "opacity-40" : ""}`}>
                                 {m}
                             </div>
                         ))}
-                        <div className="text-right text-amber-400 bg-amber-900/20 px-1 rounded">Total</div>
+                        <div className="text-right text-amber-700 dark:text-amber-400 bg-amber-100 dark:bg-amber-900/20 px-1 rounded">Total</div>
                     </div>
 
                     {/* Revenue Section */}
-                    <div className="bg-gradient-to-r from-emerald-900/40 to-emerald-900/20 border-b border-emerald-800/50 py-2 px-3">
-                        <span className="text-xs font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-2">
+                    <div className="bg-gradient-to-r from-emerald-100 to-emerald-50 dark:from-emerald-900/40 dark:to-emerald-900/20 border-b border-emerald-200 dark:border-emerald-800/50 py-2 px-3">
+                        <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-wider flex items-center gap-2">
                             <TrendingUp className="h-3 w-3" />
                             Revenue
                         </span>
@@ -1910,8 +1910,8 @@ export default function PnLReport() {
                     {renderMonthlySubtotal("TOTAL REVENUE", monthlyTotals.months, "revenue", monthlyTotals.ytd.revenue, monthlyTotals.annual.revenue)}
 
                     {/* Expenses Section */}
-                    <div className="bg-gradient-to-r from-red-900/40 to-red-900/20 border-b border-red-800/50 py-2 px-3 mt-1">
-                        <span className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                    <div className="bg-gradient-to-r from-red-100 to-red-50 dark:from-red-900/40 dark:to-red-900/20 border-b border-red-200 dark:border-red-800/50 py-2 px-3 mt-1">
+                        <span className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider flex items-center gap-2">
                             <TrendingDown className="h-3 w-3" />
                             Expenses
                         </span>
@@ -1926,25 +1926,25 @@ export default function PnLReport() {
                     {renderMonthlySubtotal("EBITDA", monthlyTotals.months, "ebitda", monthlyTotals.ytd.ebitda, monthlyTotals.annual.ebitda, true)}
 
                     {/* Net Income Final Row */}
-                    <div className="bg-gradient-to-r from-amber-900/60 via-orange-900/50 to-amber-900/60 border-y-2 border-amber-500/50 py-3 px-2">
+                    <div className="bg-gradient-to-r from-amber-100 via-orange-100 to-amber-100 dark:from-amber-900/60 dark:via-orange-900/50 dark:to-amber-900/60 border-y-2 border-amber-300 dark:border-amber-500/50 py-3 px-2">
                         <div className="grid grid-cols-[160px_repeat(12,minmax(55px,1fr))_70px] gap-1">
                             <div className="flex items-center gap-2">
-                                <DollarSign className="h-4 w-4 text-amber-400" />
-                                <span className="text-sm font-bold text-amber-300">NET INCOME</span>
+                                <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                                <span className="text-sm font-bold text-amber-700 dark:text-amber-300">NET INCOME</span>
                             </div>
                             {monthlyTotals.months.map((m, i) => {
                                 const isNotClosed = i > lastClosedMonth; // Month not closed if after last closed month
                                 const displayValue = isNotClosed ? 0 : m.netIncome;
                                 return (
                                     <div key={i} className={`text-right ${isNotClosed ? "opacity-30" : ""}`}>
-                                        <span className={`text-[11px] font-mono font-bold ${displayValue >= 0 ? "text-emerald-300" : "text-red-300"}`}>
+                                        <span className={`text-[11px] font-mono font-bold ${displayValue >= 0 ? "text-emerald-700 dark:text-emerald-300" : "text-red-700 dark:text-red-300"}`}>
                                             {isNotClosed ? "-" : formatCompact(displayValue)}
                                         </span>
                                     </div>
                                 );
                             })}
-                            <div className="text-right bg-amber-900/40 px-1 rounded-lg py-1">
-                                <span className={`text-[11px] font-mono font-bold ${monthlyTotals.ytd.netIncome >= 0 ? "text-amber-200" : "text-red-300"}`}>
+                            <div className="text-right bg-amber-100 dark:bg-amber-900/40 px-1 rounded-lg py-1">
+                                <span className={`text-[11px] font-mono font-bold ${monthlyTotals.ytd.netIncome >= 0 ? "text-amber-800 dark:text-amber-200" : "text-red-700 dark:text-red-300"}`}>
                                     {formatCompact(monthlyTotals.ytd.netIncome)}
                                 </span>
                             </div>
@@ -1974,7 +1974,7 @@ export default function PnLReport() {
                                 const isPositive = item.invertVariance ? variance <= 0 : variance >= 0;
 
                                 return (
-                                    <div key={item.label} className={`bg-${item.color}-900/20 border border-${item.color}-800/40 rounded-lg p-4`}>
+                                    <div key={item.label} className={`bg-${item.color}-50 dark:bg-${item.color}-900/20 border border-${item.color}-200 dark:border-${item.color}-800/40 rounded-lg p-4`}>
                                         <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3">{item.label}</div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm">
@@ -1989,10 +1989,10 @@ export default function PnLReport() {
                                                 <div className="flex justify-between items-center">
                                                     <span className="text-xs text-gray-500">Variance</span>
                                                     <div className="flex items-center gap-2">
-                                                        <span className={`text-sm font-mono font-bold ${isPositive ? "text-emerald-400" : "text-red-400"}`}>
+                                                        <span className={`text-sm font-mono font-bold ${isPositive ? "text-emerald-700 dark:text-emerald-400" : "text-red-700 dark:text-red-400"}`}>
                                                             {variance >= 0 ? "+" : ""}{formatCompact(variance)}
                                                         </span>
-                                                        <Badge className={`text-[10px] ${isPositive ? "bg-emerald-500/20 text-emerald-300" : "bg-red-500/20 text-red-300"}`}>
+                                                        <Badge className={`text-[10px] ${isPositive ? "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300" : "bg-red-500/20 text-red-700 dark:text-red-300"}`}>
                                                             {variancePercent >= 0 ? "+" : ""}{variancePercent.toFixed(1)}%
                                                         </Badge>
                                                     </div>
