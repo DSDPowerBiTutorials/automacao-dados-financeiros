@@ -448,6 +448,7 @@ export default function BankStatementsPage() {
                 .from("csv_rows")
                 .select("*")
                 .in("source", orderSources)
+                .eq("reconciled", false)
                 .order("date", { ascending: false })
                 .limit(500);
 
@@ -1729,9 +1730,41 @@ export default function BankStatementsPage() {
             if (t.isReconciled) byBank[t.source].reconCount++;
         });
 
+        // ── Net Balance: saldo da última data de cada banco selecionado ──
+        // Para cada banco, encontrar a transação com a data mais recente e ler o saldo (custom_data.saldo ou custom_data.balance)
+        let lastDayBalance = 0;
+        let hasBalanceData = false;
+        for (const bankKey of selectedBanks) {
+            const bankTxs = bankTransactions
+                .filter(t => t.source === bankKey && t.date)
+                .sort((a, b) => b.date.localeCompare(a.date)); // mais recente primeiro
+            if (bankTxs.length === 0) continue;
+            const lastDate = bankTxs[0].date.split("T")[0];
+            // Pegar todas as transações do último dia e a que tem o saldo mais recente (última da lista nesse dia)
+            const lastDayTxs = bankTxs.filter(t => t.date.split("T")[0] === lastDate);
+            // Procurar saldo na última transação do dia (a que tem o saldo final)
+            // Ordenar por saldo decrescente — o saldo final do dia é tipicamente o da última transação registada
+            let bankBalance: number | null = null;
+            for (const t of lastDayTxs) {
+                const cd = t.custom_data || {};
+                const saldo = cd.saldo ?? cd.balance ?? null;
+                if (saldo !== null && saldo !== undefined) {
+                    const val = typeof saldo === "number" ? saldo : parseFloat(String(saldo));
+                    if (!isNaN(val)) {
+                        bankBalance = val;
+                        hasBalanceData = true;
+                        break; // primeira transação do último dia já tem o saldo final
+                    }
+                }
+            }
+            if (bankBalance !== null) lastDayBalance += bankBalance;
+        }
+        // Fallback: se nenhum banco tem dados de saldo, usar totalInflow - totalOutflow
+        const netBalance = hasBalanceData ? lastDayBalance : totalInflow - totalOutflow;
+
         return {
             totalInflow, totalOutflow,
-            netCashFlow: totalInflow - totalOutflow,
+            netCashFlow: netBalance,
             reconciledAmount,
             reconciledCount: reconciledTx.length,
             reconciledPct: totalInflow > 0 ? Math.round((reconciledAmount / totalInflow) * 100) : 0,
@@ -1739,7 +1772,7 @@ export default function BankStatementsPage() {
             transactionCount: filteredTransactions.length,
             byGateway, byBank,
         };
-    }, [filteredTransactions, bankTransactions]);
+    }, [filteredTransactions, bankTransactions, selectedBanks]);
 
     const toggleGroup = (date: string) => {
         setExpandedGroups(prev => {
@@ -2860,8 +2893,8 @@ export default function BankStatementsPage() {
                                                             key={order.id}
                                                             onClick={() => toggleOrderSelection(order.id)}
                                                             className={`w-full text-left p-2 rounded border transition-colors ${selectedOrderIds.has(order.id)
-                                                                    ? "bg-cyan-900/30 border-cyan-600"
-                                                                    : "bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
+                                                                ? "bg-cyan-900/30 border-cyan-600"
+                                                                : "bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
                                                                 }`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
@@ -2895,126 +2928,218 @@ export default function BankStatementsPage() {
                                 {/* ── MANUAL TAB ── */}
                                 {reconTab === "manual" && (
                                     <div className="space-y-4">
-                                        {/* Invoice search by supplier name / invoice number */}
-                                        <div>
-                                            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Search Invoice by Supplier Name or Invoice Number</label>
-                                            <div className="flex gap-2">
-                                                <Input
-                                                    placeholder="Type supplier name or invoice number..."
-                                                    value={manualSearchTerm}
-                                                    onChange={e => setManualSearchTerm(e.target.value)}
-                                                    onKeyDown={async e => {
-                                                        if (e.key === "Enter" && manualSearchTerm.length >= 2) {
-                                                            setIsSearchingManual(true);
-                                                            try {
-                                                                const q = manualSearchTerm.toLowerCase();
-                                                                const { data } = await supabase
-                                                                    .from("invoices")
-                                                                    .select("*")
-                                                                    .eq("is_reconciled", false)
-                                                                    .eq("invoice_type", "INCURRED")
-                                                                    .order("schedule_date", { ascending: false })
-                                                                    .limit(500);
-                                                                const results = (data || []).filter(inv =>
-                                                                    (inv.provider_code || "").toLowerCase().includes(q) ||
-                                                                    (inv.invoice_number || "").toLowerCase().includes(q)
-                                                                ).map(inv => ({
-                                                                    ...inv,
-                                                                    invoice_amount: parseFloat(inv.invoice_amount) || 0,
-                                                                    paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
-                                                                    matchScore: 0,
-                                                                    matchReason: "Manual search",
-                                                                }));
-                                                                setManualSearchResults(results);
-                                                            } catch { /* silent */ }
-                                                            setIsSearchingManual(false);
-                                                        }
-                                                    }}
-                                                    className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm flex-1"
-                                                />
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    disabled={isSearchingManual || manualSearchTerm.length < 2}
-                                                    onClick={async () => {
-                                                        setIsSearchingManual(true);
-                                                        try {
-                                                            const q = manualSearchTerm.toLowerCase();
-                                                            const { data } = await supabase
-                                                                .from("invoices")
-                                                                .select("*")
-                                                                .eq("is_reconciled", false)
-                                                                .eq("invoice_type", "INCURRED")
-                                                                .order("schedule_date", { ascending: false })
-                                                                .limit(500);
-                                                            const results = (data || []).filter(inv =>
-                                                                (inv.provider_code || "").toLowerCase().includes(q) ||
-                                                                (inv.invoice_number || "").toLowerCase().includes(q)
-                                                            ).map(inv => ({
-                                                                ...inv,
-                                                                invoice_amount: parseFloat(inv.invoice_amount) || 0,
-                                                                paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
-                                                                matchScore: 0,
-                                                                matchReason: "Manual search",
-                                                            }));
-                                                            setManualSearchResults(results);
-                                                        } catch { /* silent */ }
-                                                        setIsSearchingManual(false);
-                                                    }}
-                                                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-9"
-                                                >
-                                                    {isSearchingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
-                                                </Button>
-                                            </div>
-                                            <p className="text-[10px] text-gray-500 mt-1">Press Enter or click search. Min 2 characters.</p>
-                                        </div>
-
-                                        {/* Manual search results */}
-                                        {manualSearchResults.length > 0 && (
-                                            <div>
-                                                <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
-                                                    <span></span>
-                                                    <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                    <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
-                                                </div>
-                                                <div className="space-y-1 max-h-[250px] overflow-auto">
-                                                    {sortInvoices(manualSearchResults).slice(0, 50).map(inv => (
-                                                        <button
-                                                            key={inv.id}
-                                                            onClick={() => toggleInvoiceSelection(inv.id)}
-                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 hover:border-gray-500"}`}
+                                        {isExpense ? (
+                                            /* ── EXPENSE: Search AP Invoices by supplier / invoice number ── */
+                                            <>
+                                                <div>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Search Expense Invoice by Supplier or Invoice Number</label>
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            placeholder="Type supplier name or invoice number..."
+                                                            value={manualSearchTerm}
+                                                            onChange={e => setManualSearchTerm(e.target.value)}
+                                                            onKeyDown={async e => {
+                                                                if (e.key === "Enter" && manualSearchTerm.length >= 2) {
+                                                                    setIsSearchingManual(true);
+                                                                    try {
+                                                                        const q = manualSearchTerm.toLowerCase();
+                                                                        const { data } = await supabase
+                                                                            .from("invoices")
+                                                                            .select("*")
+                                                                            .eq("is_reconciled", false)
+                                                                            .eq("invoice_type", "INCURRED")
+                                                                            .order("schedule_date", { ascending: false })
+                                                                            .limit(500);
+                                                                        const results = (data || []).filter(inv =>
+                                                                            (inv.provider_code || "").toLowerCase().includes(q) ||
+                                                                            (inv.invoice_number || "").toLowerCase().includes(q) ||
+                                                                            (inv.description || "").toLowerCase().includes(q)
+                                                                        ).map(inv => ({
+                                                                            ...inv,
+                                                                            invoice_amount: parseFloat(inv.invoice_amount) || 0,
+                                                                            paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                                                                            matchScore: 0,
+                                                                            matchReason: "Manual search",
+                                                                        }));
+                                                                        setManualSearchResults(results);
+                                                                    } catch { /* silent */ }
+                                                                    setIsSearchingManual(false);
+                                                                }
+                                                            }}
+                                                            className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm flex-1"
+                                                        />
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={isSearchingManual || manualSearchTerm.length < 2}
+                                                            onClick={async () => {
+                                                                setIsSearchingManual(true);
+                                                                try {
+                                                                    const q = manualSearchTerm.toLowerCase();
+                                                                    const { data } = await supabase
+                                                                        .from("invoices")
+                                                                        .select("*")
+                                                                        .eq("is_reconciled", false)
+                                                                        .eq("invoice_type", "INCURRED")
+                                                                        .order("schedule_date", { ascending: false })
+                                                                        .limit(500);
+                                                                    const results = (data || []).filter(inv =>
+                                                                        (inv.provider_code || "").toLowerCase().includes(q) ||
+                                                                        (inv.invoice_number || "").toLowerCase().includes(q) ||
+                                                                        (inv.description || "").toLowerCase().includes(q)
+                                                                    ).map(inv => ({
+                                                                        ...inv,
+                                                                        invoice_amount: parseFloat(inv.invoice_amount) || 0,
+                                                                        paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                                                                        matchScore: 0,
+                                                                        matchReason: "Manual search",
+                                                                    }));
+                                                                    setManualSearchResults(results);
+                                                                } catch { /* silent */ }
+                                                                setIsSearchingManual(false);
+                                                            }}
+                                                            className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-9"
                                                         >
-                                                            <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
+                                                            {isSearchingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                                                        </Button>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-500 mt-1">Press Enter or click search. Min 2 characters.</p>
+                                                </div>
+
+                                                {/* Expense manual search results */}
+                                                {manualSearchResults.length > 0 && (
+                                                    <div>
+                                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
+                                                            <span></span>
+                                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                        </div>
+                                                        <div className="space-y-1 max-h-[250px] overflow-auto">
+                                                            {sortInvoices(manualSearchResults).slice(0, 50).map(inv => (
+                                                                <button
+                                                                    key={inv.id}
+                                                                    onClick={() => toggleInvoiceSelection(inv.id)}
+                                                                    className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
+                                                                        <div className="flex items-center">
+                                                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
+                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code}</p>
+                                                                            {inv.description && <p className="text-[10px] text-gray-500 truncate">{inv.description}</p>}
+                                                                        </div>
+                                                                        <div className="text-center">
+                                                                            <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
+                                                                        </div>
+                                                                        <div className="text-center">
+                                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <span className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        {manualSearchResults.length > 50 && (
+                                                            <p className="text-center text-gray-500 text-[10px] py-1">Showing 50 of {manualSearchResults.length} results</p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {manualSearchResults.length === 0 && manualSearchTerm.length >= 2 && !isSearchingManual && (
+                                                    <p className="text-center text-gray-500 text-xs py-2">No expense invoices found for &quot;{manualSearchTerm}&quot;</p>
+                                                )}
+                                            </>
+                                        ) : (
+                                            /* ── REVENUE: Search Invoice-Orders by customer / order ID ── */
+                                            <>
+                                                <div>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">
+                                                        <ShoppingCart className="h-3.5 w-3.5 inline mr-1" />
+                                                        Search Invoice-Orders by Customer Name, Order ID, or Invoice #
+                                                    </label>
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            placeholder="Type customer name, order ID, invoice #..."
+                                                            value={orderSearchTerm}
+                                                            onChange={e => setOrderSearchTerm(e.target.value)}
+                                                            onKeyDown={async e => {
+                                                                if (e.key === "Enter" && reconTransaction) {
+                                                                    await searchInvoiceOrders(orderSearchTerm, reconTransaction);
+                                                                }
+                                                            }}
+                                                            className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm flex-1"
+                                                        />
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={isSearchingOrders || orderSearchTerm.length < 2}
+                                                            onClick={() => reconTransaction && searchInvoiceOrders(orderSearchTerm, reconTransaction)}
+                                                            className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-9"
+                                                        >
+                                                            {isSearchingOrders ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                                                        </Button>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-500 mt-1">Press Enter or click search. Min 2 characters.</p>
+                                                </div>
+
+                                                {/* Revenue order selection summary */}
+                                                {selectedOrderIds.size > 0 && (
+                                                    <div className="bg-cyan-900/20 border border-cyan-800 rounded p-2">
+                                                        <p className="text-[10px] text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(orderSearchResults.filter(o => selectedOrderIds.has(o.id)).reduce((s, o) => s + o.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    </div>
+                                                )}
+
+                                                {/* Revenue order search results */}
+                                                <div className="max-h-[250px] overflow-y-auto space-y-1">
+                                                    {isSearchingOrders && (
+                                                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>
+                                                    )}
+                                                    {orderSearchResults.length === 0 && !isSearchingOrders && orderSearchTerm.length >= 2 && (
+                                                        <p className="text-center text-gray-500 text-xs py-2">No invoice-orders found for &quot;{orderSearchTerm}&quot;</p>
+                                                    )}
+                                                    {orderSearchResults.length === 0 && !isSearchingOrders && orderSearchTerm.length < 2 && (
+                                                        <p className="text-center text-gray-500 text-[10px] py-4">Search for invoice-orders by customer name, order ID, or invoice number</p>
+                                                    )}
+                                                    {orderSearchResults.map(order => (
+                                                        <button
+                                                            key={order.id}
+                                                            onClick={() => toggleOrderSelection(order.id)}
+                                                            className={`w-full text-left p-2 rounded border transition-colors ${selectedOrderIds.has(order.id)
+                                                                ? "bg-cyan-900/30 border-cyan-600"
+                                                                : "bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                                                }`}
+                                                        >
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
                                                                 <div className="flex items-center">
-                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
+                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code}</p>
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{order.customerName}</p>
+                                                                    <p className="text-[10px] text-gray-500 truncate">
+                                                                        {order.orderId && <span className="text-cyan-400">#{order.orderId}</span>}
+                                                                        {order.invoiceNumber && <span className="ml-2">Inv: {order.invoiceNumber}</span>}
+                                                                        {order.sourceLabel && <span className="ml-2 text-gray-400">{order.sourceLabel}</span>}
+                                                                    </p>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
-                                                                </div>
-                                                                <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(order.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <span className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                    <span className="text-xs font-medium text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
                                                                 </div>
                                                             </div>
                                                         </button>
                                                     ))}
                                                 </div>
-                                                {manualSearchResults.length > 50 && (
-                                                    <p className="text-center text-gray-500 text-[10px] py-1">Showing 50 of {manualSearchResults.length} results</p>
-                                                )}
-                                            </div>
-                                        )}
-                                        {manualSearchResults.length === 0 && manualSearchTerm.length >= 2 && !isSearchingManual && (
-                                            <p className="text-center text-gray-500 text-xs py-2">No invoices found for &quot;{manualSearchTerm}&quot;</p>
+                                            </>
                                         )}
 
                                         {/* ── Gateway Transactions Search (Revenue only) ── */}
@@ -3062,8 +3187,8 @@ export default function BankStatementsPage() {
                                                             key={gtx.id}
                                                             onClick={() => toggleGatewayTxSelection(gtx.id)}
                                                             className={`w-full text-left p-2 rounded border transition-colors ${selectedGatewayTxIds.has(gtx.id)
-                                                                    ? "bg-purple-900/30 border-purple-600"
-                                                                    : "bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
+                                                                ? "bg-purple-900/30 border-purple-600"
+                                                                : "bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
                                                                 }`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center">
