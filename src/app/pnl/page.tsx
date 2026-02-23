@@ -477,7 +477,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Paid Amount</p>
-                                    <p className="text-sm text-emerald-400 font-medium">{historyViewInvoice.paidAmount ? formatCurrency(historyViewInvoice.paidAmount, historyViewInvoice.paidCurrency || "EUR") : "-"}</p>
+                                    <p className="text-sm text-emerald-600 dark:text-emerald-400 font-medium">{historyViewInvoice.paidAmount ? formatCurrency(historyViewInvoice.paidAmount, historyViewInvoice.paidCurrency || "EUR") : "-"}</p>
                                 </div>
                                 <div>
                                     <p className="text-xs text-gray-500 mb-0.5">Payment Status</p>
@@ -575,7 +575,7 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                         <Button
                             variant="ghost" size="sm"
                             onClick={() => setShowHistory(!showHistory)}
-                            className={`gap-1.5 text-xs ${showHistory ? "text-blue-400" : "text-gray-500 dark:text-gray-400 hover:text-blue-400"}`}
+                            className={`gap-1.5 text-xs ${showHistory ? "text-blue-600 dark:text-blue-400" : "text-gray-500 dark:text-gray-400 hover:text-blue-600 dark:hover:text-blue-400"}`}
                         >
                             <History className="h-3.5 w-3.5" />
                             History ({providerHistory.length})
@@ -932,14 +932,14 @@ function InvoiceDetailPopup({ invoice: initialInvoice, onClose }: { invoice: Dri
                                                                     {!isCurrentInvoice && (
                                                                         <button
                                                                             onClick={() => setHistoryViewInvoice(hi)}
-                                                                            className="text-gray-500 hover:text-blue-400 transition-colors"
+                                                                            className="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
                                                                             title="View invoice details"
                                                                         >
                                                                             <Eye className="h-3.5 w-3.5" />
                                                                         </button>
                                                                     )}
                                                                     {isCurrentInvoice && (
-                                                                        <span className="text-blue-400 text-[10px] font-medium">CURRENT</span>
+                                                                        <span className="text-blue-600 dark:text-blue-400 text-[10px] font-medium">CURRENT</span>
                                                                     )}
                                                                 </td>
                                                                 <td className="px-3 py-2 text-xs text-gray-700 dark:text-gray-300 font-mono">{fmt(hi.benefitDate || hi.invoiceDate)}</td>
@@ -1073,7 +1073,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                                             <div className="flex items-center gap-2">
                                                                 <button
                                                                     onClick={() => setSelectedInvoice(tx)}
-                                                                    className="text-gray-500 hover:text-blue-400 transition-colors flex-shrink-0"
+                                                                    className="text-gray-500 hover:text-blue-600 dark:hover:text-blue-400 transition-colors flex-shrink-0"
                                                                     title="View invoice details"
                                                                 >
                                                                     <Eye className="h-3.5 w-3.5" />
@@ -1142,7 +1142,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                         {/* Monthly Changes */}
                                         <div className="px-4">
                                             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                                <Building2 className="h-4 w-4 text-emerald-400" />
+                                                <Building2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                                                 Contract Changes - {MONTHS_FULL[drilldown.month]} {selectedYear}
                                             </h3>
                                             <ClinicVariationsTable
@@ -1159,7 +1159,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                                         {/* YTD Changes */}
                                         <div className="px-4 pb-4">
                                             <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 flex items-center gap-2">
-                                                <Calendar className="h-4 w-4 text-blue-400" />
+                                                <Calendar className="h-4 w-4 text-blue-600 dark:text-blue-400" />
                                                 YTD Changes - January to {MONTHS_FULL[drilldown.month]} {selectedYear}
                                             </h3>
                                             <ClinicVariationsTable
@@ -1973,8 +1973,17 @@ export default function PnLReport() {
                                 const variancePercent = item.ytdBudget !== 0 ? (variance / item.ytdBudget) * 100 : 0;
                                 const isPositive = item.invertVariance ? variance <= 0 : variance >= 0;
 
+                                // Map color to static Tailwind classes (dynamic interpolation breaks JIT)
+                                const colorMap: Record<string, string> = {
+                                    emerald: "bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800/40",
+                                    blue: "bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800/40",
+                                    purple: "bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800/40",
+                                    red: "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800/40",
+                                    amber: "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800/40",
+                                };
+
                                 return (
-                                    <div key={item.label} className={`bg-${item.color}-50 dark:bg-${item.color}-900/20 border border-${item.color}-200 dark:border-${item.color}-800/40 rounded-lg p-4`}>
+                                    <div key={item.label} className={`${colorMap[item.color] || "bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800/40"} border rounded-lg p-4`}>
                                         <div className="text-xs font-semibold text-gray-500 dark:text-gray-400 mb-3">{item.label}</div>
                                         <div className="space-y-2">
                                             <div className="flex justify-between text-sm">
