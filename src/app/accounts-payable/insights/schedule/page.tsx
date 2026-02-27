@@ -350,8 +350,8 @@ export default function PaymentSchedulePage() {
     async function loadData() {
         setLoading(true);
         try {
-            const [invoicesRes, providersRes, paymentMethodsRes, bankAccountsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, financialAccountsRes] = await Promise.all([
-                supabase.from("invoices").select("*").order("schedule_date", { ascending: true, nullsFirst: false }),
+            const [scheduleRes, providersRes, paymentMethodsRes, bankAccountsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, financialAccountsRes] = await Promise.all([
+                fetch("/api/invoices/schedule").then(r => r.json()),
                 supabase.from("providers").select("code, name"),
                 supabase.from("payment_methods").select("code, name"),
                 supabase.from("bank_accounts").select("code, name"),
@@ -362,8 +362,8 @@ export default function PaymentSchedulePage() {
                 supabase.from("financial_accounts").select("code, name"),
             ]);
 
-            if (invoicesRes.error) throw invoicesRes.error;
-            setInvoices(invoicesRes.data || []);
+            if (scheduleRes.error) throw new Error(scheduleRes.error);
+            setInvoices(scheduleRes.data || []);
             setProviders(providersRes.data || []);
             setPaymentMethods(paymentMethodsRes.data || []);
             setBankAccounts(bankAccountsRes.data || []);
@@ -461,7 +461,7 @@ export default function PaymentSchedulePage() {
 
     const filteredInvoices = useMemo(() => {
         let filtered = invoices.filter((inv) => matchesScope(inv, selectedScope));
-        filtered = filtered.filter((inv) => !inv.schedule_date || inv.schedule_date >= "2026-01-01");
+        // Date filter (>= 2026 or null) is now applied server-side in /api/invoices/schedule
         if (!showCompleted) filtered = filtered.filter((inv) => !inv.payment_date);
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
