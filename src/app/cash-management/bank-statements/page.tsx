@@ -33,6 +33,7 @@ import {
     ChevronDown,
     ChevronRight,
     ChevronUp,
+    ChevronsUpDown,
     Database,
     Key,
     Filter,
@@ -100,6 +101,16 @@ interface DateGroup {
     rows: BankTransaction[];
     totalCredits: number;
     totalDebits: number;
+}
+
+interface MonthGroup {
+    monthKey: string; // YYYY-MM
+    monthLabel: string;
+    days: DateGroup[];
+    totalCredits: number;
+    totalDebits: number;
+    unreconciledExpenseCount: number;
+    unreconciledRevenueCount: number;
 }
 
 // ── Smart Reconciliation Match Types ──
@@ -244,6 +255,23 @@ const formatDateHeader = (dateStr: string): string => {
     const [year, month, day] = parts.map(Number);
     const d = new Date(Date.UTC(year, month - 1, day));
     return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric", timeZone: "UTC" });
+};
+
+const formatMonthHeader = (monthKey: string): string => {
+    const [year, month] = monthKey.split("-").map(Number);
+    const d = new Date(Date.UTC(year, month - 1, 1));
+    return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+};
+
+const formatDayLabel = (dateStr: string): string => {
+    const parts = dateStr.split("-");
+    if (parts.length !== 3) return dateStr;
+    const [year, month, day] = parts.map(Number);
+    const d = new Date(Date.UTC(year, month - 1, day));
+    const weekday = d.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+    const dayNum = d.getUTCDate();
+    const mon = d.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+    return `${weekday}, ${dayNum} ${mon}`;
 };
 
 const gatewayColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -759,7 +787,8 @@ export default function BankStatementsPage() {
     const [showReconciled, setShowReconciled] = useState(true);
 
     // Date groups
-    const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+    const [expandedMonths, setExpandedMonths] = useState<Set<string>>(new Set());
+    const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
 
     const { toast } = useToast();
 
@@ -835,10 +864,18 @@ export default function BankStatementsPage() {
 
             setBankTransactions(transactions);
 
-            // Expand all date groups initially
+            // Expand all months and days initially
             const allDates = new Set<string>();
-            transactions.forEach(t => { if (t.date) allDates.add(t.date.split("T")[0]); });
-            setExpandedGroups(allDates);
+            const allMonths = new Set<string>();
+            transactions.forEach(t => {
+                if (t.date) {
+                    const dayKey = t.date.split("T")[0];
+                    allDates.add(dayKey);
+                    allMonths.add(dayKey.slice(0, 7));
+                }
+            });
+            setExpandedMonths(allMonths);
+            setExpandedDays(allDates);
         } catch (err) {
             console.error("Error loading data:", err);
             setError(err instanceof Error ? err.message : "Error loading data");
@@ -1985,20 +2022,52 @@ export default function BankStatementsPage() {
         });
     }, [bankTransactions, selectedBanks, gatewayFilter, flowFilter, reconFilter, gwReconFilter, orderFilter, searchQuery, showReconciled, kpiFilter]);
 
-    // ─── Date groups ───
-    const dateGroups = useMemo(() => {
-        const map = new Map<string, DateGroup>();
+    // ─── Month groups (Month → Day → Transactions) ───
+    const monthGroups = useMemo(() => {
+        // First build day groups
+        const dayMap = new Map<string, DateGroup>();
         filteredTransactions.forEach(tx => {
             const key = tx.date?.split("T")[0] || "unknown";
-            if (!map.has(key)) {
-                map.set(key, { date: key, dateLabel: key === "unknown" ? "Unknown Date" : formatDateHeader(key), rows: [], totalCredits: 0, totalDebits: 0 });
+            if (!dayMap.has(key)) {
+                dayMap.set(key, { date: key, dateLabel: key === "unknown" ? "Unknown Date" : formatDayLabel(key), rows: [], totalCredits: 0, totalDebits: 0 });
             }
-            const g = map.get(key)!;
+            const g = dayMap.get(key)!;
             g.rows.push(tx);
             if (tx.amount > 0) g.totalCredits += tx.amount;
             else g.totalDebits += Math.abs(tx.amount);
         });
-        return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+
+        // Group days into months
+        const monthMap = new Map<string, MonthGroup>();
+        Array.from(dayMap.values()).forEach(dayGroup => {
+            const monthKey = dayGroup.date === "unknown" ? "unknown" : dayGroup.date.slice(0, 7);
+            if (!monthMap.has(monthKey)) {
+                monthMap.set(monthKey, {
+                    monthKey,
+                    monthLabel: monthKey === "unknown" ? "Unknown" : formatMonthHeader(monthKey),
+                    days: [],
+                    totalCredits: 0,
+                    totalDebits: 0,
+                    unreconciledExpenseCount: 0,
+                    unreconciledRevenueCount: 0,
+                });
+            }
+            const mg = monthMap.get(monthKey)!;
+            mg.days.push(dayGroup);
+            mg.totalCredits += dayGroup.totalCredits;
+            mg.totalDebits += dayGroup.totalDebits;
+            dayGroup.rows.forEach(tx => {
+                if (!tx.isReconciled) {
+                    if (tx.amount < 0) mg.unreconciledExpenseCount++;
+                    else mg.unreconciledRevenueCount++;
+                }
+            });
+        });
+
+        // Sort months descending, days descending within each month
+        const result = Array.from(monthMap.values()).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
+        result.forEach(mg => mg.days.sort((a, b) => b.date.localeCompare(a.date)));
+        return result;
     }, [filteredTransactions]);
 
     // ─── Summary ───
@@ -2072,10 +2141,29 @@ export default function BankStatementsPage() {
         };
     }, [filteredTransactions, bankTransactions, selectedBanks]);
 
-    const toggleGroup = (date: string) => {
-        setExpandedGroups(prev => {
+    const toggleMonth = (monthKey: string) => {
+        setExpandedMonths(prev => {
             const next = new Set(prev);
-            if (next.has(date)) next.delete(date); else next.add(date);
+            if (next.has(monthKey)) next.delete(monthKey); else next.add(monthKey);
+            return next;
+        });
+    };
+
+    const toggleDay = (dayKey: string) => {
+        setExpandedDays(prev => {
+            const next = new Set(prev);
+            if (next.has(dayKey)) next.delete(dayKey); else next.add(dayKey);
+            return next;
+        });
+    };
+
+    const toggleAllDaysInMonth = (mg: MonthGroup) => {
+        const dayKeys = mg.days.map(d => d.date);
+        const allExpanded = dayKeys.every(k => expandedDays.has(k));
+        setExpandedDays(prev => {
+            const next = new Set(prev);
+            if (allExpanded) dayKeys.forEach(k => next.delete(k));
+            else dayKeys.forEach(k => next.add(k));
             return next;
         });
     };
@@ -2361,89 +2449,130 @@ export default function BankStatementsPage() {
                     </div>
                 </div>
 
-                {/* ─── Content (date-grouped rows) ─── */}
+                {/* ─── Content (month → day → rows) ─── */}
                 <div className="flex-1 overflow-y-auto overflow-x-auto">
-                    {dateGroups.map(group => (
-                        <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
-                            {/* Date group header */}
-                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
-                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
-                                <span className="font-medium text-gray-900 dark:text-white text-sm">{group.dateLabel}</span>
-                                <span className="text-gray-500 text-xs ml-auto">
-                                    {group.rows.length} txns <span className="mx-1">|</span>
-                                    <span className="text-green-400">+{formatCurrency(group.totalCredits, dominantCurrency)}</span>
-                                    <span className="mx-1">/</span>
-                                    <span className="text-red-400">-{formatCurrency(group.totalDebits, dominantCurrency)}</span>
-                                </span>
-                            </div>
+                    {monthGroups.map(mg => {
+                        const dayKeys = mg.days.map(d => d.date);
+                        const allDaysExpanded = dayKeys.every(k => expandedDays.has(k));
+                        return (
+                            <div key={mg.monthKey} className="border-b border-gray-200 dark:border-gray-800">
+                                {/* Month header */}
+                                <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleMonth(mg.monthKey)}>
+                                    {expandedMonths.has(mg.monthKey) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+                                    <span className="font-medium text-gray-900 dark:text-white text-sm">{mg.monthLabel}</span>
+                                    {(mg.unreconciledExpenseCount > 0 || mg.unreconciledRevenueCount > 0) && (
+                                        <span className="text-[11px] font-medium">
+                                            (<span className="text-red-400">{mg.unreconciledExpenseCount} exp</span>
+                                            {mg.unreconciledExpenseCount > 0 && mg.unreconciledRevenueCount > 0 && <span className="text-gray-400"> · </span>}
+                                            <span className="text-green-400">{mg.unreconciledRevenueCount} rev</span>
+                                            <span className="text-gray-400"> unreconciled</span>)
+                                        </span>
+                                    )}
+                                    {expandedMonths.has(mg.monthKey) && (
+                                        <button
+                                            className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                            title={allDaysExpanded ? "Collapse all days" : "Expand all days"}
+                                            onClick={(e) => { e.stopPropagation(); toggleAllDaysInMonth(mg); }}
+                                        >
+                                            <ChevronsUpDown className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    <span className="text-gray-500 text-xs ml-auto">
+                                        <span className="text-green-400">+{formatCurrency(mg.totalCredits, dominantCurrency)}</span>
+                                        <span className="mx-1">/</span>
+                                        <span className="text-red-400">-{formatCurrency(mg.totalDebits, dominantCurrency)}</span>
+                                    </span>
+                                </div>
 
-                            {/* Rows */}
-                            {expandedGroups.has(group.date) && group.rows.map(tx => {
-                                const bankInfo = BANK_ACCOUNTS.find(b => b.key === tx.source);
-                                const gwStyle = getGatewayStyle(tx.paymentSource || tx.gateway);
-                                const isDebit = tx.amount < 0;
-                                const isCredit = tx.amount > 0;
+                                {/* Days within month */}
+                                {expandedMonths.has(mg.monthKey) && mg.days.map(dayGroup => (
+                                    <div key={dayGroup.date}>
+                                        {/* Day header */}
+                                        <div
+                                            className="flex items-center gap-2 pl-8 pr-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/30 cursor-pointer border-t border-gray-100 dark:border-gray-800/50"
+                                            onClick={() => toggleDay(dayGroup.date)}
+                                        >
+                                            {expandedDays.has(dayGroup.date) ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
+                                            <Calendar className="h-3 w-3 text-blue-400" />
+                                            <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300">{dayGroup.dateLabel}</span>
+                                            <span className="text-[11px] text-gray-400 ml-1">({dayGroup.rows.length})</span>
+                                            <span className="text-gray-400 text-[11px] ml-auto">
+                                                <span className="text-green-400">+{formatCurrency(dayGroup.totalCredits, dominantCurrency)}</span>
+                                                <span className="mx-1">/</span>
+                                                <span className="text-red-400">-{formatCurrency(dayGroup.totalDebits, dominantCurrency)}</span>
+                                            </span>
+                                        </div>
 
-                                return (
-                                    <div key={tx.id}
-                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""}`}
-                                        onClick={() => setSelectedRow(tx)}>
-                                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
-                                        {showBankColumn && (
-                                            <div className="w-[90px] flex-shrink-0">
-                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-500 dark:text-gray-400"} border-gray-300 dark:border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
-                                            </div>
-                                        )}
-                                        <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
-                                        <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                            {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
-                                        </div>
-                                        <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                            {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
-                                        </div>
-                                        <div className="w-[80px] flex-shrink-0 text-center">
-                                            {(tx.paymentSource || tx.gateway) ? (
-                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
-                                                    {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
-                                                </Badge>
-                                            ) : <span className="text-gray-600 text-[9px]">-</span>}
-                                        </div>
-                                        <div className="w-[64px] flex-shrink-0" onClick={e => e.stopPropagation()}>
-                                            <div className="flex items-center justify-center gap-1">
-                                                {tx.isReconciled ? (
-                                                    tx.reconciliationType === "manual"
-                                                        ? <User className="h-3.5 w-3.5 text-blue-500" />
-                                                        : <Zap className="h-3.5 w-3.5 text-green-500" />
-                                                ) : null}
+                                        {/* Transaction rows */}
+                                        {expandedDays.has(dayGroup.date) && dayGroup.rows.map(tx => {
+                                            const bankInfo = BANK_ACCOUNTS.find(b => b.key === tx.source);
+                                            const gwStyle = getGatewayStyle(tx.paymentSource || tx.gateway);
+                                            const isDebit = tx.amount < 0;
+                                            const isCredit = tx.amount > 0;
 
-                                                {(!tx.isReconciled || tx.reconciliationType !== "manual") && (
-                                                    <Button size="sm" variant="ghost" onClick={() => openManualRecon(tx)} className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30" title="Manual reconcile">
-                                                        <Link2 className="h-3 w-3" />
-                                                    </Button>
-                                                )}
-                                            </div>
-                                        </div>
-                                        <div className="w-[40px] flex-shrink-0 text-center">
-                                            {tx.isOrderReconciled ? (
-                                                <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
-                                            ) : (
-                                                <span className="text-gray-600 text-[9px]">-</span>
-                                            )}
-                                        </div>
-                                        <div className="w-[40px] flex-shrink-0 text-center" onClick={e => e.stopPropagation()}>
-                                            {tx.isReconciled && (
-                                                <Button size="sm" variant="ghost" onClick={() => revertReconciliation(tx)} className="h-5 w-5 p-0 text-gray-500 hover:text-red-400 hover:bg-red-900/30" title="Revert">
-                                                    <X className="h-3 w-3" />
-                                                </Button>
-                                            )}
-                                        </div>
+                                            return (
+                                                <div key={tx.id}
+                                                    className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""}`}
+                                                    onClick={() => setSelectedRow(tx)}>
+                                                    <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
+                                                    {showBankColumn && (
+                                                        <div className="w-[90px] flex-shrink-0">
+                                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-500 dark:text-gray-400"} border-gray-300 dark:border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
+                                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                        {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                                    </div>
+                                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                        {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                                    </div>
+                                                    <div className="w-[80px] flex-shrink-0 text-center">
+                                                        {(tx.paymentSource || tx.gateway) ? (
+                                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
+                                                                {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
+                                                            </Badge>
+                                                        ) : <span className="text-gray-600 text-[9px]">-</span>}
+                                                    </div>
+                                                    <div className="w-[64px] flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            {tx.isReconciled ? (
+                                                                tx.reconciliationType === "manual"
+                                                                    ? <User className="h-3.5 w-3.5 text-blue-500" />
+                                                                    : <Zap className="h-3.5 w-3.5 text-green-500" />
+                                                            ) : null}
+
+                                                            {(!tx.isReconciled || tx.reconciliationType !== "manual") && (
+                                                                <Button size="sm" variant="ghost" onClick={() => openManualRecon(tx)} className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30" title="Manual reconcile">
+                                                                    <Link2 className="h-3 w-3" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-[40px] flex-shrink-0 text-center">
+                                                        {tx.isOrderReconciled ? (
+                                                            <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
+                                                        ) : (
+                                                            <span className="text-gray-600 text-[9px]">-</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-[40px] flex-shrink-0 text-center" onClick={e => e.stopPropagation()}>
+                                                        {tx.isReconciled && (
+                                                            <Button size="sm" variant="ghost" onClick={() => revertReconciliation(tx)} className="h-5 w-5 p-0 text-gray-500 hover:text-red-400 hover:bg-red-900/30" title="Revert">
+                                                                <X className="h-3 w-3" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
                                     </div>
-                                );
-                            })}
-                        </div>
-                    ))}
+                                ))}
+                            </div>
+                        );
+                    })}
 
-                    {dateGroups.length === 0 && (
+                    {monthGroups.length === 0 && (
                         <div className="text-center py-20 text-gray-500">
                             <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
                             <p>No transactions found</p>

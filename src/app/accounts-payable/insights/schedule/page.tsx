@@ -1311,267 +1311,267 @@ export default function PaymentSchedulePage() {
                         const dayKeys = daySubGroups.map(d => d.dayKey);
                         const allDaysExpanded = dayKeys.every(k => expandedDays.has(k));
                         return (
-                        <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
-                            <div className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
-                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
-                                <span className="font-medium text-gray-900 dark:text-white">{group.dateLabel}</span>
-                                {unpaidCount > 0 && (
-                                    <span className="text-[12px] text-orange-400 font-medium">({unpaidCount} unpaid)</span>
-                                )}
-                                {group.date !== "unscheduled" && expandedGroups.has(group.date) && (
-                                    <button
-                                        className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-                                        title={allDaysExpanded ? "Collapse all days" : "Expand all days"}
-                                        onClick={(e) => { e.stopPropagation(); toggleAllDaysInMonth(group.date, daySubGroups); }}
-                                    >
-                                        <ChevronsUpDown className="h-4 w-4" />
-                                    </button>
-                                )}
-                                <span className="text-gray-500 text-sm ml-auto">
-                                    {group.invoices.length > 0 && (
-                                        <>TOT: <span className="text-gray-900 dark:text-white font-medium">
-                                            {group.totalEUR > 0 && `€${formatCurrency(group.totalEUR)}`}
-                                            {group.totalEUR > 0 && group.totalUSD > 0 && " + "}
-                                            {group.totalUSD > 0 && `$${formatCurrency(group.totalUSD)}`}
-                                        </span></>
+                            <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
+                                <div className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
+                                    {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+                                    <span className="font-medium text-gray-900 dark:text-white">{group.dateLabel}</span>
+                                    {unpaidCount > 0 && (
+                                        <span className="text-[12px] text-orange-400 font-medium">({unpaidCount} unpaid)</span>
                                     )}
-                                </span>
-                            </div>
+                                    {group.date !== "unscheduled" && expandedGroups.has(group.date) && (
+                                        <button
+                                            className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                            title={allDaysExpanded ? "Collapse all days" : "Expand all days"}
+                                            onClick={(e) => { e.stopPropagation(); toggleAllDaysInMonth(group.date, daySubGroups); }}
+                                        >
+                                            <ChevronsUpDown className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    <span className="text-gray-500 text-sm ml-auto">
+                                        {group.invoices.length > 0 && (
+                                            <>TOT: <span className="text-gray-900 dark:text-white font-medium">
+                                                {group.totalEUR > 0 && `€${formatCurrency(group.totalEUR)}`}
+                                                {group.totalEUR > 0 && group.totalUSD > 0 && " + "}
+                                                {group.totalUSD > 0 && `$${formatCurrency(group.totalUSD)}`}
+                                            </span></>
+                                        )}
+                                    </span>
+                                </div>
 
-                            {expandedGroups.has(group.date) && (
-                                <div>
-                                    {daySubGroups.map((dayGroup) => {
-                                        const isDayExpanded = group.date === "unscheduled" || expandedDays.has(dayGroup.dayKey);
-                                        return (
-                                            <div key={dayGroup.dayKey}>
-                                                {/* Day header - only show for non-unscheduled groups */}
-                                                {group.date !== "unscheduled" && (
-                                                    <div
-                                                        className="flex items-center gap-2 pl-8 pr-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/30 cursor-pointer border-t border-gray-100 dark:border-gray-800/50"
-                                                        onClick={() => toggleDay(dayGroup.dayKey)}
-                                                    >
-                                                        {isDayExpanded ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
-                                                        <Calendar className="h-3 w-3 text-blue-400" />
-                                                        <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300">{dayGroup.dayLabel}</span>
-                                                        <span className="text-[11px] text-gray-400 ml-1">({dayGroup.invoices.length})</span>
-                                                        <span className="text-gray-400 text-[11px] ml-auto">
-                                                            {dayGroup.totalEUR > 0 && `€${formatCurrency(dayGroup.totalEUR)}`}
-                                                            {dayGroup.totalEUR > 0 && dayGroup.totalUSD > 0 && " + "}
-                                                            {dayGroup.totalUSD > 0 && `$${formatCurrency(dayGroup.totalUSD)}`}
-                                                        </span>
-                                                    </div>
-                                                )}
-
-                                                {/* Invoice rows */}
-                                                {isDayExpanded && dayGroup.invoices.map((invoice) => {
-                                                    const financeStatus = invoice.finance_payment_status || "pending";
-                                                    const invoiceStatus = invoice.invoice_status || "pending";
-
-                                                    const financeStatusConfig: Record<string, { label: string; color: string; icon: any }> = {
-                                                        pending: { label: "Pending", color: "bg-yellow-900/30 text-yellow-400 border-yellow-700", icon: Clock },
-                                                        uploaded: { label: "Uploaded", color: "bg-blue-900/30 text-blue-400 border-blue-700", icon: Upload },
-                                                        done: { label: "Done", color: "bg-green-900/30 text-green-400 border-green-700", icon: CheckCircle },
-                                                        info_required: { label: "Info Required", color: "bg-red-900/30 text-red-400 border-red-700", icon: AlertCircle },
-                                                    };
-
-                                                    const invoiceStatusConfig: Record<string, { label: string; color: string }> = {
-                                                        pending: { label: "Pending", color: "bg-yellow-900/30 text-yellow-400 border-yellow-700" },
-                                                        available: { label: "Available", color: "bg-green-900/30 text-green-400 border-green-700" },
-                                                    };
-
-                                                    // Check if there's an amount discrepancy (same currency but different amounts)
-                                                    const hasAmountDiscrepancy = invoice.paid_amount != null &&
-                                                        invoice.paid_currency === invoice.currency &&
-                                                        Math.abs((invoice.paid_amount || 0) - (invoice.invoice_amount || 0)) > 0.01;
-
-                                                    return (
+                                {expandedGroups.has(group.date) && (
+                                    <div>
+                                        {daySubGroups.map((dayGroup) => {
+                                            const isDayExpanded = group.date === "unscheduled" || expandedDays.has(dayGroup.dayKey);
+                                            return (
+                                                <div key={dayGroup.dayKey}>
+                                                    {/* Day header - only show for non-unscheduled groups */}
+                                                    {group.date !== "unscheduled" && (
                                                         <div
-                                                            key={invoice.id}
-                                                            className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""} ${hasAmountDiscrepancy ? "bg-red-900/20" : ""}`}
-                                                            onClick={() => openDetailPanel(invoice)}
+                                                            className="flex items-center gap-2 pl-8 pr-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/30 cursor-pointer border-t border-gray-100 dark:border-gray-800/50"
+                                                            onClick={() => toggleDay(dayGroup.dayKey)}
                                                         >
-                                                            {/* Provider */}
-                                                            <div className="w-[130px] flex-shrink-0 flex items-center gap-2">
-                                                                <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
-                                                                    {updatingInvoice === invoice.id ? <Loader2 className="h-4 w-4 animate-spin text-gray-500 dark:text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Circle className="h-4 w-4 text-gray-500 hover:text-gray-700 dark:text-gray-300" />}
-                                                                </button>
-                                                                <div className="flex flex-col min-w-0">
-                                                                    <span className={`text-[12px] truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-gray-900 dark:text-white"}`}>{getProviderName(invoice.provider_code)}</span>
+                                                            {isDayExpanded ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
+                                                            <Calendar className="h-3 w-3 text-blue-400" />
+                                                            <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300">{dayGroup.dayLabel}</span>
+                                                            <span className="text-[11px] text-gray-400 ml-1">({dayGroup.invoices.length})</span>
+                                                            <span className="text-gray-400 text-[11px] ml-auto">
+                                                                {dayGroup.totalEUR > 0 && `€${formatCurrency(dayGroup.totalEUR)}`}
+                                                                {dayGroup.totalEUR > 0 && dayGroup.totalUSD > 0 && " + "}
+                                                                {dayGroup.totalUSD > 0 && `$${formatCurrency(dayGroup.totalUSD)}`}
+                                                            </span>
+                                                        </div>
+                                                    )}
+
+                                                    {/* Invoice rows */}
+                                                    {isDayExpanded && dayGroup.invoices.map((invoice) => {
+                                                        const financeStatus = invoice.finance_payment_status || "pending";
+                                                        const invoiceStatus = invoice.invoice_status || "pending";
+
+                                                        const financeStatusConfig: Record<string, { label: string; color: string; icon: any }> = {
+                                                            pending: { label: "Pending", color: "bg-yellow-900/30 text-yellow-400 border-yellow-700", icon: Clock },
+                                                            uploaded: { label: "Uploaded", color: "bg-blue-900/30 text-blue-400 border-blue-700", icon: Upload },
+                                                            done: { label: "Done", color: "bg-green-900/30 text-green-400 border-green-700", icon: CheckCircle },
+                                                            info_required: { label: "Info Required", color: "bg-red-900/30 text-red-400 border-red-700", icon: AlertCircle },
+                                                        };
+
+                                                        const invoiceStatusConfig: Record<string, { label: string; color: string }> = {
+                                                            pending: { label: "Pending", color: "bg-yellow-900/30 text-yellow-400 border-yellow-700" },
+                                                            available: { label: "Available", color: "bg-green-900/30 text-green-400 border-green-700" },
+                                                        };
+
+                                                        // Check if there's an amount discrepancy (same currency but different amounts)
+                                                        const hasAmountDiscrepancy = invoice.paid_amount != null &&
+                                                            invoice.paid_currency === invoice.currency &&
+                                                            Math.abs((invoice.paid_amount || 0) - (invoice.invoice_amount || 0)) > 0.01;
+
+                                                        return (
+                                                            <div
+                                                                key={invoice.id}
+                                                                className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 group cursor-pointer ${selectedInvoice?.id === invoice.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""} ${hasAmountDiscrepancy ? "bg-red-900/20" : ""}`}
+                                                                onClick={() => openDetailPanel(invoice)}
+                                                            >
+                                                                {/* Provider */}
+                                                                <div className="w-[130px] flex-shrink-0 flex items-center gap-2">
+                                                                    <button onClick={(e) => { e.stopPropagation(); togglePaid(invoice); }} disabled={updatingInvoice === invoice.id} className="flex-shrink-0">
+                                                                        {updatingInvoice === invoice.id ? <Loader2 className="h-4 w-4 animate-spin text-gray-500 dark:text-gray-400" /> : invoice.payment_date ? <CheckCircle className="h-4 w-4 text-green-500" /> : <Circle className="h-4 w-4 text-gray-500 hover:text-gray-700 dark:text-gray-300" />}
+                                                                    </button>
+                                                                    <div className="flex flex-col min-w-0">
+                                                                        <span className={`text-[12px] truncate ${invoice.payment_date ? "text-gray-500 line-through" : "text-gray-900 dark:text-white"}`}>{getProviderName(invoice.provider_code)}</span>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
 
-                                                            {/* Finance Payment Status - Editable */}
-                                                            <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                                <select
-                                                                    value={financeStatus}
-                                                                    onChange={(e) => updateInvoiceField(invoice.id, "finance_payment_status", e.target.value)}
-                                                                    className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color} bg-transparent`}
-                                                                >
-                                                                    <option value="pending" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Pending</option>
-                                                                    <option value="uploaded" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Uploaded</option>
-                                                                    <option value="done" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Done</option>
-                                                                    <option value="info_required" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Info Required</option>
-                                                                </select>
-                                                            </div>
+                                                                {/* Finance Payment Status - Editable */}
+                                                                <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                    <select
+                                                                        value={financeStatus}
+                                                                        onChange={(e) => updateInvoiceField(invoice.id, "finance_payment_status", e.target.value)}
+                                                                        className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${financeStatusConfig[financeStatus]?.color || financeStatusConfig.pending.color} bg-transparent`}
+                                                                    >
+                                                                        <option value="pending" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Pending</option>
+                                                                        <option value="uploaded" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Uploaded</option>
+                                                                        <option value="done" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Done</option>
+                                                                        <option value="info_required" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Info Required</option>
+                                                                    </select>
+                                                                </div>
 
-                                                            {/* Invoice Status - Editable */}
-                                                            <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                                <select
-                                                                    value={invoiceStatus}
-                                                                    onChange={(e) => updateInvoiceField(invoice.id, "invoice_status", e.target.value)}
-                                                                    className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color} bg-transparent`}
-                                                                >
-                                                                    <option value="pending" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Pending</option>
-                                                                    <option value="available" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Available</option>
-                                                                </select>
-                                                            </div>
+                                                                {/* Invoice Status - Editable */}
+                                                                <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                    <select
+                                                                        value={invoiceStatus}
+                                                                        onChange={(e) => updateInvoiceField(invoice.id, "invoice_status", e.target.value)}
+                                                                        className={`text-[10px] px-1 py-0.5 rounded border cursor-pointer w-full ${invoiceStatusConfig[invoiceStatus]?.color || invoiceStatusConfig.pending.color} bg-transparent`}
+                                                                    >
+                                                                        <option value="pending" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Pending</option>
+                                                                        <option value="available" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">Available</option>
+                                                                    </select>
+                                                                </div>
 
-                                                            {/* Invoice Date */}
-                                                            <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
+                                                                {/* Invoice Date */}
+                                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.invoice_date ? formatShortDate(invoice.invoice_date) : "—"}</div>
 
-                                                            {/* Due Date */}
-                                                            <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
+                                                                {/* Due Date */}
+                                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.due_date ? formatShortDate(invoice.due_date) : "—"}</div>
 
-                                                            {/* Schedule Date - Editable */}
-                                                            <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                                <input
-                                                                    type="date"
-                                                                    defaultValue={invoice.schedule_date || ""}
-                                                                    key={`sched-${invoice.id}-${invoice.schedule_date}`}
-                                                                    onBlur={(e) => {
-                                                                        const newVal = e.target.value || null;
-                                                                        if (newVal !== invoice.schedule_date) {
-                                                                            updateInvoiceField(invoice.id, "schedule_date", newVal);
-                                                                        }
-                                                                    }}
-                                                                    onKeyDown={(e) => {
-                                                                        if (e.key === "Enter") {
-                                                                            e.currentTarget.blur();
-                                                                        }
-                                                                    }}
-                                                                    className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70"
-                                                                />
-                                                            </div>
+                                                                {/* Schedule Date - Editable */}
+                                                                <div className="w-[75px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                    <input
+                                                                        type="date"
+                                                                        defaultValue={invoice.schedule_date || ""}
+                                                                        key={`sched-${invoice.id}-${invoice.schedule_date}`}
+                                                                        onBlur={(e) => {
+                                                                            const newVal = e.target.value || null;
+                                                                            if (newVal !== invoice.schedule_date) {
+                                                                                updateInvoiceField(invoice.id, "schedule_date", newVal);
+                                                                            }
+                                                                        }}
+                                                                        onKeyDown={(e) => {
+                                                                            if (e.key === "Enter") {
+                                                                                e.currentTarget.blur();
+                                                                            }
+                                                                        }}
+                                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-900 dark:text-white w-full cursor-pointer [&::-webkit-calendar-picker-indicator]:invert [&::-webkit-calendar-picker-indicator]:opacity-70"
+                                                                    />
+                                                                </div>
 
-                                                            {/* Payment Date */}
-                                                            <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.payment_date ? formatShortDate(invoice.payment_date) : "—"}</div>
+                                                                {/* Payment Date */}
+                                                                <div className="w-[65px] flex-shrink-0 text-[11px] text-gray-700 dark:text-gray-300">{invoice.payment_date ? formatShortDate(invoice.payment_date) : "—"}</div>
 
-                                                            {/* Payment Method - Editable */}
-                                                            <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                                <select
-                                                                    value={invoice.payment_method_code || ""}
-                                                                    onChange={(e) => updateInvoiceField(invoice.id, "payment_method_code", e.target.value || null)}
-                                                                    className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 w-full cursor-pointer"
-                                                                >
-                                                                    <option value="" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">—</option>
-                                                                    {paymentMethods.map((pm) => (
-                                                                        <option key={pm.code} value={pm.code} className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">{pm.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
+                                                                {/* Payment Method - Editable */}
+                                                                <div className="w-[85px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                    <select
+                                                                        value={invoice.payment_method_code || ""}
+                                                                        onChange={(e) => updateInvoiceField(invoice.id, "payment_method_code", e.target.value || null)}
+                                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 w-full cursor-pointer"
+                                                                    >
+                                                                        <option value="" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">—</option>
+                                                                        {paymentMethods.map((pm) => (
+                                                                            <option key={pm.code} value={pm.code} className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">{pm.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
 
-                                                            {/* Bank Account - Editable */}
-                                                            <div className="w-[90px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                                                                <select
-                                                                    value={invoice.bank_account_code || ""}
-                                                                    onChange={(e) => updateInvoiceField(invoice.id, "bank_account_code", e.target.value || null)}
-                                                                    className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 w-full cursor-pointer"
-                                                                >
-                                                                    <option value="" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">—</option>
-                                                                    {bankAccounts.map((ba) => (
-                                                                        <option key={ba.code} value={ba.code} className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">{ba.name}</option>
-                                                                    ))}
-                                                                </select>
-                                                            </div>
+                                                                {/* Bank Account - Editable */}
+                                                                <div className="w-[90px] flex-shrink-0" onClick={(e) => e.stopPropagation()}>
+                                                                    <select
+                                                                        value={invoice.bank_account_code || ""}
+                                                                        onChange={(e) => updateInvoiceField(invoice.id, "bank_account_code", e.target.value || null)}
+                                                                        className="text-[10px] px-1 py-0.5 rounded border border-gray-300 dark:border-gray-600 bg-transparent text-gray-700 dark:text-gray-300 w-full cursor-pointer"
+                                                                    >
+                                                                        <option value="" className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">—</option>
+                                                                        {bankAccounts.map((ba) => (
+                                                                            <option key={ba.code} value={ba.code} className="bg-gray-100 dark:bg-black text-gray-900 dark:text-white">{ba.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
 
-                                                            {/* Reconciliation Status */}
-                                                            <div className="w-[85px] flex-shrink-0">
-                                                                {invoice.is_reconciled ? (
-                                                                    <div className="flex flex-col items-start gap-0.5">
-                                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-900/30 text-green-400 border-green-700">
-                                                                            <CheckCircle className="h-3 w-3 mr-1" />
-                                                                            Reconciled
+                                                                {/* Reconciliation Status */}
+                                                                <div className="w-[85px] flex-shrink-0">
+                                                                    {invoice.is_reconciled ? (
+                                                                        <div className="flex flex-col items-start gap-0.5">
+                                                                            <Badge variant="outline" className="text-[10px] px-1 py-0 bg-green-900/30 text-green-400 border-green-700">
+                                                                                <CheckCircle className="h-3 w-3 mr-1" />
+                                                                                Reconciled
+                                                                            </Badge>
+                                                                            {invoice.reconciled_transaction_id && reconciliationBalances[invoice.reconciled_transaction_id] && (
+                                                                                <div className="flex flex-col">
+                                                                                    <span className={`text-[9px] font-medium ${reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled
+                                                                                        ? 'text-green-400'
+                                                                                        : 'text-amber-400'
+                                                                                        }`}>
+                                                                                        {reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled ? 'Total' : 'Partial'}
+                                                                                    </span>
+                                                                                    {!reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled && (
+                                                                                        <span className="text-[8px] text-gray-500 dark:text-gray-400">
+                                                                                            Rem: {reconciliationBalances[invoice.reconciled_transaction_id].remaining.toFixed(2)}
+                                                                                        </span>
+                                                                                    )}
+                                                                                    {reconciliationBalances[invoice.reconciled_transaction_id].invoicesCount > 1 && (
+                                                                                        <span className="text-[8px] text-gray-500">
+                                                                                            ({reconciliationBalances[invoice.reconciled_transaction_id].invoicesCount} inv)
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    ) : invoice.payment_date ? (
+                                                                        <Button
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            className="h-5 text-[10px] px-1 bg-orange-900/30 text-orange-400 border-orange-700 hover:bg-orange-800/50"
+                                                                            onClick={(e) => {
+                                                                                e.stopPropagation();
+                                                                                openReconciliationDialog(invoice);
+                                                                            }}
+                                                                        >
+                                                                            Match
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Badge variant="outline" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-black/50 text-gray-500 border-gray-200 dark:border-gray-700">
+                                                                            Pending
                                                                         </Badge>
-                                                                        {invoice.reconciled_transaction_id && reconciliationBalances[invoice.reconciled_transaction_id] && (
-                                                                            <div className="flex flex-col">
-                                                                                <span className={`text-[9px] font-medium ${reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled
-                                                                                    ? 'text-green-400'
-                                                                                    : 'text-amber-400'
-                                                                                    }`}>
-                                                                                    {reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled ? 'Total' : 'Partial'}
+                                                                    )}
+                                                                </div>
+
+                                                                {/* Invoice Amount - Last column, right aligned */}
+                                                                <div className="w-[110px] flex-shrink-0 text-right">
+                                                                    <div className="flex flex-col gap-0.5">
+                                                                        <div className="flex items-center justify-end gap-1">
+                                                                            {hasAmountDiscrepancy && <AlertCircle className="h-3 w-3 text-red-400" />}
+                                                                            <span className="text-[9px] text-gray-500">Inv:</span>
+                                                                            <span className={`text-[11px] font-medium ${hasAmountDiscrepancy ? "text-red-400" : "text-gray-900 dark:text-white"}`}>
+                                                                                {invoice.currency === "EUR" ? "€" : invoice.currency === "USD" ? "$" : invoice.currency}{formatCurrency(invoice.invoice_amount)}
+                                                                            </span>
+                                                                        </div>
+                                                                        {invoice.paid_amount != null && (
+                                                                            <div className="flex items-center justify-end gap-1">
+                                                                                {hasAmountDiscrepancy && <AlertCircle className="h-3 w-3 text-red-400" />}
+                                                                                <span className={`text-[9px] ${hasAmountDiscrepancy ? "text-red-400" : "text-green-400"}`}>Paid:</span>
+                                                                                <span className={`text-[11px] font-medium ${hasAmountDiscrepancy ? "text-red-400" : "text-green-400"}`}>
+                                                                                    {invoice.paid_currency === "EUR" ? "€" : invoice.paid_currency === "USD" ? "$" : invoice.paid_currency || ""}{formatCurrency(invoice.paid_amount)}
                                                                                 </span>
-                                                                                {!reconciliationBalances[invoice.reconciled_transaction_id].isFullyReconciled && (
-                                                                                    <span className="text-[8px] text-gray-500 dark:text-gray-400">
-                                                                                        Rem: {reconciliationBalances[invoice.reconciled_transaction_id].remaining.toFixed(2)}
-                                                                                    </span>
-                                                                                )}
-                                                                                {reconciliationBalances[invoice.reconciled_transaction_id].invoicesCount > 1 && (
-                                                                                    <span className="text-[8px] text-gray-500">
-                                                                                        ({reconciliationBalances[invoice.reconciled_transaction_id].invoicesCount} inv)
-                                                                                    </span>
-                                                                                )}
                                                                             </div>
                                                                         )}
                                                                     </div>
-                                                                ) : invoice.payment_date ? (
-                                                                    <Button
-                                                                        variant="outline"
-                                                                        size="sm"
-                                                                        className="h-5 text-[10px] px-1 bg-orange-900/30 text-orange-400 border-orange-700 hover:bg-orange-800/50"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            openReconciliationDialog(invoice);
-                                                                        }}
-                                                                    >
-                                                                        Match
-                                                                    </Button>
-                                                                ) : (
-                                                                    <Badge variant="outline" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-black/50 text-gray-500 border-gray-200 dark:border-gray-700">
-                                                                        Pending
-                                                                    </Badge>
-                                                                )}
-                                                            </div>
-
-                                                            {/* Invoice Amount - Last column, right aligned */}
-                                                            <div className="w-[110px] flex-shrink-0 text-right">
-                                                                <div className="flex flex-col gap-0.5">
-                                                                    <div className="flex items-center justify-end gap-1">
-                                                                        {hasAmountDiscrepancy && <AlertCircle className="h-3 w-3 text-red-400" />}
-                                                                        <span className="text-[9px] text-gray-500">Inv:</span>
-                                                                        <span className={`text-[11px] font-medium ${hasAmountDiscrepancy ? "text-red-400" : "text-gray-900 dark:text-white"}`}>
-                                                                            {invoice.currency === "EUR" ? "€" : invoice.currency === "USD" ? "$" : invoice.currency}{formatCurrency(invoice.invoice_amount)}
-                                                                        </span>
-                                                                    </div>
-                                                                    {invoice.paid_amount != null && (
-                                                                        <div className="flex items-center justify-end gap-1">
-                                                                            {hasAmountDiscrepancy && <AlertCircle className="h-3 w-3 text-red-400" />}
-                                                                            <span className={`text-[9px] ${hasAmountDiscrepancy ? "text-red-400" : "text-green-400"}`}>Paid:</span>
-                                                                            <span className={`text-[11px] font-medium ${hasAmountDiscrepancy ? "text-red-400" : "text-green-400"}`}>
-                                                                                {invoice.paid_currency === "EUR" ? "€" : invoice.paid_currency === "USD" ? "$" : invoice.paid_currency || ""}{formatCurrency(invoice.paid_amount)}
-                                                                            </span>
-                                                                        </div>
-                                                                    )}
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        );
-                                    })}
-                                    <div
-                                        className="px-6 py-2 text-gray-500 text-sm hover:text-gray-700 dark:text-gray-300 cursor-pointer flex items-center gap-2"
-                                        onClick={() => {
-                                            setDefaultScheduleDateForModal(group.date === "unscheduled" ? null : group.defaultScheduleDate);
-                                            setInvoiceModalOpen(true);
-                                        }}
-                                    >
-                                        <Plus className="h-4 w-4" />Add payment...
+                                                        );
+                                                    })}
+                                                </div>
+                                            );
+                                        })}
+                                        <div
+                                            className="px-6 py-2 text-gray-500 text-sm hover:text-gray-700 dark:text-gray-300 cursor-pointer flex items-center gap-2"
+                                            onClick={() => {
+                                                setDefaultScheduleDateForModal(group.date === "unscheduled" ? null : group.defaultScheduleDate);
+                                                setInvoiceModalOpen(true);
+                                            }}
+                                        >
+                                            <Plus className="h-4 w-4" />Add payment...
+                                        </div>
                                     </div>
-                                </div>
-                            )}
-                        </div>
-                    );
+                                )}
+                            </div>
+                        );
                     })}
                 </div>
             </div>
