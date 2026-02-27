@@ -351,7 +351,7 @@ export default function PaymentSchedulePage() {
         setLoading(true);
         try {
             const [invoicesRes, providersRes, paymentMethodsRes, bankAccountsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, financialAccountsRes] = await Promise.all([
-                supabase.from("invoices").select("*").eq("invoice_type", "INCURRED").order("schedule_date", { ascending: true, nullsFirst: false }),
+                supabase.from("invoices").select("*").order("schedule_date", { ascending: true, nullsFirst: false }),
                 supabase.from("providers").select("code, name"),
                 supabase.from("payment_methods").select("code, name"),
                 supabase.from("bank_accounts").select("code, name"),
@@ -460,7 +460,7 @@ export default function PaymentSchedulePage() {
     }
 
     const filteredInvoices = useMemo(() => {
-        let filtered = invoices.filter((inv) => matchesScope(inv.country_code, selectedScope));
+        let filtered = invoices.filter((inv) => matchesScope(inv, selectedScope));
         filtered = filtered.filter((inv) => !inv.schedule_date || inv.schedule_date >= "2026-01-01");
         if (!showCompleted) filtered = filtered.filter((inv) => !inv.payment_date);
         if (searchTerm) {
