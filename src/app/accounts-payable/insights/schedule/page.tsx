@@ -14,7 +14,7 @@ import {
     ArrowUpDown,
     Search,
     MoreHorizontal,
-    Zap,
+    ChevronsUpDown,
     X,
     Hash,
     DollarSign,
@@ -605,6 +605,20 @@ export default function PaymentSchedulePage() {
             if (a.dayKey === "no-date") return 1;
             if (b.dayKey === "no-date") return -1;
             return a.dayKey.localeCompare(b.dayKey);
+        });
+    }
+
+    function toggleAllDaysInMonth(monthKey: string, daySubGroups: DaySubGroup[]) {
+        const dayKeys = daySubGroups.map(d => d.dayKey);
+        const allExpanded = dayKeys.every(k => expandedDays.has(k));
+        setExpandedDays((prev) => {
+            const newSet = new Set(prev);
+            if (allExpanded) {
+                dayKeys.forEach(k => newSet.delete(k));
+            } else {
+                dayKeys.forEach(k => newSet.add(k));
+            }
+            return newSet;
         });
     }
 
@@ -1291,12 +1305,28 @@ export default function PaymentSchedulePage() {
 
                 {/* Content */}
                 <div className="pb-20">
-                    {groups.map((group) => (
+                    {groups.map((group) => {
+                        const daySubGroups = getDaySubGroups(group);
+                        const unpaidCount = group.invoices.filter(inv => !inv.payment_date).length;
+                        const dayKeys = daySubGroups.map(d => d.dayKey);
+                        const allDaysExpanded = dayKeys.every(k => expandedDays.has(k));
+                        return (
                         <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
                             <div className="flex items-center gap-2 px-4 py-3 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
                                 {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
                                 <span className="font-medium text-gray-900 dark:text-white">{group.dateLabel}</span>
-                                <Zap className="h-4 w-4 text-yellow-500" />
+                                {unpaidCount > 0 && (
+                                    <span className="text-[12px] text-orange-400 font-medium">({unpaidCount} unpaid)</span>
+                                )}
+                                {group.date !== "unscheduled" && expandedGroups.has(group.date) && (
+                                    <button
+                                        className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                        title={allDaysExpanded ? "Collapse all days" : "Expand all days"}
+                                        onClick={(e) => { e.stopPropagation(); toggleAllDaysInMonth(group.date, daySubGroups); }}
+                                    >
+                                        <ChevronsUpDown className="h-4 w-4" />
+                                    </button>
+                                )}
                                 <span className="text-gray-500 text-sm ml-auto">
                                     {group.invoices.length > 0 && (
                                         <>TOT: <span className="text-gray-900 dark:text-white font-medium">
@@ -1310,7 +1340,7 @@ export default function PaymentSchedulePage() {
 
                             {expandedGroups.has(group.date) && (
                                 <div>
-                                    {getDaySubGroups(group).map((dayGroup) => {
+                                    {daySubGroups.map((dayGroup) => {
                                         const isDayExpanded = group.date === "unscheduled" || expandedDays.has(dayGroup.dayKey);
                                         return (
                                             <div key={dayGroup.dayKey}>
@@ -1541,7 +1571,8 @@ export default function PaymentSchedulePage() {
                                 </div>
                             )}
                         </div>
-                    ))}
+                    );
+                    })}
                 </div>
             </div>
 
