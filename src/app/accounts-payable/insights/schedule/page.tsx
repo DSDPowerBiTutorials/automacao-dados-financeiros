@@ -203,7 +203,7 @@ export default function PaymentSchedulePage() {
     const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
     const [updatingInvoice, setUpdatingInvoice] = useState<number | null>(null);
     const [searchTerm, setSearchTerm] = useState("");
-    const [showCompleted, setShowCompleted] = useState(false);
+    const [showCompleted, setShowCompleted] = useState(true);
 
     // Invoice form modal
     const [invoiceModalOpen, setInvoiceModalOpen] = useState(false);
