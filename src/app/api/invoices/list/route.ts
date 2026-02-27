@@ -42,8 +42,13 @@ const INVOICE_COLUMNS = [
     "paid_amount",
     "paid_currency",
     "is_reconciled",
+    "reconciled_transaction_id",
+    "reconciled_at",
+    "reconciled_amount",
     "created_at"
 ].join(",");
+
+const BANK_STATEMENT_SOURCES = new Set(["bankinter-eur", "bankinter-usd", "sabadell", "chase-usd"]);
 
 export async function GET(request: NextRequest) {
     try {
@@ -81,9 +86,60 @@ export async function GET(request: NextRequest) {
             if (data.length < pageSize) break;
         }
 
-        console.log(`📋 Invoices API: ${allData.length} invoices loaded${year ? ` (year=${year})` : ""}`);
+        const txIds = Array.from(
+            new Set(
+                allData
+                    .map((inv) => inv.reconciled_transaction_id)
+                    .filter((value): value is string => typeof value === "string" && value.length > 0)
+            )
+        );
 
-        return NextResponse.json({ data: allData, count: allData.length });
+        const reconciledTxMap = new Map<string, { reconciled: boolean; source: string | null }>();
+
+        if (txIds.length > 0) {
+            const chunkSize = 500;
+            for (let i = 0; i < txIds.length; i += chunkSize) {
+                const chunk = txIds.slice(i, i + chunkSize);
+                const { data: txRows, error: txError } = await supabaseAdmin
+                    .from("csv_rows")
+                    .select("id,reconciled,source")
+                    .in("id", chunk);
+
+                if (txError) {
+                    console.error("Error fetching bank statement rows for AP sync:", txError);
+                } else {
+                    (txRows || []).forEach((tx: any) => {
+                        reconciledTxMap.set(tx.id, {
+                            reconciled: !!tx.reconciled,
+                            source: tx.source || null,
+                        });
+                    });
+                }
+            }
+        }
+
+        const syncedData = allData.map((inv) => {
+            const txId = inv.reconciled_transaction_id as string | null;
+            if (!txId) {
+                return {
+                    ...inv,
+                    is_reconciled: false,
+                };
+            }
+
+            const tx = reconciledTxMap.get(txId);
+            const validBankTx = !!tx && tx.reconciled && !!tx.source && BANK_STATEMENT_SOURCES.has(tx.source);
+
+            return {
+                ...inv,
+                is_reconciled: validBankTx,
+                payment_status: validBankTx ? "PAID" : inv.payment_status,
+            };
+        });
+
+        console.log(`📋 Invoices API: ${syncedData.length} invoices loaded${year ? ` (year=${year})` : ""}`);
+
+        return NextResponse.json({ data: syncedData, count: syncedData.length });
     } catch (e: any) {
         console.error("Error in invoices list API:", e);
         return NextResponse.json({ error: e.message }, { status: 500 });

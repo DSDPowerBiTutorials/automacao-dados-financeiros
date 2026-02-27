@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { type ScopeType, scopeToFields } from "@/lib/scope-utils";
-import { formatDateForDB, getCurrentDateForDB } from "@/lib/date-utils";
+import { formatDateForDB, formatDateForInput, getCurrentDateForDB } from "@/lib/date-utils";
 import { InvoiceAttachments } from "@/components/app/invoice-attachments";
 
 type InvoiceType = "INCURRED" | "BUDGET" | "ADJUSTMENT";
@@ -39,6 +39,7 @@ type Invoice = {
     cost_type_code?: string | null;
     dep_cost_type_code?: string | null;
     cost_center_code?: string | null;
+    sub_department_code?: string | null;
     description?: string | null;
     invoice_number?: string | null;
     country_code: string;
@@ -76,9 +77,12 @@ export function InvoiceSidePanel({
     defaultScheduleDate,
     onSuccess
 }: InvoiceSidePanelProps) {
+    const CREATE_NEW_PROVIDER_VALUE = "__create_new_provider__";
+
     const [submitting, setSubmitting] = useState(false);
     const [loadingMasterData, setLoadingMasterData] = useState(true);
     const [attachmentBatchId, setAttachmentBatchId] = useState<string | null>(null);
+    const [providerSearchTerm, setProviderSearchTerm] = useState("");
 
     // Master data
     const [providers, setProviders] = useState<MasterData[]>([]);
@@ -122,16 +126,88 @@ export function InvoiceSidePanel({
         notes: ""
     });
 
+    const withSelectedOption = (options: MasterData[], selectedCode?: string | null, fallbackName?: string | null) => {
+        if (!selectedCode) return options;
+        if (options.some(option => option.code === selectedCode)) return options;
+        return [{ code: selectedCode, name: fallbackName || selectedCode }, ...options];
+    };
+
+    const providerOptions = withSelectedOption(
+        [...providers].sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))),
+        formData.provider_code,
+        providers.find((provider) => provider.code === formData.provider_code)?.name || formData.provider_code
+    );
+
+    const filteredProviderOptions = providerSearchTerm.trim()
+        ? providerOptions.filter((provider) => {
+            const search = providerSearchTerm.toLowerCase();
+            return (
+                String(provider.name || "").toLowerCase().includes(search) ||
+                String(provider.code || "").toLowerCase().includes(search)
+            );
+        })
+        : providerOptions;
+
+    const financialAccountBase = financialAccounts.filter((account: any) => account.level >= 2 && account.type === 'expense');
+    const financialAccountOptions = withSelectedOption(
+        financialAccountBase,
+        formData.financial_account_code,
+        financialAccounts.find((account) => account.code === formData.financial_account_code)?.name || formData.financial_account_code
+    );
+
+    const costTypeOptions = withSelectedOption(
+        costTypes,
+        formData.cost_type_code,
+        costTypes.find((type) => type.code === formData.cost_type_code)?.name || formData.cost_type_code
+    );
+
+    const depCostTypeOptions = withSelectedOption(
+        depCostTypes,
+        formData.dep_cost_type_code,
+        depCostTypes.find((type) => type.code === formData.dep_cost_type_code)?.name || formData.dep_cost_type_code
+    );
+
+    const costCenterOptions = withSelectedOption(
+        costCenters,
+        formData.cost_center_code,
+        costCenters.find((center) => center.code === formData.cost_center_code)?.name || formData.cost_center_code
+    );
+
+    const subDepartmentBase = subDepartments.filter((subDepartment) => subDepartment.parent_department_code === formData.cost_center_code);
+    const subDepartmentOptions = withSelectedOption(
+        subDepartmentBase,
+        formData.sub_department_code,
+        subDepartments.find((subDepartment) => subDepartment.code === formData.sub_department_code)?.name || formData.sub_department_code
+    );
+
+    const bankAccountOptions = withSelectedOption(
+        bankAccounts,
+        formData.bank_account_code,
+        bankAccounts.find((account) => account.code === formData.bank_account_code)?.name || formData.bank_account_code
+    );
+
+    const paymentMethodOptions = withSelectedOption(
+        paymentMethods,
+        formData.payment_method_code,
+        paymentMethods.find((method) => method.code === formData.payment_method_code)?.name || formData.payment_method_code
+    );
+
+    const courseOptions = withSelectedOption(
+        courses,
+        formData.course_code,
+        courses.find((course) => course.code === formData.course_code)?.name || formData.course_code
+    );
+
     useEffect(() => {
         if (open) {
             loadMasterData();
             if (editingInvoice) {
                 setFormData({
-                    invoice_date: editingInvoice.invoice_date || getCurrentDateForDB(),
-                    benefit_date: editingInvoice.benefit_date || getCurrentDateForDB(),
-                    due_date: editingInvoice.due_date || "",
-                    schedule_date: editingInvoice.schedule_date || "",
-                    payment_date: editingInvoice.payment_date || "",
+                    invoice_date: formatDateForInput(editingInvoice.invoice_date) || getCurrentDateForDB(),
+                    benefit_date: formatDateForInput(editingInvoice.benefit_date) || getCurrentDateForDB(),
+                    due_date: formatDateForInput(editingInvoice.due_date) || "",
+                    schedule_date: formatDateForInput(editingInvoice.schedule_date) || "",
+                    payment_date: formatDateForInput(editingInvoice.payment_date) || "",
                     invoice_type: editingInvoice.invoice_type || "INCURRED",
                     financial_account_code: editingInvoice.financial_account_code || "",
                     invoice_amount: String(editingInvoice.invoice_amount) || "",
@@ -146,6 +222,7 @@ export function InvoiceSidePanel({
                     cost_type_code: editingInvoice.cost_type_code || "",
                     dep_cost_type_code: editingInvoice.dep_cost_type_code || "",
                     cost_center_code: editingInvoice.cost_center_code || "",
+                    sub_department_code: editingInvoice.sub_department_code || "",
                     description: editingInvoice.description || "",
                     invoice_number: editingInvoice.invoice_number || "",
                     country_code: (editingInvoice.country_code || defaultScope) as ScopeType,
@@ -182,6 +259,7 @@ export function InvoiceSidePanel({
             cost_type_code: "",
             dep_cost_type_code: "",
             cost_center_code: "",
+            sub_department_code: "",
             description: "",
             invoice_number: "",
             country_code: defaultScope,
@@ -191,13 +269,14 @@ export function InvoiceSidePanel({
             is_intercompany: false,
             notes: ""
         });
+        setProviderSearchTerm("");
     }
 
     async function loadMasterData() {
         setLoadingMasterData(true);
         try {
             const [providersRes, bankAccountsRes, paymentMethodsRes, costTypesRes, depCostTypesRes, costCentersRes, subDepartmentsRes, financialAccountsRes, coursesRes] = await Promise.all([
-                supabase.from("providers").select("*").eq("is_active", true),
+                supabase.from("providers").select("*").order("code", { ascending: true }),
                 supabase.from("bank_accounts").select("*").eq("is_active", true),
                 supabase.from("payment_methods").select("*").eq("is_active", true),
                 supabase.from("cost_types").select("*").eq("is_active", true),
@@ -233,6 +312,17 @@ export function InvoiceSidePanel({
         let dre = true, cash = true;
         if (type === "BUDGET") { dre = false; cash = false; }
         setFormData({ ...formData, invoice_type: type, dre_impact: dre, cash_impact: cash });
+    }
+
+    function handleProviderChange(val: string) {
+        if (val === CREATE_NEW_PROVIDER_VALUE) {
+            if (typeof window !== "undefined") {
+                window.open("/accounts-payable/master-data/providers?openCreate=1", "_blank", "noopener,noreferrer");
+            }
+            return;
+        }
+
+        setFormData({ ...formData, provider_code: val });
     }
 
     async function handleSubmit(e: React.FormEvent) {
@@ -395,14 +485,14 @@ export function InvoiceSidePanel({
                                 <div><Label className="text-xs text-gray-700 dark:text-gray-300">Scope</Label>
                                     <Select value={formData.scope} onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val as ScopeType, currency: val === "US" ? "USD" : "EUR" })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue /></SelectTrigger>
-                                        <SelectContent className="bg-white dark:bg-[#0a0a0a]"><SelectItem value="ES">🇪🇸 ES</SelectItem><SelectItem value="US">🇺🇸 US</SelectItem></SelectContent>
+                                        <SelectContent className="bg-white dark:bg-[#0a0a0a]"><SelectItem value="ES">🇪🇸 ES</SelectItem><SelectItem value="US">🇺🇸 US</SelectItem><SelectItem value="GLOBAL">🌍 GLOBAL</SelectItem></SelectContent>
                                     </Select>
                                 </div>
                                 <div className="col-span-2"><Label className="text-xs text-gray-700 dark:text-gray-300">Amount *</Label><Input type="number" step="0.01" value={formData.invoice_amount} onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })} required className="mt-1 h-9 text-lg font-bold bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600" /></div>
                                 <div><Label className="text-xs text-gray-700 dark:text-gray-300">Currency</Label>
                                     <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue /></SelectTrigger>
-                                        <SelectContent className="bg-white dark:bg-[#0a0a0a]"><SelectItem value="EUR">€</SelectItem><SelectItem value="USD">$</SelectItem><SelectItem value="GBP">£</SelectItem></SelectContent>
+                                        <SelectContent className="bg-white dark:bg-[#0a0a0a]"><SelectItem value="EUR">€</SelectItem><SelectItem value="USD">$</SelectItem><SelectItem value="GBP">£</SelectItem><SelectItem value="BRL">R$</SelectItem></SelectContent>
                                     </Select>
                                 </div>
                             </div>
@@ -425,15 +515,31 @@ export function InvoiceSidePanel({
                         <div className="space-y-3">
                             <h3 className="text-xs font-semibold text-gray-500 uppercase">Provider & Account</h3>
                             <div><Label className="text-xs text-gray-700 dark:text-gray-300">Provider *</Label>
-                                <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })}>
+                                <Select value={formData.provider_code} onValueChange={handleProviderChange}>
                                     <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select provider" /></SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[250px]">{providers.map((p) => (<SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>))}</SelectContent>
+                                    <SelectContent className="bg-white max-h-[250px]">
+                                        <div className="p-2 sticky top-0 bg-white z-10 border-b">
+                                            <Input
+                                                placeholder="Search providers..."
+                                                value={providerSearchTerm}
+                                                onChange={(e) => setProviderSearchTerm(e.target.value)}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                                className="h-8 text-xs"
+                                            />
+                                        </div>
+                                        {filteredProviderOptions.length > 0 ? (
+                                            filteredProviderOptions.map((p) => (<SelectItem key={p.code} value={p.code}>{p.name}</SelectItem>))
+                                        ) : (
+                                            <div className="px-2 py-2 text-xs text-gray-500">No providers found</div>
+                                        )}
+                                        <SelectItem value={CREATE_NEW_PROVIDER_VALUE}>+ Create New Provider</SelectItem>
+                                    </SelectContent>
                                 </Select>
                             </div>
                             <div><Label className="text-xs text-gray-700 dark:text-gray-300">Financial Account *</Label>
                                 <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })}>
                                     <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select account" /></SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[250px]">{financialAccounts.filter((a: any) => a.level >= 2 && a.type === 'expense').map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}</SelectContent>
+                                    <SelectContent className="bg-white max-h-[250px]">{financialAccountOptions.map((a) => (<SelectItem key={a.code} value={a.code}>{a.name}</SelectItem>))}</SelectContent>
                                 </Select>
                             </div>
                         </div>
@@ -445,26 +551,26 @@ export function InvoiceSidePanel({
                                 <div><Label className="text-xs text-gray-700 dark:text-gray-300">Cost Type *</Label>
                                     <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[250px]">{costTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}</SelectContent>
+                                        <SelectContent className="bg-white max-h-[250px]">{costTypeOptions.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
                                 <div><Label className="text-xs text-gray-700 dark:text-gray-300">Dep Cost *</Label>
                                     <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[250px]">{depCostTypes.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}</SelectContent>
+                                        <SelectContent className="bg-white max-h-[250px]">{depCostTypeOptions.map((t) => (<SelectItem key={t.code} value={t.code}>{t.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
                                 <div><Label className="text-xs text-gray-700 dark:text-gray-300">Department *</Label>
                                     <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val, sub_department_code: "" })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[250px]">{costCenters.map((c) => (<SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>))}</SelectContent>
+                                        <SelectContent className="bg-white max-h-[250px]">{costCenterOptions.map((c) => (<SelectItem key={c.code} value={c.code}>{c.code} - {c.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
                             </div>
                             <div><Label className="text-xs text-gray-700 dark:text-gray-300">Sub-Department</Label>
                                 <Select value={formData.sub_department_code || ""} onValueChange={(val) => setFormData({ ...formData, sub_department_code: val })}>
                                     <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[250px]">{subDepartments.filter((s) => s.parent_department_code === formData.cost_center_code).map((s) => (<SelectItem key={s.code} value={s.code}>{s.code} - {s.name}</SelectItem>))}</SelectContent>
+                                    <SelectContent className="bg-white max-h-[250px]">{subDepartmentOptions.map((s) => (<SelectItem key={s.code} value={s.code}>{s.code} - {s.name}</SelectItem>))}</SelectContent>
                                 </Select>
                             </div>
                         </div>
@@ -476,20 +582,20 @@ export function InvoiceSidePanel({
                                 <div><Label className="text-xs text-gray-700 dark:text-gray-300">Bank Account</Label>
                                     <Select value={formData.bank_account_code || ""} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[250px]">{bankAccounts.map((b) => (<SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>))}</SelectContent>
+                                        <SelectContent className="bg-white max-h-[250px]">{bankAccountOptions.map((b) => (<SelectItem key={b.code} value={b.code}>{b.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
                                 <div><Label className="text-xs text-gray-700 dark:text-gray-300">Payment Method</Label>
                                     <Select value={formData.payment_method_code || ""} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
                                         <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
-                                        <SelectContent className="bg-white max-h-[250px]">{paymentMethods.map((m) => (<SelectItem key={m.code} value={m.code}>{m.name}</SelectItem>))}</SelectContent>
+                                        <SelectContent className="bg-white max-h-[250px]">{paymentMethodOptions.map((m) => (<SelectItem key={m.code} value={m.code}>{m.name}</SelectItem>))}</SelectContent>
                                     </Select>
                                 </div>
                             </div>
                             <div><Label className="text-xs text-gray-700 dark:text-gray-300">Course</Label>
                                 <Select value={formData.course_code || ""} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
                                     <SelectTrigger className="mt-1 h-9 bg-white dark:bg-[#0a0a0a] text-gray-900 dark:text-white border-gray-300 dark:border-gray-600"><SelectValue placeholder="Select" /></SelectTrigger>
-                                    <SelectContent className="bg-white max-h-[250px]">{courses.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}</SelectContent>
+                                    <SelectContent className="bg-white max-h-[250px]">{courseOptions.map((c) => (<SelectItem key={c.code} value={c.code}>{c.name}</SelectItem>))}</SelectContent>
                                 </Select>
                             </div>
                         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +39,7 @@ interface Provider {
 }
 
 export default function ProvidersPage() {
+  const searchParams = useSearchParams();
   const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -61,9 +63,85 @@ export default function ProvidersPage() {
     notes: "",
   });
 
+  const OPTIONAL_PROVIDER_COLUMNS = [
+    "provider_type",
+    "tax_id",
+    "email",
+    "phone",
+    "address",
+    "city",
+    "country",
+    "currency",
+    "payment_terms",
+    "notes",
+    "updated_at",
+  ] as const;
+
+  const isMissingProviderColumnError = (err: any, column: string) => {
+    const message = `${err?.message || ""} ${err?.details || ""} ${err?.hint || ""}`.toLowerCase();
+    return (
+      message.includes("providers") &&
+      message.includes(column) &&
+      (
+        message.includes("schema cache") ||
+        message.includes("could not find") ||
+        message.includes("column")
+      )
+    );
+  };
+
+  const getMissingOptionalProviderColumns = (err: any) => {
+    return OPTIONAL_PROVIDER_COLUMNS.filter((column) => isMissingProviderColumnError(err, column));
+  };
+
+  const stripMissingColumnsAndRetry = async (
+    mode: "insert" | "update",
+    initialPayload: Record<string, any>,
+    providerCodeForUpdate?: string
+  ) => {
+    const payload = { ...initialPayload };
+
+    for (let attempt = 0; attempt <= OPTIONAL_PROVIDER_COLUMNS.length; attempt++) {
+      if (mode === "insert") {
+        const { error } = await supabase.from("providers").insert(payload);
+
+        if (!error) return null;
+
+        const missingColumns = getMissingOptionalProviderColumns(error);
+        if (missingColumns.length === 0) return error;
+
+        missingColumns.forEach((column) => {
+          delete payload[column];
+        });
+      } else {
+        const { error } = await supabase
+          .from("providers")
+          .update(payload)
+          .eq("code", providerCodeForUpdate || "");
+
+        if (!error) return null;
+
+        const missingColumns = getMissingOptionalProviderColumns(error);
+        if (missingColumns.length === 0) return error;
+
+        missingColumns.forEach((column) => {
+          delete payload[column];
+        });
+      }
+    }
+
+    return { message: "Falha ao salvar provider após fallback de colunas." } as any;
+  };
+
   useEffect(() => {
     loadProviders();
   }, []);
+
+  useEffect(() => {
+    if (searchParams.get("openCreate") === "1") {
+      handleOpenForm();
+    }
+  }, [searchParams]);
 
   const loadProviders = async () => {
     try {
@@ -164,28 +242,28 @@ export default function ProvidersPage() {
       }
 
       if (editingProvider) {
-        const { error } = await supabase
-          .from("providers")
-          .update({
-            name: formData.name,
-            provider_type: formData.provider_type,
-            tax_id: formData.tax_id || null,
-            email: formData.email || null,
-            phone: formData.phone || null,
-            address: formData.address || null,
-            city: formData.city || null,
-            country: formData.country,
-            currency: formData.currency,
-            payment_terms: formData.payment_terms,
-            is_active: formData.is_active,
-            notes: formData.notes || null,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("code", editingProvider.code);
+        const updatePayload: Record<string, any> = {
+          name: formData.name,
+          provider_type: formData.provider_type,
+          tax_id: formData.tax_id || null,
+          email: formData.email || null,
+          phone: formData.phone || null,
+          address: formData.address || null,
+          city: formData.city || null,
+          country: formData.country,
+          currency: formData.currency,
+          payment_terms: formData.payment_terms,
+          is_active: formData.is_active,
+          notes: formData.notes || null,
+          updated_at: new Date().toISOString(),
+        };
+
+        const error = await stripMissingColumnsAndRetry("update", updatePayload, editingProvider.code);
+
         if (error) throw error;
         toast({ title: "Provider updated successfully" });
       } else {
-        const { error } = await supabase.from("providers").insert({
+        const insertPayload: Record<string, any> = {
           code: finalCode,
           name: formData.name,
           provider_type: formData.provider_type,
@@ -199,7 +277,10 @@ export default function ProvidersPage() {
           payment_terms: formData.payment_terms,
           is_active: formData.is_active,
           notes: formData.notes || null,
-        });
+        };
+
+        const error = await stripMissingColumnsAndRetry("insert", insertPayload);
+
         if (error) throw error;
         toast({ title: "Provider created successfully" });
       }
@@ -257,8 +338,8 @@ export default function ProvidersPage() {
                 key={scope}
                 onClick={() => setScopeFilter(scope)}
                 className={`px-3 py-1 rounded text-xs font-medium transition-colors ${scopeFilter === scope
-                    ? "bg-blue-600 text-white"
-                    : "bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
+                  ? "bg-blue-600 text-white"
+                  : "bg-transparent border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                   }`}
               >
                 {scope === "ES" ? "🇪🇸 ES" : scope === "US" ? "🇺🇸 US" : scope === "GLOBAL" ? "🌐 Global" : "All"}

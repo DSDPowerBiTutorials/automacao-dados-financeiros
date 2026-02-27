@@ -26,6 +26,7 @@ import {
     Percent,
     X,
 } from "lucide-react";
+import { PayrollInvoiceGenerator } from "@/components/app/payroll-invoice-generator";
 
 // ════════════════════════════════════════════════════════
 // Types
@@ -690,6 +691,8 @@ export default function PayrollPage() {
                 </div>
             </div>
 
+            <PayrollInvoiceGenerator payrollData={data} selectedYear={selectedYear} />
+
             {/* ─── Main Content ─── */}
             <div className="flex-1 overflow-auto">
                 {viewMode === "employees" ? (
@@ -1050,9 +1053,7 @@ function DepartmentsView({
                                         <div
                                             className={`w-2 h-2 rounded-full ${deptColor.dot}`}
                                         />
-                                        <h3
-                                            className={`font-bold text-sm ${deptColor.text} uppercase`}
-                                        >
+                                        <h3 className="font-bold text-sm text-gray-900 dark:text-white uppercase">
                                             {dept.code} {dept.name}
                                         </h3>
                                     </div>
@@ -1157,7 +1158,7 @@ function DepartmentsView({
                                                     key={emp.employeeId}
                                                     className="border-t border-gray-700/20"
                                                 >
-                                                    <td className="py-1.5 text-gray-300 dark:text-gray-200">
+                                                    <td className="py-1.5 text-gray-900 dark:text-white">
                                                         <span className="font-mono text-gray-500 mr-1.5">
                                                             {emp.employeeId}
                                                         </span>

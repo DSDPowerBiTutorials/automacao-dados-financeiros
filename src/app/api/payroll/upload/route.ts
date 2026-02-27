@@ -130,7 +130,7 @@ function parsePayrollXLSX(buffer: ArrayBuffer): PayrollData {
 
         // Department name from row 1, col D
         const deptFull = String(indData[1]?.[3] || "").trim();
-        const deptMatch = deptFull.match(/^(\d+)\s+(.+)$/);
+        const deptMatch = deptFull.match(/^(\d+(?:\.\d+)*)\s+(.+)$/);
         const deptCode = deptMatch ? deptMatch[1] : "";
         const deptName = deptMatch ? deptMatch[2] : deptFull;
 

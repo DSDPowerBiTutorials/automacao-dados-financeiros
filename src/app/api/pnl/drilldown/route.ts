@@ -180,16 +180,18 @@ export async function GET(request: NextRequest) {
             // For parent revenue codes ending in .0, query all sub-codes
             const isRevenueParent = faCode.endsWith('.0');
             const revenuePrefix = faCode.replace(/\.0$/, '');
+            const startIndex = (page - 1) * limit;
+            const endIndex = startIndex + limit - 1;
 
             let revQuery = supabaseAdmin
                 .from("csv_rows")
-                .select("id, date, description, amount, custom_data, source")
-                .eq("source", "invoice-orders")
+                .select("id, date, description, amount, custom_data, source", { count: "exact" })
+                .in("source", ["invoice-orders", "invoice-orders-usd"])
                 .gte("date", startStr)
                 .lte("date", endStr)
                 .neq("amount", 0)
                 .order("amount", { ascending: false })
-                .limit(500);
+                .range(startIndex, endIndex);
 
             if (isRevenueParent) {
                 revQuery = revQuery.ilike("custom_data->>financial_account_code", `${revenuePrefix}.%`);
@@ -207,13 +209,34 @@ export async function GET(request: NextRequest) {
                 );
             }
 
-            totalFiltered = data?.length || 0;
-            total = (data || []).reduce((sum, row) => sum + (row.amount || 0), 0);
+            totalFiltered = count || 0;
 
-            const startIndex = (page - 1) * limit;
-            const paginatedData = (data || []).slice(startIndex, startIndex + limit);
+            let totalQuery = supabaseAdmin
+                .from("csv_rows")
+                .select("amount")
+                .in("source", ["invoice-orders", "invoice-orders-usd"])
+                .gte("date", startStr)
+                .lte("date", endStr)
+                .neq("amount", 0);
 
-            transactions = paginatedData.map((row) => ({
+            if (isRevenueParent) {
+                totalQuery = totalQuery.ilike("custom_data->>financial_account_code", `${revenuePrefix}.%`);
+            } else {
+                totalQuery = totalQuery.ilike("custom_data->>financial_account_code", faCode);
+            }
+
+            const { data: totalRows, error: totalErr } = await totalQuery;
+            if (totalErr) {
+                console.error("Error fetching revenue total for drill-down:", totalErr);
+                return NextResponse.json(
+                    { error: "Error fetching totals: " + totalErr.message },
+                    { status: 500 }
+                );
+            }
+
+            total = (totalRows || []).reduce((sum, row) => sum + (row.amount || 0), 0);
+
+            transactions = (data || []).map((row) => ({
                 id: row.id,
                 date: row.date,
                 description: row.description,

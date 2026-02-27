@@ -168,6 +168,16 @@ interface DisbursementTransaction {
     transactionId: string;
 }
 
+interface ExpenseMatchedInvoiceDetail {
+    id: number;
+    invoice_number: string | null;
+    provider_code: string | null;
+    schedule_date: string | null;
+    paid_amount: number | null;
+    invoice_amount: number | null;
+    currency: string | null;
+}
+
 // ════════════════════════════════════════════════════════
 // Helpers
 // ════════════════════════════════════════════════════════
@@ -203,6 +213,31 @@ const formatShortDate = (dateString: string | null | undefined): string => {
     return d.toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 };
 
+const formatNumericDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return "-";
+    const safe = dateString.includes("T") ? dateString.split("T")[0] : dateString;
+    const parts = safe.split("-");
+    if (parts.length !== 3) return safe;
+    const [year, month, day] = parts;
+    return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+};
+
+const resolveCustomerName = (customData: Record<string, any> = {}, fallbackDescription?: string): string => {
+    return (
+        customData.customer_name ||
+        customData.company_name ||
+        customData.customer ||
+        customData.customerName ||
+        customData.company ||
+        customData.billing_name ||
+        customData.client_name ||
+        customData.account_name ||
+        customData.email ||
+        fallbackDescription ||
+        "Cliente não identificado"
+    );
+};
+
 const formatDateHeader = (dateStr: string): string => {
     const parts = dateStr.split("-");
     if (parts.length !== 3) return dateStr;
@@ -223,6 +258,75 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
 };
 
 const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-black/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700" };
+
+const normalizeText = (value: string | null | undefined): string =>
+    (value || "")
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .trim();
+
+const toNumeric = (value: unknown): number | null => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+};
+
+const isOrderFullyReconciled = (amount: number, customData: Record<string, any>): boolean => {
+    const absoluteAmount = Math.abs(amount);
+    const candidateTotals = [
+        customData?.linked_invoice_order_total,
+        customData?.matched_order_amount,
+        customData?.matched_invoice_total,
+        customData?.matched_amount,
+    ];
+
+    return candidateTotals.some(total => {
+        const numericTotal = toNumeric(total);
+        return numericTotal !== null && Math.abs(Math.abs(numericTotal) - absoluteAmount) < 0.01;
+    });
+};
+
+const buildInvoiceOrderPartialUpdate = (
+    orderRow: { amount: any; custom_data?: Record<string, any> | null },
+    bankTxId: string,
+    matchedAmount: number,
+    nowIso: string,
+) => {
+    const orderTotal = Math.abs(toNumeric(orderRow.amount) || 0);
+    const existingCustomData = (orderRow.custom_data || {}) as Record<string, any>;
+    const previousMatched = Math.abs(toNumeric(existingCustomData.reconciled_bank_amount_total) || 0);
+    const remainingBefore = Math.max(orderTotal - previousMatched, 0);
+    const appliedAmount = Math.max(0, Math.min(matchedAmount, remainingBefore));
+    const nextMatched = Number((previousMatched + appliedAmount).toFixed(2));
+    const remainingAfter = Number(Math.max(orderTotal - nextMatched, 0).toFixed(2));
+    const fullyReconciled = orderTotal > 0 && remainingAfter <= 0.01;
+
+    const previousBankIds = Array.isArray(existingCustomData.reconciled_bank_ids)
+        ? existingCustomData.reconciled_bank_ids.map((id: any) => String(id))
+        : [];
+    const reconciledBankIds = Array.from(new Set([...previousBankIds, bankTxId]));
+
+    return {
+        appliedAmount,
+        fullyReconciled,
+        update: {
+            reconciled: fullyReconciled,
+            custom_data: {
+                ...existingCustomData,
+                reconciled_at: nowIso,
+                reconciled_with_bank_id: bankTxId,
+                reconciled_bank_ids: reconciledBankIds,
+                reconciled_bank_amount_total: nextMatched,
+                remaining_reconcile_amount: remainingAfter,
+                reconciliation_type: "bank-order-link",
+            },
+        },
+    };
+};
 
 /** String similarity using Sørensen-Dice coefficient on bigrams — returns 0-1 */
 function stringSimilarity(s1: string, s2: string): number {
@@ -320,6 +424,8 @@ export default function BankStatementsPage() {
     const [disbursementTxns, setDisbursementTxns] = useState<DisbursementTransaction[]>([]);
     const [loadingDisbursementTxns, setLoadingDisbursementTxns] = useState(false);
     const [disbursementExpanded, setDisbursementExpanded] = useState(false);
+    const [expenseMatchedInvoices, setExpenseMatchedInvoices] = useState<ExpenseMatchedInvoiceDetail[]>([]);
+    const [loadingExpenseMatchedInvoices, setLoadingExpenseMatchedInvoices] = useState(false);
 
     // Reconciliation
     const [isReconciling, setIsReconciling] = useState(false);
@@ -437,32 +543,64 @@ export default function BankStatementsPage() {
         });
     }, []);
 
+    const selectedOrdersTotal = useMemo(
+        () => orderSearchResults
+            .filter(order => selectedOrderIds.has(order.id))
+            .reduce((sum, order) => sum + order.amount, 0),
+        [orderSearchResults, selectedOrderIds],
+    );
+
+    const selectedGatewayTotal = useMemo(
+        () => gatewayTxResults
+            .filter(tx => selectedGatewayTxIds.has(tx.id))
+            .reduce((sum, tx) => sum + tx.amount, 0),
+        [gatewayTxResults, selectedGatewayTxIds],
+    );
+
     /** Search invoice-orders for revenue reconciliation */
     const searchInvoiceOrders = useCallback(async (query: string, tx: BankTransaction) => {
         if (query.length < 2) return;
         setIsSearchingOrders(true);
         try {
             const currency = tx.currency;
-            const orderSources = currency === "USD" ? ["invoice-orders-usd", "invoice-orders"] : ["invoice-orders"];
-            const { data } = await supabase
-                .from("csv_rows")
-                .select("*")
-                .in("source", orderSources)
-                .eq("reconciled", false)
-                .order("date", { ascending: false })
-                .limit(500);
+            const orderSources = currency === "USD" ? ["invoice-orders-usd", "invoice-orders"] : ["invoice-orders", "invoice-orders-usd"];
+            const normalizedQuery = normalizeText(query);
+            const queryTokens = normalizedQuery.split(/\s+/).filter(token => token.length > 1);
 
-            const q = query.toLowerCase();
-            const results: RevenueOrderMatch[] = (data || [])
+            const PAGE_SIZE = 1000;
+            const maxPages = 8;
+            const allRows: any[] = [];
+
+            for (let page = 0; page < maxPages; page++) {
+                const { data } = await supabase
+                    .from("csv_rows")
+                    .select("*")
+                    .in("source", orderSources)
+                    .or("reconciled.eq.false,reconciled.is.null")
+                    .order("date", { ascending: false })
+                    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
+
+                if (!data || data.length === 0) break;
+                allRows.push(...data);
+                if (data.length < PAGE_SIZE) break;
+            }
+
+            const results: RevenueOrderMatch[] = allRows
                 .filter(row => {
                     const cd = row.custom_data || {};
-                    return (
-                        (cd.customer_name || "").toLowerCase().includes(q) ||
-                        (cd.company_name || "").toLowerCase().includes(q) ||
-                        (cd.order_id || "").toLowerCase().includes(q) ||
-                        (cd.invoice_number || "").toLowerCase().includes(q) ||
-                        (row.description || "").toLowerCase().includes(q)
-                    );
+                    const haystack = normalizeText([
+                        cd.customer_name,
+                        cd.company_name,
+                        cd.customer,
+                        cd.order_id,
+                        cd.invoice_number,
+                        cd.email,
+                        row.description,
+                    ].filter(Boolean).join(" "));
+
+                    if (!haystack) return false;
+                    if (queryTokens.length === 0) return haystack.includes(normalizedQuery);
+                    return queryTokens.every(token => haystack.includes(token));
                 })
                 .map(row => {
                     const cd = row.custom_data || {};
@@ -472,14 +610,15 @@ export default function BankStatementsPage() {
                         sourceLabel: cd.financial_account_name || row.description || "Invoice Order",
                         orderId: cd.order_id || null,
                         invoiceNumber: cd.invoice_number || null,
-                        customerName: cd.customer_name || cd.company_name || "Unknown",
+                        customerName: resolveCustomerName(cd, row.description || ""),
                         amount: Math.abs(parseFloat(row.amount) || 0),
                         date: row.date || "",
                         matchScore: 0,
                         matchReason: "Manual search",
                     };
                 });
-            setOrderSearchResults(results);
+            const uniqueById = Array.from(new Map(results.map(item => [item.id, item])).values());
+            setOrderSearchResults(uniqueById);
         } catch (err) {
             console.error("Error searching invoice-orders:", err);
         }
@@ -537,6 +676,68 @@ export default function BankStatementsPage() {
             console.error("Error searching gateway transactions:", err);
         }
         setIsSearchingGatewayTx(false);
+    }, []);
+
+    /** Search unreconciled expense invoices by provider (code/name) or invoice number */
+    const searchExpenseInvoices = useCallback(async (query: string) => {
+        if (query.trim().length < 2) return;
+        setIsSearchingManual(true);
+        try {
+            const normalizedQuery = normalizeText(query);
+
+            const [{ data: invoiceData }, { data: providerData }] = await Promise.all([
+                supabase
+                    .from("invoices")
+                    .select("*")
+                    .eq("is_reconciled", false)
+                    .eq("invoice_type", "INCURRED")
+                    .or("entry_type.eq.invoice,entry_type.is.null")
+                    .order("schedule_date", { ascending: false })
+                    .limit(1500),
+                supabase
+                    .from("providers")
+                    .select("code,name")
+                    .limit(5000),
+            ]);
+
+            const providerCodes = new Set(
+                (providerData || [])
+                    .filter((provider: any) => {
+                        const providerText = normalizeText(`${provider.code || ""} ${provider.name || ""}`);
+                        return providerText.includes(normalizedQuery);
+                    })
+                    .map((provider: any) => String(provider.code || "").trim())
+                    .filter(Boolean),
+            );
+
+            const hasProviderMatch = providerCodes.size > 0;
+
+            const results = (invoiceData || [])
+                .filter((inv: any) => {
+                    const providerCode = String(inv.provider_code || "").trim();
+                    const invoiceNumber = normalizeText(inv.invoice_number || "");
+                    const providerCodeNormalized = normalizeText(providerCode);
+
+                    if (hasProviderMatch) {
+                        return providerCodes.has(providerCode);
+                    }
+
+                    return providerCodeNormalized.includes(normalizedQuery) || invoiceNumber.includes(normalizedQuery);
+                })
+                .map((inv: any) => ({
+                    ...inv,
+                    invoice_amount: parseFloat(inv.invoice_amount) || 0,
+                    paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
+                    matchScore: 0,
+                    matchReason: "Manual search",
+                }));
+
+            setManualSearchResults(results);
+        } catch (err) {
+            console.error("Error searching expense invoices:", err);
+            setManualSearchResults([]);
+        }
+        setIsSearchingManual(false);
     }, []);
 
     // Bank freshness metadata
@@ -625,7 +826,7 @@ export default function BankStatementsPage() {
                     matchType: cd.match_type || null,
                     isReconciled: !!row.reconciled,
                     reconciliationType: cd.reconciliationType || (row.reconciled ? "automatic" : null),
-                    isOrderReconciled: !!cd.invoice_order_matched || (amount < 0 && !!row.reconciled),
+                    isOrderReconciled: isOrderFullyReconciled(amount, cd),
                     invoiceOrderId: cd.invoice_order_id || null,
                     invoiceNumber: cd.invoice_number || null,
                     custom_data: cd,
@@ -740,6 +941,35 @@ export default function BankStatementsPage() {
         }
     }, []);
 
+    const loadExpenseMatchedInvoices = useCallback(async (row: BankTransaction) => {
+        const matchedIdsRaw = row.custom_data?.matched_invoice_ids;
+        const matchedIds = Array.isArray(matchedIdsRaw)
+            ? matchedIdsRaw.map((id: any) => Number(id)).filter((id: number) => Number.isFinite(id) && id > 0)
+            : [];
+
+        if (matchedIds.length === 0) {
+            setExpenseMatchedInvoices([]);
+            return;
+        }
+
+        setLoadingExpenseMatchedInvoices(true);
+        try {
+            const { data, error } = await supabase
+                .from("invoices")
+                .select("id, invoice_number, provider_code, schedule_date, paid_amount, invoice_amount, currency")
+                .in("id", matchedIds)
+                .order("schedule_date", { ascending: false });
+
+            if (error) throw error;
+            setExpenseMatchedInvoices((data || []) as ExpenseMatchedInvoiceDetail[]);
+        } catch (err) {
+            console.error("Error loading matched expense invoices:", err);
+            setExpenseMatchedInvoices([]);
+        } finally {
+            setLoadingExpenseMatchedInvoices(false);
+        }
+    }, []);
+
     // Auto-load disbursement details when selecting a reconciled revenue row
     useEffect(() => {
         if (selectedRow && selectedRow.amount >= 0 && selectedRow.isReconciled && selectedRow.paymentSource) {
@@ -750,6 +980,14 @@ export default function BankStatementsPage() {
             setDisbursementExpanded(false);
         }
     }, [selectedRow, loadDisbursementDetails]);
+
+    useEffect(() => {
+        if (selectedRow && selectedRow.amount < 0 && selectedRow.isReconciled) {
+            loadExpenseMatchedInvoices(selectedRow);
+        } else {
+            setExpenseMatchedInvoices([]);
+        }
+    }, [selectedRow, loadExpenseMatchedInvoices]);
 
     const applyDateRange = () => {
         setDateRange({ ...pendingDateRange });
@@ -803,7 +1041,9 @@ export default function BankStatementsPage() {
                 const lines = text.split("\\n");
                 if (lines.length < 2) { toast({ title: "Upload failed", description: "File is empty or invalid", variant: "destructive" }); return; }
                 const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
-                const fechaIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÁ]/g, "A").includes("FECHA") && h.toUpperCase().includes("VALOR"));
+                const fechaContableIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÁ]/g, "A").includes("FECHA") && h.toUpperCase().includes("CONTABLE"));
+                const fechaValorIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÁ]/g, "A").includes("FECHA") && h.toUpperCase().includes("VALOR") && !h.toUpperCase().includes("CONTABLE"));
+                const fechaIdx = fechaContableIdx >= 0 ? fechaContableIdx : fechaValorIdx;
                 const descIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÓÑ"]/g, "O").includes("DESCRIPCI"));
                 const haberIdx = headers.findIndex(h => h.toUpperCase() === "HABER");
                 const debeIdx = headers.findIndex(h => h.toUpperCase() === "DEBE");
@@ -816,8 +1056,16 @@ export default function BankStatementsPage() {
                     const cols = line.split(",").map(c => c.trim().replace(/^"|"$/g, ""));
                     const dateRaw = cols[fechaIdx];
                     if (!dateRaw) continue;
+                    // Also capture the alternate date column when present
+                    const altDateRaw = (fechaContableIdx >= 0 && fechaIdx === fechaValorIdx) ? cols[fechaContableIdx] : (fechaValorIdx >= 0 && fechaIdx === fechaContableIdx ? cols[fechaValorIdx] : null);
                     const parts = dateRaw.split("/");
                     const isoDate = parts.length === 3 ? `${parts[2].length === 2 ? "20" + parts[2] : parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}` : dateRaw;
+                    // Parse alternate date if available
+                    let altIso: string | null = null;
+                    if (altDateRaw) {
+                        const p2 = String(altDateRaw).split("/");
+                        altIso = p2.length === 3 ? `${p2[2].length === 2 ? "20" + p2[2] : p2[2]}-${p2[1].padStart(2, "0")}-${p2[0].padStart(2, "0")}` : null;
+                    }
                     const haber = haberIdx >= 0 ? parseFloat((cols[haberIdx] || "0").replace(/\\./g, "").replace(",", ".")) || 0 : 0;
                     const debe = debeIdx >= 0 ? parseFloat((cols[debeIdx] || "0").replace(/\\./g, "").replace(",", ".")) || 0 : 0;
                     const amount = haber - debe;
@@ -831,7 +1079,7 @@ export default function BankStatementsPage() {
                         category: "Other",
                         classification: "Other",
                         reconciled: false,
-                        custom_data: { date: isoDate, description: cols[descIdx], amount },
+                        custom_data: { date: isoDate, fecha_valor: fechaValorIdx >= 0 ? cols[fechaValorIdx] : null, fecha_contable: fechaContableIdx >= 0 ? cols[fechaContableIdx] : null, fecha_valor_iso: fechaValorIdx >= 0 ? (fechaValorIdx === fechaIdx ? isoDate : altIso) : null, fecha_contable_iso: fechaContableIdx >= 0 ? (fechaContableIdx === fechaIdx ? isoDate : altIso) : null, description: cols[descIdx], amount },
                     });
                 }
                 if (rows.length === 0) { toast({ title: "Upload failed", description: "No valid rows found", variant: "destructive" }); return; }
@@ -1139,14 +1387,15 @@ export default function BankStatementsPage() {
                     .from("csv_rows")
                     .select("*")
                     .in("source", orderSources)
-                    .eq("reconciled", false)
+                    .or("reconciled.eq.false,reconciled.is.null")
                     .gte("date", revStart.toISOString().split("T")[0])
                     .lte("date", revEnd.toISOString().split("T")[0])
                     .limit(500);
 
                 (orderData || []).forEach(row => {
                     const cd = row.custom_data || {};
-                    const custName = (cd.customer_name || cd.company_name || "").toLowerCase();
+                    const resolvedCustomerName = resolveCustomerName(cd, row.description || "");
+                    const custName = resolvedCustomerName.toLowerCase();
                     const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
                     const nameMatch = nameWords.some((w: string) => descLower.includes(w));
 
@@ -1160,7 +1409,7 @@ export default function BankStatementsPage() {
                             sourceLabel: "Invoice Order",
                             orderId: cd.order_id || null,
                             invoiceNumber: cd.invoice_number || null,
-                            customerName: cd.customer_name || cd.company_name || "",
+                            customerName: resolvedCustomerName,
                             amount: rowAmount,
                             date: row.date?.split("T")[0] || "",
                             matchScore: isExact ? 100 : 55,
@@ -1290,6 +1539,11 @@ export default function BankStatementsPage() {
         }
     };
 
+    const updateTransactionLocalState = useCallback((txId: string, patch: Partial<BankTransaction>) => {
+        setBankTransactions(prev => prev.map(tx => (tx.id === txId ? { ...tx, ...patch } : tx)));
+        setSelectedRow(prev => (prev && prev.id === txId ? { ...prev, ...patch } : prev));
+    }, []);
+
     const performManualReconciliation = async () => {
         if (!reconTransaction) return;
         setIsSavingManual(true);
@@ -1325,29 +1579,32 @@ export default function BankStatementsPage() {
                 }
 
                 // Update bank transaction — NO gateway/paymentSource for expenses
+                const updatedCustomData = {
+                    ...reconTransaction.custom_data,
+                    reconciliationType: "manual",
+                    reconciled_at: now,
+                    matched_invoice_ids: [...selectedInvoices],
+                    matched_invoice_numbers: invoiceNumbers,
+                    matched_invoice_total: totalInvoiceAmount,
+                    matched_provider: providers,
+                    manual_note: manualNote || null,
+                };
+
                 const { error: txErr } = await supabase
                     .from("csv_rows")
                     .update({
                         reconciled: true,
-                        custom_data: {
-                            ...reconTransaction.custom_data,
-                            reconciliationType: "manual",
-                            reconciled_at: now,
-                            matched_invoice_ids: [...selectedInvoices],
-                            matched_invoice_numbers: invoiceNumbers,
-                            matched_invoice_total: totalInvoiceAmount,
-                            matched_provider: providers,
-                            manual_note: manualNote || null,
-                        },
+                        custom_data: updatedCustomData,
                     })
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
-                setBankTransactions(prev => prev.map(t =>
-                    t.id === reconTransaction.id
-                        ? { ...t, isReconciled: true, reconciliationType: "manual" }
-                        : t
-                ));
+                updateTransactionLocalState(reconTransaction.id, {
+                    isReconciled: true,
+                    reconciliationType: "manual",
+                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    custom_data: updatedCustomData,
+                });
 
                 toast({ title: "Reconciled!", description: `Matched with ${selectedInvs.length} invoice(s): ${invoiceNumbers} (${providers})` });
                 setReconDialogOpen(false);
@@ -1359,30 +1616,34 @@ export default function BankStatementsPage() {
                 const match = paymentSourceMatches.find(m => m.id === selectedPaymentMatch);
                 if (!match) throw new Error("Payment source match not found");
 
+                const updatedCustomData = {
+                    ...reconTransaction.custom_data,
+                    paymentSource: match.source,
+                    reconciliationType: "manual",
+                    reconciled_at: now,
+                    matched_source: match.source,
+                    matched_disbursement_date: match.disbursementDate,
+                    matched_amount: match.amount,
+                    matched_transaction_count: match.transactionCount,
+                    manual_note: manualNote || null,
+                };
+
                 const { error: txErr } = await supabase
                     .from("csv_rows")
                     .update({
                         reconciled: true,
-                        custom_data: {
-                            ...reconTransaction.custom_data,
-                            paymentSource: match.source,
-                            reconciliationType: "manual",
-                            reconciled_at: now,
-                            matched_source: match.source,
-                            matched_disbursement_date: match.disbursementDate,
-                            matched_amount: match.amount,
-                            matched_transaction_count: match.transactionCount,
-                            manual_note: manualNote || null,
-                        },
+                        custom_data: updatedCustomData,
                     })
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
-                setBankTransactions(prev => prev.map(t =>
-                    t.id === reconTransaction.id
-                        ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: match.source }
-                        : t
-                ));
+                updateTransactionLocalState(reconTransaction.id, {
+                    isReconciled: true,
+                    reconciliationType: "manual",
+                    paymentSource: match.source,
+                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    custom_data: updatedCustomData,
+                });
 
                 toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel} (${match.transactionCount} txns)` });
                 setReconDialogOpen(false);
@@ -1396,16 +1657,19 @@ export default function BankStatementsPage() {
 
                 // Update matched source
                 if (match.source === "invoice-orders") {
+                    const { data: orderRow, error: orderRowErr } = await supabase
+                        .from("csv_rows")
+                        .select("id,amount,custom_data")
+                        .eq("id", match.id)
+                        .maybeSingle();
+                    if (orderRowErr) throw orderRowErr;
+                    if (!orderRow) throw new Error("Invoice-order not found");
+
+                    const partial = buildInvoiceOrderPartialUpdate(orderRow, reconTransaction.id, txAmount, now);
+
                     await supabase
                         .from("csv_rows")
-                        .update({
-                            reconciled: true,
-                            custom_data: {
-                                reconciled_at: now,
-                                reconciled_with_bank_id: reconTransaction.id,
-                                reconciled_bank_amount: txAmount,
-                            },
-                        })
+                        .update(partial.update)
                         .eq("id", match.id);
                 } else if (match.source === "ar_invoices") {
                     const arId = parseInt(match.id.replace("ar-", ""));
@@ -1421,30 +1685,33 @@ export default function BankStatementsPage() {
                 }
 
                 // Update bank transaction
+                const updatedCustomData = {
+                    ...reconTransaction.custom_data,
+                    reconciliationType: "manual",
+                    reconciled_at: now,
+                    matched_order_id: match.orderId || match.id,
+                    matched_order_source: match.source,
+                    matched_customer_name: match.customerName,
+                    matched_invoice_number: match.invoiceNumber,
+                    matched_order_amount: match.amount,
+                    manual_note: manualNote || null,
+                };
+
                 const { error: txErr } = await supabase
                     .from("csv_rows")
                     .update({
                         reconciled: true,
-                        custom_data: {
-                            ...reconTransaction.custom_data,
-                            reconciliationType: "manual",
-                            reconciled_at: now,
-                            matched_order_id: match.orderId || match.id,
-                            matched_order_source: match.source,
-                            matched_customer_name: match.customerName,
-                            matched_invoice_number: match.invoiceNumber,
-                            matched_order_amount: match.amount,
-                            manual_note: manualNote || null,
-                        },
+                        custom_data: updatedCustomData,
                     })
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
-                setBankTransactions(prev => prev.map(t =>
-                    t.id === reconTransaction.id
-                        ? { ...t, isReconciled: true, reconciliationType: "manual" }
-                        : t
-                ));
+                updateTransactionLocalState(reconTransaction.id, {
+                    isReconciled: true,
+                    reconciliationType: "manual",
+                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    custom_data: updatedCustomData,
+                });
 
                 toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel}: ${match.customerName} (${formatCurrency(match.amount, reconTransaction.currency)})` });
                 setReconDialogOpen(false);
@@ -1474,19 +1741,21 @@ export default function BankStatementsPage() {
                 if (matchErr) throw matchErr;
 
                 // Reconcile the current transaction
+                const updatedCustomData = {
+                    ...reconTransaction.custom_data,
+                    reconciliationType: "intercompany",
+                    reconciled_at: now,
+                    intercompany_matched_with: match.id,
+                    intercompany_matched_bank: match.source,
+                    intercompany_matched_amount: match.amount,
+                    manual_note: manualNote || null,
+                };
+
                 const { error: txErr } = await supabase
                     .from("csv_rows")
                     .update({
                         reconciled: true,
-                        custom_data: {
-                            ...reconTransaction.custom_data,
-                            reconciliationType: "intercompany",
-                            reconciled_at: now,
-                            intercompany_matched_with: match.id,
-                            intercompany_matched_bank: match.source,
-                            intercompany_matched_amount: match.amount,
-                            manual_note: manualNote || null,
-                        },
+                        custom_data: updatedCustomData,
                     })
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
@@ -1496,6 +1765,15 @@ export default function BankStatementsPage() {
                     if (t.id === match.id) return { ...t, isReconciled: true, reconciliationType: "intercompany" };
                     return t;
                 }));
+                setSelectedRow(prev => (prev && prev.id === reconTransaction.id
+                    ? {
+                        ...prev,
+                        isReconciled: true,
+                        reconciliationType: "intercompany",
+                        custom_data: updatedCustomData,
+                        isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    }
+                    : prev));
 
                 toast({ title: "Intercompany Reconciled!", description: `Matched with ${match.sourceLabel}: ${formatCurrency(match.amount, match.currency)} on ${formatShortDate(match.date)}` });
                 setReconDialogOpen(false);
@@ -1514,6 +1792,7 @@ export default function BankStatementsPage() {
                 const linkedOrderTotal = orderSearchResults
                     .filter(o => selectedOrderIds.has(o.id))
                     .reduce((s, o) => s + o.amount, 0);
+                let appliedOrderAmountTotal = 0;
 
                 // Mark selected gateway transactions as reconciled
                 for (const gId of linkedGatewayIds) {
@@ -1532,47 +1811,64 @@ export default function BankStatementsPage() {
                 }
 
                 // Mark selected invoice-orders as reconciled
-                for (const oId of linkedOrderIds) {
-                    await supabase
+                if (linkedOrderIds.length > 0) {
+                    const { data: orderRows, error: orderRowsErr } = await supabase
                         .from("csv_rows")
-                        .update({
-                            reconciled: true,
-                            custom_data: {
-                                reconciled_at: now,
-                                reconciled_with_bank_id: reconTransaction.id,
-                                reconciled_bank_amount: txAmount,
-                                reconciliation_type: "bank-order-link",
-                            },
-                        })
-                        .eq("id", oId);
+                        .select("id,amount,custom_data")
+                        .in("id", linkedOrderIds);
+                    if (orderRowsErr) throw orderRowsErr;
+
+                    const orderById = new Map((orderRows || []).map((row: any) => [row.id, row]));
+                    let remainingToAllocate = Math.min(txAmount, linkedOrderTotal);
+
+                    for (const oId of linkedOrderIds) {
+                        const orderRow = orderById.get(oId);
+                        if (!orderRow) continue;
+                        if (remainingToAllocate <= 0) break;
+
+                        const partial = buildInvoiceOrderPartialUpdate(orderRow, reconTransaction.id, remainingToAllocate, now);
+                        if (partial.appliedAmount <= 0) continue;
+
+                        await supabase
+                            .from("csv_rows")
+                            .update(partial.update)
+                            .eq("id", oId);
+
+                        appliedOrderAmountTotal += partial.appliedAmount;
+                        remainingToAllocate = Number((remainingToAllocate - partial.appliedAmount).toFixed(2));
+                    }
                 }
 
                 // Update bank transaction
+                const updatedCustomData = {
+                    ...reconTransaction.custom_data,
+                    reconciliationType: "gateway-order-link",
+                    reconciled_at: now,
+                    linked_gateway_transaction_ids: linkedGatewayIds,
+                    linked_gateway_transaction_count: linkedGatewayIds.length,
+                    linked_gateway_total: linkedGatewayTotal,
+                    linked_invoice_order_ids: linkedOrderIds,
+                    linked_invoice_order_count: linkedOrderIds.length,
+                    linked_invoice_order_total: linkedOrderTotal,
+                    linked_invoice_order_applied_total: Number(appliedOrderAmountTotal.toFixed(2)),
+                    manual_note: manualNote || null,
+                };
+
                 const { error: txErr } = await supabase
                     .from("csv_rows")
                     .update({
                         reconciled: true,
-                        custom_data: {
-                            ...reconTransaction.custom_data,
-                            reconciliationType: "gateway-order-link",
-                            reconciled_at: now,
-                            linked_gateway_transaction_ids: linkedGatewayIds,
-                            linked_gateway_transaction_count: linkedGatewayIds.length,
-                            linked_gateway_total: linkedGatewayTotal,
-                            linked_invoice_order_ids: linkedOrderIds,
-                            linked_invoice_order_count: linkedOrderIds.length,
-                            linked_invoice_order_total: linkedOrderTotal,
-                            manual_note: manualNote || null,
-                        },
+                        custom_data: updatedCustomData,
                     })
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
-                setBankTransactions(prev => prev.map(t =>
-                    t.id === reconTransaction.id
-                        ? { ...t, isReconciled: true, reconciliationType: "gateway-order-link" }
-                        : t
-                ));
+                updateTransactionLocalState(reconTransaction.id, {
+                    isReconciled: true,
+                    reconciliationType: "gateway-order-link",
+                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    custom_data: updatedCustomData,
+                });
 
                 const parts = [];
                 if (linkedGatewayIds.length > 0) parts.push(`${linkedGatewayIds.length} gateway txn(s)`);
@@ -1584,27 +1880,30 @@ export default function BankStatementsPage() {
 
             // CASE 4: Manual-only fallback (no match selected — just gateway + note)
             if (manualPaymentSource || manualNote) {
+                const updatedCustomData = {
+                    ...reconTransaction.custom_data,
+                    ...(isExpense ? {} : { paymentSource: manualPaymentSource || null }),
+                    reconciliationType: "manual",
+                    reconciled_at: now,
+                    manual_note: manualNote || null,
+                };
+
                 const { error: txErr } = await supabase
                     .from("csv_rows")
                     .update({
                         reconciled: true,
-                        custom_data: {
-                            ...reconTransaction.custom_data,
-                            // paymentSource is ONLY for revenue — never for expenses
-                            ...(isExpense ? {} : { paymentSource: manualPaymentSource || null }),
-                            reconciliationType: "manual",
-                            reconciled_at: now,
-                            manual_note: manualNote || null,
-                        },
+                        custom_data: updatedCustomData,
                     })
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
-                setBankTransactions(prev => prev.map(t =>
-                    t.id === reconTransaction.id
-                        ? { ...t, isReconciled: true, reconciliationType: "manual", paymentSource: isExpense ? null : (manualPaymentSource || null) }
-                        : t
-                ));
+                updateTransactionLocalState(reconTransaction.id, {
+                    isReconciled: true,
+                    reconciliationType: "manual",
+                    paymentSource: isExpense ? null : (manualPaymentSource || null),
+                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    custom_data: updatedCustomData,
+                });
 
                 toast({ title: "Manual reconciliation", description: "Transaction marked as reconciled" });
                 setReconDialogOpen(false);
@@ -1753,7 +2052,6 @@ export default function BankStatementsPage() {
                     if (!isNaN(val)) {
                         bankBalance = val;
                         hasBalanceData = true;
-                        break; // primeira transação do último dia já tem o saldo final
                     }
                 }
             }
@@ -2110,14 +2408,20 @@ export default function BankStatementsPage() {
                                                 </Badge>
                                             ) : <span className="text-gray-600 text-[9px]">-</span>}
                                         </div>
-                                        <div className="w-[40px] flex-shrink-0 text-center" onClick={e => e.stopPropagation()}>
-                                            {tx.isReconciled ? (
-                                                tx.reconciliationType === "manual" ? <User className="h-3.5 w-3.5 text-blue-500 mx-auto" /> : <Zap className="h-3.5 w-3.5 text-green-500 mx-auto" />
-                                            ) : (
-                                                <Button size="sm" variant="ghost" onClick={() => openManualRecon(tx)} className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30" title="Manual reconcile">
-                                                    <Link2 className="h-3 w-3" />
-                                                </Button>
-                                            )}
+                                        <div className="w-[64px] flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                            <div className="flex items-center justify-center gap-1">
+                                                {tx.isReconciled ? (
+                                                    tx.reconciliationType === "manual"
+                                                        ? <User className="h-3.5 w-3.5 text-blue-500" />
+                                                        : <Zap className="h-3.5 w-3.5 text-green-500" />
+                                                ) : null}
+
+                                                {(!tx.isReconciled || tx.reconciliationType !== "manual") && (
+                                                    <Button size="sm" variant="ghost" onClick={() => openManualRecon(tx)} className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30" title="Manual reconcile">
+                                                        <Link2 className="h-3 w-3" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                         <div className="w-[40px] flex-shrink-0 text-center">
                                             {tx.isOrderReconciled ? (
@@ -2386,6 +2690,46 @@ export default function BankStatementsPage() {
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {/* ══ EXPENSE MATCHED INVOICES BREAKDOWN ══ */}
+                        {selectedRow.amount < 0 && selectedRow.isReconciled && (
+                            <div className="border-b border-gray-200 dark:border-gray-800">
+                                <div className="w-full px-4 py-3 flex items-center justify-between bg-white dark:bg-black">
+                                    <h3 className="text-xs font-semibold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                                        <FileText className="h-4 w-4" />
+                                        Expense Invoices ({expenseMatchedInvoices.length})
+                                    </h3>
+                                </div>
+
+                                {loadingExpenseMatchedInvoices ? (
+                                    <div className="flex items-center justify-center py-6 gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin text-red-400" />
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">Loading invoices...</span>
+                                    </div>
+                                ) : expenseMatchedInvoices.length > 0 ? (
+                                    <div className="max-h-[280px] overflow-y-auto border-t border-gray-200 dark:border-gray-800/50">
+                                        {expenseMatchedInvoices.map(inv => (
+                                            <div key={inv.id} className="px-4 py-2 border-b border-gray-200 dark:border-gray-800/30 bg-white dark:bg-black">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code || "—"}</p>
+                                                        <p className="text-[10px] text-blue-300 font-mono">{inv.invoice_number || "Sem número"}</p>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-xs font-mono text-red-400 font-medium">
+                                                            {formatCurrency(inv.paid_amount ?? inv.invoice_amount ?? 0, inv.currency || selectedRow.currency)}
+                                                        </p>
+                                                        <p className="text-[9px] text-gray-500 mt-0.5">
+                                                            {inv.schedule_date ? formatShortDate(inv.schedule_date) : "—"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : null}
                             </div>
                         )}
 
@@ -2766,11 +3110,12 @@ export default function BankStatementsPage() {
                                                                                 <Badge variant="outline" className={`text-[9px] px-1 py-0 ${rm.matchScore >= 80 ? "bg-green-900/20 text-green-400 border-green-700" : "bg-yellow-900/20 text-yellow-400 border-yellow-700"}`}>{rm.matchScore}%</Badge>
                                                                             </div>
                                                                             <p className="text-xs text-gray-900 dark:text-white mt-0.5 font-medium">{rm.customerName}</p>
+                                                                            <p className="text-[10px] text-gray-500 truncate">Cliente: {rm.customerName}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">{rm.matchReason}</p>
                                                                         </div>
                                                                         <div className="text-right ml-3">
                                                                             <p className="text-sm font-medium text-green-400">{formatCurrency(rm.amount, reconTransaction.currency)}</p>
-                                                                            <p className="text-[10px] text-gray-500">{formatShortDate(rm.date)}</p>
+                                                                            <p className="text-[10px] text-gray-500">{formatNumericDate(rm.date)}</p>
                                                                         </div>
                                                                     </div>
                                                                 </button>
@@ -2911,7 +3256,7 @@ export default function BankStatementsPage() {
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(order.date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(order.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-xs font-medium text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
@@ -2940,30 +3285,7 @@ export default function BankStatementsPage() {
                                                             onChange={e => setManualSearchTerm(e.target.value)}
                                                             onKeyDown={async e => {
                                                                 if (e.key === "Enter" && manualSearchTerm.length >= 2) {
-                                                                    setIsSearchingManual(true);
-                                                                    try {
-                                                                        const q = manualSearchTerm.toLowerCase();
-                                                                        const { data } = await supabase
-                                                                            .from("invoices")
-                                                                            .select("*")
-                                                                            .eq("is_reconciled", false)
-                                                                            .eq("invoice_type", "INCURRED")
-                                                                            .order("schedule_date", { ascending: false })
-                                                                            .limit(500);
-                                                                        const results = (data || []).filter(inv =>
-                                                                            (inv.provider_code || "").toLowerCase().includes(q) ||
-                                                                            (inv.invoice_number || "").toLowerCase().includes(q) ||
-                                                                            (inv.description || "").toLowerCase().includes(q)
-                                                                        ).map(inv => ({
-                                                                            ...inv,
-                                                                            invoice_amount: parseFloat(inv.invoice_amount) || 0,
-                                                                            paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
-                                                                            matchScore: 0,
-                                                                            matchReason: "Manual search",
-                                                                        }));
-                                                                        setManualSearchResults(results);
-                                                                    } catch { /* silent */ }
-                                                                    setIsSearchingManual(false);
+                                                                    await searchExpenseInvoices(manualSearchTerm);
                                                                 }
                                                             }}
                                                             className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm flex-1"
@@ -2973,30 +3295,7 @@ export default function BankStatementsPage() {
                                                             size="sm"
                                                             disabled={isSearchingManual || manualSearchTerm.length < 2}
                                                             onClick={async () => {
-                                                                setIsSearchingManual(true);
-                                                                try {
-                                                                    const q = manualSearchTerm.toLowerCase();
-                                                                    const { data } = await supabase
-                                                                        .from("invoices")
-                                                                        .select("*")
-                                                                        .eq("is_reconciled", false)
-                                                                        .eq("invoice_type", "INCURRED")
-                                                                        .order("schedule_date", { ascending: false })
-                                                                        .limit(500);
-                                                                    const results = (data || []).filter(inv =>
-                                                                        (inv.provider_code || "").toLowerCase().includes(q) ||
-                                                                        (inv.invoice_number || "").toLowerCase().includes(q) ||
-                                                                        (inv.description || "").toLowerCase().includes(q)
-                                                                    ).map(inv => ({
-                                                                        ...inv,
-                                                                        invoice_amount: parseFloat(inv.invoice_amount) || 0,
-                                                                        paid_amount: inv.paid_amount ? parseFloat(inv.paid_amount) : null,
-                                                                        matchScore: 0,
-                                                                        matchReason: "Manual search",
-                                                                    }));
-                                                                    setManualSearchResults(results);
-                                                                } catch { /* silent */ }
-                                                                setIsSearchingManual(false);
+                                                                await searchExpenseInvoices(manualSearchTerm);
                                                             }}
                                                             className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-9"
                                                         >
@@ -3130,7 +3429,7 @@ export default function BankStatementsPage() {
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(order.date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(order.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-xs font-medium text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
@@ -3320,16 +3619,18 @@ export default function BankStatementsPage() {
                                         const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
                                         return <span className="text-cyan-400">{selectedInvoices.size} invoice(s) = {formatCurrency(tot, reconTransaction?.currency || "EUR")}</span>;
                                     })()}
+                                    {selectedOrderIds.size > 0 && <span className="text-cyan-400">{selectedOrderIds.size} invoice-order(s) = {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>}
+                                    {selectedGatewayTxIds.size > 0 && <span className="text-purple-400">{selectedGatewayTxIds.size} gateway txn(s) = {formatCurrency(selectedGatewayTotal, reconTransaction?.currency || "EUR")}</span>}
                                     {selectedPaymentMatch && <span className="text-cyan-400">Payment source selected</span>}
                                     {selectedRevenueOrder && <span className="text-cyan-400">Revenue order selected</span>}
                                     {selectedIntercompanyMatch && <span className="text-amber-400">Intercompany transfer selected</span>}
-                                    {selectedInvoices.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
+                                    {selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
                                 </div>
                                 <div className="flex gap-3">
                                     <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-8 text-xs">Cancel</Button>
                                     <Button
                                         onClick={performManualReconciliation}
-                                        disabled={isSavingManual || (selectedInvoices.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !manualPaymentSource && !manualNote)}
+                                        disabled={isSavingManual || (selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !manualPaymentSource && !manualNote)}
                                         className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
                                     >
                                         {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}

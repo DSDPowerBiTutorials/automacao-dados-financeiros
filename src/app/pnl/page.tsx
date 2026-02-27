@@ -981,8 +981,36 @@ interface DrilldownModalProps {
     onClose: () => void;
 }
 
+type DrilldownSortField = "customer" | "date" | "amount";
+type DrilldownSortDirection = "asc" | "desc";
+
 function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProps) {
     const [selectedInvoice, setSelectedInvoice] = useState<DrilldownTransaction | null>(null);
+    const [sortField, setSortField] = useState<DrilldownSortField>("date");
+    const [sortDirection, setSortDirection] = useState<DrilldownSortDirection>("desc");
+
+    const sortedTransactions = useMemo(() => {
+        const transactions = [...drilldown.transactions];
+
+        transactions.sort((a, b) => {
+            let comparison = 0;
+
+            if (sortField === "customer") {
+                comparison = (a.customer || "").localeCompare(b.customer || "", undefined, { sensitivity: "base" });
+            } else if (sortField === "date") {
+                const dateA = a.date ? new Date(a.date).getTime() : 0;
+                const dateB = b.date ? new Date(b.date).getTime() : 0;
+                comparison = dateA - dateB;
+            } else {
+                comparison = (a.amount || 0) - (b.amount || 0);
+            }
+
+            return sortDirection === "asc" ? comparison : -comparison;
+        });
+
+        return transactions;
+    }, [drilldown.transactions, sortField, sortDirection]);
+
     const {
         currentPage,
         totalPages,
@@ -995,7 +1023,7 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
         lastPage,
         canGoNext,
         canGoPrev,
-    } = usePagination(drilldown.transactions, { pageSize: 150 });
+    } = usePagination(sortedTransactions, { pageSize: 150 });
 
     // Calculate separate totals
     const creditNoteCount = drilldown.transactions.filter(tx => tx.amount < 0).length;
@@ -1050,6 +1078,28 @@ function DrilldownModal({ drilldown, selectedYear, onClose }: DrilldownModalProp
                             </div>
                         ) : (
                             <div className="flex flex-col h-full">
+                                <div className="flex items-center justify-end gap-2 pb-3 px-1">
+                                    <span className="text-xs text-gray-500 dark:text-gray-400">Ordenar por</span>
+                                    <Select value={sortField} onValueChange={(value) => setSortField(value as DrilldownSortField)}>
+                                        <SelectTrigger className="h-8 w-[170px] text-xs bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                            <SelectValue />
+                                        </SelectTrigger>
+                                        <SelectContent className="bg-gray-100 dark:bg-[#0a0a0a] border-gray-300 dark:border-gray-600">
+                                            <SelectItem value="customer" className="text-xs text-gray-700 dark:text-gray-300">{isExpense ? "Provider" : "Customer"}</SelectItem>
+                                            <SelectItem value="date" className="text-xs text-gray-700 dark:text-gray-300">Date</SelectItem>
+                                            <SelectItem value="amount" className="text-xs text-gray-700 dark:text-gray-300">Amount</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setSortDirection(prev => (prev === "asc" ? "desc" : "asc"))}
+                                        className="h-8 px-3 text-xs border-gray-300 dark:border-gray-600"
+                                    >
+                                        {sortDirection === "asc" ? "Asc" : "Desc"}
+                                    </Button>
+                                </div>
                                 <div className="overflow-x-auto flex-1">
                                     <table className="w-full min-w-[800px]">
                                         <thead className="bg-gray-100 dark:bg-black sticky top-0 z-10">

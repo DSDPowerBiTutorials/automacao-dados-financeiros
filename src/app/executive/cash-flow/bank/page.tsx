@@ -359,6 +359,10 @@ function parseChaseShortDescription(description: string, source: string): string
 // ════════════════════════════════════════════════════════
 
 export default function BankCashFlowPage() {
+    const currentYear = new Date().getFullYear();
+    const defaultStartDate = `${currentYear}-01-01`;
+    const defaultEndDate = `${currentYear}-12-31`;
+
     const [selectedBanks, setSelectedBanks] = useState<Set<string>>(new Set(["bankinter-eur"]));
     const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -372,8 +376,8 @@ export default function BankCashFlowPage() {
     const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
 
     // Filters — committed date range vs pending (to avoid re-fetch on arrow navigation)
-    const [dateRange, setDateRange] = useState({ start: "2025-01-01", end: "2025-12-31" });
-    const [pendingDateRange, setPendingDateRange] = useState({ start: "2025-01-01", end: "2025-12-31" });
+    const [dateRange, setDateRange] = useState({ start: defaultStartDate, end: defaultEndDate });
+    const [pendingDateRange, setPendingDateRange] = useState({ start: defaultStartDate, end: defaultEndDate });
     const [gatewayFilter, setGatewayFilter] = useState("all");
     const [flowFilter, setFlowFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
@@ -511,7 +515,7 @@ export default function BankCashFlowPage() {
                     const { data: oChunk, error: oErr } = await supabase
                         .from("csv_rows")
                         .select("description, amount, date, custom_data")
-                        .eq("source", "invoice-orders")
+                        .in("source", ["invoice-orders", "invoice-orders-usd"])
                         .gte("date", dateRange.start)
                         .lte("date", dateRange.end)
                         .range(oFrom, oFrom + PAGE - 1);

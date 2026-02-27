@@ -70,7 +70,7 @@ export async function GET(request: NextRequest) {
             const { data, error } = await supabaseAdmin
                 .from("csv_rows")
                 .select("source, date, amount, custom_data")
-                .eq("source", "invoice-orders")
+                .in("source", ["invoice-orders", "invoice-orders-usd"])
                 .gte("date", startDate)
                 .lte("date", endDate)
                 .range(offset, offset + pageSize - 1);

@@ -149,6 +149,11 @@ export const NAV: NavGroup[] = withUnderConstruction([
         title: "Department P&L",
         href: "/departmental/pnl",
         icon: BarChart3
+      },
+      {
+        title: "Contracts",
+        href: "/departmental/contracts",
+        icon: FileText
       }
     ]
   },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import {
     TrendingUp,
     TrendingDown,
@@ -35,6 +35,7 @@ import {
     TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { supabase } from "@/lib/supabase";
 import {
     BarChart,
     Bar,
@@ -80,6 +81,21 @@ interface Department {
     lines: PnLLine[];
 }
 
+interface InvoiceAggRow {
+    cost_center_code: string | null;
+    sub_department_code: string | null;
+    financial_account_code: string | null;
+    financial_account_name: string | null;
+    invoice_amount: number | string | null;
+    paid_amount: number | string | null;
+    invoice_date: string | null;
+    benefit_date: string | null;
+    schedule_date: string | null;
+    due_date: string | null;
+    payment_date: string | null;
+    dre_impact: boolean | null;
+}
+
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 const emptyMonthly = (): MonthlyValues => ({
@@ -110,27 +126,6 @@ const pct = (actual: number, budget: number) => {
     return ((actual - budget) / Math.abs(budget)) * 100;
 };
 
-// ── Mock Data Generator ────────────────────────────────────────────────────
-
-function generateMonthly(base: number, variance: number = 0.15, trend: number = 0): MonthlyValues {
-    const vals: number[] = [];
-    for (let i = 0; i < 12; i++) {
-        const seasonal = 1 + Math.sin((i - 1) * Math.PI / 6) * 0.08;
-        const trendFactor = 1 + (trend * i / 12);
-        const random = 1 + (Math.random() - 0.5) * variance;
-        vals.push(Math.round(base * seasonal * trendFactor * random));
-    }
-    return { jan: vals[0], feb: vals[1], mar: vals[2], apr: vals[3], may: vals[4], jun: vals[5], jul: vals[6], aug: vals[7], sep: vals[8], oct: vals[9], nov: vals[10], dec: vals[11] };
-}
-
-function generateBudget(actual: MonthlyValues, accuracy: number = 0.9): MonthlyValues {
-    const result = emptyMonthly();
-    for (const k of monthKeys) {
-        result[k] = Math.round(actual[k] * (accuracy + (Math.random() - 0.5) * 0.2));
-    }
-    return result;
-}
-
 function sumMonthlyLines(lines: PnLLine[], type: "actual" | "budget"): MonthlyValues {
     const result = emptyMonthly();
     for (const line of lines) {
@@ -142,121 +137,39 @@ function sumMonthlyLines(lines: PnLLine[], type: "actual" | "budget"): MonthlyVa
     return result;
 }
 
-// ── Department Mock Data ───────────────────────────────────────────────────
+const DEPT_COLORS = ["#3b82f6", "#8b5cf6", "#06b6d4", "#f59e0b", "#64748b", "#ec4899", "#10b981", "#f97316", "#6366f1"];
 
-const DEPARTMENTS: Department[] = [
-    {
-        id: "clinical",
-        name: "Clinical Operations",
-        code: "CLIN",
-        color: "#3b82f6",
-        icon: "🏥",
-        headcount: 45,
-        lines: [
-            { code: "CLIN-R01", name: "Patient Treatments", type: "revenue", level: 0, actual: generateMonthly(185000, 0.12, 0.05), budget: emptyMonthly() },
-            { code: "CLIN-R02", name: "Consultation Fees", type: "revenue", level: 0, actual: generateMonthly(42000, 0.15, 0.03), budget: emptyMonthly() },
-            { code: "CLIN-R03", name: "Follow-up Services", type: "revenue", level: 0, actual: generateMonthly(28000, 0.18, 0.02), budget: emptyMonthly() },
-            { code: "CLIN-E01", name: "Salaries & Wages", type: "expense", level: 0, actual: generateMonthly(95000, 0.03, 0.02), budget: emptyMonthly() },
-            { code: "CLIN-E02", name: "Medical Supplies", type: "expense", level: 0, actual: generateMonthly(32000, 0.2, 0.01), budget: emptyMonthly() },
-            { code: "CLIN-E03", name: "Equipment Maintenance", type: "expense", level: 0, actual: generateMonthly(8500, 0.25, 0), budget: emptyMonthly() },
-            { code: "CLIN-E04", name: "Lab & Diagnostics", type: "expense", level: 0, actual: generateMonthly(12000, 0.15, 0.03), budget: emptyMonthly() },
-            { code: "CLIN-E05", name: "Insurance & Compliance", type: "expense", level: 0, actual: generateMonthly(6500, 0.05, 0.01), budget: emptyMonthly() },
-            { code: "CLIN-E06", name: "Training & Development", type: "expense", level: 0, actual: generateMonthly(4200, 0.3, 0), budget: emptyMonthly() },
-        ],
-    },
-    {
-        id: "education",
-        name: "Education & Training",
-        code: "EDU",
-        color: "#8b5cf6",
-        icon: "🎓",
-        headcount: 18,
-        lines: [
-            { code: "EDU-R01", name: "Course Fees (Online)", type: "revenue", level: 0, actual: generateMonthly(120000, 0.15, 0.08), budget: emptyMonthly() },
-            { code: "EDU-R02", name: "Workshop Revenue", type: "revenue", level: 0, actual: generateMonthly(65000, 0.2, 0.05), budget: emptyMonthly() },
-            { code: "EDU-R03", name: "Certification Programs", type: "revenue", level: 0, actual: generateMonthly(35000, 0.18, 0.1), budget: emptyMonthly() },
-            { code: "EDU-R04", name: "Licensing & Royalties", type: "revenue", level: 0, actual: generateMonthly(15000, 0.1, 0.12), budget: emptyMonthly() },
-            { code: "EDU-E01", name: "Instructor Salaries", type: "expense", level: 0, actual: generateMonthly(48000, 0.05, 0.02), budget: emptyMonthly() },
-            { code: "EDU-E02", name: "Content Production", type: "expense", level: 0, actual: generateMonthly(22000, 0.25, 0.05), budget: emptyMonthly() },
-            { code: "EDU-E03", name: "Platform & Tools", type: "expense", level: 0, actual: generateMonthly(8500, 0.1, 0.03), budget: emptyMonthly() },
-            { code: "EDU-E04", name: "Marketing (Education)", type: "expense", level: 0, actual: generateMonthly(18000, 0.2, 0.04), budget: emptyMonthly() },
-            { code: "EDU-E05", name: "Travel & Events", type: "expense", level: 0, actual: generateMonthly(12000, 0.35, 0), budget: emptyMonthly() },
-        ],
-    },
-    {
-        id: "technology",
-        name: "Technology & Digital",
-        code: "TECH",
-        color: "#06b6d4",
-        icon: "💻",
-        headcount: 12,
-        lines: [
-            { code: "TECH-R01", name: "Software Subscriptions", type: "revenue", level: 0, actual: generateMonthly(45000, 0.08, 0.15), budget: emptyMonthly() },
-            { code: "TECH-R02", name: "Custom Development", type: "revenue", level: 0, actual: generateMonthly(25000, 0.3, 0.05), budget: emptyMonthly() },
-            { code: "TECH-E01", name: "Engineering Salaries", type: "expense", level: 0, actual: generateMonthly(55000, 0.03, 0.03), budget: emptyMonthly() },
-            { code: "TECH-E02", name: "Cloud Infrastructure", type: "expense", level: 0, actual: generateMonthly(12000, 0.1, 0.08), budget: emptyMonthly() },
-            { code: "TECH-E03", name: "Software Licenses", type: "expense", level: 0, actual: generateMonthly(8000, 0.08, 0.05), budget: emptyMonthly() },
-            { code: "TECH-E04", name: "Cybersecurity", type: "expense", level: 0, actual: generateMonthly(4500, 0.12, 0.02), budget: emptyMonthly() },
-            { code: "TECH-E05", name: "Hardware & Equipment", type: "expense", level: 0, actual: generateMonthly(3500, 0.4, 0), budget: emptyMonthly() },
-        ],
-    },
-    {
-        id: "marketing",
-        name: "Marketing & Sales",
-        code: "MKT",
-        color: "#f59e0b",
-        icon: "📣",
-        headcount: 15,
-        lines: [
-            { code: "MKT-R01", name: "Lead Generation Revenue", type: "revenue", level: 0, actual: generateMonthly(38000, 0.2, 0.06), budget: emptyMonthly() },
-            { code: "MKT-R02", name: "Partnership Commissions", type: "revenue", level: 0, actual: generateMonthly(15000, 0.25, 0.04), budget: emptyMonthly() },
-            { code: "MKT-E01", name: "Team Salaries", type: "expense", level: 0, actual: generateMonthly(42000, 0.03, 0.02), budget: emptyMonthly() },
-            { code: "MKT-E02", name: "Digital Advertising", type: "expense", level: 0, actual: generateMonthly(28000, 0.2, 0.05), budget: emptyMonthly() },
-            { code: "MKT-E03", name: "Events & Sponsorships", type: "expense", level: 0, actual: generateMonthly(15000, 0.35, 0.02), budget: emptyMonthly() },
-            { code: "MKT-E04", name: "Branding & Design", type: "expense", level: 0, actual: generateMonthly(8000, 0.2, 0), budget: emptyMonthly() },
-            { code: "MKT-E05", name: "CRM & Tools", type: "expense", level: 0, actual: generateMonthly(5500, 0.08, 0.03), budget: emptyMonthly() },
-        ],
-    },
-    {
-        id: "admin",
-        name: "General & Admin",
-        code: "G&A",
-        color: "#64748b",
-        icon: "🏢",
-        headcount: 10,
-        lines: [
-            { code: "GA-R01", name: "Internal Services", type: "revenue", level: 0, actual: generateMonthly(5000, 0.15, 0), budget: emptyMonthly() },
-            { code: "GA-E01", name: "Admin Salaries", type: "expense", level: 0, actual: generateMonthly(35000, 0.03, 0.02), budget: emptyMonthly() },
-            { code: "GA-E02", name: "Office Rent & Utilities", type: "expense", level: 0, actual: generateMonthly(18000, 0.02, 0.01), budget: emptyMonthly() },
-            { code: "GA-E03", name: "Accounting & Legal", type: "expense", level: 0, actual: generateMonthly(12000, 0.15, 0.02), budget: emptyMonthly() },
-            { code: "GA-E04", name: "Office Supplies", type: "expense", level: 0, actual: generateMonthly(3500, 0.25, 0), budget: emptyMonthly() },
-            { code: "GA-E05", name: "Travel & Expenses", type: "expense", level: 0, actual: generateMonthly(6000, 0.3, 0), budget: emptyMonthly() },
-            { code: "GA-E06", name: "Depreciation", type: "expense", level: 0, actual: generateMonthly(4500, 0.02, 0), budget: emptyMonthly() },
-        ],
-    },
-    {
-        id: "hr",
-        name: "Human Resources",
-        code: "HR",
-        color: "#ec4899",
-        icon: "👥",
-        headcount: 5,
-        lines: [
-            { code: "HR-E01", name: "HR Team Salaries", type: "expense", level: 0, actual: generateMonthly(18000, 0.03, 0.02), budget: emptyMonthly() },
-            { code: "HR-E02", name: "Recruitment Costs", type: "expense", level: 0, actual: generateMonthly(8000, 0.35, 0.03), budget: emptyMonthly() },
-            { code: "HR-E03", name: "Benefits & Perks", type: "expense", level: 0, actual: generateMonthly(15000, 0.05, 0.02), budget: emptyMonthly() },
-            { code: "HR-E04", name: "Training Programs", type: "expense", level: 0, actual: generateMonthly(5000, 0.3, 0), budget: emptyMonthly() },
-            { code: "HR-E05", name: "HR Software", type: "expense", level: 0, actual: generateMonthly(2500, 0.05, 0.01), budget: emptyMonthly() },
-        ],
-    },
-];
+const getDeptIcon = (name: string): string => {
+    const n = name.toLowerCase();
+    if (n.includes("clinic") || n.includes("medical")) return "🏥";
+    if (n.includes("education") || n.includes("training")) return "🎓";
+    if (n.includes("tech") || n.includes("digital") || n.includes("it")) return "💻";
+    if (n.includes("market") || n.includes("sales")) return "📣";
+    if (n.includes("hr") || n.includes("human")) return "👥";
+    if (n.includes("finance") || n.includes("account")) return "💼";
+    return "🏢";
+};
 
-// Generate budget after actual 
-DEPARTMENTS.forEach(dept => {
-    dept.lines.forEach(line => {
-        line.budget = generateBudget(line.actual, line.type === "revenue" ? 0.95 : 1.05);
-    });
-});
+const monthFromDate = (dateValue: string | null | undefined): number | null => {
+    if (!dateValue || typeof dateValue !== "string" || dateValue.length < 7) return null;
+    const month = parseInt(dateValue.slice(5, 7), 10);
+    if (Number.isNaN(month) || month < 1 || month > 12) return null;
+    return month - 1;
+};
+
+const normalizeNumber = (value: number | string | null | undefined): number => {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+        const parsed = parseFloat(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+    }
+    return 0;
+};
+
+const getLineTypeFromFACode = (faCode: string): "revenue" | "expense" => {
+    const normalized = faCode.trim();
+    return /^1\d\d(\.|$)/.test(normalized) ? "revenue" : "expense";
+};
 
 // ── Computed Department Summaries ──────────────────────────────────────────
 
@@ -279,12 +192,144 @@ function getDeptSummary(dept: Department) {
 // ── Main Component ────────────────────────────────────────────────────────
 
 export default function DepartmentalPnLPage() {
-    const [selectedYear, setSelectedYear] = useState("2026");
+    const [selectedYear, setSelectedYear] = useState(String(new Date().getFullYear()));
     const [selectedDept, setSelectedDept] = useState<string>("all");
-    const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set(["clinical", "education"]));
+    const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set());
     const [showBudget, setShowBudget] = useState(true);
     const [viewMode, setViewMode] = useState<"monthly" | "quarterly" | "ytd">("monthly");
+    const [departments, setDepartments] = useState<Department[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const currentMonth = new Date().getMonth(); // 0-indexed
+
+    const loadDepartmentalPnL = useCallback(async () => {
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            const [costCentersRes, subDepartmentsRes, financialAccountsRes] = await Promise.all([
+                supabase.from("cost_centers").select("code,name,is_active,level").eq("is_active", true),
+                supabase.from("sub_departments").select("code,name,parent_department_code,is_active").eq("is_active", true),
+                supabase.from("financial_accounts").select("code,name,is_active").eq("is_active", true),
+            ]);
+
+            if (costCentersRes.error) throw costCentersRes.error;
+            if (subDepartmentsRes.error) throw subDepartmentsRes.error;
+            if (financialAccountsRes.error) throw financialAccountsRes.error;
+
+            const costCenters = (costCentersRes.data || []).filter((d: any) => d.level === 1 || d.level == null);
+            const subDepartments = subDepartmentsRes.data || [];
+            const financialAccounts = financialAccountsRes.data || [];
+
+            const costCenterNameMap = new Map(costCenters.map((d: any) => [d.code, d.name]));
+            const subDepartmentNameMap = new Map(subDepartments.map((sd: any) => [sd.code, sd.name]));
+            const financialAccountNameMap = new Map(financialAccounts.map((fa: any) => [fa.code, fa.name]));
+
+            const allInvoices: InvoiceAggRow[] = [];
+            const pageSize = 1000;
+            for (let page = 0; page < 30; page++) {
+                const from = page * pageSize;
+                const to = from + pageSize - 1;
+                const { data, error } = await supabase
+                    .from("invoices")
+                    .select("cost_center_code,sub_department_code,financial_account_code,financial_account_name,invoice_amount,paid_amount,invoice_date,benefit_date,schedule_date,due_date,payment_date,dre_impact")
+                    .gte("invoice_date", `${selectedYear}-01-01`)
+                    .lte("invoice_date", `${selectedYear}-12-31`)
+                    .range(from, to);
+
+                if (error) throw error;
+                if (!data || data.length === 0) break;
+                allInvoices.push(...(data as InvoiceAggRow[]));
+                if (data.length < pageSize) break;
+            }
+
+            const deptMap = new Map<string, Department>();
+
+            const ensureDept = (code: string): Department => {
+                const id = code;
+                const existing = deptMap.get(id);
+                if (existing) return existing;
+                const idx = deptMap.size;
+                const dept: Department = {
+                    id,
+                    name: costCenterNameMap.get(code) || code,
+                    code,
+                    color: DEPT_COLORS[idx % DEPT_COLORS.length],
+                    icon: getDeptIcon(costCenterNameMap.get(code) || code),
+                    headcount: 0,
+                    lines: [],
+                };
+                deptMap.set(id, dept);
+                return dept;
+            };
+
+            costCenters.forEach((cc: any) => ensureDept(cc.code));
+
+            const lineMapByDept = new Map<string, Map<string, PnLLine>>();
+
+            allInvoices
+                .filter(row => row.dre_impact !== false)
+                .forEach((row) => {
+                    const deptCode = row.cost_center_code || "UNASSIGNED";
+                    const subCode = row.sub_department_code || "NO-SUB";
+                    const faCode = row.financial_account_code || "UNMAPPED";
+
+                    const dateRef = row.invoice_date || row.benefit_date || row.schedule_date || row.payment_date || row.due_date;
+                    const month = monthFromDate(dateRef);
+                    if (month == null) return;
+
+                    const amount = normalizeNumber(row.paid_amount ?? row.invoice_amount);
+                    if (!Number.isFinite(amount) || amount === 0) return;
+
+                    const dept = ensureDept(deptCode);
+                    if (!lineMapByDept.has(dept.id)) lineMapByDept.set(dept.id, new Map());
+                    const deptLineMap = lineMapByDept.get(dept.id)!;
+
+                    const type = getLineTypeFromFACode(faCode);
+                    const lineKey = `${type}|${subCode}|${faCode}`;
+                    const subName = subDepartmentNameMap.get(subCode) || (subCode === "NO-SUB" ? "Sem Sub-Departamento" : subCode);
+                    const faName = financialAccountNameMap.get(faCode) || row.financial_account_name || faCode;
+
+                    if (!deptLineMap.has(lineKey)) {
+                        deptLineMap.set(lineKey, {
+                            code: faCode,
+                            name: `${subName} • ${faName}`,
+                            type,
+                            level: 0,
+                            actual: emptyMonthly(),
+                            budget: emptyMonthly(),
+                        });
+                    }
+
+                    const line = deptLineMap.get(lineKey)!;
+                    const key = monthKeys[month];
+                    line.actual[key] += Math.abs(amount);
+                });
+
+            deptMap.forEach((dept) => {
+                const lines = Array.from(lineMapByDept.get(dept.id)?.values() || [])
+                    .sort((a, b) => {
+                        if (a.type !== b.type) return a.type === "revenue" ? -1 : 1;
+                        return a.name.localeCompare(b.name);
+                    });
+                dept.lines = lines;
+            });
+
+            const result = Array.from(deptMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+            setDepartments(result);
+            setExpandedDepts(new Set(result.slice(0, 2).map(d => d.id)));
+            if (selectedDept !== "all" && !result.some(d => d.id === selectedDept)) setSelectedDept("all");
+        } catch (err: any) {
+            console.error("Erro ao carregar P&L departamental:", err);
+            setLoadError(err?.message || "Erro ao carregar dados reais.");
+            setDepartments([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [selectedYear, selectedDept]);
+
+    useEffect(() => {
+        loadDepartmentalPnL();
+    }, [loadDepartmentalPnL]);
 
     // Toggle department expansion
     const toggleDept = (id: string) => {
@@ -295,13 +340,13 @@ export default function DepartmentalPnLPage() {
         });
     };
 
-    const expandAll = () => setExpandedDepts(new Set(DEPARTMENTS.map(d => d.id)));
+    const expandAll = () => setExpandedDepts(new Set(departments.map(d => d.id)));
     const collapseAll = () => setExpandedDepts(new Set());
 
     // Filter departments
     const filteredDepts = useMemo(() =>
-        selectedDept === "all" ? DEPARTMENTS : DEPARTMENTS.filter(d => d.id === selectedDept),
-        [selectedDept]
+        selectedDept === "all" ? departments : departments.filter(d => d.id === selectedDept),
+        [selectedDept, departments]
     );
 
     // Consolidated totals
@@ -445,7 +490,7 @@ export default function DepartmentalPnLPage() {
                             P&L Departamental
                         </h1>
                         <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Demonstração de Resultados por Departamento — Dados Mock
+                            Demonstração de Resultados por Departamento — Dados Reais (Invoices)
                         </p>
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -467,7 +512,7 @@ export default function DepartmentalPnLPage() {
                             </SelectTrigger>
                             <SelectContent className="bg-white dark:bg-[#0a0a0a]">
                                 <SelectItem value="all">All Departments</SelectItem>
-                                {DEPARTMENTS.map(d => (
+                                {departments.map(d => (
                                     <SelectItem key={d.id} value={d.id}>{d.icon} {d.name}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -495,9 +540,20 @@ export default function DepartmentalPnLPage() {
                             <Download className="h-4 w-4 mr-1" />
                             Export
                         </Button>
+                        <Button variant="outline" size="sm" onClick={loadDepartmentalPnL} className="border-gray-200 dark:border-gray-700" disabled={isLoading}>
+                            {isLoading ? "Carregando..." : "Atualizar"}
+                        </Button>
                     </div>
                 </div>
             </div>
+
+            {loadError && (
+                <div className="mb-4">
+                    <Badge variant="outline" className="text-xs text-red-600 dark:text-red-400 border-red-300 dark:border-red-700">
+                        Erro ao carregar dados: {loadError}
+                    </Badge>
+                </div>
+            )}
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
@@ -715,10 +771,10 @@ export default function DepartmentalPnLPage() {
                 </CardContent>
             </Card>
 
-            {/* Footer with mock data notice */}
+            {/* Footer with data source notice */}
             <div className="mt-6 text-center">
-                <Badge variant="outline" className="text-xs text-amber-600 dark:text-amber-400 border-amber-300 dark:border-amber-600">
-                    ⚠️ Mock Data — Os valores apresentados são fictícios para demonstração
+                <Badge variant="outline" className="text-xs text-emerald-700 dark:text-emerald-400 border-emerald-300 dark:border-emerald-700">
+                    ✅ Dados Reais — Fonte: invoices + cost_centers + sub_departments + financial_accounts
                 </Badge>
             </div>
         </div>

@@ -117,9 +117,9 @@ export async function POST(request: NextRequest) {
         console.log("  CLAVE:", colIndex.clave !== -1 ? `Coluna ${colIndex.clave}` : "⚠️")
         console.log("  CATEGORIA:", colIndex.categoria !== -1 ? `Coluna ${colIndex.categoria}` : "⚠️")
 
-        if (colIndex.fechaValor === -1 || colIndex.descripcion === -1) {
+        if ((colIndex.fechaContable === -1 && colIndex.fechaValor === -1) || colIndex.descripcion === -1) {
             return NextResponse.json(
-                { success: false, error: "Colunas obrigatórias não encontradas (FECHA VALOR, DESCRIPCIÓN)" },
+                { success: false, error: "Colunas obrigatórias não encontradas (FECHA CONTABLE ou FECHA VALOR, DESCRIPCIÓN)" },
                 { status: 400 }
             )
         }
@@ -161,31 +161,33 @@ export async function POST(request: NextRequest) {
                     return null
                 }
 
-                // USAR APENAS FECHA VALOR (data do extrato)
-                const rawDate = fechaValorRaw
+                // Preferir FECHA CONTABLE (data contabil) se presente; caso contrário usar FECHA VALOR
+                const rawDatePrefer = colIndex.fechaContable !== -1 ? fechaContableRaw : fechaValorRaw
 
-                if (!rawDate) {
-                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Sem FECHA VALOR`)
+                if (!rawDatePrefer) {
+                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Sem data (FECHA CONTABLE/FECHA VALOR)`)
                     skippedCount++
                     return null
                 }
 
                 let isoDate: string
-                if (typeof rawDate === "number") {
-                    isoDate = excelSerialToISO(rawDate)
-                    console.log(`📅 [DEBUG] Serial ${rawDate} → ${isoDate}`)
-                } else if (typeof rawDate === "string") {
-                    const dateString = rawDate.trim()
-                    const parts = dateString.split(/[\/\-\.]/)
-                    if (parts.length !== 3) {
-                        console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data não parseável:`, dateString)
-                        skippedCount++
-                        return null
+                // Função auxiliar para parse comum
+                const parseRawDate = (raw: any) => {
+                    if (typeof raw === "number") {
+                        return excelSerialToISO(raw)
+                    } else if (typeof raw === "string") {
+                        const dateString = raw.trim()
+                        const parts = dateString.split(/[\/\-\.]/)
+                        if (parts.length !== 3) return null
+                        const [d, m, y] = parts
+                        return `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
                     }
-                    const [d, m, y] = parts
-                    isoDate = `${y.padStart(4, "0")}-${m.padStart(2, "0")}-${d.padStart(2, "0")}`
-                } else {
-                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data inválida (valor):`, rawDate)
+                    return null
+                }
+
+                isoDate = parseRawDate(rawDatePrefer)
+                if (!isoDate) {
+                    console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Data não parseável:`, rawDatePrefer)
                     skippedCount++
                     return null
                 }
@@ -234,8 +236,9 @@ export async function POST(request: NextRequest) {
                 const clave = colIndex.clave !== -1 ? String(row[colIndex.clave] || "") : ""
                 const categoria = colIndex.categoria !== -1 ? String(row[colIndex.categoria] || "") : ""
 
-                // Guardar fecha_contable apenas como referência bruta
-                const fechaContableISO: string | null = null
+                // Guardar ambas datas em custom_data; converter FECHA CONTABLE / FECHA VALOR separadamente
+                const fechaContableISO: string | null = colIndex.fechaContable !== -1 ? parseRawDate(fechaContableRaw) : null
+                const fechaValorISO: string | null = colIndex.fechaValor !== -1 ? parseRawDate(fechaValorRaw) : null
 
                 // DEBUG CRÍTICO: Log do objeto custom_data ANTES de construir
                 if (index === 0) {
@@ -244,14 +247,15 @@ export async function POST(request: NextRequest) {
                     console.log("  haber:", haber, typeof haber)
                     console.log("  importe:", importe, typeof importe)
                     console.log("  saldo:", saldo, typeof saldo)
-                    console.log("  isoDate (FECHA VALOR):", isoDate)
+                    console.log("  primary isoDate:", isoDate)
                     console.log("  fechaContableISO:", fechaContableISO)
+                    console.log("  fechaValorISO:", fechaValorISO)
                 }
 
                 return {
                     source: "bankinter-eur",
                     file_name: file.name,
-                    date: isoDate, // FECHA VALOR exata do extrato
+                    date: isoDate, // primary date (FECHA CONTABLE when present, otherwise FECHA VALOR)
                     description: descripcion || "Sin descripción",
                     amount: amount.toString(),
                     category: categoria || "Other",
@@ -261,7 +265,7 @@ export async function POST(request: NextRequest) {
                         fecha_contable: fechaContableRaw, // referência
                         fecha_contable_iso: fechaContableISO,
                         fecha_valor: fechaValorRaw,    // FECHA VALOR bruta (original)
-                        fecha_valor_iso: isoDate, // FECHA VALOR exata
+                        fecha_valor_iso: fechaValorISO,
                         debe,
                         haber,
                         importe,

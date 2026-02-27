@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useDeferredValue } from "react";
 import Image from "next/image";
-import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, ChevronRight, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap, User, CheckCircle2, Building2 } from "lucide-react";
+import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, ChevronRight, ChevronLeft, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap, User, CheckCircle2, Building2 } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
 import {
@@ -109,6 +109,42 @@ const COUNTRIES = [
   { code: "GLOBAL", name: "Global (Consolidated)", defaultCurrency: "EUR" }
 ];
 
+const COLUMN_OPTIONS = [
+  { id: 'actions', label: 'Actions' },
+  { id: 'split', label: 'Split Status' },
+  { id: 'created_by', label: 'Created' },
+  { id: 'scope', label: 'Scope' },
+  { id: 'type', label: 'Type' },
+  { id: 'input_date', label: 'Input Date' },
+  { id: 'invoice_date', label: 'Invoice Date' },
+  { id: 'benefit_date', label: 'Benefit Date' },
+  { id: 'due_date', label: 'Due Date' },
+  { id: 'schedule_date', label: 'Schedule Date' },
+  { id: 'provider', label: 'Provider' },
+  { id: 'description', label: 'Description' },
+  { id: 'invoice_number', label: 'Invoice ID' },
+  { id: 'amount', label: 'Amount' },
+  { id: 'currency', label: 'Currency' },
+  { id: 'financial_account', label: 'Financial Account' },
+  { id: 'cost_center', label: 'Department' },
+  { id: 'sub_department', label: 'Sub-Department' },
+  { id: 'cost_type', label: 'Cost Type' },
+  { id: 'dep_cost_type', label: 'Dep Cost Type' },
+  { id: 'payment_status', label: 'Payment Status' },
+  { id: 'is_reconciled', label: 'Recon' },
+  { id: 'payment_method', label: 'Payment Method' },
+  { id: 'bank_account', label: 'Bank Account' },
+  { id: 'payment_date', label: 'Payment Date' },
+];
+
+const ALL_COLUMN_IDS = COLUMN_OPTIONS.map((column) => column.id);
+const DEFAULT_VISIBLE_COLUMN_IDS = [
+  'actions', 'split', 'created_by', 'scope', 'type', 'input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date',
+  'provider', 'description', 'invoice_number', 'amount', 'currency', 'financial_account',
+  'cost_center', 'sub_department', 'cost_type', 'dep_cost_type', 'payment_status', 'is_reconciled', 'payment_method',
+  'bank_account', 'payment_date'
+];
+
 // Helper function to format numbers in European format (1.250,00)
 function formatEuropeanNumber(value: number, decimals: number = 2): string {
   return value.toLocaleString("pt-BR", {
@@ -145,6 +181,7 @@ export default function InvoicesPage() {
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
+  const deferredSearchTerm = useDeferredValue(searchTerm);
   const [selectedType, setSelectedType] = useState<InvoiceType | "ALL">("ALL");
   const [selectedCountry, setSelectedCountry] = useState<string>("ALL");
   const [sortField, setSortField] = useState<SortField>("invoice_date");
@@ -156,6 +193,7 @@ export default function InvoicesPage() {
   const [tempFilterSelection, setTempFilterSelection] = useState<string[]>([]);
   const [filterSearchTerm, setFilterSearchTerm] = useState("");
   const [calendarRange, setCalendarRange] = useState<DateRange | undefined>(undefined);
+  const [createdFilter, setCreatedFilter] = useState<'all' | 'bot' | 'manual'>('all');
 
   // Year filter (server-side) and date/amount filters (client-side)
   const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
@@ -163,23 +201,21 @@ export default function InvoicesPage() {
   const [amountFilter, setAmountFilter] = useState<{ operator: 'lt' | 'gt' | 'eq' | 'between', value1: number, value2?: number } | null>(null);
 
   // Column visibility
-  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set([
-    "actions", "split", "scope", "impact", "type", "input_date", "invoice_date", "benefit_date", "due_date", "schedule_date",
-    "provider", "description", "invoice_number", "amount", "currency", "financial_account",
-    "cost_center", "cost_type", "dep_cost_type", "payment_status", "is_reconciled", "payment_method",
-    "bank_account", "payment_date"
-  ]));
+  const [visibleColumns, setVisibleColumns] = useState<Set<string>>(new Set(DEFAULT_VISIBLE_COLUMN_IDS));
   const [columnSelectorOpen, setColumnSelectorOpen] = useState(false);
   const [tempVisibleColumns, setTempVisibleColumns] = useState<Set<string>>(new Set());
+  const [columnOrder, setColumnOrder] = useState<string[]>(ALL_COLUMN_IDS);
+  const [draggedColumnId, setDraggedColumnId] = useState<string | null>(null);
+  const tableContainerRef = useRef<HTMLDivElement | null>(null);
 
   // Inline editing
   const [editingCell, setEditingCell] = useState<{ invoiceId: number, field: string } | null>(null);
   const [editValue, setEditValue] = useState("");
   const [selectSearchTerm, setSelectSearchTerm] = useState("");
 
-  // Group by provider
-  const [groupByProvider, setGroupByProvider] = useState(false);
-  const [expandedProviders, setExpandedProviders] = useState<Set<string>>(new Set());
+  // Grouping mode
+  const [groupByMode, setGroupByMode] = useState<"none" | "provider" | "financial_account" | "department">("none");
+  const [expandedGroupKeys, setExpandedGroupKeys] = useState<Set<string>>(new Set());
 
   // Master data creation popups
   const [providerDialogOpen, setProviderDialogOpen] = useState(false);
@@ -212,6 +248,14 @@ export default function InvoicesPage() {
   const [entryTypes, setEntryTypes] = useState<any[]>([]);
   const [financialAccounts, setFinancialAccounts] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
+
+  const providerNameByCode = useMemo(() => new Map((providers || []).map((item: any) => [item.code, item.name])), [providers]);
+  const bankAccountNameByCode = useMemo(() => new Map((bankAccounts || []).map((item: any) => [item.code, item.name])), [bankAccounts]);
+  const paymentMethodNameByCode = useMemo(() => new Map((paymentMethods || []).map((item: any) => [item.code, item.name])), [paymentMethods]);
+  const costTypeNameByCode = useMemo(() => new Map((costTypes || []).map((item: any) => [item.code, item.name])), [costTypes]);
+  const depCostTypeNameByCode = useMemo(() => new Map((depCostTypes || []).map((item: any) => [item.code, item.name])), [depCostTypes]);
+  const costCenterNameByCode = useMemo(() => new Map((costCenters || []).map((item: any) => [item.code, item.name])), [costCenters]);
+  const financialAccountNameByCode = useMemo(() => new Map((financialAccounts || []).map((item: any) => [item.code, item.name])), [financialAccounts]);
 
   // View mode: separate automatic vs manual invoices
   const [invoiceViewMode, setInvoiceViewMode] = useState<"all" | "automatic" | "manual">("all");
@@ -334,7 +378,7 @@ export default function InvoicesPage() {
       const mappedData = (json.data || []).map((invoice: any) => ({
         ...invoice,
         amount: invoice.invoice_amount,
-        scope: invoice.country_code // Map country_code to scope for backward compatibility
+        scope: invoice.scope || invoice.country_code
       }));
       setInvoices(mappedData as Invoice[]);
     } catch (e: any) {
@@ -565,6 +609,43 @@ export default function InvoicesPage() {
     try {
       setSubmitting(true);
 
+      const baseSplitData = {
+        input_date: splitInvoice.input_date,
+        invoice_date: splitInvoice.invoice_date,
+        benefit_date: splitInvoice.benefit_date,
+        due_date: splitInvoice.due_date || null,
+        schedule_date: splitInvoice.schedule_date || null,
+        payment_date: splitInvoice.payment_date || null,
+        invoice_type: splitInvoice.invoice_type,
+        entry_type: splitInvoice.entry_type,
+        financial_account_code: splitInvoice.financial_account_code,
+        currency: splitInvoice.currency,
+        paid_amount: splitInvoice.paid_amount || null,
+        paid_currency: splitInvoice.paid_currency || null,
+        eur_exchange: splitInvoice.eur_exchange,
+        provider_code: splitInvoice.provider_code,
+        bank_account_code: splitInvoice.bank_account_code || null,
+        course_code: splitInvoice.course_code || null,
+        payment_method_code: splitInvoice.payment_method_code || null,
+        cost_type_code: splitInvoice.cost_type_code || null,
+        dep_cost_type_code: splitInvoice.dep_cost_type_code || null,
+        cost_center_code: splitInvoice.cost_center_code || null,
+        sub_department_code: splitInvoice.sub_department_code || null,
+        description: splitInvoice.description || null,
+        country_code: splitInvoice.country_code,
+        scope: splitInvoice.scope,
+        applies_to_all_countries: splitInvoice.applies_to_all_countries || false,
+        dre_impact: splitInvoice.dre_impact,
+        cash_impact: splitInvoice.cash_impact,
+        is_intercompany: splitInvoice.is_intercompany,
+        is_reconciled: splitInvoice.is_reconciled || false,
+        reconciled_at: splitInvoice.reconciled_at || null,
+        reconciled_transaction_id: splitInvoice.reconciled_transaction_id || null,
+        reconciled_amount: splitInvoice.reconciled_amount || null,
+        payment_status: splitInvoice.payment_status || null,
+        notes: splitInvoice.notes || null,
+      };
+
       if (splitConfig.type === 'installments') {
         // Split by installments
         const installmentAmount = splitInvoice.invoice_amount / splitConfig.installments;
@@ -576,8 +657,7 @@ export default function InvoicesPage() {
           dueDate.setMonth(dueDate.getMonth() + i);
 
           splits.push({
-            ...splitInvoice,
-            id: undefined,
+            ...baseSplitData,
             invoice_amount: installmentAmount,
             due_date: dueDate.toISOString().split('T')[0],
             schedule_date: dueDate.toISOString().split('T')[0],
@@ -587,27 +667,24 @@ export default function InvoicesPage() {
             total_splits: splitConfig.installments,
             split_type: 'INSTALLMENTS',
             invoice_number: `${splitInvoice.invoice_number || splitInvoice.id}-${i + 1}/${splitConfig.installments}`,
-            created_at: undefined,
-            updated_at: undefined
           });
         }
 
         // Insert all splits
-        const { error } = await supabase.from('accounts_payable').insert(splits);
+        const { error } = await supabase.from('invoices').insert(splits);
 
         if (error) throw error;
 
         // Mark original as parent
         await supabase
-          .from('accounts_payable')
+          .from('invoices')
           .update({ is_split: true, total_splits: splitConfig.installments })
           .eq('id', splitInvoice.id);
 
       } else {
         // Split by dimensions (financial account, cost center, etc.)
         const splits = splitConfig.splits.map((split, index) => ({
-          ...splitInvoice,
-          id: undefined,
+          ...baseSplitData,
           invoice_amount: split.amount,
           financial_account_code: split.financial_account_code || splitInvoice.financial_account_code,
           cost_center_code: split.cost_center_code || splitInvoice.cost_center_code,
@@ -619,16 +696,14 @@ export default function InvoicesPage() {
           total_splits: splitConfig.splits.length,
           split_type: splitConfig.type.toUpperCase(),
           invoice_number: `${splitInvoice.invoice_number || splitInvoice.id}-${index + 1}/${splitConfig.splits.length}`,
-          created_at: undefined,
-          updated_at: undefined
         }));
 
-        const { error } = await supabase.from('accounts_payable').insert(splits);
+        const { error } = await supabase.from('invoices').insert(splits);
 
         if (error) throw error;
 
         await supabase
-          .from('accounts_payable')
+          .from('invoices')
           .update({ is_split: true, total_splits: splitConfig.splits.length })
           .eq('id', splitInvoice.id);
       }
@@ -902,7 +977,7 @@ export default function InvoicesPage() {
         if (field === 'provider_code') return getNameByCode(providers, code);
         if (field === 'financial_account_code') return getNameByCode(financialAccounts, code);
         if (field === 'cost_center_code') return getNameByCode(costCenters, code);
-        if (field === 'cost_type_code') return getNameByCode(costTypes, code);
+        if (field === 'cost_type_code') return getCostTypeDisplay(code);
         if (field === 'dep_cost_type_code') return getNameByCode(depCostTypes, code);
         return code;
       }).join(', ');
@@ -967,7 +1042,71 @@ export default function InvoicesPage() {
   }
 
   function getNameByCode(array: any[], code: string) {
+    if (array === providers) return providerNameByCode.get(code) || code;
+    if (array === bankAccounts) return bankAccountNameByCode.get(code) || code;
+    if (array === paymentMethods) return paymentMethodNameByCode.get(code) || code;
+    if (array === costTypes) return costTypeNameByCode.get(code) || code;
+    if (array === depCostTypes) return depCostTypeNameByCode.get(code) || code;
+    if (array === costCenters) return costCenterNameByCode.get(code) || code;
+    if (array === financialAccounts) return financialAccountNameByCode.get(code) || code;
     return array.find(item => item.code === code)?.name || code;
+  }
+
+  function getCostTypeDisplay(code?: string | null) {
+    if (!code) return "-";
+
+    const masterName = getNameByCode(costTypes, code);
+    const candidate = (masterName && masterName !== code ? masterName : code).toString().trim();
+    const normalized = candidate.toUpperCase().replace(/[\s-]+/g, "_");
+
+    const map: Record<string, string> = {
+      "100": "Fixed Cost",
+      "200": "Variable Cost",
+      "300": "Personnel Expenses",
+      "400": "Cost of Good Sold",
+      "1": "Fixed Cost",
+      "2": "Variable Cost",
+      "3": "Personnel Expenses",
+      "4": "Cost of Good Sold",
+      "FIXED_COST": "Fixed Cost",
+      "FIXED": "Fixed Cost",
+      "VARIABLE_COST": "Variable Cost",
+      "VARIABLE": "Variable Cost",
+      "PERSONNEL_EXPENSES": "Personnel Expenses",
+      "PERSONNEL": "Personnel Expenses",
+      "COST_OF_GOOD_SOLD": "Cost of Good Sold",
+      "COST_OF_GOODS_SOLD": "Cost of Good Sold",
+      "COGS": "Cost of Good Sold",
+    };
+
+    const label = map[normalized] || candidate;
+    return label;
+  }
+
+  function getComputedPaymentStatus(invoice: Invoice): "PAID" | "SCHEDULED" | "NOT_SCHEDULED" {
+    const storedStatus = (invoice.payment_status || "").toUpperCase();
+    const isPaid = !!invoice.payment_date || (invoice.paid_amount || 0) > 0 || !!invoice.is_reconciled || storedStatus === "PAID";
+
+    if (isPaid) return "PAID";
+    if (invoice.schedule_date) return "SCHEDULED";
+    return "NOT_SCHEDULED";
+  }
+
+  function getFilterableValue(invoice: Invoice, field: string): string | null {
+    if (field === "payment_status") return getComputedPaymentStatus(invoice);
+    const raw = (invoice as any)[field];
+    if (raw === null || raw === undefined) return null;
+    return String(raw);
+  }
+
+  function isAutomaticInvoice(invoice: Invoice): boolean {
+    const invoiceNumber = String(invoice.invoice_number || "").toUpperCase();
+    const notes = String(invoice.notes || "").toUpperCase();
+
+    return (
+      invoiceNumber.startsWith("BOT-") ||
+      notes.includes("PAYROLL_AUTO|")
+    );
   }
 
   // Export to Excel
@@ -976,7 +1115,6 @@ export default function InvoicesPage() {
       const columnMap: Record<string, string> = {
         actions: "Actions",
         scope: "Scope",
-        impact: "Impact",
         type: "Type",
         input_date: "Input Date",
         invoice_date: "Invoice Date",
@@ -1002,13 +1140,6 @@ export default function InvoicesPage() {
         const row: any = {};
 
         if (visibleColumns.has('scope')) row['Scope'] = getRecordScope(invoice);
-        if (visibleColumns.has('impact')) {
-          const impacts = [];
-          if (invoice.dre_impact) impacts.push('DRE');
-          if (invoice.cash_impact) impacts.push('Cash');
-          if (invoice.is_intercompany) impacts.push('IC');
-          row['Impact'] = impacts.join(', ');
-        }
         if (visibleColumns.has('type')) row['Type'] = invoice.invoice_type;
         if (visibleColumns.has('input_date')) row['Input Date'] = invoice.input_date;
         if (visibleColumns.has('invoice_date')) row['Invoice Date'] = invoice.invoice_date;
@@ -1022,9 +1153,9 @@ export default function InvoicesPage() {
         if (visibleColumns.has('currency')) row['Currency'] = invoice.currency;
         if (visibleColumns.has('financial_account')) row['Financial Account'] = getNameByCode(financialAccounts, invoice.financial_account_code);
         if (visibleColumns.has('cost_center')) row['Department'] = invoice.cost_center_code ? getNameByCode(costCenters, invoice.cost_center_code) : '';
-        if (visibleColumns.has('cost_type')) row['Cost Type'] = invoice.cost_type_code ? getNameByCode(costTypes, invoice.cost_type_code) : '';
+        if (visibleColumns.has('cost_type')) row['Cost Type'] = invoice.cost_type_code ? getCostTypeDisplay(invoice.cost_type_code) : '';
         if (visibleColumns.has('dep_cost_type')) row['Dep Cost Type'] = invoice.dep_cost_type_code ? getNameByCode(depCostTypes, invoice.dep_cost_type_code) : '';
-        if (visibleColumns.has('payment_status')) row['Payment Status'] = invoice.payment_status || '';
+        if (visibleColumns.has('payment_status')) row['Payment Status'] = getComputedPaymentStatus(invoice);
         if (visibleColumns.has('payment_method')) row['Payment Method'] = invoice.payment_method_code ? getNameByCode(paymentMethods, invoice.payment_method_code) : '';
         if (visibleColumns.has('bank_account')) row['Bank Account'] = invoice.bank_account_code ? getNameByCode(bankAccounts, invoice.bank_account_code) : '';
         if (visibleColumns.has('payment_date')) row['Payment Date'] = invoice.payment_date || '';
@@ -1070,7 +1201,6 @@ export default function InvoicesPage() {
       // Table columns
       const columns: string[] = [];
       if (visibleColumns.has('scope')) columns.push('Scope');
-      if (visibleColumns.has('impact')) columns.push('Impact');
       if (visibleColumns.has('type')) columns.push('Type');
       if (visibleColumns.has('input_date')) columns.push('Input Date');
       if (visibleColumns.has('invoice_date')) columns.push('Invoice Date');
@@ -1096,13 +1226,6 @@ export default function InvoicesPage() {
         const row: string[] = [];
 
         if (visibleColumns.has('scope')) row.push(getRecordScope(invoice));
-        if (visibleColumns.has('impact')) {
-          const impacts = [];
-          if (invoice.dre_impact) impacts.push('DRE');
-          if (invoice.cash_impact) impacts.push('Cash');
-          if (invoice.is_intercompany) impacts.push('IC');
-          row.push(impacts.join(', '));
-        }
         if (visibleColumns.has('type')) row.push(invoice.invoice_type);
         if (visibleColumns.has('input_date')) row.push(invoice.input_date);
         if (visibleColumns.has('invoice_date')) row.push(invoice.invoice_date);
@@ -1116,9 +1239,9 @@ export default function InvoicesPage() {
         if (visibleColumns.has('currency')) row.push(invoice.currency);
         if (visibleColumns.has('financial_account')) row.push(getNameByCode(financialAccounts, invoice.financial_account_code).substring(0, 30));
         if (visibleColumns.has('cost_center')) row.push(invoice.cost_center_code ? getNameByCode(costCenters, invoice.cost_center_code).substring(0, 30) : '');
-        if (visibleColumns.has('cost_type')) row.push(invoice.cost_type_code ? getNameByCode(costTypes, invoice.cost_type_code).substring(0, 30) : '');
+        if (visibleColumns.has('cost_type')) row.push(invoice.cost_type_code ? getCostTypeDisplay(invoice.cost_type_code).substring(0, 30) : '');
         if (visibleColumns.has('dep_cost_type')) row.push(invoice.dep_cost_type_code ? getNameByCode(depCostTypes, invoice.dep_cost_type_code).substring(0, 30) : '');
-        if (visibleColumns.has('payment_status')) row.push(invoice.payment_status || '');
+        if (visibleColumns.has('payment_status')) row.push(getComputedPaymentStatus(invoice));
         if (visibleColumns.has('payment_method')) row.push(invoice.payment_method_code ? getNameByCode(paymentMethods, invoice.payment_method_code) : '');
         if (visibleColumns.has('bank_account')) row.push(invoice.bank_account_code ? getNameByCode(bankAccounts, invoice.bank_account_code) : '');
         if (visibleColumns.has('payment_date')) row.push(invoice.payment_date || '');
@@ -1164,9 +1287,38 @@ export default function InvoicesPage() {
     });
   }
 
-  function openColumnSelector() {
-    setTempVisibleColumns(new Set(visibleColumns));
-    setColumnSelectorOpen(true);
+  function moveColumnOrder(columnId: string, targetColumnId: string) {
+    if (!columnId || !targetColumnId || columnId === targetColumnId) return;
+
+    setColumnOrder((prev) => {
+      const from = prev.indexOf(columnId);
+      const to = prev.indexOf(targetColumnId);
+      if (from < 0 || to < 0) return prev;
+
+      const next = [...prev];
+      next.splice(from, 1);
+      next.splice(to, 0, columnId);
+      return next;
+    });
+  }
+
+  const orderedColumnOptions = useMemo(() => {
+    const mapped = columnOrder
+      .map((columnId) => COLUMN_OPTIONS.find((item) => item.id === columnId) || null)
+      .filter((item): item is { id: string; label: string } => !!item);
+
+    return mapped.length > 0 ? mapped : COLUMN_OPTIONS;
+  }, [columnOrder]);
+
+  function scrollTableHorizontally(direction: "left" | "right") {
+    const container = tableContainerRef.current;
+    if (!container) return;
+
+    const delta = Math.max(320, Math.floor(container.clientWidth * 0.7));
+    container.scrollBy({
+      left: direction === "left" ? -delta : delta,
+      behavior: "smooth",
+    });
   }
 
   function confirmColumnSelection() {
@@ -1262,18 +1414,149 @@ export default function InvoicesPage() {
     setFormData({ ...formData, scope });
   }
 
+  function getFilterBaseInvoices(targetField: string): Invoice[] {
+    let base = [...invoices];
+
+    base = base.filter(inv => matchesScope(inv, selectedScope));
+
+    if (selectedType !== "ALL") {
+      base = base.filter(inv => inv.invoice_type === selectedType);
+    }
+
+    if (selectedCountry !== "ALL") {
+      base = base.filter(inv => inv.country_code === selectedCountry);
+    }
+
+    if (createdFilter === 'bot') {
+      base = base.filter(inv => inv.invoice_number?.startsWith("BOT-"));
+    } else if (createdFilter === 'manual') {
+      base = base.filter(inv => !inv.invoice_number?.startsWith("BOT-"));
+    }
+
+    Object.entries(columnFilters).forEach(([field, value]) => {
+      if (field !== targetField && value) {
+        base = base.filter(inv => getFilterableValue(inv, field) === value);
+      }
+    });
+
+    Object.entries(multiSelectFilters).forEach(([field, values]) => {
+      if (field !== targetField && values && values.length > 0) {
+        base = base.filter(inv => {
+          const v = getFilterableValue(inv, field);
+          return v ? values.includes(v) : false;
+        });
+      }
+    });
+
+    Object.entries(dateFilters).forEach(([field, range]) => {
+      if (field !== targetField && (range.start || range.end)) {
+        base = base.filter(inv => {
+          const invDate = (inv as any)[field];
+          if (!invDate) return false;
+          if (range.start && invDate < range.start) return false;
+          if (range.end && invDate > range.end) return false;
+          return true;
+        });
+      }
+    });
+
+    if (amountFilter && targetField !== 'invoice_amount') {
+      base = base.filter(inv => {
+        const amount = inv.invoice_amount * inv.eur_exchange;
+        switch (amountFilter.operator) {
+          case 'lt': return amount < amountFilter.value1;
+          case 'gt': return amount > amountFilter.value1;
+          case 'eq': return Math.abs(amount - amountFilter.value1) < 0.01;
+          case 'between': return amount >= amountFilter.value1 && amount <= (amountFilter.value2 || amountFilter.value1);
+          default: return true;
+        }
+      });
+    }
+
+    return base;
+  }
+
+  function getDynamicFilterOptions(field: string): { value: string, label: string }[] {
+    const baseInvoices = getFilterBaseInvoices(field);
+    const optionsMap = new Map<string, string>();
+
+    if (field === "provider_code") {
+      baseInvoices.forEach(inv => {
+        if (inv.provider_code) {
+          optionsMap.set(inv.provider_code, getNameByCode(providers, inv.provider_code));
+        }
+      });
+    } else if (field === "financial_account_code") {
+      baseInvoices.forEach(inv => {
+        if (inv.financial_account_code) {
+          optionsMap.set(inv.financial_account_code, getNameByCode(financialAccounts, inv.financial_account_code));
+        }
+      });
+    } else if (field === "cost_center_code") {
+      baseInvoices.forEach(inv => {
+        if (inv.cost_center_code) {
+          optionsMap.set(inv.cost_center_code, getNameByCode(costCenters, inv.cost_center_code));
+        }
+      });
+    } else if (field === "cost_type_code") {
+      baseInvoices.forEach(inv => {
+        if (inv.cost_type_code) {
+          optionsMap.set(inv.cost_type_code, getCostTypeDisplay(inv.cost_type_code));
+        }
+      });
+    } else if (field === "dep_cost_type_code") {
+      baseInvoices.forEach(inv => {
+        if (inv.dep_cost_type_code) {
+          optionsMap.set(inv.dep_cost_type_code, getNameByCode(depCostTypes, inv.dep_cost_type_code));
+        }
+      });
+    } else if (field === "bank_account_code") {
+      baseInvoices.forEach(inv => {
+        if (inv.bank_account_code) {
+          optionsMap.set(inv.bank_account_code, getNameByCode(bankAccounts, inv.bank_account_code));
+        }
+      });
+    } else if (field === "payment_method_code") {
+      baseInvoices.forEach(inv => {
+        if (inv.payment_method_code) {
+          optionsMap.set(inv.payment_method_code, getNameByCode(paymentMethods, inv.payment_method_code));
+        }
+      });
+    } else if (field === "entry_type") {
+      baseInvoices.forEach(inv => {
+        if (inv.entry_type) {
+          optionsMap.set(inv.entry_type, getNameByCode(entryTypes, inv.entry_type));
+        }
+      });
+    } else if (field === "invoice_type") {
+      [
+        { value: "INCURRED", label: "Incurred" },
+        { value: "BUDGET", label: "Budget" },
+        { value: "ADJUSTMENT", label: "Adjustments" }
+      ].forEach(option => optionsMap.set(option.value, option.label));
+    } else if (field === "currency") {
+      baseInvoices.forEach(inv => {
+        if (inv.currency) {
+          optionsMap.set(inv.currency, inv.currency);
+        }
+      });
+    } else if (field === "payment_status") {
+      baseInvoices.forEach(inv => {
+        const status = getComputedPaymentStatus(inv);
+        optionsMap.set(status, status.replace('_', ' '));
+      });
+    }
+
+    return Array.from(optionsMap.entries())
+      .map(([value, label]) => ({ value, label }))
+      .sort((a, b) => a.label.localeCompare(b.label));
+  }
+
   const filteredInvoices = useMemo(() => {
-    let filtered = invoices;
+    let filtered = [...invoices];
 
     // Filter by global scope (from sidebar)
-    if (selectedScope === "ES") {
-      filtered = filtered.filter(inv => inv.scope === "ES");
-    } else if (selectedScope === "US") {
-      filtered = filtered.filter(inv => inv.scope === "US");
-    } else if (selectedScope === "GLOBAL") {
-      // GLOBAL mostra ES + US consolidado (não há invoices com scope=GLOBAL)
-      filtered = filtered.filter(inv => inv.scope === "ES" || inv.scope === "US");
-    }
+    filtered = filtered.filter(inv => matchesScope(inv, selectedScope));
 
     // Filter by type
     if (selectedType !== "ALL") {
@@ -1288,14 +1571,17 @@ export default function InvoicesPage() {
     // Filter by column filters
     Object.entries(columnFilters).forEach(([field, value]) => {
       if (value) {
-        filtered = filtered.filter(inv => (inv as any)[field] === value);
+        filtered = filtered.filter(inv => getFilterableValue(inv, field) === value);
       }
     });
 
     // Filter by multi-select filters
     Object.entries(multiSelectFilters).forEach(([field, values]) => {
       if (values && values.length > 0) {
-        filtered = filtered.filter(inv => values.includes((inv as any)[field]));
+        filtered = filtered.filter(inv => {
+          const v = getFilterableValue(inv, field);
+          return v ? values.includes(v) : false;
+        });
       }
     });
 
@@ -1327,14 +1613,21 @@ export default function InvoicesPage() {
     }
 
     // Filter by search term
-    if (searchTerm) {
-      const search = searchTerm.toLowerCase();
+    if (deferredSearchTerm) {
+      const search = deferredSearchTerm.toLowerCase();
       filtered = filtered.filter(
-        inv =>
-          inv.invoice_number?.toLowerCase().includes(search) ||
-          inv.provider_code?.toLowerCase().includes(search) ||
-          inv.description?.toLowerCase().includes(search) ||
-          inv.financial_account_code?.toLowerCase().includes(search)
+        inv => {
+          const providerName = (providerNameByCode.get(inv.provider_code) || "").toLowerCase();
+
+          return (
+            inv.invoice_number?.toLowerCase().includes(search) ||
+            inv.provider_code?.toLowerCase().includes(search) ||
+            providerName.includes(search) ||
+            inv.description?.toLowerCase().includes(search) ||
+            inv.financial_account_code?.toLowerCase().includes(search) ||
+            inv.notes?.toLowerCase().includes(search)
+          );
+        }
       );
     }
 
@@ -1354,63 +1647,155 @@ export default function InvoicesPage() {
     });
 
     return filtered;
-  }, [invoices, selectedType, selectedCountry, searchTerm, sortField, sortDirection, selectedScope, columnFilters, multiSelectFilters, dateFilters, amountFilter]);
+  }, [
+    invoices,
+    selectedType,
+    selectedCountry,
+    deferredSearchTerm,
+    sortField,
+    sortDirection,
+    selectedScope,
+    columnFilters,
+    multiSelectFilters,
+    dateFilters,
+    amountFilter,
+    providerNameByCode,
+  ]);
 
-  // Filtro Created
-  const [createdFilter, setCreatedFilter] = useState<'all' | 'bot' | 'manual'>('all');
+  useEffect(() => {
+    const container = tableContainerRef.current;
+    if (!container) return;
+
+    const table = container.querySelector('table');
+    if (!table) return;
+
+    const headRow = table.querySelector('thead tr');
+    if (!headRow) return;
+
+    const headerCells = Array.from(headRow.children) as HTMLElement[];
+    const nameToId = new Map<string, string>([
+      ['actions', 'actions'],
+      ['split', 'split'],
+      ['created', 'created_by'],
+      ['scope', 'scope'],
+      ['type', 'type'],
+      ['input date', 'input_date'],
+      ['invoice date', 'invoice_date'],
+      ['benefit date', 'benefit_date'],
+      ['due date', 'due_date'],
+      ['schedule date', 'schedule_date'],
+      ['provider', 'provider'],
+      ['description', 'description'],
+      ['invoice id', 'invoice_number'],
+      ['amount', 'amount'],
+      ['currency', 'currency'],
+      ['financial account', 'financial_account'],
+      ['department', 'cost_center'],
+      ['sub-department', 'sub_department'],
+      ['cost type', 'cost_type'],
+      ['dep cost type', 'dep_cost_type'],
+      ['payment status', 'payment_status'],
+      ['recon', 'is_reconciled'],
+      ['payment method', 'payment_method'],
+      ['bank account', 'bank_account'],
+      ['payment date', 'payment_date'],
+    ]);
+
+    const currentIds = headerCells
+      .map((cell) => (cell.textContent || '').toLowerCase().replace(/\s+/g, ' ').trim())
+      .map((name) => nameToId.get(name) || null)
+      .filter((id): id is string => !!id);
+
+    if (currentIds.length === 0) return;
+
+    const targetIds = columnOrder.filter((id) => currentIds.includes(id));
+    if (targetIds.length !== currentIds.length) return;
+
+    const reorderRow = (row: Element) => {
+      const cells = Array.from(row.children);
+      if (cells.length !== currentIds.length) return;
+
+      const ordered = targetIds
+        .map((id) => cells[currentIds.indexOf(id)])
+        .filter(Boolean);
+
+      ordered.forEach((cell) => row.appendChild(cell));
+    };
+
+    reorderRow(headRow);
+    const bodyRows = Array.from(table.querySelectorAll('tbody tr'));
+    bodyRows.forEach((row) => reorderRow(row));
+  }, [columnOrder, visibleColumns, filteredInvoices, createdFilter, groupByMode, expandedGroupKeys]);
 
   const filteredByCreated = useMemo(() => {
     if (createdFilter === 'bot') {
-      return filteredInvoices.filter(inv => inv.invoice_number?.startsWith("BOT-"));
+      return filteredInvoices.filter(inv => isAutomaticInvoice(inv));
     }
     if (createdFilter === 'manual') {
-      return filteredInvoices.filter(inv => !inv.invoice_number?.startsWith("BOT-"));
+      return filteredInvoices.filter(inv => !isAutomaticInvoice(inv));
     }
     return filteredInvoices;
   }, [filteredInvoices, createdFilter]);
 
-  // Group by provider
-  const groupedByProvider = useMemo(() => {
-    if (!groupByProvider) return null;
+  const groupedInvoices = useMemo(() => {
+    if (groupByMode === "none") return null;
 
-    const groups: Record<string, { provider: string; providerName: string; invoices: Invoice[]; totalAmount: number; reconciledCount: number }> = {};
+    const groups: Record<string, { key: string; label: string; invoices: Invoice[]; totalAmount: number; reconciledCount: number }> = {};
 
     filteredByCreated.forEach(inv => {
-      const key = inv.provider_code || "NO_PROVIDER";
+      const key = groupByMode === "provider"
+        ? (inv.provider_code || "NO_PROVIDER")
+        : groupByMode === "financial_account"
+          ? (inv.financial_account_code || "NO_FINANCIAL_ACCOUNT")
+          : (inv.cost_center_code || "NO_DEPARTMENT");
+
+      const label = groupByMode === "provider"
+        ? getNameByCode(providers, key)
+        : groupByMode === "financial_account"
+          ? getNameByCode(financialAccounts, key)
+          : getNameByCode(costCenters, key);
+
       if (!groups[key]) {
         groups[key] = {
-          provider: key,
-          providerName: getNameByCode(providers, key),
+          key,
+          label,
           invoices: [],
           totalAmount: 0,
           reconciledCount: 0
         };
       }
+
       groups[key].invoices.push(inv);
       groups[key].totalAmount += inv.invoice_amount * inv.eur_exchange;
       if (inv.is_reconciled) groups[key].reconciledCount++;
     });
 
     return Object.values(groups).sort((a, b) => b.totalAmount - a.totalAmount);
-  }, [filteredByCreated, groupByProvider, providers]);
+  }, [filteredByCreated, groupByMode, providers, financialAccounts, costCenters]);
 
-  const toggleProviderGroup = (provider: string) => {
-    setExpandedProviders(prev => {
+  const toggleGroup = (groupKey: string) => {
+    setExpandedGroupKeys(prev => {
       const next = new Set(prev);
-      if (next.has(provider)) next.delete(provider);
-      else next.add(provider);
+      if (next.has(groupKey)) next.delete(groupKey);
+      else next.add(groupKey);
       return next;
     });
   };
 
-  const expandAllProviders = () => {
-    if (groupedByProvider) {
-      setExpandedProviders(new Set(groupedByProvider.map(g => g.provider)));
+  const setGroupingMode = (mode: "none" | "provider" | "financial_account" | "department") => {
+    const isSameMode = groupByMode === mode;
+    setGroupByMode(isSameMode ? "none" : mode);
+    setExpandedGroupKeys(new Set());
+  };
+
+  const expandAllGroups = () => {
+    if (groupedInvoices) {
+      setExpandedGroupKeys(new Set(groupedInvoices.map(g => g.key)));
     }
   };
 
-  const collapseAllProviders = () => {
-    setExpandedProviders(new Set());
+  const collapseAllGroups = () => {
+    setExpandedGroupKeys(new Set());
   };
 
   const stats = useMemo(() => {
@@ -1464,6 +1849,14 @@ export default function InvoicesPage() {
             <span className="text-gray-500 dark:text-gray-400 text-sm">{SCOPE_CONFIG[selectedScope].label}</span>
           </div>
           <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={exportToExcel} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Export Excel
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportToPDF} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
+              <Download className="h-4 w-4 mr-2" />
+              Export PDF
+            </Button>
             <Button
               disabled={selectedScope === "GLOBAL"}
               variant="outline"
@@ -2215,12 +2608,16 @@ export default function InvoicesPage() {
                         value={splitConfig.installments.toString()}
                         onValueChange={(value) => setSplitConfig({ ...splitConfig, installments: parseInt(value) })}
                       >
-                        <option value="">Select...</option>
-                        {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
-                          <option key={num} value={num.toString()}>
-                            {num} {num === 1 ? 'installment' : 'installments'}
-                          </option>
-                        ))}
+                        <SelectTrigger className="bg-white">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white">
+                          {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+                            <SelectItem key={num} value={num.toString()}>
+                              {num} {num === 1 ? 'installment' : 'installments'}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
                       </Select>
 
                       {splitConfig.installments > 0 && (
@@ -2228,7 +2625,7 @@ export default function InvoicesPage() {
                           <h5 className="font-semibold mb-2">Preview</h5>
                           <div className="space-y-1 text-sm">
                             {Array.from({ length: splitConfig.installments }, (_, i) => {
-                              const installmentAmount = splitInvoice.amount / splitConfig.installments;
+                              const installmentAmount = splitInvoice.invoice_amount / splitConfig.installments;
                               const dueDate = new Date(splitInvoice.due_date || new Date());
                               dueDate.setMonth(dueDate.getMonth() + i);
                               return (
@@ -2304,10 +2701,14 @@ export default function InvoicesPage() {
                                   setSplitConfig({ ...splitConfig, splits: newSplits });
                                 }}
                               >
-                                <option value="">Select Financial Account...</option>
-                                {financialAccounts.filter(acc => acc.level >= 2).map(acc => (
-                                  <option key={acc.code} value={acc.code}>{acc.name}</option>
-                                ))}
+                                <SelectTrigger className="bg-white">
+                                  <SelectValue placeholder="Select Financial Account..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                  {financialAccounts.filter(acc => acc.level >= 2).map(acc => (
+                                    <SelectItem key={acc.code} value={acc.code}>{acc.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
                               </Select>
                             )}
 
@@ -2320,10 +2721,14 @@ export default function InvoicesPage() {
                                   setSplitConfig({ ...splitConfig, splits: newSplits });
                                 }}
                               >
-                                <option value="">Select Department...</option>
-                                {costCenters.map(cc => (
-                                  <option key={cc.code} value={cc.code}>{cc.name}</option>
-                                ))}
+                                <SelectTrigger className="bg-white">
+                                  <SelectValue placeholder="Select Department..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                  {costCenters.map(cc => (
+                                    <SelectItem key={cc.code} value={cc.code}>{cc.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
                               </Select>
                             )}
 
@@ -2336,10 +2741,14 @@ export default function InvoicesPage() {
                                   setSplitConfig({ ...splitConfig, splits: newSplits });
                                 }}
                               >
-                                <option value="">Select Cost Type...</option>
-                                {costTypes.map(ct => (
-                                  <option key={ct.code} value={ct.code}>{ct.name}</option>
-                                ))}
+                                <SelectTrigger className="bg-white">
+                                  <SelectValue placeholder="Select Cost Type..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                  {costTypes.map(ct => (
+                                    <SelectItem key={ct.code} value={ct.code}>{ct.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
                               </Select>
                             )}
 
@@ -2352,10 +2761,14 @@ export default function InvoicesPage() {
                                   setSplitConfig({ ...splitConfig, splits: newSplits });
                                 }}
                               >
-                                <option value="">Select Department Cost Type...</option>
-                                {depCostTypes.map(dct => (
-                                  <option key={dct.code} value={dct.code}>{dct.name}</option>
-                                ))}
+                                <SelectTrigger className="bg-white">
+                                  <SelectValue placeholder="Select Department Cost Type..." />
+                                </SelectTrigger>
+                                <SelectContent className="bg-white max-h-[300px]">
+                                  {depCostTypes.map(dct => (
+                                    <SelectItem key={dct.code} value={dct.code}>{dct.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
                               </Select>
                             )}
 
@@ -2370,7 +2783,7 @@ export default function InvoicesPage() {
                                     const newSplits = [...splitConfig.splits];
                                     const amount = parseFloat(e.target.value) || 0;
                                     newSplits[index].amount = amount;
-                                    newSplits[index].percentage = (amount / splitInvoice.amount) * 100;
+                                    newSplits[index].percentage = (amount / splitInvoice.invoice_amount) * 100;
                                     setSplitConfig({ ...splitConfig, splits: newSplits });
                                   }}
                                   className="h-8"
@@ -2386,7 +2799,7 @@ export default function InvoicesPage() {
                                     const newSplits = [...splitConfig.splits];
                                     const percentage = parseFloat(e.target.value) || 0;
                                     newSplits[index].percentage = percentage;
-                                    newSplits[index].amount = (splitInvoice.amount * percentage) / 100;
+                                    newSplits[index].amount = (splitInvoice.invoice_amount * percentage) / 100;
                                     setSplitConfig({ ...splitConfig, splits: newSplits });
                                   }}
                                   className="h-8"
@@ -2401,11 +2814,11 @@ export default function InvoicesPage() {
                         <div className="p-3 bg-muted rounded-lg">
                           <div className="flex justify-between text-sm font-semibold">
                             <span>Total:</span>
-                            <span className={splitConfig.splits.reduce((sum, s) => sum + s.amount, 0) !== splitInvoice.amount ? 'text-destructive' : 'text-green-600'}>
-                              {formatEuropeanNumber(splitConfig.splits.reduce((sum, s) => sum + s.amount, 0))} / {formatEuropeanNumber(splitInvoice.amount)}
+                            <span className={splitConfig.splits.reduce((sum, s) => sum + s.amount, 0) !== splitInvoice.invoice_amount ? 'text-destructive' : 'text-green-600'}>
+                              {formatEuropeanNumber(splitConfig.splits.reduce((sum, s) => sum + s.amount, 0))} / {formatEuropeanNumber(splitInvoice.invoice_amount)}
                             </span>
                           </div>
-                          {splitConfig.splits.reduce((sum, s) => sum + s.amount, 0) !== splitInvoice.amount && (
+                          {splitConfig.splits.reduce((sum, s) => sum + s.amount, 0) !== splitInvoice.invoice_amount && (
                             <p className="text-xs text-destructive mt-1">
                               Total must equal the original invoice amount
                             </p>
@@ -2571,108 +2984,97 @@ export default function InvoicesPage() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex gap-2">
             {/* Select Columns */}
-            <Dialog open={columnSelectorOpen} onOpenChange={(open) => {
-              if (open) {
-                openColumnSelector();
-              } else {
-                cancelColumnSelection();
-              }
-            }}>
-              <DialogTrigger asChild>
-                <Button
-                  variant={columnSelectorOpen ? "default" : "outline"}
-                  size="sm"
-                  onClick={openColumnSelector}
-                  className={`relative overflow-visible ${columnSelectorOpen ? 'bg-[#243140] hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white' : ''}`}
-                >
-                  <Columns3 className="h-4 w-4 mr-2" />
-                  Select Columns
-                  {visibleColumns.size < 23 && (
-                    <>
-                      <span
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const allColumns = new Set(['actions', 'split', 'scope', 'impact', 'type', 'input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date', 'provider', 'description', 'invoice_number', 'amount', 'currency', 'financial_account', 'cost_center', 'cost_type', 'dep_cost_type', 'payment_status', 'is_reconciled', 'payment_method', 'bank_account', 'payment_date']);
-                          setVisibleColumns(allColumns);
-                        }}
-                        className="absolute -top-2 -left-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white z-10 cursor-pointer"
-                        title="Clear column filter (show all)"
-                      >
-                        <X className="h-3 w-3" />
-                      </span>
-                      <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
-                        {visibleColumns.size}/23
-                      </span>
-                    </>
-                  )}
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-md bg-white">
+            <Dialog
+              open={columnSelectorOpen}
+              onOpenChange={(open) => {
+                if (open) {
+                  setTempVisibleColumns(new Set(visibleColumns));
+                  setColumnSelectorOpen(true);
+                } else {
+                  cancelColumnSelection();
+                }
+              }}
+            >
+              <Button
+                type="button"
+                onClick={() => {
+                  setTempVisibleColumns(new Set(visibleColumns));
+                  setColumnSelectorOpen(true);
+                }}
+                variant={columnSelectorOpen ? "default" : "outline"}
+                size="sm"
+                className={`relative overflow-visible ${columnSelectorOpen ? 'bg-[#243140] hover:bg-gray-100 dark:hover:bg-[#1a2530] text-gray-900 dark:text-white' : ''}`}
+              >
+                <Columns3 className="h-4 w-4 mr-2" />
+                Select Columns
+                {visibleColumns.size < ALL_COLUMN_IDS.length && (
+                  <>
+                    <span
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setVisibleColumns(new Set(ALL_COLUMN_IDS));
+                      }}
+                      className="absolute -top-2 -left-2 bg-red-600 hover:bg-red-700 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white z-10 cursor-pointer"
+                      title="Clear column filter (show all)"
+                    >
+                      <X className="h-3 w-3" />
+                    </span>
+                    <span className="absolute -top-2 -right-2 bg-gray-50 dark:bg-black text-gray-900 dark:text-white text-[10px] font-bold rounded-full min-w-[28px] h-5 px-1.5 flex items-center justify-center border-2 border-white whitespace-nowrap">
+                      {visibleColumns.size}/{ALL_COLUMN_IDS.length}
+                    </span>
+                  </>
+                )}
+              </Button>
+              <DialogContent className="max-w-2xl bg-white dark:bg-black border-gray-200 dark:border-gray-700">
                 <DialogHeader>
-                  <DialogTitle>Select Visible Columns</DialogTitle>
-                  <DialogDescription>
-                    Choose which columns to display in the table
+                  <DialogTitle className="text-gray-900 dark:text-white">Select Visible Columns</DialogTitle>
+                  <DialogDescription className="text-gray-500 dark:text-gray-400">
+                    Choose columns and drag to reorder their display sequence
                   </DialogDescription>
                 </DialogHeader>
-                <div className="space-y-3 max-h-96 overflow-y-auto">
-                  {[
-                    { id: 'actions', label: 'Actions' },
-                    { id: 'split', label: 'Split Status' },
-                    { id: 'scope', label: 'Scope' },
-                    { id: 'impact', label: 'Impact' },
-                    { id: 'type', label: 'Type' },
-                    { id: 'input_date', label: 'Input Date' },
-                    { id: 'invoice_date', label: 'Invoice Date' },
-                    { id: 'benefit_date', label: 'Benefit Date' },
-                    { id: 'due_date', label: 'Due Date' },
-                    { id: 'schedule_date', label: 'Schedule Date' },
-                    { id: 'provider', label: 'Provider' },
-                    { id: 'description', label: 'Description' },
-                    { id: 'invoice_number', label: 'Invoice ID' },
-                    { id: 'amount', label: 'Amount' },
-                    { id: 'currency', label: 'Currency' },
-                    { id: 'financial_account', label: 'Financial Account' },
-                    { id: 'cost_center', label: 'Department' },
-                    { id: 'sub_department', label: 'Sub-Department' },
-                    { id: 'cost_type', label: 'Cost Type' },
-                    { id: 'dep_cost_type', label: 'Dep Cost Type' },
-                    { id: 'payment_status', label: 'Payment Status' },
-                    { id: 'is_reconciled', label: 'Recon' },
-                    { id: 'payment_method', label: 'Payment Method' },
-                    { id: 'bank_account', label: 'Bank Account' },
-                    { id: 'payment_date', label: 'Payment Date' },
-                  ].map(column => (
-                    <div key={column.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={column.id}
-                        checked={tempVisibleColumns.has(column.id)}
-                        onCheckedChange={() => toggleColumnVisibility(column.id)}
-                      />
-                      <label
-                        htmlFor={column.id}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+                <div className="grid grid-cols-2 gap-3 max-h-[420px] overflow-y-auto pr-1">
+                  {orderedColumnOptions.map((column) => {
+                    return (
+                      <div
+                        key={column.id}
+                        draggable
+                        onDragStart={() => setDraggedColumnId(column.id)}
+                        onDragOver={(e) => e.preventDefault()}
+                        onDrop={() => {
+                          if (draggedColumnId) moveColumnOrder(draggedColumnId, column.id);
+                          setDraggedColumnId(null);
+                        }}
+                        onDragEnd={() => setDraggedColumnId(null)}
+                        className={`flex items-center space-x-2 rounded border border-gray-200 dark:border-gray-700 px-2 py-1.5 cursor-move ${draggedColumnId === column.id ? 'opacity-60' : ''}`}
                       >
-                        {column.label}
-                      </label>
-                    </div>
-                  ))}
+                        <Checkbox
+                          id={column.id}
+                          checked={tempVisibleColumns.has(column.id)}
+                          onCheckedChange={() => toggleColumnVisibility(column.id)}
+                        />
+                        <label
+                          htmlFor={column.id}
+                          className="text-sm font-medium leading-none cursor-pointer text-gray-800 dark:text-gray-200"
+                        >
+                          {column.label}
+                        </label>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex gap-2 mt-4">
+                <div className="flex gap-2 mt-4 pt-3 border-t border-gray-200 dark:border-gray-700">
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const allColumns = new Set(['actions', 'scope', 'impact', 'type', 'input_date', 'invoice_date', 'benefit_date', 'provider', 'description', 'invoice_number', 'amount', 'currency', 'financial_account', 'cost_center', 'cost_type', 'dep_cost_type', 'payment_status', 'is_reconciled', 'payment_method', 'bank_account', 'payment_date']);
-                      setTempVisibleColumns(allColumns);
-                    }}
+                    onClick={() => setTempVisibleColumns(new Set(ALL_COLUMN_IDS))}
                   >
                     Select All
                   </Button>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setTempVisibleColumns(new Set(['actions']))}
+                    onClick={() => setTempVisibleColumns(new Set())}
                   >
                     Deselect All
                   </Button>
@@ -2694,31 +3096,18 @@ export default function InvoicesPage() {
               </DialogContent>
             </Dialog>
 
-            {/* Export to Excel */}
-            <Button variant="outline" size="sm" onClick={exportToExcel} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Export Excel
-            </Button>
-
-            {/* Export to PDF */}
-            <Button variant="outline" size="sm" onClick={exportToPDF} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-              <Download className="h-4 w-4 mr-2" />
-              Export PDF
-            </Button>
-
-            {/* Group by Provider */}
+            {/* Group buttons */}
             <Button
-              variant={groupByProvider ? "default" : "outline"}
+              variant={groupByMode === "provider" ? "default" : "outline"}
               size="sm"
               onClick={() => {
-                const newVal = !groupByProvider;
-                setGroupByProvider(newVal);
-                if (newVal && filteredByCreated.length > 0) {
-                  // auto-expand all on enable
-                  setTimeout(() => expandAllProviders(), 0);
+                const nextMode = groupByMode === "provider" ? "none" : "provider";
+                setGroupingMode("provider");
+                if (nextMode !== "none" && filteredByCreated.length > 0) {
+                  setTimeout(() => expandAllGroups(), 0);
                 }
               }}
-              className={groupByProvider
+              className={groupByMode === "provider"
                 ? "bg-purple-600 hover:bg-purple-700 text-white border-none text-xs"
                 : "bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] text-xs"
               }
@@ -2726,12 +3115,49 @@ export default function InvoicesPage() {
               <Building2 className="h-4 w-4 mr-1" />
               Group by Provider
             </Button>
-            {groupByProvider && (
+
+            <Button
+              variant={groupByMode === "financial_account" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                const nextMode = groupByMode === "financial_account" ? "none" : "financial_account";
+                setGroupingMode("financial_account");
+                if (nextMode !== "none" && filteredByCreated.length > 0) {
+                  setTimeout(() => expandAllGroups(), 0);
+                }
+              }}
+              className={groupByMode === "financial_account"
+                ? "bg-purple-600 hover:bg-purple-700 text-white border-none text-xs"
+                : "bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] text-xs"
+              }
+            >
+              Group by Financial Account
+            </Button>
+
+            <Button
+              variant={groupByMode === "department" ? "default" : "outline"}
+              size="sm"
+              onClick={() => {
+                const nextMode = groupByMode === "department" ? "none" : "department";
+                setGroupingMode("department");
+                if (nextMode !== "none" && filteredByCreated.length > 0) {
+                  setTimeout(() => expandAllGroups(), 0);
+                }
+              }}
+              className={groupByMode === "department"
+                ? "bg-purple-600 hover:bg-purple-700 text-white border-none text-xs"
+                : "bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] text-xs"
+              }
+            >
+              Group by Department
+            </Button>
+
+            {groupByMode !== "none" && (
               <>
-                <Button variant="ghost" size="sm" onClick={expandAllProviders} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
+                <Button variant="ghost" size="sm" onClick={expandAllGroups} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                   Expand All
                 </Button>
-                <Button variant="ghost" size="sm" onClick={collapseAllProviders} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
+                <Button variant="ghost" size="sm" onClick={collapseAllGroups} className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
                   Collapse All
                 </Button>
               </>
@@ -2789,6 +3215,35 @@ export default function InvoicesPage() {
           )}
         </div>
 
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => scrollTableHorizontally("left")}
+              className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
+              title="Scroll para a esquerda"
+            >
+              <ChevronLeft className="h-4 w-4 mr-1" />
+              Scroll Left
+            </Button>
+          </div>
+          <div className="ml-auto">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => scrollTableHorizontally("right")}
+              className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
+              title="Scroll para a direita"
+            >
+              Scroll Right
+              <ChevronRight className="h-4 w-4 ml-1" />
+            </Button>
+          </div>
+        </div>
+
         {/* Table */}
         {error ? (
           <div className="text-center py-8 text-red-400">{error}</div>
@@ -2800,7 +3255,7 @@ export default function InvoicesPage() {
           </div>
         ) : (
           <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-            <div className="overflow-x-auto max-h-[600px] overflow-y-auto">
+            <div ref={tableContainerRef} className="overflow-x-auto max-h-[600px] overflow-y-auto">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] shadow-sm">
                   <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#0a0a0a]">
@@ -2810,37 +3265,35 @@ export default function InvoicesPage() {
                     {visibleColumns.has('split') && (
                       <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#0a0a0a]">Split</th>
                     )}
-                    {/* Created By column */}
-                    <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 w-14 bg-gray-50 dark:bg-[#0a0a0a]" title="Created by user or BOTella automation">
-                      <div className="flex items-center justify-center gap-1">
-                        Created
-                        <button
-                          onClick={(e) => openFilterPopover("created_by", e)}
-                          className={`hover:text-primary ${createdFilter !== 'all' ? 'text-green-400' : ''}`}
-                          title="Filter by Created"
-                        >
-                          <Filter className={`h-3 w-3 ${createdFilter !== 'all' ? 'fill-green-400' : ''}`} />
-                        </button>
-                        {createdFilter !== 'all' && (
+                    {visibleColumns.has('created_by') && (
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 w-14 bg-gray-50 dark:bg-[#0a0a0a]" title="Created by user or BOTella automation">
+                        <div className="flex items-center justify-center gap-1">
+                          Created
                           <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setCreatedFilter('all');
-                              setAppliedFilters(prev => prev.filter(f => f.field !== 'created_by'));
-                            }}
-                            className="hover:text-destructive"
-                            title="Clear filter"
+                            onClick={(e) => openFilterPopover("created_by", e)}
+                            className={`hover:text-primary ${createdFilter !== 'all' ? 'text-green-400' : ''}`}
+                            title="Filter by Created"
                           >
-                            <X className="h-3 w-3" />
+                            <Filter className={`h-3 w-3 ${createdFilter !== 'all' ? 'fill-green-400' : ''}`} />
                           </button>
-                        )}
-                      </div>
-                    </th>
+                          {createdFilter !== 'all' && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setCreatedFilter('all');
+                                setAppliedFilters(prev => prev.filter(f => f.field !== 'created_by'));
+                              }}
+                              className="hover:text-destructive"
+                              title="Clear filter"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      </th>
+                    )}
                     {visibleColumns.has('scope') && (
                       <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#0a0a0a]">Scope</th>
-                    )}
-                    {visibleColumns.has('impact') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#0a0a0a]">Impact</th>
                     )}
                     {visibleColumns.has('type') && (
                       <th className="px-2 py-1.5 text-left font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#0a0a0a]">
@@ -3073,7 +3526,18 @@ export default function InvoicesPage() {
                       </th>
                     )}
                     {visibleColumns.has('payment_status') && (
-                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#0a0a0a]">Payment Status</th>
+                      <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#0a0a0a]">
+                        <div className="flex items-center justify-center gap-1">
+                          Payment Status
+                          <button
+                            onClick={(e) => openFilterPopover("payment_status", e)}
+                            className={`hover:text-primary ${isColumnFiltered('payment_status') ? 'text-green-600' : ''}`}
+                            title="Filter by Payment Status"
+                          >
+                            <Filter className={`h-3 w-3 ${isColumnFiltered('payment_status') ? 'fill-green-600' : ''}`} />
+                          </button>
+                        </div>
+                      </th>
                     )}
                     {visibleColumns.has('is_reconciled') && (
                       <th className="px-2 py-1.5 text-center font-semibold text-gray-700 dark:text-gray-300 bg-gray-50 dark:bg-[#0a0a0a]">Recon</th>
@@ -3095,23 +3559,23 @@ export default function InvoicesPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                  {groupByProvider && groupedByProvider ? (
-                    groupedByProvider.map((group) => (
-                      <React.Fragment key={group.provider}>
+                  {groupByMode !== "none" && groupedInvoices ? (
+                    groupedInvoices.map((group) => (
+                      <React.Fragment key={group.key}>
                         {/* Provider group header row */}
                         <tr
                           className="bg-gray-100 dark:bg-[#0a0a0a] hover:bg-gray-100 dark:hover:bg-[#2a2b2d] cursor-pointer border-b border-gray-300 dark:border-gray-600"
-                          onClick={() => toggleProviderGroup(group.provider)}
+                          onClick={() => toggleGroup(group.key)}
                         >
                           <td colSpan={100} className="px-3 py-2">
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-3">
-                                {expandedProviders.has(group.provider) ? (
+                                {expandedGroupKeys.has(group.key) ? (
                                   <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 ) : (
                                   <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />
                                 )}
-                                <span className="font-semibold text-gray-900 dark:text-white text-sm">{group.providerName}</span>
+                                <span className="font-semibold text-gray-900 dark:text-white text-sm">{group.label}</span>
                                 <Badge variant="secondary" className="text-[10px] bg-gray-100 dark:bg-[#0a0a0a] text-gray-700 dark:text-gray-300">
                                   {group.invoices.length} invoice{group.invoices.length !== 1 ? "s" : ""}
                                 </Badge>
@@ -3128,12 +3592,12 @@ export default function InvoicesPage() {
                           </td>
                         </tr>
                         {/* Expanded invoices */}
-                        {expandedProviders.has(group.provider) && group.invoices.map((invoice) => {
+                        {expandedGroupKeys.has(group.key) && group.invoices.map((invoice) => {
                           const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
                           const Icon = config.icon;
                           const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
-                          const paymentStatus = invoice.payment_status || 'NOT_SCHEDULED';
-                          const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
+                          const paymentStatus = getComputedPaymentStatus(invoice);
+                          const isBotInvoice = isAutomaticInvoice(invoice);
 
                           return (
                             <tr key={invoice.id} className="hover:bg-gray-100 dark:bg-black/50 group">
@@ -3141,14 +3605,14 @@ export default function InvoicesPage() {
                               {visibleColumns.has('actions') && (
                                 <td className="px-2 py-1 text-center">
                                   <div className="flex items-center justify-center gap-1">
-                                    <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-[#111111]" title="Split Invoice">
-                                      <Split className="h-3 w-3 text-blue-400" />
+                                    <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-5 w-5 p-0 hover:bg-gray-100 dark:hover:bg-[#111111]" title="Split Invoice">
+                                      <Split className="h-2.5 w-2.5 text-blue-400" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-[#111111]">
-                                      <Edit2 className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+                                    <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-5 w-5 p-0 hover:bg-gray-100 dark:hover:bg-[#111111]">
+                                      <Edit2 className="h-2.5 w-2.5 text-gray-500 dark:text-gray-400" />
                                     </Button>
-                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
-                                      <Trash2 className="h-3 w-3" />
+                                    <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-5 w-5 p-0 text-red-400 hover:text-red-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
+                                      <Trash2 className="h-2.5 w-2.5" />
                                     </Button>
                                   </div>
                                 </td>
@@ -3179,17 +3643,19 @@ export default function InvoicesPage() {
                               )}
 
                               {/* Created By - Manual (User) or Automatic (BOTella) */}
-                              <td className="px-2 py-1 text-center">
-                                {isBotInvoice ? (
-                                  <span title="Created automatically by BOTella" className="inline-flex items-center justify-center">
-                                    <Zap className="h-4 w-4 text-yellow-400" />
-                                  </span>
-                                ) : (
-                                  <span title="Created manually by user" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-[#0a0a0a]">
-                                    <User className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
-                                  </span>
-                                )}
-                              </td>
+                              {visibleColumns.has('created_by') && (
+                                <td className="px-2 py-1 text-center">
+                                  {isBotInvoice ? (
+                                    <span title="Created automatically (BOTella/Payroll)" className="inline-flex items-center justify-center">
+                                      <Zap className="h-4 w-4 text-yellow-400" />
+                                    </span>
+                                  ) : (
+                                    <span title="Created manually by user" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-[#0a0a0a]">
+                                      <User className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
+                                    </span>
+                                  )}
+                                </td>
+                              )}
 
                               {/* Scope */}
                               {visibleColumns.has('scope') && (
@@ -3211,21 +3677,10 @@ export default function InvoicesPage() {
                                 </td>
                               )}
 
-                              {/* Impact */}
-                              {visibleColumns.has('impact') && (
-                                <td className="px-2 py-1">
-                                  <div className="flex gap-1 justify-center">
-                                    {invoice.dre_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-200">DRE</Badge>}
-                                    {invoice.cash_impact && <Badge variant="secondary" className="text-[10px] px-1 py-0 bg-gray-100 dark:bg-[#0a0a0a] text-gray-600 dark:text-gray-200">Cash</Badge>}
-                                    {invoice.is_intercompany && <Badge variant="outline" className="text-[10px] px-1 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">IC</Badge>}
-                                  </div>
-                                </td>
-                              )}
-
                               {/* Type */}
                               {visibleColumns.has('type') && (
                                 <td className="px-2 py-1">
-                                  <Badge className={`text-[10px] px-1.5 py-0 ${config.color}`}>
+                                  <Badge className={`text-[9px] px-1 py-0 ${config.color}`}>
                                     {config.label}
                                   </Badge>
                                 </td>
@@ -3739,7 +4194,7 @@ export default function InvoicesPage() {
                                     <div className="flex items-center gap-1">
                                       {invoice.cost_type_code ? (
                                         <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">
-                                          {getNameByCode(costTypes, invoice.cost_type_code)}
+                                          {getCostTypeDisplay(invoice.cost_type_code)}
                                         </Badge>
                                       ) : (
                                         <span className="text-gray-500 dark:text-gray-400">-</span>
@@ -3837,8 +4292,13 @@ export default function InvoicesPage() {
                               {visibleColumns.has('payment_status') && (
                                 <td className="px-2 py-1 text-center">
                                   <Badge
-                                    variant={paymentStatus === 'PAID' ? 'default' : paymentStatus === 'OVERDUE' ? 'destructive' : 'outline'}
-                                    className="text-[10px] px-1.5 py-0 bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600"
+                                    variant={paymentStatus === 'PAID' ? 'default' : 'outline'}
+                                    className={`text-[10px] px-1.5 py-0 border ${paymentStatus === 'PAID'
+                                      ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-200 dark:border-green-700'
+                                      : paymentStatus === 'SCHEDULED'
+                                        ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700'
+                                        : 'bg-gray-100 text-gray-800 border-gray-300 dark:bg-[#111111] dark:text-gray-200 dark:border-gray-600'
+                                      }`}
                                   >
                                     {paymentStatus.replace('_', ' ')}
                                   </Badge>
@@ -3896,68 +4356,105 @@ export default function InvoicesPage() {
                       const config = INVOICE_TYPE_CONFIG[invoice.invoice_type];
                       const Icon = config.icon;
                       const financialAccount = financialAccounts.find(a => a.code === invoice.financial_account_code);
-                      const paymentStatus = invoice.payment_status || 'NOT_SCHEDULED';
+                      const paymentStatus = getComputedPaymentStatus(invoice);
                       const isBotInvoice = invoice.invoice_number?.startsWith('BOT-');
 
                       return (
                         <tr key={invoice.id} className="hover:bg-gray-100 dark:bg-black/50 group">
 
-                          {/* Actions - flat mode */}
                           {visibleColumns.has('actions') && (
                             <td className="px-2 py-1 text-center">
                               <div className="flex items-center justify-center gap-1">
-                                <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-[#111111]" title="Split Invoice">
-                                  <Split className="h-3 w-3 text-blue-400" />
+                                <Button variant="ghost" size="sm" onClick={() => openSplitDialog(invoice)} className="h-5 w-5 p-0 hover:bg-gray-100 dark:hover:bg-[#111111]" title="Split Invoice">
+                                  <Split className="h-2.5 w-2.5 text-blue-400" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-6 w-6 p-0 hover:bg-gray-100 dark:hover:bg-[#111111]">
-                                  <Edit2 className="h-3 w-3 text-gray-500 dark:text-gray-400" />
+                                <Button variant="ghost" size="sm" onClick={() => handleEdit(invoice)} className="h-5 w-5 p-0 hover:bg-gray-100 dark:hover:bg-[#111111]">
+                                  <Edit2 className="h-2.5 w-2.5 text-gray-500 dark:text-gray-400" />
                                 </Button>
-                                <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
-                                  <Trash2 className="h-3 w-3" />
+                                <Button variant="ghost" size="sm" onClick={() => handleDelete(invoice)} className="h-5 w-5 p-0 text-red-400 hover:text-red-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
+                                  <Trash2 className="h-2.5 w-2.5" />
                                 </Button>
                               </div>
                             </td>
                           )}
 
-                          {/* Type */}
-                          {visibleColumns.has('type') && (
+                          {visibleColumns.has('split') && (
                             <td className="px-2 py-1 text-center">
-                              <div className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] ${config.color}`} title={invoice.invoice_type}>
-                                <Icon className="h-3 w-3" />
-                                {config.label}
-                              </div>
+                              {invoice.is_split ? (
+                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 bg-blue-900/30 text-blue-400 border border-blue-700">
+                                  {invoice.split_number && invoice.total_splits ? `${invoice.split_number}/${invoice.total_splits}` : 'SPLIT'}
+                                </Badge>
+                              ) : <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
 
-                          {/* Invoice Number */}
-                          {visibleColumns.has('invoice_number') && (
-                            <td className="px-2 py-1 text-[11px] font-mono text-gray-900 dark:text-white whitespace-nowrap">
-                              {invoice.invoice_number || <span className="text-gray-500 dark:text-gray-400">-</span>}
+                          {visibleColumns.has('created_by') && (
+                            <td className="px-2 py-1 text-center">
+                              {isBotInvoice ? (
+                                <span title="Created automatically by BOTella" className="inline-flex items-center justify-center">
+                                  <Zap className="h-4 w-4 text-yellow-400" />
+                                </span>
+                              ) : (
+                                <span title="Created manually by user" className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 dark:bg-[#0a0a0a]">
+                                  <User className="h-3.5 w-3.5 text-gray-700 dark:text-gray-300" />
+                                </span>
+                              )}
                             </td>
                           )}
 
-                          {/* Scope */}
                           {visibleColumns.has('scope') && (
                             <td className="px-2 py-1 text-center">
                               <span className="text-[10px]">{getScopeIcon(getRecordScope(invoice))}</span>
                             </td>
                           )}
 
-                          {/* Provider */}
+                          {visibleColumns.has('type') && (
+                            <td className="px-2 py-1 text-center">
+                              <div className={`inline-flex items-center gap-1 px-1 py-0 rounded text-[9px] ${config.color}`} title={invoice.invoice_type}>
+                                <Icon className="h-2.5 w-2.5" />
+                                {config.label}
+                              </div>
+                            </td>
+                          )}
+
+                          {visibleColumns.has('input_date') && (
+                            <td className="px-2 py-1 text-[11px]">{invoice.input_date ? new Date(invoice.input_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                          )}
+
+                          {visibleColumns.has('invoice_date') && (
+                            <td className="px-2 py-1 text-[11px]">{invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                          )}
+
+                          {visibleColumns.has('benefit_date') && (
+                            <td className="px-2 py-1 text-[11px]">{invoice.benefit_date ? new Date(invoice.benefit_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                          )}
+
+                          {visibleColumns.has('due_date') && (
+                            <td className="px-2 py-1 text-[11px]">{invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                          )}
+
+                          {visibleColumns.has('schedule_date') && (
+                            <td className="px-2 py-1 text-[11px]">{invoice.schedule_date ? new Date(invoice.schedule_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}</td>
+                          )}
+
                           {visibleColumns.has('provider') && (
                             <td className="px-2 py-1 text-[11px] text-gray-600 dark:text-gray-200 whitespace-nowrap max-w-[150px] truncate" title={getNameByCode(providers, invoice.provider_code)}>
                               {getNameByCode(providers, invoice.provider_code)}
                             </td>
                           )}
 
-                          {/* Description */}
                           {visibleColumns.has('description') && (
                             <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[200px] truncate" title={invoice.description || undefined}>
                               {invoice.description || <span className="text-gray-500">-</span>}
                             </td>
                           )}
 
-                          {/* Amount */}
+                          {visibleColumns.has('invoice_number') && (
+                            <td className="px-2 py-1 text-[11px] font-mono text-gray-900 dark:text-white whitespace-nowrap">
+                              {invoice.invoice_number || <span className="text-gray-500 dark:text-gray-400">-</span>}
+                            </td>
+                          )}
+
                           {visibleColumns.has('amount') && (
                             <td className="px-2 py-1 text-right text-[11px] font-mono text-gray-900 dark:text-white whitespace-nowrap">
                               {invoice.currency !== "EUR" ? (
@@ -3971,54 +4468,53 @@ export default function InvoicesPage() {
                             </td>
                           )}
 
-                          {/* Invoice Date */}
-                          {visibleColumns.has('invoice_date') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                              {invoice.invoice_date ? new Date(invoice.invoice_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
+                          {visibleColumns.has('currency') && (
+                            <td className="px-2 py-1 text-center">
+                              <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-mono bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-600 dark:text-gray-200 border-gray-300 dark:border-gray-600">{invoice.currency}</Badge>
                             </td>
                           )}
 
-                          {/* Due Date */}
-                          {visibleColumns.has('due_date') && (
-                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 whitespace-nowrap">
-                              {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
-                            </td>
-                          )}
-
-                          {/* Financial Account */}
                           {visibleColumns.has('financial_account') && (
                             <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[120px] truncate" title={financialAccount?.name || invoice.financial_account_code}>
                               {financialAccount?.name || invoice.financial_account_code || <span className="text-gray-500">-</span>}
                             </td>
                           )}
 
-                          {/* Cost Center */}
                           {visibleColumns.has('cost_center') && (
                             <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[100px] truncate" title={getNameByCode(costCenters, invoice.cost_center_code || '')}>
-                              {getNameByCode(costCenters, invoice.cost_center_code || '')}
+                              {getNameByCode(costCenters, invoice.cost_center_code || '') || <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
 
-                          {/* Dep Cost Type */}
+                          {visibleColumns.has('sub_department') && (
+                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[120px] truncate" title={invoice.sub_department_code ? (subDepartments.find(sd => sd.code === invoice.sub_department_code)?.name || invoice.sub_department_code) : '-'}>
+                              {invoice.sub_department_code ? (subDepartments.find(sd => sd.code === invoice.sub_department_code)?.name || invoice.sub_department_code) : <span className="text-gray-500 dark:text-gray-400">-</span>}
+                            </td>
+                          )}
+
+                          {visibleColumns.has('cost_type') && (
+                            <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[100px] truncate" title={getCostTypeDisplay(invoice.cost_type_code || '')}>
+                              {getCostTypeDisplay(invoice.cost_type_code || '') || <span className="text-gray-500 dark:text-gray-400">-</span>}
+                            </td>
+                          )}
+
                           {visibleColumns.has('dep_cost_type') && (
                             <td className="px-2 py-1 text-[11px] text-gray-700 dark:text-gray-300 max-w-[100px] truncate" title={getNameByCode(depCostTypes, invoice.dep_cost_type_code || '')}>
-                              {getNameByCode(depCostTypes, invoice.dep_cost_type_code || '')}
+                              {getNameByCode(depCostTypes, invoice.dep_cost_type_code || '') || <span className="text-gray-500 dark:text-gray-400">-</span>}
                             </td>
                           )}
 
-                          {/* Payment Status */}
                           {visibleColumns.has('payment_status') && (
                             <td className="px-2 py-1 text-center text-[10px]">
-                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 ${paymentStatus === 'PAID' ? 'bg-green-900/30 text-green-400 border-green-700' :
-                                paymentStatus === 'SCHEDULED' ? 'bg-yellow-900/30 text-yellow-400 border-yellow-700' :
-                                  'bg-gray-100 dark:bg-[#0a0a0a]/50 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600'
+                              <Badge variant="outline" className={`text-[9px] px-1.5 py-0 border ${paymentStatus === 'PAID' ? 'bg-green-100 text-green-800 border-green-300 dark:bg-green-900/40 dark:text-green-200 dark:border-green-700' :
+                                paymentStatus === 'SCHEDULED' ? 'bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-900/40 dark:text-amber-200 dark:border-amber-700' :
+                                  'bg-gray-100 text-gray-800 border-gray-300 dark:bg-[#111111] dark:text-gray-200 dark:border-gray-600'
                                 }`}>
-                                {paymentStatus}
+                                {paymentStatus.replace('_', ' ')}
                               </Badge>
                             </td>
                           )}
 
-                          {/* Reconciled */}
                           {visibleColumns.has('is_reconciled') && (
                             <td className="px-2 py-1 text-center">
                               {invoice.is_reconciled ? (
@@ -4035,7 +4531,6 @@ export default function InvoicesPage() {
                             </td>
                           )}
 
-                          {/* Payment Method */}
                           {visibleColumns.has('payment_method') && (
                             <td className="px-2 py-1 text-center text-[10px]">
                               {invoice.payment_method_code ? (
@@ -4046,7 +4541,6 @@ export default function InvoicesPage() {
                             </td>
                           )}
 
-                          {/* Bank Account */}
                           {visibleColumns.has('bank_account') && (
                             <td className="px-2 py-1 text-center">
                               {invoice.bank_account_code ? (
@@ -4057,7 +4551,6 @@ export default function InvoicesPage() {
                             </td>
                           )}
 
-                          {/* Payment Date */}
                           {visibleColumns.has('payment_date') && (
                             <td className="px-2 py-1 text-[11px]">
                               {invoice.payment_date ? new Date(invoice.payment_date).toLocaleDateString('pt-BR') : <span className="text-gray-500 dark:text-gray-400">-</span>}
@@ -4083,7 +4576,7 @@ export default function InvoicesPage() {
       {
         filterPopoverOpen && (
           <Dialog open={!!filterPopoverOpen} onOpenChange={() => closeFilterPopover()}>
-            <DialogContent className={`bg-white ${['input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date'].includes(filterPopoverOpen.field) ? 'max-w-fit' : 'max-w-md'}`}>
+            <DialogContent className={`bg-white dark:bg-black ${['input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date'].includes(filterPopoverOpen.field) ? 'max-w-[980px] w-[96vw] max-h-[90vh] overflow-y-auto' : 'max-w-md'}`}>
               <DialogHeader>
                 <DialogTitle>Filter by {filterPopoverOpen.field.replace(/_/g, ' ')}</DialogTitle>
               </DialogHeader>
@@ -4095,8 +4588,8 @@ export default function InvoicesPage() {
                   if (['input_date', 'invoice_date', 'benefit_date', 'due_date', 'schedule_date'].includes(field)) {
                     const presets = ["This Week", "Last Week", "Next Week", "This Month", "Last Month", "Next Year"];
                     return (
-                      <div className="space-y-3">
-                        <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-4">
+                        <div className="flex flex-wrap gap-2">
                           {presets.map(preset => (
                             <Button
                               key={preset}
@@ -4117,42 +4610,89 @@ export default function InvoicesPage() {
                             </Button>
                           ))}
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium">Selecionar intervalo:</Label>
-                          <Calendar
-                            mode="range"
-                            selected={calendarRange}
-                            onSelect={setCalendarRange}
-                            numberOfMonths={2}
-                            className="rounded-md border border-gray-200 p-0"
-                          />
-                          <div className="flex items-center justify-between">
-                            {calendarRange?.from ? (
-                              <span className="text-xs text-gray-600">
-                                {calendarRange.from.toLocaleDateString('pt-PT')}
-                                {calendarRange.to ? ` → ${calendarRange.to.toLocaleDateString('pt-PT')}` : " → ..."}
+                        <div className="space-y-3 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                          <Label className="text-xs font-medium text-gray-700 dark:text-gray-300">Selecionar intervalo:</Label>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#0a0a0a] px-3 py-2">
+                              <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Data inicial</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white mt-0.5">
+                                {calendarRange?.from ? calendarRange.from.toLocaleDateString('pt-PT') : 'Não selecionada'}
+                              </p>
+                            </div>
+                            <div className="rounded-md border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-[#0a0a0a] px-3 py-2">
+                              <p className="text-[11px] uppercase tracking-wide text-gray-500 dark:text-gray-400">Data final</p>
+                              <p className="text-sm font-medium text-gray-900 dark:text-white mt-0.5">
+                                {calendarRange?.to ? calendarRange.to.toLocaleDateString('pt-PT') : 'Não selecionada'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="overflow-x-auto">
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 min-w-[680px]">
+                              <div className="rounded-md border border-gray-200 dark:border-gray-700 p-2 bg-white dark:bg-black">
+                                <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Calendário da data inicial</p>
+                                <Calendar
+                                  mode="single"
+                                  selected={calendarRange?.from}
+                                  onSelect={(date) => setCalendarRange(prev => ({ from: date, to: prev?.to }))}
+                                  className="rounded-md"
+                                />
+                              </div>
+                              <div className="rounded-md border border-gray-200 dark:border-gray-700 p-2 bg-white dark:bg-black">
+                                <p className="text-xs font-medium text-gray-600 dark:text-gray-300 mb-2">Calendário da data final</p>
+                                <Calendar
+                                  mode="single"
+                                  selected={calendarRange?.to}
+                                  onSelect={(date) => setCalendarRange(prev => ({ from: prev?.from, to: date }))}
+                                  className="rounded-md"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 flex-wrap">
+                            {calendarRange?.from || calendarRange?.to ? (
+                              <span className="text-xs text-gray-600 dark:text-gray-300">
+                                {calendarRange?.from ? calendarRange.from.toLocaleDateString('pt-PT') : '...'}
+                                {' → '}
+                                {calendarRange?.to ? calendarRange.to.toLocaleDateString('pt-PT') : '...'}
                               </span>
                             ) : (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">Clique para selecionar datas</span>
+                              <span className="text-xs text-gray-500 dark:text-gray-400">Selecione a data inicial e final</span>
                             )}
-                            <Button
-                              size="sm"
-                              disabled={!calendarRange?.from || !calendarRange?.to}
-                              onClick={() => {
-                                if (calendarRange?.from && calendarRange?.to) {
-                                  const start = calendarRange.from.toISOString().split('T')[0];
-                                  const end = calendarRange.to.toISOString().split('T')[0];
-                                  setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
-                                  setAppliedFilters(prev => {
-                                    const filtered = prev.filter(f => f.field !== field);
-                                    return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
-                                  });
-                                  closeFilterPopover();
-                                }
-                              }}
-                            >
-                              Aplicar
-                            </Button>
+
+                            <div className="flex items-center gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCalendarRange(undefined)}
+                              >
+                                Limpar datas
+                              </Button>
+                              <Button
+                                size="sm"
+                                disabled={!calendarRange?.from || !calendarRange?.to}
+                                onClick={() => {
+                                  if (calendarRange?.from && calendarRange?.to) {
+                                    const fromTime = calendarRange.from.getTime();
+                                    const toTime = calendarRange.to.getTime();
+                                    const startDate = fromTime <= toTime ? calendarRange.from : calendarRange.to;
+                                    const endDate = fromTime <= toTime ? calendarRange.to : calendarRange.from;
+                                    const start = startDate.toISOString().split('T')[0];
+                                    const end = endDate.toISOString().split('T')[0];
+                                    setDateFilters(prev => ({ ...prev, [field]: { start, end } }));
+                                    setAppliedFilters(prev => {
+                                      const filtered = prev.filter(f => f.field !== field);
+                                      return [...filtered, { field, value: `${start} to ${end}`, label: `${field}: ${start} to ${end}` }];
+                                    });
+                                    closeFilterPopover();
+                                  }
+                                }}
+                              >
+                                Aplicar
+                              </Button>
+                            </div>
                           </div>
                         </div>
                       </div>
@@ -4248,7 +4788,7 @@ export default function InvoicesPage() {
                   if (field === 'created_by') {
                     const createdOptions = [
                       { value: 'all', label: 'Todos' },
-                      { value: 'bot', label: 'Automáticas (BOTella)' },
+                      { value: 'bot', label: 'Automáticas (BOTella/Payroll)' },
                       { value: 'manual', label: 'Manuais (Usuário)' },
                     ];
                     return (
@@ -4325,47 +4865,11 @@ export default function InvoicesPage() {
                     );
                   }
 
-                  // Multi-select filters with cascade (only show available options)
-                  let options: { value: string, label: string }[] = [];
-
-                  if (field === "provider_code") {
-                    const availableCodes = new Set(filteredInvoices.map(inv => inv.provider_code));
-                    options = providers.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
-                  } else if (field === "financial_account_code") {
-                    const availableCodes = new Set(filteredInvoices.map(inv => inv.financial_account_code));
-                    options = financialAccounts.filter(acc => acc.level >= 2 && availableCodes.has(acc.code)).map(acc => ({ value: acc.code, label: acc.name }));
-                  } else if (field === "cost_center_code") {
-                    const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_center_code).filter(Boolean));
-                    options = costCenters.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-                  } else if (field === "cost_type_code") {
-                    const availableCodes = new Set(filteredInvoices.map(inv => inv.cost_type_code).filter(Boolean));
-                    options = costTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-                  } else if (field === "dep_cost_type_code") {
-                    const availableCodes = new Set(filteredInvoices.map(inv => inv.dep_cost_type_code).filter(Boolean));
-                    options = depCostTypes.filter(c => availableCodes.has(c.code)).map(c => ({ value: c.code, label: c.name }));
-                  } else if (field === "bank_account_code") {
-                    const availableCodes = new Set(filteredInvoices.map(inv => inv.bank_account_code).filter(Boolean));
-                    options = bankAccounts.filter(b => availableCodes.has(b.code)).map(b => ({ value: b.code, label: b.name }));
-                  } else if (field === "payment_method_code") {
-                    const availableCodes = new Set(filteredInvoices.map(inv => inv.payment_method_code).filter(Boolean));
-                    options = paymentMethods.filter(p => availableCodes.has(p.code)).map(p => ({ value: p.code, label: p.name }));
-                  } else if (field === "entry_type") {
-                    const availableCodes = new Set(filteredInvoices.map(inv => inv.entry_type));
-                    options = entryTypes.filter(e => availableCodes.has(e.code)).map(e => ({ value: e.code, label: e.name }));
-                  } else if (field === "invoice_type") {
-                    const availableTypes = new Set(filteredInvoices.map(inv => inv.invoice_type));
-                    options = [
-                      { value: "INCURRED", label: "Incurred" },
-                      { value: "BUDGET", label: "Budget" },
-                      { value: "ADJUSTMENT", label: "Adjustments" }
-                    ].filter(opt => availableTypes.has(opt.value as InvoiceType));
-                  } else if (field === "currency") {
-                    const availableCurrencies = new Set(filteredInvoices.map(i => i.currency));
-                    options = Array.from(availableCurrencies).map(c => ({ value: c, label: c }));
-                  }
-
+                  const options = getDynamicFilterOptions(field);
+                  const searchTermLower = filterSearchTerm.toLowerCase();
                   const filtered = options.filter(opt =>
-                    opt.label.toLowerCase().includes(filterSearchTerm.toLowerCase())
+                    opt.label.toLowerCase().includes(searchTermLower) ||
+                    opt.value.toLowerCase().includes(searchTermLower)
                   );
 
                   return (
