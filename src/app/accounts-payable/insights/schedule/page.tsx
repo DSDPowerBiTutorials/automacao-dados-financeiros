@@ -461,6 +461,7 @@ export default function PaymentSchedulePage() {
 
     const filteredInvoices = useMemo(() => {
         let filtered = invoices.filter((inv) => matchesScope(inv.country_code, selectedScope));
+        filtered = filtered.filter((inv) => !inv.schedule_date || inv.schedule_date >= "2026-01-01");
         if (!showCompleted) filtered = filtered.filter((inv) => !inv.payment_date);
         if (searchTerm) {
             const term = searchTerm.toLowerCase();
