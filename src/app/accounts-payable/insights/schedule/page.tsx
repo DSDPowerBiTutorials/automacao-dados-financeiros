@@ -131,6 +131,7 @@ type MasterData = {
 type ScheduleGroup = {
     date: string;
     dateLabel: string;
+    defaultScheduleDate: string | null;
     invoices: Invoice[];
     totalEUR: number;
     totalUSD: number;
@@ -147,22 +148,19 @@ function parseLocalDate(dateStr: string): Date {
     return new Date(dateStr);
 }
 
-// Format date for group header
-function formatDateForHeader(dateStr: string): string {
-    const date = parseLocalDate(dateStr);
-    const options: Intl.DateTimeFormatOptions = { month: "long", day: "numeric" };
-    const formatted = date.toLocaleDateString("en-US", options);
-    const day = date.getDate();
-    const suffix =
-        day === 1 || day === 21 || day === 31 ? "st" :
-            day === 2 || day === 22 ? "nd" :
-                day === 3 || day === 23 ? "rd" : "th";
-    return formatted.replace(/\d+/, day + suffix);
+function getMonthKey(dateStr: string): string {
+    return dateStr.slice(0, 7); // YYYY-MM
+}
+
+function formatDateForHeader(monthOrDate: string): string {
+    const monthKey = monthOrDate.slice(0, 7);
+    const date = parseLocalDate(`${monthKey}-01`);
+    return date.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 }
 
 function formatShortDate(dateStr: string): string {
     const date = parseLocalDate(dateStr);
-    return date.toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+    return date.toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
 function formatRelativeDate(dateStr: string): string {
@@ -333,7 +331,7 @@ export default function PaymentSchedulePage() {
         if (invoices.length > 0) {
             const allDates = new Set<string>();
             invoices.forEach((inv) => {
-                if (inv.schedule_date) allDates.add(inv.schedule_date);
+                if (inv.schedule_date) allDates.add(getMonthKey(inv.schedule_date));
             });
             allDates.add("unscheduled");
             setExpandedGroups(allDates);
@@ -477,14 +475,15 @@ export default function PaymentSchedulePage() {
 
     const groups = useMemo(() => {
         const groupsMap = new Map<string, ScheduleGroup>();
-        groupsMap.set("unscheduled", { date: "unscheduled", dateLabel: "Unscheduled", invoices: [], totalEUR: 0, totalUSD: 0 });
+        groupsMap.set("unscheduled", { date: "unscheduled", dateLabel: "Unscheduled", defaultScheduleDate: null, invoices: [], totalEUR: 0, totalUSD: 0 });
 
         filteredInvoices.forEach((inv) => {
-            const key = inv.schedule_date || "unscheduled";
+            const key = inv.schedule_date ? getMonthKey(inv.schedule_date) : "unscheduled";
             if (!groupsMap.has(key)) {
                 groupsMap.set(key, {
                     date: key,
                     dateLabel: key === "unscheduled" ? "Unscheduled" : `Scheduled Payments - ${formatDateForHeader(key)}`,
+                    defaultScheduleDate: inv.schedule_date || null,
                     invoices: [],
                     totalEUR: 0,
                     totalUSD: 0,
@@ -492,6 +491,9 @@ export default function PaymentSchedulePage() {
             }
             const group = groupsMap.get(key)!;
             group.invoices.push(inv);
+            if (inv.schedule_date && (!group.defaultScheduleDate || inv.schedule_date < group.defaultScheduleDate)) {
+                group.defaultScheduleDate = inv.schedule_date;
+            }
             if (inv.currency === "EUR") group.totalEUR += inv.invoice_amount;
             else if (inv.currency === "USD") group.totalUSD += inv.invoice_amount;
         });
@@ -499,7 +501,7 @@ export default function PaymentSchedulePage() {
         return Array.from(groupsMap.values()).sort((a, b) => {
             if (a.date === "unscheduled") return 1;
             if (b.date === "unscheduled") return -1;
-            return parseLocalDate(a.date).getTime() - parseLocalDate(b.date).getTime();
+            return parseLocalDate(`${a.date}-01`).getTime() - parseLocalDate(`${b.date}-01`).getTime();
         });
     }, [filteredInvoices]);
 
@@ -1437,7 +1439,7 @@ export default function PaymentSchedulePage() {
                                     <div
                                         className="px-6 py-2 text-gray-500 text-sm hover:text-gray-700 dark:text-gray-300 cursor-pointer flex items-center gap-2"
                                         onClick={() => {
-                                            setDefaultScheduleDateForModal(group.date === "unscheduled" ? null : group.date);
+                                            setDefaultScheduleDateForModal(group.date === "unscheduled" ? null : group.defaultScheduleDate);
                                             setInvoiceModalOpen(true);
                                         }}
                                     >
@@ -1489,7 +1491,7 @@ export default function PaymentSchedulePage() {
                             <div className="flex items-center gap-2 text-sm">
                                 <span className="text-gray-500 dark:text-gray-400">Payments & Invoice Control</span>
                                 <span className="text-gray-600">•</span>
-                                <span className="text-gray-500 dark:text-gray-400">{selectedInvoice.schedule_date ? `Scheduled Payments - ${formatDateForHeader(selectedInvoice.schedule_date)}` : "Unscheduled"}</span>
+                                <span className="text-gray-500 dark:text-gray-400">{selectedInvoice.schedule_date ? `Scheduled Payments - ${formatShortDate(selectedInvoice.schedule_date)}` : "Unscheduled"}</span>
                             </div>
                         </div>
 

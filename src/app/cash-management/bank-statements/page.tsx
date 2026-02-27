@@ -1043,7 +1043,7 @@ export default function BankStatementsPage() {
                 const headers = lines[0].split(",").map(h => h.trim().replace(/^"|"$/g, ""));
                 const fechaContableIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÁ]/g, "A").includes("FECHA") && h.toUpperCase().includes("CONTABLE"));
                 const fechaValorIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÁ]/g, "A").includes("FECHA") && h.toUpperCase().includes("VALOR") && !h.toUpperCase().includes("CONTABLE"));
-                const fechaIdx = fechaContableIdx >= 0 ? fechaContableIdx : fechaValorIdx;
+                const fechaIdx = fechaValorIdx >= 0 ? fechaValorIdx : fechaContableIdx;
                 const descIdx = headers.findIndex(h => h.toUpperCase().replace(/[ÃÓÑ"]/g, "O").includes("DESCRIPCI"));
                 const haberIdx = headers.findIndex(h => h.toUpperCase() === "HABER");
                 const debeIdx = headers.findIndex(h => h.toUpperCase() === "DEBE");

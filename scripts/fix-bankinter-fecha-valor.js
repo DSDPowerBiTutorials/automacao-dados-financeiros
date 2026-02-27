@@ -47,15 +47,29 @@ function ddmmyyyyToISO(dateStr) {
 async function fixBankinterFechaValor() {
     console.log('🔧 Iniciando correção de datas Bankinter EUR...\n');
 
-    // Buscar todos os registros bankinter-eur
-    const { data: rows, error } = await supabase
-        .from('csv_rows')
-        .select('id, date, custom_data')
-        .eq('source', 'bankinter-eur');
+    // Buscar todos os registros bankinter-eur com paginação
+    const pageSize = 1000;
+    let offset = 0;
+    const rows = [];
 
-    if (error) {
-        console.error('❌ Erro ao buscar registros:', error.message);
-        process.exit(1);
+    while (true) {
+        const { data: page, error } = await supabase
+            .from('csv_rows')
+            .select('id, date, custom_data')
+            .eq('source', 'bankinter-eur')
+            .order('date', { ascending: true })
+            .range(offset, offset + pageSize - 1);
+
+        if (error) {
+            console.error('❌ Erro ao buscar registros:', error.message);
+            process.exit(1);
+        }
+
+        if (!page || page.length === 0) break;
+        rows.push(...page);
+        offset += page.length;
+
+        if (page.length < pageSize) break;
     }
 
     console.log(`📊 Total de registros encontrados: ${rows.length}\n`);

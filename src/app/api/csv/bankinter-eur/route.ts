@@ -156,13 +156,13 @@ export async function POST(request: NextRequest) {
                 }
 
                 // Skip linhas vazias
-                if (!fechaValorRaw && !descripcion) {
+                if (!fechaValorRaw && !fechaContableRaw && !descripcion) {
                     skippedCount++
                     return null
                 }
 
-                // Preferir FECHA CONTABLE (data contabil) se presente; caso contrário usar FECHA VALOR
-                const rawDatePrefer = colIndex.fechaContable !== -1 ? fechaContableRaw : fechaValorRaw
+                // Preferir FECHA VALOR (data valor) se presente; caso contrário usar FECHA CONTABLE
+                const rawDatePrefer = colIndex.fechaValor !== -1 ? fechaValorRaw : fechaContableRaw
 
                 if (!rawDatePrefer) {
                     console.warn(`⚠️ [Linha ${headerRowIndex + index + 2}] Sem data (FECHA CONTABLE/FECHA VALOR)`)
@@ -255,7 +255,7 @@ export async function POST(request: NextRequest) {
                 return {
                     source: "bankinter-eur",
                     file_name: file.name,
-                    date: isoDate, // primary date (FECHA CONTABLE when present, otherwise FECHA VALOR)
+                    date: isoDate, // primary date (FECHA VALOR when present, otherwise FECHA CONTABLE)
                     description: descripcion || "Sin descripción",
                     amount: amount.toString(),
                     category: categoria || "Other",
