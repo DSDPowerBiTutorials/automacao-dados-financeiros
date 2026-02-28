@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
+import {
     Dialog,
     DialogContent,
     DialogHeader,
@@ -42,10 +48,11 @@ import {
     TrendingUp,
     BarChart3,
     Package,
+    Wallet,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 // ════════════════════════════════════════════════════════
 // Types & Constants
@@ -1033,6 +1040,84 @@ export default function BankCashFlowPage() {
         return unique.length === 1 ? unique[0] : "EUR";
     }, [selectedBanks]);
 
+    // ─── Cash Position: highlight date picker state ───
+    const [highlightDate, setHighlightDate] = useState<string>("");
+
+    // ─── Cash Position Data (last 30 days, per bank, with carry-forward) ───
+    const cashPositionData = useMemo(() => {
+        // Build last 30 days array
+        const today = new Date();
+        const days: string[] = [];
+        for (let i = 29; i >= 0; i--) {
+            const d = new Date(today);
+            d.setDate(d.getDate() - i);
+            days.push(d.toISOString().slice(0, 10));
+        }
+
+        // Group transactions by (source, date) — pick last balance per day per bank
+        const balanceBySourceDate: Record<string, Record<string, number>> = {};
+        const activeSources = BANK_ACCOUNTS.map(b => b.key);
+
+        for (const source of activeSources) {
+            balanceBySourceDate[source] = {};
+        }
+
+        // Sort all bank transactions by date ascending, then iterate
+        const sorted = [...bankTransactions]
+            .filter(tx => activeSources.includes(tx.source))
+            .sort((a, b) => a.date.localeCompare(b.date));
+
+        for (const tx of sorted) {
+            const day = tx.date.split("T")[0];
+            const bal = tx.custom_data?.saldo ?? tx.custom_data?.balance;
+            if (bal != null) {
+                const parsed = typeof bal === "number" ? bal : parseFloat(String(bal));
+                if (!isNaN(parsed)) {
+                    balanceBySourceDate[tx.source][day] = parsed;
+                }
+            }
+        }
+
+        // Build daily position with carry-forward
+        const lastKnown: Record<string, number> = {};
+        // Seed: find the latest balance BEFORE our 30-day window for each source
+        for (const source of activeSources) {
+            const allDates = Object.keys(balanceBySourceDate[source]).sort();
+            const firstDay = days[0];
+            const before = allDates.filter(d => d < firstDay);
+            if (before.length > 0) {
+                lastKnown[source] = balanceBySourceDate[source][before[before.length - 1]];
+            }
+        }
+
+        const result = days.map(day => {
+            const row: Record<string, any> = {
+                date: day,
+                label: new Date(day + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" }),
+            };
+            let total = 0;
+            for (const bank of BANK_ACCOUNTS) {
+                const dayBal = balanceBySourceDate[bank.key]?.[day];
+                if (dayBal != null) {
+                    lastKnown[bank.key] = dayBal;
+                }
+                const val = lastKnown[bank.key] ?? 0;
+                row[bank.key] = val;
+                total += val;
+            }
+            row.total = total;
+            return row;
+        });
+
+        return result;
+    }, [bankTransactions]);
+
+    // ─── Cash position for highlighted date ───
+    const highlightedPosition = useMemo(() => {
+        if (!highlightDate) return null;
+        return cashPositionData.find(d => d.date === highlightDate) || null;
+    }, [highlightDate, cashPositionData]);
+
     // ════════════════════════════════════════════════════════
     // RENDER
     // ════════════════════════════════════════════════════════
@@ -1138,562 +1223,755 @@ export default function BankCashFlowPage() {
                     </div>
                 </div>
 
-                {/* ─── Stats Bar (KPI inline) ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
-                    <div className="grid grid-cols-6 gap-4">
-                        <div className="flex items-center gap-2 min-w-0">
-                            <ArrowDownCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-[10px] text-gray-500 uppercase">Inflows</p>
-                                <p className="text-sm font-bold text-green-400 truncate" title={formatCurrency(summary.totalInflow, dominantCurrency)}>
-                                    {formatCompactCurrency(summary.totalInflow, dominantCurrency)}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <ArrowUpCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-[10px] text-gray-500 uppercase">Outflows</p>
-                                <p className="text-sm font-bold text-red-400 truncate" title={formatCurrency(summary.totalOutflow, dominantCurrency)}>
-                                    {formatCompactCurrency(summary.totalOutflow, dominantCurrency)}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <DollarSign className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-[10px] text-gray-500 uppercase">Balance</p>
-                                <p className={`text-sm font-bold truncate ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`} title={formatCurrency(summary.netCashFlow, dominantCurrency)}>
-                                    {formatCompactCurrency(summary.netCashFlow, dominantCurrency)}
-                                </p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-[10px] text-gray-500 uppercase">Reconciled</p>
-                                <p className="text-sm font-bold text-emerald-400">{summary.reconciledCount} <span className="text-xs text-gray-500">({summary.reconciledPct}%)</span></p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-[10px] text-gray-500 uppercase">Pending</p>
-                                <p className="text-sm font-bold text-amber-400">{summary.unreconciledCount}</p>
-                            </div>
-                        </div>
-                        <div className="flex items-center gap-2 min-w-0">
-                            <CreditCard className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-[10px] text-gray-500 uppercase">Reconciled Value</p>
-                                <p className="text-sm font-bold text-violet-400 truncate" title={formatCurrency(summary.reconciledAmount, dominantCurrency)}>
-                                    {formatCompactCurrency(summary.reconciledAmount, dominantCurrency)}
-                                </p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                {/* ═══ ACCORDION SECTIONS ═══ */}
+                <Accordion type="multiple" defaultValue={["charts", "cash-position", "statements"]} className="flex-1 flex flex-col overflow-hidden">
 
-                {/* ─── Monthly Highlights + Chart ─── */}
-                {chartData.length > 0 && (
-                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
-                        {/* Monthly cards */}
-                        <div className="flex items-center gap-2 mb-3">
-                            <TrendingUp className="h-4 w-4 text-gray-500" />
-                            <span className="text-xs text-gray-500 uppercase tracking-wider">Monthly Overview (last 12 months)</span>
-                        </div>
-                        <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
-                            {chartData.map(m => (
-                                <div key={m.month} className="flex-shrink-0 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[130px]">
-                                    <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">{m.label}</p>
-                                    <div className="space-y-0.5">
-                                        <div className="flex justify-between text-[10px]">
-                                            <span className="text-gray-500">In</span>
-                                            <span className="text-green-400 font-medium">{formatCompactCurrency(m.inflows, dominantCurrency)}</span>
+                    {/* ─── Section 1: Gráficos & Análise ─── */}
+                    <AccordionItem value="charts" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+                        <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
+                            <div className="flex items-center gap-2">
+                                <BarChart3 className="h-4 w-4 text-blue-500" />
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Gráficos & Análise</span>
+                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{chartData.length} meses</Badge>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+
+                            {/* ─── Stats Bar (KPI inline) ─── */}
+                            <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
+                                <div className="grid grid-cols-6 gap-4">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <ArrowDownCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] text-gray-500 uppercase">Inflows</p>
+                                            <p className="text-sm font-bold text-green-400 truncate" title={formatCurrency(summary.totalInflow, dominantCurrency)}>
+                                                {formatCompactCurrency(summary.totalInflow, dominantCurrency)}
+                                            </p>
                                         </div>
-                                        <div className="flex justify-between text-[10px]">
-                                            <span className="text-gray-500">Out</span>
-                                            <span className="text-red-400 font-medium">{formatCompactCurrency(m.outflows, dominantCurrency)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <ArrowUpCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] text-gray-500 uppercase">Outflows</p>
+                                            <p className="text-sm font-bold text-red-400 truncate" title={formatCurrency(summary.totalOutflow, dominantCurrency)}>
+                                                {formatCompactCurrency(summary.totalOutflow, dominantCurrency)}
+                                            </p>
                                         </div>
-                                        <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
-                                            <span className="text-gray-500">Net</span>
-                                            <span className={`font-bold ${m.balance >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(m.balance, dominantCurrency)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <DollarSign className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] text-gray-500 uppercase">Balance</p>
+                                            <p className={`text-sm font-bold truncate ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`} title={formatCurrency(summary.netCashFlow, dominantCurrency)}>
+                                                {formatCompactCurrency(summary.netCashFlow, dominantCurrency)}
+                                            </p>
                                         </div>
-                                        <div className="flex justify-between text-[10px]">
-                                            <span className="text-gray-500">Bal</span>
-                                            <span className={`font-medium ${m.runningBalance >= 0 ? "text-blue-400" : "text-orange-400"}`}>{formatCompactCurrency(m.runningBalance, dominantCurrency)}</span>
+                                    </div>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] text-gray-500 uppercase">Reconciled</p>
+                                            <p className="text-sm font-bold text-emerald-400">{summary.reconciledCount} <span className="text-xs text-gray-500">({summary.reconciledPct}%)</span></p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] text-gray-500 uppercase">Pending</p>
+                                            <p className="text-sm font-bold text-amber-400">{summary.unreconciledCount}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <CreditCard className="h-4 w-4 text-violet-500 flex-shrink-0" />
+                                        <div className="min-w-0">
+                                            <p className="text-[10px] text-gray-500 uppercase">Reconciled Value</p>
+                                            <p className="text-sm font-bold text-violet-400 truncate" title={formatCurrency(summary.reconciledAmount, dominantCurrency)}>
+                                                {formatCompactCurrency(summary.reconciledAmount, dominantCurrency)}
+                                            </p>
                                         </div>
                                     </div>
                                 </div>
-                            ))}
-                        </div>
+                            </div>
 
-                        {/* ─── View Mode Toggle (controls chart + breakdown) ─── */}
-                        <div className="flex items-center justify-between mb-3">
+                            {/* ─── Monthly Highlights + Chart ─── */}
+                            {chartData.length > 0 && (
+                                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
+                                    {/* Monthly cards */}
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <TrendingUp className="h-4 w-4 text-gray-500" />
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Monthly Overview (last 12 months)</span>
+                                    </div>
+                                    <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
+                                        {chartData.map(m => (
+                                            <div key={m.month} className="flex-shrink-0 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[130px]">
+                                                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">{m.label}</p>
+                                                <div className="space-y-0.5">
+                                                    <div className="flex justify-between text-[10px]">
+                                                        <span className="text-gray-500">In</span>
+                                                        <span className="text-green-400 font-medium">{formatCompactCurrency(m.inflows, dominantCurrency)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px]">
+                                                        <span className="text-gray-500">Out</span>
+                                                        <span className="text-red-400 font-medium">{formatCompactCurrency(m.outflows, dominantCurrency)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
+                                                        <span className="text-gray-500">Net</span>
+                                                        <span className={`font-bold ${m.balance >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(m.balance, dominantCurrency)}</span>
+                                                    </div>
+                                                    <div className="flex justify-between text-[10px]">
+                                                        <span className="text-gray-500">Bal</span>
+                                                        <span className={`font-medium ${m.runningBalance >= 0 ? "text-blue-400" : "text-orange-400"}`}>{formatCompactCurrency(m.runningBalance, dominantCurrency)}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* ─── View Mode Toggle (controls chart + breakdown) ─── */}
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            {revenueViewMode === "bank" ? <Building className="h-4 w-4 text-gray-500" /> : revenueViewMode === "gateway" ? <CreditCard className="h-4 w-4 text-gray-500" /> : <BarChart3 className="h-4 w-4 text-gray-500" />}
+                                            <span className="text-xs text-gray-500 uppercase tracking-wider">
+                                                {revenueViewMode === "bank" ? "Inflows by Bank Account" : revenueViewMode === "gateway" ? "Inflows by Payment Gateway" : "Inflows by P&L Line"}
+                                            </span>
+                                        </div>
+                                        <div className="flex items-center bg-white dark:bg-black rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
+                                            <button
+                                                onClick={() => setRevenueViewMode("bank")}
+                                                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "bank" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
+                                            >
+                                                <Building className="h-3 w-3" />Bank Account
+                                            </button>
+                                            <button
+                                                onClick={() => setRevenueViewMode("gateway")}
+                                                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "gateway" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
+                                            >
+                                                <CreditCard className="h-3 w-3" />Gateway
+                                            </button>
+                                            <button
+                                                onClick={() => setRevenueViewMode("pnl")}
+                                                className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "pnl" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
+                                            >
+                                                <BarChart3 className="h-3 w-3" />P&L Line
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    {/* Line chart — dynamic based on revenueViewMode */}
+                                    <div className="h-[200px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            {revenueViewMode === "bank" ? (
+                                                <LineChart data={monthlyByBank.length > 0 ? monthlyByBank : chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                                    <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                                        labelStyle={{ color: "var(--header-text, #6b7280)" }}
+                                                        formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                                    />
+                                                    <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
+                                                    {activeBankKeys.map(bankKey => (
+                                                        <Line key={bankKey} type="monotone" dataKey={bankKey} name={BANK_ACCOUNTS.find(b => b.key === bankKey)?.label || bankKey} stroke={BANK_CHART_COLORS[bankKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: BANK_CHART_COLORS[bankKey] || "#9ca3af", r: 3 }} connectNulls />
+                                                    ))}
+                                                </LineChart>
+                                            ) : revenueViewMode === "gateway" ? (
+                                                <LineChart data={monthlyByGateway.length > 0 ? monthlyByGateway : chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                                    <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                                        labelStyle={{ color: "var(--header-text, #6b7280)" }}
+                                                        formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                                    />
+                                                    <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
+                                                    {activeGatewayKeys.map(gwKey => (
+                                                        <Line key={gwKey} type="monotone" dataKey={gwKey} name={gwKey === "sem-gateway" ? "Sem Gateway" : (gwKey.charAt(0).toUpperCase() + gwKey.slice(1))} stroke={GATEWAY_CHART_COLORS[gwKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: GATEWAY_CHART_COLORS[gwKey] || "#9ca3af", r: 3 }} connectNulls />
+                                                    ))}
+                                                </LineChart>
+                                            ) : activePnlKeys.length > 0 ? (
+                                                <LineChart data={monthlyByPnl} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                                    <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                                        labelStyle={{ color: "var(--header-text, #6b7280)" }}
+                                                        formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                                    />
+                                                    <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
+                                                    {activePnlKeys.map(pnlKey => {
+                                                        const pnlConfig = PNL_LINES.find(l => l.code === pnlKey);
+                                                        const label = pnlConfig ? `${pnlConfig.icon} ${pnlConfig.label}` : (pnlKey === "unclassified" ? "❓ Unclassified" : pnlKey);
+                                                        return <Line key={pnlKey} type="monotone" dataKey={pnlKey} name={label} stroke={PNL_CHART_COLORS[pnlKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: PNL_CHART_COLORS[pnlKey] || "#9ca3af", r: 3 }} connectNulls />;
+                                                    })}
+                                                </LineChart>
+                                            ) : (
+                                                /* No inflows at all */
+                                                <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                                    <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                                        labelStyle={{ color: "var(--header-text, #6b7280)" }}
+                                                        formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                                    />
+                                                    <Line type="monotone" dataKey="inflows" name="Inflows" stroke="#6b7280" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: "#6b7280", r: 3 }} />
+                                                </LineChart>
+                                            )}
+                                        </ResponsiveContainer>
+                                    </div>
+
+                                    {/* ─── Inflows Breakdown Cards (Bank Account / Gateway / P&L Line) ─── */}
+                                    {(Object.keys(revenueByBank).length > 0 || Object.keys(summary.byGateway).length > 0 || Object.keys(pnlLineRevenue.byLine).length > 0) && (
+                                        <div className="mt-5">
+                                            {/* Bank Account view */}
+                                            {revenueViewMode === "bank" && (
+                                                <div className="flex gap-2 overflow-x-auto pb-2">
+                                                    {BANK_ACCOUNTS.filter(b => revenueByBank[b.key]).map(bank => {
+                                                        const stats = revenueByBank[bank.key];
+                                                        const net = stats.inflows - stats.outflows;
+                                                        return (
+                                                            <div key={bank.key} className="flex-shrink-0 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[145px]">
+                                                                <p className={`text-[10px] uppercase font-medium mb-1 ${bank.textColor}`}>{bank.label}</p>
+                                                                <div className="space-y-0.5">
+                                                                    <div className="flex justify-between text-[10px]">
+                                                                        <span className="text-gray-500">In</span>
+                                                                        <span className="text-green-400 font-medium">{formatCompactCurrency(stats.inflows, bank.currency)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-[10px]">
+                                                                        <span className="text-gray-500">Out</span>
+                                                                        <span className="text-red-400 font-medium">{formatCompactCurrency(stats.outflows, bank.currency)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
+                                                                        <span className="text-gray-500">Net</span>
+                                                                        <span className={`font-bold ${net >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(net, bank.currency)}</span>
+                                                                    </div>
+                                                                    <div className="flex justify-between text-[10px]">
+                                                                        <span className="text-gray-500">Txns</span>
+                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{stats.count}</span>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                            )}
+
+                                            {/* Gateway view — ALL bank inflows by gateway */}
+                                            {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length > 0 && (
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-2 px-1">
+                                                        <span className="text-[10px] text-gray-500">
+                                                            All inflows by payment gateway • {summary.reconciledCount} reconciled ({summary.reconciledPct}%)
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex gap-2 overflow-x-auto pb-2">
+                                                        {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
+                                                            const gwStyle = getGatewayStyle(gw);
+                                                            const gwLabel = gw === "sem-gateway" ? "Sem Gateway" : (gw.charAt(0).toUpperCase() + gw.slice(1));
+                                                            const pct = summary.totalInflow > 0 ? Math.round((stats.amount / summary.totalInflow) * 100) : 0;
+                                                            return (
+                                                                <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
+                                                                    <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
+                                                                    <div className="space-y-0.5">
+                                                                        <div className="flex justify-between text-[10px]">
+                                                                            <span className="text-gray-500">Amount</span>
+                                                                            <span className="text-green-400 font-bold">{formatCompactCurrency(stats.amount, dominantCurrency)}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-[10px]">
+                                                                            <span className="text-gray-500">Txns</span>
+                                                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{stats.count}</span>
+                                                                        </div>
+                                                                        <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
+                                                                            <span className="text-gray-500">Share</span>
+                                                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            {/* Gateway empty state */}
+                                            {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length === 0 && (
+                                                <div className="text-center py-4">
+                                                    <CreditCard className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                                                    <p className="text-xs text-gray-500">No inflows in this period</p>
+                                                </div>
+                                            )}
+
+                                            {/* P&L Line view — ALL bank inflows with chain-based classification */}
+                                            {revenueViewMode === "pnl" && (
+                                                <div>
+                                                    {Object.keys(pnlLineRevenue.byLine).length > 0 ? (
+                                                        <>
+                                                            {/* Total banner */}
+                                                            <div className="flex items-center justify-between mb-2 px-1">
+                                                                <span className="text-[10px] text-gray-500">
+                                                                    {PNL_LINES.filter(l => l.code !== "internal" && pnlLineRevenue.byLine[l.code]).length} P&L lines
+                                                                    {pnlLineRevenue.byLine["unclassified"] ? ` + unclassified` : ""}
+                                                                    {pnlLineRevenue.byLine["internal"] ? ` • ${pnlLineRevenue.byLine["internal"].count} internal excluded` : ""}
+                                                                    {" • "}
+                                                                    {Object.entries(pnlLineRevenue.byLine).filter(([k]) => k !== "internal").reduce((s, [, l]) => s + l.count, 0)} revenue inflows
+                                                                </span>
+                                                                <span className="text-xs text-green-400 font-bold">{formatCompactCurrency(pnlLineRevenue.total, dominantCurrency)} revenue</span>
+                                                            </div>
+                                                            {/* P&L Line cards — clickable */}
+                                                            <div className="flex gap-2 overflow-x-auto pb-2">
+                                                                {PNL_LINES.filter(l => l.code !== "internal").map(line => {
+                                                                    const lineData = pnlLineRevenue.byLine[line.code];
+                                                                    if (!lineData) return null;
+                                                                    const pct = pnlLineRevenue.total > 0 ? Math.round((lineData.amount / pnlLineRevenue.total) * 100) : 0;
+                                                                    const productCount = Object.keys(lineData.products).length;
+                                                                    return (
+                                                                        <div
+                                                                            key={line.code}
+                                                                            onClick={() => setSelectedPnlLine(line.code)}
+                                                                            className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg ${line.bg} ${line.border}`}
+                                                                        >
+                                                                            <div className="flex items-center gap-1.5 mb-1">
+                                                                                <span className="text-sm">{line.icon}</span>
+                                                                                <p className={`text-[10px] uppercase font-medium truncate ${line.text}`} title={line.label}>{line.label}</p>
+                                                                            </div>
+                                                                            <div className="space-y-0.5">
+                                                                                <div className="flex justify-between text-[10px]">
+                                                                                    <span className="text-gray-500">Inflows</span>
+                                                                                    <span className="text-green-400 font-bold">{formatCompactCurrency(lineData.amount, dominantCurrency)}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between text-[10px]">
+                                                                                    <span className="text-gray-500">Orders</span>
+                                                                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{lineData.count}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between text-[10px]">
+                                                                                    <span className="text-gray-500">Products</span>
+                                                                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{productCount}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
+                                                                                    <span className="text-gray-500">Share</span>
+                                                                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
+                                                                                </div>
+                                                                                <div className="w-full bg-gray-100 dark:bg-[#0a0a0a] rounded-full h-1 mt-0.5">
+                                                                                    <div className={`h-1 rounded-full ${line.border.replace('border-', 'bg-')}`} style={{ width: `${pct}%` }} />
+                                                                                </div>
+                                                                            </div>
+                                                                            <p className="text-[8px] text-gray-600 mt-1 text-center">Click for products</p>
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                                {/* Unclassified bucket */}
+                                                                {pnlLineRevenue.byLine["unclassified"] && (() => {
+                                                                    const uncData = pnlLineRevenue.byLine["unclassified"];
+                                                                    const pct = pnlLineRevenue.total > 0 ? Math.round((uncData.amount / pnlLineRevenue.total) * 100) : 0;
+                                                                    return (
+                                                                        <div
+                                                                            onClick={() => setSelectedPnlLine("unclassified")}
+                                                                            className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700"
+                                                                        >
+                                                                            <div className="flex items-center gap-1.5 mb-1">
+                                                                                <span className="text-sm">❓</span>
+                                                                                <p className="text-[10px] uppercase font-medium text-gray-500 dark:text-gray-400">Unclassified</p>
+                                                                            </div>
+                                                                            <div className="space-y-0.5">
+                                                                                <div className="flex justify-between text-[10px]">
+                                                                                    <span className="text-gray-500">Inflows</span>
+                                                                                    <span className="text-green-400 font-bold">{formatCompactCurrency(uncData.amount, dominantCurrency)}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between text-[10px]">
+                                                                                    <span className="text-gray-500">Orders</span>
+                                                                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{uncData.count}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
+                                                                                    <span className="text-gray-500">Share</span>
+                                                                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <p className="text-[8px] text-gray-600 mt-1 text-center">Click for products</p>
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                                {/* Internal transfers bucket (non-revenue, shown separately) */}
+                                                                {pnlLineRevenue.byLine["internal"] && (() => {
+                                                                    const intData = pnlLineRevenue.byLine["internal"];
+                                                                    const grossTotal = pnlLineRevenue.total + pnlLineRevenue.internalTotal;
+                                                                    const pct = grossTotal > 0 ? Math.round((intData.amount / grossTotal) * 100) : 0;
+                                                                    return (
+                                                                        <div
+                                                                            onClick={() => setSelectedPnlLine("internal")}
+                                                                            className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-slate-900/30 border-slate-700 opacity-70"
+                                                                        >
+                                                                            <div className="flex items-center gap-1.5 mb-1">
+                                                                                <span className="text-sm">🔄</span>
+                                                                                <p className="text-[10px] uppercase font-medium text-slate-400">Internal Transfers</p>
+                                                                            </div>
+                                                                            <div className="space-y-0.5">
+                                                                                <div className="flex justify-between text-[10px]">
+                                                                                    <span className="text-gray-500">Amount</span>
+                                                                                    <span className="text-slate-400 font-bold">{formatCompactCurrency(intData.amount, dominantCurrency)}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between text-[10px]">
+                                                                                    <span className="text-gray-500">Txns</span>
+                                                                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{intData.count}</span>
+                                                                                </div>
+                                                                                <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
+                                                                                    <span className="text-gray-500">% of gross</span>
+                                                                                    <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
+                                                                                </div>
+                                                                            </div>
+                                                                            <p className="text-[8px] text-slate-600 mt-1 text-center">Non-revenue</p>
+                                                                        </div>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        </>
+                                                    ) : (
+                                                        <div className="text-center py-4">
+                                                            <BarChart3 className="h-8 w-8 text-gray-600 mx-auto mb-2" />
+                                                            <p className="text-xs text-gray-500">No inflows in this period</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                        </AccordionContent>
+                    </AccordionItem>
+
+                    {/* ─── Section 2: Posição de Caixa ─── */}
+                    <AccordionItem value="cash-position" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+                        <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
                             <div className="flex items-center gap-2">
-                                {revenueViewMode === "bank" ? <Building className="h-4 w-4 text-gray-500" /> : revenueViewMode === "gateway" ? <CreditCard className="h-4 w-4 text-gray-500" /> : <BarChart3 className="h-4 w-4 text-gray-500" />}
-                                <span className="text-xs text-gray-500 uppercase tracking-wider">
-                                    {revenueViewMode === "bank" ? "Inflows by Bank Account" : revenueViewMode === "gateway" ? "Inflows by Payment Gateway" : "Inflows by P&L Line"}
-                                </span>
+                                <Wallet className="h-4 w-4 text-emerald-500" />
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Posição de Caixa</span>
+                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">30 dias</Badge>
                             </div>
-                            <div className="flex items-center bg-white dark:bg-black rounded-lg border border-gray-200 dark:border-gray-700 p-0.5">
-                                <button
-                                    onClick={() => setRevenueViewMode("bank")}
-                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "bank" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
-                                >
-                                    <Building className="h-3 w-3" />Bank Account
-                                </button>
-                                <button
-                                    onClick={() => setRevenueViewMode("gateway")}
-                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "gateway" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
-                                >
-                                    <CreditCard className="h-3 w-3" />Gateway
-                                </button>
-                                <button
-                                    onClick={() => setRevenueViewMode("pnl")}
-                                    className={`flex items-center gap-1.5 px-3 py-1 rounded-md text-[10px] font-medium transition-all ${revenueViewMode === "pnl" ? "bg-[#117ACA] text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"}`}
-                                >
-                                    <BarChart3 className="h-3 w-3" />P&L Line
-                                </button>
-                            </div>
-                        </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            <div className="px-6 py-4 space-y-5 bg-white dark:bg-black">
 
-                        {/* Line chart — dynamic based on revenueViewMode */}
-                        <div className="h-[200px] w-full">
-                            <ResponsiveContainer width="100%" height="100%">
-                                {revenueViewMode === "bank" ? (
-                                    <LineChart data={monthlyByBank.length > 0 ? monthlyByBank : chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                        <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
-                                        <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
-                                            labelStyle={{ color: "var(--header-text, #6b7280)" }}
-                                            formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
+                                {/* Highlighted date picker + summary card */}
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Calendar className="h-4 w-4 text-gray-500" />
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Destacar data:</span>
+                                        <Input
+                                            type="date"
+                                            value={highlightDate}
+                                            onChange={e => setHighlightDate(e.target.value)}
+                                            className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
                                         />
-                                        <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
-                                        {activeBankKeys.map(bankKey => (
-                                            <Line key={bankKey} type="monotone" dataKey={bankKey} name={BANK_ACCOUNTS.find(b => b.key === bankKey)?.label || bankKey} stroke={BANK_CHART_COLORS[bankKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: BANK_CHART_COLORS[bankKey] || "#9ca3af", r: 3 }} connectNulls />
-                                        ))}
-                                    </LineChart>
-                                ) : revenueViewMode === "gateway" ? (
-                                    <LineChart data={monthlyByGateway.length > 0 ? monthlyByGateway : chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                        <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
-                                        <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
-                                            labelStyle={{ color: "var(--header-text, #6b7280)" }}
-                                            formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
-                                        />
-                                        <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
-                                        {activeGatewayKeys.map(gwKey => (
-                                            <Line key={gwKey} type="monotone" dataKey={gwKey} name={gwKey === "sem-gateway" ? "Sem Gateway" : (gwKey.charAt(0).toUpperCase() + gwKey.slice(1))} stroke={GATEWAY_CHART_COLORS[gwKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: GATEWAY_CHART_COLORS[gwKey] || "#9ca3af", r: 3 }} connectNulls />
-                                        ))}
-                                    </LineChart>
-                                ) : activePnlKeys.length > 0 ? (
-                                    <LineChart data={monthlyByPnl} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                        <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
-                                        <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
-                                            labelStyle={{ color: "var(--header-text, #6b7280)" }}
-                                            formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
-                                        />
-                                        <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
-                                        {activePnlKeys.map(pnlKey => {
-                                            const pnlConfig = PNL_LINES.find(l => l.code === pnlKey);
-                                            const label = pnlConfig ? `${pnlConfig.icon} ${pnlConfig.label}` : (pnlKey === "unclassified" ? "❓ Unclassified" : pnlKey);
-                                            return <Line key={pnlKey} type="monotone" dataKey={pnlKey} name={label} stroke={PNL_CHART_COLORS[pnlKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: PNL_CHART_COLORS[pnlKey] || "#9ca3af", r: 3 }} connectNulls />;
-                                        })}
-                                    </LineChart>
-                                ) : (
-                                    /* No inflows at all */
-                                    <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                        <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                        <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
-                                        <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, dominantCurrency)} />
-                                        <Tooltip
-                                            contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
-                                            labelStyle={{ color: "var(--header-text, #6b7280)" }}
-                                            formatter={(value: number, name: string) => [formatCurrency(value, dominantCurrency), name]}
-                                        />
-                                        <Line type="monotone" dataKey="inflows" name="Inflows" stroke="#6b7280" strokeWidth={2} strokeDasharray="5 5" dot={{ fill: "#6b7280", r: 3 }} />
-                                    </LineChart>
+                                        {highlightDate && (
+                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-900 dark:hover:text-white" onClick={() => setHighlightDate("")}>
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        )}
+                                    </div>
+
+                                    {/* Highlighted date summary card */}
+                                    {highlightedPosition && (
+                                        <div className="flex items-center gap-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg px-4 py-2">
+                                            <div className="text-center">
+                                                <p className="text-[10px] text-yellow-600 dark:text-yellow-400 uppercase font-medium">
+                                                    {new Date(highlightDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
+                                                </p>
+                                                <p className={`text-lg font-bold ${highlightedPosition.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                                    {formatCurrency(highlightedPosition.total, "EUR")}
+                                                </p>
+                                                <p className="text-[9px] text-gray-500">Total (todas as contas)</p>
+                                            </div>
+                                            <div className="border-l border-yellow-200 dark:border-yellow-700 pl-3 space-y-0.5">
+                                                {BANK_ACCOUNTS.map(bank => (
+                                                    <div key={bank.key} className="flex items-center justify-between gap-4 text-[10px]">
+                                                        <span className={bank.textColor}>{bank.label}</span>
+                                                        <span className="text-gray-900 dark:text-white font-medium">
+                                                            {formatCurrency(highlightedPosition[bank.key] || 0, bank.currency)}
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Area chart — cash position evolution */}
+                                {cashPositionData.length > 0 && (
+                                    <div className="h-[220px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart data={cashPositionData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                                                <defs>
+                                                    <linearGradient id="cpGradTotal" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="cpGradBkEur" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="cpGradBkUsd" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="cpGradSab" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="cpGradChase" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                                <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                                <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, "EUR")} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                                    labelStyle={{ color: "var(--header-text, #6b7280)" }}
+                                                    formatter={(value: number, name: string) => {
+                                                        const bank = BANK_ACCOUNTS.find(b => b.key === name);
+                                                        return [formatCurrency(value, bank?.currency || "EUR"), bank?.label || name];
+                                                    }}
+                                                />
+                                                <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
+                                                <Area type="monotone" dataKey="total" name="Total" stroke="#10b981" strokeWidth={2.5} fill="url(#cpGradTotal)" dot={false} />
+                                                <Area type="monotone" dataKey="bankinter-eur" name="Bankinter EUR" stroke="#3b82f6" strokeWidth={1.5} fill="url(#cpGradBkEur)" dot={false} strokeDasharray="4 2" />
+                                                <Area type="monotone" dataKey="bankinter-usd" name="Bankinter USD" stroke="#10b981" strokeWidth={1.5} fill="url(#cpGradBkUsd)" dot={false} strokeDasharray="4 2" />
+                                                <Area type="monotone" dataKey="sabadell" name="Sabadell EUR" stroke="#f97316" strokeWidth={1.5} fill="url(#cpGradSab)" dot={false} strokeDasharray="4 2" />
+                                                <Area type="monotone" dataKey="chase-usd" name="Chase USD" stroke="#a855f7" strokeWidth={1.5} fill="url(#cpGradChase)" dot={false} strokeDasharray="4 2" />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
                                 )}
-                            </ResponsiveContainer>
-                        </div>
 
-                        {/* ─── Inflows Breakdown Cards (Bank Account / Gateway / P&L Line) ─── */}
-                        {(Object.keys(revenueByBank).length > 0 || Object.keys(summary.byGateway).length > 0 || Object.keys(pnlLineRevenue.byLine).length > 0) && (
-                            <div className="mt-5">
-                                {/* Bank Account view */}
-                                {revenueViewMode === "bank" && (
-                                    <div className="flex gap-2 overflow-x-auto pb-2">
-                                        {BANK_ACCOUNTS.filter(b => revenueByBank[b.key]).map(bank => {
-                                            const stats = revenueByBank[bank.key];
-                                            const net = stats.inflows - stats.outflows;
+                                {/* Daily position table */}
+                                <div className="overflow-x-auto max-h-[400px] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                                    <table className="w-full text-xs">
+                                        <thead className="sticky top-0 bg-gray-50 dark:bg-[#0a0a0a] z-10">
+                                            <tr className="border-b border-gray-200 dark:border-gray-700">
+                                                <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Data</th>
+                                                {BANK_ACCOUNTS.map(bank => (
+                                                    <th key={bank.key} className={`px-3 py-2 text-right text-[10px] font-medium uppercase ${bank.textColor}`}>{bank.label}</th>
+                                                ))}
+                                                <th className="px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {cashPositionData.map((row, idx) => {
+                                                const isHighlighted = highlightDate && row.date === highlightDate;
+                                                const isToday = row.date === new Date().toISOString().slice(0, 10);
+                                                return (
+                                                    <tr
+                                                        key={row.date}
+                                                        className={`border-b border-gray-100 dark:border-gray-800 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-[#111111] ${isHighlighted ? "bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300 dark:ring-yellow-700" : isToday ? "bg-blue-50/50 dark:bg-blue-900/10" : idx % 2 === 0 ? "bg-white dark:bg-black" : "bg-gray-50/50 dark:bg-[#050505]"}`}
+                                                        onClick={() => setHighlightDate(row.date)}
+                                                    >
+                                                        <td className={`px-3 py-1.5 font-medium whitespace-nowrap ${isHighlighted ? "text-yellow-700 dark:text-yellow-300" : isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"}`}>
+                                                            {row.label}
+                                                            {isToday && <span className="ml-1 text-[8px] text-blue-500">(hoje)</span>}
+                                                        </td>
+                                                        {BANK_ACCOUNTS.map(bank => {
+                                                            const val = row[bank.key] || 0;
+                                                            return (
+                                                                <td key={bank.key} className={`px-3 py-1.5 text-right font-mono ${val === 0 ? "text-gray-400" : val > 0 ? "text-gray-900 dark:text-white" : "text-red-400"}`}>
+                                                                    {val === 0 ? "—" : formatCurrency(val, bank.currency)}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className={`px-3 py-1.5 text-right font-bold font-mono ${row.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                                                            {formatCurrency(row.total, "EUR")}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {cashPositionData.length === 0 && (
+                                    <div className="text-center py-8 text-gray-500">
+                                        <Wallet className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                                        <p className="text-sm">Sem dados de saldo bancário nos últimos 30 dias</p>
+                                        <p className="text-xs mt-1">Faça upload de extratos com coluna SALDO/BALANCE</p>
+                                    </div>
+                                )}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+
+                    {/* ─── Section 3: Extratos Bancários ─── */}
+                    <AccordionItem value="statements" className="flex-1 flex flex-col overflow-hidden border-b-0">
+                        <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a] flex-shrink-0">
+                            <div className="flex items-center gap-2">
+                                <FileText className="h-4 w-4 text-violet-500" />
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Extratos Bancários</span>
+                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{filteredTransactions.length} transações</Badge>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="flex-1 flex flex-col overflow-hidden">
+
+                            {/* ─── Filters ─── */}
+                            <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#0a0a0a]">
+                                <div className="flex items-center gap-3 flex-wrap">
+                                    <Filter className="h-3.5 w-3.5 text-gray-500" />
+                                    <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
+                                    <span className="text-gray-600">→</span>
+                                    <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
+                                    <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111] text-xs">
+                                        Apply
+                                    </Button>
+                                    <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
+                                        <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
+                                        <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree">Braintree</SelectItem><SelectItem value="stripe">Stripe</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gusto">Gusto</SelectItem><SelectItem value="quickbooks">QuickBooks</SelectItem></SelectContent>
+                                    </Select>
+                                    <Select value={flowFilter} onValueChange={setFlowFilter}>
+                                        <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
+                                        <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="income">Inflows</SelectItem><SelectItem value="expense">Outflows</SelectItem></SelectContent>
+                                    </Select>
+                                    <Select value={reconFilter} onValueChange={setReconFilter}>
+                                        <SelectTrigger className="w-32 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
+                                        <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="reconciled">Reconciled</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
+                                    </Select>
+                                    <Select value={gwReconFilter} onValueChange={setGwReconFilter}>
+                                        <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
+                                        <SelectContent><SelectItem value="all">GW All</SelectItem><SelectItem value="auto">Auto</SelectItem><SelectItem value="manual">Manual</SelectItem><SelectItem value="intercompany">Intercompany</SelectItem><SelectItem value="not-reconciled">Not Recon.</SelectItem></SelectContent>
+                                    </Select>
+                                    <Select value={orderFilter} onValueChange={setOrderFilter}>
+                                        <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
+                                        <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            {/* ─── Table Header ─── */}
+                            <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                                <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[1060px]">
+                                    <div className="w-[60px] flex-shrink-0">Date</div>
+                                    {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
+                                    <div className="flex-1 min-w-[200px]">Description</div>
+                                    <div className="w-[100px] flex-shrink-0 truncate">Client</div>
+                                    <div className="w-[80px] flex-shrink-0">Product</div>
+                                    <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
+                                    <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
+                                    <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
+                                    <div className="w-[40px] flex-shrink-0 text-center">GW</div>
+                                    <div className="w-[40px] flex-shrink-0 text-center">Ord</div>
+                                </div>
+                            </div>
+
+                            {/* ─── Content (date-grouped rows) ─── */}
+                            <div className="flex-1 overflow-y-auto overflow-x-auto">
+                                {dateGroups.map(group => (
+                                    <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
+                                        {/* Date group header */}
+                                        <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
+                                            {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+                                            <span className="font-medium text-gray-900 dark:text-white text-sm">{group.dateLabel}</span>
+                                            <span className="text-gray-500 text-xs ml-auto">
+                                                {group.rows.length} txns <span className="mx-1">|</span>
+                                                <span className="text-green-400">+{formatCurrency(group.totalCredits, dominantCurrency)}</span>
+                                                <span className="mx-1">/</span>
+                                                <span className="text-red-400">-{formatCurrency(group.totalDebits, dominantCurrency)}</span>
+                                            </span>
+                                        </div>
+
+                                        {/* Rows */}
+                                        {expandedGroups.has(group.date) && group.rows.map(tx => {
+                                            const bankInfo = BANK_ACCOUNTS.find(b => b.key === tx.source);
+                                            const gwStyle = getGatewayStyle(tx.paymentSource || tx.gateway);
+                                            const isDebit = tx.amount < 0;
+                                            const isCredit = tx.amount > 0;
+
                                             return (
-                                                <div key={bank.key} className="flex-shrink-0 bg-gray-100 dark:bg-[#0a0a0a] rounded-lg border border-gray-200 dark:border-gray-700 px-3 py-2 min-w-[145px]">
-                                                    <p className={`text-[10px] uppercase font-medium mb-1 ${bank.textColor}`}>{bank.label}</p>
-                                                    <div className="space-y-0.5">
-                                                        <div className="flex justify-between text-[10px]">
-                                                            <span className="text-gray-500">In</span>
-                                                            <span className="text-green-400 font-medium">{formatCompactCurrency(stats.inflows, bank.currency)}</span>
+                                                <div key={tx.id}
+                                                    className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[1060px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""}`}
+                                                    onClick={() => handleRowSelect(tx)}>
+                                                    <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
+                                                    {showBankColumn && (
+                                                        <div className="w-[90px] flex-shrink-0">
+                                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-500 dark:text-gray-400"} border-gray-300 dark:border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
                                                         </div>
-                                                        <div className="flex justify-between text-[10px]">
-                                                            <span className="text-gray-500">Out</span>
-                                                            <span className="text-red-400 font-medium">{formatCompactCurrency(stats.outflows, bank.currency)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
-                                                            <span className="text-gray-500">Net</span>
-                                                            <span className={`font-bold ${net >= 0 ? "text-green-400" : "text-red-400"}`}>{formatCompactCurrency(net, bank.currency)}</span>
-                                                        </div>
-                                                        <div className="flex justify-between text-[10px]">
-                                                            <span className="text-gray-500">Txns</span>
-                                                            <span className="text-gray-700 dark:text-gray-300 font-medium">{stats.count}</span>
-                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
+                                                    {/* Client column */}
+                                                    <div className="w-[100px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300 truncate" title={tx.custom_data?.matched_customer_names?.join(', ') || ''}>
+                                                        {tx.amount > 0 && tx.custom_data?.matched_customer_names?.length > 0
+                                                            ? <span className="text-blue-300">{tx.custom_data.matched_customer_names[0]}{tx.custom_data.matched_customer_names.length > 1 ? ` +${tx.custom_data.matched_customer_names.length - 1}` : ''}</span>
+                                                            : tx.amount < 0 && tx.custom_data?.matched_provider
+                                                                ? <span className="text-orange-300">{tx.custom_data.matched_provider}</span>
+                                                                : <span className="text-gray-600">-</span>}
+                                                    </div>
+                                                    {/* Product / FAC column */}
+                                                    <div className="w-[80px] flex-shrink-0">
+                                                        {(() => {
+                                                            const facCode = tx.custom_data?.matched_invoice_fac || null;
+                                                            if (facCode) {
+                                                                const lineCode = getPnlLineFromCode(facCode);
+                                                                const lineConfig = getPnlLineConfig(lineCode);
+                                                                return (
+                                                                    <Badge variant="outline" className={`text-[8px] px-1 py-0 ${lineConfig?.bg || 'bg-gray-100 dark:bg-black'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
+                                                                        {lineConfig?.icon || ''} {facCode}
+                                                                    </Badge>
+                                                                );
+                                                            }
+                                                            if (tx.custom_data?.matched_products?.length > 0) {
+                                                                return <span className="text-violet-300 text-[9px] truncate block">{tx.custom_data.matched_products[0]}</span>;
+                                                            }
+                                                            return <span className="text-gray-600 text-[9px]">-</span>;
+                                                        })()}
+                                                    </div>
+                                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                        {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                                    </div>
+                                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                        {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                                    </div>
+                                                    <div className="w-[80px] flex-shrink-0 text-center">
+                                                        {(tx.paymentSource || tx.gateway) ? (
+                                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
+                                                                {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
+                                                            </Badge>
+                                                        ) : <span className="text-gray-600 text-[9px]">-</span>}
+                                                    </div>
+                                                    <div className="w-[40px] flex-shrink-0 text-center">
+                                                        {tx.isReconciled ? (
+                                                            tx.reconciliationType === "manual" ? <User className="h-3.5 w-3.5 text-blue-500 mx-auto" /> : <Zap className="h-3.5 w-3.5 text-green-500 mx-auto" />
+                                                        ) : (
+                                                            <AlertCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
+                                                        )}
+                                                    </div>
+                                                    <div className="w-[40px] flex-shrink-0 text-center">
+                                                        {tx.isOrderReconciled ? (
+                                                            <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
+                                                        ) : (
+                                                            <span className="text-gray-600 text-[9px]">-</span>
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
                                         })}
                                     </div>
-                                )}
+                                ))}
 
-                                {/* Gateway view — ALL bank inflows by gateway */}
-                                {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length > 0 && (
-                                    <div>
-                                        <div className="flex items-center gap-2 mb-2 px-1">
-                                            <span className="text-[10px] text-gray-500">
-                                                All inflows by payment gateway • {summary.reconciledCount} reconciled ({summary.reconciledPct}%)
-                                            </span>
-                                        </div>
-                                        <div className="flex gap-2 overflow-x-auto pb-2">
-                                            {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
-                                                const gwStyle = getGatewayStyle(gw);
-                                                const gwLabel = gw === "sem-gateway" ? "Sem Gateway" : (gw.charAt(0).toUpperCase() + gw.slice(1));
-                                                const pct = summary.totalInflow > 0 ? Math.round((stats.amount / summary.totalInflow) * 100) : 0;
-                                                return (
-                                                    <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
-                                                        <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
-                                                        <div className="space-y-0.5">
-                                                            <div className="flex justify-between text-[10px]">
-                                                                <span className="text-gray-500">Amount</span>
-                                                                <span className="text-green-400 font-bold">{formatCompactCurrency(stats.amount, dominantCurrency)}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-[10px]">
-                                                                <span className="text-gray-500">Txns</span>
-                                                                <span className="text-gray-700 dark:text-gray-300 font-medium">{stats.count}</span>
-                                                            </div>
-                                                            <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
-                                                                <span className="text-gray-500">Share</span>
-                                                                <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
+                                {dateGroups.length === 0 && (
+                                    <div className="text-center py-20 text-gray-500">
+                                        <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                                        <p>No transactions found</p>
+                                        <p className="text-sm mt-1">Adjust filters or select other accounts</p>
                                     </div>
                                 )}
-
-                                {/* Gateway empty state */}
-                                {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length === 0 && (
-                                    <div className="text-center py-4">
-                                        <CreditCard className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                                        <p className="text-xs text-gray-500">No inflows in this period</p>
-                                    </div>
-                                )}
-
-                                {/* P&L Line view — ALL bank inflows with chain-based classification */}
-                                {revenueViewMode === "pnl" && (
-                                    <div>
-                                        {Object.keys(pnlLineRevenue.byLine).length > 0 ? (
-                                            <>
-                                                {/* Total banner */}
-                                                <div className="flex items-center justify-between mb-2 px-1">
-                                                    <span className="text-[10px] text-gray-500">
-                                                        {PNL_LINES.filter(l => l.code !== "internal" && pnlLineRevenue.byLine[l.code]).length} P&L lines
-                                                        {pnlLineRevenue.byLine["unclassified"] ? ` + unclassified` : ""}
-                                                        {pnlLineRevenue.byLine["internal"] ? ` • ${pnlLineRevenue.byLine["internal"].count} internal excluded` : ""}
-                                                        {" • "}
-                                                        {Object.entries(pnlLineRevenue.byLine).filter(([k]) => k !== "internal").reduce((s, [, l]) => s + l.count, 0)} revenue inflows
-                                                    </span>
-                                                    <span className="text-xs text-green-400 font-bold">{formatCompactCurrency(pnlLineRevenue.total, dominantCurrency)} revenue</span>
-                                                </div>
-                                                {/* P&L Line cards — clickable */}
-                                                <div className="flex gap-2 overflow-x-auto pb-2">
-                                                    {PNL_LINES.filter(l => l.code !== "internal").map(line => {
-                                                        const lineData = pnlLineRevenue.byLine[line.code];
-                                                        if (!lineData) return null;
-                                                        const pct = pnlLineRevenue.total > 0 ? Math.round((lineData.amount / pnlLineRevenue.total) * 100) : 0;
-                                                        const productCount = Object.keys(lineData.products).length;
-                                                        return (
-                                                            <div
-                                                                key={line.code}
-                                                                onClick={() => setSelectedPnlLine(line.code)}
-                                                                className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg ${line.bg} ${line.border}`}
-                                                            >
-                                                                <div className="flex items-center gap-1.5 mb-1">
-                                                                    <span className="text-sm">{line.icon}</span>
-                                                                    <p className={`text-[10px] uppercase font-medium truncate ${line.text}`} title={line.label}>{line.label}</p>
-                                                                </div>
-                                                                <div className="space-y-0.5">
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-gray-500">Inflows</span>
-                                                                        <span className="text-green-400 font-bold">{formatCompactCurrency(lineData.amount, dominantCurrency)}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-gray-500">Orders</span>
-                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{lineData.count}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-gray-500">Products</span>
-                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{productCount}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
-                                                                        <span className="text-gray-500">Share</span>
-                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
-                                                                    </div>
-                                                                    <div className="w-full bg-gray-100 dark:bg-[#0a0a0a] rounded-full h-1 mt-0.5">
-                                                                        <div className={`h-1 rounded-full ${line.border.replace('border-', 'bg-')}`} style={{ width: `${pct}%` }} />
-                                                                    </div>
-                                                                </div>
-                                                                <p className="text-[8px] text-gray-600 mt-1 text-center">Click for products</p>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                    {/* Unclassified bucket */}
-                                                    {pnlLineRevenue.byLine["unclassified"] && (() => {
-                                                        const uncData = pnlLineRevenue.byLine["unclassified"];
-                                                        const pct = pnlLineRevenue.total > 0 ? Math.round((uncData.amount / pnlLineRevenue.total) * 100) : 0;
-                                                        return (
-                                                            <div
-                                                                onClick={() => setSelectedPnlLine("unclassified")}
-                                                                className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700"
-                                                            >
-                                                                <div className="flex items-center gap-1.5 mb-1">
-                                                                    <span className="text-sm">❓</span>
-                                                                    <p className="text-[10px] uppercase font-medium text-gray-500 dark:text-gray-400">Unclassified</p>
-                                                                </div>
-                                                                <div className="space-y-0.5">
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-gray-500">Inflows</span>
-                                                                        <span className="text-green-400 font-bold">{formatCompactCurrency(uncData.amount, dominantCurrency)}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-gray-500">Orders</span>
-                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{uncData.count}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
-                                                                        <span className="text-gray-500">Share</span>
-                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
-                                                                    </div>
-                                                                </div>
-                                                                <p className="text-[8px] text-gray-600 mt-1 text-center">Click for products</p>
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                    {/* Internal transfers bucket (non-revenue, shown separately) */}
-                                                    {pnlLineRevenue.byLine["internal"] && (() => {
-                                                        const intData = pnlLineRevenue.byLine["internal"];
-                                                        const grossTotal = pnlLineRevenue.total + pnlLineRevenue.internalTotal;
-                                                        const pct = grossTotal > 0 ? Math.round((intData.amount / grossTotal) * 100) : 0;
-                                                        return (
-                                                            <div
-                                                                onClick={() => setSelectedPnlLine("internal")}
-                                                                className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-slate-900/30 border-slate-700 opacity-70"
-                                                            >
-                                                                <div className="flex items-center gap-1.5 mb-1">
-                                                                    <span className="text-sm">🔄</span>
-                                                                    <p className="text-[10px] uppercase font-medium text-slate-400">Internal Transfers</p>
-                                                                </div>
-                                                                <div className="space-y-0.5">
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-gray-500">Amount</span>
-                                                                        <span className="text-slate-400 font-bold">{formatCompactCurrency(intData.amount, dominantCurrency)}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px]">
-                                                                        <span className="text-gray-500">Txns</span>
-                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{intData.count}</span>
-                                                                    </div>
-                                                                    <div className="flex justify-between text-[10px] border-t border-gray-200 dark:border-gray-700 pt-0.5">
-                                                                        <span className="text-gray-500">% of gross</span>
-                                                                        <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
-                                                                    </div>
-                                                                </div>
-                                                                <p className="text-[8px] text-slate-600 mt-1 text-center">Non-revenue</p>
-                                                            </div>
-                                                        );
-                                                    })()}
-                                                </div>
-                                            </>
-                                        ) : (
-                                            <div className="text-center py-4">
-                                                <BarChart3 className="h-8 w-8 text-gray-600 mx-auto mb-2" />
-                                                <p className="text-xs text-gray-500">No inflows in this period</p>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                {/* ─── Filters ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#0a0a0a]">
-                    <div className="flex items-center gap-3 flex-wrap">
-                        <Filter className="h-3.5 w-3.5 text-gray-500" />
-                        <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
-                        <span className="text-gray-600">→</span>
-                        <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
-                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111] text-xs">
-                            Apply
-                        </Button>
-                        <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree">Braintree</SelectItem><SelectItem value="stripe">Stripe</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gusto">Gusto</SelectItem><SelectItem value="quickbooks">QuickBooks</SelectItem></SelectContent>
-                        </Select>
-                        <Select value={flowFilter} onValueChange={setFlowFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="income">Inflows</SelectItem><SelectItem value="expense">Outflows</SelectItem></SelectContent>
-                        </Select>
-                        <Select value={reconFilter} onValueChange={setReconFilter}>
-                            <SelectTrigger className="w-32 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="reconciled">Reconciled</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
-                        </Select>
-                        <Select value={gwReconFilter} onValueChange={setGwReconFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">GW All</SelectItem><SelectItem value="auto">Auto</SelectItem><SelectItem value="manual">Manual</SelectItem><SelectItem value="intercompany">Intercompany</SelectItem><SelectItem value="not-reconciled">Not Recon.</SelectItem></SelectContent>
-                        </Select>
-                        <Select value={orderFilter} onValueChange={setOrderFilter}>
-                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
-                        </Select>
-                    </div>
-                </div>
-
-                {/* ─── Table Header ─── */}
-                <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[1060px]">
-                        <div className="w-[60px] flex-shrink-0">Date</div>
-                        {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
-                        <div className="flex-1 min-w-[200px]">Description</div>
-                        <div className="w-[100px] flex-shrink-0 truncate">Client</div>
-                        <div className="w-[80px] flex-shrink-0">Product</div>
-                        <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
-                        <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
-                        <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
-                        <div className="w-[40px] flex-shrink-0 text-center">GW</div>
-                        <div className="w-[40px] flex-shrink-0 text-center">Ord</div>
-                    </div>
-                </div>
-
-                {/* ─── Content (date-grouped rows) ─── */}
-                <div className="flex-1 overflow-y-auto overflow-x-auto">
-                    {dateGroups.map(group => (
-                        <div key={group.date} className="border-b border-gray-200 dark:border-gray-800">
-                            {/* Date group header */}
-                            <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleGroup(group.date)}>
-                                {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
-                                <span className="font-medium text-gray-900 dark:text-white text-sm">{group.dateLabel}</span>
-                                <span className="text-gray-500 text-xs ml-auto">
-                                    {group.rows.length} txns <span className="mx-1">|</span>
-                                    <span className="text-green-400">+{formatCurrency(group.totalCredits, dominantCurrency)}</span>
-                                    <span className="mx-1">/</span>
-                                    <span className="text-red-400">-{formatCurrency(group.totalDebits, dominantCurrency)}</span>
-                                </span>
+                                <div className="h-8"></div>
                             </div>
 
-                            {/* Rows */}
-                            {expandedGroups.has(group.date) && group.rows.map(tx => {
-                                const bankInfo = BANK_ACCOUNTS.find(b => b.key === tx.source);
-                                const gwStyle = getGatewayStyle(tx.paymentSource || tx.gateway);
-                                const isDebit = tx.amount < 0;
-                                const isCredit = tx.amount > 0;
+                        </AccordionContent>
+                    </AccordionItem>
 
-                                return (
-                                    <div key={tx.id}
-                                        className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[1060px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""}`}
-                                        onClick={() => handleRowSelect(tx)}>
-                                        <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
-                                        {showBankColumn && (
-                                            <div className="w-[90px] flex-shrink-0">
-                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-500 dark:text-gray-400"} border-gray-300 dark:border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
-                                            </div>
-                                        )}
-                                        <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
-                                        {/* Client column */}
-                                        <div className="w-[100px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300 truncate" title={tx.custom_data?.matched_customer_names?.join(', ') || ''}>
-                                            {tx.amount > 0 && tx.custom_data?.matched_customer_names?.length > 0
-                                                ? <span className="text-blue-300">{tx.custom_data.matched_customer_names[0]}{tx.custom_data.matched_customer_names.length > 1 ? ` +${tx.custom_data.matched_customer_names.length - 1}` : ''}</span>
-                                                : tx.amount < 0 && tx.custom_data?.matched_provider
-                                                    ? <span className="text-orange-300">{tx.custom_data.matched_provider}</span>
-                                                    : <span className="text-gray-600">-</span>}
-                                        </div>
-                                        {/* Product / FAC column */}
-                                        <div className="w-[80px] flex-shrink-0">
-                                            {(() => {
-                                                const facCode = tx.custom_data?.matched_invoice_fac || null;
-                                                if (facCode) {
-                                                    const lineCode = getPnlLineFromCode(facCode);
-                                                    const lineConfig = getPnlLineConfig(lineCode);
-                                                    return (
-                                                        <Badge variant="outline" className={`text-[8px] px-1 py-0 ${lineConfig?.bg || 'bg-gray-100 dark:bg-black'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
-                                                            {lineConfig?.icon || ''} {facCode}
-                                                        </Badge>
-                                                    );
-                                                }
-                                                if (tx.custom_data?.matched_products?.length > 0) {
-                                                    return <span className="text-violet-300 text-[9px] truncate block">{tx.custom_data.matched_products[0]}</span>;
-                                                }
-                                                return <span className="text-gray-600 text-[9px]">-</span>;
-                                            })()}
-                                        </div>
-                                        <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                            {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
-                                        </div>
-                                        <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                            {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
-                                        </div>
-                                        <div className="w-[80px] flex-shrink-0 text-center">
-                                            {(tx.paymentSource || tx.gateway) ? (
-                                                <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
-                                                    {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
-                                                </Badge>
-                                            ) : <span className="text-gray-600 text-[9px]">-</span>}
-                                        </div>
-                                        <div className="w-[40px] flex-shrink-0 text-center">
-                                            {tx.isReconciled ? (
-                                                tx.reconciliationType === "manual" ? <User className="h-3.5 w-3.5 text-blue-500 mx-auto" /> : <Zap className="h-3.5 w-3.5 text-green-500 mx-auto" />
-                                            ) : (
-                                                <AlertCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
-                                            )}
-                                        </div>
-                                        <div className="w-[40px] flex-shrink-0 text-center">
-                                            {tx.isOrderReconciled ? (
-                                                <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
-                                            ) : (
-                                                <span className="text-gray-600 text-[9px]">-</span>
-                                            )}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    ))}
-
-                    {dateGroups.length === 0 && (
-                        <div className="text-center py-20 text-gray-500">
-                            <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>No transactions found</p>
-                            <p className="text-sm mt-1">Adjust filters or select other accounts</p>
-                        </div>
-                    )}
-                    <div className="h-8"></div>
-                </div>
+                </Accordion>
             </div>
 
             {/* ════════════════════════════════════════════════════════ */}
