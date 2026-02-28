@@ -1040,18 +1040,48 @@ export default function BankCashFlowPage() {
         return unique.length === 1 ? unique[0] : "EUR";
     }, [selectedBanks]);
 
-    // ─── Cash Position: highlight date picker state ───
+    // ─── Cash Position controls ───
     const [highlightDate, setHighlightDate] = useState<string>("");
+    const [cashRangePreset, setCashRangePreset] = useState<"7d" | "30d" | "90d" | "180d" | "365d" | "custom">("30d");
+    const [cashCustomRange, setCashCustomRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
 
-    // ─── Cash Position Data (last 30 days, per bank, with carry-forward) ───
+    // ─── Cash Position Data (dynamic range, per bank, with carry-forward) ───
     const cashPositionData = useMemo(() => {
-        // Build last 30 days array
-        const today = new Date();
+        const presetDaysMap: Record<"7d" | "30d" | "90d" | "180d" | "365d", number> = {
+            "7d": 7,
+            "30d": 30,
+            "90d": 90,
+            "180d": 180,
+            "365d": 365,
+        };
+
+        // Build days array based on selected range
         const days: string[] = [];
-        for (let i = 29; i >= 0; i--) {
-            const d = new Date(today);
-            d.setDate(d.getDate() - i);
-            days.push(d.toISOString().slice(0, 10));
+        if (cashRangePreset === "custom") {
+            if (!cashCustomRange.start || !cashCustomRange.end || cashCustomRange.start > cashCustomRange.end) {
+                return [];
+            }
+            const start = new Date(cashCustomRange.start + "T00:00:00");
+            const end = new Date(cashCustomRange.end + "T00:00:00");
+            const cursor = new Date(start);
+            let guard = 0;
+            while (cursor <= end && guard < 730) {
+                days.push(cursor.toISOString().slice(0, 10));
+                cursor.setDate(cursor.getDate() + 1);
+                guard++;
+            }
+        } else {
+            const today = new Date();
+            const totalDays = presetDaysMap[cashRangePreset];
+            for (let i = totalDays - 1; i >= 0; i--) {
+                const d = new Date(today);
+                d.setDate(d.getDate() - i);
+                days.push(d.toISOString().slice(0, 10));
+            }
+        }
+
+        if (days.length === 0) {
+            return [];
         }
 
         // Group transactions by (source, date) — pick last balance per day per bank
@@ -1110,13 +1140,26 @@ export default function BankCashFlowPage() {
         });
 
         return result;
-    }, [bankTransactions]);
+    }, [bankTransactions, cashRangePreset, cashCustomRange]);
 
     // ─── Cash position for highlighted date ───
     const highlightedPosition = useMemo(() => {
         if (!highlightDate) return null;
         return cashPositionData.find(d => d.date === highlightDate) || null;
     }, [highlightDate, cashPositionData]);
+
+    const cashRangeBadgeLabel = useMemo(() => {
+        if (cashRangePreset === "custom") {
+            return cashPositionData.length > 0 ? `${cashPositionData.length} days` : "Custom";
+        }
+        return `${cashRangePreset.replace("d", "")} days`;
+    }, [cashRangePreset, cashPositionData.length]);
+
+    useEffect(() => {
+        if (highlightDate && !cashPositionData.some(d => d.date === highlightDate)) {
+            setHighlightDate("");
+        }
+    }, [cashPositionData, highlightDate]);
 
     // ════════════════════════════════════════════════════════
     // RENDER
@@ -1226,13 +1269,13 @@ export default function BankCashFlowPage() {
                 {/* ═══ ACCORDION SECTIONS ═══ */}
                 <Accordion type="multiple" defaultValue={["charts", "cash-position", "statements"]} className="flex-1 flex flex-col overflow-hidden">
 
-                    {/* ─── Section 1: Gráficos & Análise ─── */}
+                    {/* ─── Section 1: Charts & Analytics ─── */}
                     <AccordionItem value="charts" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
                             <div className="flex items-center gap-2">
                                 <BarChart3 className="h-4 w-4 text-blue-500" />
-                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Gráficos & Análise</span>
-                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{chartData.length} meses</Badge>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Charts & Analytics</span>
+                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{chartData.length} months</Badge>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
@@ -1644,23 +1687,59 @@ export default function BankCashFlowPage() {
                         </AccordionContent>
                     </AccordionItem>
 
-                    {/* ─── Section 2: Posição de Caixa ─── */}
+                    {/* ─── Section 2: Cash Position ─── */}
                     <AccordionItem value="cash-position" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
                             <div className="flex items-center gap-2">
                                 <Wallet className="h-4 w-4 text-emerald-500" />
-                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Posição de Caixa</span>
-                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">30 dias</Badge>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Cash Position</span>
+                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{cashRangeBadgeLabel}</Badge>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
                             <div className="px-6 py-4 space-y-5 bg-white dark:bg-black">
 
-                                {/* Highlighted date picker + summary card */}
+                                {/* Range selector + highlighted date */}
                                 <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
                                     <div className="flex items-center gap-2">
+                                        <Filter className="h-4 w-4 text-gray-500" />
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Range:</span>
+                                        <Select value={cashRangePreset} onValueChange={(value: "7d" | "30d" | "90d" | "180d" | "365d" | "custom") => setCashRangePreset(value)}>
+                                            <SelectTrigger className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs">
+                                                <SelectValue placeholder="Select range" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="7d">Last 7 days</SelectItem>
+                                                <SelectItem value="30d">Last 30 days</SelectItem>
+                                                <SelectItem value="90d">Last 90 days</SelectItem>
+                                                <SelectItem value="180d">Last 180 days</SelectItem>
+                                                <SelectItem value="365d">Last 365 days</SelectItem>
+                                                <SelectItem value="custom">Custom range</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {cashRangePreset === "custom" && (
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                type="date"
+                                                value={cashCustomRange.start}
+                                                onChange={e => setCashCustomRange(prev => ({ ...prev, start: e.target.value }))}
+                                                className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
+                                            />
+                                            <span className="text-gray-600 text-xs">to</span>
+                                            <Input
+                                                type="date"
+                                                value={cashCustomRange.end}
+                                                onChange={e => setCashCustomRange(prev => ({ ...prev, end: e.target.value }))}
+                                                className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
+                                            />
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-2">
                                         <Calendar className="h-4 w-4 text-gray-500" />
-                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Destacar data:</span>
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Highlight date:</span>
                                         <Input
                                             type="date"
                                             value={highlightDate}
@@ -1679,12 +1758,12 @@ export default function BankCashFlowPage() {
                                         <div className="flex items-center gap-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg px-4 py-2">
                                             <div className="text-center">
                                                 <p className="text-[10px] text-yellow-600 dark:text-yellow-400 uppercase font-medium">
-                                                    {new Date(highlightDate + "T00:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
+                                                    {new Date(highlightDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
                                                 </p>
                                                 <p className={`text-lg font-bold ${highlightedPosition.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                                                     {formatCurrency(highlightedPosition.total, "EUR")}
                                                 </p>
-                                                <p className="text-[9px] text-gray-500">Total (todas as contas)</p>
+                                                <p className="text-[9px] text-gray-500">Total (all accounts)</p>
                                             </div>
                                             <div className="border-l border-yellow-200 dark:border-yellow-700 pl-3 space-y-0.5">
                                                 {BANK_ACCOUNTS.map(bank => (
@@ -1773,7 +1852,7 @@ export default function BankCashFlowPage() {
                                                     >
                                                         <td className={`px-3 py-1.5 font-medium whitespace-nowrap ${isHighlighted ? "text-yellow-700 dark:text-yellow-300" : isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"}`}>
                                                             {row.label}
-                                                            {isToday && <span className="ml-1 text-[8px] text-blue-500">(hoje)</span>}
+                                                            {isToday && <span className="ml-1 text-[8px] text-blue-500">(today)</span>}
                                                         </td>
                                                         {BANK_ACCOUNTS.map(bank => {
                                                             const val = row[bank.key] || 0;
@@ -1796,21 +1875,21 @@ export default function BankCashFlowPage() {
                                 {cashPositionData.length === 0 && (
                                     <div className="text-center py-8 text-gray-500">
                                         <Wallet className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                                        <p className="text-sm">Sem dados de saldo bancário nos últimos 30 dias</p>
-                                        <p className="text-xs mt-1">Faça upload de extratos com coluna SALDO/BALANCE</p>
+                                        <p className="text-sm">No bank balance data available for this range</p>
+                                        <p className="text-xs mt-1">Upload statements with SALDO/BALANCE columns</p>
                                     </div>
                                 )}
                             </div>
                         </AccordionContent>
                     </AccordionItem>
 
-                    {/* ─── Section 3: Extratos Bancários ─── */}
+                    {/* ─── Section 3: Bank Statements ─── */}
                     <AccordionItem value="statements" className="flex-1 flex flex-col overflow-hidden border-b-0">
                         <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a] flex-shrink-0">
                             <div className="flex items-center gap-2">
                                 <FileText className="h-4 w-4 text-violet-500" />
-                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Extratos Bancários</span>
-                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{filteredTransactions.length} transações</Badge>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Bank Statements</span>
+                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{filteredTransactions.length} transactions</Badge>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent className="flex-1 flex flex-col overflow-hidden">
