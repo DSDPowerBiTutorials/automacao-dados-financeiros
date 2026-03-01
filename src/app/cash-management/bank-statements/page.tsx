@@ -161,6 +161,7 @@ interface RevenueOrderMatch {
     matchReason: string;
     reconciled?: boolean;
     reconciledWith?: string | null;
+    financialAccountCode?: string | null;
 }
 
 interface IntercompanyMatch {
@@ -576,7 +577,7 @@ export default function BankStatementsPage() {
     const [isSearchingOrders, setIsSearchingOrders] = useState(false);
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     // Cache order data so totals survive across multiple searches
-    const [selectedOrdersCache, setSelectedOrdersCache] = useState<Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null }>>(new Map());
+    const [selectedOrdersCache, setSelectedOrdersCache] = useState<Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null }>>(new Map());
 
     // Gateway transaction browsing (for linking individual txns to disbursement)
     const [gatewayTxSearchTerm, setGatewayTxSearchTerm] = useState("");
@@ -658,6 +659,7 @@ export default function BankStatementsPage() {
                         customerName: order.customerName || "",
                         orderId: order.orderId || null,
                         invoiceNumber: order.invoiceNumber || null,
+                        financialAccountCode: order.financialAccountCode || null,
                     }));
                 }
             }
@@ -756,6 +758,7 @@ export default function BankStatementsPage() {
                     matchReason: "Manual search",
                     reconciled: row.reconciled === true,
                     reconciledWith: row.reconciled_with || null,
+                    financialAccountCode: row.financial_account_code || null,
                 }));
             const uniqueById = Array.from(new Map(results.map(item => [item.id, item])).values());
             setOrderSearchResults(uniqueById);
@@ -1539,6 +1542,7 @@ export default function BankStatementsPage() {
                             date: row.order_date || "",
                             matchScore: isExact ? 100 : 60,
                             matchReason: isExact ? "Exact amount + customer name" : `Customer name match`,
+                            financialAccountCode: row.financial_account_code || null,
                         });
                     }
                 });
@@ -1660,23 +1664,23 @@ export default function BankStatementsPage() {
                 try {
                     if (cd.linked_web_order_details?.length > 0) {
                         const preloadIds = new Set<string>();
-                        const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null }>();
+                        const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null }>();
                         for (const d of cd.linked_web_order_details) {
                             preloadIds.add(d.id);
-                            preloadCache.set(d.id, { amount: d.amount || 0, customerName: d.customerName || "", orderId: d.orderId || null, invoiceNumber: d.invoiceNumber || null });
+                            preloadCache.set(d.id, { amount: d.amount || 0, customerName: d.customerName || "", orderId: d.orderId || null, invoiceNumber: d.invoiceNumber || null, financialAccountCode: d.financialAccountCode || null });
                         }
                         setSelectedOrderIds(preloadIds);
                         setSelectedOrdersCache(preloadCache);
                     } else if (cd.linked_web_order_ids?.length > 0) {
                         const realIds = (cd.linked_web_order_ids as string[]).map((xid: string) => parseInt(String(xid).replace("ar-", "")));
-                        const { data: arRows } = await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount").in("id", realIds);
+                        const { data: arRows } = await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code").in("id", realIds);
                         if (arRows?.length) {
                             const preloadIds = new Set<string>();
-                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null }>();
+                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null }>();
                             for (const o of arRows) {
                                 const arId = `ar-${o.id}`;
                                 preloadIds.add(arId);
-                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null });
+                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null });
                             }
                             setSelectedOrderIds(preloadIds);
                             setSelectedOrdersCache(preloadCache);
@@ -1685,15 +1689,15 @@ export default function BankStatementsPage() {
                         const scalarId = String(cd.matched_order_id || cd.invoice_order_id);
                         const isArPrefixed = scalarId.startsWith("ar-");
                         const { data: arRows } = isArPrefixed
-                            ? await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount").eq("id", parseInt(scalarId.replace("ar-", "")))
-                            : await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount").eq("order_id", scalarId);
+                            ? await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code").eq("id", parseInt(scalarId.replace("ar-", "")))
+                            : await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code").eq("order_id", scalarId);
                         if (arRows?.length) {
                             const preloadIds = new Set<string>();
-                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null }>();
+                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null }>();
                             for (const o of arRows) {
                                 const arId = `ar-${o.id}`;
                                 preloadIds.add(arId);
-                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null });
+                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null });
                             }
                             setSelectedOrderIds(preloadIds);
                             setSelectedOrdersCache(preloadCache);
@@ -1873,9 +1877,17 @@ export default function BankStatementsPage() {
                         customerName: match.customerName || "",
                         orderId: match.orderId || null,
                         invoiceNumber: match.invoiceNumber || null,
+                        financialAccountCode: match.financialAccountCode || null,
                     }],
                     manual_note: manualNote || null,
                 };
+
+                // Derive P&L line from order's financial account code
+                if (match.financialAccountCode) {
+                    const pnlPrefix = match.financialAccountCode.split(".")[0];
+                    updatedCustomData.pnl_fac = match.financialAccountCode;
+                    updatedCustomData.pnl_line = pnlPrefix;
+                }
 
                 const { error: txErr } = await supabase
                     .from("csv_rows")
@@ -2033,7 +2045,7 @@ export default function BankStatementsPage() {
                     invoice_order_matched: linkedOrderIds.length > 0,
                     linked_web_order_details: linkedOrderIds.map(oid => {
                         const cached = selectedOrdersCache.get(oid);
-                        return { id: oid, amount: cached?.amount || 0, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null };
+                        return { id: oid, amount: cached?.amount || 0, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null };
                     }),
                     invoice_order_id: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.orderId || linkedOrderIds[0]) : null,
                     invoice_number: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.invoiceNumber || null) : null,
@@ -2042,6 +2054,25 @@ export default function BankStatementsPage() {
                     matched_order_amount: appliedOrderAmountTotal,
                     manual_note: manualNote || null,
                 };
+
+                // Derive dominant P&L line from orders' financial account codes (weighted by amount)
+                if (linkedOrderIds.length > 0) {
+                    const facTotals = new Map<string, number>();
+                    for (const oid of linkedOrderIds) {
+                        const cached = selectedOrdersCache.get(oid);
+                        const fac = cached?.financialAccountCode;
+                        if (fac) facTotals.set(fac, (facTotals.get(fac) || 0) + (cached?.amount || 0));
+                    }
+                    if (facTotals.size > 0) {
+                        let dominantFac = "";
+                        let maxAmt = 0;
+                        for (const [fac, amt] of facTotals) {
+                            if (amt > maxAmt) { dominantFac = fac; maxAmt = amt; }
+                        }
+                        updatedCustomData.pnl_fac = dominantFac;
+                        updatedCustomData.pnl_line = dominantFac.split(".")[0];
+                    }
+                }
 
                 const { error: txErr } = await supabase
                     .from("csv_rows")

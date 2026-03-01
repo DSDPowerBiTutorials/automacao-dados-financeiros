@@ -724,6 +724,20 @@ export default function BankCashFlowPage() {
                 }
             }
         }
+        // Strategy 1.5: bank row was manually reconciled with web orders that have FAC codes
+        const orderDetails = tx.custom_data?.linked_web_order_details as Array<{ financialAccountCode?: string; amount?: number }> | undefined;
+        if (orderDetails?.length) {
+            const facTotals = new Map<string, number>();
+            for (const d of orderDetails) {
+                if (d.financialAccountCode) facTotals.set(d.financialAccountCode, (facTotals.get(d.financialAccountCode) || 0) + Math.abs(d.amount || 0));
+            }
+            if (facTotals.size > 0) {
+                let best = ""; let max = 0;
+                for (const [fac, amt] of facTotals) { if (amt > max) { best = fac; max = amt; } }
+                return getPnlLineFromCode(best);
+            }
+        }
+
         // Strategy 2: bank row has pnl_fac (direct customer match)
         const directFac = tx.custom_data?.pnl_fac as string | undefined;
         if (directFac) return getPnlLineFromCode(directFac);
