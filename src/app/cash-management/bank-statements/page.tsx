@@ -822,8 +822,8 @@ export default function BankStatementsPage() {
     const [kpiFilter, setKpiFilter] = useState<string | null>(null);
 
     // Filters — committed date range vs pending (to avoid re-fetch on arrow navigation)
-    const [dateRange, setDateRange] = useState({ start: "2025-01-01", end: "2025-12-31" });
-    const [pendingDateRange, setPendingDateRange] = useState({ start: "2025-01-01", end: "2025-12-31" });
+    const [dateRange, setDateRange] = useState({ start: "2026-01-01", end: "2026-12-31" });
+    const [pendingDateRange, setPendingDateRange] = useState({ start: "2026-01-01", end: "2026-12-31" });
     const [gatewayFilter, setGatewayFilter] = useState("all");
     const [flowFilter, setFlowFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
@@ -3048,7 +3048,7 @@ export default function BankStatementsPage() {
                                     </div>
                                     <div>
                                         <span className="text-gray-500 text-xs">Amount</span>
-                                        <p className={`font-medium ${reconTransaction.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                        <p className={`font-medium ${reconTransaction.amount >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
                                             {formatCurrency(reconTransaction.amount, reconTransaction.currency)}
                                         </p>
                                     </div>
@@ -3067,25 +3067,25 @@ export default function BankStatementsPage() {
                             <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex gap-1">
                                 <button
                                     onClick={() => setReconTab("suggestions")}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "suggestions" ? "bg-cyan-600/20 text-cyan-400 border border-cyan-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "suggestions" ? "bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-600/20 dark:text-cyan-400 dark:border-cyan-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
                                 >
                                     Suggestions {totalSuggestions > 0 && <span className="ml-1 bg-cyan-600/30 px-1.5 py-0.5 rounded-full text-[10px]">{totalSuggestions}</span>}
                                 </button>
                                 <button
                                     onClick={() => setReconTab("all")}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "all" ? "bg-violet-600/20 text-violet-400 border border-violet-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "all" ? "bg-violet-100 text-violet-800 border border-violet-300 dark:bg-violet-600/20 dark:text-violet-400 dark:border-violet-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
                                 >
                                     {isExpense ? "All Invoices" : "All Orders"} <span className="ml-1 text-[10px] text-gray-500">({allAvailableInvoices.length})</span>
                                 </button>
                                 <button
                                     onClick={() => setReconTab("manual")}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "manual" ? "bg-orange-600/20 text-orange-400 border border-orange-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "manual" ? "bg-orange-100 text-orange-800 border border-orange-300 dark:bg-orange-600/20 dark:text-orange-400 dark:border-orange-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
                                 >
                                     Manual
                                 </button>
                                 <button
                                     onClick={() => setReconTab("intercompany")}
-                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "intercompany" ? "bg-amber-600/20 text-amber-400 border border-amber-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "intercompany" ? "bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-600/20 dark:text-amber-400 dark:border-amber-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
                                 >
                                     Intercompany {intercompanyMatches.length > 0 && <span className="ml-1 bg-amber-600/30 px-1.5 py-0.5 rounded-full text-[10px]">{intercompanyMatches.length}</span>}
                                 </button>
@@ -3109,7 +3109,7 @@ export default function BankStatementsPage() {
                                                 {/* Supplier invoices — ALL unreconciled invoices for matched supplier */}
                                                 {providerNameMatches.length > 0 && (
                                                     <div>
-                                                        <h4 className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1">
+                                                        <h4 className="text-xs font-semibold text-green-700 dark:text-green-400 mb-2 flex items-center gap-1">
                                                             <Building className="h-3.5 w-3.5" /> Supplier Invoices ({providerNameMatches.length})
                                                         </h4>
                                                         <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
@@ -3124,12 +3124,12 @@ export default function BankStatementsPage() {
                                                                 <button
                                                                     key={inv.id}
                                                                     onClick={() => toggleInvoiceSelection(inv.id)}
-                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 hover:border-gray-500"}`}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
                                                                         <div className="flex items-center">
-                                                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
+                                                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
                                                                             </div>
                                                                         </div>
                                                                         <div className="min-w-0">
@@ -3143,8 +3143,8 @@ export default function BankStatementsPage() {
                                                                             <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
                                                                         </div>
                                                                         <div className="text-right flex items-center gap-1.5">
-                                                                            <span className="text-sm font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
-                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-900/20 text-green-400 border-green-700">{inv.matchScore}%</Badge>
+                                                                            <span className="text-sm font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700">{inv.matchScore}%</Badge>
                                                                         </div>
                                                                     </div>
                                                                 </button>
@@ -3171,7 +3171,7 @@ export default function BankStatementsPage() {
                                                 {/* Payment source matches */}
                                                 {paymentSourceMatches.length > 0 && (
                                                     <div>
-                                                        <h4 className="text-xs font-semibold text-blue-400 mb-2 flex items-center gap-1">
+                                                        <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-1">
                                                             <CreditCard className="h-3.5 w-3.5" /> Payment Source Matches ({paymentSourceMatches.length})
                                                         </h4>
                                                         <div className="space-y-1">
@@ -3179,7 +3179,7 @@ export default function BankStatementsPage() {
                                                                 <button
                                                                     key={pm.id}
                                                                     onClick={() => { setSelectedPaymentMatch(pm.id); setSelectedInvoices(new Set()); setSelectedRevenueOrder(null); }}
-                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedPaymentMatch === pm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 hover:border-gray-500"}`}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedPaymentMatch === pm.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="flex items-center justify-between">
                                                                         <div className="flex-1 min-w-0">
@@ -3187,8 +3187,8 @@ export default function BankStatementsPage() {
                                                                             <p className="text-[10px] text-gray-500">{pm.matchReason}</p>
                                                                         </div>
                                                                         <div className="text-right ml-3 flex items-center gap-2">
-                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-blue-900/20 text-blue-400 border-blue-700">{pm.matchScore}%</Badge>
-                                                                            <p className="text-sm font-medium text-green-400">{formatCurrency(pm.amount, reconTransaction.currency)}</p>
+                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-700">{pm.matchScore}%</Badge>
+                                                                            <p className="text-sm font-medium text-green-700 dark:text-green-400">{formatCurrency(pm.amount, reconTransaction.currency)}</p>
                                                                         </div>
                                                                     </div>
                                                                 </button>
@@ -3200,7 +3200,7 @@ export default function BankStatementsPage() {
                                                 {/* Revenue order matches */}
                                                 {revenueOrderMatches.length > 0 && (
                                                     <div>
-                                                        <h4 className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-1">
+                                                        <h4 className="text-xs font-semibold text-green-700 dark:text-green-400 mb-2 flex items-center gap-1">
                                                             <FileText className="h-3.5 w-3.5" /> Revenue Order Matches ({revenueOrderMatches.length})
                                                         </h4>
                                                         <div className="space-y-1">
@@ -3208,20 +3208,20 @@ export default function BankStatementsPage() {
                                                                 <button
                                                                     key={rm.id}
                                                                     onClick={() => { setSelectedRevenueOrder(rm.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); }}
-                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedRevenueOrder === rm.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 hover:border-gray-500"}`}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedRevenueOrder === rm.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="flex items-center justify-between">
                                                                         <div className="flex-1 min-w-0">
                                                                             <div className="flex items-center gap-2">
                                                                                 <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{rm.invoiceNumber || rm.orderId || "-"}</span>
-                                                                                <Badge variant="outline" className={`text-[9px] px-1 py-0 ${rm.matchScore >= 80 ? "bg-green-900/20 text-green-400 border-green-700" : "bg-yellow-900/20 text-yellow-400 border-yellow-700"}`}>{rm.matchScore}%</Badge>
+                                                                                <Badge variant="outline" className={`text-[9px] px-1 py-0 ${rm.matchScore >= 80 ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700" : "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-700"}`}>{rm.matchScore}%</Badge>
                                                                             </div>
                                                                             <p className="text-xs text-gray-900 dark:text-white mt-0.5 font-medium">{rm.customerName}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">Cliente: {rm.customerName}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">{rm.matchReason}</p>
                                                                         </div>
                                                                         <div className="text-right ml-3">
-                                                                            <p className="text-sm font-medium text-green-400">{formatCurrency(rm.amount, reconTransaction.currency)}</p>
+                                                                            <p className="text-sm font-medium text-green-700 dark:text-green-400">{formatCurrency(rm.amount, reconTransaction.currency)}</p>
                                                                             <p className="text-[10px] text-gray-500">{formatNumericDate(rm.date)}</p>
                                                                         </div>
                                                                     </div>
@@ -3271,12 +3271,12 @@ export default function BankStatementsPage() {
                                                         <button
                                                             key={inv.id}
                                                             onClick={() => toggleInvoiceSelection(inv.id)}
-                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 hover:border-gray-500"}`}
+                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
                                                                 <div className="flex items-center">
-                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
@@ -3290,7 +3290,7 @@ export default function BankStatementsPage() {
                                                                     <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <span className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                    <span className="text-xs font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -3329,8 +3329,8 @@ export default function BankStatementsPage() {
                                                     </div>
                                                 </div>
                                                 {selectedOrderIds.size > 0 && (
-                                                    <div className="bg-cyan-900/20 border border-cyan-800 rounded p-2">
-                                                        <p className="text-[10px] text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(orderSearchResults.filter(o => selectedOrderIds.has(o.id)).reduce((s, o) => s + o.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    <div className="bg-cyan-50 border border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800 rounded p-2">
+                                                        <p className="text-[10px] text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(orderSearchResults.filter(o => selectedOrderIds.has(o.id)).reduce((s, o) => s + o.amount, 0), reconTransaction?.currency || "EUR")}</p>
                                                     </div>
                                                 )}
                                                 <div className="max-h-[320px] overflow-y-auto space-y-1">
@@ -3345,20 +3345,20 @@ export default function BankStatementsPage() {
                                                             key={order.id}
                                                             onClick={() => toggleOrderSelection(order.id)}
                                                             className={`w-full text-left p-2 rounded border transition-colors ${selectedOrderIds.has(order.id)
-                                                                ? "bg-cyan-900/30 border-cyan-600"
-                                                                : "bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
+                                                                ? "bg-cyan-50 border-cyan-500 dark:bg-cyan-900/30 dark:border-cyan-600"
+                                                                : "bg-white dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
                                                                 }`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
                                                                 <div className="flex items-center">
-                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{order.customerName}</p>
                                                                     <p className="text-[10px] text-gray-500 truncate">
-                                                                        {order.orderId && <span className="text-cyan-400">#{order.orderId}</span>}
+                                                                        {order.orderId && <span className="text-cyan-700 dark:text-cyan-400">#{order.orderId}</span>}
                                                                         {order.invoiceNumber && <span className="ml-2">Inv: {order.invoiceNumber}</span>}
                                                                     </p>
                                                                 </div>
@@ -3366,7 +3366,7 @@ export default function BankStatementsPage() {
                                                                     <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(order.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <span className="text-xs font-medium text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -3427,12 +3427,12 @@ export default function BankStatementsPage() {
                                                                 <button
                                                                     key={inv.id}
                                                                     onClick={() => toggleInvoiceSelection(inv.id)}
-                                                                    className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 hover:border-gray-500"}`}
+                                                                    className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
                                                                         <div className="flex items-center">
-                                                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
+                                                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
                                                                             </div>
                                                                         </div>
                                                                         <div className="min-w-0">
@@ -3446,7 +3446,7 @@ export default function BankStatementsPage() {
                                                                             <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
                                                                         </div>
                                                                         <div className="text-right">
-                                                                            <span className="text-xs font-medium text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                            <span className="text-xs font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
                                                                         </div>
                                                                     </div>
                                                                 </button>
@@ -3496,8 +3496,8 @@ export default function BankStatementsPage() {
 
                                                 {/* Revenue order selection summary */}
                                                 {selectedOrderIds.size > 0 && (
-                                                    <div className="bg-cyan-900/20 border border-cyan-800 rounded p-2">
-                                                        <p className="text-[10px] text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(orderSearchResults.filter(o => selectedOrderIds.has(o.id)).reduce((s, o) => s + o.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    <div className="bg-cyan-50 border border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800 rounded p-2">
+                                                        <p className="text-[10px] text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(orderSearchResults.filter(o => selectedOrderIds.has(o.id)).reduce((s, o) => s + o.amount, 0), reconTransaction?.currency || "EUR")}</p>
                                                     </div>
                                                 )}
 
@@ -3517,33 +3517,33 @@ export default function BankStatementsPage() {
                                                             key={order.id}
                                                             onClick={() => toggleOrderSelection(order.id)}
                                                             className={`w-full text-left p-2 rounded border transition-colors ${selectedOrderIds.has(order.id)
-                                                                ? "bg-cyan-900/30 border-cyan-600"
-                                                                : "bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                                                ? "bg-cyan-50 border-cyan-500 dark:bg-cyan-900/30 dark:border-cyan-600"
+                                                                : "bg-white dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                                                                 }`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
                                                                 <div className="flex items-center">
-                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-500"}`}>
-                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs text-gray-900 dark:text-white font-medium truncate">
                                                                         {order.customerName}
-                                                                        {order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">Reconciled</span>}
+                                                                        {order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">Reconciled</span>}
                                                                     </p>
                                                                     <p className="text-[10px] text-gray-500 truncate">
-                                                                        {order.orderId && <span className="text-cyan-400">#{order.orderId}</span>}
+                                                                        {order.orderId && <span className="text-cyan-700 dark:text-cyan-400">#{order.orderId}</span>}
                                                                         {order.invoiceNumber && <span className="ml-2">Inv: {order.invoiceNumber}</span>}
-                                                                        {order.sourceLabel && <span className="ml-2 text-gray-400">{order.sourceLabel}</span>}
-                                                                        {order.reconciledWith && <span className="ml-2 text-amber-500/70">({order.reconciledWith})</span>}
+                                                                        {order.sourceLabel && <span className="ml-2 text-gray-500 dark:text-gray-400">{order.sourceLabel}</span>}
+                                                                        {order.reconciledWith && <span className="ml-2 text-amber-700 dark:text-amber-500/70">({order.reconciledWith})</span>}
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-center">
                                                                     <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(order.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <span className="text-xs font-medium text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -3581,8 +3581,8 @@ export default function BankStatementsPage() {
                                                     </Button>
                                                 </div>
                                                 {selectedGatewayTxIds.size > 0 && (
-                                                    <div className="bg-purple-900/20 border border-purple-800 rounded p-2 mt-2">
-                                                        <p className="text-[10px] text-purple-400">{selectedGatewayTxIds.size} transaction(s) selected — total: {formatCurrency(gatewayTxResults.filter(t => selectedGatewayTxIds.has(t.id)).reduce((s, t) => s + t.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    <div className="bg-purple-50 border border-purple-300 dark:bg-purple-900/20 dark:border-purple-800 rounded p-2 mt-2">
+                                                        <p className="text-[10px] text-purple-700 dark:text-purple-400">{selectedGatewayTxIds.size} transaction(s) selected — total: {formatCurrency(gatewayTxResults.filter(t => selectedGatewayTxIds.has(t.id)).reduce((s, t) => s + t.amount, 0), reconTransaction?.currency || "EUR")}</p>
                                                     </div>
                                                 )}
                                                 <div className="max-h-[250px] overflow-y-auto space-y-1 mt-2">
@@ -3597,21 +3597,21 @@ export default function BankStatementsPage() {
                                                             key={gtx.id}
                                                             onClick={() => toggleGatewayTxSelection(gtx.id)}
                                                             className={`w-full text-left p-2 rounded border transition-colors ${selectedGatewayTxIds.has(gtx.id)
-                                                                ? "bg-purple-900/30 border-purple-600"
-                                                                : "bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
+                                                                ? "bg-purple-50 border-purple-500 dark:bg-purple-900/30 dark:border-purple-600"
+                                                                : "bg-white dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
                                                                 }`}
                                                         >
                                                             <div className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center">
                                                                 <div className="flex items-center">
-                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedGatewayTxIds.has(gtx.id) ? "bg-purple-500 border-purple-500" : "border-gray-500"}`}>
-                                                                        {selectedGatewayTxIds.has(gtx.id) && <CheckCircle2 className="h-3 w-3 text-gray-900 dark:text-white" />}
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedGatewayTxIds.has(gtx.id) ? "bg-purple-500 border-purple-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                        {selectedGatewayTxIds.has(gtx.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{gtx.customerName}</p>
                                                                     <p className="text-[10px] text-gray-500 truncate">
-                                                                        <span className="text-purple-400">{gtx.source}</span>
-                                                                        {gtx.orderId && <span className="ml-1.5 text-cyan-400">#{gtx.orderId}</span>}
+                                                                        <span className="text-purple-700 dark:text-purple-400">{gtx.source}</span>
+                                                                        {gtx.orderId && <span className="ml-1.5 text-cyan-700 dark:text-cyan-400">#{gtx.orderId}</span>}
                                                                         {gtx.transactionId && <span className="ml-1.5 text-gray-600">TxID: {String(gtx.transactionId).slice(0, 12)}...</span>}
                                                                     </p>
                                                                 </div>
@@ -3619,7 +3619,7 @@ export default function BankStatementsPage() {
                                                                     <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(gtx.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <span className="text-xs font-medium text-emerald-400">{formatCurrency(gtx.amount, gtx.currency || "EUR")}</span>
+                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(gtx.amount, gtx.currency || "EUR")}</span>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -3679,7 +3679,7 @@ export default function BankStatementsPage() {
                                                         <button
                                                             key={ic.id}
                                                             onClick={() => { setSelectedIntercompanyMatch(ic.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
-                                                            className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedIntercompanyMatch === ic.id ? "border-cyan-500 bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-black/30 hover:border-gray-500"}`}
+                                                            className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedIntercompanyMatch === ic.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                         >
                                                             <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center">
                                                                 <div className="min-w-0">
@@ -3693,10 +3693,10 @@ export default function BankStatementsPage() {
                                                                     <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(ic.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <span className="text-sm font-medium text-amber-400">{formatCurrency(ic.amount, ic.currency)}</span>
+                                                                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">{formatCurrency(ic.amount, ic.currency)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${ic.matchScore >= 90 ? "bg-green-900/20 text-green-400 border-green-700" : ic.matchScore >= 70 ? "bg-yellow-900/20 text-yellow-400 border-yellow-700" : "bg-orange-900/20 text-orange-400 border-orange-700"}`}>{ic.matchScore}%</Badge>
+                                                                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${ic.matchScore >= 90 ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700" : ic.matchScore >= 70 ? "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-700" : "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-700"}`}>{ic.matchScore}%</Badge>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -3728,13 +3728,13 @@ export default function BankStatementsPage() {
                                         const allInvLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
                                         const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
                                         const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
-                                        return <span className="text-cyan-400">{selectedInvoices.size} invoice(s) = {formatCurrency(tot, reconTransaction?.currency || "EUR")}</span>;
+                                        return <span className="text-cyan-700 dark:text-cyan-400">{selectedInvoices.size} invoice(s) = {formatCurrency(tot, reconTransaction?.currency || "EUR")}</span>;
                                     })()}
-                                    {selectedOrderIds.size > 0 && <span className="text-cyan-400">{selectedOrderIds.size} invoice-order(s) = {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>}
-                                    {selectedGatewayTxIds.size > 0 && <span className="text-purple-400">{selectedGatewayTxIds.size} gateway txn(s) = {formatCurrency(selectedGatewayTotal, reconTransaction?.currency || "EUR")}</span>}
-                                    {selectedPaymentMatch && <span className="text-cyan-400">Payment source selected</span>}
-                                    {selectedRevenueOrder && <span className="text-cyan-400">Revenue order selected</span>}
-                                    {selectedIntercompanyMatch && <span className="text-amber-400">Intercompany transfer selected</span>}
+                                    {selectedOrderIds.size > 0 && <span className="text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} invoice-order(s) = {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>}
+                                    {selectedGatewayTxIds.size > 0 && <span className="text-purple-700 dark:text-purple-400">{selectedGatewayTxIds.size} gateway txn(s) = {formatCurrency(selectedGatewayTotal, reconTransaction?.currency || "EUR")}</span>}
+                                    {selectedPaymentMatch && <span className="text-cyan-700 dark:text-cyan-400">Payment source selected</span>}
+                                    {selectedRevenueOrder && <span className="text-cyan-700 dark:text-cyan-400">Revenue order selected</span>}
+                                    {selectedIntercompanyMatch && <span className="text-amber-700 dark:text-amber-400">Intercompany transfer selected</span>}
                                     {selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
                                 </div>
                                 <div className="flex gap-3">
