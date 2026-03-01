@@ -1248,7 +1248,6 @@ export default function BankCashFlowPage() {
                 }
             }
         }
-        const total = Object.values(lastKnown).reduce((s, v) => s + v, 0);
         const perBank = BANK_ACCOUNTS.map(b => ({
             key: b.key,
             label: b.label,
@@ -1256,8 +1255,23 @@ export default function BankCashFlowPage() {
             balance: lastKnown[b.key] ?? 0,
             date: lastKnownDate[b.key] || "",
         })).filter(b => b.date !== "");
-        return { total, date: latestDate, perBank };
-    }, [bankTransactions]);
+
+        // Compute totals per currency for selected banks
+        let totalEur = 0;
+        let totalUsd = 0;
+        for (const b of perBank) {
+            if (!selectedBanks.has(b.key)) continue;
+            if (b.currency === "EUR") {
+                totalEur += b.balance;
+                totalUsd += b.balance * fxRate.eurToUsd;
+            } else if (b.currency === "USD") {
+                totalUsd += b.balance;
+                totalEur += b.balance * fxRate.usdToEur;
+            }
+        }
+
+        return { totalEur, totalUsd, date: latestDate, perBank };
+    }, [bankTransactions, selectedBanks, fxRate.usdToEur, fxRate.eurToUsd]);
 
     // ─── Cash position for highlighted date ───
     const highlightedPosition = useMemo(() => {
@@ -1330,8 +1344,11 @@ export default function BankCashFlowPage() {
                 >
                     <div className="text-right">
                         <p className="text-sm text-gray-500 dark:text-gray-400">Actual Balance</p>
-                        <p className={`text-2xl font-bold ${actualBalance.total >= 0 ? "text-green-400" : "text-red-400"}`}>
-                            {formatCurrency(actualBalance.total, dominantCurrency)}
+                        <p className={`text-2xl font-bold ${actualBalance.totalEur >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            {formatCurrency(actualBalance.totalEur, "EUR")}
+                        </p>
+                        <p className={`text-sm font-semibold ${actualBalance.totalUsd >= 0 ? "text-green-400/70" : "text-red-400/70"}`}>
+                            {formatCurrency(actualBalance.totalUsd, "USD")}
                         </p>
                         {actualBalance.date && (
                             <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
