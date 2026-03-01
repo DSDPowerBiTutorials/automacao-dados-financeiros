@@ -638,6 +638,53 @@ export async function GET(req: NextRequest) {
     }
 
     // ============================================
+    // 12. COTAÇÃO DIÁRIA EUR/USD (Frankfurter / ECB)
+    // ============================================
+    try {
+        const fxStart = Date.now();
+        console.log("\n💱 [12/12] Buscando cotação EUR/USD...");
+
+        const fxRes = await fetch("https://api.frankfurter.app/latest?from=USD&to=EUR");
+        if (!fxRes.ok) throw new Error(`Frankfurter API ${fxRes.status}`);
+        const fxData = await fxRes.json();
+        const usdToEur = fxData.rates?.EUR;
+        if (!usdToEur) throw new Error("No EUR rate in response");
+
+        await supabaseAdmin.from("sync_metadata").upsert(
+            {
+                source: "exchange-rate",
+                last_sync: new Date().toISOString(),
+                records_synced: 1,
+                metadata: {
+                    usd_to_eur: usdToEur,
+                    eur_to_usd: 1 / usdToEur,
+                    date: fxData.date,
+                    fetched_at: new Date().toISOString(),
+                },
+            },
+            { onConflict: "source" }
+        );
+
+        results.push({
+            name: "Exchange Rate EUR/USD",
+            success: true,
+            message: `1 USD = ${usdToEur.toFixed(4)} EUR (ECB ${fxData.date})`,
+            count: 1,
+            duration_ms: Date.now() - fxStart,
+        });
+        console.log(`   ✅ 1 USD = ${usdToEur.toFixed(4)} EUR`);
+    } catch (error: any) {
+        console.error("[Exchange Rate] Error:", error);
+        results.push({
+            name: "Exchange Rate EUR/USD",
+            success: false,
+            message: "Failed to fetch exchange rate",
+            duration_ms: Date.now() - startTime,
+            error: error.message,
+        });
+    }
+
+    // ============================================
     // SALVAR METADATA DA SINCRONIZAÇÃO
     // ============================================
     const totalDuration = Date.now() - startTime;

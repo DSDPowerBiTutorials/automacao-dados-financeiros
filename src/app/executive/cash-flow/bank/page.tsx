@@ -54,6 +54,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { useExchangeRate } from "@/hooks/use-exchange-rate";
 import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceDot } from "recharts";
 
 // ════════════════════════════════════════════════════════
@@ -371,6 +372,8 @@ export default function BankCashFlowPage() {
     const currentYear = new Date().getFullYear();
     const defaultStartDate = `${currentYear}-01-01`;
     const defaultEndDate = `${currentYear}-12-31`;
+
+    const fxRate = useExchangeRate();
 
     const [selectedBanks, setSelectedBanks] = useState<Set<string>>(new Set(["bankinter-eur"]));
     const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>([]);
@@ -1340,7 +1343,7 @@ export default function BankCashFlowPage() {
 
                 {/* Scrolling bank balances marquee */}
                 <div className="flex-shrink-0 bg-white dark:bg-black overflow-hidden relative h-8">
-                    <div className="flex items-center gap-8 animate-marquee whitespace-nowrap absolute top-1/2 -translate-y-1/2">
+                    <div className="flex items-center gap-8 animate-marquee whitespace-nowrap absolute top-1/2 -translate-y-1/2 left-full">
                         {[...actualBalance.perBank, ...actualBalance.perBank].map((bank, i) => (
                             <span key={`${bank.key}-${i}`} className="inline-flex items-center gap-2 text-sm">
                                 <span className="text-gray-500 dark:text-gray-400 font-medium">{bank.label}</span>
@@ -1353,6 +1356,18 @@ export default function BankCashFlowPage() {
                                 <span className="text-gray-300 dark:text-gray-600 mx-1">•</span>
                             </span>
                         ))}
+                        {/* Exchange rate */}
+                        <span className="inline-flex items-center gap-2 text-sm">
+                            <span className="text-gray-500 dark:text-gray-400 font-medium">💱 EUR/USD</span>
+                            <span className="font-semibold text-blue-500">{fxRate.eurToUsd.toFixed(4)}</span>
+                            <span className="text-gray-300 dark:text-gray-600 mx-1">•</span>
+                        </span>
+                        <span className="inline-flex items-center gap-2 text-sm">
+                            <span className="text-gray-500 dark:text-gray-400 font-medium">💱 USD/EUR</span>
+                            <span className="font-semibold text-blue-500">{fxRate.usdToEur.toFixed(4)}</span>
+                            {fxRate.date && <span className="text-[10px] text-gray-400">(ECB {fxRate.date})</span>}
+                            <span className="text-gray-300 dark:text-gray-600 mx-1">•</span>
+                        </span>
                     </div>
                 </div>
 
@@ -1513,73 +1528,73 @@ export default function BankCashFlowPage() {
                                 {/* Area chart — cash position evolution (click to highlight) */}
                                 {cashPositionData.length > 0 && (
                                     <div className="space-y-1">
-                                    {!highlightDate && (
-                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center italic">Click on any data point to inspect that day</p>
-                                    )}
-                                    <div className="h-[220px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart
-                                                data={cashPositionData}
-                                                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
-                                                onClick={(e: any) => { if (e?.activePayload?.[0]?.payload?.date) setHighlightDate(e.activePayload[0].payload.date); }}
-                                                style={{ cursor: "pointer" }}
-                                            >
-                                                <defs>
-                                                    <linearGradient id="cpGradTotal" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="cpGradBkEur" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="cpGradBkUsd" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="cpGradSab" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="cpGradChase" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                                <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
-                                                <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, "EUR")} />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
-                                                    labelStyle={{ color: "var(--header-text, #6b7280)" }}
-                                                    formatter={(value: number, name: string) => {
-                                                        const bank = BANK_ACCOUNTS.find(b => b.key === name);
-                                                        return [formatCurrency(value, bank?.currency || "EUR"), bank?.label || name];
-                                                    }}
-                                                />
-                                                <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
-                                                <Area type="monotone" dataKey="total" name="Total" stroke="#10b981" strokeWidth={2.5} fill="url(#cpGradTotal)" dot={false} />
-                                                <Area type="monotone" dataKey="bankinter-eur" name="Bankinter EUR" stroke="#3b82f6" strokeWidth={1.5} fill="url(#cpGradBkEur)" dot={false} strokeDasharray="4 2" />
-                                                <Area type="monotone" dataKey="bankinter-usd" name="Bankinter USD" stroke="#10b981" strokeWidth={1.5} fill="url(#cpGradBkUsd)" dot={false} strokeDasharray="4 2" />
-                                                <Area type="monotone" dataKey="sabadell" name="Sabadell EUR" stroke="#f97316" strokeWidth={1.5} fill="url(#cpGradSab)" dot={false} strokeDasharray="4 2" />
-                                                <Area type="monotone" dataKey="chase-usd" name="Chase USD" stroke="#a855f7" strokeWidth={1.5} fill="url(#cpGradChase)" dot={false} strokeDasharray="4 2" />
-                                                {highlightDate && highlightedPosition && (
-                                                    <ReferenceDot
-                                                        x={highlightedPosition.label}
-                                                        y={highlightedPosition.total}
-                                                        r={0}
-                                                        ifOverflow="extendDomain"
-                                                    >
-                                                        <g transform="translate(-10,-10)">
-                                                            <circle cx="10" cy="10" r="10" fill="#eab308" fillOpacity={0.25} stroke="#eab308" strokeWidth={1.5} />
-                                                            <path d="M10 7C7.5 7 5.5 8.5 4.5 10c1 1.5 3 3 5.5 3s4.5-1.5 5.5-3c-1-1.5-3-3-5.5-3z" fill="none" stroke="#ca8a04" strokeWidth={1.2} />
-                                                            <circle cx="10" cy="10" r="1.5" fill="#ca8a04" />
-                                                        </g>
-                                                    </ReferenceDot>
-                                                )}
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </div>
+                                        {!highlightDate && (
+                                            <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center italic">Click on any data point to inspect that day</p>
+                                        )}
+                                        <div className="h-[220px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <AreaChart
+                                                    data={cashPositionData}
+                                                    margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                                                    onClick={(e: any) => { if (e?.activePayload?.[0]?.payload?.date) setHighlightDate(e.activePayload[0].payload.date); }}
+                                                    style={{ cursor: "pointer" }}
+                                                >
+                                                    <defs>
+                                                        <linearGradient id="cpGradTotal" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                        </linearGradient>
+                                                        <linearGradient id="cpGradBkEur" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                        </linearGradient>
+                                                        <linearGradient id="cpGradBkUsd" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                                            <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                        </linearGradient>
+                                                        <linearGradient id="cpGradSab" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
+                                                            <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                                                        </linearGradient>
+                                                        <linearGradient id="cpGradChase" x1="0" y1="0" x2="0" y2="1">
+                                                            <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2} />
+                                                            <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                                        </linearGradient>
+                                                    </defs>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                                    <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                                    <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, "EUR")} />
+                                                    <Tooltip
+                                                        contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                                        labelStyle={{ color: "var(--header-text, #6b7280)" }}
+                                                        formatter={(value: number, name: string) => {
+                                                            const bank = BANK_ACCOUNTS.find(b => b.key === name);
+                                                            return [formatCurrency(value, bank?.currency || "EUR"), bank?.label || name];
+                                                        }}
+                                                    />
+                                                    <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
+                                                    <Area type="monotone" dataKey="total" name="Total" stroke="#10b981" strokeWidth={2.5} fill="url(#cpGradTotal)" dot={false} />
+                                                    <Area type="monotone" dataKey="bankinter-eur" name="Bankinter EUR" stroke="#3b82f6" strokeWidth={1.5} fill="url(#cpGradBkEur)" dot={false} strokeDasharray="4 2" />
+                                                    <Area type="monotone" dataKey="bankinter-usd" name="Bankinter USD" stroke="#10b981" strokeWidth={1.5} fill="url(#cpGradBkUsd)" dot={false} strokeDasharray="4 2" />
+                                                    <Area type="monotone" dataKey="sabadell" name="Sabadell EUR" stroke="#f97316" strokeWidth={1.5} fill="url(#cpGradSab)" dot={false} strokeDasharray="4 2" />
+                                                    <Area type="monotone" dataKey="chase-usd" name="Chase USD" stroke="#a855f7" strokeWidth={1.5} fill="url(#cpGradChase)" dot={false} strokeDasharray="4 2" />
+                                                    {highlightDate && highlightedPosition && (
+                                                        <ReferenceDot
+                                                            x={highlightedPosition.label}
+                                                            y={highlightedPosition.total}
+                                                            r={0}
+                                                            ifOverflow="extendDomain"
+                                                        >
+                                                            <g transform="translate(-10,-10)">
+                                                                <circle cx="10" cy="10" r="10" fill="#eab308" fillOpacity={0.25} stroke="#eab308" strokeWidth={1.5} />
+                                                                <path d="M10 7C7.5 7 5.5 8.5 4.5 10c1 1.5 3 3 5.5 3s4.5-1.5 5.5-3c-1-1.5-3-3-5.5-3z" fill="none" stroke="#ca8a04" strokeWidth={1.2} />
+                                                                <circle cx="10" cy="10" r="1.5" fill="#ca8a04" />
+                                                            </g>
+                                                        </ReferenceDot>
+                                                    )}
+                                                </AreaChart>
+                                            </ResponsiveContainer>
+                                        </div>
                                     </div>
                                 )}
 
