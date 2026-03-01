@@ -2302,12 +2302,65 @@ export default function BankStatementsPage() {
     const revertReconciliation = async (tx: BankTransaction) => {
         if (!confirm("Revert reconciliation for this transaction?")) return;
         try {
-            const cleanData = { ...tx.custom_data };
+            const cd = tx.custom_data || {};
+
+            // 1) Revert linked ar_invoices (web orders) → reconciled=false
+            const linkedOrderIds: string[] = cd.linked_web_order_ids || [];
+            const linkedDetails: any[] = cd.linked_web_order_details || [];
+            // Gather all ar_invoice IDs from both sources
+            const allArIds = new Set<number>();
+            for (const oid of linkedOrderIds) {
+                const parsed = parseInt(String(oid).replace("ar-", ""));
+                if (!isNaN(parsed)) allArIds.add(parsed);
+            }
+            for (const d of linkedDetails) {
+                const parsed = parseInt(String(d.id).replace("ar-", ""));
+                if (!isNaN(parsed)) allArIds.add(parsed);
+            }
+            // Also check single-order fields
+            if (cd.invoice_order_id) {
+                const parsed = parseInt(String(cd.invoice_order_id).replace("ar-", ""));
+                if (!isNaN(parsed)) allArIds.add(parsed);
+            }
+            if (cd.matched_order_id) {
+                const parsed = parseInt(String(cd.matched_order_id).replace("ar-", ""));
+                if (!isNaN(parsed)) allArIds.add(parsed);
+            }
+
+            // Revert each ar_invoice
+            for (const arId of allArIds) {
+                await supabase
+                    .from("ar_invoices")
+                    .update({
+                        reconciled: false,
+                        reconciled_at: null,
+                        reconciled_with: null,
+                        reconciliation_type: null,
+                    })
+                    .eq("id", arId);
+            }
+
+            // 2) Revert linked gateway csv_rows
+            const linkedGatewayIds: string[] = cd.linked_gateway_transaction_ids || [];
+            for (const gId of linkedGatewayIds) {
+                await supabase
+                    .from("csv_rows")
+                    .update({
+                        reconciled: false,
+                        custom_data: {},
+                    })
+                    .eq("id", gId);
+            }
+
+            // 3) Clean bank transaction custom_data
+            const cleanData = { ...cd };
             delete cleanData.paymentSource;
             delete cleanData.reconciliationType;
             delete cleanData.reconciled_at;
             delete cleanData.manual_note;
             delete cleanData.match_type;
+            delete cleanData.pnl_line;
+            delete cleanData.pnl_label;
             // Order reconciliation fields
             delete cleanData.invoice_order_id;
             delete cleanData.invoice_number;
@@ -2322,9 +2375,18 @@ export default function BankStatementsPage() {
             delete cleanData.linked_web_order_count;
             delete cleanData.linked_web_order_total;
             delete cleanData.linked_web_order_applied_total;
+            delete cleanData.linked_web_order_details;
             delete cleanData.linked_gateway_transaction_ids;
             delete cleanData.linked_gateway_transaction_count;
             delete cleanData.linked_gateway_total;
+            // AP reconciliation fields
+            delete cleanData.matched_invoices;
+            delete cleanData.matched_invoice_count;
+            delete cleanData.matched_invoice_total;
+            delete cleanData.matched_provider;
+            delete cleanData.reconciled_bank_amount_total;
+            delete cleanData.reconciled_bank_ids;
+            delete cleanData.reconciled_with_bank_id;
 
             const { error: updateErr } = await supabase
                 .from("csv_rows")
@@ -2341,8 +2403,10 @@ export default function BankStatementsPage() {
                 setSelectedRow({ ...tx, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null, isOrderReconciled: false, orderReconciliationStatus: "none" as const, matchedOrderTotal: 0, matchedOrderCoverage: 0, matchedCustomerName: null, invoiceOrderId: null, invoiceNumber: null });
             }
 
-            toast({ title: "Reverted", description: "Reconciliation removed" });
+            const revertedCount = allArIds.size + linkedGatewayIds.length;
+            toast({ title: "Reverted", description: `Reconciliation removed${revertedCount > 0 ? ` (${revertedCount} linked records also reverted)` : ""}` });
         } catch (err) {
+            console.error("Error reverting:", err);
             toast({ title: "Error", description: "Failed to revert", variant: "destructive" });
         }
     };
