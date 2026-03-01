@@ -1797,23 +1797,38 @@ export default function BankStatementsPage() {
                     } catch { /* table may not exist yet — graceful degradation */ }
 
                     for (const entry of orderEntries) {
-                        const productName = entry.products?.trim() || "Unknown Product";
-                        const normalizedName = productName.toLowerCase().trim();
-                        const inferredLine = learnedMappings.get(normalizedName) || "";
+                        const rawProducts = entry.products?.trim();
+                        if (!rawProducts) continue; // Skip orders without products — no P&L to classify
 
-                        productEntries.push({
-                            productName,
-                            pnlLine: inferredLine || "101", // default to Growth
-                            inferred: !!inferredLine,
-                            orderId: entry.id,
-                            orderAmount: entry.amount,
-                        });
+                        // Split multiple products separated by " | " (common in ar_invoices)
+                        const productNames = rawProducts.includes(" | ")
+                            ? rawProducts.split(" | ").map((p: string) => p.trim()).filter((p: string) => p.length > 0)
+                            : [rawProducts];
+
+                        // Distribute order amount equally across its products
+                        const perProductAmount = productNames.length > 0 ? entry.amount / productNames.length : entry.amount;
+
+                        for (const productName of productNames) {
+                            const normalizedName = productName.toLowerCase().trim();
+                            const inferredLine = learnedMappings.get(normalizedName) || "";
+
+                            productEntries.push({
+                                productName,
+                                pnlLine: inferredLine || "101", // default to Growth
+                                inferred: !!inferredLine,
+                                orderId: entry.id,
+                                orderAmount: perProductAmount,
+                            });
+                        }
                     }
 
-                    setPnlProducts(productEntries);
-                    setShowPnlPopup(true);
-                    setIsSavingManual(false);
-                    return; // Stop here — user will confirm P&L lines in popup, which calls executeFinalReconciliation
+                    // Only show popup if we have actual product entries to classify
+                    if (productEntries.length > 0) {
+                        setPnlProducts(productEntries);
+                        setShowPnlPopup(true);
+                        setIsSavingManual(false);
+                        return; // Stop here — user will confirm P&L lines in popup, which calls executeFinalReconciliation
+                    }
                 }
             }
 
