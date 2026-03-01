@@ -41,6 +41,7 @@ import {
     Clock,
     Package,
     ShoppingCart,
+    CircleDot,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -2080,8 +2081,9 @@ export default function BankStatementsPage() {
             if (gwReconFilter === "intercompany" && (!tx.isReconciled || tx.reconciliationType !== "intercompany")) return false;
             if (gwReconFilter === "not-reconciled" && tx.isReconciled) return false;
             // Order reconciliation filter
-            if (orderFilter === "matched" && !tx.isOrderReconciled) return false;
-            if (orderFilter === "not-matched" && tx.isOrderReconciled) return false;
+            if (orderFilter === "matched" && tx.orderReconciliationStatus !== "full") return false;
+            if (orderFilter === "partial" && tx.orderReconciliationStatus !== "partial") return false;
+            if (orderFilter === "not-matched" && tx.orderReconciliationStatus !== "none") return false;
             // KPI clickable filters
             if (kpiFilter === "inflows" && tx.amount <= 0) return false;
             if (kpiFilter === "outflows" && tx.amount >= 0) return false;
@@ -2494,7 +2496,7 @@ export default function BankStatementsPage() {
                         </Select>
                         <Select value={orderFilter} onValueChange={setOrderFilter}>
                             <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
+                            <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="partial">Partial</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
                         </Select>
                     </div>
                 </div>
@@ -2615,8 +2617,10 @@ export default function BankStatementsPage() {
                                                         </div>
                                                     </div>
                                                     <div className="w-[40px] flex-shrink-0 text-center">
-                                                        {tx.isOrderReconciled ? (
-                                                            <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
+                                                        {tx.orderReconciliationStatus === "full" ? (
+                                                            <CheckCircle className="h-3.5 w-3.5 text-green-500 mx-auto" />
+                                                        ) : tx.orderReconciliationStatus === "partial" ? (
+                                                            <CircleDot className="h-3.5 w-3.5 text-amber-500 mx-auto" />
                                                         ) : (
                                                             <span className="text-gray-600 text-[9px]">-</span>
                                                         )}
