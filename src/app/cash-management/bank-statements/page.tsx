@@ -357,6 +357,47 @@ const buildInvoiceOrderPartialUpdate = (
     };
 };
 
+/** Build update payload for web_orders reconciliation (partial support via source_data) */
+const buildWebOrderUpdate = (
+    woRow: { id: number; total_price: number; source_data?: Record<string, any> | null },
+    bankTxId: string,
+    matchedAmount: number,
+    nowIso: string,
+) => {
+    const orderTotal = Math.abs(woRow.total_price || 0);
+    const existingSourceData = (woRow.source_data || {}) as Record<string, any>;
+    const previousMatched = Math.abs(toNumeric(existingSourceData.reconciled_bank_amount_total) || 0);
+    const remainingBefore = Math.max(orderTotal - previousMatched, 0);
+    const appliedAmount = Math.max(0, Math.min(matchedAmount, remainingBefore));
+    const nextMatched = Number((previousMatched + appliedAmount).toFixed(2));
+    const remainingAfter = Number(Math.max(orderTotal - nextMatched, 0).toFixed(2));
+    const fullyReconciled = orderTotal > 0 && remainingAfter <= 0.01;
+
+    const previousBankIds = Array.isArray(existingSourceData.reconciled_bank_ids)
+        ? existingSourceData.reconciled_bank_ids.map((id: any) => String(id))
+        : [];
+    const reconciledBankIds = Array.from(new Set([...previousBankIds, bankTxId]));
+
+    return {
+        appliedAmount,
+        fullyReconciled,
+        update: {
+            reconciled: fullyReconciled,
+            reconciled_at: fullyReconciled ? nowIso : null,
+            reconciled_bank_row_id: bankTxId,
+            source_data: {
+                ...existingSourceData,
+                reconciled_at: nowIso,
+                reconciled_with_bank_id: bankTxId,
+                reconciled_bank_ids: reconciledBankIds,
+                reconciled_bank_amount_total: nextMatched,
+                remaining_reconcile_amount: remainingAfter,
+                reconciliation_type: "bank-order-link",
+            },
+        },
+    };
+};
+
 /** String similarity using Sørensen-Dice coefficient on bigrams — returns 0-1 */
 function stringSimilarity(s1: string, s2: string): number {
     const norm = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]/g, "").trim();
@@ -586,29 +627,35 @@ export default function BankStatementsPage() {
         [gatewayTxResults, selectedGatewayTxIds],
     );
 
-    /** Search invoice-orders for revenue reconciliation */
-    const searchInvoiceOrders = useCallback(async (query: string, tx: BankTransaction) => {
+    /** Search web_orders (Craft Commerce) for revenue reconciliation */
+    const searchWebOrders = useCallback(async (query: string, tx: BankTransaction) => {
         if (query.length < 2) return;
         setIsSearchingOrders(true);
         try {
             const currency = tx.currency;
-            const orderSources = currency === "USD" ? ["invoice-orders-usd", "invoice-orders"] : ["invoice-orders", "invoice-orders-usd"];
             const normalizedQuery = normalizeText(query);
             const queryTokens = normalizedQuery.split(/\s+/).filter(token => token.length > 1);
 
             const PAGE_SIZE = 1000;
-            const maxPages = 8;
+            const maxPages = 5;
             const allRows: any[] = [];
 
             for (let page = 0; page < maxPages; page++) {
-                const { data } = await supabase
-                    .from("csv_rows")
+                let qb = supabase
+                    .from("web_orders")
                     .select("*")
-                    .in("source", orderSources)
-                    .or("reconciled.eq.false,reconciled.is.null")
-                    .order("date", { ascending: false })
+                    .eq("reconciled", false)
+                    .order("date_ordered", { ascending: false })
                     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
+                // Filter by currency if known
+                if (currency === "USD") {
+                    qb = qb.eq("currency", "USD");
+                } else if (currency === "EUR") {
+                    qb = qb.eq("currency", "EUR");
+                }
+
+                const { data } = await qb;
                 if (!data || data.length === 0) break;
                 allRows.push(...data);
                 if (data.length < PAGE_SIZE) break;
@@ -616,40 +663,36 @@ export default function BankStatementsPage() {
 
             const results: RevenueOrderMatch[] = allRows
                 .filter(row => {
-                    const cd = row.custom_data || {};
                     const haystack = normalizeText([
-                        cd.customer_name,
-                        cd.company_name,
-                        cd.customer,
-                        cd.order_id,
-                        cd.invoice_number,
-                        cd.email,
-                        row.description,
+                        row.customer_full_name,
+                        row.customer_email,
+                        row.order_reference,
+                        row.craft_id,
+                        row.order_number,
+                        row.billing_organization,
+                        (row.products || []).map((p: any) => p.description || p.sku || "").join(" "),
                     ].filter(Boolean).join(" "));
 
                     if (!haystack) return false;
                     if (queryTokens.length === 0) return haystack.includes(normalizedQuery);
                     return queryTokens.every(token => haystack.includes(token));
                 })
-                .map(row => {
-                    const cd = row.custom_data || {};
-                    return {
-                        id: row.id,
-                        source: "invoice-orders",
-                        sourceLabel: cd.financial_account_name || row.description || "Invoice Order",
-                        orderId: cd.order_id || null,
-                        invoiceNumber: cd.invoice_number || null,
-                        customerName: resolveCustomerName(cd, row.description || ""),
-                        amount: Math.abs(parseFloat(row.amount) || 0),
-                        date: row.date || "",
-                        matchScore: 0,
-                        matchReason: "Manual search",
-                    };
-                });
+                .map(row => ({
+                    id: `wo-${row.id}`,
+                    source: "web-orders",
+                    sourceLabel: `Web Order #${row.order_reference}`,
+                    orderId: row.order_reference || null,
+                    invoiceNumber: row.craft_id || null,
+                    customerName: row.customer_full_name || row.customer_email || "",
+                    amount: Math.abs(parseFloat(row.total_price) || 0),
+                    date: row.date_ordered?.split("T")[0] || "",
+                    matchScore: 0,
+                    matchReason: "Manual search",
+                }));
             const uniqueById = Array.from(new Map(results.map(item => [item.id, item])).values());
             setOrderSearchResults(uniqueById);
         } catch (err) {
-            console.error("Error searching invoice-orders:", err);
+            console.error("Error searching web_orders:", err);
         }
         setIsSearchingOrders(false);
     }, []);
@@ -1373,7 +1416,7 @@ export default function BankStatementsPage() {
             }
             setPaymentSourceMatches(pMatches.sort((a, b) => b.matchScore - a.matchScore));
 
-            // 2) Customer name matching — only when description has a customer name
+            // 2) Customer name matching via web_orders — only when description has a customer name
             const descLower = tx.description.toLowerCase();
             const descWords = tx.description.split(/[\s,;.\/\-]+/).filter(w => w.length > 2).map(w => w.toLowerCase());
             const hasCustomerName = descWords.length > 0 && !detectGateway(tx.description); // Only if it's NOT a gateway deposit
@@ -1381,77 +1424,48 @@ export default function BankStatementsPage() {
             const revMatches: RevenueOrderMatch[] = [];
 
             if (hasCustomerName) {
-                // Search ar_invoices by customer name
+                // Search web_orders by customer name
                 const revStart = new Date(txDate);
                 revStart.setDate(revStart.getDate() - 60);
                 const revEnd = new Date(txDate);
                 revEnd.setDate(revEnd.getDate() + 5);
 
-                const { data: arData } = await supabase
-                    .from("ar_invoices")
+                let woQuery = supabase
+                    .from("web_orders")
                     .select("*")
                     .eq("reconciled", false)
-                    .gte("order_date", revStart.toISOString().split("T")[0])
-                    .lte("order_date", revEnd.toISOString().split("T")[0])
+                    .gte("date_ordered", revStart.toISOString().split("T")[0])
+                    .lte("date_ordered", revEnd.toISOString().split("T")[0])
                     .limit(500);
 
-                (arData || []).forEach(inv => {
-                    const invAmount = parseFloat(inv.total_amount) || parseFloat(inv.charged_amount) || 0;
-                    const custName = (inv.customer_name || inv.company_name || "").toLowerCase();
+                if (currency === "USD") {
+                    woQuery = woQuery.eq("currency", "USD");
+                } else if (currency === "EUR") {
+                    woQuery = woQuery.eq("currency", "EUR");
+                }
+
+                const { data: woData } = await woQuery;
+
+                (woData || []).forEach(row => {
+                    const woAmount = Math.abs(parseFloat(row.total_price) || 0);
+                    const custName = (row.customer_full_name || row.customer_email || "").toLowerCase();
                     const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
                     const nameMatch = nameWords.some((w: string) => descLower.includes(w));
 
                     if (nameMatch) {
-                        const diff = Math.abs(invAmount - txAmount);
+                        const diff = Math.abs(woAmount - txAmount);
                         const isExact = diff < 0.01;
                         revMatches.push({
-                            id: `ar-${inv.id}`,
-                            source: "ar_invoices",
-                            sourceLabel: "AR Invoice",
-                            orderId: inv.order_id || null,
-                            invoiceNumber: inv.invoice_number || null,
-                            customerName: inv.customer_name || inv.company_name || "",
-                            amount: invAmount,
-                            date: inv.order_date || "",
+                            id: `wo-${row.id}`,
+                            source: "web-orders",
+                            sourceLabel: `Web Order #${row.order_reference}`,
+                            orderId: row.order_reference || null,
+                            invoiceNumber: row.craft_id || null,
+                            customerName: row.customer_full_name || row.customer_email || "",
+                            amount: woAmount,
+                            date: row.date_ordered?.split("T")[0] || "",
                             matchScore: isExact ? 100 : 60,
                             matchReason: isExact ? "Exact amount + customer name" : `Customer name match`,
-                        });
-                    }
-                });
-
-                // Search invoice-orders csv_rows by customer name
-                const orderSources = currency === "USD" ? ["invoice-orders-usd"] : ["invoice-orders"];
-                const { data: orderData } = await supabase
-                    .from("csv_rows")
-                    .select("*")
-                    .in("source", orderSources)
-                    .or("reconciled.eq.false,reconciled.is.null")
-                    .gte("date", revStart.toISOString().split("T")[0])
-                    .lte("date", revEnd.toISOString().split("T")[0])
-                    .limit(500);
-
-                (orderData || []).forEach(row => {
-                    const cd = row.custom_data || {};
-                    const resolvedCustomerName = resolveCustomerName(cd, row.description || "");
-                    const custName = resolvedCustomerName.toLowerCase();
-                    const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
-                    const nameMatch = nameWords.some((w: string) => descLower.includes(w));
-
-                    if (nameMatch) {
-                        const rowAmount = Math.abs(parseFloat(row.amount) || 0);
-                        const diff = Math.abs(rowAmount - txAmount);
-                        const isExact = diff < 0.01;
-                        revMatches.push({
-                            id: row.id,
-                            source: "invoice-orders",
-                            sourceLabel: "Invoice Order",
-                            orderId: cd.order_id || null,
-                            invoiceNumber: cd.invoice_number || null,
-                            customerName: resolvedCustomerName,
-                            amount: rowAmount,
-                            date: row.date?.split("T")[0] || "",
-                            matchScore: isExact ? 100 : 55,
-                            matchReason: isExact ? "Exact amount + customer match" : `Customer name match`,
                         });
                     }
                 });
@@ -1688,27 +1702,28 @@ export default function BankStatementsPage() {
                 return;
             }
 
-            // CASE 3: Revenue → AR Invoice / Revenue Order match
+            // CASE 3: Revenue → Web Order match
             if (!isExpense && selectedRevenueOrder) {
                 const match = revenueOrderMatches.find(m => m.id === selectedRevenueOrder);
                 if (!match) throw new Error("Revenue order not found");
 
-                // Update matched source
-                if (match.source === "invoice-orders") {
-                    const { data: orderRow, error: orderRowErr } = await supabase
-                        .from("csv_rows")
-                        .select("id,amount,custom_data")
-                        .eq("id", match.id)
+                // Update matched web_order
+                if (match.source === "web-orders") {
+                    const woId = parseInt(match.id.replace("wo-", ""));
+                    const { data: woRow, error: woRowErr } = await supabase
+                        .from("web_orders")
+                        .select("id,total_price,source_data")
+                        .eq("id", woId)
                         .maybeSingle();
-                    if (orderRowErr) throw orderRowErr;
-                    if (!orderRow) throw new Error("Invoice-order not found");
+                    if (woRowErr) throw woRowErr;
+                    if (!woRow) throw new Error("Web order not found");
 
-                    const partial = buildInvoiceOrderPartialUpdate(orderRow, reconTransaction.id, txAmount, now);
+                    const partial = buildWebOrderUpdate(woRow, reconTransaction.id, txAmount, now);
 
                     await supabase
-                        .from("csv_rows")
+                        .from("web_orders")
                         .update(partial.update)
-                        .eq("id", match.id);
+                        .eq("id", woId);
                 } else if (match.source === "ar_invoices") {
                     const arId = parseInt(match.id.replace("ar-", ""));
                     await supabase
@@ -1848,29 +1863,30 @@ export default function BankStatementsPage() {
                         .eq("id", gId);
                 }
 
-                // Mark selected invoice-orders as reconciled
+                // Mark selected web_orders as reconciled
                 if (linkedOrderIds.length > 0) {
-                    const { data: orderRows, error: orderRowsErr } = await supabase
-                        .from("csv_rows")
-                        .select("id,amount,custom_data")
-                        .in("id", linkedOrderIds);
-                    if (orderRowsErr) throw orderRowsErr;
+                    const realWoIds = linkedOrderIds.map(id => parseInt(String(id).replace("wo-", "")));
+                    const { data: woRows, error: woRowsErr } = await supabase
+                        .from("web_orders")
+                        .select("id,total_price,source_data")
+                        .in("id", realWoIds);
+                    if (woRowsErr) throw woRowsErr;
 
-                    const orderById = new Map((orderRows || []).map((row: any) => [row.id, row]));
+                    const orderById = new Map((woRows || []).map((row: any) => [`wo-${row.id}`, row]));
                     let remainingToAllocate = Math.min(txAmount, linkedOrderTotal);
 
                     for (const oId of linkedOrderIds) {
-                        const orderRow = orderById.get(oId);
-                        if (!orderRow) continue;
+                        const woRow = orderById.get(oId);
+                        if (!woRow) continue;
                         if (remainingToAllocate <= 0) break;
 
-                        const partial = buildInvoiceOrderPartialUpdate(orderRow, reconTransaction.id, remainingToAllocate, now);
+                        const partial = buildWebOrderUpdate(woRow, reconTransaction.id, remainingToAllocate, now);
                         if (partial.appliedAmount <= 0) continue;
 
                         await supabase
-                            .from("csv_rows")
+                            .from("web_orders")
                             .update(partial.update)
-                            .eq("id", oId);
+                            .eq("id", woRow.id);
 
                         appliedOrderAmountTotal += partial.appliedAmount;
                         remainingToAllocate = Number((remainingToAllocate - partial.appliedAmount).toFixed(2));
@@ -1885,10 +1901,10 @@ export default function BankStatementsPage() {
                     linked_gateway_transaction_ids: linkedGatewayIds,
                     linked_gateway_transaction_count: linkedGatewayIds.length,
                     linked_gateway_total: linkedGatewayTotal,
-                    linked_invoice_order_ids: linkedOrderIds,
-                    linked_invoice_order_count: linkedOrderIds.length,
-                    linked_invoice_order_total: linkedOrderTotal,
-                    linked_invoice_order_applied_total: Number(appliedOrderAmountTotal.toFixed(2)),
+                    linked_web_order_ids: linkedOrderIds,
+                    linked_web_order_count: linkedOrderIds.length,
+                    linked_web_order_total: linkedOrderTotal,
+                    linked_web_order_applied_total: Number(appliedOrderAmountTotal.toFixed(2)),
                     manual_note: manualNote || null,
                 };
 
@@ -1910,7 +1926,7 @@ export default function BankStatementsPage() {
 
                 const parts = [];
                 if (linkedGatewayIds.length > 0) parts.push(`${linkedGatewayIds.length} gateway txn(s)`);
-                if (linkedOrderIds.length > 0) parts.push(`${linkedOrderIds.length} invoice order(s)`);
+                if (linkedOrderIds.length > 0) parts.push(`${linkedOrderIds.length} web order(s)`);
                 toast({ title: "Reconciled!", description: `Linked with ${parts.join(" + ")}` });
                 setReconDialogOpen(false);
                 return;
@@ -3472,7 +3488,7 @@ export default function BankStatementsPage() {
                                                 )}
                                             </>
                                         ) : (
-                                            /* ── REVENUE: Search Invoice-Orders by customer / order ID ── */
+                                            /* ── REVENUE: Search Web Orders by customer / order reference ── */
                                             <>
                                                 <div>
                                                     <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">
@@ -3481,12 +3497,12 @@ export default function BankStatementsPage() {
                                                     </label>
                                                     <div className="flex gap-2">
                                                         <Input
-                                                            placeholder="Type customer name, order ID, invoice #..."
+                                                            placeholder="Type customer name, order reference, email..."
                                                             value={orderSearchTerm}
                                                             onChange={e => setOrderSearchTerm(e.target.value)}
                                                             onKeyDown={async e => {
                                                                 if (e.key === "Enter" && reconTransaction) {
-                                                                    await searchInvoiceOrders(orderSearchTerm, reconTransaction);
+                                                                    await searchWebOrders(orderSearchTerm, reconTransaction);
                                                                 }
                                                             }}
                                                             className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm flex-1"
@@ -3495,7 +3511,7 @@ export default function BankStatementsPage() {
                                                             variant="outline"
                                                             size="sm"
                                                             disabled={isSearchingOrders || orderSearchTerm.length < 2}
-                                                            onClick={() => reconTransaction && searchInvoiceOrders(orderSearchTerm, reconTransaction)}
+                                                            onClick={() => reconTransaction && searchWebOrders(orderSearchTerm, reconTransaction)}
                                                             className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-9"
                                                         >
                                                             {isSearchingOrders ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
@@ -3517,10 +3533,10 @@ export default function BankStatementsPage() {
                                                         <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>
                                                     )}
                                                     {orderSearchResults.length === 0 && !isSearchingOrders && orderSearchTerm.length >= 2 && (
-                                                        <p className="text-center text-gray-500 text-xs py-2">No invoice-orders found for &quot;{orderSearchTerm}&quot;</p>
+                                                        <p className="text-center text-gray-500 text-xs py-2">No orders found for &quot;{orderSearchTerm}&quot;</p>
                                                     )}
                                                     {orderSearchResults.length === 0 && !isSearchingOrders && orderSearchTerm.length < 2 && (
-                                                        <p className="text-center text-gray-500 text-[10px] py-4">Search for invoice-orders by customer name, order ID, or invoice number</p>
+                                                        <p className="text-center text-gray-500 text-[10px] py-4">Search by customer name, order reference, or email</p>
                                                     )}
                                                     {orderSearchResults.map(order => (
                                                         <button
