@@ -154,6 +154,8 @@ interface RevenueOrderMatch {
     date: string;
     matchScore: number;
     matchReason: string;
+    reconciled?: boolean;
+    reconciledWith?: string | null;
 }
 
 interface IntercompanyMatch {
@@ -644,7 +646,6 @@ export default function BankStatementsPage() {
                 let qb = supabase
                     .from("ar_invoices")
                     .select("*")
-                    .eq("reconciled", false)
                     .order("order_date", { ascending: false })
                     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
@@ -687,6 +688,8 @@ export default function BankStatementsPage() {
                     date: row.order_date || "",
                     matchScore: 0,
                     matchReason: "Manual search",
+                    reconciled: row.reconciled === true,
+                    reconciledWith: row.reconciled_with || null,
                 }));
             const uniqueById = Array.from(new Map(results.map(item => [item.id, item])).values());
             setOrderSearchResults(uniqueById);
@@ -3298,10 +3301,10 @@ export default function BankStatementsPage() {
                                                 )}
                                             </div>
                                         ) : (
-                                            /* ── Revenue: Invoice-Order Search ── */
+                                            /* ── Revenue: Web Orders Search ── */
                                             <div className="space-y-3">
                                                 <div>
-                                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Search Invoice-Orders (customer, order ID, invoice #)</label>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Search Web Orders (customer, order ID, invoice #)</label>
                                                     <div className="flex gap-2">
                                                         <Input
                                                             placeholder="Type customer name, order ID, invoice #..."
@@ -3309,7 +3312,7 @@ export default function BankStatementsPage() {
                                                             onChange={e => setOrderSearchTerm(e.target.value)}
                                                             onKeyDown={async e => {
                                                                 if (e.key === "Enter" && reconTransaction) {
-                                                                    await searchInvoiceOrders(orderSearchTerm, reconTransaction);
+                                                                    await searchWebOrders(orderSearchTerm, reconTransaction);
                                                                 }
                                                             }}
                                                             className="flex-1 bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-xs h-8"
@@ -3318,7 +3321,7 @@ export default function BankStatementsPage() {
                                                             size="sm"
                                                             variant="outline"
                                                             disabled={isSearchingOrders || orderSearchTerm.length < 2}
-                                                            onClick={() => reconTransaction && searchInvoiceOrders(orderSearchTerm, reconTransaction)}
+                                                            onClick={() => reconTransaction && searchWebOrders(orderSearchTerm, reconTransaction)}
                                                             className="h-8 bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
                                                         >
                                                             {isSearchingOrders ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
@@ -3332,7 +3335,7 @@ export default function BankStatementsPage() {
                                                 )}
                                                 <div className="max-h-[320px] overflow-y-auto space-y-1">
                                                     {orderSearchResults.length === 0 && !isSearchingOrders && (
-                                                        <p className="text-center text-gray-500 text-[10px] py-4">Search for invoice-orders by customer, order ID, or invoice number</p>
+                                                        <p className="text-center text-gray-500 text-[10px] py-4">Search for web orders by customer, order ID, or invoice number</p>
                                                     )}
                                                     {isSearchingOrders && (
                                                         <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>
@@ -3464,7 +3467,7 @@ export default function BankStatementsPage() {
                                                 <div>
                                                     <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">
                                                         <ShoppingCart className="h-3.5 w-3.5 inline mr-1" />
-                                                        Search Invoice-Orders by Customer Name, Order ID, or Invoice #
+                                                        Search Web Orders by Customer Name, Order ID, or Invoice #
                                                     </label>
                                                     <div className="flex gap-2">
                                                         <Input
@@ -3525,11 +3528,15 @@ export default function BankStatementsPage() {
                                                                     </div>
                                                                 </div>
                                                                 <div className="min-w-0">
-                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{order.customerName}</p>
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">
+                                                                        {order.customerName}
+                                                                        {order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-500/20 text-amber-400 border border-amber-500/30">Reconciled</span>}
+                                                                    </p>
                                                                     <p className="text-[10px] text-gray-500 truncate">
                                                                         {order.orderId && <span className="text-cyan-400">#{order.orderId}</span>}
                                                                         {order.invoiceNumber && <span className="ml-2">Inv: {order.invoiceNumber}</span>}
                                                                         {order.sourceLabel && <span className="ml-2 text-gray-400">{order.sourceLabel}</span>}
+                                                                        {order.reconciledWith && <span className="ml-2 text-amber-500/70">({order.reconciledWith})</span>}
                                                                     </p>
                                                                 </div>
                                                                 <div className="text-center">
