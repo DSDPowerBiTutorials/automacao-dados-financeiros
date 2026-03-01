@@ -1344,8 +1344,8 @@ export default function BankCashFlowPage() {
                 {/* Scrolling bank balances marquee */}
                 <div className="flex-shrink-0 bg-white dark:bg-black overflow-hidden relative h-8">
                     <div className="flex items-center gap-8 animate-marquee whitespace-nowrap absolute top-1/2 -translate-y-1/2 left-full">
-                        {[...actualBalance.perBank, ...actualBalance.perBank].map((bank, i) => (
-                            <span key={`${bank.key}-${i}`} className="inline-flex items-center gap-2 text-sm">
+                        {actualBalance.perBank.map((bank) => (
+                            <span key={bank.key} className="inline-flex items-center gap-2 text-sm">
                                 <span className="text-gray-500 dark:text-gray-400 font-medium">{bank.label}</span>
                                 <span className={`font-semibold ${bank.balance >= 0 ? "text-green-500" : "text-red-400"}`}>
                                     {formatCurrency(bank.balance, bank.currency)}
