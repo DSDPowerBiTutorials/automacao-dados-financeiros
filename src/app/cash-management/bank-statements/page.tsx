@@ -82,6 +82,10 @@ interface BankTransaction {
     isReconciled: boolean;
     reconciliationType: string | null;
     isOrderReconciled: boolean;
+    orderReconciliationStatus: "full" | "partial" | "none";
+    matchedOrderTotal: number;
+    matchedOrderCoverage: number;
+    matchedCustomerName: string | null;
     invoiceOrderId: string | null;
     invoiceNumber: string | null;
     custom_data: Record<string, any>;
@@ -306,19 +310,56 @@ const toNumeric = (value: unknown): number | null => {
     return null;
 };
 
-const isOrderFullyReconciled = (amount: number, customData: Record<string, any>): boolean => {
-    const absoluteAmount = Math.abs(amount);
-    const candidateTotals = [
-        customData?.linked_invoice_order_total,
-        customData?.matched_order_amount,
-        customData?.matched_invoice_total,
-        customData?.matched_amount,
-    ];
+interface OrderReconciliationStatus {
+    status: "full" | "partial" | "none";
+    matchedTotal: number;
+    coverage: number; // 0-100 percentage
+    orderId: string | null;
+    invoiceNumber: string | null;
+    customerName: string | null;
+}
 
-    return candidateTotals.some(total => {
-        const numericTotal = toNumeric(total);
-        return numericTotal !== null && Math.abs(Math.abs(numericTotal) - absoluteAmount) < 0.01;
-    });
+const getOrderReconciliationStatus = (amount: number, customData: Record<string, any>): OrderReconciliationStatus => {
+    const absoluteAmount = Math.abs(amount);
+    const none: OrderReconciliationStatus = { status: "none", matchedTotal: 0, coverage: 0, orderId: null, invoiceNumber: null, customerName: null };
+    if (!customData || absoluteAmount === 0) return none;
+
+    // Check if any order reconciliation fields exist
+    const candidateTotals = [
+        customData.linked_invoice_order_total,
+        customData.linked_web_order_applied_total,
+        customData.matched_order_amount,
+        customData.matched_invoice_total,
+        customData.matched_amount,
+    ];
+    const hasOrderMatch = customData.invoice_order_matched === true
+        || customData.matched_order_id
+        || customData.linked_web_order_ids?.length > 0;
+
+    const matchedTotal = candidateTotals.reduce((best, total) => {
+        const n = toNumeric(total);
+        return n !== null && Math.abs(n) > Math.abs(best) ? Math.abs(n) : best;
+    }, 0);
+
+    if (matchedTotal === 0 && !hasOrderMatch) return none;
+
+    const effectiveMatched = matchedTotal || absoluteAmount; // if flag set but no amount, assume full
+    const coverage = absoluteAmount > 0 ? Math.min(100, Math.round((effectiveMatched / absoluteAmount) * 100)) : 0;
+    const status = coverage >= 98 ? "full" : "partial"; // 98% threshold for rounding tolerance
+
+    return {
+        status,
+        matchedTotal: effectiveMatched,
+        coverage,
+        orderId: customData.invoice_order_id || customData.matched_order_id || null,
+        invoiceNumber: customData.invoice_number || customData.matched_invoice_number || null,
+        customerName: customData.matched_customer_name || null,
+    };
+};
+
+// Backward-compatible helper
+const isOrderFullyReconciled = (amount: number, customData: Record<string, any>): boolean => {
+    return getOrderReconciliationStatus(amount, customData).status !== "none";
 };
 
 const buildInvoiceOrderPartialUpdate = (
@@ -889,6 +930,7 @@ export default function BankStatementsPage() {
                     ? (paymentSource?.toLowerCase() || detectGateway(row.description || ""))
                     : null;
 
+                const orderStatus = getOrderReconciliationStatus(amount, cd);
                 return {
                     id: row.id,
                     date: row.date || "",
@@ -901,9 +943,13 @@ export default function BankStatementsPage() {
                     matchType: cd.match_type || null,
                     isReconciled: !!row.reconciled,
                     reconciliationType: cd.reconciliationType || (row.reconciled ? "automatic" : null),
-                    isOrderReconciled: isOrderFullyReconciled(amount, cd),
-                    invoiceOrderId: cd.invoice_order_id || null,
-                    invoiceNumber: cd.invoice_number || null,
+                    isOrderReconciled: orderStatus.status !== "none",
+                    orderReconciliationStatus: orderStatus.status,
+                    matchedOrderTotal: orderStatus.matchedTotal,
+                    matchedOrderCoverage: orderStatus.coverage,
+                    matchedCustomerName: orderStatus.customerName,
+                    invoiceOrderId: orderStatus.orderId || cd.invoice_order_id || cd.matched_order_id || null,
+                    invoiceNumber: orderStatus.invoiceNumber || cd.invoice_number || cd.matched_invoice_number || null,
                     custom_data: cd,
                 };
             });
@@ -1728,6 +1774,11 @@ export default function BankStatementsPage() {
                     ...reconTransaction.custom_data,
                     reconciliationType: "manual",
                     reconciled_at: now,
+                    // Canonical fields (read by side popup & cash-flow)
+                    invoice_order_id: match.orderId || match.id,
+                    invoice_number: match.invoiceNumber,
+                    invoice_order_matched: true,
+                    // Legacy/detail fields
                     matched_order_id: match.orderId || match.id,
                     matched_order_source: match.source,
                     matched_customer_name: match.customerName,
@@ -1745,10 +1796,17 @@ export default function BankStatementsPage() {
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
+                const case3Status = getOrderReconciliationStatus(reconTransaction.amount, updatedCustomData);
                 updateTransactionLocalState(reconTransaction.id, {
                     isReconciled: true,
                     reconciliationType: "manual",
-                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    isOrderReconciled: case3Status.status !== "none",
+                    orderReconciliationStatus: case3Status.status,
+                    matchedOrderTotal: case3Status.matchedTotal,
+                    matchedOrderCoverage: case3Status.coverage,
+                    matchedCustomerName: case3Status.customerName,
+                    invoiceOrderId: case3Status.orderId,
+                    invoiceNumber: case3Status.invoiceNumber,
                     custom_data: updatedCustomData,
                 });
 
@@ -1879,6 +1937,8 @@ export default function BankStatementsPage() {
                     linked_web_order_count: linkedOrderIds.length,
                     linked_web_order_total: linkedOrderTotal,
                     linked_web_order_applied_total: Number(appliedOrderAmountTotal.toFixed(2)),
+                    linked_invoice_order_total: Number(appliedOrderAmountTotal.toFixed(2)),
+                    invoice_order_matched: linkedOrderIds.length > 0,
                     manual_note: manualNote || null,
                 };
 
@@ -1891,10 +1951,17 @@ export default function BankStatementsPage() {
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
+                const case5Status = getOrderReconciliationStatus(reconTransaction.amount, updatedCustomData);
                 updateTransactionLocalState(reconTransaction.id, {
                     isReconciled: true,
                     reconciliationType: "gateway-order-link",
-                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    isOrderReconciled: case5Status.status !== "none",
+                    orderReconciliationStatus: case5Status.status,
+                    matchedOrderTotal: case5Status.matchedTotal,
+                    matchedOrderCoverage: case5Status.coverage,
+                    matchedCustomerName: case5Status.customerName,
+                    invoiceOrderId: case5Status.orderId,
+                    invoiceNumber: case5Status.invoiceNumber,
                     custom_data: updatedCustomData,
                 });
 
@@ -1929,7 +1996,10 @@ export default function BankStatementsPage() {
                     isReconciled: true,
                     reconciliationType: "manual",
                     paymentSource: isExpense ? null : (manualPaymentSource || null),
-                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    isOrderReconciled: false,
+                    orderReconciliationStatus: "none",
+                    matchedOrderTotal: 0,
+                    matchedOrderCoverage: 0,
                     custom_data: updatedCustomData,
                 });
 
@@ -1955,6 +2025,23 @@ export default function BankStatementsPage() {
             delete cleanData.reconciled_at;
             delete cleanData.manual_note;
             delete cleanData.match_type;
+            // Order reconciliation fields
+            delete cleanData.invoice_order_id;
+            delete cleanData.invoice_number;
+            delete cleanData.invoice_order_matched;
+            delete cleanData.matched_order_id;
+            delete cleanData.matched_order_source;
+            delete cleanData.matched_customer_name;
+            delete cleanData.matched_invoice_number;
+            delete cleanData.matched_order_amount;
+            delete cleanData.linked_invoice_order_total;
+            delete cleanData.linked_web_order_ids;
+            delete cleanData.linked_web_order_count;
+            delete cleanData.linked_web_order_total;
+            delete cleanData.linked_web_order_applied_total;
+            delete cleanData.linked_gateway_transaction_ids;
+            delete cleanData.linked_gateway_transaction_count;
+            delete cleanData.linked_gateway_total;
 
             const { error: updateErr } = await supabase
                 .from("csv_rows")
@@ -1964,11 +2051,11 @@ export default function BankStatementsPage() {
             if (updateErr) throw updateErr;
 
             setBankTransactions(prev => prev.map(t =>
-                t.id === tx.id ? { ...t, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null } : t
+                t.id === tx.id ? { ...t, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null, isOrderReconciled: false, orderReconciliationStatus: "none" as const, matchedOrderTotal: 0, matchedOrderCoverage: 0, matchedCustomerName: null, invoiceOrderId: null, invoiceNumber: null } : t
             ));
 
             if (selectedRow?.id === tx.id) {
-                setSelectedRow({ ...tx, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null });
+                setSelectedRow({ ...tx, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null, isOrderReconciled: false, orderReconciliationStatus: "none" as const, matchedOrderTotal: 0, matchedOrderCoverage: 0, matchedCustomerName: null, invoiceOrderId: null, invoiceNumber: null });
             }
 
             toast({ title: "Reverted", description: "Reconciliation removed" });
@@ -2954,9 +3041,13 @@ export default function BankStatementsPage() {
                                 </h3>
                                 <div>
                                     <p className="text-xs text-gray-500">Status</p>
-                                    {selectedRow.isOrderReconciled ? (
-                                        <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
-                                            Matched
+                                    {selectedRow.orderReconciliationStatus === "full" ? (
+                                        <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">
+                                            Full Match
+                                        </Badge>
+                                    ) : selectedRow.orderReconciliationStatus === "partial" ? (
+                                        <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+                                            Partial Match — {selectedRow.matchedOrderCoverage}%
                                         </Badge>
                                     ) : (
                                         <Badge variant="outline" className="bg-gray-100 dark:bg-black/50 text-gray-500 border-gray-200 dark:border-gray-700">
@@ -2965,14 +3056,58 @@ export default function BankStatementsPage() {
                                     )}
                                 </div>
 
-                                {selectedRow.invoiceNumber && (
-                                    <div>
-                                        <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
-                                        <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
+                                {/* Show matched details when any match exists */}
+                                {selectedRow.orderReconciliationStatus !== "none" && (
+                                    <div className="space-y-2 bg-white dark:bg-black/30 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                                        {selectedRow.matchedCustomerName && (
+                                            <div className="flex justify-between">
+                                                <span className="text-xs text-gray-500">Customer</span>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-white">{selectedRow.matchedCustomerName}</span>
+                                            </div>
+                                        )}
+                                        {selectedRow.invoiceOrderId && (
+                                            <div className="flex justify-between">
+                                                <span className="text-xs text-gray-500">Order ID</span>
+                                                <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceOrderId}</span>
+                                            </div>
+                                        )}
+                                        {selectedRow.invoiceNumber && (
+                                            <div className="flex justify-between">
+                                                <span className="text-xs text-gray-500">Invoice</span>
+                                                <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceNumber}</span>
+                                            </div>
+                                        )}
+                                        {selectedRow.matchedOrderTotal > 0 && (
+                                            <div className="flex justify-between">
+                                                <span className="text-xs text-gray-500">Order Amount</span>
+                                                <span className="text-sm font-medium text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
+                                            </div>
+                                        )}
+                                        {selectedRow.orderReconciliationStatus === "partial" && (
+                                            <div className="flex justify-between">
+                                                <span className="text-xs text-gray-500">Bank Amount</span>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-300">{formatCurrency(Math.abs(selectedRow.amount), selectedRow.currency)}</span>
+                                            </div>
+                                        )}
+                                        {selectedRow.orderReconciliationStatus === "partial" && (
+                                            <div className="mt-1">
+                                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                                    <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${selectedRow.matchedOrderCoverage}%` }} />
+                                                </div>
+                                                <p className="text-[10px] text-gray-500 mt-0.5">Order covers {selectedRow.matchedOrderCoverage}% of bank amount</p>
+                                            </div>
+                                        )}
                                     </div>
                                 )}
 
-                                {selectedRow.invoiceOrderId && (
+                                {/* Legacy display for unmatched with invoice data */}
+                                {selectedRow.orderReconciliationStatus === "none" && selectedRow.invoiceNumber && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                        <span className="text-sm font-mono text-blue-600 dark:text-blue-300">{selectedRow.invoiceNumber}</span>
+                                    </div>
+                                )}
+                                {selectedRow.orderReconciliationStatus === "none" && selectedRow.invoiceOrderId && (
                                     <div>
                                         <p className="text-xs text-gray-500 mb-1">Order ID</p>
                                         <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{selectedRow.invoiceOrderId}</span>

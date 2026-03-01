@@ -90,6 +90,10 @@ interface BankTransaction {
     isReconciled: boolean;
     reconciliationType: string | null;
     isOrderReconciled: boolean;
+    orderReconciliationStatus: "full" | "partial" | "none";
+    matchedOrderTotal: number;
+    matchedOrderCoverage: number;
+    matchedCustomerName: string | null;
     invoiceOrderId: string | null;
     invoiceNumber: string | null;
     custom_data: Record<string, any>;
@@ -493,6 +497,20 @@ export default function BankCashFlowPage() {
                     ? (paymentSource?.toLowerCase() || detectGateway(row.description || ""))
                     : null;
 
+                const hasOrderMatch = !!cd.invoice_order_matched
+                    || !!cd.matched_order_id
+                    || (cd.linked_web_order_ids?.length > 0)
+                    || (amount < 0 && !!row.reconciled);
+
+                const matchedOrderAmount = Math.abs(
+                    parseFloat(cd.linked_invoice_order_total || cd.linked_web_order_applied_total || cd.matched_order_amount || cd.matched_invoice_total || cd.matched_amount || 0)
+                );
+                const absAmount = Math.abs(amount);
+                const orderCoverage = hasOrderMatch && absAmount > 0 && matchedOrderAmount > 0
+                    ? Math.min(100, Math.round((matchedOrderAmount / absAmount) * 100))
+                    : (hasOrderMatch ? 100 : 0);
+                const orderStatus: "full" | "partial" | "none" = !hasOrderMatch ? "none" : (orderCoverage >= 98 ? "full" : "partial");
+
                 return {
                     id: row.id,
                     date: row.date || "",
@@ -505,9 +523,13 @@ export default function BankCashFlowPage() {
                     matchType: cd.match_type || null,
                     isReconciled: !!row.reconciled,
                     reconciliationType: cd.reconciliationType || (row.reconciled ? "automatic" : null),
-                    isOrderReconciled: !!cd.invoice_order_matched || (amount < 0 && !!row.reconciled),
-                    invoiceOrderId: cd.invoice_order_id || null,
-                    invoiceNumber: cd.invoice_number || null,
+                    isOrderReconciled: hasOrderMatch,
+                    orderReconciliationStatus: orderStatus,
+                    matchedOrderTotal: matchedOrderAmount,
+                    matchedOrderCoverage: orderCoverage,
+                    matchedCustomerName: cd.matched_customer_name || null,
+                    invoiceOrderId: cd.invoice_order_id || cd.matched_order_id || null,
+                    invoiceNumber: cd.invoice_number || cd.matched_invoice_number || null,
                     custom_data: cd,
                 };
             });
@@ -2702,12 +2724,16 @@ export default function BankCashFlowPage() {
                                             )}
                                         </div>
                                     ) : (
-                                        <div>
+                                        <div className="space-y-2">
                                             <div className="flex items-center gap-2">
                                                 <p className="text-xs text-gray-500">Status</p>
-                                                {selectedRow.isOrderReconciled ? (
-                                                    <Badge variant="outline" className="bg-blue-900/30 text-blue-400 border-blue-700">
-                                                        Matched
+                                                {selectedRow.orderReconciliationStatus === "full" ? (
+                                                    <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">
+                                                        Full Match
+                                                    </Badge>
+                                                ) : selectedRow.orderReconciliationStatus === "partial" ? (
+                                                    <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+                                                        Partial Match — {selectedRow.matchedOrderCoverage}%
                                                     </Badge>
                                                 ) : (
                                                     <Badge variant="outline" className="bg-gray-100 dark:bg-black/50 text-gray-500 border-gray-200 dark:border-gray-700">
@@ -2715,13 +2741,49 @@ export default function BankCashFlowPage() {
                                                     </Badge>
                                                 )}
                                             </div>
-                                            {selectedRow.invoiceNumber && (
+                                            {selectedRow.orderReconciliationStatus !== "none" && (
+                                                <div className="bg-white dark:bg-black/30 rounded-lg p-3 border border-gray-200 dark:border-gray-700 space-y-1.5">
+                                                    {selectedRow.matchedCustomerName && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs text-gray-500">Customer</span>
+                                                            <span className="text-sm font-medium text-gray-900 dark:text-white">{selectedRow.matchedCustomerName}</span>
+                                                        </div>
+                                                    )}
+                                                    {selectedRow.invoiceOrderId && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs text-gray-500">Order ID</span>
+                                                            <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceOrderId}</span>
+                                                        </div>
+                                                    )}
+                                                    {selectedRow.invoiceNumber && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs text-gray-500">Invoice</span>
+                                                            <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceNumber}</span>
+                                                        </div>
+                                                    )}
+                                                    {selectedRow.matchedOrderTotal > 0 && (
+                                                        <div className="flex justify-between">
+                                                            <span className="text-xs text-gray-500">Order Amount</span>
+                                                            <span className="text-sm font-medium text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
+                                                        </div>
+                                                    )}
+                                                    {selectedRow.orderReconciliationStatus === "partial" && (
+                                                        <div className="mt-1">
+                                                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                                                <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${selectedRow.matchedOrderCoverage}%` }} />
+                                                            </div>
+                                                            <p className="text-[10px] text-gray-500 mt-0.5">Order covers {selectedRow.matchedOrderCoverage}% of bank amount</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )}
+                                            {selectedRow.orderReconciliationStatus === "none" && selectedRow.invoiceNumber && (
                                                 <div className="mt-2">
                                                     <p className="text-xs text-gray-500 mb-1">Invoice</p>
                                                     <span className="text-sm font-mono text-blue-300">{selectedRow.invoiceNumber}</span>
                                                 </div>
                                             )}
-                                            {selectedRow.invoiceOrderId && (
+                                            {selectedRow.orderReconciliationStatus === "none" && selectedRow.invoiceOrderId && (
                                                 <div className="mt-2">
                                                     <p className="text-xs text-gray-500 mb-1">Order ID</p>
                                                     <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{selectedRow.invoiceOrderId}</span>

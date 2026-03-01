@@ -597,8 +597,104 @@ export async function GET(req: NextRequest) {
         }
 
         // ═══════════════════════════════════════════════
+        // ═══════════════════════════════════════════════
         // FIND LINKED INVOICES — from order_ids in gateway transactions + bank custom_data
         // ═══════════════════════════════════════════════
+
+        // NEW: Look up ar_invoices manually reconciled with this bank row
+        // This handles CASE 3 (manual web order matches) and CASE 5 (gateway+order links)
+        {
+            const { data: manualInvoices } = await supabaseAdmin
+                .from("ar_invoices")
+                .select("id, invoice_number, order_id, client_name, company_name, total_amount, currency, product, invoice_date, order_date")
+                .eq("reconciled_with", bankRowId)
+                .limit(50);
+
+            if (manualInvoices && manualInvoices.length > 0) {
+                for (const inv of manualInvoices) {
+                    // Add to linkedInvoices (avoiding duplicates)
+                    if (!linkedInvoices.some(li => li.id === inv.id)) {
+                        linkedInvoices.push({
+                            id: inv.id,
+                            invoice_number: inv.invoice_number || "",
+                            order_id: inv.order_id || "",
+                            client_name: inv.client_name || "",
+                            company_name: inv.company_name || null,
+                            total_amount: inv.total_amount || 0,
+                            currency: inv.currency || "EUR",
+                            product: inv.product || null,
+                            invoice_date: inv.invoice_date || inv.order_date || null,
+                        });
+                    }
+                    // Also inject into linkedOrders so Orders section shows data
+                    if (!linkedOrders.some(lo => lo.invoice_number === inv.invoice_number)) {
+                        linkedOrders.push({
+                            invoice_number: inv.invoice_number || "",
+                            order_number: inv.order_id || null,
+                            customer_name: inv.client_name || null,
+                            email: null,
+                            products: inv.product || null,
+                            amount: inv.total_amount || 0,
+                            currency: inv.currency || "EUR",
+                            financial_account_code: null,
+                            financial_account_name: null,
+                            order_type: null,
+                            payment_method: null,
+                            billing_entity: inv.company_name || null,
+                            country: null,
+                            date: inv.invoice_date || inv.order_date || null,
+                        });
+                    }
+                }
+            }
+        }
+
+        // Also look up by matched_order_id from custom_data
+        if (cd.matched_order_id || cd.invoice_order_id) {
+            const ordId = cd.matched_order_id || cd.invoice_order_id;
+            const { data: orderInvoices } = await supabaseAdmin
+                .from("ar_invoices")
+                .select("id, invoice_number, order_id, client_name, company_name, total_amount, currency, product, invoice_date, order_date")
+                .eq("order_id", ordId)
+                .limit(10);
+
+            if (orderInvoices) {
+                for (const inv of orderInvoices) {
+                    if (!linkedInvoices.some(li => li.id === inv.id)) {
+                        linkedInvoices.push({
+                            id: inv.id,
+                            invoice_number: inv.invoice_number || "",
+                            order_id: inv.order_id || "",
+                            client_name: inv.client_name || "",
+                            company_name: inv.company_name || null,
+                            total_amount: inv.total_amount || 0,
+                            currency: inv.currency || "EUR",
+                            product: inv.product || null,
+                            invoice_date: inv.invoice_date || inv.order_date || null,
+                        });
+                    }
+                    if (!linkedOrders.some(lo => lo.invoice_number === inv.invoice_number)) {
+                        linkedOrders.push({
+                            invoice_number: inv.invoice_number || "",
+                            order_number: inv.order_id || null,
+                            customer_name: inv.client_name || null,
+                            email: null,
+                            products: inv.product || null,
+                            amount: inv.total_amount || 0,
+                            currency: inv.currency || "EUR",
+                            financial_account_code: null,
+                            financial_account_name: null,
+                            order_type: null,
+                            payment_method: null,
+                            billing_entity: inv.company_name || null,
+                            country: null,
+                            date: inv.invoice_date || inv.order_date || null,
+                        });
+                    }
+                }
+            }
+        }
+
         const orderIds = gatewayTransactions
             .map(t => t.order_id)
             .filter(Boolean) as string[];
