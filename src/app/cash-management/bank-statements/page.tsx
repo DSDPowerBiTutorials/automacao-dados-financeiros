@@ -1653,6 +1653,57 @@ export default function BankStatementsPage() {
 
         try {
             const isExpense = tx.amount < 0;
+
+            // Pre-load existing matched orders for incremental accumulation
+            if (!isExpense) {
+                const cd = tx.custom_data || {};
+                try {
+                    if (cd.linked_web_order_details?.length > 0) {
+                        const preloadIds = new Set<string>();
+                        const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null }>();
+                        for (const d of cd.linked_web_order_details) {
+                            preloadIds.add(d.id);
+                            preloadCache.set(d.id, { amount: d.amount || 0, customerName: d.customerName || "", orderId: d.orderId || null, invoiceNumber: d.invoiceNumber || null });
+                        }
+                        setSelectedOrderIds(preloadIds);
+                        setSelectedOrdersCache(preloadCache);
+                    } else if (cd.linked_web_order_ids?.length > 0) {
+                        const realIds = (cd.linked_web_order_ids as string[]).map((xid: string) => parseInt(String(xid).replace("ar-", "")));
+                        const { data: arRows } = await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount").in("id", realIds);
+                        if (arRows?.length) {
+                            const preloadIds = new Set<string>();
+                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null }>();
+                            for (const o of arRows) {
+                                const arId = `ar-${o.id}`;
+                                preloadIds.add(arId);
+                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null });
+                            }
+                            setSelectedOrderIds(preloadIds);
+                            setSelectedOrdersCache(preloadCache);
+                        }
+                    } else if (cd.matched_order_id || cd.invoice_order_id) {
+                        const scalarId = String(cd.matched_order_id || cd.invoice_order_id);
+                        const isArPrefixed = scalarId.startsWith("ar-");
+                        const { data: arRows } = isArPrefixed
+                            ? await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount").eq("id", parseInt(scalarId.replace("ar-", "")))
+                            : await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount").eq("order_id", scalarId);
+                        if (arRows?.length) {
+                            const preloadIds = new Set<string>();
+                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null }>();
+                            for (const o of arRows) {
+                                const arId = `ar-${o.id}`;
+                                preloadIds.add(arId);
+                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null });
+                            }
+                            setSelectedOrderIds(preloadIds);
+                            setSelectedOrdersCache(preloadCache);
+                        }
+                    }
+                } catch (preloadErr) {
+                    console.error("Error pre-loading existing orders:", preloadErr);
+                }
+            }
+
             if (isExpense) {
                 await Promise.all([loadExpenseMatches(tx), loadIntercompanyMatches(tx)]);
             } else {
@@ -1810,6 +1861,19 @@ export default function BankStatementsPage() {
                     matched_customer_name: match.customerName,
                     matched_invoice_number: match.invoiceNumber,
                     matched_order_amount: match.amount,
+                    // Array-compatible fields for incremental accumulation
+                    linked_web_order_ids: [match.id],
+                    linked_web_order_count: 1,
+                    linked_web_order_total: match.amount,
+                    linked_web_order_applied_total: match.amount,
+                    linked_invoice_order_total: match.amount,
+                    linked_web_order_details: [{
+                        id: match.id,
+                        amount: match.amount,
+                        customerName: match.customerName || "",
+                        orderId: match.orderId || null,
+                        invoiceNumber: match.invoiceNumber || null,
+                    }],
                     manual_note: manualNote || null,
                 };
 
@@ -1912,9 +1976,11 @@ export default function BankStatementsPage() {
                 const linkedGatewayTotal = gatewayTxResults
                     .filter(t => selectedGatewayTxIds.has(t.id))
                     .reduce((s, t) => s + t.amount, 0);
-                const linkedOrderTotal = orderSearchResults
-                    .filter(o => selectedOrderIds.has(o.id))
-                    .reduce((s, o) => s + o.amount, 0);
+                // Use cache for correct totals (survives across searches and includes pre-loaded orders)
+                let linkedOrderTotal = 0;
+                for (const [oid, odata] of selectedOrdersCache) {
+                    if (selectedOrderIds.has(oid)) linkedOrderTotal += odata.amount;
+                }
                 let appliedOrderAmountTotal = 0;
 
                 // Mark selected gateway transactions as reconciled
@@ -1965,6 +2031,15 @@ export default function BankStatementsPage() {
                     linked_web_order_applied_total: Number(appliedOrderAmountTotal.toFixed(2)),
                     linked_invoice_order_total: Number(appliedOrderAmountTotal.toFixed(2)),
                     invoice_order_matched: linkedOrderIds.length > 0,
+                    linked_web_order_details: linkedOrderIds.map(oid => {
+                        const cached = selectedOrdersCache.get(oid);
+                        return { id: oid, amount: cached?.amount || 0, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null };
+                    }),
+                    invoice_order_id: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.orderId || linkedOrderIds[0]) : null,
+                    invoice_number: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.invoiceNumber || null) : null,
+                    matched_order_id: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.orderId || linkedOrderIds[0]) : null,
+                    matched_customer_name: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.customerName || null) : null,
+                    matched_order_amount: appliedOrderAmountTotal,
                     manual_note: manualNote || null,
                 };
 
@@ -3088,29 +3163,50 @@ export default function BankStatementsPage() {
                                 {/* Show matched details when any match exists */}
                                 {selectedRow.orderReconciliationStatus !== "none" && (
                                     <div className="space-y-2 bg-white dark:bg-black/30 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
-                                        {selectedRow.matchedCustomerName && (
-                                            <div className="flex justify-between">
-                                                <span className="text-xs text-gray-500">Customer</span>
-                                                <span className="text-sm font-medium text-gray-900 dark:text-white">{selectedRow.matchedCustomerName}</span>
+                                        {(selectedRow.custom_data?.linked_web_order_details?.length || 0) > 1 ? (
+                                            <div className="space-y-1.5">
+                                                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{selectedRow.custom_data.linked_web_order_details.length} Matched Orders</p>
+                                                {selectedRow.custom_data.linked_web_order_details.map((d: any, i: number) => (
+                                                    <div key={i} className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{d.customerName || "Unknown"}</p>
+                                                            <p className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">{d.orderId || d.id}</p>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-green-600 dark:text-green-400 ml-2 flex-shrink-0">{formatCurrency(d.amount, selectedRow.currency)}</span>
+                                                    </div>
+                                                ))}
+                                                <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-700">
+                                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Orders Total</span>
+                                                    <span className="text-xs font-bold text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
+                                                </div>
                                             </div>
-                                        )}
-                                        {selectedRow.invoiceOrderId && (
-                                            <div className="flex justify-between">
-                                                <span className="text-xs text-gray-500">Order ID</span>
-                                                <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceOrderId}</span>
-                                            </div>
-                                        )}
-                                        {selectedRow.invoiceNumber && (
-                                            <div className="flex justify-between">
-                                                <span className="text-xs text-gray-500">Invoice</span>
-                                                <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceNumber}</span>
-                                            </div>
-                                        )}
-                                        {selectedRow.matchedOrderTotal > 0 && (
-                                            <div className="flex justify-between">
-                                                <span className="text-xs text-gray-500">Order Amount</span>
-                                                <span className="text-sm font-medium text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
-                                            </div>
+                                        ) : (
+                                            <>
+                                                {selectedRow.matchedCustomerName && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-xs text-gray-500">Customer</span>
+                                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{selectedRow.matchedCustomerName}</span>
+                                                    </div>
+                                                )}
+                                                {selectedRow.invoiceOrderId && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-xs text-gray-500">Order ID</span>
+                                                        <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceOrderId}</span>
+                                                    </div>
+                                                )}
+                                                {selectedRow.invoiceNumber && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-xs text-gray-500">Invoice</span>
+                                                        <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceNumber}</span>
+                                                    </div>
+                                                )}
+                                                {selectedRow.matchedOrderTotal > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-xs text-gray-500">Order Amount</span>
+                                                        <span className="text-sm font-medium text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
+                                                    </div>
+                                                )}
+                                            </>
                                         )}
                                         {selectedRow.orderReconciliationStatus === "partial" && (
                                             <div className="flex justify-between">
@@ -3123,7 +3219,7 @@ export default function BankStatementsPage() {
                                                 <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                                                     <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${selectedRow.matchedOrderCoverage}%` }} />
                                                 </div>
-                                                <p className="text-[10px] text-gray-500 mt-0.5">Order covers {selectedRow.matchedOrderCoverage}% of bank amount</p>
+                                                <p className="text-[10px] text-gray-500 mt-0.5">Orders cover {selectedRow.matchedOrderCoverage}% of bank amount</p>
                                             </div>
                                         )}
                                     </div>
