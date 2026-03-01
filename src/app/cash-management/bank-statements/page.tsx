@@ -575,6 +575,8 @@ export default function BankStatementsPage() {
     const [orderSearchResults, setOrderSearchResults] = useState<RevenueOrderMatch[]>([]);
     const [isSearchingOrders, setIsSearchingOrders] = useState(false);
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
+    // Cache order data so totals survive across multiple searches
+    const [selectedOrdersCache, setSelectedOrdersCache] = useState<Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null }>>(new Map());
 
     // Gateway transaction browsing (for linking individual txns to disbursement)
     const [gatewayTxSearchTerm, setGatewayTxSearchTerm] = useState("");
@@ -643,10 +645,28 @@ export default function BankStatementsPage() {
     const toggleOrderSelection = useCallback((id: string) => {
         setSelectedOrderIds(prev => {
             const next = new Set(prev);
-            if (next.has(id)) next.delete(id); else next.add(id);
+            if (next.has(id)) {
+                next.delete(id);
+                setSelectedOrdersCache(cache => { const c = new Map(cache); c.delete(id); return c; });
+            } else {
+                next.add(id);
+                // Cache the order data from current search results
+                const order = orderSearchResults.find(o => o.id === id);
+                if (order) {
+                    setSelectedOrdersCache(cache => new Map(cache).set(id, {
+                        amount: order.amount,
+                        customerName: order.customerName || "",
+                        orderId: order.orderId || null,
+                        invoiceNumber: order.invoiceNumber || null,
+                    }));
+                }
+            }
             return next;
         });
-    }, []);
+        // Clear single-order selection to prevent CASE 3 from firing instead of CASE 5
+        setSelectedRevenueOrder(null);
+        setSelectedPaymentMatch(null);
+    }, [orderSearchResults]);
 
     /** Toggle gateway transaction selection (multi-select) */
     const toggleGatewayTxSelection = useCallback((id: string) => {
@@ -658,10 +678,14 @@ export default function BankStatementsPage() {
     }, []);
 
     const selectedOrdersTotal = useMemo(
-        () => orderSearchResults
-            .filter(order => selectedOrderIds.has(order.id))
-            .reduce((sum, order) => sum + order.amount, 0),
-        [orderSearchResults, selectedOrderIds],
+        () => {
+            let total = 0;
+            for (const [id, data] of selectedOrdersCache) {
+                if (selectedOrderIds.has(id)) total += data.amount;
+            }
+            return total;
+        },
+        [selectedOrdersCache, selectedOrderIds],
     );
 
     const selectedGatewayTotal = useMemo(
@@ -1617,6 +1641,7 @@ export default function BankStatementsPage() {
         setOrderSearchTerm("");
         setOrderSearchResults([]);
         setSelectedOrderIds(new Set());
+        setSelectedOrdersCache(new Map());
         setIsSearchingOrders(false);
         setGatewayTxSearchTerm("");
         setGatewayTxResults([]);
@@ -3468,8 +3493,29 @@ export default function BankStatementsPage() {
                                                     </div>
                                                 </div>
                                                 {selectedOrderIds.size > 0 && (
-                                                    <div className="bg-cyan-50 border border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800 rounded p-2">
-                                                        <p className="text-[10px] text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(orderSearchResults.filter(o => selectedOrderIds.has(o.id)).reduce((s, o) => s + o.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    <div className="bg-cyan-50 border border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800 rounded p-2 space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-medium text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>
+                                                            {reconTransaction && (
+                                                                <span className="text-[10px] text-gray-500">
+                                                                    Remaining: {formatCurrency(Math.max(0, Math.abs(reconTransaction.amount) - selectedOrdersTotal), reconTransaction.currency)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {[...selectedOrdersCache].filter(([id]) => selectedOrderIds.has(id)).map(([id, data]) => (
+                                                                <button key={id} onClick={() => toggleOrderSelection(id)} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-800/40 text-[9px] text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                                                    <span className="truncate max-w-[100px]">{data.customerName || data.orderId || id}</span>
+                                                                    <span className="font-medium">{formatCurrency(data.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                    <X className="h-2.5 w-2.5 flex-shrink-0" />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        {reconTransaction && selectedOrdersTotal > 0 && (
+                                                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                                                                <div className={`h-1 rounded-full ${selectedOrdersTotal >= Math.abs(reconTransaction.amount) * 0.98 ? "bg-green-500" : "bg-amber-500"}`} style={{ width: `${Math.min(100, (selectedOrdersTotal / Math.abs(reconTransaction.amount)) * 100)}%` }} />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
                                                 <div className="max-h-[320px] overflow-y-auto space-y-1">
@@ -3635,8 +3681,29 @@ export default function BankStatementsPage() {
 
                                                 {/* Revenue order selection summary */}
                                                 {selectedOrderIds.size > 0 && (
-                                                    <div className="bg-cyan-50 border border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800 rounded p-2">
-                                                        <p className="text-[10px] text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(orderSearchResults.filter(o => selectedOrderIds.has(o.id)).reduce((s, o) => s + o.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    <div className="bg-cyan-50 border border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800 rounded p-2 space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-medium text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>
+                                                            {reconTransaction && (
+                                                                <span className="text-[10px] text-gray-500">
+                                                                    Remaining: {formatCurrency(Math.max(0, Math.abs(reconTransaction.amount) - selectedOrdersTotal), reconTransaction.currency)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {[...selectedOrdersCache].filter(([id]) => selectedOrderIds.has(id)).map(([id, data]) => (
+                                                                <button key={id} onClick={() => toggleOrderSelection(id)} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-800/40 text-[9px] text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                                                    <span className="truncate max-w-[100px]">{data.customerName || data.orderId || id}</span>
+                                                                    <span className="font-medium">{formatCurrency(data.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                    <X className="h-2.5 w-2.5 flex-shrink-0" />
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        {reconTransaction && selectedOrdersTotal > 0 && (
+                                                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                                                                <div className={`h-1 rounded-full ${selectedOrdersTotal >= Math.abs(reconTransaction.amount) * 0.98 ? "bg-green-500" : "bg-amber-500"}`} style={{ width: `${Math.min(100, (selectedOrdersTotal / Math.abs(reconTransaction.amount)) * 100)}%` }} />
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
 
