@@ -627,7 +627,7 @@ export default function BankStatementsPage() {
         [gatewayTxResults, selectedGatewayTxIds],
     );
 
-    /** Search web_orders (Craft Commerce) for revenue reconciliation */
+    /** Search ar_invoices (Web Orders from HubSpot) for revenue reconciliation */
     const searchWebOrders = useCallback(async (query: string, tx: BankTransaction) => {
         if (query.length < 2) return;
         setIsSearchingOrders(true);
@@ -642,10 +642,10 @@ export default function BankStatementsPage() {
 
             for (let page = 0; page < maxPages; page++) {
                 let qb = supabase
-                    .from("web_orders")
+                    .from("ar_invoices")
                     .select("*")
                     .eq("reconciled", false)
-                    .order("date_ordered", { ascending: false })
+                    .order("order_date", { ascending: false })
                     .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
 
                 // Filter by currency if known
@@ -664,13 +664,12 @@ export default function BankStatementsPage() {
             const results: RevenueOrderMatch[] = allRows
                 .filter(row => {
                     const haystack = normalizeText([
-                        row.customer_full_name,
-                        row.customer_email,
-                        row.order_reference,
-                        row.craft_id,
-                        row.order_number,
-                        row.billing_organization,
-                        (row.products || []).map((p: any) => p.description || p.sku || "").join(" "),
+                        row.client_name,
+                        row.company_name,
+                        row.email,
+                        row.order_id,
+                        row.invoice_number,
+                        row.products,
                     ].filter(Boolean).join(" "));
 
                     if (!haystack) return false;
@@ -678,21 +677,21 @@ export default function BankStatementsPage() {
                     return queryTokens.every(token => haystack.includes(token));
                 })
                 .map(row => ({
-                    id: `wo-${row.id}`,
-                    source: "web-orders",
-                    sourceLabel: `Web Order #${row.order_reference}`,
-                    orderId: row.order_reference || null,
-                    invoiceNumber: row.craft_id || null,
-                    customerName: row.customer_full_name || row.customer_email || "",
-                    amount: Math.abs(parseFloat(row.total_price) || 0),
-                    date: row.date_ordered?.split("T")[0] || "",
+                    id: `ar-${row.id}`,
+                    source: "ar_invoices",
+                    sourceLabel: `Web Order #${row.order_id || row.invoice_number}`,
+                    orderId: row.order_id || null,
+                    invoiceNumber: row.invoice_number || null,
+                    customerName: row.client_name || row.company_name || row.email || "",
+                    amount: Math.abs(parseFloat(row.total_amount) || parseFloat(row.charged_amount) || 0),
+                    date: row.order_date || "",
                     matchScore: 0,
                     matchReason: "Manual search",
                 }));
             const uniqueById = Array.from(new Map(results.map(item => [item.id, item])).values());
             setOrderSearchResults(uniqueById);
         } catch (err) {
-            console.error("Error searching web_orders:", err);
+            console.error("Error searching ar_invoices:", err);
         }
         setIsSearchingOrders(false);
     }, []);
@@ -1416,7 +1415,7 @@ export default function BankStatementsPage() {
             }
             setPaymentSourceMatches(pMatches.sort((a, b) => b.matchScore - a.matchScore));
 
-            // 2) Customer name matching via web_orders — only when description has a customer name
+            // 2) Customer name matching via ar_invoices (Web Orders) — only when description has a customer name
             const descLower = tx.description.toLowerCase();
             const descWords = tx.description.split(/[\s,;.\/\-]+/).filter(w => w.length > 2).map(w => w.toLowerCase());
             const hasCustomerName = descWords.length > 0 && !detectGateway(tx.description); // Only if it's NOT a gateway deposit
@@ -1424,46 +1423,46 @@ export default function BankStatementsPage() {
             const revMatches: RevenueOrderMatch[] = [];
 
             if (hasCustomerName) {
-                // Search web_orders by customer name
+                // Search ar_invoices by customer name
                 const revStart = new Date(txDate);
                 revStart.setDate(revStart.getDate() - 60);
                 const revEnd = new Date(txDate);
                 revEnd.setDate(revEnd.getDate() + 5);
 
-                let woQuery = supabase
-                    .from("web_orders")
+                let arQuery = supabase
+                    .from("ar_invoices")
                     .select("*")
                     .eq("reconciled", false)
-                    .gte("date_ordered", revStart.toISOString().split("T")[0])
-                    .lte("date_ordered", revEnd.toISOString().split("T")[0])
+                    .gte("order_date", revStart.toISOString().split("T")[0])
+                    .lte("order_date", revEnd.toISOString().split("T")[0])
                     .limit(500);
 
                 if (currency === "USD") {
-                    woQuery = woQuery.eq("currency", "USD");
+                    arQuery = arQuery.eq("currency", "USD");
                 } else if (currency === "EUR") {
-                    woQuery = woQuery.eq("currency", "EUR");
+                    arQuery = arQuery.eq("currency", "EUR");
                 }
 
-                const { data: woData } = await woQuery;
+                const { data: arData } = await arQuery;
 
-                (woData || []).forEach(row => {
-                    const woAmount = Math.abs(parseFloat(row.total_price) || 0);
-                    const custName = (row.customer_full_name || row.customer_email || "").toLowerCase();
+                (arData || []).forEach(row => {
+                    const arAmount = Math.abs(parseFloat(row.total_amount) || parseFloat(row.charged_amount) || 0);
+                    const custName = (row.client_name || row.company_name || row.email || "").toLowerCase();
                     const nameWords = custName.split(/[\s,]+/).filter((w: string) => w.length > 2);
                     const nameMatch = nameWords.some((w: string) => descLower.includes(w));
 
                     if (nameMatch) {
-                        const diff = Math.abs(woAmount - txAmount);
+                        const diff = Math.abs(arAmount - txAmount);
                         const isExact = diff < 0.01;
                         revMatches.push({
-                            id: `wo-${row.id}`,
-                            source: "web-orders",
-                            sourceLabel: `Web Order #${row.order_reference}`,
-                            orderId: row.order_reference || null,
-                            invoiceNumber: row.craft_id || null,
-                            customerName: row.customer_full_name || row.customer_email || "",
-                            amount: woAmount,
-                            date: row.date_ordered?.split("T")[0] || "",
+                            id: `ar-${row.id}`,
+                            source: "ar_invoices",
+                            sourceLabel: `Web Order #${row.order_id || row.invoice_number}`,
+                            orderId: row.order_id || null,
+                            invoiceNumber: row.invoice_number || null,
+                            customerName: row.client_name || row.company_name || row.email || "",
+                            amount: arAmount,
+                            date: row.order_date || "",
                             matchScore: isExact ? 100 : 60,
                             matchReason: isExact ? "Exact amount + customer name" : `Customer name match`,
                         });
@@ -1702,29 +1701,13 @@ export default function BankStatementsPage() {
                 return;
             }
 
-            // CASE 3: Revenue → Web Order match
+            // CASE 3: Revenue → Web Order (ar_invoices) match
             if (!isExpense && selectedRevenueOrder) {
                 const match = revenueOrderMatches.find(m => m.id === selectedRevenueOrder);
                 if (!match) throw new Error("Revenue order not found");
 
-                // Update matched web_order
-                if (match.source === "web-orders") {
-                    const woId = parseInt(match.id.replace("wo-", ""));
-                    const { data: woRow, error: woRowErr } = await supabase
-                        .from("web_orders")
-                        .select("id,total_price,source_data")
-                        .eq("id", woId)
-                        .maybeSingle();
-                    if (woRowErr) throw woRowErr;
-                    if (!woRow) throw new Error("Web order not found");
-
-                    const partial = buildWebOrderUpdate(woRow, reconTransaction.id, txAmount, now);
-
-                    await supabase
-                        .from("web_orders")
-                        .update(partial.update)
-                        .eq("id", woId);
-                } else if (match.source === "ar_invoices") {
+                // Update matched ar_invoices record
+                if (match.source === "ar_invoices") {
                     const arId = parseInt(match.id.replace("ar-", ""));
                     await supabase
                         .from("ar_invoices")
@@ -1863,34 +1846,22 @@ export default function BankStatementsPage() {
                         .eq("id", gId);
                 }
 
-                // Mark selected web_orders as reconciled
+                // Mark selected ar_invoices (web orders) as reconciled
                 if (linkedOrderIds.length > 0) {
-                    const realWoIds = linkedOrderIds.map(id => parseInt(String(id).replace("wo-", "")));
-                    const { data: woRows, error: woRowsErr } = await supabase
-                        .from("web_orders")
-                        .select("id,total_price,source_data")
-                        .in("id", realWoIds);
-                    if (woRowsErr) throw woRowsErr;
+                    const realArIds = linkedOrderIds.map(id => parseInt(String(id).replace("ar-", "")));
 
-                    const orderById = new Map((woRows || []).map((row: any) => [`wo-${row.id}`, row]));
-                    let remainingToAllocate = Math.min(txAmount, linkedOrderTotal);
-
-                    for (const oId of linkedOrderIds) {
-                        const woRow = orderById.get(oId);
-                        if (!woRow) continue;
-                        if (remainingToAllocate <= 0) break;
-
-                        const partial = buildWebOrderUpdate(woRow, reconTransaction.id, remainingToAllocate, now);
-                        if (partial.appliedAmount <= 0) continue;
-
+                    for (const arId of realArIds) {
                         await supabase
-                            .from("web_orders")
-                            .update(partial.update)
-                            .eq("id", woRow.id);
-
-                        appliedOrderAmountTotal += partial.appliedAmount;
-                        remainingToAllocate = Number((remainingToAllocate - partial.appliedAmount).toFixed(2));
+                            .from("ar_invoices")
+                            .update({
+                                reconciled: true,
+                                reconciled_at: now,
+                                reconciled_with: reconTransaction.id,
+                                reconciliation_type: "manual-bank",
+                            })
+                            .eq("id", arId);
                     }
+                    appliedOrderAmountTotal = linkedOrderTotal;
                 }
 
                 // Update bank transaction
