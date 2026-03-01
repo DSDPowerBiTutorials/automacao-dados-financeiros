@@ -1996,6 +1996,8 @@ export default function BankStatementsPage() {
                         invoiceNumber: match.invoiceNumber || null,
                         financialAccountCode: match.financialAccountCode || null,
                         products: match.products || null,
+                        pnl_line: pnlProducts.find(p => p.orderId === match.id)?.pnlLine || null,
+                        pnl_label: (() => { const e = pnlProducts.find(p => p.orderId === match.id); return e ? (PNL_LINE_OPTIONS.find(p => p.code === e.pnlLine)?.label || null) : null; })(),
                     }],
                     manual_note: manualNote || null,
                 };
@@ -2177,7 +2179,8 @@ export default function BankStatementsPage() {
                     invoice_order_matched: linkedOrderIds.length > 0,
                     linked_web_order_details: linkedOrderIds.map(oid => {
                         const cached = selectedOrdersCache.get(oid);
-                        return { id: oid, amount: cached?.amount || 0, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null, products: cached?.products || null };
+                        const pnlEntry = pnlProducts.find(p => p.orderId === oid);
+                        return { id: oid, amount: cached?.amount || 0, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null, products: cached?.products || null, pnl_line: pnlEntry?.pnlLine || null, pnl_label: pnlEntry ? (PNL_LINE_OPTIONS.find(p => p.code === pnlEntry.pnlLine)?.label || null) : null };
                     }),
                     invoice_order_id: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.orderId || linkedOrderIds[0]) : null,
                     invoice_number: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.invoiceNumber || null) : null,
@@ -2361,6 +2364,10 @@ export default function BankStatementsPage() {
             delete cleanData.match_type;
             delete cleanData.pnl_line;
             delete cleanData.pnl_label;
+            delete cleanData.pnl_fac;
+            delete cleanData.pnl_source;
+            delete cleanData.pnl_classified_at;
+            delete cleanData.pnl_classified_from;
             // Order reconciliation fields
             delete cleanData.invoice_order_id;
             delete cleanData.invoice_number;
