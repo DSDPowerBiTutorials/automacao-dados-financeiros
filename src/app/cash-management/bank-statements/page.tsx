@@ -2587,7 +2587,7 @@ export default function BankStatementsPage() {
             {/* DETAIL PANEL (right side) */}
             {/* ════════════════════════════════════════════════════════ */}
             {selectedRow && (
-                <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+                <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[1040] shadow-2xl">
                     {/* Panel Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2 min-w-0">

@@ -430,7 +430,7 @@ export default function CustomersPage() {
 
                 {/* Variation Detail Popup */}
                 {selectedVariation && (
-                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[1040] shadow-2xl">
                         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                             <div>
                                 <h2 className="text-lg font-semibold text-gray-900 dark:text-white">{selectedVariation.canonical_name}</h2>
@@ -656,7 +656,7 @@ export default function CustomersPage() {
 
             {/* Side Panel Form */}
             {isFormOpen && (
-                <div className="fixed right-0 top-0 h-full w-[500px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+                <div className="fixed right-0 top-0 h-full w-[500px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[1040] shadow-2xl">
                     <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                         <div>
                             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">

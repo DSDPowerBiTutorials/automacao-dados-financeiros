@@ -1215,6 +1215,7 @@ export default function BankCashFlowPage() {
     const actualBalance = useMemo(() => {
         let latestDate = "";
         const lastKnown: Record<string, number> = {};
+        const lastKnownDate: Record<string, string> = {};
         const sorted = [...bankTransactions]
             .filter(tx => BANK_ACCOUNTS.some(b => b.key === tx.source))
             .sort((a, b) => a.date.localeCompare(b.date));
@@ -1225,12 +1226,20 @@ export default function BankCashFlowPage() {
                 if (!isNaN(parsed)) {
                     lastKnown[tx.source] = parsed;
                     const day = tx.date.split("T")[0];
+                    lastKnownDate[tx.source] = day;
                     if (day > latestDate) latestDate = day;
                 }
             }
         }
         const total = Object.values(lastKnown).reduce((s, v) => s + v, 0);
-        return { total, date: latestDate };
+        const perBank = BANK_ACCOUNTS.map(b => ({
+            key: b.key,
+            label: b.label,
+            currency: b.currency,
+            balance: lastKnown[b.key] ?? 0,
+            date: lastKnownDate[b.key] || "",
+        })).filter(b => b.date !== "");
+        return { total, date: latestDate, perBank };
     }, [bankTransactions]);
 
     // ─── Cash position for highlighted date ───
@@ -1314,29 +1323,21 @@ export default function BankCashFlowPage() {
                         </div>
                     </div>
 
-                    {/* Action buttons */}
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <Button onClick={loadData} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-                                <RefreshCw className="h-4 w-4 mr-1" />Refresh
-                            </Button>
-                            <Button onClick={exportCSV} variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-                                <Download className="h-4 w-4 mr-1" />CSV
-                            </Button>
-                            <Button onClick={runDeepReconciliation} disabled={isReconciling} variant="outline" size="sm" className="bg-emerald-900/30 border-emerald-700 text-emerald-400 hover:bg-emerald-800/50">
-                                {isReconciling ? <RefreshCw className="h-4 w-4 mr-1 animate-spin" /> : <Zap className="h-4 w-4 mr-1" />}
-                                {isReconciling ? "Reconciling..." : "Auto Reconcile"}
-                            </Button>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <div className="relative">
-                                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
-                                <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-56 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500" />
-                            </div>
-                            <Button variant="outline" size="sm" onClick={() => setShowReconciled(!showReconciled)} className={`bg-transparent border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-[#111111] ${showReconciled ? "text-gray-900 dark:text-white" : "text-green-400"}`}>
-                                <CheckCircle className="h-4 w-4 mr-1" />
-                                {showReconciled ? "Hide Recon." : "Show Recon."}
-                            </Button>
+                    {/* Scrolling bank balances marquee */}
+                    <div className="overflow-hidden relative h-8 mt-1">
+                        <div className="flex items-center gap-8 animate-marquee whitespace-nowrap absolute">
+                            {[...actualBalance.perBank, ...actualBalance.perBank].map((bank, i) => (
+                                <span key={`${bank.key}-${i}`} className="inline-flex items-center gap-2 text-sm">
+                                    <span className="text-gray-500 dark:text-gray-400 font-medium">{bank.label}</span>
+                                    <span className={`font-semibold ${bank.balance >= 0 ? "text-green-500" : "text-red-400"}`}>
+                                        {formatCurrency(bank.balance, bank.currency)}
+                                    </span>
+                                    <span className="text-[10px] text-gray-400">
+                                        ({new Date(bank.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" })})
+                                    </span>
+                                    <span className="text-gray-300 dark:text-gray-600 mx-1">•</span>
+                                </span>
+                            ))}
                         </div>
                     </div>
                 </div>
@@ -2147,7 +2148,7 @@ export default function BankCashFlowPage() {
             {/* ════════════════════════════════════════════════════════ */}
             {
                 selectedRow && (
-                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[100] shadow-2xl">
+                    <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[1040] shadow-2xl">
                         {/* Panel Header */}
                         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                             <div className="flex items-center gap-2 min-w-0">
