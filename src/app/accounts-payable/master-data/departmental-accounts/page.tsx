@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/table";
 import { ChevronRight, FolderTree, Pencil, Plus, Search, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface DepartmentalAccount {
     id: string;
@@ -354,11 +355,7 @@ export default function DepartmentalAccountsPage() {
 
     return (
         <div className="min-h-full px-6 space-y-6 py-6">
-            <header className="page-header-standard">
-                <div>
-                    <h1 className="header-title">Departmental Accounts</h1>
-                    <p className="header-subtitle">Manage organizational structure for revenue allocation</p>
-                </div>
+            <PageHeader title="Departmental Accounts" subtitle="Manage organizational structure for revenue allocation">
                 <Button
                     onClick={() => handleOpenDialog()}
                     className="bg-blue-600 hover:bg-blue-700"
@@ -366,7 +363,7 @@ export default function DepartmentalAccountsPage() {
                     <Plus className="h-4 w-4 mr-2" />
                     New Account
                 </Button>
-            </header>
+            </PageHeader>
 
             {/* Stats Cards */}
             <div className="grid grid-cols-5 gap-4">

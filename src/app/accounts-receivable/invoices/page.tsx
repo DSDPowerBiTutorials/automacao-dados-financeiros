@@ -19,6 +19,7 @@ import { type ScopeType, matchesScope } from "@/lib/scope-utils";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface ARInvoice {
   id: number;
@@ -982,16 +983,10 @@ export default function ARInvoicesPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-      {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold">Web Orders</h1>
-            <span className="text-gray-500 dark:text-gray-400">•</span>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">Contas a Receber</span>
-          </div>
-          <ScopeSelector value={selectedScope} onValueChange={setSelectedScope} />
-        </div>
+      <PageHeader title="Web Orders" subtitle="Contas a Receber">
+        <ScopeSelector value={selectedScope} onValueChange={setSelectedScope} />
+      </PageHeader>
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]" onClick={runAutoReconcile} disabled={reconciling}>

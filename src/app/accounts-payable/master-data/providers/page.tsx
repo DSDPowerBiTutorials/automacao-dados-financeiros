@@ -19,6 +19,7 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Provider {
   code: string;
@@ -313,24 +314,16 @@ export default function ProvidersPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-      {/* Header */}
-      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <Building2 className="h-5 w-5 text-blue-400" />
-            <h1 className="text-xl font-semibold">Providers</h1>
-            <span className="text-gray-500 dark:text-gray-400">•</span>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">Manage supplier and vendor master data</span>
-          </div>
-          <Button
-            onClick={() => handleOpenForm()}
-            className="bg-blue-600 hover:bg-blue-700 text-white"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            New Provider
-          </Button>
-        </div>
-
+      <PageHeader title="Providers" subtitle="Manage supplier and vendor master data">
+        <Button
+          onClick={() => handleOpenForm()}
+          className="bg-blue-600 hover:bg-blue-700 text-white"
+        >
+          <Plus className="h-4 w-4 mr-1" />
+          New Provider
+        </Button>
+      </PageHeader>
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {["ALL", "ES", "US", "GLOBAL"].map((scope) => (

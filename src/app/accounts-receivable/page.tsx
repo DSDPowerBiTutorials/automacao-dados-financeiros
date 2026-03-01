@@ -4,17 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Users, Receipt, DollarSign, TrendingUp, AlertCircle, Clock } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function AccountsReceivableOverviewPage() {
   return (
     <div className="min-h-full px-6 py-8 space-y-6">
       {/* Header */}
-      <header className="page-header-standard">
-        <h1 className="header-title">Accounts Receivable Overview</h1>
-        <p className="header-subtitle">
-          Track customer invoices, payments, and collection activities
-        </p>
-      </header>
+      <PageHeader title="Accounts Receivable Overview" subtitle="Track customer invoices, payments, and collection activities" />
 
       {/* Key Metrics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

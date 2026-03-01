@@ -21,6 +21,7 @@ import {
     Info,
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Customer {
     code: string;
@@ -284,31 +285,26 @@ export default function CustomersPage() {
         const variationsOnly = analysisResult.customers.filter((c) => c.homogenization_notes.length > 0);
         return (
             <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                            <Zap className="h-5 w-5 text-yellow-400" />
-                            <h1 className="text-xl font-semibold">Customer Analysis & Homogenization</h1>
-                        </div>
-                        <div className="flex items-center gap-3">
-                            <Button
-                                variant="outline"
-                                onClick={() => setShowAnalysis(false)}
-                                className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
-                            >
-                                Back to Customers
-                            </Button>
-                            <Button
-                                onClick={executeHomogenization}
-                                disabled={homogenizing}
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                            >
-                                {homogenizing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-1" />}
-                                Execute Homogenization & Populate
-                            </Button>
-                        </div>
+                <PageHeader title="Customer Analysis & Homogenization">
+                    <div className="flex items-center gap-3">
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowAnalysis(false)}
+                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
+                        >
+                            Back to Customers
+                        </Button>
+                        <Button
+                            onClick={executeHomogenization}
+                            disabled={homogenizing}
+                            className="bg-green-600 hover:bg-green-700 text-white"
+                        >
+                            {homogenizing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <CheckCircle className="h-4 w-4 mr-1" />}
+                            Execute Homogenization & Populate
+                        </Button>
                     </div>
-
+                </PageHeader>
+                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
                     {/* Stats */}
                     <div className="flex items-center gap-6 text-sm flex-wrap">
                         <div className="flex items-center gap-2">
@@ -501,35 +497,27 @@ export default function CustomersPage() {
     // Main Customers View
     return (
         <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-            {/* Header */}
-            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <Users className="h-5 w-5 text-blue-400" />
-                        <h1 className="text-xl font-semibold">Customers</h1>
-                        <span className="text-gray-500 dark:text-gray-400">•</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-sm">Manage customer master data for Accounts Receivable</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Button
-                            onClick={runAnalysis}
-                            disabled={analyzing}
-                            variant="outline"
-                            className="bg-transparent border-yellow-600 text-yellow-400 hover:bg-yellow-900/30"
-                        >
-                            {analyzing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Zap className="h-4 w-4 mr-1" />}
-                            Analyze & Sync from Invoices
-                        </Button>
-                        <Button
-                            onClick={() => handleOpenForm()}
-                            className="bg-blue-600 hover:bg-blue-700 text-white"
-                        >
-                            <Plus className="h-4 w-4 mr-1" />
-                            New Customer
-                        </Button>
-                    </div>
+            <PageHeader title="Customers" subtitle="Manage customer master data for Accounts Receivable">
+                <div className="flex items-center gap-2">
+                    <Button
+                        onClick={runAnalysis}
+                        disabled={analyzing}
+                        variant="outline"
+                        className="bg-transparent border-yellow-600 text-yellow-400 hover:bg-yellow-900/30"
+                    >
+                        {analyzing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Zap className="h-4 w-4 mr-1" />}
+                        Analyze & Sync from Invoices
+                    </Button>
+                    <Button
+                        onClick={() => handleOpenForm()}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                        <Plus className="h-4 w-4 mr-1" />
+                        New Customer
+                    </Button>
                 </div>
-
+            </PageHeader>
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                         {(["ALL", "ACTIVE", "INACTIVE"] as const).map((status) => (

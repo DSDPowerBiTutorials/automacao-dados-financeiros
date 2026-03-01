@@ -41,6 +41,7 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { formatCurrency, formatTimestamp, formatDate, formatUSD } from "@/lib/formatters";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface BankinterUSDRow {
   id: string;
@@ -709,36 +710,15 @@ export default function BankinterUSDPage() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-4">
-            <div className="bg-[#FF7300] p-2 rounded-lg">
-              <Database className="h-6 w-6 text-gray-900 dark:text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-semibold">Bankinter USD - Bank Statement</h1>
-              <div className="flex items-center gap-4 mt-1">
-                <span className="text-gray-500 dark:text-gray-400 text-sm">{rows.length} records ({filteredRows.length} filtered)</span>
-                {lastSaved && (
-                  <>
-                    <span className="text-gray-600">•</span>
-                    <span className="text-blue-400 text-sm flex items-center gap-1">
-                      <Database className="h-3 w-3" />
-                      Last saved: {lastSaved}
-                    </span>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
-            <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
-              ${formatUSD(stats.closingBalance)}
-            </p>
-          </div>
+      <PageHeader title="Bankinter USD - Bank Statement" subtitle={`${rows.length} records (${filteredRows.length} filtered)${lastSaved ? ` • Last saved: ${lastSaved}` : ""}`}>
+        <div className="text-right">
+          <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
+          <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
+            ${formatUSD(stats.closingBalance)}
+          </p>
         </div>
-
+      </PageHeader>
+      <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />

@@ -44,6 +44,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ════════════════════════════════════════════════════════
 // Types & Constants
@@ -2215,28 +2216,15 @@ export default function BankStatementsPage() {
             {/* Main content area shifts when panel is open */}
             <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedRow ? "mr-[450px]" : ""}`}>
 
-                {/* ─── Header ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-[#117ACA] p-2 rounded-lg">
-                                <Database className="h-6 w-6 text-gray-900 dark:text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-semibold">Bank Statements</h1>
-                                <span className="text-gray-500 dark:text-gray-400 text-sm">
-                                    {summary.transactionCount} transactions • {[...selectedBanks].map(b => BANK_ACCOUNTS.find(a => a.key === b)?.label).join(", ")}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Net Balance</p>
-                            <p className={`text-2xl font-bold ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                {formatCurrency(summary.netCashFlow, dominantCurrency)}
-                            </p>
-                        </div>
+                <PageHeader title="Bank Statements" subtitle={`${summary.transactionCount} transactions • ${[...selectedBanks].map(b => BANK_ACCOUNTS.find(a => a.key === b)?.label).join(", ")}`}>
+                    <div className="text-right">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Net Balance</p>
+                        <p className={`text-2xl font-bold ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            {formatCurrency(summary.netCashFlow, dominantCurrency)}
+                        </p>
                     </div>
-
+                </PageHeader>
+                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
                     {/* Action buttons */}
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">

@@ -36,6 +36,7 @@ import {
     TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { supabase } from "@/lib/supabase";
+import { PageHeader } from "@/components/ui/page-header";
 import {
     BarChart,
     Bar,
@@ -482,70 +483,59 @@ export default function DepartmentalPnLPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black px-4 py-6 sm:px-6 lg:px-8">
             {/* Header */}
-            <div className="mb-6">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <BarChart3 className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-                            P&L Departamental
-                        </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Demonstração de Resultados por Departamento — Dados Reais (Invoices)
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap">
-                        <Select value={selectedYear} onValueChange={setSelectedYear}>
-                            <SelectTrigger className="w-[100px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
-                                <Calendar className="h-4 w-4 mr-1 text-gray-400" />
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white dark:bg-[#0a0a0a]">
-                                <SelectItem value="2024">2024</SelectItem>
-                                <SelectItem value="2025">2025</SelectItem>
-                                <SelectItem value="2026">2026</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Select value={selectedDept} onValueChange={setSelectedDept}>
-                            <SelectTrigger className="w-[200px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
-                                <Filter className="h-4 w-4 mr-1 text-gray-400" />
-                                <SelectValue placeholder="Department" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white dark:bg-[#0a0a0a]">
-                                <SelectItem value="all">All Departments</SelectItem>
-                                {departments.map(d => (
-                                    <SelectItem key={d.id} value={d.id}>{d.icon} {d.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                        <Select value={viewMode} onValueChange={(v: "monthly" | "quarterly" | "ytd") => setViewMode(v)}>
-                            <SelectTrigger className="w-[130px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
-                                <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent className="bg-white dark:bg-[#0a0a0a]">
-                                <SelectItem value="monthly">Mensal</SelectItem>
-                                <SelectItem value="quarterly">Trimestral</SelectItem>
-                                <SelectItem value="ytd">YTD</SelectItem>
-                            </SelectContent>
-                        </Select>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => setShowBudget(!showBudget)}
-                            className="border-gray-200 dark:border-gray-700"
-                        >
-                            {showBudget ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
-                            Budget
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={handleExport} className="border-gray-200 dark:border-gray-700">
-                            <Download className="h-4 w-4 mr-1" />
-                            Export
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={loadDepartmentalPnL} className="border-gray-200 dark:border-gray-700" disabled={isLoading}>
-                            {isLoading ? "Carregando..." : "Atualizar"}
-                        </Button>
-                    </div>
+            <PageHeader title="P&L Departamental" subtitle="Demonstração de Resultados por Departamento — Dados Reais (Invoices)">
+                <div className="flex items-center gap-2 flex-wrap">
+                    <Select value={selectedYear} onValueChange={setSelectedYear}>
+                        <SelectTrigger className="w-[100px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                            <Calendar className="h-4 w-4 mr-1 text-gray-400" />
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-[#0a0a0a]">
+                            <SelectItem value="2024">2024</SelectItem>
+                            <SelectItem value="2025">2025</SelectItem>
+                            <SelectItem value="2026">2026</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Select value={selectedDept} onValueChange={setSelectedDept}>
+                        <SelectTrigger className="w-[200px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                            <Filter className="h-4 w-4 mr-1 text-gray-400" />
+                            <SelectValue placeholder="Department" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-[#0a0a0a]">
+                            <SelectItem value="all">All Departments</SelectItem>
+                            {departments.map(d => (
+                                <SelectItem key={d.id} value={d.id}>{d.icon} {d.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select value={viewMode} onValueChange={(v: "monthly" | "quarterly" | "ytd") => setViewMode(v)}>
+                        <SelectTrigger className="w-[130px] bg-white dark:bg-[#0a0a0a] border-gray-200 dark:border-gray-700">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="bg-white dark:bg-[#0a0a0a]">
+                            <SelectItem value="monthly">Mensal</SelectItem>
+                            <SelectItem value="quarterly">Trimestral</SelectItem>
+                            <SelectItem value="ytd">YTD</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowBudget(!showBudget)}
+                        className="border-gray-200 dark:border-gray-700"
+                    >
+                        {showBudget ? <EyeOff className="h-4 w-4 mr-1" /> : <Eye className="h-4 w-4 mr-1" />}
+                        Budget
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleExport} className="border-gray-200 dark:border-gray-700">
+                        <Download className="h-4 w-4 mr-1" />
+                        Export
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={loadDepartmentalPnL} className="border-gray-200 dark:border-gray-700" disabled={isLoading}>
+                        {isLoading ? "Carregando..." : "Atualizar"}
+                    </Button>
                 </div>
-            </div>
+            </PageHeader>
 
             {loadError && (
                 <div className="mb-4">

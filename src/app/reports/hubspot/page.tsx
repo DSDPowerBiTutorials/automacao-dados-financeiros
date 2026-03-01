@@ -52,6 +52,7 @@ import {
 } from "@/components/ui/popover";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/formatters";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface HubSpotDeal {
     id: string;
@@ -720,20 +721,7 @@ ${result.recommendations.join('\n')}
     return (
         <div className="container mx-auto p-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/dashboard">
-                        <Button variant="outline" size="icon">
-                            <ArrowLeft className="w-4 h-4" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold">Web Orders</h1>
-                        <p className="text-gray-500">
-                            Pedidos do backend sincronizados via HubSpot SQL Server
-                        </p>
-                    </div>
-                </div>
+            <PageHeader title="Web Orders" subtitle="Pedidos do backend sincronizados via HubSpot SQL Server">
                 <div className="flex gap-2 flex-wrap">
                     <Button
                         onClick={syncFromSQLServer}
@@ -794,7 +782,7 @@ ${result.recommendations.join('\n')}
                         Exportar
                     </Button>
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Alert */}
             {alert && (

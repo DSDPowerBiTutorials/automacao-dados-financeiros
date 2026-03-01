@@ -2,17 +2,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { LineChart, TrendingUp, Calendar, AlertCircle } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function ForecastsPage() {
   return (
     <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
-      <header className="page-header-standard">
-        <h1 className="header-title">Financial Forecasts</h1>
-        <p className="header-subtitle">
-          AI-powered predictions and scenario planning
-        </p>
-      </header>
+      <PageHeader title="Financial Forecasts" subtitle="AI-powered predictions and scenario planning" />
 
       {/* Forecast Summary */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

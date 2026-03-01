@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Lock, Key, Shield, Smartphone, Clock, AlertTriangle } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
 
 export default function SecurityPage() {
     const [settings, setSettings] = useState({
@@ -18,6 +19,7 @@ export default function SecurityPage() {
 
     return (
         <div className="space-y-6">
+            <PageHeader title="Security" subtitle="Authentication and access control" />
             <Card>
                 <CardHeader>
                     <CardTitle>Autenticação</CardTitle>

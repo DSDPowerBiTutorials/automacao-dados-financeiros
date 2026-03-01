@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { WSProject } from '@/lib/workstream-types';
 import { PROJECT_TYPE_CONFIG } from '@/lib/workstream-types';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface ProjectWithStats extends WSProject {
     total_tasks: number;
@@ -80,17 +81,7 @@ export default function PortfoliosPage() {
     return (
         <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-5xl mx-auto px-6 py-8">
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Briefcase className="h-6 w-6" />
-                            Portfolios
-                        </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                            Track progress across all your projects at a glance
-                        </p>
-                    </div>
-                </div>
+                <PageHeader title="Portfolios" subtitle="Track progress across all your projects at a glance" />
 
                 {loading ? (
                     <div className="flex items-center justify-center py-20">

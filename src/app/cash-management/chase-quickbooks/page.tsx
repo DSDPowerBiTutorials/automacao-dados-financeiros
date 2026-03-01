@@ -5,31 +5,12 @@ import Link from "next/link"
 import { ArrowLeft, Building2, CreditCard, TrendingUp, TrendingDown } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageHeader } from "@/components/ui/page-header"
 
 export default function ChaseQuickBooksPage() {
     return (
         <div className="min-h-full">
-            <header className="page-header-standard">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href="/cash-management/bank-statements">
-                            <Button variant="ghost" size="sm" className="gap-2 text-gray-900 dark:text-white hover:bg-white/10">
-                                <ArrowLeft className="h-4 w-4" />
-                                Back
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="header-title flex items-center gap-2">
-                                <span className="text-2xl">🇺🇸</span>
-                                Chase Bank - QuickBooks
-                            </h1>
-                            <p className="header-subtitle">
-                                Bank statements synced from QuickBooks Online
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <PageHeader title="Chase Bank - QuickBooks" subtitle="Bank statements synced from QuickBooks Online" />
 
             <div className="px-6 py-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Shield, Check } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
 
 const roles = [
     {
@@ -45,6 +46,7 @@ const allPermissions = [
 export default function RolesPage() {
     return (
         <div className="space-y-6">
+            <PageHeader title="Roles & Permissions" subtitle="Manage user roles and access" />
             <Card>
                 <CardHeader>
                     <CardTitle>Papéis & Permissões</CardTitle>

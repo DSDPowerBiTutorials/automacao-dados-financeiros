@@ -27,6 +27,7 @@ import {
     X,
 } from "lucide-react";
 import { PayrollInvoiceGenerator } from "@/components/app/payroll-invoice-generator";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ════════════════════════════════════════════════════════
 // Types
@@ -413,33 +414,22 @@ export default function PayrollPage() {
                 />
 
                 {/* Header */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h1 className="text-xl font-bold flex items-center gap-2">
-                                <Users className="h-5 w-5 text-violet-500" />
-                                Payroll
-                            </h1>
-                            <p className="text-sm text-gray-500 mt-1">
-                                DSD Planning Center S.L. · Spain HQ
-                            </p>
-                        </div>
-                        <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
-                            {[2025, 2026].map((yr) => (
-                                <button
-                                    key={yr}
-                                    onClick={() => setSelectedYear(yr)}
-                                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${selectedYear === yr
-                                        ? "bg-violet-600 text-white shadow-sm"
-                                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                                        }`}
-                                >
-                                    {yr}
-                                </button>
-                            ))}
-                        </div>
+                <PageHeader title="Payroll" subtitle="DSD Planning Center S.L. · Spain HQ">
+                    <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
+                        {[2025, 2026].map((yr) => (
+                            <button
+                                key={yr}
+                                onClick={() => setSelectedYear(yr)}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${selectedYear === yr
+                                    ? "bg-violet-600 text-white shadow-sm"
+                                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                                    }`}
+                            >
+                                {yr}
+                            </button>
+                        ))}
                     </div>
-                </div>
+                </PageHeader>
 
                 {/* Upload area */}
                 <div className="flex-1 flex items-center justify-center p-8">
@@ -519,103 +509,81 @@ export default function PayrollPage() {
                 className="hidden"
             />
 
-            {/* ─── Header ─── */}
-            <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold flex items-center gap-2">
-                            <Users className="h-5 w-5 text-violet-500" />
-                            Payroll
-                        </h1>
-                        <p className="text-sm text-gray-500 mt-1 flex items-center gap-2 flex-wrap">
-                            <Building2 className="h-3.5 w-3.5" />
-                            {data.company} · NIF: {data.nif} ·{" "}
-                            <Calendar className="h-3.5 w-3.5" />
-                            {data.period}
-                            {fileName && (
-                                <span className="text-gray-400">
-                                    {" "}
-                                    ·{" "}
-                                    <CheckCircle2 className="h-3.5 w-3.5 inline text-emerald-500" />{" "}
-                                    {fileName}
-                                </span>
-                            )}
-                        </p>
+            <PageHeader title="Payroll" subtitle={`${data.company} · NIF: ${data.nif} · ${data.period}${fileName ? ` · ${fileName}` : ""}`}>
+                <div className="flex items-center gap-3">
+                    {/* View toggle */}
+                    <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
+                        {(
+                            [
+                                ["employees", "Employees"],
+                                ["departments", "Departments"],
+                                ["monthly", "Monthly"],
+                            ] as const
+                        ).map(([mode, label]) => (
+                            <button
+                                key={mode}
+                                onClick={() => setViewMode(mode)}
+                                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === mode
+                                    ? "bg-violet-600 text-white shadow-sm"
+                                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                                    }`}
+                            >
+                                {label}
+                            </button>
+                        ))}
                     </div>
-                    <div className="flex items-center gap-3">
-                        {/* View toggle */}
-                        <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
-                            {(
-                                [
-                                    ["employees", "Employees"],
-                                    ["departments", "Departments"],
-                                    ["monthly", "Monthly"],
-                                ] as const
-                            ).map(([mode, label]) => (
-                                <button
-                                    key={mode}
-                                    onClick={() => setViewMode(mode)}
-                                    className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === mode
-                                        ? "bg-violet-600 text-white shadow-sm"
-                                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                                        }`}
-                                >
-                                    {label}
-                                </button>
-                            ))}
-                        </div>
-                        {/* Year toggle */}
-                        <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
-                            {[2025, 2026].map((yr) => (
-                                <button
-                                    key={yr}
-                                    onClick={() => setSelectedYear(yr)}
-                                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${selectedYear === yr
-                                        ? "bg-violet-600 text-white shadow-sm"
-                                        : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
-                                        }`}
-                                >
-                                    {yr}
-                                </button>
-                            ))}
-                        </div>
-                        {/* Upload another */}
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => fileInputRef.current?.click()}
-                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
-                        >
-                            <Upload className="h-4 w-4 mr-1" />
-                            Upload Another
-                        </Button>
-                        {/* Export */}
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={exportCSV}
-                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
-                        >
-                            <Download className="h-4 w-4 mr-1" /> Export
-                        </Button>
-                        {/* Clear */}
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                                setPayrollData(null);
-                                setFileName(null);
-                            }}
-                            className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
-                        >
-                            <X className="h-4 w-4" />
-                        </Button>
+                    {/* Year toggle */}
+                    <div className="flex items-center bg-gray-100 dark:bg-[#0a0a0a] rounded-lg p-0.5 border border-gray-200 dark:border-gray-700">
+                        {[2025, 2026].map((yr) => (
+                            <button
+                                key={yr}
+                                onClick={() => setSelectedYear(yr)}
+                                className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${selectedYear === yr
+                                    ? "bg-violet-600 text-white shadow-sm"
+                                    : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
+                                    }`}
+                            >
+                                {yr}
+                            </button>
+                        ))}
                     </div>
+                    {/* Upload another */}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
+                    >
+                        <Upload className="h-4 w-4 mr-1" />
+                        Upload Another
+                    </Button>
+                    {/* Export */}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={exportCSV}
+                        className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
+                    >
+                        <Download className="h-4 w-4 mr-1" /> Export
+                    </Button>
+                    {/* Clear */}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => {
+                            setPayrollData(null);
+                            setFileName(null);
+                        }}
+                        className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"
+                    >
+                        <X className="h-4 w-4" />
+                    </Button>
                 </div>
+            </PageHeader>
 
-                {/* Search & filter (employees view only) */}
-                {viewMode === "employees" && (
-                    <div className="flex items-center gap-3 mt-3">
+            {viewMode === "employees" && (
+                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
+                    <div className="flex items-center gap-3">
                         <div className="relative">
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
                             <Input
@@ -641,8 +609,8 @@ export default function PayrollPage() {
                             {filteredEmployees.length} of {data.employees.length} employees
                         </span>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
 
             {/* ─── KPI Bar ─── */}
             <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-50 dark:bg-[#0a0a0a]">

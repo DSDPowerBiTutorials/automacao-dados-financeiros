@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Target, TrendingUp, TrendingDown, AlertCircle, CheckCircle2 } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function KPIsPage() {
   const kpis = [
@@ -72,12 +73,7 @@ export default function KPIsPage() {
   return (
     <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
-      <header className="page-header-standard">
-        <h1 className="header-title">KPIs & Financial Ratios</h1>
-        <p className="header-subtitle">
-          Key performance indicators and financial health metrics
-        </p>
-      </header>
+      <PageHeader title="KPIs & Financial Ratios" subtitle="Key performance indicators and financial health metrics" />
 
       {/* Executive Summary */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -182,8 +178,8 @@ export default function KPIsPage() {
                               {metric.status === "good"
                                 ? "On Target"
                                 : metric.status === "warning"
-                                ? "Warning"
-                                : "Critical"}
+                                  ? "Warning"
+                                  : "Critical"}
                             </span>
                           </div>
                         </td>

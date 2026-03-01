@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Globe, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface FinancialAccount {
   id: string;
@@ -244,13 +245,7 @@ export default function FinancialAccountsPage() {
   return (
     <div className="min-h-full px-6 space-y-6 py-6">
       {/* Header */}
-      <header className="page-header-standard">
-        <div>
-          <h1 className="header-title">Financial Accounts</h1>
-          <p className="header-subtitle">
-            Manage Chart of Accounts (hierarchical structure up to 5 levels)
-          </p>
-        </div>
+      <PageHeader title="Financial Accounts" subtitle="Manage Chart of Accounts (hierarchical structure up to 5 levels)">
         <Button
           onClick={(e) => {
             e.preventDefault();
@@ -263,7 +258,7 @@ export default function FinancialAccountsPage() {
           <Plus className="h-4 w-4 mr-2" />
           New Account
         </Button>
-      </header>
+      </PageHeader>
 
       {/* Filters */}
       <Card className="p-3 rounded-xl border-gray-200 shadow-sm">

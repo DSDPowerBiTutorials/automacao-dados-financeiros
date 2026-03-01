@@ -40,6 +40,7 @@ import {
 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ============================================================================
 // TIPOS
@@ -253,25 +254,12 @@ export default function BotLogsPage() {
     return (
         <div className="container mx-auto py-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                    <div className="h-12 w-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
-                        <Bot className="h-7 w-7 text-gray-900 dark:text-white" />
-                    </div>
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">
-                            <BotName />
-                        </h1>
-                        <p className="text-sm text-gray-500">
-                            Sistema de Automação e Logs
-                        </p>
-                    </div>
-                </div>
+            <PageHeader title="Bot Logs" subtitle="Sistema de Automação e Logs">
                 <Button onClick={fetchData} disabled={loading} variant="outline">
                     <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
                     Atualizar
                 </Button>
-            </div>
+            </PageHeader>
 
             {/* Stats Cards */}
             {stats && (

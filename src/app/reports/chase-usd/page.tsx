@@ -37,6 +37,7 @@ import { Badge } from "@/components/ui/badge"
 import Link from "next/link"
 import { formatTimestamp, formatDate } from "@/lib/formatters"
 import { useToast } from "@/hooks/use-toast"
+import { PageHeader } from "@/components/ui/page-header"
 
 // Formatar USD no padrão brasileiro: $ 1.234,56
 const formatUSDCurrency = (value: number | null | undefined): string => {
@@ -901,35 +902,15 @@ export default function ChaseUSDPage() {
     return (
         <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
             <div>
-                <header className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                            <div className="bg-[#117ACA] p-2 rounded-lg">
-                                <Database className="h-6 w-6 text-gray-900 dark:text-white" />
-                            </div>
-                            <div>
-                                <h1 className="text-xl font-semibold">Chase 9186 - Bank Statement</h1>
-                                <div className="flex items-center gap-4 mt-1">
-                                    <span className="text-gray-500 dark:text-gray-400 text-sm">{rows.length} records ({filteredRows.length} filtered)</span>
-                                    {lastSaved && (
-                                        <>
-                                            <span className="text-gray-600">•</span>
-                                            <span className="text-blue-400 text-sm flex items-center gap-1">
-                                                <Database className="h-3 w-3" />
-                                                Last saved: {lastSaved}
-                                            </span>
-                                        </>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
-                            <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                {formatUSDCurrency(stats.closingBalance)}
-                            </p>
-                        </div>
+                <PageHeader title="Chase 9186 - Bank Statement" subtitle={`${rows.length} records (${filteredRows.length} filtered)${lastSaved ? ` • Last saved: ${lastSaved}` : ""}`}>
+                    <div className="text-right">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Current Balance</p>
+                        <p className={`text-2xl font-bold ${stats.closingBalance >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            {formatUSDCurrency(stats.closingBalance)}
+                        </p>
                     </div>
+                </PageHeader>
+                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
                     <div className="flex items-center gap-2 flex-wrap">
                         <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-chase" />
                         <label htmlFor="file-upload-chase">
@@ -952,7 +933,7 @@ export default function ChaseUSDPage() {
                             Delete All
                         </Button>
                     </div>
-                </header>
+                </div>
             </div>
 
             {/* Stats Bar */}
@@ -1126,8 +1107,8 @@ export default function ChaseUSDPage() {
                                                     setSelectedBankAccount(match.source)
                                                 }}
                                                 className={`p-3 rounded border cursor-pointer transition-all ${selectedIntercompanyMatch === match.id
-                                                        ? "border-purple-500 bg-purple-900/20"
-                                                        : "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/50 hover:border-gray-300 dark:border-gray-600"
+                                                    ? "border-purple-500 bg-purple-900/20"
+                                                    : "border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-black/50 hover:border-gray-300 dark:border-gray-600"
                                                     }`}
                                             >
                                                 <div className="flex justify-between">

@@ -66,6 +66,7 @@ import BraintreeApiSync from "@/components/braintree/api-sync-button";
 import BraintreeUpdatePendingButton from "@/components/braintree/update-pending-button";
 import BraintreeSyncControls from "@/components/braintree/sync-controls";
 import { SyncStatusBadge } from "@/components/sync/SyncStatusBadge";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface BraintreeEURRow {
   id: string;
@@ -1683,92 +1684,66 @@ export default function BraintreeEURPage() {
       <div
         className={` transition-all duration-300 ${splitScreenUrl ? "md:pr-[50%]" : ""}`}
       >
-        <header className="page-header-standard">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link href="/">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                    Braintree EUR - Payment Source
-                  </h1>
-                  <SyncStatusBadge source="braintree-eur" />
-                  <div className="text-sm text-gray-900 dark:text-white/80 mt-1">
-                    {processedRows.length} records (loaded: {rows.length}{hasMoreServerRows ? "+" : ""})
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {/* Force Refresh Button */}
-                <Button
-                  onClick={() => loadData()}
-                  disabled={isLoading || isLoadingMore}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
-                  title="Force data refresh"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-
-                {/* Sync Controls */}
-                <BraintreeSyncControls />
-
-                {/* Update Pending/Force Update com timestamps */}
-                <BraintreeUpdatePendingButton />
-
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
-                  <Download className="h-4 w-4" />
-                  Export Data
-                </Button>
-              </div>
-            </div>
-
-            {/* Auto reconciliation status */}
-            {ENABLE_AUTO_RECONCILIATION && (
-              <div className="mt-3 flex items-center gap-3 text-sm text-gray-900 dark:text-white/80">
-                <Badge variant="outline" className="border-emerald-300 text-emerald-50 bg-emerald-500/20">
-                  ⚡ Auto reconciliation active
-                </Badge>
-                {isReconciling ? (
-                  <div className="flex items-center gap-2">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Reconciling settlement batches with Bankinter EUR...</span>
-                  </div>
-                ) : autoReconcileSummary ? (
-                  <span>{autoReconcileSummary}</span>
-                ) : (
-                  <span>Will run when loading data.</span>
-                )}
-              </div>
-            )}
-
-            {saveSuccess && (
-              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
-                  ✅ All changes saved successfully to database! Last saved:{" "}
-                  {lastSaved}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {loadError && (
-              <Alert className="mt-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20">
-                <XCircle className="h-5 w-5 text-red-600" />
-                <AlertDescription className="text-red-800 dark:text-red-200 font-medium">
-                  ❌ Error loading Braintree EUR: {loadError}
-                </AlertDescription>
-              </Alert>
-            )}
+        <PageHeader title="Braintree EUR - Payment Source" subtitle={`${processedRows.length} records (loaded: ${rows.length}${hasMoreServerRows ? "+" : ""})`}>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => loadData()}
+              disabled={isLoading || isLoadingMore}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              title="Force data refresh"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+            <BraintreeSyncControls />
+            <BraintreeUpdatePendingButton />
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Export Data
+            </Button>
           </div>
-        </header>
+        </PageHeader>
+
+        <div className="px-6">
+          {ENABLE_AUTO_RECONCILIATION && (
+            <div className="mt-3 flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+              <Badge variant="outline" className="border-emerald-300 text-emerald-700 bg-emerald-500/20">
+                ⚡ Auto reconciliation active
+              </Badge>
+              {isReconciling ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Reconciling settlement batches with Bankinter EUR...</span>
+                </div>
+              ) : autoReconcileSummary ? (
+                <span>{autoReconcileSummary}</span>
+              ) : (
+                <span>Will run when loading data.</span>
+              )}
+            </div>
+          )}
+
+          {saveSuccess && (
+            <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
+                ✅ All changes saved successfully to database! Last saved:{" "}
+                {lastSaved}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {loadError && (
+            <Alert className="mt-4 border-2 border-red-500 bg-red-50 dark:bg-red-900/20">
+              <XCircle className="h-5 w-5 text-red-600" />
+              <AlertDescription className="text-red-800 dark:text-red-200 font-medium">
+                ❌ Error loading Braintree EUR: {loadError}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
 
         <div className="px-6 py-8">
           <Card className="shadow-xl">

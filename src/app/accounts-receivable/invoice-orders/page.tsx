@@ -44,6 +44,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScopeSelector } from "@/components/app/scope-selector";
 import { type ScopeType, matchesScope } from "@/lib/scope-utils";
 import { useGlobalScope } from "@/contexts/global-scope-context";
+import { PageHeader } from "@/components/ui/page-header";
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -504,13 +505,9 @@ export default function InvoiceOrdersPage() {
                                 { label: "Invoice Orders" }
                             ]}
                         />
-                        <h1 className="text-2xl font-bold mt-2 flex items-center gap-2">
-                            <FileText className="h-6 w-6 text-blue-400" />
-                            Invoice Orders
-                        </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                            Gerencie e reconcilie Invoice Orders importadas de CSV
-                        </p>
+                        <div className="mt-2">
+                            <PageHeader title="Invoice Orders" subtitle="Gerencie e reconcilie Invoice Orders importadas de CSV" />
+                        </div>
                     </div>
 
                     <div className="flex items-center gap-2">

@@ -42,6 +42,7 @@ import {
     Shield
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { PageHeader } from '@/components/ui/page-header'
 
 interface SystemUser {
     id: string
@@ -189,6 +190,7 @@ export default function UsersPage() {
 
     return (
         <div className="space-y-6">
+            <PageHeader title="User Management" subtitle="Manage team members and access" />
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">

@@ -11,6 +11,7 @@ import {
     Circle,
     ChevronRight,
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface Goal {
     id: string;
@@ -74,21 +75,12 @@ export default function GoalsPage() {
         <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-5xl mx-auto px-6 py-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Target className="h-6 w-6" />
-                            Goals
-                        </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                            Track company and team goals
-                        </p>
-                    </div>
+                <PageHeader title="Goals" subtitle="Track company and team goals">
                     <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors">
                         <Plus className="h-4 w-4" />
                         Add Goal
                     </button>
-                </div>
+                </PageHeader>
 
                 {/* Status summary */}
                 <div className="grid grid-cols-3 gap-4 mb-8">

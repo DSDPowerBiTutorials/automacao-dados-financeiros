@@ -25,6 +25,7 @@ import {
 import { Pencil, Plus, Search, Trash2, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useGlobalScope } from "@/contexts/global-scope-context";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface BankAccount {
     code: string;
@@ -254,11 +255,7 @@ export default function BankAccountsPage() {
 
     return (
         <div className="p-6 space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-3xl font-bold text-gray-900">Bank Accounts</h1>
-                    <p className="text-gray-500 mt-1">Master register of all company bank accounts. Scope assignment controls visibility across the system.</p>
-                </div>
+            <PageHeader title="Bank Accounts" subtitle="Master register of all company bank accounts. Scope assignment controls visibility across the system.">
                 <Button
                     onClick={(e) => {
                         e.preventDefault();
@@ -271,7 +268,7 @@ export default function BankAccountsPage() {
                     <Plus className="h-4 w-4 mr-2" />
                     New Bank Account
                 </Button>
-            </div>
+            </PageHeader>
 
             {/* Scope Information Card */}
             <Card className="bg-blue-50 border-blue-200 p-4">

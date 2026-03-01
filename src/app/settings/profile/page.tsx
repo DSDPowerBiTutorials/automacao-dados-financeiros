@@ -10,6 +10,7 @@ import { UserAvatar } from '@/components/user-avatar'
 import { Badge } from '@/components/ui/badge'
 import { Camera, Mail, Phone, Building, Shield, Loader2, RefreshCw } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { PageHeader } from '@/components/ui/page-header'
 
 const roleLabels: Record<string, { label: string; color: string }> = {
     admin: { label: 'Administrador', color: 'bg-red-100 text-red-800' },
@@ -166,6 +167,7 @@ export default function ProfilePage() {
 
     return (
         <div className="space-y-6">
+            <PageHeader title="My Profile" subtitle="Account settings and preferences" />
             <Card>
                 <CardHeader>
                     <CardTitle>Meu Perfil</CardTitle>

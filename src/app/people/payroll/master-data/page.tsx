@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type TargetCategory = "cogs" | "labour" | "office-rh-spain";
@@ -206,18 +207,7 @@ export default function PayrollMasterDataPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-6 lg:p-8 space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <Settings2 className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                            Payroll Concepts
-                        </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400">
-                            All payroll concepts extracted from uploads — map each to an AP category
-                        </p>
-                    </div>
-                </div>
+            <PageHeader title="Payroll Concepts" subtitle="All payroll concepts extracted from uploads — map each to an AP category">
                 <div className="flex items-center gap-2">
                     <Button
                         size="sm"
@@ -239,7 +229,7 @@ export default function PayrollMasterDataPage() {
                         Sync All ({unmappedCount} unmapped)
                     </Button>
                 </div>
-            </div>
+            </PageHeader>
 
             {/* KPI Row */}
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">

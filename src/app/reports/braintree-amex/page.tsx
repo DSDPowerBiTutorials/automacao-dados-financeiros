@@ -39,6 +39,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface BraintreeEURRow {
   id: string;
@@ -746,111 +747,89 @@ export default function BraintreeEURPage() {
       <div
         className={` transition-all duration-300 ${splitScreenUrl ? "md:pr-[50%]" : ""}`}
       >
-        <header className="page-header-standard">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link href="/">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">
-                    Braintree EUR - Payment Source
-                  </h1>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    {rows.length} records
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Button>
-                <Button
-                  onClick={saveAllChanges}
-                  disabled={isSaving || rows.length === 0}
-                  className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    <>
-                      <Database className="h-4 w-4" />
-                      Save All Changes
-                    </>
-                  )}
-                </Button>
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload-braintree"
-                />
-                <label htmlFor="file-upload-braintree">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10" asChild>
-                    <span>
-                      <Upload className="h-4 w-4" />
-                      Upload CSV
-                    </span>
-                  </Button>
-                </label>
-                <Button
-                  onClick={loadData}
-                  disabled={isLoading}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
-                  title="Force data refresh"
-                >
-                  <Zap className={`h-4 w-4 ${isLoading ? 'animate-pulse' : ''}`} />
-                  Refresh
-                </Button>
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
-                <Button
-                  onClick={handleDeleteAll}
-                  variant="destructive"
-                  className="gap-2"
-                  disabled={isDeleting || rows.length === 0}
-                >
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                  Delete All
-                </Button>
-              </div>
-            </div>
-
-            {saveSuccess && (
-              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
-                  ✅ All changes saved successfully to database! Last saved:{" "}
-                  {lastSaved}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {lastSaved && !saveSuccess && (
-              <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
-                <Database className="h-4 w-4" />
-                <span>Last saved: {lastSaved}</span>
-              </div>
-            )}
+        <PageHeader title="Braintree AMEX - Payment Source" subtitle={`${rows.length} records`}>
+          <div className="flex gap-2">
+            <Button
+              onClick={saveAllChanges}
+              disabled={isSaving || rows.length === 0}
+              className="gap-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Database className="h-4 w-4" />
+                  Save All Changes
+                </>
+              )}
+            </Button>
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="file-upload-braintree"
+            />
+            <label htmlFor="file-upload-braintree">
+              <Button variant="outline" size="sm" className="gap-2" asChild>
+                <span>
+                  <Upload className="h-4 w-4" />
+                  Upload CSV
+                </span>
+              </Button>
+            </label>
+            <Button
+              onClick={loadData}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              title="Force data refresh"
+            >
+              <Zap className={`h-4 w-4 ${isLoading ? 'animate-pulse' : ''}`} />
+              Refresh
+            </Button>
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+            <Button
+              onClick={handleDeleteAll}
+              variant="destructive"
+              className="gap-2"
+              disabled={isDeleting || rows.length === 0}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Delete All
+            </Button>
           </div>
-        </header>
+        </PageHeader>
+
+        <div className="px-6">
+          {saveSuccess && (
+            <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
+                ✅ All changes saved successfully to database! Last saved:{" "}
+                {lastSaved}
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {lastSaved && !saveSuccess && (
+            <div className="mt-3 text-sm text-gray-600 dark:text-gray-400 flex items-center gap-2">
+              <Database className="h-4 w-4" />
+              <span>Last saved: {lastSaved}</span>
+            </div>
+          )}
+        </div>
 
         <div className="px-6 py-8">
           <Card className="shadow-xl">

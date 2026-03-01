@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { formatCurrency } from "@/lib/formatters";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface CurrencyStats {
   currency: string;
@@ -168,13 +169,7 @@ export default function BraintreeDashboard() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Braintree Multi-Currency Dashboard</h1>
-          <p className="text-gray-600 mt-1">
-            Consolidated view across all payment currencies
-          </p>
-        </div>
+      <PageHeader title="Braintree Multi-Currency Dashboard" subtitle="Consolidated view across all payment currencies">
         <div className="flex gap-2">
           <Button
             onClick={loadStats}
@@ -189,7 +184,7 @@ export default function BraintreeDashboard() {
           </Button>
           <BraintreeApiSync onSyncComplete={loadStats} />
         </div>
-      </div>
+      </PageHeader>
 
       {/* Total Overview */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">

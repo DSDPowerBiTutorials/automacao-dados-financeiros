@@ -37,6 +37,7 @@ import {
     Play,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Transaction {
     id: string;
@@ -447,13 +448,7 @@ export default function RealCashFlowPage() {
     return (
         <div className="min-h-full px-6 py-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <header className="page-header-standard">
-                    <h1 className="header-title">Real Cash Flow</h1>
-                    <p className="header-subtitle">
-                        Actual revenue from Braintree and GoCardless with product categorization
-                    </p>
-                </header>
+            <PageHeader title="Real Cash Flow" subtitle="Actual revenue from Braintree and GoCardless with product categorization">
                 <div className="flex gap-2">
                     <Button variant="outline" onClick={loadData} className="gap-2">
                         <RefreshCw className="h-4 w-4" />
@@ -464,7 +459,7 @@ export default function RealCashFlowPage() {
                         Export CSV
                     </Button>
                 </div>
-            </div>
+            </PageHeader>
 
             {error && (
                 <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-700">

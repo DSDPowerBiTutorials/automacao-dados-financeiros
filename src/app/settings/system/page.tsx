@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Building, Globe, Calendar, DollarSign, Save } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
 
 export default function SystemPage() {
     const [settings, setSettings] = useState({
@@ -18,6 +19,7 @@ export default function SystemPage() {
 
     return (
         <div className="space-y-6">
+            <PageHeader title="Company Settings" subtitle="Organization details and configuration" />
             <Card>
                 <CardHeader>
                     <CardTitle>Informações da Empresa</CardTitle>

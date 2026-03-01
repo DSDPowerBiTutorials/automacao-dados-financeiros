@@ -28,6 +28,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from '@/components/ui/dialog'
+import { PageHeader } from '@/components/ui/page-header'
 
 interface AuditLog {
     id: string
@@ -186,6 +187,7 @@ export default function AuditPage() {
 
     return (
         <div className="space-y-6">
+            <PageHeader title="Audit Logs" subtitle="System activity and change history" />
             <Card>
                 <CardHeader>
                     <div className="flex items-center justify-between">

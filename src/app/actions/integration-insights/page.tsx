@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { PlugZap } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 import {
   Card,
   CardContent,
@@ -93,13 +94,7 @@ export default function IntegrationInsights() {
     <div className="min-h-full">
 
       <main className="">
-        <header className="page-header-standard">
-          <h1 className="header-title">Integration Insights Dashboard</h1>
-          <p className="header-subtitle">
-            Overview of API and hybrid integrations connected to the Finance
-            Hub.
-          </p>
-        </header>
+        <PageHeader title="Integration Insights Dashboard" subtitle="Overview of API and hybrid integrations connected to the Finance Hub." />
 
         <section className="px-6 py-10">
           <Card className="shadow-lg">

@@ -28,6 +28,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { formatTimestamp } from "@/lib/formatters";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface SyncSettings {
     enabled: boolean;
@@ -175,20 +176,7 @@ export default function HubSpotSettingsPage() {
     return (
         <div className="container mx-auto p-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/dashboard">
-                        <Button variant="outline" size="icon">
-                            <ArrowLeft className="w-4 h-4" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold">HubSpot Settings</h1>
-                        <p className="text-gray-500">
-                            Sync and integration settings
-                        </p>
-                    </div>
-                </div>
+            <PageHeader title="HubSpot Settings" subtitle="Sync and integration settings">
                 <Button
                     onClick={saveSettings}
                     disabled={saving}
@@ -206,7 +194,7 @@ export default function HubSpotSettingsPage() {
                         </>
                     )}
                 </Button>
-            </div>
+            </PageHeader>
 
             {/* Alert */}
             {alert && (

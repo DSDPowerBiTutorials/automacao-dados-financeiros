@@ -15,6 +15,7 @@ import { PROJECT_TYPE_CONFIG, type ProjectType } from '@/lib/workstream-types';
 import type { WSProject } from '@/lib/workstream-types';
 import { UserAvatar } from '@/components/user-avatar';
 import type { WSUser } from '@/lib/workstream-types';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface Team {
     type: ProjectType;
@@ -73,16 +74,7 @@ export default function TeamsPage() {
         <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-5xl mx-auto px-6 py-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Users2 className="h-6 w-6" />
-                            Teams
-                        </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                            Manage your teams and their projects
-                        </p>
-                    </div>
+                <PageHeader title="Teams" subtitle="Manage your teams and their projects">
                     <button
                         onClick={() => setShowInviteDialog(true)}
                         className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-sm font-medium transition-colors"
@@ -90,7 +82,7 @@ export default function TeamsPage() {
                         <UserPlus className="h-4 w-4" />
                         Invite People
                     </button>
-                </div>
+                </PageHeader>
 
                 {loading ? (
                     <div className="flex items-center justify-center py-20">

@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
 import { formatTimestamp, formatDate, formatCurrency } from "@/lib/formatters"
+import { PageHeader } from "@/components/ui/page-header"
 
 // Formatar USD - padrão brasileiro: $ 1.234,56
 const formatUSD = (value: number | null | undefined): string => {
@@ -331,59 +332,37 @@ export default function ChaseSavingsPage() {
     return (
         <div className="min-h-full">
             {/* Header */}
-            <header className="page-header-standard">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href="/cash-management/chase-quickbooks">
-                            <Button variant="ghost" size="sm" className="gap-2 text-gray-900 dark:text-white hover:bg-white/10">
-                                <ArrowLeft className="h-4 w-4" />
-                                Back
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="header-title flex items-center gap-2">
-                                <span className="text-2xl">🇺🇸</span>
-                                Chase Savings
-                            </h1>
-                            <p className="header-subtitle">
-                                Savings Account • QuickBooks Online
-                            </p>
-                        </div>
-                    </div>
+            <PageHeader title="Chase Savings" subtitle="Savings Account • QuickBooks Online">
+                <div className="flex items-center gap-2">
+                    {lastSync && (
+                        <span className="text-xs text-gray-500">
+                            Last sync: {formatTimestamp(new Date(lastSync))}
+                        </span>
+                    )}
 
-                    <div className="flex items-center gap-2">
-                        {lastSync && (
-                            <span className="text-xs text-gray-900 dark:text-white/70">
-                                Last sync: {formatTimestamp(new Date(lastSync))}
-                            </span>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={exportToCSV}
+                    >
+                        <Download className="w-4 h-4 mr-2" />
+                        Export
+                    </Button>
+
+                    <Button
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                        size="sm"
+                    >
+                        {isSyncing ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <RefreshCw className="w-4 h-4 mr-2" />
                         )}
-
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={exportToCSV}
-                                className="border-white text-gray-900 dark:text-white hover:bg-white/10"
-                            >
-                                <Download className="w-4 h-4 mr-2" />
-                                Export
-                            </Button>
-
-                            <Button
-                                onClick={handleSync}
-                                disabled={isSyncing}
-                                size="sm"
-                                className="bg-white text-[#117ACA] hover:bg-gray-100"
-                            >
-                                {isSyncing ? (
-                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                ) : (
-                                    <RefreshCw className="w-4 h-4 mr-2" />
-                                )}
-                                Sync Now
-                            </Button>
-                    </div>
+                        Sync Now
+                    </Button>
                 </div>
-            </header>
+            </PageHeader>
 
             {/* Account Card */}
             <div className="px-6 py-4">

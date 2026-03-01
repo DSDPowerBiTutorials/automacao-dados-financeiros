@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ProductSidePanel } from "@/components/app/product-side-panel";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Product {
     id: string;
@@ -496,19 +497,8 @@ export default function ProductsPage() {
 
     return (
         <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white">
-            {/* Header */}
-            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-4">
-                        <Package className="h-6 w-6 text-blue-400" />
-                        <h1 className="text-xl font-semibold">Products</h1>
-                        <span className="text-gray-500 dark:text-gray-400">•</span>
-                        <span className="text-gray-500 dark:text-gray-400 text-sm">
-                            {stats.total} products • {stats.withMerged} with merged
-                        </span>
-                    </div>
-                </div>
-
+            <PageHeader title="Products" subtitle={`${stats.total} products • ${stats.withMerged} with merged`} />
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
                 <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <Button

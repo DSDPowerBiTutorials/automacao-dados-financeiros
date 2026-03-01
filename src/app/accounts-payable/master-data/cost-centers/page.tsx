@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/select";
 import { Globe, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface CostCenter {
   code: string;
@@ -202,11 +203,7 @@ export default function CostCentersPage() {
 
   return (
     <div className="min-h-full px-6 space-y-6 py-6">
-      <header className="page-header-standard">
-        <div>
-          <h1 className="header-title">Cost Centers</h1>
-          <p className="header-subtitle">Manage organizational cost centers</p>
-        </div>
+      <PageHeader title="Cost Centers" subtitle="Manage organizational cost centers">
         <Button
           onClick={(e) => {
             e.preventDefault();
@@ -219,7 +216,7 @@ export default function CostCentersPage() {
           <Plus className="h-4 w-4 mr-2" />
           New Cost Center
         </Button>
-      </header>
+      </PageHeader>
 
       <Card className="p-4">
         <div className="space-y-4">

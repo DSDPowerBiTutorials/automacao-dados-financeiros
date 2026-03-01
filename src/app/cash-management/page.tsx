@@ -4,17 +4,13 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Building2, CreditCard, CheckCircle2, TrendingUp, ArrowDownCircle, ArrowUpCircle } from "lucide-react";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function CashManagementOverviewPage() {
   return (
     <div className="p-8 space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Cash Management</h1>
-        <p className="text-gray-600 mt-1">
-          Monitor bank accounts, payment channels, and cash flow
-        </p>
-      </div>
+      <PageHeader title="Cash Management" subtitle="Monitor bank accounts, payment channels, and cash flow" />
 
       {/* Cash Position */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

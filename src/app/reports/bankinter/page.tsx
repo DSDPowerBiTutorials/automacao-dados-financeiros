@@ -31,6 +31,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface BankinterRow {
   id: string;
@@ -315,42 +316,22 @@ export default function BankinterPage() {
 
   return (
     <div className="min-h-full bg-white dark:bg-black">
-      {/* Dark Header */}
-      <header className="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800/50 px-6 py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" size="sm" className="gap-2 text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-                <ArrowLeft className="h-4 w-4" />
-                Back
-              </Button>
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="bg-[#FF7300] p-2 rounded-lg">
-                <Database className="h-5 w-5 text-gray-900 dark:text-white" />
-              </div>
-              <div>
-                <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Bankinter GBP</h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400">{rows.length} records</p>
-              </div>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
-            <label htmlFor="file-upload-bankinter">
-              <Button variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] hover:text-gray-900 dark:text-white" asChild>
-                <span><Upload className="h-4 w-4" /> Upload</span>
-              </Button>
-            </label>
-            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] hover:text-gray-900 dark:text-white">
-              <Download className="h-4 w-4" /> Download
+      <PageHeader title="Bankinter GBP" subtitle={`${rows.length} records`}>
+        <div className="flex gap-2">
+          <input type="file" accept=".csv" onChange={handleFileUpload} className="hidden" id="file-upload-bankinter" />
+          <label htmlFor="file-upload-bankinter">
+            <Button variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] hover:text-gray-900 dark:text-white" asChild>
+              <span><Upload className="h-4 w-4" /> Upload</span>
             </Button>
-            <Button onClick={handleDeleteAll} variant="outline" size="sm" className="gap-2 border-red-800 text-red-400 hover:bg-red-900/50" disabled={isDeleting || rows.length === 0}>
-              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete All
-            </Button>
-          </div>
+          </label>
+          <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] hover:text-gray-900 dark:text-white">
+            <Download className="h-4 w-4" /> Download
+          </Button>
+          <Button onClick={handleDeleteAll} variant="outline" size="sm" className="gap-2 border-red-800 text-red-400 hover:bg-red-900/50" disabled={isDeleting || rows.length === 0}>
+            {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />} Delete All
+          </Button>
         </div>
-      </header>
+      </PageHeader>
 
       {/* Stats Bar */}
       <div className="bg-gray-100 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 px-6 py-3">

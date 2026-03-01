@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Camera, Trash2, Save, Lock, User, Mail, Building2, Phone, Calendar } from 'lucide-react';
 import { formatTimestamp } from '@/lib/formatters';
+import { PageHeader } from '@/components/ui/page-header';
 
 export default function ProfilePage() {
     const { user, profile, refreshProfile } = useAuth();
@@ -278,10 +279,7 @@ export default function ProfilePage() {
 
     return (
         <div className="container mx-auto py-8 px-4 max-w-4xl">
-            <div className="mb-8">
-                <h1 className="text-3xl font-bold text-gray-900">Profile Settings</h1>
-                <p className="text-gray-600 mt-2">Manage your account settings and preferences</p>
-            </div>
+            <PageHeader title="Profile Settings" subtitle="Manage your account settings and preferences" />
 
             <div className="space-y-6">
                 {/* Avatar Section */}

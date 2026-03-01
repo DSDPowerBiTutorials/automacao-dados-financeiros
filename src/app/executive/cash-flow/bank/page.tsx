@@ -23,6 +23,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
 import {
     ArrowDownCircle,
     ArrowUpCircle,
@@ -1300,45 +1301,38 @@ export default function BankCashFlowPage() {
             <div className={`flex-1 flex flex-col overflow-hidden transition-all duration-300 ${selectedRow ? "mr-[450px]" : ""}`}>
 
                 {/* ─── Header ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                            <div>
-                                <h1 className="text-xl font-semibold">Cashflow Summary</h1>
-                                <span className="text-gray-500 dark:text-gray-400 text-sm">
-                                    {summary.transactionCount} transactions • {[...selectedBanks].map(b => BANK_ACCOUNTS.find(a => a.key === b)?.label).join(", ")}
-                                </span>
-                            </div>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Actual Balance</p>
-                            <p className={`text-2xl font-bold ${actualBalance.total >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                {formatCurrency(actualBalance.total, dominantCurrency)}
+                <PageHeader
+                    title="Cashflow Summary"
+                    subtitle={`${summary.transactionCount} transactions • ${[...selectedBanks].map(b => BANK_ACCOUNTS.find(a => a.key === b)?.label).join(", ")}`}
+                >
+                    <div className="text-right">
+                        <p className="text-sm text-gray-500 dark:text-gray-400">Actual Balance</p>
+                        <p className={`text-2xl font-bold ${actualBalance.total >= 0 ? "text-green-400" : "text-red-400"}`}>
+                            {formatCurrency(actualBalance.total, dominantCurrency)}
+                        </p>
+                        {actualBalance.date && (
+                            <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                Most Recent Data: {new Date(actualBalance.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" })}
                             </p>
-                            {actualBalance.date && (
-                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
-                                    Most Recent Data: {new Date(actualBalance.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" })}
-                                </p>
-                            )}
-                        </div>
+                        )}
                     </div>
+                </PageHeader>
 
-                    {/* Scrolling bank balances marquee */}
-                    <div className="overflow-hidden relative h-8 mt-1">
-                        <div className="flex items-center gap-8 animate-marquee whitespace-nowrap absolute">
-                            {[...actualBalance.perBank, ...actualBalance.perBank].map((bank, i) => (
-                                <span key={`${bank.key}-${i}`} className="inline-flex items-center gap-2 text-sm">
-                                    <span className="text-gray-500 dark:text-gray-400 font-medium">{bank.label}</span>
-                                    <span className={`font-semibold ${bank.balance >= 0 ? "text-green-500" : "text-red-400"}`}>
-                                        {formatCurrency(bank.balance, bank.currency)}
-                                    </span>
-                                    <span className="text-[10px] text-gray-400">
-                                        ({new Date(bank.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" })})
-                                    </span>
-                                    <span className="text-gray-300 dark:text-gray-600 mx-1">•</span>
+                {/* Scrolling bank balances marquee */}
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0a0a0a] overflow-hidden relative h-8">
+                    <div className="flex items-center gap-8 animate-marquee whitespace-nowrap absolute top-1/2 -translate-y-1/2">
+                        {[...actualBalance.perBank, ...actualBalance.perBank].map((bank, i) => (
+                            <span key={`${bank.key}-${i}`} className="inline-flex items-center gap-2 text-sm">
+                                <span className="text-gray-500 dark:text-gray-400 font-medium">{bank.label}</span>
+                                <span className={`font-semibold ${bank.balance >= 0 ? "text-green-500" : "text-red-400"}`}>
+                                    {formatCurrency(bank.balance, bank.currency)}
                                 </span>
-                            ))}
-                        </div>
+                                <span className="text-[10px] text-gray-400">
+                                    ({new Date(bank.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" })})
+                                </span>
+                                <span className="text-gray-300 dark:text-gray-600 mx-1">•</span>
+                            </span>
+                        ))}
                     </div>
                 </div>
 

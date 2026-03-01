@@ -11,6 +11,7 @@ import {
     Calendar,
     PieChart,
 } from 'lucide-react';
+import { PageHeader } from '@/components/ui/page-header';
 
 interface ProjectStats {
     project_name: string;
@@ -94,15 +95,7 @@ export default function ReportingPage() {
     return (
         <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-5xl mx-auto px-6 py-8">
-                <div className="mb-8">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                        <BarChart3 className="h-6 w-6" />
-                        Reporting
-                    </h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                        Overview of task progress across all projects
-                    </p>
-                </div>
+                <PageHeader title="Reporting" subtitle="Overview of task progress across all projects" />
 
                 {loading ? (
                     <div className="flex items-center justify-center py-20">

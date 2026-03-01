@@ -22,6 +22,7 @@ import { useNotifications, type Notification, type NotificationType } from '@/co
 import { UserAvatar } from '@/components/user-avatar';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PageHeader } from '@/components/ui/page-header';
 
 const notificationIcons: Record<NotificationType, React.ElementType> = {
     mention: MessageSquare,
@@ -213,19 +214,7 @@ export default function InboxPage() {
         <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-4xl mx-auto px-6 py-8">
                 {/* Header */}
-                <div className="flex items-center justify-between mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Inbox className="h-6 w-6" />
-                            Inbox
-                        </h1>
-                        <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                            {unreadCount > 0
-                                ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}`
-                                : 'All caught up!'
-                            }
-                        </p>
-                    </div>
+                <PageHeader title="Inbox" subtitle={unreadCount > 0 ? `You have ${unreadCount} unread notification${unreadCount > 1 ? 's' : ''}` : 'All caught up!'}>
                     <div className="flex items-center gap-2">
                         {unreadCount > 0 && (
                             <button
@@ -248,7 +237,7 @@ export default function InboxPage() {
                             </button>
                         )}
                     </div>
-                </div>
+                </PageHeader>
 
                 {/* Filter tabs */}
                 <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-800 mb-4">

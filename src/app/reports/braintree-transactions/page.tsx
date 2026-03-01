@@ -32,6 +32,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import BraintreeApiSync from "@/components/braintree/api-sync-button";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface BraintreeTransactionRow {
   id: string;
@@ -420,79 +421,54 @@ export default function BraintreeTransactionsPage() {
     <div className="min-h-full">
 
       <div className="">
-        <header className="page-header-standard">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link href="/">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-[#1a2b4a] dark:text-white">
-                    Braintree Transactions
-                  </h1>
-                  <p className="text-sm text-gray-600 dark:text-gray-300 mt-1">
-                    {rows.length} records | {reconciledCount} reconciled |{" "}
-                    {unreconciledCount} pending
-                  </p>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <input
-                  type="file"
-                  accept=".csv"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  id="file-upload-transactions"
-                />
-                <label htmlFor="file-upload-transactions">
-                  <Button variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10" asChild>
-                    <span>
-                      <Upload className="h-4 w-4" />
-                      Upload CSV
-                    </span>
-                  </Button>
-                </label>
-
-                {/* Direct sync via API */}
-                <BraintreeApiSync />
-
-                <Button
-                  onClick={loadData}
-                  disabled={isLoading}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
-                  title="Force data refresh"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  Atualizar
-                </Button>
-
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
-                <Button
-                  onClick={handleDeleteAll}
-                  variant="destructive"
-                  className="gap-2"
-                  disabled={isDeleting || rows.length === 0}
-                >
-                  {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                  Delete All
-                </Button>
-              </div>
-            </div>
+        <PageHeader title="Braintree Transactions" subtitle={`${rows.length} records | ${reconciledCount} reconciled | ${unreconciledCount} pending`}>
+          <div className="flex gap-2">
+            <input
+              type="file"
+              accept=".csv"
+              onChange={handleFileUpload}
+              className="hidden"
+              id="file-upload-transactions"
+            />
+            <label htmlFor="file-upload-transactions">
+              <Button variant="outline" size="sm" className="gap-2" asChild>
+                <span>
+                  <Upload className="h-4 w-4" />
+                  Upload CSV
+                </span>
+              </Button>
+            </label>
+            <BraintreeApiSync />
+            <Button
+              onClick={loadData}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              title="Force data refresh"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
+            <Button
+              onClick={handleDeleteAll}
+              variant="destructive"
+              className="gap-2"
+              disabled={isDeleting || rows.length === 0}
+            >
+              {isDeleting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4" />
+              )}
+              Delete All
+            </Button>
           </div>
-        </header>
+        </PageHeader>
 
         <div className="px-6 py-8">
           {/* Summary Cards */}

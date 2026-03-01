@@ -32,6 +32,7 @@ import {
     DialogFooter,
 } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 type EventType =
@@ -345,13 +346,7 @@ export default function DSDCalendarPage() {
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-black p-4 md:p-6 lg:p-8 space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                    <CalendarIcon className="h-7 w-7 text-blue-600 dark:text-blue-400" />
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                        DSD Calendar 2026
-                    </h1>
-                </div>
+            <PageHeader title="DSD Calendar 2026">
                 <div className="flex items-center gap-2">
                     <Button
                         size="sm"
@@ -371,7 +366,7 @@ export default function DSDCalendarPage() {
                         Filters
                     </Button>
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Filter toggles */}
             {showFilterMenu && (

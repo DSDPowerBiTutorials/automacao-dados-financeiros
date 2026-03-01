@@ -41,6 +41,7 @@ import {
     AlertTriangle
 } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
+import { PageHeader } from '@/components/ui/page-header'
 
 interface BotTask {
     id: string
@@ -303,6 +304,7 @@ export default function BotellaSettingsPage() {
 
     return (
         <div className="space-y-6">
+            <PageHeader title="BOTella" subtitle="AI assistant configuration" />
             {/* Header com avatar do BOTella */}
             <Card>
                 <CardContent className="pt-6">
@@ -382,8 +384,8 @@ export default function BotellaSettingsPage() {
                                             <div
                                                 key={task.id}
                                                 className={`flex items-center justify-between p-4 border rounded-lg ${task.is_active
-                                                        ? 'bg-white border-green-200'
-                                                        : 'bg-gray-50 border-gray-200 opacity-60'
+                                                    ? 'bg-white border-green-200'
+                                                    : 'bg-gray-50 border-gray-200 opacity-60'
                                                     }`}
                                             >
                                                 <div className="flex items-center gap-4">

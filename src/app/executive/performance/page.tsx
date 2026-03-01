@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity, TrendingUp, TrendingDown, DollarSign, Users, Target } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function PerformanceAnalyticsPage() {
   const metrics = [
@@ -46,19 +47,14 @@ export default function PerformanceAnalyticsPage() {
   return (
     <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
-      <header className="page-header-standard">
-        <h1 className="header-title">Performance Analytics</h1>
-        <p className="header-subtitle">
-          Real-time performance metrics and business intelligence
-        </p>
-      </header>
+      <PageHeader title="Performance Analytics" subtitle="Real-time performance metrics and business intelligence" />
 
       {/* Key Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {metrics.map((metric) => {
           const Icon = metric.icon;
           const TrendIcon = metric.trend === "up" ? TrendingUp : TrendingDown;
-          
+
           return (
             <Card key={metric.title}>
               <CardContent className="p-6">

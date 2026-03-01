@@ -20,6 +20,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ─────────────────────────────────────────
 // Types
@@ -337,17 +338,7 @@ export default function RevenueCashflowPage() {
     if (loading) {
         return (
             <div className="min-h-screen bg-white dark:bg-black">
-                <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl border border-emerald-500/30">
-                            <Loader2 className="h-7 w-7 text-emerald-400 animate-spin" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Revenue Cashflow</h1>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">Loading {selectedYear}...</p>
-                        </div>
-                    </div>
-                </header>
+                <PageHeader title="Revenue Cashflow" subtitle={`Loading ${selectedYear}...`} />
                 <div className="p-6 space-y-6 animate-pulse">
                     <div className="grid grid-cols-4 gap-4">{[...Array(4)].map((_, i) => <div key={i} className="h-28 bg-gray-100 dark:bg-black rounded-lg" />)}</div>
                     <div className="h-96 bg-gray-100 dark:bg-black rounded-lg" />
@@ -362,38 +353,25 @@ export default function RevenueCashflowPage() {
     return (
         <div className="min-h-screen bg-white dark:bg-black">
             {/* Header */}
-            <header className="bg-gradient-to-r from-gray-900 via-gray-900 to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5 sticky top-0 z-20">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-gradient-to-br from-emerald-500/20 to-teal-500/20 rounded-xl border border-emerald-500/30">
-                            <BarChart3 className="h-7 w-7 text-emerald-400" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Revenue Cashflow</h1>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                Bank Inflows × Gateways × Financial Accounts • All Banks • {selectedYear}
-                            </p>
-                        </div>
+            <PageHeader title="Revenue Cashflow" subtitle={`Bank Inflows × Gateways × Financial Accounts • All Banks • ${selectedYear}`}>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-gray-100 dark:bg-black/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
+                        {[2024, 2025, 2026].map(y => (
+                            <button key={y} onClick={() => setSelectedYear(y)}
+                                className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === y ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}>
+                                {y}
+                            </button>
+                        ))}
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-gray-100 dark:bg-black/60 rounded-lg p-1 border border-gray-200 dark:border-gray-700">
-                            {[2024, 2025, 2026].map(y => (
-                                <button key={y} onClick={() => setSelectedYear(y)}
-                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === y ? "bg-emerald-600 text-white" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}>
-                                    {y}
-                                </button>
-                            ))}
-                        </div>
-                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
-                            onClick={() => { setLoading(true); setTimeout(() => setSelectedYear(selectedYear), 0); }}>
-                            <RefreshCw className="h-4 w-4 mr-2" />Refresh
-                        </Button>
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={exportCSV}>
-                            <Download className="h-4 w-4 mr-2" />Export
-                        </Button>
-                    </div>
+                    <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
+                        onClick={() => { setLoading(true); setTimeout(() => setSelectedYear(selectedYear), 0); }}>
+                        <RefreshCw className="h-4 w-4 mr-2" />Refresh
+                    </Button>
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white" onClick={exportCSV}>
+                        <Download className="h-4 w-4 mr-2" />Export
+                    </Button>
                 </div>
-            </header>
+            </PageHeader>
 
             <div className="p-6 space-y-6">
                 <KPIs />

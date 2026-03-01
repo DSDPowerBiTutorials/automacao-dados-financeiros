@@ -17,6 +17,7 @@ import type { WSTask, TaskStatus } from '@/lib/workstream-types';
 import { STATUS_CONFIG, PRIORITY_CONFIG } from '@/lib/workstream-types';
 import { format, isPast, isToday, isTomorrow, isThisWeek, addDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PageHeader } from '@/components/ui/page-header';
 
 type FilterTab = 'upcoming' | 'overdue' | 'completed';
 
@@ -231,12 +232,7 @@ export default function MyTasksPage() {
         <div className="h-full overflow-y-auto bg-white dark:bg-black">
             <div className="max-w-4xl mx-auto px-6 py-8">
                 {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white">My Tasks</h1>
-                    <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">
-                        Tasks assigned to {firstName} across all projects
-                    </p>
-                </div>
+                <PageHeader title="My Tasks" subtitle={`Tasks assigned to ${firstName} across all projects`} />
 
                 {/* Tabs */}
                 <div className="flex items-center gap-1 border-b border-gray-200 dark:border-gray-800 mb-6">

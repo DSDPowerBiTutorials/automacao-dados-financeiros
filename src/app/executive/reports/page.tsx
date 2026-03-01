@@ -3,6 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FileText, Download, Calendar, Filter } from "lucide-react";
+import { PageHeader } from "@/components/ui/page-header";
 
 export default function ConsolidatedReportsPage() {
   const reports = [
@@ -66,13 +67,7 @@ export default function ConsolidatedReportsPage() {
   return (
     <div className="min-h-full px-6 py-6 space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <header className="page-header-standard">
-          <h1 className="header-title">Consolidated Reports</h1>
-          <p className="header-subtitle">
-            Access financial reports across all business units
-          </p>
-        </header>
+      <PageHeader title="Consolidated Reports" subtitle="Access financial reports across all business units">
         <div className="flex gap-2">
           <Button variant="outline" className="gap-2">
             <Filter className="h-4 w-4" />
@@ -83,7 +78,7 @@ export default function ConsolidatedReportsPage() {
             Date Range
           </Button>
         </div>
-      </div>
+      </PageHeader>
 
       {/* Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">

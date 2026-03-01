@@ -27,6 +27,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useGlobalScope } from "@/contexts/global-scope-context";
 import { formatCurrency, formatDate } from "@/lib/formatters";
 import { getMadridDate, parseMadridDate } from "@/lib/date-utils";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface BankAccount {
     code: string;
@@ -325,12 +326,7 @@ export default function PaymentsPage() {
     return (
         <div className="min-h-full px-6 space-y-6 py-6">
             {/* Header */}
-            <header className="page-header-standard">
-                <div>
-                    <h1 className="header-title">Cash Management</h1>
-                    <p className="header-subtitle">View cash position, scheduled payments, and account balances</p>
-                </div>
-            </header>
+            <PageHeader title="Cash Management" subtitle="View cash position, scheduled payments, and account balances" />
 
             {/* Date Filter Type Selector */}
             <Card>

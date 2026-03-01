@@ -43,6 +43,7 @@ import { usePagination } from "@/hooks/use-pagination";
 import { PaginationControls } from "@/components/ui/pagination-controls";
 import { ClinicVariationsTable } from "@/components/clinic-variations-table";
 import { Separator } from "@/components/ui/separator";
+import { PageHeader } from "@/components/ui/page-header";
 
 // Helper: Check if FA code is for clinics (102.x, 103.x, 104.x)
 const isClinicsFACode = (code: string): boolean => {
@@ -1736,46 +1737,31 @@ export default function PnLReport() {
 
     return (
         <div className="min-h-screen bg-white dark:bg-black">
-            {/* Premium Dark Header */}
-            <header className="bg-gradient-to-r from-gray-100 via-gray-100 to-gray-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 border-b border-gray-200 dark:border-gray-800 px-6 py-5 sticky top-0 z-20">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <div className="p-3 bg-gradient-to-br from-emerald-100 to-blue-100 dark:from-emerald-500/20 dark:to-blue-500/20 rounded-xl border border-emerald-300 dark:border-emerald-500/30">
-                            <BarChart3 className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                P&L Statement
-                            </h1>
-                            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-                                Income Statement • {selectedYear} • {selectedScope === "GLOBAL" ? "All Regions" : selectedScope}
-                            </p>
-                        </div>
+            {/* Header */}
+            <PageHeader title="P&L Statement" subtitle={`Income Statement • ${selectedYear} • ${selectedScope === "GLOBAL" ? "All Regions" : selectedScope}`}>
+                <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 bg-gray-200 dark:bg-black/60 rounded-lg p-1 border border-gray-300 dark:border-gray-700">
+                        {[2024, 2025, 2026].map((year) => (
+                            <button
+                                key={year}
+                                onClick={() => setSelectedYear(year)}
+                                className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-[#111111]"}`}
+                            >
+                                {year}
+                            </button>
+                        ))}
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2 bg-gray-200 dark:bg-black/60 rounded-lg p-1 border border-gray-300 dark:border-gray-700">
-                            {[2024, 2025, 2026].map((year) => (
-                                <button
-                                    key={year}
-                                    onClick={() => setSelectedYear(year)}
-                                    className={`px-3 py-1.5 text-sm rounded-md transition-all ${selectedYear === year ? "bg-emerald-600 text-white" : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white dark:hover:bg-[#111111]"}`}
-                                >
-                                    {year}
-                                </button>
-                            ))}
-                        </div>
-                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
-                            <RefreshCw className="h-4 w-4 mr-2" />Sync
-                        </Button>
-                        <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
-                            <FileSpreadsheet className="h-4 w-4 mr-2" />Excel
-                        </Button>
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
-                            <Download className="h-4 w-4 mr-2" />Export PDF
-                        </Button>
-                    </div>
+                    <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
+                        <RefreshCw className="h-4 w-4 mr-2" />Sync
+                    </Button>
+                    <Button variant="outline" size="sm" className="border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]">
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />Excel
+                    </Button>
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+                        <Download className="h-4 w-4 mr-2" />Export PDF
+                    </Button>
                 </div>
-            </header>
+            </PageHeader>
 
             <div className="p-6 space-y-6">
                 {/* Executive Summary KPIs */}

@@ -49,6 +49,7 @@ import { Label } from "@/components/ui/label";
 import { InvoiceSidePanel } from "@/components/app/invoice-side-panel";
 import { UserAvatar } from "@/components/user-avatar";
 import { UserProfilePopup } from "@/components/user-profile-popup";
+import { PageHeader } from "@/components/ui/page-header";
 
 type Invoice = {
     id: number;
@@ -1245,16 +1246,8 @@ export default function PaymentSchedulePage() {
         <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white flex">
             {/* Main Content */}
             <div className={`flex-1 transition-all duration-300 ${detailPanelOpen ? "mr-[500px]" : ""}`}>
-                {/* Header */}
-                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-4">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-4">
-                            <h1 className="text-xl font-semibold">Payments & Invoice Control</h1>
-                            <span className="text-gray-500 dark:text-gray-400">•</span>
-                            <span className="text-gray-500 dark:text-gray-400 text-sm">{SCOPE_CONFIG[selectedScope].label}</span>
-                        </div>
-                    </div>
-
+                <PageHeader title="Payments & Invoice Control" subtitle={SCOPE_CONFIG[selectedScope].label} />
+                <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3">
                     <div className="flex items-center justify-between">
                         <Button
                             variant="outline"

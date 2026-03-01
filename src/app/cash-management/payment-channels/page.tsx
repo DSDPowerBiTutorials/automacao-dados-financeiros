@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ════════════════════════════════════════════════════════
 // Types & Constants
@@ -359,38 +360,28 @@ export default function PaymentChannelsPage() {
     return (
         <div className="flex flex-col h-full bg-white dark:bg-black text-gray-900 dark:text-white">
             {/* ─── Header ─── */}
-            <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
-                <div className="flex items-center justify-between">
-                    <div>
-                        <h1 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                            <Wallet className="h-5 w-5 text-indigo-500" />
-                            Payment Channels
-                        </h1>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                            Unified view of all payment gateways — {summary.total.toLocaleString()} transactions
-                        </p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                        {/* Date range */}
-                        <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(prev => ({ ...prev, start: e.target.value }))} className="w-36 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm" />
-                            <span className="text-gray-500">→</span>
-                            <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(prev => ({ ...prev, end: e.target.value }))} className="w-36 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm" />
-                            <Button size="sm" variant="outline" onClick={() => setDateRange(pendingDateRange)} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-                                Apply
-                            </Button>
-                        </div>
-                        <Button size="sm" variant="outline" onClick={loadData} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-                            <RefreshCw className="h-4 w-4" />
-                        </Button>
-                        <Button size="sm" variant="outline" onClick={exportCSV} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
-                            <Download className="h-4 w-4 mr-1" /> Export
+            <PageHeader title="Payment Channels" subtitle={`Unified view of all payment gateways — ${summary.total.toLocaleString()} transactions`}>
+                <div className="flex items-center gap-3">
+                    {/* Date range */}
+                    <div className="flex items-center gap-2">
+                        <Calendar className="h-4 w-4 text-gray-500" />
+                        <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(prev => ({ ...prev, start: e.target.value }))} className="w-36 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm" />
+                        <span className="text-gray-500">→</span>
+                        <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(prev => ({ ...prev, end: e.target.value }))} className="w-36 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-sm" />
+                        <Button size="sm" variant="outline" onClick={() => setDateRange(pendingDateRange)} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
+                            Apply
                         </Button>
                     </div>
+                    <Button size="sm" variant="outline" onClick={loadData} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
+                        <RefreshCw className="h-4 w-4" />
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={exportCSV} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
+                        <Download className="h-4 w-4 mr-1" /> Export
+                    </Button>
                 </div>
-                {/* Search & filter bar */}
-                <div className="flex items-center gap-3 mt-3">
+            </PageHeader>
+            <div className="border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
+                <div className="flex items-center gap-3">
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400" />
                         <Input placeholder="Search name, email, order, txn..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="pl-9 w-64 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white placeholder:text-gray-500" />
@@ -440,8 +431,8 @@ export default function PaymentChannelsPage() {
                                     onClick={() => toggleGateway(gw.key)}
                                     onDoubleClick={() => selectSingleGateway(gw.key)}
                                     className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all text-sm ${isActive
-                                            ? gw.bgColor + " text-white border-transparent"
-                                            : "bg-transparent border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-500"
+                                        ? gw.bgColor + " text-white border-transparent"
+                                        : "bg-transparent border-gray-300 dark:border-gray-600 text-gray-500 dark:text-gray-400 hover:border-gray-500"
                                         } ${!stats?.count ? "opacity-40" : ""}`}
                                     title="Double-click to select only this one"
                                 >

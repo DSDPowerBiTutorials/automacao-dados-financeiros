@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface ContractRow {
     id: string;
@@ -157,16 +158,7 @@ export default function DepartmentalContractsPage() {
 
     return (
         <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white p-6 space-y-6">
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-semibold flex items-center gap-2">
-                        <FileText className="h-6 w-6 text-blue-500" />
-                        Contracts
-                    </h1>
-                    <p className="text-sm text-gray-500 mt-1">
-                        Visão por departamento e sub-departamento com base nos contratos ativos.
-                    </p>
-                </div>
+            <PageHeader title="Contracts" subtitle="Visão por departamento e sub-departamento com base nos contratos ativos.">
                 <div className="flex items-center gap-2">
                     <Button
                         variant={amountMode === "monthly" ? "default" : "outline"}
@@ -183,7 +175,7 @@ export default function DepartmentalContractsPage() {
                         Anual
                     </Button>
                 </div>
-            </div>
+            </PageHeader>
 
             <Card className="border-gray-200 dark:border-gray-700 bg-white dark:bg-black">
                 <CardHeader className="pb-2">

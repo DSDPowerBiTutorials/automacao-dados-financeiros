@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PageHeader } from "@/components/ui/page-header";
 
 // Ícones por tipo de notificação
 const notificationIcons: Record<NotificationType, React.ElementType> = {
@@ -173,30 +174,7 @@ export default function NotificationsPage() {
 
     return (
         <div className="container mx-auto py-6 px-4 max-w-4xl">
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => router.back()}
-                    >
-                        <ArrowLeft size={18} className="mr-1" />
-                        Voltar
-                    </Button>
-                    <div className="flex items-center gap-3">
-                        <Mail size={24} className="text-gray-600" />
-                        <div>
-                            <h1 className="text-xl font-bold text-gray-900">Notificações</h1>
-                            <p className="text-sm text-gray-500">
-                                {unreadCount > 0
-                                    ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}`
-                                    : 'Todas lidas'
-                                }
-                            </p>
-                        </div>
-                    </div>
-                </div>
+            <PageHeader title="Notificações" subtitle={unreadCount > 0 ? `${unreadCount} não lida${unreadCount > 1 ? 's' : ''}` : 'Todas lidas'}>
                 <div className="flex items-center gap-2">
                     {unreadCount > 0 && (
                         <Button
@@ -220,7 +198,7 @@ export default function NotificationsPage() {
                         </Button>
                     )}
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Lista */}
             <div className="space-y-3">

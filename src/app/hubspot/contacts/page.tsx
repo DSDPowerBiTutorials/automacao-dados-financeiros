@@ -31,6 +31,7 @@ import { Badge } from "@/components/ui/badge";
 import Link from "next/link";
 import { formatDate } from "@/lib/formatters";
 import HubSpotSyncStatus from "@/components/hubspot/sync-status";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface Contact {
     id: string;
@@ -209,21 +210,7 @@ export default function HubSpotContactsPage() {
     return (
         <div className="container mx-auto p-6 space-y-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/dashboard">
-                        <Button variant="outline" size="icon">
-                            <ArrowLeft className="w-4 h-4" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-3xl font-bold">HubSpot Contacts</h1>
-                        <p className="text-gray-500">
-                            Management of synced contacts from HubSpot CRM
-                        </p>
-                    </div>
-                </div>
-            </div>
+            <PageHeader title="HubSpot Contacts" subtitle="Management of synced contacts from HubSpot CRM" />
 
             {/* Sync Status */}
             <HubSpotSyncStatus />

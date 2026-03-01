@@ -50,6 +50,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { formatDate, formatCurrency, formatTimestamp } from "@/lib/formatters";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface GoCardlessRow {
   id: string;
@@ -772,69 +773,37 @@ export default function GoCardlessPage() {
       <div
         className={` transition-all duration-300 ${splitScreenUrl ? "md:pr-[50%]" : ""}`}
       >
-        <header className="page-header-standard">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Link href="/">
-                  <Button variant="ghost" size="sm" className="gap-2">
-                    <ArrowLeft className="h-4 w-4" />
-                    Back
-                  </Button>
-                </Link>
-                <div>
-                  <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-                    GoCardless - Payment Source
-                  </h1>
-                  <div className="flex items-center gap-4 mt-1">
-                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                      {rows.length} records ({processedRows.length} filtered) - Page {adjustedCurrentPage} of {Math.max(1, totalPages)}
-                    </p>
-                    {mostRecentWebhookTransaction && (
-                      <p className="text-sm text-green-300 flex items-center gap-1">
-                        <Zap className="h-3 w-3" />
-                        Most recent: {formatDate(mostRecentWebhookTransaction.date)}
-                      </p>
-                    )}
-                    {lastSyncDate && (
-                      <p className="text-sm text-gray-700 dark:text-gray-300 flex items-center gap-1">
-                        <Database className="h-3 w-3" />
-                        Last sync: {lastSyncDate}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  onClick={loadData}
-                  disabled={isLoading}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10"
-                  title="Force data refresh"
-                >
-                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                  Atualizar
-                </Button>
-                <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2 border-white text-gray-900 dark:text-white hover:bg-white/10">
-                  <Download className="h-4 w-4" />
-                  Download
-                </Button>
-              </div>
-            </div>
-
-            {saveSuccess && (
-              <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
-                <CheckCircle className="h-5 w-5 text-emerald-600" />
-                <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
-                  ✅ All changes saved successfully to database! Last saved:{" "}
-                  {lastSaved}
-                </AlertDescription>
-              </Alert>
-            )}
+        <PageHeader title="GoCardless - Payment Source" subtitle={`${rows.length} records (${processedRows.length} filtered) - Page ${adjustedCurrentPage} of ${Math.max(1, totalPages)}`}>
+          <div className="flex gap-2">
+            <Button
+              onClick={loadData}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              title="Force data refresh"
+            >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Atualizar
+            </Button>
+            <Button onClick={downloadCSV} variant="outline" size="sm" className="gap-2">
+              <Download className="h-4 w-4" />
+              Download
+            </Button>
           </div>
-        </header>
+        </PageHeader>
+
+        <div className="px-6">
+          {saveSuccess && (
+            <Alert className="mt-4 border-2 border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20">
+              <CheckCircle className="h-5 w-5 text-emerald-600" />
+              <AlertDescription className="text-emerald-800 dark:text-emerald-200 font-medium">
+                ✅ All changes saved successfully to database! Last saved:{" "}
+                {lastSaved}
+              </AlertDescription>
+            </Alert>
+          )}
+        </div>
 
         <div className="px-6 py-8">
           <Card className="shadow-xl">

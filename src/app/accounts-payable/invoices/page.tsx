@@ -28,6 +28,7 @@ import type { DateRange } from "react-day-picker";
 import { ScopeSelector } from "@/components/app/scope-selector";
 import { type ScopeType, getRecordScope, getScopeIcon, matchesScope, scopeToFields, SCOPE_CONFIG } from "@/lib/scope-utils";
 import { useGlobalScope } from "@/contexts/global-scope-context";
+import { PageHeader } from "@/components/ui/page-header";
 
 type InvoiceType = "INCURRED" | "BUDGET" | "ADJUSTMENT";
 type SortField = "invoice_date" | "invoice_number" | "provider_code" | "invoice_amount" | "invoice_type";
@@ -1842,12 +1843,7 @@ export default function InvoicesPage() {
     <>
       {/* Fixed Header and Cards - Dark Theme */}
       <div className="min-h-screen bg-white dark:bg-black text-gray-900 dark:text-white px-6 py-6 pb-0">
-        <div className="flex justify-between items-center mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
-          <div className="flex items-center gap-4">
-            <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Invoices</h1>
-            <span className="text-gray-500">•</span>
-            <span className="text-gray-500 dark:text-gray-400 text-sm">{SCOPE_CONFIG[selectedScope].label}</span>
-          </div>
+        <PageHeader title="Invoices" subtitle={SCOPE_CONFIG[selectedScope].label}>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={exportToExcel} className="bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111]">
               <FileSpreadsheet className="h-4 w-4 mr-2" />
@@ -1876,1109 +1872,1109 @@ export default function InvoicesPage() {
               </p>
             )}
           </div>
-          <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-            <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white p-8" style={{ width: '80vw' }}>
-              <DialogHeader className="pb-4 border-b">
-                <DialogTitle className="text-2xl">{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
-                <DialogDescription className="text-base mt-2">
-                  {editingInvoice ? "Update invoice details" : "Add a new financial entry to accounts payable"}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-8 pt-6">
-                {/* Invoice Type Selection */}
-                <div className="space-y-3">
-                  <Label className="text-base">Invoice Type *</Label>
-                  <div className="grid grid-cols-3 gap-4">
-                    {Object.entries(INVOICE_TYPE_CONFIG).map(([type, config]) => {
-                      const Icon = config.icon;
-                      return (
-                        <button
-                          key={type}
-                          type="button"
-                          onClick={() => handleTypeChange(type as InvoiceType)}
-                          className={`p-4 border-2 rounded-lg text-left transition-all ${formData.invoice_type === type
-                            ? config.color
-                            : "border-gray-200 hover:border-gray-300"
-                            }`}
-                        >
-                          <div className="flex items-center gap-2 mb-1">
-                            <Icon className="h-4 w-4" />
-                            <span className="font-semibold text-sm">{config.label}</span>
-                          </div>
-                          <p className="text-xs opacity-75">{config.description}</p>
-                        </button>
-                      );
-                    })}
+        </PageHeader>
+        <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
+          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white p-8" style={{ width: '80vw' }}>
+            <DialogHeader className="pb-4 border-b">
+              <DialogTitle className="text-2xl">{editingInvoice ? "Edit Invoice" : "Create New Invoice"}</DialogTitle>
+              <DialogDescription className="text-base mt-2">
+                {editingInvoice ? "Update invoice details" : "Add a new financial entry to accounts payable"}
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleSubmit} className="space-y-8 pt-6">
+              {/* Invoice Type Selection */}
+              <div className="space-y-3">
+                <Label className="text-base">Invoice Type *</Label>
+                <div className="grid grid-cols-3 gap-4">
+                  {Object.entries(INVOICE_TYPE_CONFIG).map(([type, config]) => {
+                    const Icon = config.icon;
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => handleTypeChange(type as InvoiceType)}
+                        className={`p-4 border-2 rounded-lg text-left transition-all ${formData.invoice_type === type
+                          ? config.color
+                          : "border-gray-200 hover:border-gray-300"
+                          }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Icon className="h-4 w-4" />
+                          <span className="font-semibold text-sm">{config.label}</span>
+                        </div>
+                        <p className="text-xs opacity-75">{config.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Dates Row */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="invoice_date">Invoice Date *</Label>
+                  <Input
+                    id="invoice_date"
+                    type="date"
+                    value={formData.invoice_date}
+                    onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
+                    required
+                    className="h-10"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="benefit_date">Benefit Date *</Label>
+                  <Input
+                    id="benefit_date"
+                    type="date"
+                    value={formData.benefit_date}
+                    onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })}
+                    required
+                    className="h-10"
+                  />
+                </div>
+              </div>
+
+              {/* Due & Schedule Dates */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="due_date">Due Date *</Label>
+                  <Input
+                    id="due_date"
+                    type="date"
+                    value={formData.due_date}
+                    onChange={(e) => {
+                      const newDueDate = e.target.value;
+                      setFormData({
+                        ...formData,
+                        due_date: newDueDate,
+                        schedule_date: formData.schedule_date || newDueDate
+                      });
+                    }}
+                    required
+                    className="h-10"
+                  />
+                  <p className="text-xs text-muted-foreground">Invoice due date</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="schedule_date">Schedule Date *</Label>
+                  <Input
+                    id="schedule_date"
+                    type="date"
+                    value={formData.schedule_date}
+                    onChange={(e) => setFormData({ ...formData, schedule_date: e.target.value })}
+                    required
+                  />
+                  <p className="text-xs text-muted-foreground">Defaults to Due Date</p>
+                </div>
+              </div>
+
+              {/* Scope & Invoice Number */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="scope">Scope (Country) *</Label>
+                  <Select
+                    value={formData.scope}
+                    onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val })}
+                    required
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="ES">
+                        <span className="flex items-center gap-2">
+                          <span>🇪🇸</span>
+                          <span>Spain (EUR)</span>
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="US">
+                        <span className="flex items-center gap-2">
+                          <span>🇺🇸</span>
+                          <span>United States (USD)</span>
+                        </span>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Company location, not invoice currency
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="invoice_number">
+                    Invoice Number
+                    {!editingInvoice && <span className="text-xs text-gray-500 ml-1">(auto-generated if empty)</span>}
+                  </Label>
+                  <Input
+                    id="invoice_number"
+                    value={formData.invoice_number}
+                    onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
+                    placeholder={editingInvoice ? "INV-2024-001" : "Leave empty for auto-generation"}
+                  />
+                  {!editingInvoice && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      Format: {formData.scope}-INV-YYYYMM-0001
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Provider & Financial Account */}
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="provider_code">Provider *</Label>
+                  <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })} required>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select provider" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white max-h-[300px]">
+                      {providers.map((provider) => (
+                        <SelectItem key={provider.code} value={provider.code}>{provider.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="financial_account_code">Financial Account *</Label>
+                  <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })} required>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white max-h-[300px]">
+                      {financialAccounts
+                        .filter(acc => acc.level >= 2)
+                        .map((account) => (
+                          <SelectItem key={account.code} value={account.code} className="cursor-pointer hover:bg-gray-100">{account.name}</SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Amount & Currency */}
+              <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="invoice_amount">Amount *</Label>
+                  <Input
+                    id="invoice_amount"
+                    type="number"
+                    step="0.01"
+                    value={formData.invoice_amount}
+                    onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="currency">Currency *</Label>
+                  <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      <SelectItem value="USD">USD - US Dollar</SelectItem>
+                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                      <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Invoice currency (can differ from company country)
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="eur_exchange">EUR Exchange Rate</Label>
+                  <Input
+                    id="eur_exchange"
+                    type="number"
+                    step="0.000001"
+                    value={formData.eur_exchange}
+                    onChange={(e) => setFormData({ ...formData, eur_exchange: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Paid Amount & Paid Currency */}
+              <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="paid_amount">Paid Amount</Label>
+                  <Input
+                    id="paid_amount"
+                    type="number"
+                    step="any"
+                    value={formData.paid_amount}
+                    onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })}
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="paid_currency">Paid Currency</Label>
+                  <Select value={formData.paid_currency} onValueChange={(val) => setFormData({ ...formData, paid_currency: val })}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select currency" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      <SelectItem value="USD">USD - US Dollar</SelectItem>
+                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                      <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payment_date">Payment Date</Label>
+                  <Input
+                    id="payment_date"
+                    type="date"
+                    value={formData.payment_date}
+                    onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Cost Type, Dep Cost Type, Department & Sub-Department */}
+              <div className="grid grid-cols-4 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="cost_type_code">Cost Type *</Label>
+                  <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })} required>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select cost type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {costTypes.map((type) => (
+                        <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="dep_cost_type_code">Dep Cost Type *</Label>
+                  <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })} required>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select dep cost type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {depCostTypes.map((type) => (
+                        <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="cost_center_code">Department *</Label>
+                  <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val, sub_department_code: "" })} required>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select department" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {costCenters.map((center) => (
+                        <SelectItem key={center.code} value={center.code}>
+                          {center.code} - {center.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sub_department_code">Sub-Department</Label>
+                  <Select
+                    value={formData.sub_department_code}
+                    onValueChange={(val) => setFormData({ ...formData, sub_department_code: val })}
+                    disabled={!formData.cost_center_code}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select sub-department" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {subDepartments
+                        .filter(sd => sd.parent_department_code === formData.cost_center_code)
+                        .map((sd) => (
+                          <SelectItem key={sd.code} value={sd.code}>
+                            {sd.code} - {sd.name}
+                          </SelectItem>
+                        ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Payment Details */}
+              <div className="grid grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="bank_account_code">Bank Account</Label>
+                  <Select value={formData.bank_account_code} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select bank account" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {bankAccounts.map((account) => (
+                        <SelectItem key={account.code} value={account.code}>{account.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="payment_method_code">Payment Method</Label>
+                  <Select value={formData.payment_method_code} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select method" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      {paymentMethods.map((method) => (
+                        <SelectItem key={method.code} value={method.code}>{method.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="course_code">Course</Label>
+                  <Select value={formData.course_code} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
+                    <SelectTrigger className="bg-white">
+                      <SelectValue placeholder="Select course" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white max-h-[300px]">
+                      {courses.map((course) => (
+                        <SelectItem key={course.code} value={course.code}>{course.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Description & Notes */}
+              <div className="space-y-2">
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  rows={2}
+                  placeholder="Invoice description..."
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="notes">Internal Notes</Label>
+                <Textarea
+                  id="notes"
+                  value={formData.notes}
+                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                  rows={2}
+                  placeholder="Internal notes (not visible to providers)..."
+                />
+              </div>
+
+              {/* Impact Flags */}
+              <div className="space-y-3 pt-2">
+                <Label>Financial Impact</Label>
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="dre_impact"
+                      checked={formData.dre_impact}
+                      onCheckedChange={(checked) => setFormData({ ...formData, dre_impact: checked as boolean })}
+                    />
+                    <Label htmlFor="dre_impact" className="font-normal cursor-pointer">
+                      Impacts Income Statement (DRE)
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="cash_impact"
+                      checked={formData.cash_impact}
+                      onCheckedChange={(checked) => setFormData({ ...formData, cash_impact: checked as boolean })}
+                    />
+                    <Label htmlFor="cash_impact" className="font-normal cursor-pointer">
+                      Impacts Cash Flow
+                    </Label>
+                  </div>
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="is_intercompany"
+                      checked={formData.is_intercompany}
+                      onCheckedChange={(checked) => setFormData({ ...formData, is_intercompany: checked as boolean })}
+                    />
+                    <Label htmlFor="is_intercompany" className="font-normal cursor-pointer">
+                      Intercompany Transaction
+                    </Label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={submitting} className={editingInvoice ? "bg-green-600 hover:bg-green-700" : ""}>
+                  {submitting ? "Saving..." : editingInvoice ? "Update Invoice" : "Create Invoice"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Provider Creation Dialog */}
+        <Dialog open={providerDialogOpen} onOpenChange={setProviderDialogOpen}>
+          <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
+            <DialogHeader>
+              <DialogTitle>Create New Provider</DialogTitle>
+              <DialogDescription>Add a new provider to the system</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => { e.preventDefault(); createNewProvider(); }} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-provider-code">Code *</Label>
+                  <Input
+                    id="new-provider-code"
+                    value={newProviderData.code}
+                    onChange={(e) => setNewProviderData({ ...newProviderData, code: e.target.value })}
+                    placeholder="DSD-ES-AP-PV0001"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-provider-name">Name *</Label>
+                  <Input
+                    id="new-provider-name"
+                    value={newProviderData.name}
+                    onChange={(e) => setNewProviderData({ ...newProviderData, name: e.target.value })}
+                    placeholder="Provider Name"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-provider-country">Country *</Label>
+                  <Select
+                    value={newProviderData.country}
+                    onValueChange={(val) => setNewProviderData({ ...newProviderData, country: val })}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="ES">Spain</SelectItem>
+                      <SelectItem value="US">United States</SelectItem>
+                      <SelectItem value="BR">Brazil</SelectItem>
+                      <SelectItem value="GB">United Kingdom</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-provider-currency">Currency *</Label>
+                  <Select
+                    value={newProviderData.currency}
+                    onValueChange={(val) => setNewProviderData({ ...newProviderData, currency: val })}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="EUR">EUR - Euro</SelectItem>
+                      <SelectItem value="USD">USD - US Dollar</SelectItem>
+                      <SelectItem value="GBP">GBP - British Pound</SelectItem>
+                      <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-provider-email">Email</Label>
+                  <Input
+                    id="new-provider-email"
+                    type="email"
+                    value={newProviderData.email}
+                    onChange={(e) => setNewProviderData({ ...newProviderData, email: e.target.value })}
+                    placeholder="provider@example.com"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-provider-payment-terms">Payment Terms</Label>
+                  <Input
+                    id="new-provider-payment-terms"
+                    value={newProviderData.payment_terms}
+                    onChange={(e) => setNewProviderData({ ...newProviderData, payment_terms: e.target.value })}
+                    placeholder="Net 30"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setProviderDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Create Provider
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Financial Account Creation Dialog */}
+        <Dialog open={financialAccountDialogOpen} onOpenChange={setFinancialAccountDialogOpen}>
+          <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
+            <DialogHeader>
+              <DialogTitle>Create New Financial Account</DialogTitle>
+              <DialogDescription>Add a new account to the chart of accounts</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={(e) => { e.preventDefault(); createNewFinancialAccount(); }} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-account-code">Code *</Label>
+                  <Input
+                    id="new-account-code"
+                    value={newAccountData.code}
+                    onChange={(e) => setNewAccountData({ ...newAccountData, code: e.target.value })}
+                    placeholder="201.5"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-account-name">Name *</Label>
+                  <Input
+                    id="new-account-name"
+                    value={newAccountData.name}
+                    onChange={(e) => setNewAccountData({ ...newAccountData, name: e.target.value })}
+                    placeholder="Account Name"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="new-account-type">Type *</Label>
+                  <Select
+                    value={newAccountData.type}
+                    onValueChange={(val) => setNewAccountData({ ...newAccountData, type: val })}
+                  >
+                    <SelectTrigger className="bg-white">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-white">
+                      <SelectItem value="Expense">Expense</SelectItem>
+                      <SelectItem value="Revenue">Revenue</SelectItem>
+                      <SelectItem value="Asset">Asset</SelectItem>
+                      <SelectItem value="Liability">Liability</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-account-level">Level *</Label>
+                  <Input
+                    id="new-account-level"
+                    type="number"
+                    min="1"
+                    max="5"
+                    value={newAccountData.level}
+                    onChange={(e) => setNewAccountData({ ...newAccountData, level: parseInt(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="new-account-parent">Parent Code</Label>
+                  <Input
+                    id="new-account-parent"
+                    value={newAccountData.parent_code}
+                    onChange={(e) => setNewAccountData({ ...newAccountData, parent_code: e.target.value })}
+                    placeholder="201.0"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Scope *</Label>
+                <ScopeSelector
+                  value={newAccountData.scope}
+                  onValueChange={(scope: ScopeType) => setNewAccountData({ ...newAccountData, scope })}
+                  label=""
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <Button type="button" variant="outline" onClick={() => setFinancialAccountDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Create Account
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Split Invoice Configuration Dialog */}
+        <Dialog open={splitDialogOpen} onOpenChange={setSplitDialogOpen}>
+          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
+            <DialogHeader>
+              <DialogTitle>Split Invoice</DialogTitle>
+              <DialogDescription>
+                Divide this invoice into multiple parts by installments or by dimensions
+              </DialogDescription>
+            </DialogHeader>
+
+            {splitInvoice && (
+              <div className="space-y-4">
+                {/* Original Invoice Info */}
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-semibold mb-2">Original Invoice</h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-muted-foreground">Invoice:</span> {splitInvoice.invoice_number}</div>
+                    <div><span className="text-muted-foreground">Provider:</span> {providers.find(p => p.code === splitInvoice.provider_code)?.name}</div>
+                    <div><span className="text-muted-foreground">Amount:</span> {formatEuropeanNumber(splitInvoice.amount)}</div>
+                    <div><span className="text-muted-foreground">Due Date:</span> {splitInvoice.due_date ? new Date(splitInvoice.due_date).toLocaleDateString('pt-BR') : '-'}</div>
                   </div>
                 </div>
 
-                {/* Dates Row */}
-                <div className="grid grid-cols-2 gap-6">
+                {/* Split Type Selection */}
+                <div className="space-y-2">
+                  <Label>Split Type</Label>
                   <div className="space-y-2">
-                    <Label htmlFor="invoice_date">Invoice Date *</Label>
-                    <Input
-                      id="invoice_date"
-                      type="date"
-                      value={formData.invoice_date}
-                      onChange={(e) => setFormData({ ...formData, invoice_date: e.target.value })}
-                      required
-                      className="h-10"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="benefit_date">Benefit Date *</Label>
-                    <Input
-                      id="benefit_date"
-                      type="date"
-                      value={formData.benefit_date}
-                      onChange={(e) => setFormData({ ...formData, benefit_date: e.target.value })}
-                      required
-                      className="h-10"
-                    />
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="split-installments"
+                        checked={splitConfig.type === 'installments'}
+                        onChange={() => setSplitConfig({ ...splitConfig, type: 'installments', installments: 2, splits: [] })}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="split-installments" className="cursor-pointer">
+                        Split by Installments (Monthly)
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="split-financial-account"
+                        checked={splitConfig.type === 'financial_account'}
+                        onChange={() => setSplitConfig({ ...splitConfig, type: 'financial_account', installments: 1, splits: [] })}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="split-financial-account" className="cursor-pointer">
+                        Split by Financial Account
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="split-cost-center"
+                        checked={splitConfig.type === 'cost_center'}
+                        onChange={() => setSplitConfig({ ...splitConfig, type: 'cost_center', installments: 1, splits: [] })}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="split-cost-center" className="cursor-pointer">
+                        Split by Department
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="split-cost-type"
+                        checked={splitConfig.type === 'cost_type'}
+                        onChange={() => setSplitConfig({ ...splitConfig, type: 'cost_type', installments: 1, splits: [] })}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="split-cost-type" className="cursor-pointer">
+                        Split by Cost Type
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="radio"
+                        id="split-dep-cost-type"
+                        checked={splitConfig.type === 'dep_cost_type'}
+                        onChange={() => setSplitConfig({ ...splitConfig, type: 'dep_cost_type', installments: 1, splits: [] })}
+                        className="h-4 w-4"
+                      />
+                      <Label htmlFor="split-dep-cost-type" className="cursor-pointer">
+                        Split by Department Cost Type
+                      </Label>
+                    </div>
                   </div>
                 </div>
 
-                {/* Due & Schedule Dates */}
-                <div className="grid grid-cols-2 gap-6">
+                {/* Installments Selector (1-12) */}
+                {splitConfig.type === 'installments' && (
                   <div className="space-y-2">
-                    <Label htmlFor="due_date">Due Date *</Label>
-                    <Input
-                      id="due_date"
-                      type="date"
-                      value={formData.due_date}
-                      onChange={(e) => {
-                        const newDueDate = e.target.value;
-                        setFormData({
-                          ...formData,
-                          due_date: newDueDate,
-                          schedule_date: formData.schedule_date || newDueDate
-                        });
-                      }}
-                      required
-                      className="h-10"
-                    />
-                    <p className="text-xs text-muted-foreground">Invoice due date</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="schedule_date">Schedule Date *</Label>
-                    <Input
-                      id="schedule_date"
-                      type="date"
-                      value={formData.schedule_date}
-                      onChange={(e) => setFormData({ ...formData, schedule_date: e.target.value })}
-                      required
-                    />
-                    <p className="text-xs text-muted-foreground">Defaults to Due Date</p>
-                  </div>
-                </div>
-
-                {/* Scope & Invoice Number */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="scope">Scope (Country) *</Label>
+                    <Label>Number of Installments</Label>
                     <Select
-                      value={formData.scope}
-                      onValueChange={(val) => setFormData({ ...formData, scope: val as ScopeType, country_code: val })}
-                      required
+                      value={splitConfig.installments.toString()}
+                      onValueChange={(value) => setSplitConfig({ ...splitConfig, installments: parseInt(value) })}
                     >
                       <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select country" />
+                        <SelectValue placeholder="Select..." />
                       </SelectTrigger>
                       <SelectContent className="bg-white">
-                        <SelectItem value="ES">
-                          <span className="flex items-center gap-2">
-                            <span>🇪🇸</span>
-                            <span>Spain (EUR)</span>
-                          </span>
-                        </SelectItem>
-                        <SelectItem value="US">
-                          <span className="flex items-center gap-2">
-                            <span>🇺🇸</span>
-                            <span>United States (USD)</span>
-                          </span>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Company location, not invoice currency
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="invoice_number">
-                      Invoice Number
-                      {!editingInvoice && <span className="text-xs text-gray-500 ml-1">(auto-generated if empty)</span>}
-                    </Label>
-                    <Input
-                      id="invoice_number"
-                      value={formData.invoice_number}
-                      onChange={(e) => setFormData({ ...formData, invoice_number: e.target.value })}
-                      placeholder={editingInvoice ? "INV-2024-001" : "Leave empty for auto-generation"}
-                    />
-                    {!editingInvoice && (
-                      <p className="text-xs text-gray-500 mt-1">
-                        Format: {formData.scope}-INV-YYYYMM-0001
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Provider & Financial Account */}
-                <div className="grid grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="provider_code">Provider *</Label>
-                    <Select value={formData.provider_code} onValueChange={(val) => setFormData({ ...formData, provider_code: val })} required>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select provider" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white max-h-[300px]">
-                        {providers.map((provider) => (
-                          <SelectItem key={provider.code} value={provider.code}>{provider.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="financial_account_code">Financial Account *</Label>
-                    <Select value={formData.financial_account_code} onValueChange={(val) => setFormData({ ...formData, financial_account_code: val })} required>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select account" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white max-h-[300px]">
-                        {financialAccounts
-                          .filter(acc => acc.level >= 2)
-                          .map((account) => (
-                            <SelectItem key={account.code} value={account.code} className="cursor-pointer hover:bg-gray-100">{account.name}</SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Amount & Currency */}
-                <div className="grid grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="invoice_amount">Amount *</Label>
-                    <Input
-                      id="invoice_amount"
-                      type="number"
-                      step="0.01"
-                      value={formData.invoice_amount}
-                      onChange={(e) => setFormData({ ...formData, invoice_amount: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="currency">Currency *</Label>
-                    <Select value={formData.currency} onValueChange={(val) => setFormData({ ...formData, currency: val })}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="EUR">EUR - Euro</SelectItem>
-                        <SelectItem value="USD">USD - US Dollar</SelectItem>
-                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                        <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <p className="text-xs text-muted-foreground">
-                      Invoice currency (can differ from company country)
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="eur_exchange">EUR Exchange Rate</Label>
-                    <Input
-                      id="eur_exchange"
-                      type="number"
-                      step="0.000001"
-                      value={formData.eur_exchange}
-                      onChange={(e) => setFormData({ ...formData, eur_exchange: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* Paid Amount & Paid Currency */}
-                <div className="grid grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="paid_amount">Paid Amount</Label>
-                    <Input
-                      id="paid_amount"
-                      type="number"
-                      step="any"
-                      value={formData.paid_amount}
-                      onChange={(e) => setFormData({ ...formData, paid_amount: e.target.value })}
-                      placeholder="0.00"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="paid_currency">Paid Currency</Label>
-                    <Select value={formData.paid_currency} onValueChange={(val) => setFormData({ ...formData, paid_currency: val })}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select currency" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="EUR">EUR - Euro</SelectItem>
-                        <SelectItem value="USD">USD - US Dollar</SelectItem>
-                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                        <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="payment_date">Payment Date</Label>
-                    <Input
-                      id="payment_date"
-                      type="date"
-                      value={formData.payment_date}
-                      onChange={(e) => setFormData({ ...formData, payment_date: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {/* Cost Type, Dep Cost Type, Department & Sub-Department */}
-                <div className="grid grid-cols-4 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="cost_type_code">Cost Type *</Label>
-                    <Select value={formData.cost_type_code} onValueChange={(val) => setFormData({ ...formData, cost_type_code: val })} required>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select cost type" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {costTypes.map((type) => (
-                          <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="dep_cost_type_code">Dep Cost Type *</Label>
-                    <Select value={formData.dep_cost_type_code} onValueChange={(val) => setFormData({ ...formData, dep_cost_type_code: val })} required>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select dep cost type" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {depCostTypes.map((type) => (
-                          <SelectItem key={type.code} value={type.code}>{type.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="cost_center_code">Department *</Label>
-                    <Select value={formData.cost_center_code} onValueChange={(val) => setFormData({ ...formData, cost_center_code: val, sub_department_code: "" })} required>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select department" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {costCenters.map((center) => (
-                          <SelectItem key={center.code} value={center.code}>
-                            {center.code} - {center.name}
+                        {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
+                          <SelectItem key={num} value={num.toString()}>
+                            {num} {num === 1 ? 'installment' : 'installments'}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="sub_department_code">Sub-Department</Label>
-                    <Select
-                      value={formData.sub_department_code}
-                      onValueChange={(val) => setFormData({ ...formData, sub_department_code: val })}
-                      disabled={!formData.cost_center_code}
-                    >
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select sub-department" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {subDepartments
-                          .filter(sd => sd.parent_department_code === formData.cost_center_code)
-                          .map((sd) => (
-                            <SelectItem key={sd.code} value={sd.code}>
-                              {sd.code} - {sd.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
 
-                {/* Payment Details */}
-                <div className="grid grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label htmlFor="bank_account_code">Bank Account</Label>
-                    <Select value={formData.bank_account_code} onValueChange={(val) => setFormData({ ...formData, bank_account_code: val })}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select bank account" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {bankAccounts.map((account) => (
-                          <SelectItem key={account.code} value={account.code}>{account.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="payment_method_code">Payment Method</Label>
-                    <Select value={formData.payment_method_code} onValueChange={(val) => setFormData({ ...formData, payment_method_code: val })}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select method" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        {paymentMethods.map((method) => (
-                          <SelectItem key={method.code} value={method.code}>{method.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="course_code">Course</Label>
-                    <Select value={formData.course_code} onValueChange={(val) => setFormData({ ...formData, course_code: val })}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select course" />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white max-h-[300px]">
-                        {courses.map((course) => (
-                          <SelectItem key={course.code} value={course.code}>{course.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                {/* Description & Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                    rows={2}
-                    placeholder="Invoice description..."
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Internal Notes</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    rows={2}
-                    placeholder="Internal notes (not visible to providers)..."
-                  />
-                </div>
-
-                {/* Impact Flags */}
-                <div className="space-y-3 pt-2">
-                  <Label>Financial Impact</Label>
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="dre_impact"
-                        checked={formData.dre_impact}
-                        onCheckedChange={(checked) => setFormData({ ...formData, dre_impact: checked as boolean })}
-                      />
-                      <Label htmlFor="dre_impact" className="font-normal cursor-pointer">
-                        Impacts Income Statement (DRE)
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="cash_impact"
-                        checked={formData.cash_impact}
-                        onCheckedChange={(checked) => setFormData({ ...formData, cash_impact: checked as boolean })}
-                      />
-                      <Label htmlFor="cash_impact" className="font-normal cursor-pointer">
-                        Impacts Cash Flow
-                      </Label>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="is_intercompany"
-                        checked={formData.is_intercompany}
-                        onCheckedChange={(checked) => setFormData({ ...formData, is_intercompany: checked as boolean })}
-                      />
-                      <Label htmlFor="is_intercompany" className="font-normal cursor-pointer">
-                        Intercompany Transaction
-                      </Label>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={submitting} className={editingInvoice ? "bg-green-600 hover:bg-green-700" : ""}>
-                    {submitting ? "Saving..." : editingInvoice ? "Update Invoice" : "Create Invoice"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          {/* Provider Creation Dialog */}
-          <Dialog open={providerDialogOpen} onOpenChange={setProviderDialogOpen}>
-            <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
-              <DialogHeader>
-                <DialogTitle>Create New Provider</DialogTitle>
-                <DialogDescription>Add a new provider to the system</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); createNewProvider(); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-provider-code">Code *</Label>
-                    <Input
-                      id="new-provider-code"
-                      value={newProviderData.code}
-                      onChange={(e) => setNewProviderData({ ...newProviderData, code: e.target.value })}
-                      placeholder="DSD-ES-AP-PV0001"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-provider-name">Name *</Label>
-                    <Input
-                      id="new-provider-name"
-                      value={newProviderData.name}
-                      onChange={(e) => setNewProviderData({ ...newProviderData, name: e.target.value })}
-                      placeholder="Provider Name"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-provider-country">Country *</Label>
-                    <Select
-                      value={newProviderData.country}
-                      onValueChange={(val) => setNewProviderData({ ...newProviderData, country: val })}
-                    >
-                      <SelectTrigger className="bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="ES">Spain</SelectItem>
-                        <SelectItem value="US">United States</SelectItem>
-                        <SelectItem value="BR">Brazil</SelectItem>
-                        <SelectItem value="GB">United Kingdom</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-provider-currency">Currency *</Label>
-                    <Select
-                      value={newProviderData.currency}
-                      onValueChange={(val) => setNewProviderData({ ...newProviderData, currency: val })}
-                    >
-                      <SelectTrigger className="bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="EUR">EUR - Euro</SelectItem>
-                        <SelectItem value="USD">USD - US Dollar</SelectItem>
-                        <SelectItem value="GBP">GBP - British Pound</SelectItem>
-                        <SelectItem value="BRL">BRL - Brazilian Real</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-provider-email">Email</Label>
-                    <Input
-                      id="new-provider-email"
-                      type="email"
-                      value={newProviderData.email}
-                      onChange={(e) => setNewProviderData({ ...newProviderData, email: e.target.value })}
-                      placeholder="provider@example.com"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-provider-payment-terms">Payment Terms</Label>
-                    <Input
-                      id="new-provider-payment-terms"
-                      value={newProviderData.payment_terms}
-                      onChange={(e) => setNewProviderData({ ...newProviderData, payment_terms: e.target.value })}
-                      placeholder="Net 30"
-                    />
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setProviderDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    Create Provider
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          {/* Financial Account Creation Dialog */}
-          <Dialog open={financialAccountDialogOpen} onOpenChange={setFinancialAccountDialogOpen}>
-            <DialogContent className="max-w-none max-h-[90vh] bg-white" style={{ width: '80vw' }}>
-              <DialogHeader>
-                <DialogTitle>Create New Financial Account</DialogTitle>
-                <DialogDescription>Add a new account to the chart of accounts</DialogDescription>
-              </DialogHeader>
-              <form onSubmit={(e) => { e.preventDefault(); createNewFinancialAccount(); }} className="space-y-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-account-code">Code *</Label>
-                    <Input
-                      id="new-account-code"
-                      value={newAccountData.code}
-                      onChange={(e) => setNewAccountData({ ...newAccountData, code: e.target.value })}
-                      placeholder="201.5"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-account-name">Name *</Label>
-                    <Input
-                      id="new-account-name"
-                      value={newAccountData.name}
-                      onChange={(e) => setNewAccountData({ ...newAccountData, name: e.target.value })}
-                      placeholder="Account Name"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="new-account-type">Type *</Label>
-                    <Select
-                      value={newAccountData.type}
-                      onValueChange={(val) => setNewAccountData({ ...newAccountData, type: val })}
-                    >
-                      <SelectTrigger className="bg-white">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="bg-white">
-                        <SelectItem value="Expense">Expense</SelectItem>
-                        <SelectItem value="Revenue">Revenue</SelectItem>
-                        <SelectItem value="Asset">Asset</SelectItem>
-                        <SelectItem value="Liability">Liability</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-account-level">Level *</Label>
-                    <Input
-                      id="new-account-level"
-                      type="number"
-                      min="1"
-                      max="5"
-                      value={newAccountData.level}
-                      onChange={(e) => setNewAccountData({ ...newAccountData, level: parseInt(e.target.value) })}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="new-account-parent">Parent Code</Label>
-                    <Input
-                      id="new-account-parent"
-                      value={newAccountData.parent_code}
-                      onChange={(e) => setNewAccountData({ ...newAccountData, parent_code: e.target.value })}
-                      placeholder="201.0"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Scope *</Label>
-                  <ScopeSelector
-                    value={newAccountData.scope}
-                    onValueChange={(scope: ScopeType) => setNewAccountData({ ...newAccountData, scope })}
-                    label=""
-                  />
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4">
-                  <Button type="button" variant="outline" onClick={() => setFinancialAccountDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button type="submit">
-                    Create Account
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          {/* Split Invoice Configuration Dialog */}
-          <Dialog open={splitDialogOpen} onOpenChange={setSplitDialogOpen}>
-            <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
-              <DialogHeader>
-                <DialogTitle>Split Invoice</DialogTitle>
-                <DialogDescription>
-                  Divide this invoice into multiple parts by installments or by dimensions
-                </DialogDescription>
-              </DialogHeader>
-
-              {splitInvoice && (
-                <div className="space-y-4">
-                  {/* Original Invoice Info */}
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <h4 className="font-semibold mb-2">Original Invoice</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">Invoice:</span> {splitInvoice.invoice_number}</div>
-                      <div><span className="text-muted-foreground">Provider:</span> {providers.find(p => p.code === splitInvoice.provider_code)?.name}</div>
-                      <div><span className="text-muted-foreground">Amount:</span> {formatEuropeanNumber(splitInvoice.amount)}</div>
-                      <div><span className="text-muted-foreground">Due Date:</span> {splitInvoice.due_date ? new Date(splitInvoice.due_date).toLocaleDateString('pt-BR') : '-'}</div>
-                    </div>
-                  </div>
-
-                  {/* Split Type Selection */}
-                  <div className="space-y-2">
-                    <Label>Split Type</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          id="split-installments"
-                          checked={splitConfig.type === 'installments'}
-                          onChange={() => setSplitConfig({ ...splitConfig, type: 'installments', installments: 2, splits: [] })}
-                          className="h-4 w-4"
-                        />
-                        <Label htmlFor="split-installments" className="cursor-pointer">
-                          Split by Installments (Monthly)
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          id="split-financial-account"
-                          checked={splitConfig.type === 'financial_account'}
-                          onChange={() => setSplitConfig({ ...splitConfig, type: 'financial_account', installments: 1, splits: [] })}
-                          className="h-4 w-4"
-                        />
-                        <Label htmlFor="split-financial-account" className="cursor-pointer">
-                          Split by Financial Account
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          id="split-cost-center"
-                          checked={splitConfig.type === 'cost_center'}
-                          onChange={() => setSplitConfig({ ...splitConfig, type: 'cost_center', installments: 1, splits: [] })}
-                          className="h-4 w-4"
-                        />
-                        <Label htmlFor="split-cost-center" className="cursor-pointer">
-                          Split by Department
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          id="split-cost-type"
-                          checked={splitConfig.type === 'cost_type'}
-                          onChange={() => setSplitConfig({ ...splitConfig, type: 'cost_type', installments: 1, splits: [] })}
-                          className="h-4 w-4"
-                        />
-                        <Label htmlFor="split-cost-type" className="cursor-pointer">
-                          Split by Cost Type
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <input
-                          type="radio"
-                          id="split-dep-cost-type"
-                          checked={splitConfig.type === 'dep_cost_type'}
-                          onChange={() => setSplitConfig({ ...splitConfig, type: 'dep_cost_type', installments: 1, splits: [] })}
-                          className="h-4 w-4"
-                        />
-                        <Label htmlFor="split-dep-cost-type" className="cursor-pointer">
-                          Split by Department Cost Type
-                        </Label>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Installments Selector (1-12) */}
-                  {splitConfig.type === 'installments' && (
-                    <div className="space-y-2">
-                      <Label>Number of Installments</Label>
-                      <Select
-                        value={splitConfig.installments.toString()}
-                        onValueChange={(value) => setSplitConfig({ ...splitConfig, installments: parseInt(value) })}
-                      >
-                        <SelectTrigger className="bg-white">
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                        <SelectContent className="bg-white">
-                          {Array.from({ length: 12 }, (_, i) => i + 1).map(num => (
-                            <SelectItem key={num} value={num.toString()}>
-                              {num} {num === 1 ? 'installment' : 'installments'}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-
-                      {splitConfig.installments > 0 && (
-                        <div className="mt-4 p-4 bg-blue-50 rounded-lg">
-                          <h5 className="font-semibold mb-2">Preview</h5>
-                          <div className="space-y-1 text-sm">
-                            {Array.from({ length: splitConfig.installments }, (_, i) => {
-                              const installmentAmount = splitInvoice.invoice_amount / splitConfig.installments;
-                              const dueDate = new Date(splitInvoice.due_date || new Date());
-                              dueDate.setMonth(dueDate.getMonth() + i);
-                              return (
-                                <div key={i} className="flex justify-between">
-                                  <span>Installment {i + 1}/{splitConfig.installments}:</span>
-                                  <span className="font-mono">{formatEuropeanNumber(installmentAmount)} - Due: {dueDate.toLocaleDateString('pt-BR')}</span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                    {splitConfig.installments > 0 && (
+                      <div className="mt-4 p-4 bg-blue-50 rounded-lg">
+                        <h5 className="font-semibold mb-2">Preview</h5>
+                        <div className="space-y-1 text-sm">
+                          {Array.from({ length: splitConfig.installments }, (_, i) => {
+                            const installmentAmount = splitInvoice.invoice_amount / splitConfig.installments;
+                            const dueDate = new Date(splitInvoice.due_date || new Date());
+                            dueDate.setMonth(dueDate.getMonth() + i);
+                            return (
+                              <div key={i} className="flex justify-between">
+                                <span>Installment {i + 1}/{splitConfig.installments}:</span>
+                                <span className="font-mono">{formatEuropeanNumber(installmentAmount)} - Due: {dueDate.toLocaleDateString('pt-BR')}</span>
+                              </div>
+                            );
+                          })}
                         </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Dimension Split Configuration */}
-                  {splitConfig.type !== 'installments' && (
-                    <div className="space-y-2">
-                      <Label>Split Configuration</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Add multiple splits by selecting different {splitConfig.type.replace('_', ' ')}s and specifying amounts or percentages.
-                      </p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSplitConfig({
-                            ...splitConfig,
-                            splits: [
-                              ...splitConfig.splits,
-                              {
-                                financial_account_code: splitConfig.type === 'financial_account' ? '' : (splitInvoice.financial_account_code || ''),
-                                cost_center_code: splitConfig.type === 'cost_center' ? '' : (splitInvoice.cost_center_code || ''),
-                                cost_type_code: splitConfig.type === 'cost_type' ? '' : (splitInvoice.cost_type_code || ''),
-                                dep_cost_type_code: splitConfig.type === 'dep_cost_type' ? '' : (splitInvoice.dep_cost_type_code || ''),
-                                amount: 0,
-                                percentage: 0
-                              }
-                            ]
-                          });
-                        }}
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add Split
-                      </Button>
-
-                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                        {splitConfig.splits.map((split, index) => (
-                          <div key={index} className="p-3 border rounded-lg space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="font-semibold text-sm">Split {index + 1}</span>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setSplitConfig({
-                                    ...splitConfig,
-                                    splits: splitConfig.splits.filter((_, i) => i !== index)
-                                  });
-                                }}
-                                className="h-6 w-6 p-0 text-destructive"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </Button>
-                            </div>
-
-                            {splitConfig.type === 'financial_account' && (
-                              <Select
-                                value={split.financial_account_code || ''}
-                                onValueChange={(value) => {
-                                  const newSplits = [...splitConfig.splits];
-                                  newSplits[index].financial_account_code = value;
-                                  setSplitConfig({ ...splitConfig, splits: newSplits });
-                                }}
-                              >
-                                <SelectTrigger className="bg-white">
-                                  <SelectValue placeholder="Select Financial Account..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
-                                  {financialAccounts.filter(acc => acc.level >= 2).map(acc => (
-                                    <SelectItem key={acc.code} value={acc.code}>{acc.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-
-                            {splitConfig.type === 'cost_center' && (
-                              <Select
-                                value={split.cost_center_code || ''}
-                                onValueChange={(value) => {
-                                  const newSplits = [...splitConfig.splits];
-                                  newSplits[index].cost_center_code = value;
-                                  setSplitConfig({ ...splitConfig, splits: newSplits });
-                                }}
-                              >
-                                <SelectTrigger className="bg-white">
-                                  <SelectValue placeholder="Select Department..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
-                                  {costCenters.map(cc => (
-                                    <SelectItem key={cc.code} value={cc.code}>{cc.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-
-                            {splitConfig.type === 'cost_type' && (
-                              <Select
-                                value={split.cost_type_code || ''}
-                                onValueChange={(value) => {
-                                  const newSplits = [...splitConfig.splits];
-                                  newSplits[index].cost_type_code = value;
-                                  setSplitConfig({ ...splitConfig, splits: newSplits });
-                                }}
-                              >
-                                <SelectTrigger className="bg-white">
-                                  <SelectValue placeholder="Select Cost Type..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
-                                  {costTypes.map(ct => (
-                                    <SelectItem key={ct.code} value={ct.code}>{ct.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-
-                            {splitConfig.type === 'dep_cost_type' && (
-                              <Select
-                                value={split.dep_cost_type_code || ''}
-                                onValueChange={(value) => {
-                                  const newSplits = [...splitConfig.splits];
-                                  newSplits[index].dep_cost_type_code = value;
-                                  setSplitConfig({ ...splitConfig, splits: newSplits });
-                                }}
-                              >
-                                <SelectTrigger className="bg-white">
-                                  <SelectValue placeholder="Select Department Cost Type..." />
-                                </SelectTrigger>
-                                <SelectContent className="bg-white max-h-[300px]">
-                                  {depCostTypes.map(dct => (
-                                    <SelectItem key={dct.code} value={dct.code}>{dct.name}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            )}
-
-                            <div className="grid grid-cols-2 gap-2">
-                              <div>
-                                <Label className="text-xs">Amount</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={split.amount}
-                                  onChange={(e) => {
-                                    const newSplits = [...splitConfig.splits];
-                                    const amount = parseFloat(e.target.value) || 0;
-                                    newSplits[index].amount = amount;
-                                    newSplits[index].percentage = (amount / splitInvoice.invoice_amount) * 100;
-                                    setSplitConfig({ ...splitConfig, splits: newSplits });
-                                  }}
-                                  className="h-8"
-                                />
-                              </div>
-                              <div>
-                                <Label className="text-xs">Percentage</Label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={split.percentage.toFixed(2)}
-                                  onChange={(e) => {
-                                    const newSplits = [...splitConfig.splits];
-                                    const percentage = parseFloat(e.target.value) || 0;
-                                    newSplits[index].percentage = percentage;
-                                    newSplits[index].amount = (splitInvoice.invoice_amount * percentage) / 100;
-                                    setSplitConfig({ ...splitConfig, splits: newSplits });
-                                  }}
-                                  className="h-8"
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        ))}
                       </div>
+                    )}
+                  </div>
+                )}
 
-                      {splitConfig.splits.length > 0 && (
-                        <div className="p-3 bg-muted rounded-lg">
-                          <div className="flex justify-between text-sm font-semibold">
-                            <span>Total:</span>
-                            <span className={splitConfig.splits.reduce((sum, s) => sum + s.amount, 0) !== splitInvoice.invoice_amount ? 'text-destructive' : 'text-green-600'}>
-                              {formatEuropeanNumber(splitConfig.splits.reduce((sum, s) => sum + s.amount, 0))} / {formatEuropeanNumber(splitInvoice.invoice_amount)}
-                            </span>
+                {/* Dimension Split Configuration */}
+                {splitConfig.type !== 'installments' && (
+                  <div className="space-y-2">
+                    <Label>Split Configuration</Label>
+                    <p className="text-sm text-muted-foreground">
+                      Add multiple splits by selecting different {splitConfig.type.replace('_', ' ')}s and specifying amounts or percentages.
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSplitConfig({
+                          ...splitConfig,
+                          splits: [
+                            ...splitConfig.splits,
+                            {
+                              financial_account_code: splitConfig.type === 'financial_account' ? '' : (splitInvoice.financial_account_code || ''),
+                              cost_center_code: splitConfig.type === 'cost_center' ? '' : (splitInvoice.cost_center_code || ''),
+                              cost_type_code: splitConfig.type === 'cost_type' ? '' : (splitInvoice.cost_type_code || ''),
+                              dep_cost_type_code: splitConfig.type === 'dep_cost_type' ? '' : (splitInvoice.dep_cost_type_code || ''),
+                              amount: 0,
+                              percentage: 0
+                            }
+                          ]
+                        });
+                      }}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Split
+                    </Button>
+
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                      {splitConfig.splits.map((split, index) => (
+                        <div key={index} className="p-3 border rounded-lg space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="font-semibold text-sm">Split {index + 1}</span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setSplitConfig({
+                                  ...splitConfig,
+                                  splits: splitConfig.splits.filter((_, i) => i !== index)
+                                });
+                              }}
+                              className="h-6 w-6 p-0 text-destructive"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
                           </div>
-                          {splitConfig.splits.reduce((sum, s) => sum + s.amount, 0) !== splitInvoice.invoice_amount && (
-                            <p className="text-xs text-destructive mt-1">
-                              Total must equal the original invoice amount
-                            </p>
+
+                          {splitConfig.type === 'financial_account' && (
+                            <Select
+                              value={split.financial_account_code || ''}
+                              onValueChange={(value) => {
+                                const newSplits = [...splitConfig.splits];
+                                newSplits[index].financial_account_code = value;
+                                setSplitConfig({ ...splitConfig, splits: newSplits });
+                              }}
+                            >
+                              <SelectTrigger className="bg-white">
+                                <SelectValue placeholder="Select Financial Account..." />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white max-h-[300px]">
+                                {financialAccounts.filter(acc => acc.level >= 2).map(acc => (
+                                  <SelectItem key={acc.code} value={acc.code}>{acc.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
                           )}
-                        </div>
-                      )}
-                    </div>
-                  )}
 
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button variant="outline" onClick={() => setSplitDialogOpen(false)}>
-                      Cancel
-                    </Button>
-                    <Button onClick={handleSplitInvoice}>
-                      <Split className="h-4 w-4 mr-2" />
-                      Create Splits
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </DialogContent>
-          </Dialog>
+                          {splitConfig.type === 'cost_center' && (
+                            <Select
+                              value={split.cost_center_code || ''}
+                              onValueChange={(value) => {
+                                const newSplits = [...splitConfig.splits];
+                                newSplits[index].cost_center_code = value;
+                                setSplitConfig({ ...splitConfig, splits: newSplits });
+                              }}
+                            >
+                              <SelectTrigger className="bg-white">
+                                <SelectValue placeholder="Select Department..." />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white max-h-[300px]">
+                                {costCenters.map(cc => (
+                                  <SelectItem key={cc.code} value={cc.code}>{cc.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
 
-          {/* View Splits Dialog */}
-          <Dialog open={viewSplitsDialogOpen} onOpenChange={setViewSplitsDialogOpen}>
-            <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
-              <DialogHeader>
-                <DialogTitle>Split Invoice Details</DialogTitle>
-                <DialogDescription>
-                  View all parts of this split invoice
-                </DialogDescription>
-              </DialogHeader>
+                          {splitConfig.type === 'cost_type' && (
+                            <Select
+                              value={split.cost_type_code || ''}
+                              onValueChange={(value) => {
+                                const newSplits = [...splitConfig.splits];
+                                newSplits[index].cost_type_code = value;
+                                setSplitConfig({ ...splitConfig, splits: newSplits });
+                              }}
+                            >
+                              <SelectTrigger className="bg-white">
+                                <SelectValue placeholder="Select Cost Type..." />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white max-h-[300px]">
+                                {costTypes.map(ct => (
+                                  <SelectItem key={ct.code} value={ct.code}>{ct.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
 
-              {viewingSplitInvoice && (
-                <div className="space-y-4">
-                  {/* Original/Parent Invoice */}
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <h4 className="font-semibold mb-2">
-                      {viewingSplitInvoice.parent_invoice_id ? 'Parent Invoice' : 'Original Invoice'}
-                    </h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div><span className="text-muted-foreground">Invoice:</span> {viewingSplitInvoice.invoice_number}</div>
-                      <div><span className="text-muted-foreground">Provider:</span> {providers.find(p => p.code === viewingSplitInvoice.provider_code)?.name}</div>
-                      <div><span className="text-muted-foreground">Amount:</span> {formatEuropeanNumber(viewingSplitInvoice.amount)}</div>
-                      <div><span className="text-muted-foreground">Split Type:</span> {viewingSplitInvoice.split_type || 'Installments'}</div>
-                    </div>
-                  </div>
+                          {splitConfig.type === 'dep_cost_type' && (
+                            <Select
+                              value={split.dep_cost_type_code || ''}
+                              onValueChange={(value) => {
+                                const newSplits = [...splitConfig.splits];
+                                newSplits[index].dep_cost_type_code = value;
+                                setSplitConfig({ ...splitConfig, splits: newSplits });
+                              }}
+                            >
+                              <SelectTrigger className="bg-white">
+                                <SelectValue placeholder="Select Department Cost Type..." />
+                              </SelectTrigger>
+                              <SelectContent className="bg-white max-h-[300px]">
+                                {depCostTypes.map(dct => (
+                                  <SelectItem key={dct.code} value={dct.code}>{dct.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
 
-                  {/* Split Parts */}
-                  <div className="space-y-2">
-                    <h4 className="font-semibold">Split Parts ({viewingSplitInvoice.total_splits || 0})</h4>
-                    <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                      {invoices
-                        .filter(inv =>
-                          inv.parent_invoice_id === (viewingSplitInvoice.parent_invoice_id || viewingSplitInvoice.id)
-                        )
-                        .sort((a, b) => (a.split_number || 0) - (b.split_number || 0))
-                        .map(splitPart => (
-                          <div key={splitPart.id} className="p-3 border rounded-lg hover:bg-muted/50">
-                            <div className="flex justify-between items-start">
-                              <div className="space-y-1 flex-1">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="secondary" className="text-xs">
-                                    Part {splitPart.split_number}/{splitPart.total_splits}
-                                  </Badge>
-                                  <span className="font-medium">{splitPart.invoice_number}</span>
-                                </div>
-                                <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
-                                  <div>Amount: {formatEuropeanNumber(splitPart.amount)}</div>
-                                  <div>Due: {splitPart.due_date ? new Date(splitPart.due_date).toLocaleDateString('pt-BR') : '-'}</div>
-                                  <div>Status: {splitPart.is_reconciled ? 'Reconciled' : 'Pending'}</div>
-                                </div>
-                                {splitPart.financial_account_code !== viewingSplitInvoice.financial_account_code && (
-                                  <div className="text-xs">
-                                    <Badge variant="outline" className="text-[10px]">
-                                      {financialAccounts.find(a => a.code === splitPart.financial_account_code)?.name}
-                                    </Badge>
-                                  </div>
-                                )}
-                                {splitPart.cost_center_code !== viewingSplitInvoice.cost_center_code && (
-                                  <div className="text-xs">
-                                    <Badge variant="outline" className="text-[10px]">
-                                      {costCenters.find(c => c.code === splitPart.cost_center_code)?.name}
-                                    </Badge>
-                                  </div>
-                                )}
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                  setEditingInvoice(splitPart);
-                                  setFormData({
-                                    invoice_number: splitPart.invoice_number || "",
-                                    provider_code: splitPart.provider_code,
-                                    invoice_date: splitPart.invoice_date,
-                                    invoice_amount: splitPart.amount.toString(),
-                                    currency: splitPart.currency,
-                                    financial_account_code: splitPart.financial_account_code,
-                                    cost_center_code: splitPart.cost_center_code || "",
-                                    cost_type_code: splitPart.cost_type_code || "",
-                                    dep_cost_type_code: splitPart.dep_cost_type_code || "",
-                                    sub_department_code: splitPart.sub_department_code || "",
-                                    bank_account_code: splitPart.bank_account_code || "",
-                                    payment_method_code: splitPart.payment_method_code || "",
-                                    entry_type: splitPart.entry_type,
-                                    invoice_type: splitPart.invoice_type,
-                                    description: splitPart.description || "",
-                                    scope: (splitPart.scope as ScopeType) || "ES",
-                                    due_date: splitPart.due_date || "",
-                                    schedule_date: splitPart.schedule_date || splitPart.due_date || "",
-                                    benefit_date: splitPart.benefit_date,
-                                    payment_date: splitPart.payment_date || "",
-                                    eur_exchange: splitPart.eur_exchange.toString(),
-                                    country_code: splitPart.country_code,
-                                    dre_impact: splitPart.dre_impact,
-                                    cash_impact: splitPart.cash_impact,
-                                    is_intercompany: splitPart.is_intercompany,
-                                    notes: splitPart.notes || "",
-                                    course_code: splitPart.course_code || "",
-                                    paid_amount: splitPart.paid_amount?.toString() || "",
-                                    paid_currency: splitPart.paid_currency || ""
-                                  });
-                                  setViewSplitsDialogOpen(false);
-                                  setSidePanelOpen(true);
+                          <div className="grid grid-cols-2 gap-2">
+                            <div>
+                              <Label className="text-xs">Amount</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={split.amount}
+                                onChange={(e) => {
+                                  const newSplits = [...splitConfig.splits];
+                                  const amount = parseFloat(e.target.value) || 0;
+                                  newSplits[index].amount = amount;
+                                  newSplits[index].percentage = (amount / splitInvoice.invoice_amount) * 100;
+                                  setSplitConfig({ ...splitConfig, splits: newSplits });
                                 }}
                                 className="h-8"
-                              >
-                                <Edit2 className="h-3 w-3 mr-1" />
-                                Edit
-                              </Button>
+                              />
+                            </div>
+                            <div>
+                              <Label className="text-xs">Percentage</Label>
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={split.percentage.toFixed(2)}
+                                onChange={(e) => {
+                                  const newSplits = [...splitConfig.splits];
+                                  const percentage = parseFloat(e.target.value) || 0;
+                                  newSplits[index].percentage = percentage;
+                                  newSplits[index].amount = (splitInvoice.invoice_amount * percentage) / 100;
+                                  setSplitConfig({ ...splitConfig, splits: newSplits });
+                                }}
+                                className="h-8"
+                              />
                             </div>
                           </div>
-                        ))}
+                        </div>
+                      ))}
                     </div>
 
-                    <div className="p-3 bg-muted rounded-lg">
-                      <div className="flex justify-between text-sm font-semibold">
-                        <span>Total of all splits:</span>
-                        <span className="text-green-600">
-                          {formatEuropeanNumber(
-                            invoices
-                              .filter(inv => inv.parent_invoice_id === (viewingSplitInvoice.parent_invoice_id || viewingSplitInvoice.id))
-                              .reduce((sum, inv) => sum + inv.amount, 0)
-                          )}
-                        </span>
+                    {splitConfig.splits.length > 0 && (
+                      <div className="p-3 bg-muted rounded-lg">
+                        <div className="flex justify-between text-sm font-semibold">
+                          <span>Total:</span>
+                          <span className={splitConfig.splits.reduce((sum, s) => sum + s.amount, 0) !== splitInvoice.invoice_amount ? 'text-destructive' : 'text-green-600'}>
+                            {formatEuropeanNumber(splitConfig.splits.reduce((sum, s) => sum + s.amount, 0))} / {formatEuropeanNumber(splitInvoice.invoice_amount)}
+                          </span>
+                        </div>
+                        {splitConfig.splits.reduce((sum, s) => sum + s.amount, 0) !== splitInvoice.invoice_amount && (
+                          <p className="text-xs text-destructive mt-1">
+                            Total must equal the original invoice amount
+                          </p>
+                        )}
                       </div>
-                    </div>
+                    )}
                   </div>
+                )}
 
-                  <div className="flex justify-end gap-2 pt-4">
-                    <Button onClick={() => setViewSplitsDialogOpen(false)}>
-                      Close
-                    </Button>
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button variant="outline" onClick={() => setSplitDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSplitInvoice}>
+                    <Split className="h-4 w-4 mr-2" />
+                    Create Splits
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* View Splits Dialog */}
+        <Dialog open={viewSplitsDialogOpen} onOpenChange={setViewSplitsDialogOpen}>
+          <DialogContent className="max-w-none max-h-[90vh] overflow-y-auto bg-white" style={{ width: '80vw' }}>
+            <DialogHeader>
+              <DialogTitle>Split Invoice Details</DialogTitle>
+              <DialogDescription>
+                View all parts of this split invoice
+              </DialogDescription>
+            </DialogHeader>
+
+            {viewingSplitInvoice && (
+              <div className="space-y-4">
+                {/* Original/Parent Invoice */}
+                <div className="p-4 bg-muted/50 rounded-lg">
+                  <h4 className="font-semibold mb-2">
+                    {viewingSplitInvoice.parent_invoice_id ? 'Parent Invoice' : 'Original Invoice'}
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div><span className="text-muted-foreground">Invoice:</span> {viewingSplitInvoice.invoice_number}</div>
+                    <div><span className="text-muted-foreground">Provider:</span> {providers.find(p => p.code === viewingSplitInvoice.provider_code)?.name}</div>
+                    <div><span className="text-muted-foreground">Amount:</span> {formatEuropeanNumber(viewingSplitInvoice.amount)}</div>
+                    <div><span className="text-muted-foreground">Split Type:</span> {viewingSplitInvoice.split_type || 'Installments'}</div>
                   </div>
                 </div>
-              )}
-            </DialogContent>
-          </Dialog>
-        </div>
+
+                {/* Split Parts */}
+                <div className="space-y-2">
+                  <h4 className="font-semibold">Split Parts ({viewingSplitInvoice.total_splits || 0})</h4>
+                  <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                    {invoices
+                      .filter(inv =>
+                        inv.parent_invoice_id === (viewingSplitInvoice.parent_invoice_id || viewingSplitInvoice.id)
+                      )
+                      .sort((a, b) => (a.split_number || 0) - (b.split_number || 0))
+                      .map(splitPart => (
+                        <div key={splitPart.id} className="p-3 border rounded-lg hover:bg-muted/50">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1 flex-1">
+                              <div className="flex items-center gap-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  Part {splitPart.split_number}/{splitPart.total_splits}
+                                </Badge>
+                                <span className="font-medium">{splitPart.invoice_number}</span>
+                              </div>
+                              <div className="grid grid-cols-3 gap-2 text-sm text-muted-foreground">
+                                <div>Amount: {formatEuropeanNumber(splitPart.amount)}</div>
+                                <div>Due: {splitPart.due_date ? new Date(splitPart.due_date).toLocaleDateString('pt-BR') : '-'}</div>
+                                <div>Status: {splitPart.is_reconciled ? 'Reconciled' : 'Pending'}</div>
+                              </div>
+                              {splitPart.financial_account_code !== viewingSplitInvoice.financial_account_code && (
+                                <div className="text-xs">
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {financialAccounts.find(a => a.code === splitPart.financial_account_code)?.name}
+                                  </Badge>
+                                </div>
+                              )}
+                              {splitPart.cost_center_code !== viewingSplitInvoice.cost_center_code && (
+                                <div className="text-xs">
+                                  <Badge variant="outline" className="text-[10px]">
+                                    {costCenters.find(c => c.code === splitPart.cost_center_code)?.name}
+                                  </Badge>
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingInvoice(splitPart);
+                                setFormData({
+                                  invoice_number: splitPart.invoice_number || "",
+                                  provider_code: splitPart.provider_code,
+                                  invoice_date: splitPart.invoice_date,
+                                  invoice_amount: splitPart.amount.toString(),
+                                  currency: splitPart.currency,
+                                  financial_account_code: splitPart.financial_account_code,
+                                  cost_center_code: splitPart.cost_center_code || "",
+                                  cost_type_code: splitPart.cost_type_code || "",
+                                  dep_cost_type_code: splitPart.dep_cost_type_code || "",
+                                  sub_department_code: splitPart.sub_department_code || "",
+                                  bank_account_code: splitPart.bank_account_code || "",
+                                  payment_method_code: splitPart.payment_method_code || "",
+                                  entry_type: splitPart.entry_type,
+                                  invoice_type: splitPart.invoice_type,
+                                  description: splitPart.description || "",
+                                  scope: (splitPart.scope as ScopeType) || "ES",
+                                  due_date: splitPart.due_date || "",
+                                  schedule_date: splitPart.schedule_date || splitPart.due_date || "",
+                                  benefit_date: splitPart.benefit_date,
+                                  payment_date: splitPart.payment_date || "",
+                                  eur_exchange: splitPart.eur_exchange.toString(),
+                                  country_code: splitPart.country_code,
+                                  dre_impact: splitPart.dre_impact,
+                                  cash_impact: splitPart.cash_impact,
+                                  is_intercompany: splitPart.is_intercompany,
+                                  notes: splitPart.notes || "",
+                                  course_code: splitPart.course_code || "",
+                                  paid_amount: splitPart.paid_amount?.toString() || "",
+                                  paid_currency: splitPart.paid_currency || ""
+                                });
+                                setViewSplitsDialogOpen(false);
+                                setSidePanelOpen(true);
+                              }}
+                              className="h-8"
+                            >
+                              <Edit2 className="h-3 w-3 mr-1" />
+                              Edit
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+
+                  <div className="p-3 bg-muted rounded-lg">
+                    <div className="flex justify-between text-sm font-semibold">
+                      <span>Total of all splits:</span>
+                      <span className="text-green-600">
+                        {formatEuropeanNumber(
+                          invoices
+                            .filter(inv => inv.parent_invoice_id === (viewingSplitInvoice.parent_invoice_id || viewingSplitInvoice.id))
+                            .reduce((sum, inv) => sum + inv.amount, 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4">
+                  <Button onClick={() => setViewSplitsDialogOpen(false)}>
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Action Bar */}
         <div className="flex items-center justify-between mb-4">

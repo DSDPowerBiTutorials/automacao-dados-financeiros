@@ -43,6 +43,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/formatters";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface StripeRow {
     id: string;
@@ -503,68 +504,42 @@ export default function StripeUSDPage() {
 
     return (
         <div className="min-h-full">
-            {/* Header */}
-            <header className="page-header-standard">
-                <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                        <Link href="/payment-channels">
-                            <Button variant="ghost" size="sm">
-                                <ArrowLeft className="w-4 h-4 mr-2" />
-                                Back
-                            </Button>
-                        </Link>
-                        <div>
-                            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                                <CreditCard className="w-6 h-6 text-[#635BFF]" />
-                                Stripe USD
-                            </h1>
-                            <p className="text-sm text-gray-500">
-                                USD Transactions • {rows.length} records
-                                {lastSyncDate && (
-                                    <span className="ml-2">
-                                        • Last sync: {formatDate(lastSyncDate)}
-                                    </span>
-                                )}
-                            </p>
-                        </div>
-                    </div>
+            <PageHeader title="Stripe USD" subtitle={`USD Transactions • ${rows.length} records${lastSyncDate ? ` • Last sync: ${formatDate(lastSyncDate)}` : ""}`}>
+                <div className="flex items-center gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleSync}
+                        disabled={isSyncing}
+                    >
+                        {isSyncing ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <RefreshCw className="w-4 h-4 mr-2" />
+                        )}
+                        Sync API
+                    </Button>
 
-                    <div className="flex items-center gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleSync}
-                            disabled={isSyncing}
-                        >
-                            {isSyncing ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                                <RefreshCw className="w-4 h-4 mr-2" />
-                            )}
-                            Sync API
-                        </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAutoReconcile}
+                        disabled={isReconciling}
+                    >
+                        {isReconciling ? (
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                            <Zap className="w-4 h-4 mr-2" />
+                        )}
+                        Auto Reconcile
+                    </Button>
 
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={handleAutoReconcile}
-                            disabled={isReconciling}
-                        >
-                            {isReconciling ? (
-                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                            ) : (
-                                <Zap className="w-4 h-4 mr-2" />
-                            )}
-                            Auto Reconcile
-                        </Button>
-
-                        <Button variant="outline" size="sm" onClick={handleExport}>
-                            <Download className="w-4 h-4 mr-2" />
-                            Export
-                        </Button>
-                    </div>
+                    <Button variant="outline" size="sm" onClick={handleExport}>
+                        <Download className="w-4 h-4 mr-2" />
+                        Export
+                    </Button>
                 </div>
-            </header>
+            </PageHeader>
 
             {/* Alerts */}
             {autoReconcileSummary && (

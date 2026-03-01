@@ -14,6 +14,7 @@ import {
     Activity, AlertCircle, Minus, RefreshCw,
 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/formatters";
+import { PageHeader } from "@/components/ui/page-header";
 
 // ============================================================
 // Sales Insights → Clinics Overview
@@ -155,13 +156,7 @@ export default function ClinicsOverviewPage() {
     return (
         <div className="space-y-6 p-6">
             {/* Header */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-800 dark:text-gray-100">Clinics Overview</h1>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                        Level 3 clinic performance, monthly fees, churn analysis &amp; product breakdown
-                    </p>
-                </div>
+            <PageHeader title="Clinics Overview" subtitle="Level 3 clinic performance, monthly fees, churn analysis & product breakdown">
                 <div className="flex items-center gap-3">
                     <Select value={String(year)} onValueChange={v => setYear(parseInt(v))}>
                         <SelectTrigger className="w-[100px] bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-200">
@@ -202,7 +197,7 @@ export default function ClinicsOverviewPage() {
                         <RefreshCw className="h-4 w-4" />
                     </Button>
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Loading / Error */}
             {loading && (
@@ -392,8 +387,8 @@ export default function ClinicsOverviewPage() {
                                             <React.Fragment key={clinic.name}>
                                                 <TableRow
                                                     className={`border-gray-200 dark:border-gray-700 cursor-pointer transition-colors hover:bg-gray-100 dark:bg-black/50 ${clinic.status === "churned" ? "bg-red-900/10" :
-                                                            clinic.status === "paused" ? "bg-yellow-900/10" :
-                                                                clinic.status === "new" ? "bg-green-900/10" : ""
+                                                        clinic.status === "paused" ? "bg-yellow-900/10" :
+                                                            clinic.status === "new" ? "bg-green-900/10" : ""
                                                         }`}
                                                     onClick={() => setExpandedClinic(
                                                         expandedClinic === clinic.name ? null : clinic.name

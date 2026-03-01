@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
 import { formatDate, formatCurrency } from "@/lib/formatters";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface QuickBooksRow {
     id: string;
@@ -326,25 +327,7 @@ export default function QuickBooksUSDPage() {
 
     return (
         <div className="min-h-full px-6 py-6 space-y-6">
-            {/* Header */}
-            <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                    <Link href="/reports">
-                        <Button variant="ghost" size="icon">
-                            <ArrowLeft className="h-5 w-5" />
-                        </Button>
-                    </Link>
-                    <div>
-                        <h1 className="text-2xl font-bold flex items-center gap-2">
-                            <span className="text-2xl">🇺🇸</span>
-                            QuickBooks USD
-                        </h1>
-                        <p className="text-gray-500 text-sm">
-                            Escopo: Estados Unidos • DSD Planning LLC
-                        </p>
-                    </div>
-                </div>
-
+            <PageHeader title="QuickBooks USD" subtitle="Escopo: Estados Unidos • DSD Planning LLC">
                 <div className="flex items-center gap-2">
                     {/* Connection Status */}
                     {syncStatus && (
@@ -383,7 +366,7 @@ export default function QuickBooksUSDPage() {
                         Sync Now
                     </Button>
                 </div>
-            </div>
+            </PageHeader>
 
             {/* Alert if not connected */}
             {syncStatus && !syncStatus.connected && (

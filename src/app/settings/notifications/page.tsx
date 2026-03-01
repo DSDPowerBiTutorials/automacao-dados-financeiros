@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Bell, Mail, MessageSquare, Smartphone } from 'lucide-react'
+import { PageHeader } from '@/components/ui/page-header'
 
 export default function NotificationsPage() {
     const [settings, setSettings] = useState({
@@ -20,6 +21,7 @@ export default function NotificationsPage() {
 
     return (
         <div className="space-y-6">
+            <PageHeader title="Notification Channels" subtitle="Configure how you receive alerts" />
             <Card>
                 <CardHeader>
                     <CardTitle>Canais de Notificação</CardTitle>

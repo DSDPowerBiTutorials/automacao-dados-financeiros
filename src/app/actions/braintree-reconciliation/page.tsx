@@ -32,6 +32,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface UploadSummary {
     totalProcessed: number;
@@ -210,14 +211,7 @@ export default function BraintreeReconciliationPage() {
     return (
         <div className="flex-1 space-y-6 p-6">
             {/* Header */}
-            <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                    Reconciliação Braintree ↔ Orders
-                </h1>
-                <p className="text-sm text-gray-500 mt-1">
-                    Upload de CSV Braintree e reconciliação automática com invoice-orders
-                </p>
-            </div>
+            <PageHeader title="Reconciliação Braintree ↔ Orders" subtitle="Upload de CSV Braintree e reconciliação automática com invoice-orders" />
 
             {/* Steps indicator */}
             <div className="flex items-center gap-2 text-sm">

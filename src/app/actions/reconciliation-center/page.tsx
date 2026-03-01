@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { PageHeader } from "@/components/ui/page-header";
 
 interface CsvFileRow {
   source: string;
@@ -175,12 +176,7 @@ export default function ReconciliationCenter() {
     <div className="min-h-full">
 
       <main className="">
-        <header className="page-header-standard">
-          <h1 className="header-title">Reconciliation Center</h1>
-          <p className="header-subtitle">
-            Monitor CSV uploads per account and update reference links.
-          </p>
-        </header>
+        <PageHeader title="Reconciliation Center" subtitle="Monitor CSV uploads per account and update reference links." />
 
         <section className="px-6 py-10">
           <Card className="shadow-lg">
