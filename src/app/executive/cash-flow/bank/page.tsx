@@ -253,17 +253,17 @@ const formatDateHeader = (dateStr: string): string => {
 };
 
 const gatewayColors: Record<string, { bg: string; text: string; border: string }> = {
-    braintree: { bg: "bg-blue-900/30", text: "text-blue-400", border: "border-blue-700" },
-    stripe: { bg: "bg-indigo-900/30", text: "text-indigo-400", border: "border-indigo-700" },
-    gocardless: { bg: "bg-yellow-900/30", text: "text-yellow-400", border: "border-yellow-700" },
-    paypal: { bg: "bg-cyan-900/30", text: "text-cyan-400", border: "border-cyan-700" },
-    amex: { bg: "bg-purple-900/30", text: "text-purple-400", border: "border-purple-700" },
-    gusto: { bg: "bg-red-900/30", text: "text-red-400", border: "border-red-700" },
-    quickbooks: { bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700" },
-    continental: { bg: "bg-orange-900/30", text: "text-orange-400", border: "border-orange-700" },
-    wise: { bg: "bg-teal-900/30", text: "text-teal-400", border: "border-teal-700" },
-    "sem-gateway": { bg: "bg-gray-100 dark:bg-black/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-300 dark:border-gray-600" },
-    "braintree (amex)": { bg: "bg-purple-900/30", text: "text-purple-400", border: "border-purple-700" },
+    braintree: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    stripe: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    gocardless: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    paypal: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    amex: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    gusto: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    quickbooks: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    continental: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    wise: { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    "sem-gateway": { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    "braintree (amex)": { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
 };
 
 const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-black/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700" };
@@ -303,12 +303,12 @@ const PNL_CHART_COLORS: Record<string, string> = {
 
 // ─── P&L Line definitions ───
 const PNL_LINES: { code: string; label: string; bg: string; text: string; border: string; icon: string }[] = [
-    { code: "101", label: "Growth", bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700", icon: "🚀" },
-    { code: "102", label: "Delight", bg: "bg-violet-900/30", text: "text-violet-400", border: "border-violet-700", icon: "✨" },
-    { code: "103", label: "Planning Center", bg: "bg-sky-900/30", text: "text-sky-400", border: "border-sky-700", icon: "📋" },
-    { code: "104", label: "Lab", bg: "bg-amber-900/30", text: "text-amber-400", border: "border-amber-700", icon: "🔬" },
-    { code: "105", label: "Other Income", bg: "bg-pink-900/30", text: "text-pink-400", border: "border-pink-700", icon: "💡" },
-    { code: "internal", label: "Internal Transfers", bg: "bg-slate-900/30", text: "text-slate-400", border: "border-slate-700", icon: "🔄" },
+    { code: "101", label: "Growth", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🚀" },
+    { code: "102", label: "Delight", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "✨" },
+    { code: "103", label: "Planning Center", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "📋" },
+    { code: "104", label: "Lab", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🔬" },
+    { code: "105", label: "Other Income", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "💡" },
+    { code: "internal", label: "Internal Transfers", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🔄" },
 ];
 
 const getPnlLineFromCode = (faCode: string | null): string => {
@@ -321,16 +321,16 @@ const getPnlLineConfig = (code: string) => PNL_LINES.find(l => l.code === code);
 
 // Product color palette for product cards inside popup
 const PRODUCT_COLORS: { bg: string; text: string; border: string }[] = [
-    { bg: "bg-violet-900/30", text: "text-violet-400", border: "border-violet-700" },
-    { bg: "bg-pink-900/30", text: "text-pink-400", border: "border-pink-700" },
-    { bg: "bg-sky-900/30", text: "text-sky-400", border: "border-sky-700" },
-    { bg: "bg-amber-900/30", text: "text-amber-400", border: "border-amber-700" },
-    { bg: "bg-lime-900/30", text: "text-lime-400", border: "border-lime-700" },
-    { bg: "bg-rose-900/30", text: "text-rose-400", border: "border-rose-700" },
-    { bg: "bg-cyan-900/30", text: "text-cyan-400", border: "border-cyan-700" },
-    { bg: "bg-fuchsia-900/30", text: "text-fuchsia-400", border: "border-fuchsia-700" },
-    { bg: "bg-teal-900/30", text: "text-teal-400", border: "border-teal-700" },
-    { bg: "bg-orange-900/30", text: "text-orange-400", border: "border-orange-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
+    { bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700" },
 ];
 const getProductStyle = (index: number) => PRODUCT_COLORS[index % PRODUCT_COLORS.length];
 
@@ -753,23 +753,37 @@ export default function BankCashFlowPage() {
         };
     }, [filteredTransactions, bankTransactions]);
 
-    // ─── Monthly breakdown ───
+    // ─── Aggregated data for analytics (daily or monthly based on range) ───
     const monthlyData = useMemo(() => {
         const map = new Map<string, { month: string; label: string; inflows: number; outflows: number; balance: number; runningBalance: number }>();
-        // Build months from filtered transactions
-        filteredTransactions.forEach(tx => {
-            const key = tx.date?.substring(0, 7) || "unknown";
-            if (!map.has(key)) {
-                const [y, m] = key.split("-");
-                const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
-                const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
-                map.set(key, { month: key, label, inflows: 0, outflows: 0, balance: 0, runningBalance: 0 });
-            }
-            const entry = map.get(key)!;
-            if (tx.amount > 0) entry.inflows += tx.amount;
-            else entry.outflows += Math.abs(tx.amount);
-        });
-        // Sort chronologically and compute balance + running balance
+        const txs = analyticsFilteredTx;
+        if (analyticsUseDaily) {
+            // Daily aggregation
+            txs.forEach(tx => {
+                const key = tx.date?.split("T")[0] || "unknown";
+                if (!map.has(key)) {
+                    const label = new Date(key + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+                    map.set(key, { month: key, label, inflows: 0, outflows: 0, balance: 0, runningBalance: 0 });
+                }
+                const entry = map.get(key)!;
+                if (tx.amount > 0) entry.inflows += tx.amount;
+                else entry.outflows += Math.abs(tx.amount);
+            });
+        } else {
+            // Monthly aggregation
+            txs.forEach(tx => {
+                const key = tx.date?.substring(0, 7) || "unknown";
+                if (!map.has(key)) {
+                    const [y, m] = key.split("-");
+                    const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
+                    const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+                    map.set(key, { month: key, label, inflows: 0, outflows: 0, balance: 0, runningBalance: 0 });
+                }
+                const entry = map.get(key)!;
+                if (tx.amount > 0) entry.inflows += tx.amount;
+                else entry.outflows += Math.abs(tx.amount);
+            });
+        }
         const sorted = Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
         let running = 0;
         sorted.forEach(m => {
@@ -778,71 +792,70 @@ export default function BankCashFlowPage() {
             m.runningBalance = running;
         });
         return sorted;
-    }, [filteredTransactions]);
+    }, [analyticsFilteredTx, analyticsUseDaily]);
 
-    // ─── Chart data: always last 12 months from most recent data ───
+    // ─── Chart data: range-filtered (no longer sliced) ───
     const chartData = useMemo(() => {
-        if (monthlyData.length === 0) return [];
-        return monthlyData.slice(-12);
+        return monthlyData;
     }, [monthlyData]);
 
-    // ─── Monthly breakdown by BANK ACCOUNT (for chart) ───
+    // ─── Breakdown by BANK ACCOUNT (for chart) ───
     const monthlyByBank = useMemo(() => {
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
-        filteredTransactions.forEach(tx => {
+        analyticsFilteredTx.forEach(tx => {
             if (tx.amount <= 0) return;
-            const key = tx.date?.substring(0, 7) || "unknown";
+            const key = analyticsUseDaily ? (tx.date?.split("T")[0] || "unknown") : (tx.date?.substring(0, 7) || "unknown");
             if (!map.has(key)) {
-                const [y, m] = key.split("-");
-                const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
-                const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+                const label = analyticsUseDaily
+                    ? new Date(key + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
+                    : (() => { const [y, m] = key.split("-"); return new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1)).toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" }); })();
                 map.set(key, { month: key, label } as any);
             }
             const entry = map.get(key)!;
             const bankKey = tx.source;
             entry[bankKey] = (entry[bankKey] as number || 0) + tx.amount;
         });
-        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
-    }, [filteredTransactions]);
+        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+    }, [analyticsFilteredTx, analyticsUseDaily]);
 
-    // ─── Monthly breakdown by GATEWAY (for chart) — ALL inflows ───
+    // ─── Breakdown by GATEWAY (for chart) — ALL inflows ───
     const monthlyByGateway = useMemo(() => {
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
-        filteredTransactions.forEach(tx => {
+        analyticsFilteredTx.forEach(tx => {
             if (tx.amount <= 0) return;
-            const key = tx.date?.substring(0, 7) || "unknown";
+            const key = analyticsUseDaily ? (tx.date?.split("T")[0] || "unknown") : (tx.date?.substring(0, 7) || "unknown");
             if (!map.has(key)) {
-                const [y, m] = key.split("-");
-                const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
-                const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+                const label = analyticsUseDaily
+                    ? new Date(key + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
+                    : (() => { const [y, m] = key.split("-"); return new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1)).toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" }); })();
                 map.set(key, { month: key, label } as any);
             }
             const entry = map.get(key)!;
             const gwKey = tx.paymentSource?.toLowerCase() || tx.gateway || "sem-gateway";
             entry[gwKey] = (entry[gwKey] as number || 0) + tx.amount;
         });
-        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
-    }, [filteredTransactions]);
+        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+    }, [analyticsFilteredTx, analyticsUseDaily]);
 
-    // ─── Monthly breakdown by P&L LINE (for chart) — ALL inflows via chain lookup (excludes internal transfers) ───
+    // ─── Breakdown by P&L LINE (for chart) — ALL inflows via chain lookup (excludes internal transfers) ───
     const monthlyByPnl = useMemo(() => {
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
-        filteredTransactions.forEach(tx => {
+        analyticsFilteredTx.forEach(tx => {
             if (tx.amount <= 0) return;
             const lineCode = resolvePnlLine(tx);
-            if (lineCode === "internal") return; // exclude internal transfers from P&L chart
-            const key = tx.date?.substring(0, 7) || "unknown";
+            if (lineCode === "internal") return;
+            const key = analyticsUseDaily ? (tx.date?.split("T")[0] || "unknown") : (tx.date?.substring(0, 7) || "unknown");
             if (!map.has(key)) {
-                const [y, m] = key.split("-");
-                const d = new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1));
-                const label = d.toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" });
+                const label = analyticsUseDaily
+                    ? new Date(key + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" })
+                    : (() => { const [y, m] = key.split("-"); return new Date(Date.UTC(parseInt(y), parseInt(m) - 1, 1)).toLocaleDateString("en-US", { month: "short", year: "2-digit", timeZone: "UTC" }); })();
                 map.set(key, { month: key, label } as any);
             }
             const entry = map.get(key)!;
             entry[lineCode] = (entry[lineCode] as number || 0) + tx.amount;
         });
-        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month)).slice(-12);
-    }, [filteredTransactions, resolvePnlLine]);
+        return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
+    }, [analyticsFilteredTx, analyticsUseDaily, resolvePnlLine]);
 
     // ─── Collect active keys per breakdown for chart legend ───
     const activeBankKeys = useMemo(() => {
@@ -863,24 +876,39 @@ export default function BankCashFlowPage() {
         return [...keys];
     }, [monthlyByPnl]);
 
-    // ─── Revenue breakdown by bank (from filtered) ───
+    // ─── Analytics gateway breakdown (range-filtered, separate from summary) ───
+    const analyticsByGateway = useMemo(() => {
+        const map: Record<string, { amount: number; count: number }> = {};
+        let totalInflow = 0;
+        analyticsFilteredTx.forEach(tx => {
+            if (tx.amount <= 0) return;
+            totalInflow += tx.amount;
+            const gwKey = tx.paymentSource?.toLowerCase() || tx.gateway || "sem-gateway";
+            if (!map[gwKey]) map[gwKey] = { amount: 0, count: 0 };
+            map[gwKey].amount += tx.amount;
+            map[gwKey].count++;
+        });
+        return { byGateway: map, totalInflow };
+    }, [analyticsFilteredTx]);
+
+    // ─── Revenue breakdown by bank (from analytics filtered) ───
     const revenueByBank = useMemo(() => {
         const map: Record<string, { inflows: number; outflows: number; count: number }> = {};
-        filteredTransactions.forEach(tx => {
+        analyticsFilteredTx.forEach(tx => {
             if (!map[tx.source]) map[tx.source] = { inflows: 0, outflows: 0, count: 0 };
             map[tx.source].count++;
             if (tx.amount > 0) map[tx.source].inflows += tx.amount;
             else map[tx.source].outflows += Math.abs(tx.amount);
         });
         return map;
-    }, [filteredTransactions]);
+    }, [analyticsFilteredTx]);
 
     // ─── Revenue breakdown by P&L line — ALL inflows via chain lookup (internal transfers tracked separately) ───
     const pnlLineRevenue = useMemo(() => {
         const map: Record<string, { amount: number; count: number; products: Record<string, { amount: number; count: number; faCode: string | null; faName: string | null }> }> = {};
         let totalRevenue = 0;
         let internalTotal = 0;
-        filteredTransactions.forEach(tx => {
+        analyticsFilteredTx.forEach(tx => {
             if (tx.amount <= 0) return;
             const lineCode = resolvePnlLine(tx);
             // Track internal transfers separately — don't include in revenue total
@@ -978,7 +1006,7 @@ export default function BankCashFlowPage() {
             map[lineCode].products[productKey].count++;
         });
         return { byLine: map, total: totalRevenue, internalTotal };
-    }, [filteredTransactions, resolvePnlLine, btTxMap, invoiceOrders]);
+    }, [analyticsFilteredTx, resolvePnlLine, btTxMap, invoiceOrders]);
 
     const toggleGroup = (date: string) => {
         setExpandedGroups(prev => {
@@ -1148,6 +1176,65 @@ export default function BankCashFlowPage() {
         return cashPositionData.find(d => d.date === highlightDate) || null;
     }, [highlightDate, cashPositionData]);
 
+    // ─── Day flows for highlighted date (inflows/outflows/intercompany) ───
+    const highlightedDayFlows = useMemo(() => {
+        if (!highlightDate) return { inflows: 0, outflows: 0, intercompanyCount: 0, intercompanyTotal: 0 };
+        const dayTxs = bankTransactions.filter(tx => tx.date?.startsWith(highlightDate));
+        let inflows = 0, outflows = 0, intercompanyCount = 0, intercompanyTotal = 0;
+        for (const tx of dayTxs) {
+            if (tx.amount > 0) inflows += tx.amount;
+            else outflows += Math.abs(tx.amount);
+            const isIntercompany = tx.custom_data?.is_intercompany === true ||
+                tx.custom_data?.gw_reconciliation_type === "intercompany" ||
+                (tx.description && /transfer|intercompany|traspaso/i.test(tx.description));
+            if (isIntercompany) {
+                intercompanyCount++;
+                intercompanyTotal += Math.abs(tx.amount);
+            }
+        }
+        return { inflows, outflows, intercompanyCount, intercompanyTotal };
+    }, [highlightDate, bankTransactions]);
+
+    // ─── Analytics Range controls ───
+    const [analyticsRangePreset, setAnalyticsRangePreset] = useState<"7d" | "30d" | "90d" | "180d" | "365d" | "custom">("365d");
+    const [analyticsCustomRange, setAnalyticsCustomRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
+
+    // ─── Analytics filtered transactions (date-range filtered from filteredTransactions) ───
+    const analyticsFilteredTx = useMemo(() => {
+        const presetDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90, "180d": 180, "365d": 365 };
+        if (analyticsRangePreset === "custom") {
+            if (!analyticsCustomRange.start || !analyticsCustomRange.end) return filteredTransactions;
+            return filteredTransactions.filter(tx => {
+                const d = tx.date?.split("T")[0] || "";
+                return d >= analyticsCustomRange.start && d <= analyticsCustomRange.end;
+            });
+        }
+        const days = presetDaysMap[analyticsRangePreset] || 365;
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const cutoffStr = cutoff.toISOString().slice(0, 10);
+        return filteredTransactions.filter(tx => (tx.date?.split("T")[0] || "") >= cutoffStr);
+    }, [filteredTransactions, analyticsRangePreset, analyticsCustomRange]);
+
+    // Whether analytics should use daily (for short ranges) or monthly aggregation
+    const analyticsUseDaily = useMemo(() => {
+        if (analyticsRangePreset === "custom") {
+            if (analyticsCustomRange.start && analyticsCustomRange.end) {
+                const diff = Math.ceil((new Date(analyticsCustomRange.end).getTime() - new Date(analyticsCustomRange.start).getTime()) / 86400000);
+                return diff <= 60;
+            }
+            return false;
+        }
+        return ["7d", "30d"].includes(analyticsRangePreset);
+    }, [analyticsRangePreset, analyticsCustomRange]);
+
+    const analyticsRangeBadgeLabel = useMemo(() => {
+        if (analyticsRangePreset === "custom") {
+            return analyticsFilteredTx.length > 0 ? `${analyticsFilteredTx.length} txns` : "Custom";
+        }
+        return analyticsRangePreset.replace("d", " days");
+    }, [analyticsRangePreset, analyticsFilteredTx.length]);
+
     const cashRangeBadgeLabel = useMemo(() => {
         if (cashRangePreset === "custom") {
             return cashPositionData.length > 0 ? `${cashPositionData.length} days` : "Custom";
@@ -1184,9 +1271,6 @@ export default function BankCashFlowPage() {
                 <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
-                            <div className="bg-[#117ACA] p-2 rounded-lg">
-                                <Database className="h-6 w-6 text-gray-900 dark:text-white" />
-                            </div>
                             <div>
                                 <h1 className="text-xl font-semibold">Bank Cash Flow</h1>
                                 <span className="text-gray-500 dark:text-gray-400 text-sm">
@@ -1267,82 +1351,292 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ═══ ACCORDION SECTIONS ═══ */}
-                <Accordion type="multiple" defaultValue={["charts", "cash-position", "statements"]} className="flex-1 flex flex-col overflow-hidden">
+                <Accordion type="multiple" defaultValue={["cash-position", "charts", "statements"]} className="flex-1 flex flex-col overflow-hidden">
 
-                    {/* ─── Section 1: Charts & Analytics ─── */}
+                    {/* ─── Section 1: Cash Position ─── */}
+                    <AccordionItem value="cash-position" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
+                        <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
+                            <div className="flex items-center gap-2">
+                                <Wallet className="h-4 w-4 text-emerald-500" />
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Cash Position</span>
+                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{cashRangeBadgeLabel}</Badge>
+                            </div>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                            <div className="px-6 py-4 space-y-5 bg-white dark:bg-black">
+
+                                {/* Range selector */}
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="h-4 w-4 text-gray-500" />
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Range:</span>
+                                        <Select value={cashRangePreset} onValueChange={(value: "7d" | "30d" | "90d" | "180d" | "365d" | "custom") => setCashRangePreset(value)}>
+                                            <SelectTrigger className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs">
+                                                <SelectValue placeholder="Select range" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="7d">Last 7 days</SelectItem>
+                                                <SelectItem value="30d">Last 30 days</SelectItem>
+                                                <SelectItem value="90d">Last 90 days</SelectItem>
+                                                <SelectItem value="180d">Last 180 days</SelectItem>
+                                                <SelectItem value="365d">Last 365 days</SelectItem>
+                                                <SelectItem value="custom">Custom range</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+
+                                    {cashRangePreset === "custom" && (
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                type="date"
+                                                value={cashCustomRange.start}
+                                                onChange={e => setCashCustomRange(prev => ({ ...prev, start: e.target.value }))}
+                                                className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
+                                            />
+                                            <span className="text-gray-600 text-xs">to</span>
+                                            <Input
+                                                type="date"
+                                                value={cashCustomRange.end}
+                                                onChange={e => setCashCustomRange(prev => ({ ...prev, end: e.target.value }))}
+                                                className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
+                                            />
+                                        </div>
+                                    )}
+
+                                    {highlightDate && (
+                                        <div className="flex items-center gap-1">
+                                            <span className="text-xs text-yellow-600 dark:text-yellow-400 font-medium">
+                                                Selected: {new Date(highlightDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
+                                            </span>
+                                            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-gray-400 hover:text-gray-900 dark:hover:text-white" onClick={() => setHighlightDate("")}>
+                                                <X className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Highlighted date summary card — balances + day flows side by side */}
+                                {highlightedPosition && (
+                                    <div className="flex flex-wrap items-stretch gap-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg px-4 py-3">
+                                        {/* Left: Balance by account */}
+                                        <div className="text-center min-w-[120px]">
+                                            <p className="text-[10px] text-yellow-600 dark:text-yellow-400 uppercase font-medium">
+                                                {new Date(highlightDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
+                                            </p>
+                                            <p className={`text-lg font-bold ${highlightedPosition.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                                {formatCurrency(highlightedPosition.total, "EUR")}
+                                            </p>
+                                            <p className="text-[9px] text-gray-500">Total balance</p>
+                                        </div>
+                                        <div className="border-l border-yellow-200 dark:border-yellow-700 pl-3 space-y-0.5">
+                                            {BANK_ACCOUNTS.map(bank => (
+                                                <div key={bank.key} className="flex items-center justify-between gap-4 text-[10px]">
+                                                    <span className={bank.textColor}>{bank.label}</span>
+                                                    <span className="text-gray-900 dark:text-white font-medium">
+                                                        {formatCurrency(highlightedPosition[bank.key] || 0, bank.currency)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        {/* Right: Day flows (inflows/outflows/intercompany) */}
+                                        <div className="border-l border-yellow-200 dark:border-yellow-700 pl-3 space-y-0.5">
+                                            <div className="flex items-center justify-between gap-4 text-[10px]">
+                                                <span className="text-gray-500">Inflows</span>
+                                                <span className="text-green-600 dark:text-green-400 font-bold">
+                                                    {formatCurrency(highlightedDayFlows.inflows, dominantCurrency)}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-4 text-[10px]">
+                                                <span className="text-gray-500">Outflows</span>
+                                                <span className="text-red-500 font-bold">
+                                                    {formatCurrency(highlightedDayFlows.outflows, dominantCurrency)}
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-4 text-[10px]">
+                                                <span className="text-gray-500">Intercompany</span>
+                                                <span className="text-gray-900 dark:text-white font-medium">
+                                                    {highlightedDayFlows.intercompanyCount} txns ({formatCurrency(highlightedDayFlows.intercompanyTotal, dominantCurrency)})
+                                                </span>
+                                            </div>
+                                            <div className="flex items-center justify-between gap-4 text-[10px] border-t border-yellow-200 dark:border-yellow-700 pt-0.5">
+                                                <span className="text-gray-500">Net flow</span>
+                                                <span className={`font-bold ${highlightedDayFlows.inflows - highlightedDayFlows.outflows >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                                                    {formatCurrency(highlightedDayFlows.inflows - highlightedDayFlows.outflows, dominantCurrency)}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Area chart — cash position evolution (click to highlight) */}
+                                {cashPositionData.length > 0 && (
+                                    <div className="h-[220px] w-full">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <AreaChart
+                                                data={cashPositionData}
+                                                margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+                                                onClick={(e: any) => { if (e?.activePayload?.[0]?.payload?.date) setHighlightDate(e.activePayload[0].payload.date); }}
+                                                style={{ cursor: "pointer" }}
+                                            >
+                                                <defs>
+                                                    <linearGradient id="cpGradTotal" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="cpGradBkEur" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="cpGradBkUsd" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="cpGradSab" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                                                    </linearGradient>
+                                                    <linearGradient id="cpGradChase" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2} />
+                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                                <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
+                                                <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, "EUR")} />
+                                                <Tooltip
+                                                    contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
+                                                    labelStyle={{ color: "var(--header-text, #6b7280)" }}
+                                                    formatter={(value: number, name: string) => {
+                                                        const bank = BANK_ACCOUNTS.find(b => b.key === name);
+                                                        return [formatCurrency(value, bank?.currency || "EUR"), bank?.label || name];
+                                                    }}
+                                                />
+                                                <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
+                                                <Area type="monotone" dataKey="total" name="Total" stroke="#10b981" strokeWidth={2.5} fill="url(#cpGradTotal)" dot={false} />
+                                                <Area type="monotone" dataKey="bankinter-eur" name="Bankinter EUR" stroke="#3b82f6" strokeWidth={1.5} fill="url(#cpGradBkEur)" dot={false} strokeDasharray="4 2" />
+                                                <Area type="monotone" dataKey="bankinter-usd" name="Bankinter USD" stroke="#10b981" strokeWidth={1.5} fill="url(#cpGradBkUsd)" dot={false} strokeDasharray="4 2" />
+                                                <Area type="monotone" dataKey="sabadell" name="Sabadell EUR" stroke="#f97316" strokeWidth={1.5} fill="url(#cpGradSab)" dot={false} strokeDasharray="4 2" />
+                                                <Area type="monotone" dataKey="chase-usd" name="Chase USD" stroke="#a855f7" strokeWidth={1.5} fill="url(#cpGradChase)" dot={false} strokeDasharray="4 2" />
+                                            </AreaChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                )}
+
+                                {/* Daily position table */}
+                                <div className="overflow-x-auto max-h-[400px] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
+                                    <table className="w-full text-xs">
+                                        <thead className="sticky top-0 bg-gray-50 dark:bg-[#0a0a0a] z-10">
+                                            <tr className="border-b border-gray-200 dark:border-gray-700">
+                                                <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Date</th>
+                                                {BANK_ACCOUNTS.map(bank => (
+                                                    <th key={bank.key} className={`px-3 py-2 text-right text-[10px] font-medium uppercase ${bank.textColor}`}>{bank.label}</th>
+                                                ))}
+                                                <th className="px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {cashPositionData.map((row, idx) => {
+                                                const isHighlighted = highlightDate && row.date === highlightDate;
+                                                const isToday = row.date === new Date().toISOString().slice(0, 10);
+                                                return (
+                                                    <tr
+                                                        key={row.date}
+                                                        className={`border-b border-gray-100 dark:border-gray-800 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-[#111111] ${isHighlighted ? "bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300 dark:ring-yellow-700" : isToday ? "bg-blue-50/50 dark:bg-blue-900/10" : idx % 2 === 0 ? "bg-white dark:bg-black" : "bg-gray-50/50 dark:bg-[#050505]"}`}
+                                                        onClick={() => setHighlightDate(row.date)}
+                                                    >
+                                                        <td className={`px-3 py-1.5 font-medium whitespace-nowrap ${isHighlighted ? "text-yellow-700 dark:text-yellow-300" : isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"}`}>
+                                                            {row.label}
+                                                            {isToday && <span className="ml-1 text-[8px] text-blue-500">(today)</span>}
+                                                        </td>
+                                                        {BANK_ACCOUNTS.map(bank => {
+                                                            const val = row[bank.key] || 0;
+                                                            return (
+                                                                <td key={bank.key} className={`px-3 py-1.5 text-right font-mono ${val === 0 ? "text-gray-400" : val > 0 ? "text-gray-900 dark:text-white" : "text-red-400"}`}>
+                                                                    {val === 0 ? "—" : formatCurrency(val, bank.currency)}
+                                                                </td>
+                                                            );
+                                                        })}
+                                                        <td className={`px-3 py-1.5 text-right font-bold font-mono ${row.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
+                                                            {formatCurrency(row.total, "EUR")}
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {cashPositionData.length === 0 && (
+                                    <div className="text-center py-8 text-gray-500">
+                                        <Wallet className="h-10 w-10 mx-auto mb-3 opacity-40" />
+                                        <p className="text-sm">No bank balance data available for this range</p>
+                                        <p className="text-xs mt-1">Upload statements with SALDO/BALANCE columns</p>
+                                    </div>
+                                )}
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+
+                    {/* ─── Section 2: Inflow Analytics ─── */}
                     <AccordionItem value="charts" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
                         <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
                             <div className="flex items-center gap-2">
                                 <BarChart3 className="h-4 w-4 text-blue-500" />
-                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Charts & Analytics</span>
-                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{chartData.length} months</Badge>
+                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Inflow Analytics</span>
+                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{analyticsRangeBadgeLabel}</Badge>
                             </div>
                         </AccordionTrigger>
                         <AccordionContent>
 
-                            {/* ─── Stats Bar (KPI inline) ─── */}
+                            {/* ─── Analytics Range Selector ─── */}
                             <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
-                                <div className="grid grid-cols-6 gap-4">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <ArrowDownCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] text-gray-500 uppercase">Inflows</p>
-                                            <p className="text-sm font-bold text-green-400 truncate" title={formatCurrency(summary.totalInflow, dominantCurrency)}>
-                                                {formatCompactCurrency(summary.totalInflow, dominantCurrency)}
-                                            </p>
-                                        </div>
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="h-4 w-4 text-gray-500" />
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Range:</span>
+                                        <Select value={analyticsRangePreset} onValueChange={(value: "7d" | "30d" | "90d" | "180d" | "365d" | "custom") => setAnalyticsRangePreset(value)}>
+                                            <SelectTrigger className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs">
+                                                <SelectValue placeholder="Select range" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="7d">Last 7 days</SelectItem>
+                                                <SelectItem value="30d">Last 30 days</SelectItem>
+                                                <SelectItem value="90d">Last 90 days</SelectItem>
+                                                <SelectItem value="180d">Last 180 days</SelectItem>
+                                                <SelectItem value="365d">Last 365 days</SelectItem>
+                                                <SelectItem value="custom">Custom range</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                        <Badge variant="outline" className="text-[10px] bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{analyticsRangeBadgeLabel}</Badge>
                                     </div>
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <ArrowUpCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] text-gray-500 uppercase">Outflows</p>
-                                            <p className="text-sm font-bold text-red-400 truncate" title={formatCurrency(summary.totalOutflow, dominantCurrency)}>
-                                                {formatCompactCurrency(summary.totalOutflow, dominantCurrency)}
-                                            </p>
+
+                                    {analyticsRangePreset === "custom" && (
+                                        <div className="flex items-center gap-2">
+                                            <Input
+                                                type="date"
+                                                value={analyticsCustomRange.start}
+                                                onChange={e => setAnalyticsCustomRange(prev => ({ ...prev, start: e.target.value }))}
+                                                className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
+                                            />
+                                            <span className="text-gray-600 text-xs">to</span>
+                                            <Input
+                                                type="date"
+                                                value={analyticsCustomRange.end}
+                                                onChange={e => setAnalyticsCustomRange(prev => ({ ...prev, end: e.target.value }))}
+                                                className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
+                                            />
                                         </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <DollarSign className="h-4 w-4 text-blue-500 flex-shrink-0" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] text-gray-500 uppercase">Balance</p>
-                                            <p className={`text-sm font-bold truncate ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`} title={formatCurrency(summary.netCashFlow, dominantCurrency)}>
-                                                {formatCompactCurrency(summary.netCashFlow, dominantCurrency)}
-                                            </p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <CheckCircle className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] text-gray-500 uppercase">Reconciled</p>
-                                            <p className="text-sm font-bold text-emerald-400">{summary.reconciledCount} <span className="text-xs text-gray-500">({summary.reconciledPct}%)</span></p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] text-gray-500 uppercase">Pending</p>
-                                            <p className="text-sm font-bold text-amber-400">{summary.unreconciledCount}</p>
-                                        </div>
-                                    </div>
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <CreditCard className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                                        <div className="min-w-0">
-                                            <p className="text-[10px] text-gray-500 uppercase">Reconciled Value</p>
-                                            <p className="text-sm font-bold text-violet-400 truncate" title={formatCurrency(summary.reconciledAmount, dominantCurrency)}>
-                                                {formatCompactCurrency(summary.reconciledAmount, dominantCurrency)}
-                                            </p>
-                                        </div>
-                                    </div>
+                                    )}
                                 </div>
                             </div>
 
-                            {/* ─── Monthly Highlights + Chart ─── */}
+                            {/* ─── Overview + Chart ─── */}
                             {chartData.length > 0 && (
                                 <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-4 bg-white dark:bg-black">
-                                    {/* Monthly cards */}
+                                    {/* Period cards */}
                                     <div className="flex items-center gap-2 mb-3">
                                         <TrendingUp className="h-4 w-4 text-gray-500" />
-                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Monthly Overview (last 12 months)</span>
+                                        <span className="text-xs text-gray-500 uppercase tracking-wider">{analyticsUseDaily ? "Daily" : "Monthly"} Overview ({chartData.length} {analyticsUseDaily ? "days" : "months"})</span>
                                     </div>
                                     <div className="flex gap-2 overflow-x-auto pb-2 mb-4">
                                         {chartData.map(m => (
@@ -1468,7 +1762,7 @@ export default function BankCashFlowPage() {
                                     </div>
 
                                     {/* ─── Inflows Breakdown Cards (Bank Account / Gateway / P&L Line) ─── */}
-                                    {(Object.keys(revenueByBank).length > 0 || Object.keys(summary.byGateway).length > 0 || Object.keys(pnlLineRevenue.byLine).length > 0) && (
+                                    {(Object.keys(revenueByBank).length > 0 || Object.keys(analyticsByGateway.byGateway).length > 0 || Object.keys(pnlLineRevenue.byLine).length > 0) && (
                                         <div className="mt-5">
                                             {/* Bank Account view */}
                                             {revenueViewMode === "bank" && (
@@ -1504,18 +1798,18 @@ export default function BankCashFlowPage() {
                                             )}
 
                                             {/* Gateway view — ALL bank inflows by gateway */}
-                                            {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length > 0 && (
+                                            {revenueViewMode === "gateway" && Object.keys(analyticsByGateway.byGateway).length > 0 && (
                                                 <div>
                                                     <div className="flex items-center gap-2 mb-2 px-1">
                                                         <span className="text-[10px] text-gray-500">
-                                                            All inflows by payment gateway • {summary.reconciledCount} reconciled ({summary.reconciledPct}%)
+                                                            All inflows by payment gateway
                                                         </span>
                                                     </div>
                                                     <div className="flex gap-2 overflow-x-auto pb-2">
-                                                        {Object.entries(summary.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
+                                                        {Object.entries(analyticsByGateway.byGateway).sort(([, a], [, b]) => b.amount - a.amount).map(([gw, stats]) => {
                                                             const gwStyle = getGatewayStyle(gw);
                                                             const gwLabel = gw === "sem-gateway" ? "Sem Gateway" : (gw.charAt(0).toUpperCase() + gw.slice(1));
-                                                            const pct = summary.totalInflow > 0 ? Math.round((stats.amount / summary.totalInflow) * 100) : 0;
+                                                            const pct = analyticsByGateway.totalInflow > 0 ? Math.round((stats.amount / analyticsByGateway.totalInflow) * 100) : 0;
                                                             return (
                                                                 <div key={gw} className={`flex-shrink-0 rounded-lg border px-3 py-2 min-w-[130px] ${gwStyle.bg} ${gwStyle.border}`}>
                                                                     <p className={`text-[10px] uppercase font-medium mb-1 ${gwStyle.text}`}>{gwLabel}</p>
@@ -1541,7 +1835,7 @@ export default function BankCashFlowPage() {
                                             )}
 
                                             {/* Gateway empty state */}
-                                            {revenueViewMode === "gateway" && Object.keys(summary.byGateway).length === 0 && (
+                                            {revenueViewMode === "gateway" && Object.keys(analyticsByGateway.byGateway).length === 0 && (
                                                 <div className="text-center py-4">
                                                     <CreditCard className="h-8 w-8 text-gray-600 mx-auto mb-2" />
                                                     <p className="text-xs text-gray-500">No inflows in this period</p>
@@ -1599,7 +1893,7 @@ export default function BankCashFlowPage() {
                                                                                     <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
                                                                                 </div>
                                                                                 <div className="w-full bg-gray-100 dark:bg-[#0a0a0a] rounded-full h-1 mt-0.5">
-                                                                                    <div className={`h-1 rounded-full ${line.border.replace('border-', 'bg-')}`} style={{ width: `${pct}%` }} />
+                                                                                    <div className="h-1 rounded-full bg-gray-400 dark:bg-gray-500" style={{ width: `${pct}%` }} />
                                                                                 </div>
                                                                             </div>
                                                                             <p className="text-[8px] text-gray-600 mt-1 text-center">Click for products</p>
@@ -1645,16 +1939,16 @@ export default function BankCashFlowPage() {
                                                                     return (
                                                                         <div
                                                                             onClick={() => setSelectedPnlLine("internal")}
-                                                                            className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-slate-900/30 border-slate-700 opacity-70"
+                                                                            className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-white dark:bg-black border-gray-200 dark:border-gray-700 opacity-70"
                                                                         >
                                                                             <div className="flex items-center gap-1.5 mb-1">
                                                                                 <span className="text-sm">🔄</span>
-                                                                                <p className="text-[10px] uppercase font-medium text-slate-400">Internal Transfers</p>
+                                                                                <p className="text-[10px] uppercase font-medium text-gray-900 dark:text-white">Internal Transfers</p>
                                                                             </div>
                                                                             <div className="space-y-0.5">
                                                                                 <div className="flex justify-between text-[10px]">
                                                                                     <span className="text-gray-500">Amount</span>
-                                                                                    <span className="text-slate-400 font-bold">{formatCompactCurrency(intData.amount, dominantCurrency)}</span>
+                                                                                    <span className="text-gray-900 dark:text-white font-bold">{formatCompactCurrency(intData.amount, dominantCurrency)}</span>
                                                                                 </div>
                                                                                 <div className="flex justify-between text-[10px]">
                                                                                     <span className="text-gray-500">Txns</span>
@@ -1665,7 +1959,7 @@ export default function BankCashFlowPage() {
                                                                                     <span className="text-gray-700 dark:text-gray-300 font-medium">{pct}%</span>
                                                                                 </div>
                                                                             </div>
-                                                                            <p className="text-[8px] text-slate-600 mt-1 text-center">Non-revenue</p>
+                                                                            <p className="text-[8px] text-gray-500 mt-1 text-center">Non-revenue</p>
                                                                         </div>
                                                                     );
                                                                 })()}
@@ -1684,202 +1978,6 @@ export default function BankCashFlowPage() {
                                 </div>
                             )}
 
-                        </AccordionContent>
-                    </AccordionItem>
-
-                    {/* ─── Section 2: Cash Position ─── */}
-                    <AccordionItem value="cash-position" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
-                        <AccordionTrigger className="px-6 py-3 hover:no-underline hover:bg-gray-50 dark:hover:bg-[#0a0a0a]">
-                            <div className="flex items-center gap-2">
-                                <Wallet className="h-4 w-4 text-emerald-500" />
-                                <span className="text-sm font-semibold text-gray-900 dark:text-white">Cash Position</span>
-                                <Badge variant="outline" className="text-[10px] ml-2 bg-transparent border-gray-300 dark:border-gray-600 text-gray-500">{cashRangeBadgeLabel}</Badge>
-                            </div>
-                        </AccordionTrigger>
-                        <AccordionContent>
-                            <div className="px-6 py-4 space-y-5 bg-white dark:bg-black">
-
-                                {/* Range selector + highlighted date */}
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <Filter className="h-4 w-4 text-gray-500" />
-                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Range:</span>
-                                        <Select value={cashRangePreset} onValueChange={(value: "7d" | "30d" | "90d" | "180d" | "365d" | "custom") => setCashRangePreset(value)}>
-                                            <SelectTrigger className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs">
-                                                <SelectValue placeholder="Select range" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="7d">Last 7 days</SelectItem>
-                                                <SelectItem value="30d">Last 30 days</SelectItem>
-                                                <SelectItem value="90d">Last 90 days</SelectItem>
-                                                <SelectItem value="180d">Last 180 days</SelectItem>
-                                                <SelectItem value="365d">Last 365 days</SelectItem>
-                                                <SelectItem value="custom">Custom range</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-
-                                    {cashRangePreset === "custom" && (
-                                        <div className="flex items-center gap-2">
-                                            <Input
-                                                type="date"
-                                                value={cashCustomRange.start}
-                                                onChange={e => setCashCustomRange(prev => ({ ...prev, start: e.target.value }))}
-                                                className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
-                                            />
-                                            <span className="text-gray-600 text-xs">to</span>
-                                            <Input
-                                                type="date"
-                                                value={cashCustomRange.end}
-                                                onChange={e => setCashCustomRange(prev => ({ ...prev, end: e.target.value }))}
-                                                className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
-                                            />
-                                        </div>
-                                    )}
-
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-4 w-4 text-gray-500" />
-                                        <span className="text-xs text-gray-500 uppercase tracking-wider">Highlight date:</span>
-                                        <Input
-                                            type="date"
-                                            value={highlightDate}
-                                            onChange={e => setHighlightDate(e.target.value)}
-                                            className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"
-                                        />
-                                        {highlightDate && (
-                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-400 hover:text-gray-900 dark:hover:text-white" onClick={() => setHighlightDate("")}>
-                                                <X className="h-3 w-3" />
-                                            </Button>
-                                        )}
-                                    </div>
-
-                                    {/* Highlighted date summary card */}
-                                    {highlightedPosition && (
-                                        <div className="flex items-center gap-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg px-4 py-2">
-                                            <div className="text-center">
-                                                <p className="text-[10px] text-yellow-600 dark:text-yellow-400 uppercase font-medium">
-                                                    {new Date(highlightDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
-                                                </p>
-                                                <p className={`text-lg font-bold ${highlightedPosition.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                                                    {formatCurrency(highlightedPosition.total, "EUR")}
-                                                </p>
-                                                <p className="text-[9px] text-gray-500">Total (all accounts)</p>
-                                            </div>
-                                            <div className="border-l border-yellow-200 dark:border-yellow-700 pl-3 space-y-0.5">
-                                                {BANK_ACCOUNTS.map(bank => (
-                                                    <div key={bank.key} className="flex items-center justify-between gap-4 text-[10px]">
-                                                        <span className={bank.textColor}>{bank.label}</span>
-                                                        <span className="text-gray-900 dark:text-white font-medium">
-                                                            {formatCurrency(highlightedPosition[bank.key] || 0, bank.currency)}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Area chart — cash position evolution */}
-                                {cashPositionData.length > 0 && (
-                                    <div className="h-[220px] w-full">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <AreaChart data={cashPositionData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                                                <defs>
-                                                    <linearGradient id="cpGradTotal" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="cpGradBkEur" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="cpGradBkUsd" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="cpGradSab" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#f97316" stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
-                                                    </linearGradient>
-                                                    <linearGradient id="cpGradChase" x1="0" y1="0" x2="0" y2="1">
-                                                        <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2} />
-                                                        <stop offset="95%" stopColor="#a855f7" stopOpacity={0} />
-                                                    </linearGradient>
-                                                </defs>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                                                <XAxis dataKey="label" tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} />
-                                                <YAxis tick={{ fill: "#9CA3AF", fontSize: 10 }} axisLine={{ stroke: "#4B5563" }} tickFormatter={(v: number) => formatCompactCurrency(v, "EUR")} />
-                                                <Tooltip
-                                                    contentStyle={{ backgroundColor: "var(--content-bg, #ffffff)", border: "1px solid var(--input-border, #e5e7eb)", borderRadius: "8px", fontSize: 12 }}
-                                                    labelStyle={{ color: "var(--header-text, #6b7280)" }}
-                                                    formatter={(value: number, name: string) => {
-                                                        const bank = BANK_ACCOUNTS.find(b => b.key === name);
-                                                        return [formatCurrency(value, bank?.currency || "EUR"), bank?.label || name];
-                                                    }}
-                                                />
-                                                <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
-                                                <Area type="monotone" dataKey="total" name="Total" stroke="#10b981" strokeWidth={2.5} fill="url(#cpGradTotal)" dot={false} />
-                                                <Area type="monotone" dataKey="bankinter-eur" name="Bankinter EUR" stroke="#3b82f6" strokeWidth={1.5} fill="url(#cpGradBkEur)" dot={false} strokeDasharray="4 2" />
-                                                <Area type="monotone" dataKey="bankinter-usd" name="Bankinter USD" stroke="#10b981" strokeWidth={1.5} fill="url(#cpGradBkUsd)" dot={false} strokeDasharray="4 2" />
-                                                <Area type="monotone" dataKey="sabadell" name="Sabadell EUR" stroke="#f97316" strokeWidth={1.5} fill="url(#cpGradSab)" dot={false} strokeDasharray="4 2" />
-                                                <Area type="monotone" dataKey="chase-usd" name="Chase USD" stroke="#a855f7" strokeWidth={1.5} fill="url(#cpGradChase)" dot={false} strokeDasharray="4 2" />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                )}
-
-                                {/* Daily position table */}
-                                <div className="overflow-x-auto max-h-[400px] overflow-y-auto border border-gray-200 dark:border-gray-700 rounded-lg">
-                                    <table className="w-full text-xs">
-                                        <thead className="sticky top-0 bg-gray-50 dark:bg-[#0a0a0a] z-10">
-                                            <tr className="border-b border-gray-200 dark:border-gray-700">
-                                                <th className="px-3 py-2 text-left text-[10px] font-medium text-gray-500 uppercase">Data</th>
-                                                {BANK_ACCOUNTS.map(bank => (
-                                                    <th key={bank.key} className={`px-3 py-2 text-right text-[10px] font-medium uppercase ${bank.textColor}`}>{bank.label}</th>
-                                                ))}
-                                                <th className="px-3 py-2 text-right text-[10px] font-medium text-gray-500 uppercase">Total</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {cashPositionData.map((row, idx) => {
-                                                const isHighlighted = highlightDate && row.date === highlightDate;
-                                                const isToday = row.date === new Date().toISOString().slice(0, 10);
-                                                return (
-                                                    <tr
-                                                        key={row.date}
-                                                        className={`border-b border-gray-100 dark:border-gray-800 transition-colors cursor-pointer hover:bg-gray-50 dark:hover:bg-[#111111] ${isHighlighted ? "bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300 dark:ring-yellow-700" : isToday ? "bg-blue-50/50 dark:bg-blue-900/10" : idx % 2 === 0 ? "bg-white dark:bg-black" : "bg-gray-50/50 dark:bg-[#050505]"}`}
-                                                        onClick={() => setHighlightDate(row.date)}
-                                                    >
-                                                        <td className={`px-3 py-1.5 font-medium whitespace-nowrap ${isHighlighted ? "text-yellow-700 dark:text-yellow-300" : isToday ? "text-blue-600 dark:text-blue-400" : "text-gray-700 dark:text-gray-300"}`}>
-                                                            {row.label}
-                                                            {isToday && <span className="ml-1 text-[8px] text-blue-500">(today)</span>}
-                                                        </td>
-                                                        {BANK_ACCOUNTS.map(bank => {
-                                                            const val = row[bank.key] || 0;
-                                                            return (
-                                                                <td key={bank.key} className={`px-3 py-1.5 text-right font-mono ${val === 0 ? "text-gray-400" : val > 0 ? "text-gray-900 dark:text-white" : "text-red-400"}`}>
-                                                                    {val === 0 ? "—" : formatCurrency(val, bank.currency)}
-                                                                </td>
-                                                            );
-                                                        })}
-                                                        <td className={`px-3 py-1.5 text-right font-bold font-mono ${row.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
-                                                            {formatCurrency(row.total, "EUR")}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                {cashPositionData.length === 0 && (
-                                    <div className="text-center py-8 text-gray-500">
-                                        <Wallet className="h-10 w-10 mx-auto mb-3 opacity-40" />
-                                        <p className="text-sm">No bank balance data available for this range</p>
-                                        <p className="text-xs mt-1">Upload statements with SALDO/BALANCE columns</p>
-                                    </div>
-                                )}
-                            </div>
                         </AccordionContent>
                     </AccordionItem>
 

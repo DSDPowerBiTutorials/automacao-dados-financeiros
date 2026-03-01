@@ -90,13 +90,7 @@ export const NAV: NavGroup[] = withUnderConstruction([
             underConstruction: true
           },
           {
-            title: "Cash Flow Summary",
-            href: "/executive/cash-flow",
-            icon: TrendingDown,
-            underConstruction: true
-          },
-          {
-            title: "🏦 Cash Flow Bancário",
+            title: "Cashflow Summary",
             href: "/executive/cash-flow/bank",
             icon: Building
           },
