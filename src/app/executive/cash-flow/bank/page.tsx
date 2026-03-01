@@ -1332,7 +1332,7 @@ export default function BankCashFlowPage() {
                 </PageHeader>
 
                 {/* Scrolling bank balances marquee */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-black overflow-hidden relative h-8">
+                <div className="flex-shrink-0 bg-white dark:bg-black overflow-hidden relative h-8">
                     <div className="flex items-center gap-8 animate-marquee whitespace-nowrap absolute top-1/2 -translate-y-1/2">
                         {[...actualBalance.perBank, ...actualBalance.perBank].map((bank, i) => (
                             <span key={`${bank.key}-${i}`} className="inline-flex items-center gap-2 text-sm">
@@ -1350,7 +1350,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ─── Bank Account Tabs ─── */}
-                <div className="flex-shrink-0 px-6 py-3 bg-white dark:bg-black">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
                     <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mr-1">Accounts:</span>
                         {BANK_ACCOUNTS.map(bank => {
