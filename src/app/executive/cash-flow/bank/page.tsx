@@ -49,6 +49,7 @@ import {
     BarChart3,
     Package,
     Wallet,
+    Eye,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -2054,17 +2055,14 @@ export default function BankCashFlowPage() {
 
                             {/* ─── Table Header ─── */}
                             <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-                                <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[1060px]">
+                                <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[700px]">
                                     <div className="w-[60px] flex-shrink-0">Date</div>
                                     {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
                                     <div className="flex-1 min-w-[200px]">Description</div>
-                                    <div className="w-[100px] flex-shrink-0 truncate">Client</div>
-                                    <div className="w-[80px] flex-shrink-0">Product</div>
-                                    <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
-                                    <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
-                                    <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
-                                    <div className="w-[40px] flex-shrink-0 text-center">GW</div>
-                                    <div className="w-[40px] flex-shrink-0 text-center">Ord</div>
+                                    <div className="w-[100px] flex-shrink-0 text-right">Debit</div>
+                                    <div className="w-[100px] flex-shrink-0 text-right">Credit</div>
+                                    <div className="w-[100px] flex-shrink-0 text-right">Balance</div>
+                                    <div className="w-[40px] flex-shrink-0 text-center">View</div>
                                 </div>
                             </div>
 
@@ -2077,7 +2075,7 @@ export default function BankCashFlowPage() {
                                             {expandedGroups.has(group.date) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
                                             <span className="font-medium text-gray-900 dark:text-white text-sm">{group.dateLabel}</span>
                                             <span className="text-gray-500 text-xs ml-auto">
-                                                {group.rows.length} txns <span className="mx-1">|</span>
+                                                {group.rows.length} Transactions <span className="mx-1">|</span>
                                                 <span className="text-green-400">+{formatCurrency(group.totalCredits, dominantCurrency)}</span>
                                                 <span className="mx-1">/</span>
                                                 <span className="text-red-400">-{formatCurrency(group.totalDebits, dominantCurrency)}</span>
@@ -2093,8 +2091,7 @@ export default function BankCashFlowPage() {
 
                                             return (
                                                 <div key={tx.id}
-                                                    className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[1060px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""}`}
-                                                    onClick={() => handleRowSelect(tx)}>
+                                                    className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:hover:bg-[#0a0a0a]/50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 min-w-[700px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""}`}>
                                                     <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
                                                     {showBankColumn && (
                                                         <div className="w-[90px] flex-shrink-0">
@@ -2102,59 +2099,26 @@ export default function BankCashFlowPage() {
                                                         </div>
                                                     )}
                                                     <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
-                                                    {/* Client column */}
-                                                    <div className="w-[100px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300 truncate" title={tx.custom_data?.matched_customer_names?.join(', ') || ''}>
-                                                        {tx.amount > 0 && tx.custom_data?.matched_customer_names?.length > 0
-                                                            ? <span className="text-blue-300">{tx.custom_data.matched_customer_names[0]}{tx.custom_data.matched_customer_names.length > 1 ? ` +${tx.custom_data.matched_customer_names.length - 1}` : ''}</span>
-                                                            : tx.amount < 0 && tx.custom_data?.matched_provider
-                                                                ? <span className="text-orange-300">{tx.custom_data.matched_provider}</span>
-                                                                : <span className="text-gray-600">-</span>}
-                                                    </div>
-                                                    {/* Product / FAC column */}
-                                                    <div className="w-[80px] flex-shrink-0">
-                                                        {(() => {
-                                                            const facCode = tx.custom_data?.matched_invoice_fac || null;
-                                                            if (facCode) {
-                                                                const lineCode = getPnlLineFromCode(facCode);
-                                                                const lineConfig = getPnlLineConfig(lineCode);
-                                                                return (
-                                                                    <Badge variant="outline" className={`text-[8px] px-1 py-0 ${lineConfig?.bg || 'bg-gray-100 dark:bg-black'} ${lineConfig?.text || 'text-gray-500 dark:text-gray-400'} ${lineConfig?.border || 'border-gray-300 dark:border-gray-600'}`}>
-                                                                        {lineConfig?.icon || ''} {facCode}
-                                                                    </Badge>
-                                                                );
-                                                            }
-                                                            if (tx.custom_data?.matched_products?.length > 0) {
-                                                                return <span className="text-violet-300 text-[9px] truncate block">{tx.custom_data.matched_products[0]}</span>;
-                                                            }
-                                                            return <span className="text-gray-600 text-[9px]">-</span>;
-                                                        })()}
-                                                    </div>
-                                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                    <div className="w-[100px] flex-shrink-0 text-right text-[10px] font-mono">
                                                         {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
                                                     </div>
-                                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                    <div className="w-[100px] flex-shrink-0 text-right text-[10px] font-mono">
                                                         {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
                                                     </div>
-                                                    <div className="w-[80px] flex-shrink-0 text-center">
-                                                        {(tx.paymentSource || tx.gateway) ? (
-                                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
-                                                                {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
-                                                            </Badge>
-                                                        ) : <span className="text-gray-600 text-[9px]">-</span>}
+                                                    <div className="w-[100px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                        {(() => {
+                                                            const bal = tx.custom_data?.saldo ?? tx.custom_data?.balance;
+                                                            if (bal != null) {
+                                                                const parsed = typeof bal === "number" ? bal : parseFloat(String(bal));
+                                                                if (!isNaN(parsed)) return <span className="text-gray-700 dark:text-gray-300">{formatCurrency(parsed, tx.currency)}</span>;
+                                                            }
+                                                            return <span className="text-gray-600">-</span>;
+                                                        })()}
                                                     </div>
                                                     <div className="w-[40px] flex-shrink-0 text-center">
-                                                        {tx.isReconciled ? (
-                                                            tx.reconciliationType === "manual" ? <User className="h-3.5 w-3.5 text-blue-500 mx-auto" /> : <Zap className="h-3.5 w-3.5 text-green-500 mx-auto" />
-                                                        ) : (
-                                                            <AlertCircle className="h-3.5 w-3.5 text-yellow-500 mx-auto" />
-                                                        )}
-                                                    </div>
-                                                    <div className="w-[40px] flex-shrink-0 text-center">
-                                                        {tx.isOrderReconciled ? (
-                                                            <CheckCircle className="h-3.5 w-3.5 text-blue-400 mx-auto" />
-                                                        ) : (
-                                                            <span className="text-gray-600 text-[9px]">-</span>
-                                                        )}
+                                                        <button onClick={(e) => { e.stopPropagation(); handleRowSelect(tx); }} className="p-1 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors">
+                                                            <Eye className="h-3.5 w-3.5 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white" />
+                                                        </button>
                                                     </div>
                                                 </div>
                                             );
