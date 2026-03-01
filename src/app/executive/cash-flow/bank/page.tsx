@@ -54,7 +54,7 @@ import {
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
-import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import { LineChart, Line, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceDot } from "recharts";
 
 // ════════════════════════════════════════════════════════
 // Types & Constants
@@ -1262,23 +1262,30 @@ export default function BankCashFlowPage() {
         return cashPositionData.find(d => d.date === highlightDate) || null;
     }, [highlightDate, cashPositionData]);
 
-    // ─── Day flows for highlighted date (inflows/outflows/intercompany) ───
+    // ─── Day flows for highlighted date (inflows/outflows/intercompany) — total + per-bank ───
     const highlightedDayFlows = useMemo(() => {
-        if (!highlightDate) return { inflows: 0, outflows: 0, intercompanyCount: 0, intercompanyTotal: 0 };
+        const empty = { inflows: 0, outflows: 0, intercompanyCount: 0, intercompanyTotal: 0 };
+        if (!highlightDate) return { ...empty, perBank: {} as Record<string, typeof empty> };
         const dayTxs = bankTransactions.filter(tx => tx.date?.startsWith(highlightDate));
         let inflows = 0, outflows = 0, intercompanyCount = 0, intercompanyTotal = 0;
+        const perBank: Record<string, { inflows: number; outflows: number; intercompanyCount: number; intercompanyTotal: number }> = {};
+        for (const bank of BANK_ACCOUNTS) {
+            perBank[bank.key] = { inflows: 0, outflows: 0, intercompanyCount: 0, intercompanyTotal: 0 };
+        }
         for (const tx of dayTxs) {
-            if (tx.amount > 0) inflows += tx.amount;
-            else outflows += Math.abs(tx.amount);
+            const bankKey = tx.source || "";
+            if (tx.amount > 0) { inflows += tx.amount; if (perBank[bankKey]) perBank[bankKey].inflows += tx.amount; }
+            else { outflows += Math.abs(tx.amount); if (perBank[bankKey]) perBank[bankKey].outflows += Math.abs(tx.amount); }
             const isIntercompany = tx.custom_data?.is_intercompany === true ||
                 tx.custom_data?.gw_reconciliation_type === "intercompany" ||
                 (tx.description && /transfer|intercompany|traspaso/i.test(tx.description));
             if (isIntercompany) {
                 intercompanyCount++;
                 intercompanyTotal += Math.abs(tx.amount);
+                if (perBank[bankKey]) { perBank[bankKey].intercompanyCount++; perBank[bankKey].intercompanyTotal += Math.abs(tx.amount); }
             }
         }
-        return { inflows, outflows, intercompanyCount, intercompanyTotal };
+        return { inflows, outflows, intercompanyCount, intercompanyTotal, perBank };
     }, [highlightDate, bankTransactions]);
 
     const cashRangeBadgeLabel = useMemo(() => {
@@ -1451,61 +1458,64 @@ export default function BankCashFlowPage() {
                                     )}
                                 </div>
 
-                                {/* Highlighted date summary card — balances + day flows side by side */}
+                                {/* Highlighted date summary card — total + per-bank */}
                                 {highlightedPosition && (
-                                    <div className="flex flex-wrap items-stretch gap-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg px-4 py-3">
-                                        {/* Left: Balance by account */}
-                                        <div className="text-center min-w-[120px]">
-                                            <p className="text-[10px] text-yellow-600 dark:text-yellow-400 uppercase font-medium">
-                                                {new Date(highlightDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" })}
-                                            </p>
-                                            <p className={`text-lg font-bold ${highlightedPosition.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
-                                                {formatCurrency(highlightedPosition.total, "EUR")}
-                                            </p>
-                                            <p className="text-[9px] text-gray-500">Total balance</p>
+                                    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg px-4 py-3">
+                                        <div className="flex items-center gap-2 mb-2">
+                                            <Eye className="h-3.5 w-3.5 text-yellow-600 dark:text-yellow-400" />
+                                            <span className="text-[10px] text-yellow-600 dark:text-yellow-400 uppercase font-medium">
+                                                {new Date(highlightDate + "T00:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" })}
+                                            </span>
+                                            <Button variant="ghost" size="sm" className="h-5 w-5 p-0 ml-auto text-gray-400 hover:text-gray-900 dark:hover:text-white" onClick={() => setHighlightDate("")}>
+                                                <X className="h-3 w-3" />
+                                            </Button>
                                         </div>
-                                        <div className="border-l border-yellow-200 dark:border-yellow-700 pl-3 space-y-0.5">
-                                            {BANK_ACCOUNTS.map(bank => (
-                                                <div key={bank.key} className="flex items-center justify-between gap-4 text-[10px]">
-                                                    <span className={bank.textColor}>{bank.label}</span>
-                                                    <span className="text-gray-900 dark:text-white font-medium">
-                                                        {formatCurrency(highlightedPosition[bank.key] || 0, bank.currency)}
-                                                    </span>
+                                        <div className="flex flex-wrap gap-3">
+                                            {/* Total column */}
+                                            <div className="min-w-[140px] bg-white/60 dark:bg-black/30 rounded-md px-3 py-2 border border-yellow-200/50 dark:border-yellow-700/50">
+                                                <p className="text-[10px] text-gray-500 uppercase font-medium mb-1">All Accounts</p>
+                                                <p className={`text-base font-bold mb-1 ${highlightedPosition.total >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                                    {formatCurrency(highlightedPosition.total, "EUR")}
+                                                </p>
+                                                <div className="space-y-0.5">
+                                                    <div className="flex justify-between text-[10px]"><span className="text-gray-500">Inflows</span><span className="text-green-600 dark:text-green-400 font-semibold">{formatCurrency(highlightedDayFlows.inflows, dominantCurrency)}</span></div>
+                                                    <div className="flex justify-between text-[10px]"><span className="text-gray-500">Outflows</span><span className="text-red-500 font-semibold">{formatCurrency(highlightedDayFlows.outflows, dominantCurrency)}</span></div>
+                                                    {highlightedDayFlows.intercompanyCount > 0 && (
+                                                        <div className="flex justify-between text-[10px]"><span className="text-gray-500">Intercompany</span><span className="text-gray-700 dark:text-gray-300 font-medium">{formatCurrency(highlightedDayFlows.intercompanyTotal, dominantCurrency)}</span></div>
+                                                    )}
+                                                    <div className="flex justify-between text-[10px] border-t border-yellow-200 dark:border-yellow-700 pt-0.5"><span className="text-gray-500">Net</span><span className={`font-bold ${highlightedDayFlows.inflows - highlightedDayFlows.outflows >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>{formatCurrency(highlightedDayFlows.inflows - highlightedDayFlows.outflows, dominantCurrency)}</span></div>
                                                 </div>
-                                            ))}
-                                        </div>
-                                        {/* Right: Day flows (inflows/outflows/intercompany) */}
-                                        <div className="border-l border-yellow-200 dark:border-yellow-700 pl-3 space-y-0.5">
-                                            <div className="flex items-center justify-between gap-4 text-[10px]">
-                                                <span className="text-gray-500">Inflows</span>
-                                                <span className="text-green-600 dark:text-green-400 font-bold">
-                                                    {formatCurrency(highlightedDayFlows.inflows, dominantCurrency)}
-                                                </span>
                                             </div>
-                                            <div className="flex items-center justify-between gap-4 text-[10px]">
-                                                <span className="text-gray-500">Outflows</span>
-                                                <span className="text-red-500 font-bold">
-                                                    {formatCurrency(highlightedDayFlows.outflows, dominantCurrency)}
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between gap-4 text-[10px]">
-                                                <span className="text-gray-500">Intercompany</span>
-                                                <span className="text-gray-900 dark:text-white font-medium">
-                                                    {highlightedDayFlows.intercompanyCount} txns ({formatCurrency(highlightedDayFlows.intercompanyTotal, dominantCurrency)})
-                                                </span>
-                                            </div>
-                                            <div className="flex items-center justify-between gap-4 text-[10px] border-t border-yellow-200 dark:border-yellow-700 pt-0.5">
-                                                <span className="text-gray-500">Net flow</span>
-                                                <span className={`font-bold ${highlightedDayFlows.inflows - highlightedDayFlows.outflows >= 0 ? "text-green-600 dark:text-green-400" : "text-red-500"}`}>
-                                                    {formatCurrency(highlightedDayFlows.inflows - highlightedDayFlows.outflows, dominantCurrency)}
-                                                </span>
-                                            </div>
+                                            {/* Per-bank columns */}
+                                            {BANK_ACCOUNTS.filter(b => selectedBanks.has(b.key)).map(bank => {
+                                                const bf = highlightedDayFlows.perBank[bank.key];
+                                                const bal = highlightedPosition[bank.key] || 0;
+                                                return (
+                                                    <div key={bank.key} className="min-w-[130px] bg-white/60 dark:bg-black/30 rounded-md px-3 py-2 border border-yellow-200/50 dark:border-yellow-700/50">
+                                                        <p className={`text-[10px] uppercase font-medium mb-1 ${bank.textColor}`}>{bank.label}</p>
+                                                        <p className={`text-base font-bold mb-1 ${bal >= 0 ? "text-green-600 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                                            {formatCurrency(bal, bank.currency)}
+                                                        </p>
+                                                        <div className="space-y-0.5">
+                                                            <div className="flex justify-between text-[10px]"><span className="text-gray-500">In</span><span className="text-green-600 dark:text-green-400 font-semibold">{formatCurrency(bf?.inflows || 0, bank.currency)}</span></div>
+                                                            <div className="flex justify-between text-[10px]"><span className="text-gray-500">Out</span><span className="text-red-500 font-semibold">{formatCurrency(bf?.outflows || 0, bank.currency)}</span></div>
+                                                            {(bf?.intercompanyCount || 0) > 0 && (
+                                                                <div className="flex justify-between text-[10px]"><span className="text-gray-500">Interco.</span><span className="text-gray-700 dark:text-gray-300 font-medium">{formatCurrency(bf?.intercompanyTotal || 0, bank.currency)}</span></div>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 )}
 
                                 {/* Area chart — cash position evolution (click to highlight) */}
                                 {cashPositionData.length > 0 && (
+                                    <div className="space-y-1">
+                                    {!highlightDate && (
+                                        <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center italic">Click on any data point to inspect that day</p>
+                                    )}
                                     <div className="h-[220px] w-full">
                                         <ResponsiveContainer width="100%" height="100%">
                                             <AreaChart
@@ -1553,8 +1563,23 @@ export default function BankCashFlowPage() {
                                                 <Area type="monotone" dataKey="bankinter-usd" name="Bankinter USD" stroke="#10b981" strokeWidth={1.5} fill="url(#cpGradBkUsd)" dot={false} strokeDasharray="4 2" />
                                                 <Area type="monotone" dataKey="sabadell" name="Sabadell EUR" stroke="#f97316" strokeWidth={1.5} fill="url(#cpGradSab)" dot={false} strokeDasharray="4 2" />
                                                 <Area type="monotone" dataKey="chase-usd" name="Chase USD" stroke="#a855f7" strokeWidth={1.5} fill="url(#cpGradChase)" dot={false} strokeDasharray="4 2" />
+                                                {highlightDate && highlightedPosition && (
+                                                    <ReferenceDot
+                                                        x={highlightedPosition.label}
+                                                        y={highlightedPosition.total}
+                                                        r={0}
+                                                        ifOverflow="extendDomain"
+                                                    >
+                                                        <g transform="translate(-10,-10)">
+                                                            <circle cx="10" cy="10" r="10" fill="#eab308" fillOpacity={0.25} stroke="#eab308" strokeWidth={1.5} />
+                                                            <path d="M10 7C7.5 7 5.5 8.5 4.5 10c1 1.5 3 3 5.5 3s4.5-1.5 5.5-3c-1-1.5-3-3-5.5-3z" fill="none" stroke="#ca8a04" strokeWidth={1.2} />
+                                                            <circle cx="10" cy="10" r="1.5" fill="#ca8a04" />
+                                                        </g>
+                                                    </ReferenceDot>
+                                                )}
                                             </AreaChart>
                                         </ResponsiveContainer>
+                                    </div>
                                     </div>
                                 )}
 
