@@ -1210,6 +1210,28 @@ export default function BankCashFlowPage() {
         return result;
     }, [bankTransactions, cashRangePreset, cashCustomRange]);
 
+    // ─── Actual balance: most recent bank balance across all sources ───
+    const actualBalance = useMemo(() => {
+        let latestDate = "";
+        const lastKnown: Record<string, number> = {};
+        const sorted = [...bankTransactions]
+            .filter(tx => BANK_ACCOUNTS.some(b => b.key === tx.source))
+            .sort((a, b) => a.date.localeCompare(b.date));
+        for (const tx of sorted) {
+            const bal = tx.custom_data?.saldo ?? tx.custom_data?.balance;
+            if (bal != null) {
+                const parsed = typeof bal === "number" ? bal : parseFloat(String(bal));
+                if (!isNaN(parsed)) {
+                    lastKnown[tx.source] = parsed;
+                    const day = tx.date.split("T")[0];
+                    if (day > latestDate) latestDate = day;
+                }
+            }
+        }
+        const total = Object.values(lastKnown).reduce((s, v) => s + v, 0);
+        return { total, date: latestDate };
+    }, [bankTransactions]);
+
     // ─── Cash position for highlighted date ───
     const highlightedPosition = useMemo(() => {
         if (!highlightDate) return null;
@@ -1272,17 +1294,22 @@ export default function BankCashFlowPage() {
                     <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-4">
                             <div>
-                                <h1 className="text-xl font-semibold">Bank Cash Flow</h1>
+                                <h1 className="text-xl font-semibold">Cashflow Summary</h1>
                                 <span className="text-gray-500 dark:text-gray-400 text-sm">
                                     {summary.transactionCount} transactions • {[...selectedBanks].map(b => BANK_ACCOUNTS.find(a => a.key === b)?.label).join(", ")}
                                 </span>
                             </div>
                         </div>
                         <div className="text-right">
-                            <p className="text-sm text-gray-500 dark:text-gray-400">Net Balance</p>
-                            <p className={`text-2xl font-bold ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`}>
-                                {formatCurrency(summary.netCashFlow, dominantCurrency)}
+                            <p className="text-sm text-gray-500 dark:text-gray-400">Actual Balance</p>
+                            <p className={`text-2xl font-bold ${actualBalance.total >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                {formatCurrency(actualBalance.total, dominantCurrency)}
                             </p>
+                            {actualBalance.date && (
+                                <p className="text-xs text-gray-400 dark:text-gray-500 mt-0.5">
+                                    Most Recent Data: {new Date(actualBalance.date + "T00:00:00").toLocaleDateString("en-GB", { day: "2-digit", month: "2-digit", year: "numeric", timeZone: "UTC" })}
+                                </p>
+                            )}
                         </div>
                     </div>
 
@@ -1351,7 +1378,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ═══ ACCORDION SECTIONS ═══ */}
-                <Accordion type="multiple" defaultValue={["cash-position", "charts", "statements"]} className="flex-1 flex flex-col overflow-hidden">
+                <Accordion type="multiple" defaultValue={[]} className="flex-1 flex flex-col overflow-hidden">
 
                     {/* ─── Section 1: Cash Position ─── */}
                     <AccordionItem value="cash-position" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
