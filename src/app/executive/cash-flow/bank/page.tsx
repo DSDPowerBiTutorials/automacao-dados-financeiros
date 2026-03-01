@@ -753,6 +753,46 @@ export default function BankCashFlowPage() {
         };
     }, [filteredTransactions, bankTransactions]);
 
+    // ─── Analytics Range controls ───
+    const [analyticsRangePreset, setAnalyticsRangePreset] = useState<"7d" | "30d" | "90d" | "180d" | "365d" | "custom">("365d");
+    const [analyticsCustomRange, setAnalyticsCustomRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
+
+    // ─── Analytics filtered transactions (date-range filtered from filteredTransactions) ───
+    const analyticsFilteredTx = useMemo(() => {
+        const presetDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90, "180d": 180, "365d": 365 };
+        if (analyticsRangePreset === "custom") {
+            if (!analyticsCustomRange.start || !analyticsCustomRange.end) return filteredTransactions;
+            return filteredTransactions.filter(tx => {
+                const d = tx.date?.split("T")[0] || "";
+                return d >= analyticsCustomRange.start && d <= analyticsCustomRange.end;
+            });
+        }
+        const days = presetDaysMap[analyticsRangePreset] || 365;
+        const cutoff = new Date();
+        cutoff.setDate(cutoff.getDate() - days);
+        const cutoffStr = cutoff.toISOString().slice(0, 10);
+        return filteredTransactions.filter(tx => (tx.date?.split("T")[0] || "") >= cutoffStr);
+    }, [filteredTransactions, analyticsRangePreset, analyticsCustomRange]);
+
+    // Whether analytics should use daily (for short ranges) or monthly aggregation
+    const analyticsUseDaily = useMemo(() => {
+        if (analyticsRangePreset === "custom") {
+            if (analyticsCustomRange.start && analyticsCustomRange.end) {
+                const diff = Math.ceil((new Date(analyticsCustomRange.end).getTime() - new Date(analyticsCustomRange.start).getTime()) / 86400000);
+                return diff <= 60;
+            }
+            return false;
+        }
+        return ["7d", "30d"].includes(analyticsRangePreset);
+    }, [analyticsRangePreset, analyticsCustomRange]);
+
+    const analyticsRangeBadgeLabel = useMemo(() => {
+        if (analyticsRangePreset === "custom") {
+            return analyticsFilteredTx.length > 0 ? `${analyticsFilteredTx.length} txns` : "Custom";
+        }
+        return analyticsRangePreset.replace("d", " days");
+    }, [analyticsRangePreset, analyticsFilteredTx.length]);
+
     // ─── Aggregated data for analytics (daily or monthly based on range) ───
     const monthlyData = useMemo(() => {
         const map = new Map<string, { month: string; label: string; inflows: number; outflows: number; balance: number; runningBalance: number }>();
@@ -1194,46 +1234,6 @@ export default function BankCashFlowPage() {
         }
         return { inflows, outflows, intercompanyCount, intercompanyTotal };
     }, [highlightDate, bankTransactions]);
-
-    // ─── Analytics Range controls ───
-    const [analyticsRangePreset, setAnalyticsRangePreset] = useState<"7d" | "30d" | "90d" | "180d" | "365d" | "custom">("365d");
-    const [analyticsCustomRange, setAnalyticsCustomRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
-
-    // ─── Analytics filtered transactions (date-range filtered from filteredTransactions) ───
-    const analyticsFilteredTx = useMemo(() => {
-        const presetDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90, "180d": 180, "365d": 365 };
-        if (analyticsRangePreset === "custom") {
-            if (!analyticsCustomRange.start || !analyticsCustomRange.end) return filteredTransactions;
-            return filteredTransactions.filter(tx => {
-                const d = tx.date?.split("T")[0] || "";
-                return d >= analyticsCustomRange.start && d <= analyticsCustomRange.end;
-            });
-        }
-        const days = presetDaysMap[analyticsRangePreset] || 365;
-        const cutoff = new Date();
-        cutoff.setDate(cutoff.getDate() - days);
-        const cutoffStr = cutoff.toISOString().slice(0, 10);
-        return filteredTransactions.filter(tx => (tx.date?.split("T")[0] || "") >= cutoffStr);
-    }, [filteredTransactions, analyticsRangePreset, analyticsCustomRange]);
-
-    // Whether analytics should use daily (for short ranges) or monthly aggregation
-    const analyticsUseDaily = useMemo(() => {
-        if (analyticsRangePreset === "custom") {
-            if (analyticsCustomRange.start && analyticsCustomRange.end) {
-                const diff = Math.ceil((new Date(analyticsCustomRange.end).getTime() - new Date(analyticsCustomRange.start).getTime()) / 86400000);
-                return diff <= 60;
-            }
-            return false;
-        }
-        return ["7d", "30d"].includes(analyticsRangePreset);
-    }, [analyticsRangePreset, analyticsCustomRange]);
-
-    const analyticsRangeBadgeLabel = useMemo(() => {
-        if (analyticsRangePreset === "custom") {
-            return analyticsFilteredTx.length > 0 ? `${analyticsFilteredTx.length} txns` : "Custom";
-        }
-        return analyticsRangePreset.replace("d", " days");
-    }, [analyticsRangePreset, analyticsFilteredTx.length]);
 
     const cashRangeBadgeLabel = useMemo(() => {
         if (cashRangePreset === "custom") {
