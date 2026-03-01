@@ -756,12 +756,20 @@ export default function BankCashFlowPage() {
     }, [filteredTransactions, bankTransactions]);
 
     // ─── Analytics Range controls ───
-    const [analyticsRangePreset, setAnalyticsRangePreset] = useState<"7d" | "30d" | "90d" | "180d" | "365d" | "custom">("365d");
+    const [analyticsRangeMode, setAnalyticsRangeMode] = useState<"days" | "months">("days");
+    const [analyticsRangePreset, setAnalyticsRangePreset] = useState<string>("365d");
     const [analyticsCustomRange, setAnalyticsCustomRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
+
+    // Reset preset when mode changes
+    const handleRangeModeChange = useCallback((mode: "days" | "months") => {
+        setAnalyticsRangeMode(mode);
+        setAnalyticsRangePreset(mode === "days" ? "365d" : "6m");
+    }, []);
 
     // ─── Analytics filtered transactions (date-range filtered from filteredTransactions) ───
     const analyticsFilteredTx = useMemo(() => {
-        const presetDaysMap: Record<string, number> = { "7d": 7, "30d": 30, "90d": 90, "180d": 180, "365d": 365 };
+        const presetDaysMap: Record<string, number> = { "7d": 7, "15d": 15, "30d": 30, "60d": 60, "90d": 90, "120d": 120, "150d": 150, "180d": 180, "365d": 365 };
+        const presetMonthsMap: Record<string, number> = { "1m": 30, "2m": 61, "3m": 91, "4m": 122, "5m": 152, "6m": 183, "7m": 213, "8m": 244, "9m": 274, "10m": 305, "11m": 335, "12m": 365 };
         if (analyticsRangePreset === "custom") {
             if (!analyticsCustomRange.start || !analyticsCustomRange.end) return filteredTransactions;
             return filteredTransactions.filter(tx => {
@@ -769,7 +777,7 @@ export default function BankCashFlowPage() {
                 return d >= analyticsCustomRange.start && d <= analyticsCustomRange.end;
             });
         }
-        const days = presetDaysMap[analyticsRangePreset] || 365;
+        const days = presetDaysMap[analyticsRangePreset] || presetMonthsMap[analyticsRangePreset] || 365;
         const cutoff = new Date();
         cutoff.setDate(cutoff.getDate() - days);
         const cutoffStr = cutoff.toISOString().slice(0, 10);
@@ -785,12 +793,17 @@ export default function BankCashFlowPage() {
             }
             return false;
         }
-        return ["7d", "30d"].includes(analyticsRangePreset);
-    }, [analyticsRangePreset, analyticsCustomRange]);
+        if (analyticsRangeMode === "months") return false;
+        return ["7d", "15d", "30d", "60d"].includes(analyticsRangePreset);
+    }, [analyticsRangePreset, analyticsRangeMode, analyticsCustomRange]);
 
     const analyticsRangeBadgeLabel = useMemo(() => {
         if (analyticsRangePreset === "custom") {
             return analyticsFilteredTx.length > 0 ? `${analyticsFilteredTx.length} txns` : "Custom";
+        }
+        if (analyticsRangePreset.endsWith("m")) {
+            const n = analyticsRangePreset.replace("m", "");
+            return `${n} month${Number(n) > 1 ? "s" : ""}`;
         }
         return analyticsRangePreset.replace("d", " days");
     }, [analyticsRangePreset, analyticsFilteredTx.length]);
@@ -1319,7 +1332,7 @@ export default function BankCashFlowPage() {
                 </PageHeader>
 
                 {/* Scrolling bank balances marquee */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800 bg-gray-50 dark:bg-[#0a0a0a] overflow-hidden relative h-8">
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800 bg-white dark:bg-black overflow-hidden relative h-8">
                     <div className="flex items-center gap-8 animate-marquee whitespace-nowrap absolute top-1/2 -translate-y-1/2">
                         {[...actualBalance.perBank, ...actualBalance.perBank].map((bank, i) => (
                             <span key={`${bank.key}-${i}`} className="inline-flex items-center gap-2 text-sm">
@@ -1337,7 +1350,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ─── Bank Account Tabs ─── */}
-                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-gray-100 dark:bg-[#0a0a0a]">
+                <div className="flex-shrink-0 px-6 py-3 bg-white dark:bg-black">
                     <div className="flex items-center gap-3 flex-wrap">
                         <span className="text-xs text-gray-500 uppercase tracking-wider mr-1">Accounts:</span>
                         {BANK_ACCOUNTS.map(bank => {
@@ -1617,16 +1630,44 @@ export default function BankCashFlowPage() {
                                     <div className="flex items-center gap-2">
                                         <Filter className="h-4 w-4 text-gray-500" />
                                         <span className="text-xs text-gray-500 uppercase tracking-wider">Range:</span>
-                                        <Select value={analyticsRangePreset} onValueChange={(value: "7d" | "30d" | "90d" | "180d" | "365d" | "custom") => setAnalyticsRangePreset(value)}>
-                                            <SelectTrigger className="w-40 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs">
+                                        {/* Days / Months toggle */}
+                                        <div className="inline-flex rounded-md border border-gray-300 dark:border-gray-600 overflow-hidden">
+                                            <button onClick={() => handleRangeModeChange("days")} className={`px-2.5 py-1 text-xs font-medium transition-colors ${analyticsRangeMode === "days" ? "bg-blue-600 text-white" : "bg-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>Days</button>
+                                            <button onClick={() => handleRangeModeChange("months")} className={`px-2.5 py-1 text-xs font-medium transition-colors ${analyticsRangeMode === "months" ? "bg-blue-600 text-white" : "bg-transparent text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"}`}>Months</button>
+                                        </div>
+                                        <Select value={analyticsRangePreset} onValueChange={(value: string) => setAnalyticsRangePreset(value)}>
+                                            <SelectTrigger className="w-44 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs">
                                                 <SelectValue placeholder="Select range" />
                                             </SelectTrigger>
                                             <SelectContent>
-                                                <SelectItem value="7d">Last 7 days</SelectItem>
-                                                <SelectItem value="30d">Last 30 days</SelectItem>
-                                                <SelectItem value="90d">Last 90 days</SelectItem>
-                                                <SelectItem value="180d">Last 180 days</SelectItem>
-                                                <SelectItem value="365d">Last 365 days</SelectItem>
+                                                {analyticsRangeMode === "days" ? (
+                                                    <>
+                                                        <SelectItem value="7d">Last 7 days</SelectItem>
+                                                        <SelectItem value="15d">Last 15 days</SelectItem>
+                                                        <SelectItem value="30d">Last 30 days</SelectItem>
+                                                        <SelectItem value="60d">Last 60 days</SelectItem>
+                                                        <SelectItem value="90d">Last 90 days</SelectItem>
+                                                        <SelectItem value="120d">Last 120 days</SelectItem>
+                                                        <SelectItem value="150d">Last 150 days</SelectItem>
+                                                        <SelectItem value="180d">Last 180 days</SelectItem>
+                                                        <SelectItem value="365d">Last 365 days</SelectItem>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <SelectItem value="1m">1 month</SelectItem>
+                                                        <SelectItem value="2m">2 months</SelectItem>
+                                                        <SelectItem value="3m">3 months</SelectItem>
+                                                        <SelectItem value="4m">4 months</SelectItem>
+                                                        <SelectItem value="5m">5 months</SelectItem>
+                                                        <SelectItem value="6m">6 months</SelectItem>
+                                                        <SelectItem value="7m">7 months</SelectItem>
+                                                        <SelectItem value="8m">8 months</SelectItem>
+                                                        <SelectItem value="9m">9 months</SelectItem>
+                                                        <SelectItem value="10m">10 months</SelectItem>
+                                                        <SelectItem value="11m">11 months</SelectItem>
+                                                        <SelectItem value="12m">12 months</SelectItem>
+                                                    </>
+                                                )}
                                                 <SelectItem value="custom">Custom range</SelectItem>
                                             </SelectContent>
                                         </Select>
