@@ -465,22 +465,23 @@ export async function POST(req: NextRequest) {
         const errors: string[] = [];
         if (!dryRun && matches.length > 0) {
             for (const match of matches) {
+                // IMPORTANT: Do NOT set reconciled=true here.
+                // Gateway matching means "payment matched" — NOT bank-reconciled.
+                // reconciled=true should only be set when manually linked to a bank statement line.
                 const { error } = await supabaseAdmin
                     .from('ar_invoices')
                     .update({
                         status: 'paid',
-                        reconciled: true,
-                        reconciled_at: new Date().toISOString(),
-                        reconciled_with: `${match.payment_source}:${match.transaction_id}`,
-                        reconciliation_type: 'automatic',
-                        payment_reference: match.transaction_id,
+                        reconciled: false,
+                        reconciliation_type: 'payment-matched',
+                        payment_reference: `${match.payment_source}:${match.transaction_id}`,
                     })
                     .eq('id', match.invoice_id);
                 if (error) {
                     errors.push(`${match.invoice_id}: ${error.message}`);
                 } else {
                     updated++;
-                    // Write FAC classification to the gateway csv_row
+                    // Write FAC classification to the gateway csv_row (if available)
                     if (match.csv_row_id && match.financial_account_code) {
                         const { data: existingRow } = await supabaseAdmin
                             .from('csv_rows')
@@ -491,13 +492,12 @@ export async function POST(req: NextRequest) {
                         await supabaseAdmin
                             .from('csv_rows')
                             .update({
-                                reconciled: true,
                                 custom_data: {
                                     ...prevData,
                                     matched_invoice_number: match.invoice_number,
                                     matched_invoice_fac: match.financial_account_code,
                                     matched_invoice_fac_name: match.financial_account_name,
-                                    reconciled_with: `ar_invoice:${match.invoice_id}`,
+                                    payment_matched_with: `ar_invoice:${match.invoice_id}`,
                                     reconciliation_type: match.match_type,
                                 },
                             })

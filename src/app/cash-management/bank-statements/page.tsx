@@ -161,7 +161,26 @@ interface RevenueOrderMatch {
     matchReason: string;
     reconciled?: boolean;
     reconciledWith?: string | null;
+    reconciliationType?: string | null;
     financialAccountCode?: string | null;
+    products?: string | null;
+}
+
+// P&L line definitions for classification popup
+const PNL_LINE_OPTIONS = [
+    { code: "101", label: "Growth", icon: "🚀" },
+    { code: "102", label: "Delight", icon: "✨" },
+    { code: "103", label: "Planning Center", icon: "📋" },
+    { code: "104", label: "Lab", icon: "🔬" },
+    { code: "105", label: "Other Income", icon: "💡" },
+];
+
+interface PnlProductEntry {
+    productName: string;
+    pnlLine: string;
+    inferred: boolean; // true if auto-inferred from past mappings
+    orderId: string;
+    orderAmount: number;
 }
 
 interface IntercompanyMatch {
@@ -577,7 +596,12 @@ export default function BankStatementsPage() {
     const [isSearchingOrders, setIsSearchingOrders] = useState(false);
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     // Cache order data so totals survive across multiple searches
-    const [selectedOrdersCache, setSelectedOrdersCache] = useState<Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null }>>(new Map());
+    const [selectedOrdersCache, setSelectedOrdersCache] = useState<Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>>(new Map());
+
+    // P&L Classification Popup state
+    const [showPnlPopup, setShowPnlPopup] = useState(false);
+    const [pnlProducts, setPnlProducts] = useState<PnlProductEntry[]>([]);
+    const [pendingReconcileCallback, setPendingReconcileCallback] = useState<(() => Promise<void>) | null>(null);
 
     // Gateway transaction browsing (for linking individual txns to disbursement)
     const [gatewayTxSearchTerm, setGatewayTxSearchTerm] = useState("");
@@ -660,6 +684,7 @@ export default function BankStatementsPage() {
                         orderId: order.orderId || null,
                         invoiceNumber: order.invoiceNumber || null,
                         financialAccountCode: order.financialAccountCode || null,
+                        products: order.products || null,
                     }));
                 }
             }
@@ -758,7 +783,9 @@ export default function BankStatementsPage() {
                     matchReason: "Manual search",
                     reconciled: row.reconciled === true,
                     reconciledWith: row.reconciled_with || null,
+                    reconciliationType: row.reconciliation_type || null,
                     financialAccountCode: row.financial_account_code || null,
+                    products: row.products || null,
                 }));
             const uniqueById = Array.from(new Map(results.map(item => [item.id, item])).values());
             setOrderSearchResults(uniqueById);
@@ -1542,7 +1569,9 @@ export default function BankStatementsPage() {
                             date: row.order_date || "",
                             matchScore: isExact ? 100 : 60,
                             matchReason: isExact ? "Exact amount + customer name" : `Customer name match`,
+                            reconciliationType: row.reconciliation_type || null,
                             financialAccountCode: row.financial_account_code || null,
+                            products: row.products || null,
                         });
                     }
                 });
@@ -1664,23 +1693,23 @@ export default function BankStatementsPage() {
                 try {
                     if (cd.linked_web_order_details?.length > 0) {
                         const preloadIds = new Set<string>();
-                        const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null }>();
+                        const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>();
                         for (const d of cd.linked_web_order_details) {
                             preloadIds.add(d.id);
-                            preloadCache.set(d.id, { amount: d.amount || 0, customerName: d.customerName || "", orderId: d.orderId || null, invoiceNumber: d.invoiceNumber || null, financialAccountCode: d.financialAccountCode || null });
+                            preloadCache.set(d.id, { amount: d.amount || 0, customerName: d.customerName || "", orderId: d.orderId || null, invoiceNumber: d.invoiceNumber || null, financialAccountCode: d.financialAccountCode || null, products: d.products || null });
                         }
                         setSelectedOrderIds(preloadIds);
                         setSelectedOrdersCache(preloadCache);
                     } else if (cd.linked_web_order_ids?.length > 0) {
                         const realIds = (cd.linked_web_order_ids as string[]).map((xid: string) => parseInt(String(xid).replace("ar-", "")));
-                        const { data: arRows } = await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code").in("id", realIds);
+                        const { data: arRows } = await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code, products").in("id", realIds);
                         if (arRows?.length) {
                             const preloadIds = new Set<string>();
-                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null }>();
+                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>();
                             for (const o of arRows) {
                                 const arId = `ar-${o.id}`;
                                 preloadIds.add(arId);
-                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null });
+                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null });
                             }
                             setSelectedOrderIds(preloadIds);
                             setSelectedOrdersCache(preloadCache);
@@ -1689,15 +1718,15 @@ export default function BankStatementsPage() {
                         const scalarId = String(cd.matched_order_id || cd.invoice_order_id);
                         const isArPrefixed = scalarId.startsWith("ar-");
                         const { data: arRows } = isArPrefixed
-                            ? await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code").eq("id", parseInt(scalarId.replace("ar-", "")))
-                            : await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code").eq("order_id", scalarId);
+                            ? await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code, products").eq("id", parseInt(scalarId.replace("ar-", "")))
+                            : await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code, products").eq("order_id", scalarId);
                         if (arRows?.length) {
                             const preloadIds = new Set<string>();
-                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null }>();
+                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>();
                             for (const o of arRows) {
                                 const arId = `ar-${o.id}`;
                                 preloadIds.add(arId);
-                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null });
+                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null });
                             }
                             setSelectedOrderIds(preloadIds);
                             setSelectedOrdersCache(preloadCache);
@@ -1732,6 +1761,79 @@ export default function BankStatementsPage() {
         const isExpense = reconTransaction.amount < 0;
         const txAmount = Math.abs(reconTransaction.amount);
         const now = new Date().toISOString();
+
+        try {
+            // ── P&L POPUP INTERCEPT ──
+            // For revenue orders (CASE 3 or CASE 5), check if we need to show P&L classification popup
+            if (!isExpense && (selectedRevenueOrder || selectedOrderIds.size > 0)) {
+                // Gather all product entries from selected orders
+                const orderEntries: { id: string; products: string | null; amount: number; orderId: string | null }[] = [];
+
+                if (selectedRevenueOrder) {
+                    const match = revenueOrderMatches.find(m => m.id === selectedRevenueOrder);
+                    if (match) orderEntries.push({ id: match.id, products: match.products || null, amount: match.amount, orderId: match.orderId || null });
+                }
+                if (selectedOrderIds.size > 0) {
+                    for (const [oid, data] of selectedOrdersCache) {
+                        if (selectedOrderIds.has(oid)) {
+                            orderEntries.push({ id: oid, products: data.products || null, amount: data.amount, orderId: data.orderId || null });
+                        }
+                    }
+                }
+
+                // If any orders have products AND we haven't already shown the popup, intercept
+                const hasProducts = orderEntries.some(e => e.products && e.products.trim().length > 0);
+                if (hasProducts && !showPnlPopup) {
+                    // Build product entries for the popup
+                    const productEntries: PnlProductEntry[] = [];
+
+                    // Try to load learned mappings from product_pnl_mappings table (graceful fail)
+                    let learnedMappings = new Map<string, string>();
+                    try {
+                        const { data: mappings } = await supabase.from("product_pnl_mappings").select("product_name, pnl_line");
+                        if (mappings) {
+                            for (const m of mappings) learnedMappings.set(m.product_name.toLowerCase().trim(), m.pnl_line);
+                        }
+                    } catch { /* table may not exist yet — graceful degradation */ }
+
+                    for (const entry of orderEntries) {
+                        const productName = entry.products?.trim() || "Unknown Product";
+                        const normalizedName = productName.toLowerCase().trim();
+                        const inferredLine = learnedMappings.get(normalizedName) || "";
+
+                        productEntries.push({
+                            productName,
+                            pnlLine: inferredLine || "101", // default to Growth
+                            inferred: !!inferredLine,
+                            orderId: entry.id,
+                            orderAmount: entry.amount,
+                        });
+                    }
+
+                    setPnlProducts(productEntries);
+                    setShowPnlPopup(true);
+                    setIsSavingManual(false);
+                    return; // Stop here — user will confirm P&L lines in popup, which calls executeFinalReconciliation
+                }
+            }
+
+            // Proceed with reconciliation (either directly or after P&L popup confirmation)
+            await executeFinalReconciliation(isExpense, txAmount, now);
+        } catch (err: unknown) {
+            console.error("Error reconciling:", err);
+            toast({ title: "Error", description: (err as Error).message || "Failed to reconcile", variant: "destructive" });
+        } finally {
+            setIsSavingManual(false);
+        }
+    };
+
+    /** Execute the actual reconciliation — called directly or after P&L popup confirmation */
+    const executeFinalReconciliation = async (isExpense?: boolean, txAmount?: number, now?: string) => {
+        if (!reconTransaction) return;
+        if (isExpense === undefined) isExpense = reconTransaction.amount < 0;
+        if (txAmount === undefined) txAmount = Math.abs(reconTransaction.amount);
+        if (now === undefined) now = new Date().toISOString();
+        setIsSavingManual(true);
 
         try {
             // CASE 1: Expense → AP Invoice match (supports multiple invoices)
@@ -1878,12 +1980,27 @@ export default function BankStatementsPage() {
                         orderId: match.orderId || null,
                         invoiceNumber: match.invoiceNumber || null,
                         financialAccountCode: match.financialAccountCode || null,
+                        products: match.products || null,
                     }],
                     manual_note: manualNote || null,
                 };
 
-                // Derive P&L line from order's financial account code
-                if (match.financialAccountCode) {
+                // Derive P&L line from popup classification (preferred) or FAC fallback
+                const pnlEntry = pnlProducts.find(p => p.orderId === match.id);
+                if (pnlEntry?.pnlLine) {
+                    updatedCustomData.pnl_line = pnlEntry.pnlLine;
+                    updatedCustomData.pnl_classified_from = "popup";
+                    // Save learned mapping (graceful fail if table doesn't exist)
+                    try {
+                        await supabase.from("product_pnl_mappings").upsert({
+                            product_name: pnlEntry.productName,
+                            pnl_line: pnlEntry.pnlLine,
+                            pnl_label: PNL_LINE_OPTIONS.find(p => p.code === pnlEntry.pnlLine)?.label || "",
+                            learned_from_count: 1,
+                            updated_at: now,
+                        }, { onConflict: "product_name" });
+                    } catch { /* graceful — table may not exist */ }
+                } else if (match.financialAccountCode) {
                     const pnlPrefix = match.financialAccountCode.split(".")[0];
                     updatedCustomData.pnl_fac = match.financialAccountCode;
                     updatedCustomData.pnl_line = pnlPrefix;
@@ -2045,7 +2162,7 @@ export default function BankStatementsPage() {
                     invoice_order_matched: linkedOrderIds.length > 0,
                     linked_web_order_details: linkedOrderIds.map(oid => {
                         const cached = selectedOrdersCache.get(oid);
-                        return { id: oid, amount: cached?.amount || 0, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null };
+                        return { id: oid, amount: cached?.amount || 0, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null, products: cached?.products || null };
                     }),
                     invoice_order_id: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.orderId || linkedOrderIds[0]) : null,
                     invoice_number: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.invoiceNumber || null) : null,
@@ -2055,22 +2172,41 @@ export default function BankStatementsPage() {
                     manual_note: manualNote || null,
                 };
 
-                // Derive dominant P&L line from orders' financial account codes (weighted by amount)
+                // Derive dominant P&L line from popup classification (preferred) or FAC fallback
                 if (linkedOrderIds.length > 0) {
-                    const facTotals = new Map<string, number>();
+                    // Try popup-classified P&L first
+                    const pnlTotals = new Map<string, number>();
                     for (const oid of linkedOrderIds) {
+                        const pnlEntry = pnlProducts.find(p => p.orderId === oid);
                         const cached = selectedOrdersCache.get(oid);
-                        const fac = cached?.financialAccountCode;
-                        if (fac) facTotals.set(fac, (facTotals.get(fac) || 0) + (cached?.amount || 0));
-                    }
-                    if (facTotals.size > 0) {
-                        let dominantFac = "";
-                        let maxAmt = 0;
-                        for (const [fac, amt] of facTotals) {
-                            if (amt > maxAmt) { dominantFac = fac; maxAmt = amt; }
+                        if (pnlEntry?.pnlLine) {
+                            pnlTotals.set(pnlEntry.pnlLine, (pnlTotals.get(pnlEntry.pnlLine) || 0) + (cached?.amount || 0));
+                            // Save learned mapping
+                            try {
+                                await supabase.from("product_pnl_mappings").upsert({
+                                    product_name: pnlEntry.productName,
+                                    pnl_line: pnlEntry.pnlLine,
+                                    pnl_label: PNL_LINE_OPTIONS.find(p => p.code === pnlEntry.pnlLine)?.label || "",
+                                    learned_from_count: 1,
+                                    updated_at: now,
+                                }, { onConflict: "product_name" });
+                            } catch { /* graceful */ }
+                        } else {
+                            const fac = cached?.financialAccountCode;
+                            if (fac) {
+                                const prefix = fac.split(".")[0];
+                                pnlTotals.set(prefix, (pnlTotals.get(prefix) || 0) + (cached?.amount || 0));
+                            }
                         }
-                        updatedCustomData.pnl_fac = dominantFac;
-                        updatedCustomData.pnl_line = dominantFac.split(".")[0];
+                    }
+                    if (pnlTotals.size > 0) {
+                        let dominantLine = "";
+                        let maxAmt = 0;
+                        for (const [line, amt] of pnlTotals) {
+                            if (amt > maxAmt) { dominantLine = line; maxAmt = amt; }
+                        }
+                        updatedCustomData.pnl_line = dominantLine;
+                        updatedCustomData.pnl_classified_from = "popup";
                     }
                 }
 
@@ -3507,7 +3643,11 @@ export default function BankStatementsPage() {
                                                                                 <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{rm.invoiceNumber || rm.orderId || "-"}</span>
                                                                                 <Badge variant="outline" className={`text-[9px] px-1 py-0 ${rm.matchScore >= 80 ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700" : "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-700"}`}>{rm.matchScore}%</Badge>
                                                                             </div>
-                                                                            <p className="text-xs text-gray-900 dark:text-white mt-0.5 font-medium">{rm.customerName}</p>
+                                                                            <p className="text-xs text-gray-900 dark:text-white mt-0.5 font-medium">
+                                                                                {rm.customerName}
+                                                                                {rm.reconciliationType === 'payment-matched' && !rm.reconciled && <span className="ml-1 inline-flex items-center px-1 py-0 rounded text-[8px] font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30">💳 Matched</span>}
+                                                                                {rm.reconciled && <span className="ml-1 inline-flex items-center px-1 py-0 rounded text-[8px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">✓ Rec</span>}
+                                                                            </p>
                                                                             <p className="text-[10px] text-gray-500 truncate">Cliente: {rm.customerName}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">{rm.matchReason}</p>
                                                                         </div>
@@ -3863,7 +4003,8 @@ export default function BankStatementsPage() {
                                                                 <div className="min-w-0">
                                                                     <p className="text-xs text-gray-900 dark:text-white font-medium truncate">
                                                                         {order.customerName}
-                                                                        {order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">Reconciled</span>}
+                                                                        {order.reconciliationType === 'payment-matched' && !order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30">💳 Payment Matched</span>}
+                                                                        {order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">✓ Reconciled</span>}
                                                                     </p>
                                                                     <p className="text-[10px] text-gray-500 truncate">
                                                                         {order.orderId && <span className="text-cyan-700 dark:text-cyan-400">#{order.orderId}</span>}
@@ -4086,6 +4227,113 @@ export default function BankStatementsPage() {
                     </div>
                 );
             })()}
+
+            {/* ═══════════════════════════════════════════════════════ */}
+            {/* P&L CLASSIFICATION POPUP — shown between Reconcile click and actual save */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {showPnlPopup && reconTransaction && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => { setShowPnlPopup(false); }} />
+                    <div className="relative bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-[600px] max-h-[80vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Package className="h-4.5 w-4.5 text-cyan-600" />
+                                P&L Line Classification
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Classify each order&apos;s product into a P&L line before reconciling.
+                                {pnlProducts.some(p => p.inferred) && (
+                                    <span className="ml-1 text-cyan-600 dark:text-cyan-400">(Auto-inferred from previous classifications shown)</span>
+                                )}
+                            </p>
+                        </div>
+
+                        {/* Transaction context bar */}
+                        <div className="px-6 py-2 bg-gray-50 dark:bg-black/40 border-b border-gray-200 dark:border-gray-700/50 flex items-center justify-between">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                                Bank: <span className="font-medium text-gray-900 dark:text-white">{reconTransaction.description?.substring(0, 50)}</span>
+                            </span>
+                            <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                                {formatCurrency(Math.abs(reconTransaction.amount), reconTransaction.currency)}
+                            </span>
+                        </div>
+
+                        {/* Product list */}
+                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                            {pnlProducts.map((entry, idx) => (
+                                <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-black/30">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{entry.productName}</p>
+                                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                                Order: {entry.orderId?.replace("ar-", "#") || "-"} · {formatCurrency(entry.orderAmount, reconTransaction.currency)}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            {entry.inferred && (
+                                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-cyan-50 text-cyan-700 border-cyan-300 dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-700">
+                                                    Auto
+                                                </Badge>
+                                            )}
+                                            <Select
+                                                value={entry.pnlLine}
+                                                onValueChange={(val) => {
+                                                    setPnlProducts(prev => prev.map((p, i) => i === idx ? { ...p, pnlLine: val, inferred: false } : p));
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-[180px] h-8 text-xs border-gray-300 dark:border-gray-600">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {PNL_LINE_OPTIONS.map(opt => (
+                                                        <SelectItem key={opt.code} value={opt.code} className="text-xs">
+                                                            {opt.icon} {opt.code} — {opt.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <p className="text-[10px] text-gray-500">
+                                {pnlProducts.length} product(s) · Dominant: {(() => {
+                                    const totals = new Map<string, number>();
+                                    pnlProducts.forEach(p => totals.set(p.pnlLine, (totals.get(p.pnlLine) || 0) + p.orderAmount));
+                                    let best = ""; let max = 0;
+                                    totals.forEach((v, k) => { if (v > max) { best = k; max = v; } });
+                                    const opt = PNL_LINE_OPTIONS.find(o => o.code === best);
+                                    return opt ? `${opt.icon} ${opt.code} ${opt.label}` : "-";
+                                })()}
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowPnlPopup(false)}
+                                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 h-8 text-xs"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={async () => {
+                                        setShowPnlPopup(false);
+                                        await executeFinalReconciliation();
+                                    }}
+                                    className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
+                                >
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                    Confirm &amp; Reconcile
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Error banner */}
             {error && (
