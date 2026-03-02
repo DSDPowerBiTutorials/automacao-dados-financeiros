@@ -767,7 +767,7 @@ export default function BankStatementsPage() {
         });
         // Default: 1 installment = full order amount (most common case)
         setInstallmentCount(1);
-        setInstallmentAmount(order.amount.toFixed(2));
+        setInstallmentAmount(Math.abs(order.amount).toFixed(2));
         setShowInstallmentPopup(true);
     }, [reconTransaction]);
 
@@ -3207,10 +3207,10 @@ export default function BankStatementsPage() {
                                                     )}
                                                     <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
                                                     <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                                        {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                                        {isDebit ? <span className="text-gray-900 dark:text-white">-{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-400">-</span>}
                                                     </div>
                                                     <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                                        {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                                        {isCredit ? <span className="text-gray-900 dark:text-white">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-400">-</span>}
                                                     </div>
                                                     <div className="w-[80px] flex-shrink-0 text-center">
                                                         {(tx.paymentSource || tx.gateway) ? (
@@ -3222,12 +3222,10 @@ export default function BankStatementsPage() {
                                                     <div className="w-[64px] flex-shrink-0" onClick={e => e.stopPropagation()}>
                                                         <div className="flex items-center justify-center gap-1">
                                                             {tx.isReconciled ? (
-                                                                tx.reconciliationType === "manual"
-                                                                    ? <User className="h-3.5 w-3.5 text-blue-500" />
-                                                                    : <Zap className="h-3.5 w-3.5 text-green-500" />
-                                                            ) : null}
-
-                                                            {(!tx.isReconciled || tx.reconciliationType !== "manual") && (
+                                                                tx.orderReconciliationStatus === "partial"
+                                                                    ? <CircleDot className="h-3.5 w-3.5 text-amber-500" />
+                                                                    : <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                                                            ) : (
                                                                 <Button size="sm" variant="ghost" onClick={() => openManualRecon(tx)} className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30" title="Manual reconcile">
                                                                     <Link2 className="h-3 w-3" />
                                                                 </Button>
@@ -4749,7 +4747,7 @@ export default function BankStatementsPage() {
                                             key={n}
                                             onClick={() => {
                                                 setInstallmentCount(n);
-                                                setInstallmentAmount((installmentData.orderAmount / n).toFixed(2));
+                                                setInstallmentAmount((Math.abs(installmentData.orderAmount) / n).toFixed(2));
                                             }}
                                             className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${installmentCount === n
                                                 ? "bg-violet-600 text-white border-violet-600"
@@ -4767,7 +4765,7 @@ export default function BankStatementsPage() {
                                         onChange={(e) => {
                                             const n = parseInt(e.target.value) || 1;
                                             setInstallmentCount(n);
-                                            setInstallmentAmount((installmentData.orderAmount / n).toFixed(2));
+                                            setInstallmentAmount((Math.abs(installmentData.orderAmount) / n).toFixed(2));
                                         }}
                                         className="w-16 h-8 text-xs text-center"
                                     />
@@ -4780,24 +4778,24 @@ export default function BankStatementsPage() {
                                 <Input
                                     type="number"
                                     step="0.01"
-                                    min={0.01}
-                                    max={installmentData.orderAmount}
+                                    min={0}
                                     value={installmentAmount}
                                     onChange={(e) => {
                                         const val = parseFloat(e.target.value);
-                                        if (val > installmentData.orderAmount) {
-                                            setInstallmentAmount(installmentData.orderAmount.toFixed(2));
+                                        const absOrder = Math.abs(installmentData.orderAmount);
+                                        if (val > absOrder) {
+                                            setInstallmentAmount(absOrder.toFixed(2));
                                         } else {
                                             setInstallmentAmount(e.target.value);
                                         }
                                     }}
                                     className="mt-1 h-9 text-sm"
-                                    placeholder={installmentData.orderAmount.toFixed(2)}
+                                    placeholder={Math.abs(installmentData.orderAmount).toFixed(2)}
                                 />
                                 <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
-                                    {installmentCount > 1 && <span>Per installment: {formatCurrency(installmentData.orderAmount / installmentCount, installmentData.currency)}</span>}
+                                    {installmentCount > 1 && <span>Per installment: {formatCurrency(Math.abs(installmentData.orderAmount) / installmentCount, installmentData.currency)}</span>}
                                     {installmentCount === 1 && <span>Full order amount: {formatCurrency(installmentData.orderAmount, installmentData.currency)}</span>}
-                                    {(parseFloat(installmentAmount) || 0) > installmentData.orderAmount && <span className="text-red-500 font-medium">Cannot exceed order total!</span>}
+                                    {(parseFloat(installmentAmount) || 0) > Math.abs(installmentData.orderAmount) && <span className="text-red-500 font-medium">Cannot exceed order total!</span>}
                                 </div>
                             </div>
 
@@ -4805,12 +4803,12 @@ export default function BankStatementsPage() {
                             <div className="bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
                                 <div className="flex items-center justify-between text-xs">
                                     <span className="text-gray-500">Paying now for this order</span>
-                                    <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(Math.min(parseFloat(installmentAmount) || 0, installmentData.orderAmount), installmentData.currency)}</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(Math.min(parseFloat(installmentAmount) || 0, Math.abs(installmentData.orderAmount)), installmentData.currency)}</span>
                                 </div>
                                 {installmentCount > 1 && (
                                     <div className="flex items-center justify-between text-xs mt-1">
                                         <span className="text-gray-500">Remaining on this order</span>
-                                        <span className="font-medium text-amber-600">{formatCurrency(Math.max(0, installmentData.orderAmount - (parseFloat(installmentAmount) || 0)), installmentData.currency)}</span>
+                                        <span className="font-medium text-amber-600">{formatCurrency(Math.max(0, Math.abs(installmentData.orderAmount) - (parseFloat(installmentAmount) || 0)), installmentData.currency)}</span>
                                     </div>
                                 )}
                                 <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-gray-200 dark:border-gray-700">
@@ -4846,12 +4844,13 @@ export default function BankStatementsPage() {
                             <Button
                                 onClick={async () => {
                                     const amt = parseFloat(installmentAmount);
-                                    if (!amt || amt <= 0) {
-                                        toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
+                                    if (isNaN(amt) || amt < 0) {
+                                        toast({ title: "Invalid amount", description: "Enter a valid amount (0 or more)", variant: "destructive" });
                                         return;
                                     }
-                                    if (amt > installmentData.orderAmount) {
-                                        toast({ title: "Amount exceeds order", description: `Cannot pay more than the order total (${formatCurrency(installmentData.orderAmount, installmentData.currency)})`, variant: "destructive" });
+                                    const absOrder = Math.abs(installmentData.orderAmount);
+                                    if (amt > absOrder) {
+                                        toast({ title: "Amount exceeds order", description: `Cannot pay more than the order total (${formatCurrency(absOrder, installmentData.currency)})`, variant: "destructive" });
                                         return;
                                     }
                                     // Save override — store the amount being applied to this order in this reconciliation
