@@ -6,12 +6,12 @@
 
 const API_BASE = "/api/ar-invoices";
 
-/** Search ar_invoices — paginated, ordered by order_date desc */
-export async function arSearch(currency?: string, limit = 5000): Promise<any[]> {
+/** Search ar_invoices — with optional server-side text query */
+export async function arSearch(currency?: string, limit = 5000, query?: string): Promise<any[]> {
     const res = await fetch(API_BASE, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "search", currency, limit }),
+        body: JSON.stringify({ action: "search", currency, limit, query }),
     });
     const json = await res.json();
     if (!res.ok) throw new Error(json.error || "ar-invoices search failed");

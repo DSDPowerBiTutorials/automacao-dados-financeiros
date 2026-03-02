@@ -850,8 +850,8 @@ export default function BankStatementsPage() {
             const normalizedQuery = normalizeText(query);
             const queryTokens = normalizedQuery.split(/\s+/).filter(token => token.length > 1);
 
-            // Manual search: fetch ALL currencies so user can find any order
-            const allRows = await arSearch(undefined, 5000);
+            // Manual search: server-side ILIKE search — no limit issues
+            const allRows = await arSearch(undefined, 5000, query);
 
             const results: RevenueOrderMatch[] = allRows
                 .filter(row => {

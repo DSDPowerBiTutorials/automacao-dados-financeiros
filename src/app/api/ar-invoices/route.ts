@@ -18,7 +18,28 @@ export async function POST(req: NextRequest) {
         const { action } = body;
 
         if (action === "search") {
-            const { currency, limit = 5000 } = body;
+            const { currency, limit = 5000, query } = body;
+
+            // Server-side text search — use ILIKE for targeted queries
+            if (query && typeof query === "string" && query.trim().length >= 2) {
+                const q = query.trim();
+                const pattern = `%${q}%`;
+                let qb = supabaseAdmin
+                    .from("ar_invoices")
+                    .select("*")
+                    .or(`order_id.ilike.${pattern},invoice_number.ilike.${pattern},client_name.ilike.${pattern},company_name.ilike.${pattern},email.ilike.${pattern},products.ilike.${pattern}`)
+                    .order("order_date", { ascending: false })
+                    .limit(200);
+
+                if (currency === "USD") qb = qb.eq("currency", "USD");
+                else if (currency === "EUR") qb = qb.eq("currency", "EUR");
+
+                const { data, error } = await qb;
+                if (error) throw error;
+                return NextResponse.json({ data: data || [] });
+            }
+
+            // Fallback: paginated full scan (for suggestions/auto-match)
             const PAGE_SIZE = 1000;
             const maxPages = Math.ceil(limit / PAGE_SIZE);
             const allRows: any[] = [];
