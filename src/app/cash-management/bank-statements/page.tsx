@@ -3247,15 +3247,6 @@ export default function BankStatementsPage() {
                                                             )}
                                                         </div>
                                                     </div>
-                                                    <div className="w-[40px] flex-shrink-0 text-center">
-                                                        {tx.orderReconciliationStatus === "full" ? (
-                                                            <CheckCircle className="h-3.5 w-3.5 text-green-500 mx-auto" />
-                                                        ) : tx.orderReconciliationStatus === "partial" ? (
-                                                            <CircleDot className="h-3.5 w-3.5 text-amber-500 mx-auto" />
-                                                        ) : (
-                                                            <span className="text-gray-600 text-[9px]">-</span>
-                                                        )}
-                                                    </div>
                                                     <div className="w-[40px] flex-shrink-0 text-center" onClick={e => e.stopPropagation()}>
                                                         {tx.isReconciled && (
                                                             <Button size="sm" variant="ghost" onClick={() => revertReconciliation(tx)} className="h-5 w-5 p-0 text-gray-500 hover:text-red-400 hover:bg-red-900/30" title="Revert">
