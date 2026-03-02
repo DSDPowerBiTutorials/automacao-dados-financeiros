@@ -845,12 +845,11 @@ export default function BankStatementsPage() {
         if (query.length < 2) return;
         setIsSearchingOrders(true);
         try {
-            const currency = tx.currency;
             const normalizedQuery = normalizeText(query);
             const queryTokens = normalizedQuery.split(/\s+/).filter(token => token.length > 1);
 
-            // Fetch via server-side API (bypasses RLS/GRANT)
-            const allRows = await arSearch(currency, 5000);
+            // Manual search: fetch ALL currencies so user can find any order
+            const allRows = await arSearch(undefined, 5000);
 
             const results: RevenueOrderMatch[] = allRows
                 .filter(row => {
