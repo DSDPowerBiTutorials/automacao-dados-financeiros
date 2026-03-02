@@ -114,6 +114,16 @@ interface FeePopupData {
     financialAccountName: string;
 }
 
+interface InstallmentPopupData {
+    orderId: string;
+    orderAmount: number;
+    customerName: string;
+    invoiceNumber: string | null;
+    products: string | null;
+    bankAmount: number;
+    currency: string;
+}
+
 interface BankTransaction {
     id: string;
     date: string;
@@ -651,6 +661,14 @@ export default function BankStatementsPage() {
     const [showFeePopup, setShowFeePopup] = useState(false);
     const [feePopupData, setFeePopupData] = useState<FeePopupData | null>(null);
     const [isCreatingFeeInvoice, setIsCreatingFeeInvoice] = useState(false);
+
+    // Installment Popup state (shown when order amount > bank inflow, BEFORE P&L popup)
+    const [showInstallmentPopup, setShowInstallmentPopup] = useState(false);
+    const [installmentData, setInstallmentData] = useState<InstallmentPopupData | null>(null);
+    const [installmentCount, setInstallmentCount] = useState(2);
+    const [installmentAmount, setInstallmentAmount] = useState("");
+    // Stores the adjusted amount per order (orderId → amount) set by installment popup
+    const [installmentOverrides, setInstallmentOverrides] = useState<Map<string, number>>(new Map());
 
     // Gateway transaction browsing (for linking individual txns to disbursement)
     const [gatewayTxSearchTerm, setGatewayTxSearchTerm] = useState("");
@@ -1724,6 +1742,9 @@ export default function BankStatementsPage() {
         setOrderSearchResults([]);
         setSelectedOrderIds(new Set());
         setSelectedOrdersCache(new Map());
+        setInstallmentOverrides(new Map());
+        setShowInstallmentPopup(false);
+        setInstallmentData(null);
         setIsSearchingOrders(false);
         setGatewayTxSearchTerm("");
         setGatewayTxResults([]);
@@ -1812,6 +1833,39 @@ export default function BankStatementsPage() {
         const now = new Date().toISOString();
 
         try {
+            // ── INSTALLMENT POPUP INTERCEPT ──
+            // For single revenue order where order amount > bank amount, show installment popup first
+            if (!isExpense && !showInstallmentPopup && !showPnlPopup) {
+                let checkOrder: { id: string; amount: number; customerName: string; invoiceNumber: string | null; products: string | null } | null = null;
+
+                if (selectedRevenueOrder) {
+                    const match = revenueOrderMatches.find(m => m.id === selectedRevenueOrder);
+                    if (match) checkOrder = { id: match.id, amount: match.amount, customerName: match.customerName, invoiceNumber: match.invoiceNumber, products: match.products || null };
+                } else if (selectedOrderIds.size === 1) {
+                    const oid = [...selectedOrderIds][0];
+                    const cached = selectedOrdersCache.get(oid);
+                    if (cached) checkOrder = { id: oid, amount: cached.amount, customerName: cached.customerName, invoiceNumber: cached.invoiceNumber, products: cached.products || null };
+                }
+
+                // Only show installment popup if single order amount > bank inflow AND no override already set
+                if (checkOrder && checkOrder.amount > txAmount * 1.02 && !installmentOverrides.has(checkOrder.id)) {
+                    setInstallmentData({
+                        orderId: checkOrder.id,
+                        orderAmount: checkOrder.amount,
+                        customerName: checkOrder.customerName,
+                        invoiceNumber: checkOrder.invoiceNumber,
+                        products: checkOrder.products,
+                        bankAmount: txAmount,
+                        currency: reconTransaction.currency,
+                    });
+                    setInstallmentCount(Math.max(2, Math.round(checkOrder.amount / txAmount)));
+                    setInstallmentAmount(txAmount.toFixed(2));
+                    setShowInstallmentPopup(true);
+                    setIsSavingManual(false);
+                    return; // Stop — user will choose installment amount, then we re-enter
+                }
+            }
+
             // ── P&L POPUP INTERCEPT ──
             // For revenue orders (CASE 3 or CASE 5), check if we need to show P&L classification popup
             if (!isExpense && (selectedRevenueOrder || selectedOrderIds.size > 0)) {
@@ -2032,22 +2086,62 @@ export default function BankStatementsPage() {
                 const match = revenueOrderMatches.find(m => m.id === selectedRevenueOrder);
                 if (!match) throw new Error("Revenue order not found");
 
+                // Check for installment override — use partial amount instead of full order amount
+                const effectiveMatchAmount = installmentOverrides.get(match.id) ?? match.amount;
+                const isInstallment = installmentOverrides.has(match.id);
+
                 // Update matched ar_invoices record
                 if (match.source === "ar_invoices") {
                     const arId = parseInt(match.id.replace("ar-", ""));
-                    await supabase
-                        .from("ar_invoices")
-                        .update({
-                            reconciled: true,
-                            reconciled_at: now,
-                            reconciled_with: reconTransaction.id,
-                            reconciliation_type: "manual-bank",
-                        })
-                        .eq("id", arId);
+                    if (isInstallment) {
+                        // Partial reconciliation — read current state and accumulate
+                        const { data: currentAr } = await supabase.from("ar_invoices").select("source_data").eq("id", arId).single();
+                        const existingSourceData = (currentAr?.source_data || {}) as Record<string, unknown>;
+                        const previousReconciledAmount = Number(existingSourceData.reconciled_amount_total || 0);
+                        const newReconciledTotal = Number((previousReconciledAmount + effectiveMatchAmount).toFixed(2));
+                        const previousBankIds = Array.isArray(existingSourceData.reconciled_bank_ids) ? existingSourceData.reconciled_bank_ids : [];
+                        const previousInstallments = Array.isArray(existingSourceData.installment_payments) ? existingSourceData.installment_payments : [];
+                        const installmentNumber = previousInstallments.length + 1;
+                        const fullyPaid = newReconciledTotal >= match.amount * 0.98;
+
+                        await supabase
+                            .from("ar_invoices")
+                            .update({
+                                reconciled: fullyPaid,
+                                reconciled_at: now,
+                                reconciled_with: reconTransaction.id,
+                                reconciliation_type: fullyPaid ? "manual-bank" : "manual-bank-partial",
+                                source_data: {
+                                    ...existingSourceData,
+                                    reconciled_amount_total: newReconciledTotal,
+                                    remaining_amount: Number((match.amount - newReconciledTotal).toFixed(2)),
+                                    reconciled_bank_ids: [...previousBankIds, reconTransaction.id],
+                                    installment_count: installmentCount,
+                                    installment_payments: [...previousInstallments, {
+                                        bank_tx_id: reconTransaction.id,
+                                        amount: effectiveMatchAmount,
+                                        date: reconTransaction.date,
+                                        installment_number: installmentNumber,
+                                    }],
+                                    is_installment: true,
+                                },
+                            })
+                            .eq("id", arId);
+                    } else {
+                        await supabase
+                            .from("ar_invoices")
+                            .update({
+                                reconciled: true,
+                                reconciled_at: now,
+                                reconciled_with: reconTransaction.id,
+                                reconciliation_type: "manual-bank",
+                            })
+                            .eq("id", arId);
+                    }
                 }
 
                 // Update bank transaction
-                const updatedCustomData = {
+                const updatedCustomData: Record<string, unknown> = {
                     ...reconTransaction.custom_data,
                     reconciliationType: "manual",
                     reconciled_at: now,
@@ -2060,16 +2154,16 @@ export default function BankStatementsPage() {
                     matched_order_source: match.source,
                     matched_customer_name: match.customerName,
                     matched_invoice_number: match.invoiceNumber,
-                    matched_order_amount: match.amount,
+                    matched_order_amount: effectiveMatchAmount,
                     // Array-compatible fields for incremental accumulation
                     linked_web_order_ids: [match.id],
                     linked_web_order_count: 1,
-                    linked_web_order_total: match.amount,
-                    linked_web_order_applied_total: match.amount,
-                    linked_invoice_order_total: match.amount,
+                    linked_web_order_total: effectiveMatchAmount,
+                    linked_web_order_applied_total: effectiveMatchAmount,
+                    linked_invoice_order_total: effectiveMatchAmount,
                     linked_web_order_details: [{
                         id: match.id,
-                        amount: match.amount,
+                        amount: effectiveMatchAmount,
                         customerName: match.customerName || "",
                         orderId: match.orderId || null,
                         invoiceNumber: match.invoiceNumber || null,
@@ -2079,6 +2173,12 @@ export default function BankStatementsPage() {
                         pnl_label: (() => { const e = pnlProducts.find(p => p.orderId === match.id); return e ? (PNL_LINE_OPTIONS.find(p => p.code === e.pnlLine)?.label || null) : null; })(),
                     }],
                     manual_note: manualNote || null,
+                    ...(isInstallment ? {
+                        is_installment: true,
+                        installment_count: installmentCount,
+                        installment_amount: effectiveMatchAmount,
+                        full_order_amount: match.amount,
+                    } : {}),
                 };
 
                 // Derive P&L line from popup classification (preferred) or FAC fallback
@@ -2125,11 +2225,11 @@ export default function BankStatementsPage() {
                     custom_data: updatedCustomData,
                 });
 
-                toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel}: ${match.customerName} (${formatCurrency(match.amount, reconTransaction.currency)})` });
+                toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel}: ${match.customerName} (${formatCurrency(effectiveMatchAmount, reconTransaction.currency)})${isInstallment ? " [Installment " + installmentCount + "x]" : ""}` });
                 setReconDialogOpen(false);
 
-                // Check for gateway fee (order total > bank inflow)
-                const case3FeeData = buildFeePopupData(match.amount, txAmount, [match.orderId || match.invoiceNumber || match.id].filter(Boolean) as string[]);
+                // Check for gateway fee (order total > bank inflow) — use effective amount
+                const case3FeeData = buildFeePopupData(effectiveMatchAmount, txAmount, [match.orderId || match.invoiceNumber || match.id].filter(Boolean) as string[]);
                 if (case3FeeData) {
                     setFeePopupData(case3FeeData);
                     setShowFeePopup(true);
@@ -4515,6 +4615,147 @@ export default function BankStatementsPage() {
                                     Confirm &amp; Reconcile
                                 </Button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* INSTALLMENT POPUP — shown when order amount > bank inflow */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {showInstallmentPopup && installmentData && reconTransaction && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => { setShowInstallmentPopup(false); setInstallmentData(null); }} />
+                    <div className="relative bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-[520px] max-h-[80vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-violet-600" />
+                                Installment Payment
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                This order&apos;s total ({formatCurrency(installmentData.orderAmount, installmentData.currency)}) is greater than the bank inflow ({formatCurrency(installmentData.bankAmount, installmentData.currency)}).
+                                Specify how much of this order applies to this bank transaction.
+                            </p>
+                        </div>
+
+                        {/* Order info bar */}
+                        <div className="px-6 py-2 bg-violet-50 dark:bg-violet-950/20 border-b border-violet-200 dark:border-violet-800/50">
+                            <div className="flex items-center justify-between">
+                                <div className="text-xs">
+                                    <span className="text-gray-600 dark:text-gray-400">{installmentData.customerName}</span>
+                                    {installmentData.invoiceNumber && <span className="ml-2 text-gray-400">#{installmentData.invoiceNumber}</span>}
+                                </div>
+                                <span className="text-xs font-bold text-violet-700 dark:text-violet-400">{formatCurrency(installmentData.orderAmount, installmentData.currency)} total</span>
+                            </div>
+                        </div>
+
+                        {/* Form */}
+                        <div className="px-6 py-4 space-y-4">
+                            {/* Number of installments */}
+                            <div>
+                                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Number of Installments</label>
+                                <div className="mt-1 flex items-center gap-2">
+                                    {[2, 3, 4, 5, 6].map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => {
+                                                setInstallmentCount(n);
+                                                setInstallmentAmount((installmentData.orderAmount / n).toFixed(2));
+                                            }}
+                                            className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${installmentCount === n
+                                                    ? "bg-violet-600 text-white border-violet-600"
+                                                    : "bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-violet-400"
+                                                }`}
+                                        >
+                                            {n}x
+                                        </button>
+                                    ))}
+                                    <Input
+                                        type="number"
+                                        min={2}
+                                        max={24}
+                                        value={installmentCount}
+                                        onChange={(e) => {
+                                            const n = parseInt(e.target.value) || 2;
+                                            setInstallmentCount(n);
+                                            setInstallmentAmount((installmentData.orderAmount / n).toFixed(2));
+                                        }}
+                                        className="w-16 h-8 text-xs text-center"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Amount for this installment */}
+                            <div>
+                                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Amount for This Installment ({installmentData.currency})</label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min={0.01}
+                                    max={installmentData.orderAmount}
+                                    value={installmentAmount}
+                                    onChange={(e) => setInstallmentAmount(e.target.value)}
+                                    className="mt-1 h-9 text-sm"
+                                    placeholder={installmentData.bankAmount.toFixed(2)}
+                                />
+                                <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                                    <span>Suggested: {formatCurrency(installmentData.bankAmount, installmentData.currency)} (bank inflow)</span>
+                                    <span>·</span>
+                                    <span>Per installment: {formatCurrency(installmentData.orderAmount / installmentCount, installmentData.currency)}</span>
+                                </div>
+                            </div>
+
+                            {/* Remaining amount */}
+                            <div className="bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500">This installment</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(parseFloat(installmentAmount) || 0, installmentData.currency)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs mt-1">
+                                    <span className="text-gray-500">Remaining (unreconciled)</span>
+                                    <span className="font-medium text-amber-600">{formatCurrency(Math.max(0, installmentData.orderAmount - (parseFloat(installmentAmount) || 0)), installmentData.currency)}</span>
+                                </div>
+                                <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-gray-200 dark:border-gray-700">
+                                    <span className="text-gray-500">Order total</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(installmentData.orderAmount, installmentData.currency)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    // Use full order amount (no installment)
+                                    setShowInstallmentPopup(false);
+                                    setInstallmentData(null);
+                                    // Re-trigger reconciliation without installment override
+                                    performManualReconciliation();
+                                }}
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 h-8 text-xs"
+                            >
+                                Use Full Amount
+                            </Button>
+                            <Button
+                                onClick={async () => {
+                                    const amt = parseFloat(installmentAmount);
+                                    if (!amt || amt <= 0 || amt > installmentData.orderAmount) {
+                                        toast({ title: "Invalid amount", description: "Enter a valid installment amount", variant: "destructive" });
+                                        return;
+                                    }
+                                    // Save override and close popup — re-enter performManualReconciliation
+                                    setInstallmentOverrides(prev => new Map(prev).set(installmentData.orderId, amt));
+                                    setShowInstallmentPopup(false);
+                                    setInstallmentData(null);
+                                    // Small delay to let state update, then re-trigger
+                                    setTimeout(() => performManualReconciliation(), 50);
+                                }}
+                                className="bg-violet-600 hover:bg-violet-700 h-8 text-xs text-white"
+                            >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                Confirm Installment
+                            </Button>
                         </div>
                     </div>
                 </div>
