@@ -3309,10 +3309,10 @@ export default function BankStatementsPage() {
                                                     )}
                                                     <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
                                                     <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                                        {isDebit ? <span className="text-gray-900 dark:text-white">-{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-400">-</span>}
+                                                        {isDebit ? <span className="text-red-700 dark:text-red-400">-{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-400">-</span>}
                                                     </div>
                                                     <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
-                                                        {isCredit ? <span className="text-gray-900 dark:text-white">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-400">-</span>}
+                                                        {isCredit ? <span className="text-green-700 dark:text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-400">-</span>}
                                                     </div>
                                                     <div className="w-[80px] flex-shrink-0 text-center">
                                                         {(tx.paymentSource || tx.gateway) ? (
@@ -3393,7 +3393,7 @@ export default function BankStatementsPage() {
                                     <DollarSign className="h-4 w-4 text-gray-500" />
                                     <div>
                                         <p className="text-xs text-gray-500">Amount</p>
-                                        <p className={`text-sm font-bold ${selectedRow.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                        <p className={`text-sm font-bold ${selectedRow.amount >= 0 ? "text-green-700 dark:text-green-400" : "text-red-700 dark:text-red-400"}`}>
                                             {formatCurrency(selectedRow.amount, selectedRow.currency)}
                                         </p>
                                     </div>
