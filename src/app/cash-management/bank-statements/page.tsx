@@ -233,6 +233,7 @@ interface RevenueOrderMatch {
     reconciliationType?: string | null;
     financialAccountCode?: string | null;
     products?: string | null;
+    currency?: string;
 }
 
 // P&L line definitions for classification popup
@@ -667,7 +668,7 @@ export default function BankStatementsPage() {
     const [isSearchingOrders, setIsSearchingOrders] = useState(false);
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
     // Cache order data so totals survive across multiple searches
-    const [selectedOrdersCache, setSelectedOrdersCache] = useState<Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>>(new Map());
+    const [selectedOrdersCache, setSelectedOrdersCache] = useState<Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null; currency?: string }>>(new Map());
 
     // P&L Classification Popup state
     const [showPnlPopup, setShowPnlPopup] = useState(false);
@@ -794,6 +795,7 @@ export default function BankStatementsPage() {
                         invoiceNumber: order.invoiceNumber || null,
                         financialAccountCode: order.financialAccountCode || null,
                         products: order.products || null,
+                        currency: order.currency || undefined,
                     };
                     setSelectedOrdersCache(cache => new Map(cache).set(id, cached));
                     orderData = { id, amount: order.amount, customerName: order.customerName || "", invoiceNumber: order.invoiceNumber || null, products: order.products || null };
@@ -882,6 +884,7 @@ export default function BankStatementsPage() {
                     reconciliationType: row.reconciliation_type || null,
                     financialAccountCode: row.financial_account_code || null,
                     products: row.products || null,
+                    currency: row.currency || undefined,
                 }));
             const uniqueById = Array.from(new Map(results.map(item => [item.id, item])).values());
             setOrderSearchResults(uniqueById);
@@ -1652,6 +1655,7 @@ export default function BankStatementsPage() {
                             reconciliationType: row.reconciliation_type || null,
                             financialAccountCode: row.financial_account_code || null,
                             products: row.products || null,
+                            currency: row.currency || undefined,
                         });
                     }
                 });
@@ -1776,7 +1780,7 @@ export default function BankStatementsPage() {
                 try {
                     if (cd.linked_web_order_details?.length > 0) {
                         const preloadIds = new Set<string>();
-                        const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>();
+                        const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null; currency?: string }>();
                         for (const d of cd.linked_web_order_details) {
                             preloadIds.add(d.id);
                             preloadCache.set(d.id, { amount: d.amount || 0, customerName: d.customerName || "", orderId: d.orderId || null, invoiceNumber: d.invoiceNumber || null, financialAccountCode: d.financialAccountCode || null, products: d.products || null });
@@ -1788,11 +1792,11 @@ export default function BankStatementsPage() {
                         const arRows = await arFetchByIds(realIds);
                         if (arRows?.length) {
                             const preloadIds = new Set<string>();
-                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>();
+                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null; currency?: string }>();
                             for (const o of arRows) {
                                 const arId = `ar-${o.id}`;
                                 preloadIds.add(arId);
-                                preloadCache.set(arId, { amount: Math.abs(parseFloat(o.total_amount) || parseFloat(o.charged_amount) || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null });
+                                preloadCache.set(arId, { amount: Math.abs(parseFloat(o.total_amount) || parseFloat(o.charged_amount) || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null, currency: o.currency || undefined });
                             }
                             setSelectedOrderIds(preloadIds);
                             setSelectedOrdersCache(preloadCache);
@@ -1805,11 +1809,11 @@ export default function BankStatementsPage() {
                             : await arFetchByOrderId(scalarId);
                         if (arRows?.length) {
                             const preloadIds = new Set<string>();
-                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>();
+                            const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null; currency?: string }>();
                             for (const o of arRows) {
                                 const arId = `ar-${o.id}`;
                                 preloadIds.add(arId);
-                                preloadCache.set(arId, { amount: Math.abs(parseFloat(o.total_amount) || parseFloat(o.charged_amount) || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null });
+                                preloadCache.set(arId, { amount: Math.abs(parseFloat(o.total_amount) || parseFloat(o.charged_amount) || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null, currency: o.currency || undefined });
                             }
                             setSelectedOrderIds(preloadIds);
                             setSelectedOrdersCache(preloadCache);
@@ -2129,6 +2133,7 @@ export default function BankStatementsPage() {
                     matched_customer_name: match.customerName,
                     matched_invoice_number: match.invoiceNumber,
                     matched_order_amount: effectiveMatchAmount,
+                    matched_order_currency: match.currency || null,
                     // Array-compatible fields for incremental accumulation
                     linked_web_order_ids: [match.id],
                     linked_web_order_count: 1,
@@ -2143,6 +2148,7 @@ export default function BankStatementsPage() {
                         invoiceNumber: match.invoiceNumber || null,
                         financialAccountCode: match.financialAccountCode || null,
                         products: match.products || null,
+                        currency: match.currency || null,
                         pnl_line: pnlProducts.find(p => p.orderId === match.id)?.pnlLine || null,
                         pnl_label: (() => { const e = pnlProducts.find(p => p.orderId === match.id); return e ? (PNL_LINE_OPTIONS.find(p => p.code === e.pnlLine)?.label || null) : null; })(),
                     }],
@@ -2381,7 +2387,7 @@ export default function BankStatementsPage() {
                         const pnlEntry = pnlProducts.find(p => p.orderId === oid);
                         const effectiveAmt = installmentOverrides.get(oid) ?? (cached?.amount || 0);
                         const isPartial = installmentOverrides.has(oid);
-                        return { id: oid, amount: cached?.amount || 0, applied_amount: effectiveAmt, is_installment: isPartial, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null, products: cached?.products || null, pnl_line: pnlEntry?.pnlLine || null, pnl_label: pnlEntry ? (PNL_LINE_OPTIONS.find(p => p.code === pnlEntry.pnlLine)?.label || null) : null };
+                        return { id: oid, amount: cached?.amount || 0, applied_amount: effectiveAmt, is_installment: isPartial, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null, products: cached?.products || null, currency: cached?.currency || null, pnl_line: pnlEntry?.pnlLine || null, pnl_label: pnlEntry ? (PNL_LINE_OPTIONS.find(p => p.code === pnlEntry.pnlLine)?.label || null) : null };
                     }),
                     invoice_order_id: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.orderId || linkedOrderIds[0]) : null,
                     invoice_number: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.invoiceNumber || null) : null,
@@ -4003,7 +4009,7 @@ export default function BankStatementsPage() {
                                                                             <p className="text-[10px] text-gray-500 truncate">{rm.matchReason}</p>
                                                                         </div>
                                                                         <div className="text-right ml-3">
-                                                                            <p className="text-sm font-medium text-green-700 dark:text-green-400">{formatCurrency(rm.amount, reconTransaction.currency)}</p>
+                                                                            <p className="text-sm font-medium text-green-700 dark:text-green-400">{formatCurrency(rm.amount, rm.currency || reconTransaction.currency)}</p>
                                                                             <p className="text-[10px] text-gray-500">{formatNumericDate(rm.date)}</p>
                                                                         </div>
                                                                     </div>
@@ -4127,7 +4133,7 @@ export default function BankStatementsPage() {
                                                                 return (
                                                                     <button key={id} onClick={() => toggleOrderSelection(id)} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-800/40 text-[9px] text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
                                                                         <span className="truncate max-w-[100px]">{data.customerName || data.orderId || id}</span>
-                                                                        <span className="font-medium">{formatCurrency(effectiveAmt, reconTransaction?.currency || "EUR")}</span>
+                                                                        <span className="font-medium">{formatCurrency(effectiveAmt, data.currency || reconTransaction?.currency || "EUR")}</span>
                                                                         {isPartial && <span className="text-[8px] text-amber-600 dark:text-amber-400 font-medium">(parcial)</span>}
                                                                         <X className="h-2.5 w-2.5 flex-shrink-0" />
                                                                     </button>
@@ -4174,7 +4180,7 @@ export default function BankStatementsPage() {
                                                                     <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(order.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(order.amount, order.currency || reconTransaction?.currency || "EUR")}</span>
                                                                 </div>
                                                             </div>
                                                         </button>
@@ -4320,7 +4326,7 @@ export default function BankStatementsPage() {
                                                                 return (
                                                                     <button key={id} onClick={() => toggleOrderSelection(id)} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-800/40 text-[9px] text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
                                                                         <span className="truncate max-w-[100px]">{data.customerName || data.orderId || id}</span>
-                                                                        <span className="font-medium">{formatCurrency(effectiveAmt, reconTransaction?.currency || "EUR")}</span>
+                                                                        <span className="font-medium">{formatCurrency(effectiveAmt, data.currency || reconTransaction?.currency || "EUR")}</span>
                                                                         {isPartial && <span className="text-[8px] text-amber-600 dark:text-amber-400 font-medium">(parcial)</span>}
                                                                         <X className="h-2.5 w-2.5 flex-shrink-0" />
                                                                     </button>
@@ -4378,7 +4384,7 @@ export default function BankStatementsPage() {
                                                                     <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(order.date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
-                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(order.amount, order.currency || reconTransaction?.currency || "EUR")}</span>
                                                                 </div>
                                                             </div>
                                                         </button>
