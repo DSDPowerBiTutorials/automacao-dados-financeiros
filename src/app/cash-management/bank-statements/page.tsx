@@ -70,6 +70,50 @@ const BANK_ACCOUNTS: BankAccountConfig[] = [
     { key: "chase-usd", label: "Chase 9186", currency: "USD", bgColor: "bg-purple-600", textColor: "text-purple-400", activeRing: "ring-purple-500", uploadEndpoint: "/api/csv/chase-usd", uploadAccept: ".csv", uploadType: "formdata" },
 ];
 
+// ─── Bank source → scope / bank_account_code mappings (for fee invoices) ───
+const BANK_SCOPE_MAP: Record<string, "ES" | "US"> = {
+    "bankinter-eur": "ES",
+    "bankinter-usd": "ES",
+    "sabadell": "ES",
+    "chase-usd": "US",
+};
+
+const BANK_ACCOUNT_CODE_MAP: Record<string, string> = {
+    "bankinter-eur": "BANKINTER-4605",
+    "bankinter-usd": "BANKINTER-USD-2174",
+    "sabadell": "SABADELL-8692",
+    "chase-usd": "CHASE-USD-9186",
+};
+
+// ─── Gateway → provider code mapping (for fee invoices) ───
+const GATEWAY_PROVIDER_MAP: Record<string, { code: string; name: string }> = {
+    "paypal": { code: "PAYPAL", name: "Paypal" },
+    "stripe": { code: "STRIPE", name: "Stripe" },
+    "braintree-eur": { code: "BRAINTREE", name: "Braintree" },
+    "braintree-usd": { code: "BRAINTREE", name: "Braintree" },
+    "braintree-gbp": { code: "BRAINTREE", name: "Braintree" },
+    "braintree-amex": { code: "BRAINTREE", name: "Braintree" },
+    "braintree": { code: "BRAINTREE", name: "Braintree" },
+    "gocardless": { code: "GOCARDLESS", name: "GoCardless" },
+};
+
+interface FeePopupData {
+    feeAmount: number;
+    currency: string;
+    scope: "ES" | "US";
+    gatewayKey: string;
+    gatewayName: string;
+    providerCode: string;
+    bankAccountCode: string;
+    bankAccountKey: string;
+    txDate: string;
+    orderCodes: string[];
+    orderTotal: number;
+    bankAmount: number;
+    financialAccountCode: string;
+    financialAccountName: string;
+}
+
 interface BankTransaction {
     id: string;
     date: string;
@@ -602,6 +646,11 @@ export default function BankStatementsPage() {
     const [showPnlPopup, setShowPnlPopup] = useState(false);
     const [pnlProducts, setPnlProducts] = useState<PnlProductEntry[]>([]);
     const [pendingReconcileCallback, setPendingReconcileCallback] = useState<(() => Promise<void>) | null>(null);
+
+    // Gateway Fee Invoice Popup state (3rd step — auto-triggered after reconciliation)
+    const [showFeePopup, setShowFeePopup] = useState(false);
+    const [feePopupData, setFeePopupData] = useState<FeePopupData | null>(null);
+    const [isCreatingFeeInvoice, setIsCreatingFeeInvoice] = useState(false);
 
     // Gateway transaction browsing (for linking individual txns to disbursement)
     const [gatewayTxSearchTerm, setGatewayTxSearchTerm] = useState("");
@@ -1842,6 +1891,36 @@ export default function BankStatementsPage() {
         }
     };
 
+    /** Build fee popup data when order total > bank inflow (gateway fee detected) */
+    const buildFeePopupData = (orderTotal: number, bankAmount: number, orderCodes: string[]): FeePopupData | null => {
+        if (!reconTransaction) return null;
+        const feeAmount = Number((orderTotal - bankAmount).toFixed(2));
+        if (feeAmount <= 0) return null;
+        const source = reconTransaction.source;
+        const scope = BANK_SCOPE_MAP[source] || "ES";
+        const currency = scope === "US" ? "USD" : "EUR";
+        const gatewayKey = reconTransaction.gateway || manualPaymentSource || "";
+        const gatewayInfo = GATEWAY_PROVIDER_MAP[gatewayKey] || { code: gatewayKey.toUpperCase().replace(/-/g, ""), name: gatewayKey || "Gateway" };
+        const faCode = scope === "US" ? "209.2" : "209.1";
+        const faName = scope === "US" ? "209.2 - Bank and Financial Fees USA" : "209.1 - Bank and Financial Fees SPAIN";
+        return {
+            feeAmount,
+            currency,
+            scope,
+            gatewayKey,
+            gatewayName: gatewayInfo.name,
+            providerCode: gatewayInfo.code,
+            bankAccountCode: BANK_ACCOUNT_CODE_MAP[source] || "",
+            bankAccountKey: source,
+            txDate: reconTransaction.date?.split("T")[0] || new Date().toISOString().split("T")[0],
+            orderCodes,
+            orderTotal,
+            bankAmount,
+            financialAccountCode: faCode,
+            financialAccountName: faName,
+        };
+    };
+
     /** Execute the actual reconciliation — called directly or after P&L popup confirmation */
     const executeFinalReconciliation = async (isExpense?: boolean, txAmount?: number, now?: string) => {
         if (!reconTransaction) return;
@@ -2048,6 +2127,13 @@ export default function BankStatementsPage() {
 
                 toast({ title: "Reconciled!", description: `Matched with ${match.sourceLabel}: ${match.customerName} (${formatCurrency(match.amount, reconTransaction.currency)})` });
                 setReconDialogOpen(false);
+
+                // Check for gateway fee (order total > bank inflow)
+                const case3FeeData = buildFeePopupData(match.amount, txAmount, [match.orderId || match.invoiceNumber || match.id].filter(Boolean) as string[]);
+                if (case3FeeData) {
+                    setFeePopupData(case3FeeData);
+                    setShowFeePopup(true);
+                }
                 return;
             }
 
@@ -2256,6 +2342,19 @@ export default function BankStatementsPage() {
                 if (linkedOrderIds.length > 0) parts.push(`${linkedOrderIds.length} web order(s)`);
                 toast({ title: "Reconciled!", description: `Linked with ${parts.join(" + ")}` });
                 setReconDialogOpen(false);
+
+                // Check for gateway fee (order total > bank inflow)
+                if (linkedOrderTotal > 0) {
+                    const case5OrderCodes = linkedOrderIds.map(oid => {
+                        const cached = selectedOrdersCache.get(oid);
+                        return cached?.orderId || cached?.invoiceNumber || oid.replace("ar-", "#");
+                    });
+                    const case5FeeData = buildFeePopupData(linkedOrderTotal, txAmount, case5OrderCodes);
+                    if (case5FeeData) {
+                        setFeePopupData(case5FeeData);
+                        setShowFeePopup(true);
+                    }
+                }
                 return;
             }
 
@@ -4414,6 +4513,229 @@ export default function BankStatementsPage() {
                                 >
                                     <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                                     Confirm &amp; Reconcile
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* GATEWAY FEE INVOICE POPUP — shown after reconciliation when orders > bank inflow */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {showFeePopup && feePopupData && (
+                <div className="fixed inset-0 z-[310] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => { setShowFeePopup(false); setFeePopupData(null); }} />
+                    <div className="relative bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-[560px] max-h-[85vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <CreditCard className="h-4.5 w-4.5 text-amber-600" />
+                                Gateway Fee Invoice
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                The matched orders total ({formatCurrency(feePopupData.orderTotal, feePopupData.currency)}) exceeds the bank inflow ({formatCurrency(feePopupData.bankAmount, feePopupData.currency)}).
+                                The difference of <span className="font-semibold text-amber-600">{formatCurrency(feePopupData.feeAmount, feePopupData.currency)}</span> will be recorded as a gateway fee expense.
+                            </p>
+                        </div>
+
+                        {/* Fee summary bar */}
+                        <div className="px-6 py-2 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-800/50 flex items-center justify-between">
+                            <div className="flex items-center gap-3 text-xs">
+                                <span className="text-gray-600 dark:text-gray-400">Orders: <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(feePopupData.orderTotal, feePopupData.currency)}</span></span>
+                                <span className="text-gray-400">−</span>
+                                <span className="text-gray-600 dark:text-gray-400">Bank: <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(feePopupData.bankAmount, feePopupData.currency)}</span></span>
+                                <span className="text-gray-400">=</span>
+                                <span className="font-bold text-amber-700 dark:text-amber-400">{formatCurrency(feePopupData.feeAmount, feePopupData.currency)} fee</span>
+                            </div>
+                        </div>
+
+                        {/* Pre-filled invoice fields */}
+                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                            {/* Row 1: Provider + Amount */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Provider</label>
+                                    <div className="mt-1 px-3 py-2 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-sm text-gray-900 dark:text-white">
+                                        {feePopupData.gatewayName}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Amount ({feePopupData.currency})</label>
+                                    <div className="mt-1 px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-md text-sm font-bold text-amber-700 dark:text-amber-400">
+                                        {formatCurrency(feePopupData.feeAmount, feePopupData.currency)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Row 2: Dates */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Invoice Date</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">{feePopupData.txDate}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Benefit Date</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">{feePopupData.txDate}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Payment Date</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">{feePopupData.txDate}</div>
+                                </div>
+                            </div>
+
+                            {/* Row 3: Scope + Bank Account + Financial Account */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Scope</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">{feePopupData.scope}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Bank Account</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white truncate">{feePopupData.bankAccountCode}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Financial Account</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white truncate">{feePopupData.financialAccountCode}</div>
+                                </div>
+                            </div>
+
+                            {/* Row 4: Cost Type + Dep Cost + Department */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Cost Type</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">Variable Cost</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Dep Cost</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">General Expenses</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Department</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">3.0.0 Corporate</div>
+                                </div>
+                            </div>
+
+                            {/* Row 5: Sub-Department */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Sub-Department</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">3.1.0 Corporate</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Entry Type</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">Incurred</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Invoice Type</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">INCURRED</div>
+                                </div>
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Description</label>
+                                <div className="mt-1 px-3 py-2 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">
+                                    ({feePopupData.gatewayName}, Orders {feePopupData.orderCodes.join(", ")})
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <p className="text-[10px] text-gray-500">
+                                This creates an AP invoice for the gateway fee deducted from this disbursement.
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => { setShowFeePopup(false); setFeePopupData(null); }}
+                                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 h-8 text-xs"
+                                >
+                                    Skip
+                                </Button>
+                                <Button
+                                    disabled={isCreatingFeeInvoice}
+                                    onClick={async () => {
+                                        if (!feePopupData) return;
+                                        setIsCreatingFeeInvoice(true);
+                                        try {
+                                            // Generate invoice number: {scope}-INV-{YYYYMM}-{NNNN}
+                                            const invDate = new Date(feePopupData.txDate);
+                                            const year = invDate.getFullYear();
+                                            const month = String(invDate.getMonth() + 1).padStart(2, "0");
+                                            const prefix = `${feePopupData.scope}-INV-${year}${month}`;
+                                            const { data: lastInv } = await supabase
+                                                .from("invoices")
+                                                .select("invoice_number")
+                                                .like("invoice_number", `${prefix}%`)
+                                                .order("invoice_number", { ascending: false })
+                                                .limit(1);
+                                            let nextNum = 1;
+                                            if (lastInv && lastInv.length > 0) {
+                                                const lastMatch = lastInv[0].invoice_number?.match(/-(\d+)$/);
+                                                if (lastMatch) nextNum = parseInt(lastMatch[1]) + 1;
+                                            }
+                                            const invoiceNumber = `${prefix}-${String(nextNum).padStart(4, "0")}`;
+
+                                            const description = `(${feePopupData.gatewayName}, Orders ${feePopupData.orderCodes.join(", ")})`;
+
+                                            const payload = {
+                                                input_date: new Date().toISOString(),
+                                                invoice_date: feePopupData.txDate,
+                                                benefit_date: feePopupData.txDate,
+                                                due_date: feePopupData.txDate,
+                                                schedule_date: feePopupData.txDate,
+                                                payment_date: feePopupData.txDate,
+                                                invoice_type: "INCURRED",
+                                                entry_type: "invoice",
+                                                financial_account_code: feePopupData.financialAccountCode,
+                                                invoice_amount: feePopupData.feeAmount,
+                                                currency: feePopupData.currency,
+                                                eur_exchange: feePopupData.currency === "USD" ? 1.0 : 1.0,
+                                                provider_code: feePopupData.providerCode,
+                                                bank_account_code: feePopupData.bankAccountCode,
+                                                cost_type_code: "VARIABLE",
+                                                dep_cost_type_code: "GENEXP",
+                                                cost_center_code: "3.0.0",
+                                                sub_department_code: "3.1.0",
+                                                description,
+                                                invoice_number: invoiceNumber,
+                                                country_code: feePopupData.scope,
+                                                scope: feePopupData.scope,
+                                                applies_to_all_countries: false,
+                                                dre_impact: true,
+                                                cash_impact: true,
+                                                is_intercompany: false,
+                                                notes: `Auto-created gateway fee from bank reconciliation`,
+                                            };
+
+                                            const { error: insErr } = await supabase.from("invoices").insert([payload]);
+                                            if (insErr) throw insErr;
+
+                                            toast({
+                                                title: "Fee Invoice Created!",
+                                                description: `${invoiceNumber} — ${feePopupData.gatewayName} fee ${formatCurrency(feePopupData.feeAmount, feePopupData.currency)}`,
+                                            });
+                                            setShowFeePopup(false);
+                                            setFeePopupData(null);
+                                        } catch (err: any) {
+                                            console.error("Fee invoice creation error:", err);
+                                            toast({
+                                                title: "Error creating fee invoice",
+                                                description: err?.message || "Unknown error",
+                                                variant: "destructive",
+                                            });
+                                        } finally {
+                                            setIsCreatingFeeInvoice(false);
+                                        }
+                                    }}
+                                    className="bg-amber-600 hover:bg-amber-700 h-8 text-xs text-white"
+                                >
+                                    {isCreatingFeeInvoice ? (
+                                        <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Creating...</>
+                                    ) : (
+                                        <><FileText className="h-3.5 w-3.5 mr-1" /> Create Fee Invoice</>
+                                    )}
                                 </Button>
                             </div>
                         </div>
