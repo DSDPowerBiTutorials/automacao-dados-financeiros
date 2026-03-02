@@ -1646,19 +1646,13 @@ export default function BankStatementsPage() {
             const revMatches: RevenueOrderMatch[] = [];
 
             if (hasCustomerName) {
-                // Search ar_invoices by customer name
-                const revStart = new Date(txDate);
-                revStart.setDate(revStart.getDate() - 60);
-                const revEnd = new Date(txDate);
-                revEnd.setDate(revEnd.getDate() + 5);
-
+                // Search ar_invoices by customer name — no date filter (orders can be 1+ year old)
                 let arQuery = supabase
                     .from("ar_invoices")
                     .select("*")
                     .eq("reconciled", false)
-                    .gte("order_date", revStart.toISOString().split("T")[0])
-                    .lte("order_date", revEnd.toISOString().split("T")[0])
-                    .limit(500);
+                    .order("order_date", { ascending: false })
+                    .limit(1000);
 
                 if (currency === "USD") {
                     arQuery = arQuery.eq("currency", "USD");
