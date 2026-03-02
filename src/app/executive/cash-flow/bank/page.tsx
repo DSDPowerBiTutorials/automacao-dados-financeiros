@@ -769,6 +769,34 @@ export default function BankCashFlowPage() {
         return "unclassified";
     }, [btTxMap, invoiceToFAC, invoiceOrders]);
 
+    // ─── Resolve P&L splits for multi-order transactions ───
+    const resolvePnlLineSplits = useCallback((tx: BankTransaction): Array<{ line: string; amount: number }> => {
+        // Check linked_web_order_details for per-order pnl_line
+        const orderDetails = tx.custom_data?.linked_web_order_details as Array<{ pnl_line?: string; financialAccountCode?: string; amount?: number }> | undefined;
+        if (orderDetails && orderDetails.length > 0) {
+            const splitMap = new Map<string, number>();
+            for (const d of orderDetails) {
+                const line = d.pnl_line || (d.financialAccountCode ? getPnlLineFromCode(d.financialAccountCode) : null);
+                if (line && d.amount) {
+                    splitMap.set(line, (splitMap.get(line) || 0) + Math.abs(d.amount));
+                }
+            }
+            if (splitMap.size > 1) {
+                // Multiple distinct P&L lines — distribute tx.amount proportionally
+                const splitTotal = Array.from(splitMap.values()).reduce((s, v) => s + v, 0);
+                const splits: Array<{ line: string; amount: number }> = [];
+                if (splitTotal > 0) {
+                    for (const [line, amt] of splitMap) {
+                        splits.push({ line, amount: tx.amount * (amt / splitTotal) });
+                    }
+                    return splits;
+                }
+            }
+        }
+        // Single P&L line — use existing resolver
+        return [{ line: resolvePnlLine(tx), amount: tx.amount }];
+    }, [resolvePnlLine]);
+
     // ─── Summary ───
     const summary = useMemo(() => {
         const inflows = filteredTransactions.filter(t => t.amount > 0);
@@ -952,8 +980,9 @@ export default function BankCashFlowPage() {
         const map = new Map<string, Record<string, number> & { month: string; label: string }>();
         analyticsFilteredTx.forEach(tx => {
             if (tx.amount <= 0) return;
-            const lineCode = resolvePnlLine(tx);
-            if (lineCode === "internal") return;
+            const splits = resolvePnlLineSplits(tx);
+            // Skip if all splits are internal
+            if (splits.every(s => s.line === "internal")) return;
             const key = analyticsUseDaily ? (tx.date?.split("T")[0] || "unknown") : (tx.date?.substring(0, 7) || "unknown");
             if (!map.has(key)) {
                 const label = analyticsUseDaily
@@ -962,10 +991,13 @@ export default function BankCashFlowPage() {
                 map.set(key, { month: key, label } as any);
             }
             const entry = map.get(key)!;
-            entry[lineCode] = (entry[lineCode] as number || 0) + tx.amount;
+            for (const { line, amount } of splits) {
+                if (line === "internal") continue;
+                entry[line] = (entry[line] as number || 0) + amount;
+            }
         });
         return Array.from(map.values()).sort((a, b) => a.month.localeCompare(b.month));
-    }, [analyticsFilteredTx, analyticsUseDaily, resolvePnlLine]);
+    }, [analyticsFilteredTx, analyticsUseDaily, resolvePnlLineSplits]);
 
     // ─── Collect active keys per breakdown for chart legend ───
     const activeBankKeys = useMemo(() => {
@@ -1020,7 +1052,37 @@ export default function BankCashFlowPage() {
         let internalTotal = 0;
         analyticsFilteredTx.forEach(tx => {
             if (tx.amount <= 0) return;
-            const lineCode = resolvePnlLine(tx);
+            const splits = resolvePnlLineSplits(tx);
+
+            // ── Multi-line splits (linked_web_order_details with distinct P&L lines) ──
+            if (splits.length > 1) {
+                for (const { line, amount } of splits) {
+                    if (line === "internal") {
+                        if (!map[line]) map[line] = { amount: 0, count: 0, products: {} };
+                        map[line].amount += amount;
+                        map[line].count++;
+                        internalTotal += amount;
+                        const pn = "🔄 Internal Transfer";
+                        if (!map[line].products[pn]) map[line].products[pn] = { amount: 0, count: 0, faCode: "internal", faName: "Internal Transfer" };
+                        map[line].products[pn].amount += amount;
+                        map[line].products[pn].count++;
+                        continue;
+                    }
+                    if (!map[line]) map[line] = { amount: 0, count: 0, products: {} };
+                    map[line].amount += amount;
+                    map[line].count++;
+                    totalRevenue += amount;
+                    const pnlDef = PNL_LINES.find(l => l.code === line);
+                    const productName = pnlDef ? `${pnlDef.icon} ${pnlDef.label}` : line;
+                    if (!map[line].products[productName]) map[line].products[productName] = { amount: 0, count: 0, faCode: line, faName: pnlDef?.label || null };
+                    map[line].products[productName].amount += amount;
+                    map[line].products[productName].count++;
+                }
+                return;
+            }
+
+            // ── Single line — full product-name resolution ──
+            const lineCode = splits[0].line;
             // Track internal transfers separately — don't include in revenue total
             if (lineCode === "internal") {
                 if (!map[lineCode]) map[lineCode] = { amount: 0, count: 0, products: {} };
@@ -1116,7 +1178,7 @@ export default function BankCashFlowPage() {
             map[lineCode].products[productKey].count++;
         });
         return { byLine: map, total: totalRevenue, internalTotal };
-    }, [analyticsFilteredTx, resolvePnlLine, btTxMap, invoiceOrders]);
+    }, [analyticsFilteredTx, resolvePnlLineSplits, btTxMap, invoiceOrders]);
 
     const toggleGroup = (date: string) => {
         setExpandedGroups(prev => {
