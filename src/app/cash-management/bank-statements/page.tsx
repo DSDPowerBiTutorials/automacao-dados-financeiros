@@ -3119,6 +3119,25 @@ export default function BankStatementsPage() {
                                             <Calendar className="h-3 w-3 text-blue-400" />
                                             <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300">{dayGroup.dateLabel}</span>
                                             <span className="text-[11px] text-gray-400 ml-1">({dayGroup.rows.length})</span>
+                                            {(() => {
+                                                const reconCount = dayGroup.rows.filter(r => r.isReconciled).length;
+                                                const total = dayGroup.rows.length;
+                                                const allRecon = reconCount === total;
+                                                const noneRecon = reconCount === 0;
+                                                return allRecon ? (
+                                                    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-500 ml-1">
+                                                        <CheckCircle2 className="h-3 w-3" /> All reconciled
+                                                    </span>
+                                                ) : noneRecon ? (
+                                                    <span className="text-[10px] font-medium text-red-400 ml-1">
+                                                        0/{total} reconciled
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-medium text-amber-400 ml-1">
+                                                        {reconCount}/{total} reconciled
+                                                    </span>
+                                                );
+                                            })()}
                                             <span className="text-gray-400 text-[11px] ml-auto">
                                                 <span className="text-green-400">+{formatCurrency(dayGroup.totalCredits, dominantCurrency)}</span>
                                                 <span className="mx-1">/</span>
@@ -4669,8 +4688,8 @@ export default function BankStatementsPage() {
                                                 setInstallmentAmount((installmentData.orderAmount / n).toFixed(2));
                                             }}
                                             className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${installmentCount === n
-                                                    ? "bg-violet-600 text-white border-violet-600"
-                                                    : "bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-violet-400"
+                                                ? "bg-violet-600 text-white border-violet-600"
+                                                : "bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-violet-400"
                                                 }`}
                                         >
                                             {n}x
