@@ -1,1 +1,32 @@
-# Force rebuild Tue Jan 13 07:19:22 UTC 2026
+# Data files — not needed in production
+*.csv
+*.xlsx
+*.pdf
+public/2025 Order Expanded 1.csv
+public/2025 Order Expanded 2.csv
+public/2025 Order Expanded 3.csv
+public/2025 Order Expanded 4.csv
+public/2025 Order Legacy .csv
+public/2025 Order Line Itens.csv
+public/2025 Order Raw Data.csv
+public/2025_web_orders.csv
+public/Revenue Import.csv
+public/epenses.csv
+public/transaction_search*
+public/accounts payable 2025.xlsx
+public/invoice-orders-2026-02-02.xlsx
+public/Costes Enero DSD.xlsx
+public/ENEROEXPENSES.xlsx
+public/SERVICE PROPOSAL DSD PC Department Signed.pdf
+public/Signed SERVICE PROPOSAL DSD Education  LLC Signed.pdf
+public/contracts/*.pdf
+public/Layout References/
+
+# Backups and temp data
+backups/
+data/
+*.tsbuildinfo
+
+# Root-level data/script files
+braintree-detalhado-*.xlsx
+2025 Order Legacy .csv
