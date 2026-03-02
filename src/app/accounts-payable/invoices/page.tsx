@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useRef, useDeferredValue } from "react";
+import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import { Plus, Search, Edit2, ArrowUpDown, FileText, TrendingUp, RefreshCw, DollarSign, Trash2, X, Pencil, Filter, ChevronDown, ChevronRight, ChevronLeft, Check, Save, Download, FileSpreadsheet, Columns3, Split, Eye, Zap, User, CheckCircle2, Building2 } from "lucide-react";
 import * as XLSX from 'xlsx';
@@ -156,6 +157,7 @@ function formatEuropeanNumber(value: number, decimals: number = 2): string {
 
 export default function InvoicesPage() {
   const { selectedScope } = useGlobalScope();
+  const urlSearchParams = useSearchParams();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -181,7 +183,7 @@ export default function InvoicesPage() {
   const [editingInvoice, setEditingInvoice] = useState<Invoice | null>(null);
 
   // Filters
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(urlSearchParams.get("search") || "");
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const [selectedType, setSelectedType] = useState<InvoiceType | "ALL">("ALL");
   const [selectedCountry, setSelectedCountry] = useState<string>("ALL");

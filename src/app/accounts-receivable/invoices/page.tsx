@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { Plus, Search, ArrowUpDown, DollarSign, Trash2, Pencil, Download, CheckCircle2, AlertCircle, Clock, RefreshCw, FileText, TrendingUp, Loader2, Link2, Unlink, X, Eye, ExternalLink, Globe, Filter, ArrowUp, ArrowDown, Ban, Zap, User, CalendarIcon, Upload } from "lucide-react";
 import * as XLSX from 'xlsx';
 import { Button } from "@/components/ui/button";
@@ -139,6 +140,7 @@ const EMPTY_INVOICE: Partial<ARInvoice> = {
 
 export default function ARInvoicesPage() {
   const { selectedScope, setSelectedScope } = useGlobalScope();
+  const urlSearchParams = useSearchParams();
   const [invoices, setInvoices] = useState<ARInvoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export default function ARInvoicesPage() {
   const [transactionDetailsDialog, setTransactionDetailsDialog] = useState(false);
   const [transactionDetails, setTransactionDetails] = useState<any>(null);
   const [loadingTransactionDetails, setLoadingTransactionDetails] = useState(false);
-  const [searchTerm, setSearchTerm] = useState("");
+  const [searchTerm, setSearchTerm] = useState(urlSearchParams.get("search") || "");
   const [selectedStatus, setSelectedStatus] = useState<string>("ALL");
   const [sortField, setSortField] = useState<string>("invoice_date");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");

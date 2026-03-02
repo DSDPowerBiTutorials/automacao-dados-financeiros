@@ -43,6 +43,8 @@ import {
     ShoppingCart,
     CircleDot,
     Receipt,
+    Globe,
+    ExternalLink,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { arSearch, arFetchUnreconciled, arFetchByIds, arFetchById, arFetchByOrderId, arUpdate } from "@/lib/ar-invoices-api";
@@ -3777,7 +3779,15 @@ export default function BankStatementsPage() {
                                                     <div key={i} className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
                                                         <div className="min-w-0">
                                                             <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{d.customerName || "Unknown"}</p>
-                                                            <p className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">{d.orderId || d.id}</p>
+                                                            <div className="flex items-center gap-1">
+                                                                <p className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">{d.orderId || d.id}</p>
+                                                                {(d.orderId) && (
+                                                                    <>
+                                                                        <a href={`https://digitalsmiledesign.com/admin/commerce/orders?source=*&search=${d.orderId}`} target="_blank" rel="noopener noreferrer" title="Open in DSD backend" className="text-gray-400 hover:text-blue-500 transition-colors"><Globe className="h-3 w-3" /></a>
+                                                                        <a href={`/accounts-receivable/invoices?search=${d.orderId}`} target="_blank" rel="noopener noreferrer" title="Open in Web Orders" className="text-gray-400 hover:text-blue-500 transition-colors"><ExternalLink className="h-3 w-3" /></a>
+                                                                    </>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                         <span className="text-xs font-medium text-green-600 dark:text-green-400 ml-2 flex-shrink-0">{formatCurrency(d.amount, d.currency || selectedRow.currency)}</span>
                                                     </div>
@@ -3796,9 +3806,13 @@ export default function BankStatementsPage() {
                                                     </div>
                                                 )}
                                                 {selectedRow.invoiceOrderId && (
-                                                    <div className="flex justify-between">
+                                                    <div className="flex justify-between items-center">
                                                         <span className="text-xs text-gray-500">Order ID</span>
-                                                        <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceOrderId}</span>
+                                                        <div className="flex items-center gap-1.5">
+                                                            <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceOrderId}</span>
+                                                            <a href={`https://digitalsmiledesign.com/admin/commerce/orders?source=*&search=${selectedRow.invoiceOrderId}`} target="_blank" rel="noopener noreferrer" title="Open in DSD backend" className="text-gray-400 hover:text-blue-500 transition-colors"><Globe className="h-3.5 w-3.5" /></a>
+                                                            <a href={`/accounts-receivable/invoices?search=${selectedRow.invoiceOrderId}`} target="_blank" rel="noopener noreferrer" title="Open in Web Orders" className="text-gray-400 hover:text-blue-500 transition-colors"><ExternalLink className="h-3.5 w-3.5" /></a>
+                                                        </div>
                                                     </div>
                                                 )}
                                                 {selectedRow.invoiceNumber && (
@@ -3860,7 +3874,10 @@ export default function BankStatementsPage() {
                                             <div className="flex justify-between items-center">
                                                 <span className="text-xs text-gray-500">AP Invoice</span>
                                                 {hasFeeInvoice ? (
-                                                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{cd.fee_invoice_number}</span>
+                                                    <a href={`/accounts-payable/invoices?search=${cd.fee_invoice_number}`} target="_blank" rel="noopener noreferrer" className="text-xs font-mono text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                                        {cd.fee_invoice_number}
+                                                        <ExternalLink className="h-3 w-3" />
+                                                    </a>
                                                 ) : (
                                                     <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 border-gray-300 dark:border-gray-600">Not created</Badge>
                                                 )}
