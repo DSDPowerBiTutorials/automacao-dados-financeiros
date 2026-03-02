@@ -1792,7 +1792,7 @@ export default function BankStatementsPage() {
                             for (const o of arRows) {
                                 const arId = `ar-${o.id}`;
                                 preloadIds.add(arId);
-                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null });
+                                preloadCache.set(arId, { amount: Math.abs(parseFloat(o.total_amount) || parseFloat(o.charged_amount) || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null });
                             }
                             setSelectedOrderIds(preloadIds);
                             setSelectedOrdersCache(preloadCache);
@@ -1809,7 +1809,7 @@ export default function BankStatementsPage() {
                             for (const o of arRows) {
                                 const arId = `ar-${o.id}`;
                                 preloadIds.add(arId);
-                                preloadCache.set(arId, { amount: Math.abs(o.amount || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null });
+                                preloadCache.set(arId, { amount: Math.abs(parseFloat(o.total_amount) || parseFloat(o.charged_amount) || 0), customerName: o.customer_name || "", orderId: o.order_id || null, invoiceNumber: o.invoice_number || null, financialAccountCode: o.financial_account_code || null, products: o.products || null });
                             }
                             setSelectedOrderIds(preloadIds);
                             setSelectedOrdersCache(preloadCache);
@@ -2320,9 +2320,9 @@ export default function BankStatementsPage() {
 
                         if (isInstallment) {
                             // Partial reconciliation — read current state and accumulate
-                            const currentAr = await arFetchById(arId, "source_data, amount");
+                            const currentAr = await arFetchById(arId, "source_data, total_amount, charged_amount");
                             const existingSourceData = (currentAr?.source_data || {}) as Record<string, unknown>;
-                            const fullAmount = currentAr?.amount || orderAmount;
+                            const fullAmount = parseFloat(currentAr?.total_amount) || parseFloat(currentAr?.charged_amount) || orderAmount;
                             const previousReconciledAmount = Number(existingSourceData.reconciled_amount_total || 0);
                             const newReconciledTotal = Number((previousReconciledAmount + effectiveAmount).toFixed(2));
                             const previousBankIds = Array.isArray(existingSourceData.reconciled_bank_ids) ? existingSourceData.reconciled_bank_ids : [];
