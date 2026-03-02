@@ -667,7 +667,7 @@ export default function BankStatementsPage() {
     // Installment Popup state (shown when order amount > bank inflow, BEFORE P&L popup)
     const [showInstallmentPopup, setShowInstallmentPopup] = useState(false);
     const [installmentData, setInstallmentData] = useState<InstallmentPopupData | null>(null);
-    const [installmentCount, setInstallmentCount] = useState(2);
+    const [installmentCount, setInstallmentCount] = useState(1);
     const [installmentAmount, setInstallmentAmount] = useState("");
     // Stores the adjusted amount per order (orderId → amount) set by installment popup
     const [installmentOverrides, setInstallmentOverrides] = useState<Map<string, number>>(new Map());
@@ -1849,8 +1849,9 @@ export default function BankStatementsPage() {
                     if (cached) checkOrder = { id: oid, amount: cached.amount, customerName: cached.customerName, invoiceNumber: cached.invoiceNumber, products: cached.products || null };
                 }
 
-                // Only show installment popup if single order amount > bank inflow AND no override already set
-                if (checkOrder && checkOrder.amount > txAmount * 1.02 && !installmentOverrides.has(checkOrder.id)) {
+                // Always show installment popup for single revenue orders (pre-filled with 1 installment = full match)
+                if (checkOrder && !installmentOverrides.has(checkOrder.id)) {
+                    const isPartial = checkOrder.amount > txAmount * 1.02;
                     setInstallmentData({
                         orderId: checkOrder.id,
                         orderAmount: checkOrder.amount,
@@ -1860,11 +1861,12 @@ export default function BankStatementsPage() {
                         bankAmount: txAmount,
                         currency: reconTransaction.currency,
                     });
-                    setInstallmentCount(Math.max(2, Math.round(checkOrder.amount / txAmount)));
+                    // Default: 1 installment = use bank amount as-is (most common case)
+                    setInstallmentCount(isPartial ? Math.max(2, Math.round(checkOrder.amount / txAmount)) : 1);
                     setInstallmentAmount(txAmount.toFixed(2));
                     setShowInstallmentPopup(true);
                     setIsSavingManual(false);
-                    return; // Stop — user will choose installment amount, then we re-enter
+                    return; // Stop — user will confirm or adjust, then we re-enter
                 }
             }
 
@@ -4632,11 +4634,13 @@ export default function BankStatementsPage() {
                         <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
                             <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
                                 <Clock className="h-4 w-4 text-violet-600" />
-                                Installment Payment
+                                Payment Confirmation
                             </h3>
                             <p className="text-xs text-gray-500 mt-1">
-                                This order&apos;s total ({formatCurrency(installmentData.orderAmount, installmentData.currency)}) is greater than the bank inflow ({formatCurrency(installmentData.bankAmount, installmentData.currency)}).
-                                Specify how much of this order applies to this bank transaction.
+                                Order total: {formatCurrency(installmentData.orderAmount, installmentData.currency)} — Bank inflow: {formatCurrency(installmentData.bankAmount, installmentData.currency)}.
+                                {installmentData.orderAmount > installmentData.bankAmount * 1.02
+                                    ? " The order total exceeds the bank inflow. Adjust installments if this is a partial payment."
+                                    : " Confirm the payment amount or adjust if needed."}
                             </p>
                         </div>
 
@@ -4657,7 +4661,7 @@ export default function BankStatementsPage() {
                             <div>
                                 <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Number of Installments</label>
                                 <div className="mt-1 flex items-center gap-2">
-                                    {[2, 3, 4, 5, 6].map(n => (
+                                    {[1, 2, 3, 4, 5, 6].map(n => (
                                         <button
                                             key={n}
                                             onClick={() => {
@@ -4674,7 +4678,7 @@ export default function BankStatementsPage() {
                                     ))}
                                     <Input
                                         type="number"
-                                        min={2}
+                                        min={1}
                                         max={24}
                                         value={installmentCount}
                                         onChange={(e) => {
@@ -4756,7 +4760,7 @@ export default function BankStatementsPage() {
                                 className="bg-violet-600 hover:bg-violet-700 h-8 text-xs text-white"
                             >
                                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
-                                Confirm Installment
+                                {installmentCount === 1 ? "Confirm Full Payment" : "Confirm Installment"}
                             </Button>
                         </div>
                     </div>
