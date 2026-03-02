@@ -2332,22 +2332,66 @@ export default function BankStatementsPage() {
                         .eq("id", gId);
                 }
 
-                // Mark selected ar_invoices (web orders) as reconciled
+                // Mark selected ar_invoices (web orders) as reconciled (with installment support)
                 if (linkedOrderIds.length > 0) {
-                    const realArIds = linkedOrderIds.map(id => parseInt(String(id).replace("ar-", "")));
+                    for (const oid of linkedOrderIds) {
+                        const arId = parseInt(String(oid).replace("ar-", ""));
+                        const cached = selectedOrdersCache.get(oid);
+                        const orderAmount = cached?.amount || 0;
+                        const overrideAmount = installmentOverrides.get(oid);
+                        const effectiveAmount = overrideAmount ?? orderAmount;
+                        const isInstallment = installmentOverrides.has(oid);
 
-                    for (const arId of realArIds) {
-                        await supabase
-                            .from("ar_invoices")
-                            .update({
-                                reconciled: true,
-                                reconciled_at: now,
-                                reconciled_with: reconTransaction.id,
-                                reconciliation_type: "manual-bank",
-                            })
-                            .eq("id", arId);
+                        appliedOrderAmountTotal += effectiveAmount;
+
+                        if (isInstallment) {
+                            // Partial reconciliation — read current state and accumulate
+                            const { data: currentAr } = await supabase.from("ar_invoices").select("source_data, amount").eq("id", arId).single();
+                            const existingSourceData = (currentAr?.source_data || {}) as Record<string, unknown>;
+                            const fullAmount = currentAr?.amount || orderAmount;
+                            const previousReconciledAmount = Number(existingSourceData.reconciled_amount_total || 0);
+                            const newReconciledTotal = Number((previousReconciledAmount + effectiveAmount).toFixed(2));
+                            const previousBankIds = Array.isArray(existingSourceData.reconciled_bank_ids) ? existingSourceData.reconciled_bank_ids : [];
+                            const previousInstallments = Array.isArray(existingSourceData.installment_payments) ? existingSourceData.installment_payments : [];
+                            const installmentNumber = previousInstallments.length + 1;
+                            const fullyPaid = newReconciledTotal >= fullAmount * 0.98;
+
+                            await supabase
+                                .from("ar_invoices")
+                                .update({
+                                    reconciled: fullyPaid,
+                                    reconciled_at: now,
+                                    reconciled_with: reconTransaction.id,
+                                    reconciliation_type: fullyPaid ? "manual-bank" : "manual-bank-partial",
+                                    source_data: {
+                                        ...existingSourceData,
+                                        reconciled_amount_total: newReconciledTotal,
+                                        remaining_amount: Number((fullAmount - newReconciledTotal).toFixed(2)),
+                                        reconciled_bank_ids: [...previousBankIds, reconTransaction.id],
+                                        installment_count: installmentCount,
+                                        installment_payments: [...previousInstallments, {
+                                            bank_tx_id: reconTransaction.id,
+                                            amount: effectiveAmount,
+                                            date: reconTransaction.date,
+                                            installment_number: installmentNumber,
+                                        }],
+                                        is_installment: true,
+                                    },
+                                })
+                                .eq("id", arId);
+                        } else {
+                            // Full reconciliation
+                            await supabase
+                                .from("ar_invoices")
+                                .update({
+                                    reconciled: true,
+                                    reconciled_at: now,
+                                    reconciled_with: reconTransaction.id,
+                                    reconciliation_type: "manual-bank",
+                                })
+                                .eq("id", arId);
+                        }
                     }
-                    appliedOrderAmountTotal = linkedOrderTotal;
                 }
 
                 // Update bank transaction
@@ -2367,7 +2411,9 @@ export default function BankStatementsPage() {
                     linked_web_order_details: linkedOrderIds.map(oid => {
                         const cached = selectedOrdersCache.get(oid);
                         const pnlEntry = pnlProducts.find(p => p.orderId === oid);
-                        return { id: oid, amount: cached?.amount || 0, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null, products: cached?.products || null, pnl_line: pnlEntry?.pnlLine || null, pnl_label: pnlEntry ? (PNL_LINE_OPTIONS.find(p => p.code === pnlEntry.pnlLine)?.label || null) : null };
+                        const effectiveAmt = installmentOverrides.get(oid) ?? (cached?.amount || 0);
+                        const isPartial = installmentOverrides.has(oid);
+                        return { id: oid, amount: cached?.amount || 0, applied_amount: effectiveAmt, is_installment: isPartial, customerName: cached?.customerName || "", orderId: cached?.orderId || null, invoiceNumber: cached?.invoiceNumber || null, financialAccountCode: cached?.financialAccountCode || null, products: cached?.products || null, pnl_line: pnlEntry?.pnlLine || null, pnl_label: pnlEntry ? (PNL_LINE_OPTIONS.find(p => p.code === pnlEntry.pnlLine)?.label || null) : null };
                     }),
                     invoice_order_id: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.orderId || linkedOrderIds[0]) : null,
                     invoice_number: linkedOrderIds.length > 0 ? (selectedOrdersCache.get(linkedOrderIds[0])?.invoiceNumber || null) : null,
@@ -2444,13 +2490,13 @@ export default function BankStatementsPage() {
                 toast({ title: "Reconciled!", description: `Linked with ${parts.join(" + ")}` });
                 setReconDialogOpen(false);
 
-                // Check for gateway fee (order total > bank inflow)
-                if (linkedOrderTotal > 0) {
+                // Check for gateway fee (applied order total > bank inflow)
+                if (appliedOrderAmountTotal > 0) {
                     const case5OrderCodes = linkedOrderIds.map(oid => {
                         const cached = selectedOrdersCache.get(oid);
                         return cached?.orderId || cached?.invoiceNumber || oid.replace("ar-", "#");
                     });
-                    const case5FeeData = buildFeePopupData(linkedOrderTotal, txAmount, case5OrderCodes);
+                    const case5FeeData = buildFeePopupData(appliedOrderAmountTotal, txAmount, case5OrderCodes);
                     if (case5FeeData) {
                         setFeePopupData(case5FeeData);
                         setShowFeePopup(true);
