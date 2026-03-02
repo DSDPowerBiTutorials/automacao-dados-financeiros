@@ -735,6 +735,25 @@ export default function BankStatementsPage() {
         });
     }, [sortCol, sortDir]);
 
+    /** Open installment popup for a given order — called on selection */
+    const openInstallmentPopupForOrder = useCallback((order: { id: string; amount: number; customerName: string; invoiceNumber: string | null; products: string | null }) => {
+        if (!reconTransaction || reconTransaction.amount < 0) return; // only for revenue (positive amounts)
+        const txAmount = Math.abs(reconTransaction.amount);
+        const isPartial = order.amount > txAmount * 1.02;
+        setInstallmentData({
+            orderId: order.id,
+            orderAmount: order.amount,
+            customerName: order.customerName,
+            invoiceNumber: order.invoiceNumber,
+            products: order.products,
+            bankAmount: txAmount,
+            currency: reconTransaction.currency,
+        });
+        setInstallmentCount(isPartial ? Math.max(2, Math.round(order.amount / txAmount)) : 1);
+        setInstallmentAmount(txAmount.toFixed(2));
+        setShowInstallmentPopup(true);
+    }, [reconTransaction]);
+
     /** Toggle order selection (multi-select for invoice-orders) */
     const toggleOrderSelection = useCallback((id: string, openPopup = true) => {
         let wasAdded = false;
@@ -774,25 +793,6 @@ export default function BankStatementsPage() {
             setTimeout(() => openInstallmentPopupForOrder(orderData!), 50);
         }
     }, [orderSearchResults, reconTransaction, openInstallmentPopupForOrder]);
-
-    /** Open installment popup for a given order — called on selection */
-    const openInstallmentPopupForOrder = useCallback((order: { id: string; amount: number; customerName: string; invoiceNumber: string | null; products: string | null }) => {
-        if (!reconTransaction || reconTransaction.amount < 0) return; // only for revenue (positive amounts)
-        const txAmount = Math.abs(reconTransaction.amount);
-        const isPartial = order.amount > txAmount * 1.02;
-        setInstallmentData({
-            orderId: order.id,
-            orderAmount: order.amount,
-            customerName: order.customerName,
-            invoiceNumber: order.invoiceNumber,
-            products: order.products,
-            bankAmount: txAmount,
-            currency: reconTransaction.currency,
-        });
-        setInstallmentCount(isPartial ? Math.max(2, Math.round(order.amount / txAmount)) : 1);
-        setInstallmentAmount(txAmount.toFixed(2));
-        setShowInstallmentPopup(true);
-    }, [reconTransaction]);
 
     /** Toggle gateway transaction selection (multi-select) */
     const toggleGatewayTxSelection = useCallback((id: string) => {
