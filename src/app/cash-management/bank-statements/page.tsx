@@ -44,6 +44,7 @@ import {
     CircleDot,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { arSearch, arFetchUnreconciled, arFetchByIds, arFetchById, arFetchByOrderId, arUpdate } from "@/lib/ar-invoices-api";
 import { useToast } from "@/hooks/use-toast";
 import { PageHeader } from "@/components/ui/page-header";
 
@@ -848,29 +849,8 @@ export default function BankStatementsPage() {
             const normalizedQuery = normalizeText(query);
             const queryTokens = normalizedQuery.split(/\s+/).filter(token => token.length > 1);
 
-            const PAGE_SIZE = 1000;
-            const maxPages = 5;
-            const allRows: any[] = [];
-
-            for (let page = 0; page < maxPages; page++) {
-                let qb = supabase
-                    .from("ar_invoices")
-                    .select("*")
-                    .order("order_date", { ascending: false })
-                    .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1);
-
-                // Filter by currency if known
-                if (currency === "USD") {
-                    qb = qb.eq("currency", "USD");
-                } else if (currency === "EUR") {
-                    qb = qb.eq("currency", "EUR");
-                }
-
-                const { data } = await qb;
-                if (!data || data.length === 0) break;
-                allRows.push(...data);
-                if (data.length < PAGE_SIZE) break;
-            }
+            // Fetch via server-side API (bypasses RLS/GRANT)
+            const allRows = await arSearch(currency, 5000);
 
             const results: RevenueOrderMatch[] = allRows
                 .filter(row => {
@@ -1647,20 +1627,8 @@ export default function BankStatementsPage() {
 
             if (hasCustomerName) {
                 // Search ar_invoices by customer name — no date filter (orders can be 1+ year old)
-                let arQuery = supabase
-                    .from("ar_invoices")
-                    .select("*")
-                    .eq("reconciled", false)
-                    .order("order_date", { ascending: false })
-                    .limit(1000);
-
-                if (currency === "USD") {
-                    arQuery = arQuery.eq("currency", "USD");
-                } else if (currency === "EUR") {
-                    arQuery = arQuery.eq("currency", "EUR");
-                }
-
-                const { data: arData } = await arQuery;
+                // Fetch via server-side API (bypasses RLS/GRANT)
+                const arData = await arFetchUnreconciled(currency, 1000);
 
                 (arData || []).forEach(row => {
                     const arAmount = Math.abs(parseFloat(row.total_amount) || parseFloat(row.charged_amount) || 0);
@@ -1818,7 +1786,7 @@ export default function BankStatementsPage() {
                         setSelectedOrdersCache(preloadCache);
                     } else if (cd.linked_web_order_ids?.length > 0) {
                         const realIds = (cd.linked_web_order_ids as string[]).map((xid: string) => parseInt(String(xid).replace("ar-", "")));
-                        const { data: arRows } = await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code, products").in("id", realIds);
+                        const arRows = await arFetchByIds(realIds);
                         if (arRows?.length) {
                             const preloadIds = new Set<string>();
                             const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>();
@@ -1833,9 +1801,9 @@ export default function BankStatementsPage() {
                     } else if (cd.matched_order_id || cd.invoice_order_id) {
                         const scalarId = String(cd.matched_order_id || cd.invoice_order_id);
                         const isArPrefixed = scalarId.startsWith("ar-");
-                        const { data: arRows } = isArPrefixed
-                            ? await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code, products").eq("id", parseInt(scalarId.replace("ar-", "")))
-                            : await supabase.from("ar_invoices").select("id, customer_name, order_id, invoice_number, amount, financial_account_code, products").eq("order_id", scalarId);
+                        const arRows = isArPrefixed
+                            ? await arFetchByIds([parseInt(scalarId.replace("ar-", ""))])
+                            : await arFetchByOrderId(scalarId);
                         if (arRows?.length) {
                             const preloadIds = new Set<string>();
                             const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null }>();
@@ -2108,7 +2076,7 @@ export default function BankStatementsPage() {
                     const arId = parseInt(match.id.replace("ar-", ""));
                     if (isInstallment) {
                         // Partial reconciliation — read current state and accumulate
-                        const { data: currentAr } = await supabase.from("ar_invoices").select("source_data").eq("id", arId).single();
+                        const currentAr = await arFetchById(arId, "source_data");
                         const existingSourceData = (currentAr?.source_data || {}) as Record<string, unknown>;
                         const previousReconciledAmount = Number(existingSourceData.reconciled_amount_total || 0);
                         const newReconciledTotal = Number((previousReconciledAmount + effectiveMatchAmount).toFixed(2));
@@ -2117,39 +2085,33 @@ export default function BankStatementsPage() {
                         const installmentNumber = previousInstallments.length + 1;
                         const fullyPaid = newReconciledTotal >= match.amount * 0.98;
 
-                        await supabase
-                            .from("ar_invoices")
-                            .update({
-                                reconciled: fullyPaid,
-                                reconciled_at: now,
-                                reconciled_with: reconTransaction.id,
-                                reconciliation_type: fullyPaid ? "manual-bank" : "manual-bank-partial",
-                                source_data: {
-                                    ...existingSourceData,
-                                    reconciled_amount_total: newReconciledTotal,
-                                    remaining_amount: Number((match.amount - newReconciledTotal).toFixed(2)),
-                                    reconciled_bank_ids: [...previousBankIds, reconTransaction.id],
-                                    installment_count: installmentCount,
-                                    installment_payments: [...previousInstallments, {
-                                        bank_tx_id: reconTransaction.id,
-                                        amount: effectiveMatchAmount,
-                                        date: reconTransaction.date,
-                                        installment_number: installmentNumber,
-                                    }],
-                                    is_installment: true,
-                                },
-                            })
-                            .eq("id", arId);
+                        await arUpdate(arId, {
+                            reconciled: fullyPaid,
+                            reconciled_at: now,
+                            reconciled_with: reconTransaction.id,
+                            reconciliation_type: fullyPaid ? "manual-bank" : "manual-bank-partial",
+                            source_data: {
+                                ...existingSourceData,
+                                reconciled_amount_total: newReconciledTotal,
+                                remaining_amount: Number((match.amount - newReconciledTotal).toFixed(2)),
+                                reconciled_bank_ids: [...previousBankIds, reconTransaction.id],
+                                installment_count: installmentCount,
+                                installment_payments: [...previousInstallments, {
+                                    bank_tx_id: reconTransaction.id,
+                                    amount: effectiveMatchAmount,
+                                    date: reconTransaction.date,
+                                    installment_number: installmentNumber,
+                                }],
+                                is_installment: true,
+                            },
+                        });
                     } else {
-                        await supabase
-                            .from("ar_invoices")
-                            .update({
-                                reconciled: true,
-                                reconciled_at: now,
-                                reconciled_with: reconTransaction.id,
-                                reconciliation_type: "manual-bank",
-                            })
-                            .eq("id", arId);
+                        await arUpdate(arId, {
+                            reconciled: true,
+                            reconciled_at: now,
+                            reconciled_with: reconTransaction.id,
+                            reconciliation_type: "manual-bank",
+                        });
                     }
                 }
 
@@ -2359,7 +2321,7 @@ export default function BankStatementsPage() {
 
                         if (isInstallment) {
                             // Partial reconciliation — read current state and accumulate
-                            const { data: currentAr } = await supabase.from("ar_invoices").select("source_data, amount").eq("id", arId).single();
+                            const currentAr = await arFetchById(arId, "source_data, amount");
                             const existingSourceData = (currentAr?.source_data || {}) as Record<string, unknown>;
                             const fullAmount = currentAr?.amount || orderAmount;
                             const previousReconciledAmount = Number(existingSourceData.reconciled_amount_total || 0);
@@ -2369,40 +2331,34 @@ export default function BankStatementsPage() {
                             const installmentNumber = previousInstallments.length + 1;
                             const fullyPaid = newReconciledTotal >= fullAmount * 0.98;
 
-                            await supabase
-                                .from("ar_invoices")
-                                .update({
-                                    reconciled: fullyPaid,
-                                    reconciled_at: now,
-                                    reconciled_with: reconTransaction.id,
-                                    reconciliation_type: fullyPaid ? "manual-bank" : "manual-bank-partial",
-                                    source_data: {
-                                        ...existingSourceData,
-                                        reconciled_amount_total: newReconciledTotal,
-                                        remaining_amount: Number((fullAmount - newReconciledTotal).toFixed(2)),
-                                        reconciled_bank_ids: [...previousBankIds, reconTransaction.id],
-                                        installment_count: installmentCount,
-                                        installment_payments: [...previousInstallments, {
-                                            bank_tx_id: reconTransaction.id,
-                                            amount: effectiveAmount,
-                                            date: reconTransaction.date,
-                                            installment_number: installmentNumber,
-                                        }],
-                                        is_installment: true,
-                                    },
-                                })
-                                .eq("id", arId);
+                            await arUpdate(arId, {
+                                reconciled: fullyPaid,
+                                reconciled_at: now,
+                                reconciled_with: reconTransaction.id,
+                                reconciliation_type: fullyPaid ? "manual-bank" : "manual-bank-partial",
+                                source_data: {
+                                    ...existingSourceData,
+                                    reconciled_amount_total: newReconciledTotal,
+                                    remaining_amount: Number((fullAmount - newReconciledTotal).toFixed(2)),
+                                    reconciled_bank_ids: [...previousBankIds, reconTransaction.id],
+                                    installment_count: installmentCount,
+                                    installment_payments: [...previousInstallments, {
+                                        bank_tx_id: reconTransaction.id,
+                                        amount: effectiveAmount,
+                                        date: reconTransaction.date,
+                                        installment_number: installmentNumber,
+                                    }],
+                                    is_installment: true,
+                                },
+                            });
                         } else {
                             // Full reconciliation
-                            await supabase
-                                .from("ar_invoices")
-                                .update({
-                                    reconciled: true,
-                                    reconciled_at: now,
-                                    reconciled_with: reconTransaction.id,
-                                    reconciliation_type: "manual-bank",
-                                })
-                                .eq("id", arId);
+                            await arUpdate(arId, {
+                                reconciled: true,
+                                reconciled_at: now,
+                                reconciled_with: reconTransaction.id,
+                                reconciliation_type: "manual-bank",
+                            });
                         }
                     }
                 }
@@ -2592,15 +2548,12 @@ export default function BankStatementsPage() {
 
             // Revert each ar_invoice
             for (const arId of allArIds) {
-                await supabase
-                    .from("ar_invoices")
-                    .update({
-                        reconciled: false,
-                        reconciled_at: null,
-                        reconciled_with: null,
-                        reconciliation_type: null,
-                    })
-                    .eq("id", arId);
+                await arUpdate(arId, {
+                    reconciled: false,
+                    reconciled_at: null,
+                    reconciled_with: null,
+                    reconciliation_type: null,
+                });
             }
 
             // 2) Revert linked gateway csv_rows
