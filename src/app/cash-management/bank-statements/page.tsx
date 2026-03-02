@@ -97,6 +97,20 @@ const GATEWAY_PROVIDER_MAP: Record<string, { code: string; name: string }> = {
     "gocardless": { code: "GOCARDLESS", name: "GoCardless" },
 };
 
+// ─── Gateway → virtual bank account mapping (fees are deducted by the gateway, not the physical bank) ───
+const GATEWAY_BANK_ACCOUNT_MAP: Record<string, string> = {
+    "paypal": "PAYPAL-EUR",
+    "stripe": "STRIPE-EUR",
+    "stripe-eur": "STRIPE-EUR",
+    "stripe-usd": "STRIPE-USD",
+    "braintree": "BRAINTREE-EUR",
+    "braintree-eur": "BRAINTREE-EUR",
+    "braintree-usd": "BRAINTREE-USD",
+    "braintree-gbp": "BRAINTREE-GBP",
+    "braintree-amex": "BRAINTREE-EUR",
+    "gocardless": "GOCARDLESS-EUR",
+};
+
 interface FeePopupData {
     feeAmount: number;
     currency: string;
@@ -1969,8 +1983,8 @@ export default function BankStatementsPage() {
             gatewayKey,
             gatewayName: gatewayInfo.name,
             providerCode: gatewayInfo.code,
-            bankAccountCode: BANK_ACCOUNT_CODE_MAP[source] || "",
-            bankAccountKey: source,
+            bankAccountCode: GATEWAY_BANK_ACCOUNT_MAP[gatewayKey] || BANK_ACCOUNT_CODE_MAP[source] || "",
+            bankAccountKey: gatewayKey || source,
             txDate: reconTransaction.date?.split("T")[0] || new Date().toISOString().split("T")[0],
             orderCodes,
             orderTotal,
