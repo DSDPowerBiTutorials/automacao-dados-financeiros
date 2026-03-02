@@ -3778,12 +3778,12 @@ export default function BankStatementsPage() {
                                                             <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{d.customerName || "Unknown"}</p>
                                                             <p className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">{d.orderId || d.id}</p>
                                                         </div>
-                                                        <span className="text-xs font-medium text-green-600 dark:text-green-400 ml-2 flex-shrink-0">{formatCurrency(d.amount, selectedRow.currency)}</span>
+                                                        <span className="text-xs font-medium text-green-600 dark:text-green-400 ml-2 flex-shrink-0">{formatCurrency(d.amount, d.currency || selectedRow.currency)}</span>
                                                     </div>
                                                 ))}
                                                 <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-700">
                                                     <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Orders Total</span>
-                                                    <span className="text-xs font-bold text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
+                                                    <span className="text-xs font-bold text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.custom_data?.linked_web_order_details?.[0]?.currency || selectedRow.currency)}</span>
                                                 </div>
                                             </div>
                                         ) : (
@@ -3809,7 +3809,7 @@ export default function BankStatementsPage() {
                                                 {selectedRow.matchedOrderTotal > 0 && (
                                                     <div className="flex justify-between">
                                                         <span className="text-xs text-gray-500">Order Amount</span>
-                                                        <span className="text-sm font-medium text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
+                                                        <span className="text-sm font-medium text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.custom_data?.linked_web_order_details?.[0]?.currency || selectedRow.custom_data?.matched_order_currency || selectedRow.currency)}</span>
                                                     </div>
                                                 )}
                                             </>
