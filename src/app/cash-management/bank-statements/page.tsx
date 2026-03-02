@@ -42,6 +42,7 @@ import {
     Package,
     ShoppingCart,
     CircleDot,
+    Receipt,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { arSearch, arFetchUnreconciled, arFetchByIds, arFetchById, arFetchByOrderId, arUpdate } from "@/lib/ar-invoices-api";
@@ -3831,6 +3832,43 @@ export default function BankStatementsPage() {
                                     </div>
                                 )}
 
+                                {/* Gateway Fee & AP Invoice */}
+                                {selectedRow.orderReconciliationStatus !== "none" && (() => {
+                                    const cd = selectedRow.custom_data || {};
+                                    const orderCcy = cd.linked_web_order_details?.[0]?.currency || cd.matched_order_currency;
+                                    const bankCcy = selectedRow.currency;
+                                    const sameCurrency = !orderCcy || orderCcy.toUpperCase() === bankCcy?.toUpperCase();
+                                    const feeAmount = cd.fee_invoice_amount != null
+                                        ? cd.fee_invoice_amount
+                                        : (sameCurrency && selectedRow.matchedOrderTotal > 0
+                                            ? Number((selectedRow.matchedOrderTotal - Math.abs(selectedRow.amount)).toFixed(2))
+                                            : null);
+                                    const feeCurrency = cd.fee_invoice_currency || bankCcy;
+                                    const hasFeeInvoice = !!cd.fee_invoice_id;
+                                    if ((feeAmount == null || feeAmount <= 0) && !hasFeeInvoice) return null;
+                                    return (
+                                        <div className="space-y-2 bg-orange-50 dark:bg-orange-900/10 rounded-lg p-3 border border-orange-200 dark:border-orange-800/50">
+                                            <p className="text-[10px] font-medium text-orange-600 dark:text-orange-400 uppercase tracking-wider flex items-center gap-1">
+                                                <Receipt className="h-3 w-3" /> Gateway Fee
+                                            </p>
+                                            {feeAmount != null && feeAmount > 0 && (
+                                                <div className="flex justify-between">
+                                                    <span className="text-xs text-gray-500">Fee Amount</span>
+                                                    <span className="text-sm font-medium text-orange-600 dark:text-orange-400">{formatCurrency(feeAmount, feeCurrency)}</span>
+                                                </div>
+                                            )}
+                                            <div className="flex justify-between items-center">
+                                                <span className="text-xs text-gray-500">AP Invoice</span>
+                                                {hasFeeInvoice ? (
+                                                    <span className="text-xs font-mono text-blue-600 dark:text-blue-400">{cd.fee_invoice_number}</span>
+                                                ) : (
+                                                    <Badge variant="outline" className="text-[10px] bg-gray-100 dark:bg-gray-800 text-gray-500 border-gray-300 dark:border-gray-600">Not created</Badge>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
                                 {/* Legacy display for unmatched with invoice data */}
                                 {selectedRow.orderReconciliationStatus === "none" && selectedRow.invoiceNumber && (
                                     <div>
@@ -5183,7 +5221,7 @@ export default function BankStatementsPage() {
                                                 // (reconTransaction.custom_data is stale — was captured before reconciliation saved)
                                                 const { data: freshRow } = await supabase.from("csv_rows").select("custom_data").eq("id", reconTransaction.id).single();
                                                 const txCd = freshRow?.custom_data || reconTransaction.custom_data || {};
-                                                const updCd = { ...txCd, fee_invoice_id: feeInvoiceId, fee_invoice_number: invoiceNumber };
+                                                const updCd = { ...txCd, fee_invoice_id: feeInvoiceId, fee_invoice_number: invoiceNumber, fee_invoice_amount: effectiveFeeAmount, fee_invoice_currency: feePopupData.currency };
                                                 await supabase.from("csv_rows").update({ custom_data: updCd }).eq("id", reconTransaction.id);
                                                 // Update local state
                                                 setBankTransactions(prev => prev.map(t =>
