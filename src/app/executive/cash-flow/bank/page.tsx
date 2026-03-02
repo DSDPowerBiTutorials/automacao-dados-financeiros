@@ -312,9 +312,9 @@ const PNL_CHART_COLORS: Record<string, string> = {
 
 // ─── P&L Line definitions ───
 const PNL_LINES: { code: string; label: string; bg: string; text: string; border: string; icon: string }[] = [
-    { code: "101", label: "Lvl 1 Subscription", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🥇" },
+    { code: "101", label: "Lvl 1 Subscription", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🥉" },
     { code: "102", label: "Lvl 2 Subscription", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🥈" },
-    { code: "103", label: "Lvl 3 Subscription", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🥉" },
+    { code: "103", label: "Lvl 3 Subscription", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🥇" },
     { code: "104", label: "Courses", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🎓" },
     { code: "105", label: "PC Products", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "📋" },
     { code: "106", label: "Lab Products", bg: "bg-white dark:bg-black", text: "text-gray-900 dark:text-white", border: "border-gray-200 dark:border-gray-700", icon: "🔬" },

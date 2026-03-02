@@ -222,9 +222,9 @@ interface RevenueOrderMatch {
 
 // P&L line definitions for classification popup
 const PNL_LINE_OPTIONS = [
-    { code: "101", label: "Lvl 1 Subscription", icon: "🥇" },
+    { code: "101", label: "Lvl 1 Subscription", icon: "🥉" },
     { code: "102", label: "Lvl 2 Subscription", icon: "🥈" },
-    { code: "103", label: "Lvl 3 Subscription", icon: "🥉" },
+    { code: "103", label: "Lvl 3 Subscription", icon: "🥇" },
     { code: "104", label: "Courses", icon: "🎓" },
     { code: "105", label: "PC Products", icon: "📋" },
     { code: "106", label: "Lab Products", icon: "🔬" },
