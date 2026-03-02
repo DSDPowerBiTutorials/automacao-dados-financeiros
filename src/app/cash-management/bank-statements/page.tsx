@@ -375,17 +375,17 @@ const formatDayLabel = (dateStr: string): string => {
 };
 
 const gatewayColors: Record<string, { bg: string; text: string; border: string }> = {
-    "braintree-eur": { bg: "bg-blue-900/30", text: "text-blue-400", border: "border-blue-700" },
-    "braintree-usd": { bg: "bg-emerald-900/30", text: "text-emerald-400", border: "border-emerald-700" },
-    "braintree-gbp": { bg: "bg-purple-900/30", text: "text-purple-400", border: "border-purple-700" },
-    "braintree-amex": { bg: "bg-violet-900/30", text: "text-violet-400", border: "border-violet-700" },
-    braintree: { bg: "bg-blue-900/30", text: "text-blue-400", border: "border-blue-700" },
-    paypal: { bg: "bg-cyan-900/30", text: "text-cyan-400", border: "border-cyan-700" },
-    gocardless: { bg: "bg-yellow-900/30", text: "text-yellow-400", border: "border-yellow-700" },
-    stripe: { bg: "bg-indigo-900/30", text: "text-indigo-400", border: "border-indigo-700" },
+    "braintree-eur": { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
+    "braintree-usd": { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
+    "braintree-gbp": { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
+    "braintree-amex": { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
+    braintree: { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
+    paypal: { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
+    gocardless: { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
+    stripe: { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
 };
 
-const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-black/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700" };
+const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" };
 
 const normalizeText = (value: string | null | undefined): string =>
     (value || "")
