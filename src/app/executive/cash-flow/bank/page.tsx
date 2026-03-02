@@ -305,7 +305,7 @@ const PNL_CHART_COLORS: Record<string, string> = {
     "104": "#fbbf24",
     "105": "#f472b6",
     internal: "#94a3b8",
-    unclassified: "#6b7280",
+    unreconciled: "#6b7280",
 };
 
 // ─── P&L Line definitions ───
@@ -319,9 +319,9 @@ const PNL_LINES: { code: string; label: string; bg: string; text: string; border
 ];
 
 const getPnlLineFromCode = (faCode: string | null): string => {
-    if (!faCode) return "unclassified";
+    if (!faCode) return "unreconciled";
     const prefix = faCode.split(".")[0];
-    return prefix || "unclassified";
+    return prefix || "unreconciled";
 };
 
 const getPnlLineConfig = (code: string) => PNL_LINES.find(l => l.code === code);
@@ -699,14 +699,12 @@ export default function BankCashFlowPage() {
 
     // ─── Resolve P&L line for a bank inflow via chain lookup ───
     const resolvePnlLine = useCallback((tx: BankTransaction): string => {
+        // Guard: ALL non-reconciled transactions → "unreconciled" (clear separation from classified revenue)
+        if (!tx.isReconciled) return "unreconciled";
+
         // Strategy 0: bank row has direct pnl_line classification (from popup or pnl-classify)
         const directPnl = tx.custom_data?.pnl_line as string | undefined;
         if (directPnl) {
-            // Guard: if pnl_line came from catch-all and tx is NOT reconciled, treat as unclassified
-            const pnlSource = tx.custom_data?.pnl_source as string | undefined;
-            if (directPnl === "105" && pnlSource === "catch-all-other-income-pnl-v1" && !tx.isReconciled) {
-                return "unclassified";
-            }
             return directPnl;
         }
 
@@ -750,11 +748,6 @@ export default function BankCashFlowPage() {
         // Strategy 2: bank row has pnl_fac (direct customer match)
         const directFac = tx.custom_data?.pnl_fac as string | undefined;
         if (directFac) {
-            // Guard: if pnl_fac came from catch-all and tx is NOT reconciled, treat as unclassified
-            const pnlSource = tx.custom_data?.pnl_source as string | undefined;
-            if (pnlSource === "catch-all-other-income-pnl-v1" && !tx.isReconciled) {
-                return "unclassified";
-            }
             return getPnlLineFromCode(directFac);
         }
 
@@ -766,7 +759,7 @@ export default function BankCashFlowPage() {
             );
             if (matchedOrder?.financial_account_code) return getPnlLineFromCode(matchedOrder.financial_account_code);
         }
-        return "unclassified";
+        return "unreconciled";
     }, [btTxMap, invoiceToFAC, invoiceOrders]);
 
     // ─── Resolve P&L splits for multi-order transactions ───
@@ -1160,7 +1153,7 @@ export default function BankCashFlowPage() {
             // Fallback: use pnl_line directly
             if (productName === "Unclassified") {
                 const directPnl = tx.custom_data?.pnl_line as string | undefined;
-                if (directPnl && directPnl !== "unclassified") {
+                if (directPnl && directPnl !== "unreconciled") {
                     const pnlDef = PNL_LINES.find(l => l.code === directPnl);
                     productName = pnlDef ? `${pnlDef.icon} ${pnlDef.label}` : directPnl;
                     faCode = directPnl;
@@ -1975,7 +1968,7 @@ export default function BankCashFlowPage() {
                                                     <Legend wrapperStyle={{ fontSize: 11, color: "var(--header-text, #6b7280)" }} />
                                                     {activePnlKeys.map(pnlKey => {
                                                         const pnlConfig = PNL_LINES.find(l => l.code === pnlKey);
-                                                        const label = pnlConfig ? `${pnlConfig.icon} ${pnlConfig.label}` : (pnlKey === "unclassified" ? "❓ Unclassified" : pnlKey);
+                                                        const label = pnlConfig ? `${pnlConfig.icon} ${pnlConfig.label}` : (pnlKey === "unreconciled" ? "⚠️ Unreconciled" : pnlKey);
                                                         return <Line key={pnlKey} type="monotone" dataKey={pnlKey} name={label} stroke={PNL_CHART_COLORS[pnlKey] || "#9ca3af"} strokeWidth={2} dot={{ fill: PNL_CHART_COLORS[pnlKey] || "#9ca3af", r: 3 }} connectNulls />;
                                                     })}
                                                 </LineChart>
@@ -2086,7 +2079,7 @@ export default function BankCashFlowPage() {
                                                             <div className="flex items-center justify-between mb-2 px-1">
                                                                 <span className="text-[10px] text-gray-500">
                                                                     {PNL_LINES.filter(l => l.code !== "internal" && pnlLineRevenue.byLine[l.code]).length} P&L lines
-                                                                    {pnlLineRevenue.byLine["unclassified"] ? ` + unclassified` : ""}
+                                                                    {pnlLineRevenue.byLine["unreconciled"] ? ` + unreconciled` : ""}
                                                                     {pnlLineRevenue.byLine["internal"] ? ` • ${pnlLineRevenue.byLine["internal"].count} internal excluded` : ""}
                                                                     {" • "}
                                                                     {Object.entries(pnlLineRevenue.byLine).filter(([k]) => k !== "internal").reduce((s, [, l]) => s + l.count, 0)} revenue inflows
@@ -2135,18 +2128,18 @@ export default function BankCashFlowPage() {
                                                                         </div>
                                                                     );
                                                                 })}
-                                                                {/* Unclassified bucket */}
-                                                                {pnlLineRevenue.byLine["unclassified"] && (() => {
-                                                                    const uncData = pnlLineRevenue.byLine["unclassified"];
+                                                                {/* Unreconciled bucket */}
+                                                                {pnlLineRevenue.byLine["unreconciled"] && (() => {
+                                                                    const uncData = pnlLineRevenue.byLine["unreconciled"];
                                                                     const pct = pnlLineRevenue.total > 0 ? Math.round((uncData.amount / pnlLineRevenue.total) * 100) : 0;
                                                                     return (
                                                                         <div
-                                                                            onClick={() => setSelectedPnlLine("unclassified")}
-                                                                            className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700"
+                                                                            onClick={() => setSelectedPnlLine("unreconciled")}
+                                                                            className="flex-shrink-0 rounded-lg border px-3 py-2 min-w-[155px] max-w-[200px] cursor-pointer transition-all hover:scale-[1.02] hover:shadow-lg bg-amber-50 dark:bg-amber-950/30 border-amber-300 dark:border-amber-700"
                                                                         >
                                                                             <div className="flex items-center gap-1.5 mb-1">
-                                                                                <span className="text-sm">❓</span>
-                                                                                <p className="text-[10px] uppercase font-medium text-gray-500 dark:text-gray-400">Unclassified</p>
+                                                                                <span className="text-sm">⚠️</span>
+                                                                                <p className="text-[10px] uppercase font-medium text-amber-600 dark:text-amber-400">Unreconciled</p>
                                                                             </div>
                                                                             <div className="space-y-0.5">
                                                                                 <div className="flex justify-between text-[10px]">
@@ -3165,8 +3158,8 @@ export default function BankCashFlowPage() {
             <Dialog open={!!selectedPnlLine} onOpenChange={(open) => { if (!open) setSelectedPnlLine(null); }}>
                 <DialogContent className="bg-white dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white max-w-lg max-h-[80vh] overflow-hidden flex flex-col">
                     {(() => {
-                        const lineConfig = selectedPnlLine === "unclassified"
-                            ? { code: "unclassified", label: "Unclassified", bg: "bg-gray-100 dark:bg-black/50", text: "text-gray-500 dark:text-gray-400", border: "border-gray-200 dark:border-gray-700", icon: "❓" }
+                        const lineConfig = selectedPnlLine === "unreconciled"
+                            ? { code: "unreconciled", label: "Unreconciled", bg: "bg-amber-50 dark:bg-amber-950/30", text: "text-amber-600 dark:text-amber-400", border: "border-amber-300 dark:border-amber-700", icon: "⚠️" }
                             : getPnlLineConfig(selectedPnlLine || "");
                         const lineData = selectedPnlLine ? pnlLineRevenue.byLine[selectedPnlLine] : null;
                         if (!lineConfig || !lineData) return null;
