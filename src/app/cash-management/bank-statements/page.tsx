@@ -736,25 +736,32 @@ export default function BankStatementsPage() {
     }, [sortCol, sortDir]);
 
     /** Toggle order selection (multi-select for invoice-orders) */
-    const toggleOrderSelection = useCallback((id: string) => {
+    const toggleOrderSelection = useCallback((id: string, openPopup = true) => {
+        let wasAdded = false;
+        let orderData: { id: string; amount: number; customerName: string; invoiceNumber: string | null; products: string | null } | null = null;
         setSelectedOrderIds(prev => {
             const next = new Set(prev);
             if (next.has(id)) {
                 next.delete(id);
                 setSelectedOrdersCache(cache => { const c = new Map(cache); c.delete(id); return c; });
+                // Remove installment override when deselecting
+                setInstallmentOverrides(prev => { const m = new Map(prev); m.delete(id); return m; });
             } else {
                 next.add(id);
+                wasAdded = true;
                 // Cache the order data from current search results
                 const order = orderSearchResults.find(o => o.id === id);
                 if (order) {
-                    setSelectedOrdersCache(cache => new Map(cache).set(id, {
+                    const cached = {
                         amount: order.amount,
                         customerName: order.customerName || "",
                         orderId: order.orderId || null,
                         invoiceNumber: order.invoiceNumber || null,
                         financialAccountCode: order.financialAccountCode || null,
                         products: order.products || null,
-                    }));
+                    };
+                    setSelectedOrdersCache(cache => new Map(cache).set(id, cached));
+                    orderData = { id, amount: order.amount, customerName: order.customerName || "", invoiceNumber: order.invoiceNumber || null, products: order.products || null };
                 }
             }
             return next;
@@ -762,7 +769,30 @@ export default function BankStatementsPage() {
         // Clear single-order selection to prevent CASE 3 from firing instead of CASE 5
         setSelectedRevenueOrder(null);
         setSelectedPaymentMatch(null);
-    }, [orderSearchResults]);
+        // Open installment popup for newly added order (revenue only)
+        if (openPopup && wasAdded && orderData && reconTransaction && reconTransaction.amount > 0) {
+            setTimeout(() => openInstallmentPopupForOrder(orderData!), 50);
+        }
+    }, [orderSearchResults, reconTransaction, openInstallmentPopupForOrder]);
+
+    /** Open installment popup for a given order — called on selection */
+    const openInstallmentPopupForOrder = useCallback((order: { id: string; amount: number; customerName: string; invoiceNumber: string | null; products: string | null }) => {
+        if (!reconTransaction || reconTransaction.amount < 0) return; // only for revenue (positive amounts)
+        const txAmount = Math.abs(reconTransaction.amount);
+        const isPartial = order.amount > txAmount * 1.02;
+        setInstallmentData({
+            orderId: order.id,
+            orderAmount: order.amount,
+            customerName: order.customerName,
+            invoiceNumber: order.invoiceNumber,
+            products: order.products,
+            bankAmount: txAmount,
+            currency: reconTransaction.currency,
+        });
+        setInstallmentCount(isPartial ? Math.max(2, Math.round(order.amount / txAmount)) : 1);
+        setInstallmentAmount(txAmount.toFixed(2));
+        setShowInstallmentPopup(true);
+    }, [reconTransaction]);
 
     /** Toggle gateway transaction selection (multi-select) */
     const toggleGatewayTxSelection = useCallback((id: string) => {
@@ -1837,41 +1867,6 @@ export default function BankStatementsPage() {
         const now = new Date().toISOString();
 
         try {
-            // ── INSTALLMENT POPUP INTERCEPT ──
-            // For single revenue order where order amount > bank amount, show installment popup first
-            if (!isExpense && !showInstallmentPopup && !showPnlPopup) {
-                let checkOrder: { id: string; amount: number; customerName: string; invoiceNumber: string | null; products: string | null } | null = null;
-
-                if (selectedRevenueOrder) {
-                    const match = revenueOrderMatches.find(m => m.id === selectedRevenueOrder);
-                    if (match) checkOrder = { id: match.id, amount: match.amount, customerName: match.customerName, invoiceNumber: match.invoiceNumber, products: match.products || null };
-                } else if (selectedOrderIds.size === 1) {
-                    const oid = [...selectedOrderIds][0];
-                    const cached = selectedOrdersCache.get(oid);
-                    if (cached) checkOrder = { id: oid, amount: cached.amount, customerName: cached.customerName, invoiceNumber: cached.invoiceNumber, products: cached.products || null };
-                }
-
-                // Always show installment popup for single revenue orders (pre-filled with 1 installment = full match)
-                if (checkOrder && !installmentOverrides.has(checkOrder.id)) {
-                    const isPartial = checkOrder.amount > txAmount * 1.02;
-                    setInstallmentData({
-                        orderId: checkOrder.id,
-                        orderAmount: checkOrder.amount,
-                        customerName: checkOrder.customerName,
-                        invoiceNumber: checkOrder.invoiceNumber,
-                        products: checkOrder.products,
-                        bankAmount: txAmount,
-                        currency: reconTransaction.currency,
-                    });
-                    // Default: 1 installment = use bank amount as-is (most common case)
-                    setInstallmentCount(isPartial ? Math.max(2, Math.round(checkOrder.amount / txAmount)) : 1);
-                    setInstallmentAmount(txAmount.toFixed(2));
-                    setShowInstallmentPopup(true);
-                    setIsSavingManual(false);
-                    return; // Stop — user will confirm or adjust, then we re-enter
-                }
-            }
-
             // ── P&L POPUP INTERCEPT ──
             // For revenue orders (CASE 3 or CASE 5), check if we need to show P&L classification popup
             if (!isExpense && (selectedRevenueOrder || selectedOrderIds.size > 0)) {
@@ -3964,7 +3959,13 @@ export default function BankStatementsPage() {
                                                             {revenueOrderMatches.slice(0, 10).map(rm => (
                                                                 <button
                                                                     key={rm.id}
-                                                                    onClick={() => { setSelectedRevenueOrder(rm.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); }}
+                                                                    onClick={() => {
+                                                                        setSelectedRevenueOrder(rm.id);
+                                                                        setSelectedInvoices(new Set());
+                                                                        setSelectedPaymentMatch(null);
+                                                                        // Open installment popup immediately
+                                                                        openInstallmentPopupForOrder({ id: rm.id, amount: rm.amount, customerName: rm.customerName, invoiceNumber: rm.invoiceNumber || null, products: rm.products || null });
+                                                                    }}
                                                                     className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedRevenueOrder === rm.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="flex items-center justify-between">
@@ -4774,11 +4775,9 @@ export default function BankStatementsPage() {
                             <Button
                                 variant="outline"
                                 onClick={() => {
-                                    // Use full order amount (no installment)
+                                    // Use full order amount (no installment override) — just close popup
                                     setShowInstallmentPopup(false);
                                     setInstallmentData(null);
-                                    // Re-trigger reconciliation without installment override
-                                    performManualReconciliation();
                                 }}
                                 className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 h-8 text-xs"
                             >
@@ -4791,12 +4790,10 @@ export default function BankStatementsPage() {
                                         toast({ title: "Invalid amount", description: "Enter a valid installment amount", variant: "destructive" });
                                         return;
                                     }
-                                    // Save override and close popup — re-enter performManualReconciliation
+                                    // Save override and close popup — user can now click Reconcile
                                     setInstallmentOverrides(prev => new Map(prev).set(installmentData.orderId, amt));
                                     setShowInstallmentPopup(false);
                                     setInstallmentData(null);
-                                    // Small delay to let state update, then re-trigger
-                                    setTimeout(() => performManualReconciliation(), 50);
                                 }}
                                 className="bg-violet-600 hover:bg-violet-700 h-8 text-xs text-white"
                             >
