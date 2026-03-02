@@ -127,6 +127,8 @@ interface FeePopupData {
     bankAmount: number;
     financialAccountCode: string;
     financialAccountName: string;
+    isCrossCurrency: boolean;
+    orderCurrencies: string[];
 }
 
 interface InstallmentPopupData {
@@ -680,6 +682,7 @@ export default function BankStatementsPage() {
     const [feePopupData, setFeePopupData] = useState<FeePopupData | null>(null);
     const [isCreatingFeeInvoice, setIsCreatingFeeInvoice] = useState(false);
     const [feeInvoiceDate, setFeeInvoiceDate] = useState(""); // editable date for fee invoice
+    const [feeEditAmount, setFeeEditAmount] = useState(""); // editable fee amount
 
     // Installment Popup state (shown when order amount > bank inflow, BEFORE P&L popup)
     const [showInstallmentPopup, setShowInstallmentPopup] = useState(false);
@@ -1930,17 +1933,21 @@ export default function BankStatementsPage() {
     };
 
     /** Build fee popup data when order total > bank inflow (gateway fee detected) */
-    const buildFeePopupData = (orderTotal: number, bankAmount: number, orderCodes: string[]): FeePopupData | null => {
+    const buildFeePopupData = (orderTotal: number, bankAmount: number, orderCodes: string[], orderCurrencies?: string[]): FeePopupData | null => {
         if (!reconTransaction) return null;
         const feeAmount = Number((orderTotal - bankAmount).toFixed(2));
         if (feeAmount <= 0) return null;
         const source = reconTransaction.source;
         const scope = BANK_SCOPE_MAP[source] || "ES";
+        const bankCurrency = reconTransaction.currency || (scope === "US" ? "USD" : "EUR");
         const currency = scope === "US" ? "USD" : "EUR";
         const gatewayKey = reconTransaction.gateway || manualPaymentSource || "";
         const gatewayInfo = GATEWAY_PROVIDER_MAP[gatewayKey] || { code: gatewayKey.toUpperCase().replace(/-/g, ""), name: gatewayKey || "Gateway" };
         const faCode = scope === "US" ? "209.2" : "209.1";
         const faName = scope === "US" ? "209.2 - Bank and Financial Fees USA" : "209.1 - Bank and Financial Fees SPAIN";
+        // Detect cross-currency: any order currency differs from bank currency
+        const uniqueOrderCurrencies = [...new Set((orderCurrencies || []).filter(Boolean).map(c => c.toUpperCase()))];
+        const isCrossCurrency = uniqueOrderCurrencies.length > 0 && uniqueOrderCurrencies.some(oc => oc !== bankCurrency.toUpperCase());
         return {
             feeAmount,
             currency,
@@ -1956,6 +1963,8 @@ export default function BankStatementsPage() {
             bankAmount,
             financialAccountCode: faCode,
             financialAccountName: faName,
+            isCrossCurrency,
+            orderCurrencies: uniqueOrderCurrencies,
         };
     };
 
@@ -2209,10 +2218,11 @@ export default function BankStatementsPage() {
                 setReconDialogOpen(false);
 
                 // Check for gateway fee (order total > bank inflow) — use effective amount
-                const case3FeeData = buildFeePopupData(effectiveMatchAmount, txAmount, [match.orderId || match.invoiceNumber || match.id].filter(Boolean) as string[]);
+                const case3FeeData = buildFeePopupData(effectiveMatchAmount, txAmount, [match.orderId || match.invoiceNumber || match.id].filter(Boolean) as string[], [match.currency || ""]);
                 if (case3FeeData) {
                     setFeePopupData(case3FeeData);
                     setFeeInvoiceDate(case3FeeData.txDate);
+                    setFeeEditAmount(case3FeeData.feeAmount.toFixed(2));
                     setShowFeePopup(true);
                 }
                 return;
@@ -2470,10 +2480,15 @@ export default function BankStatementsPage() {
                         const cached = selectedOrdersCache.get(oid);
                         return cached?.orderId || cached?.invoiceNumber || oid.replace("ar-", "#");
                     });
-                    const case5FeeData = buildFeePopupData(appliedOrderAmountTotal, txAmount, case5OrderCodes);
+                    const case5OrderCurrencies = linkedOrderIds.map(oid => {
+                        const cached = selectedOrdersCache.get(oid);
+                        return cached?.currency || "";
+                    });
+                    const case5FeeData = buildFeePopupData(appliedOrderAmountTotal, txAmount, case5OrderCodes, case5OrderCurrencies);
                     if (case5FeeData) {
                         setFeePopupData(case5FeeData);
                         setFeeInvoiceDate(case5FeeData.txDate);
+                        setFeeEditAmount(case5FeeData.feeAmount.toFixed(2));
                         setShowFeePopup(true);
                     }
                 }
@@ -4880,10 +4895,18 @@ export default function BankStatementsPage() {
                                 <CreditCard className="h-4.5 w-4.5 text-amber-600" />
                                 Gateway Fee Invoice
                             </h3>
-                            <p className="text-xs text-gray-500 mt-1">
-                                The matched orders total ({formatCurrency(feePopupData.orderTotal, feePopupData.currency)}) exceeds the bank inflow ({formatCurrency(feePopupData.bankAmount, feePopupData.currency)}).
-                                The difference of <span className="font-semibold text-amber-600">{formatCurrency(feePopupData.feeAmount, feePopupData.currency)}</span> will be recorded as a gateway fee expense.
-                            </p>
+                            {feePopupData.isCrossCurrency ? (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 text-[10px] font-medium mr-1">Cross-currency</span>
+                                    Orders are in {feePopupData.orderCurrencies.join("/")} but bank is in {feePopupData.currency}. The difference of {formatCurrency(feePopupData.feeAmount, feePopupData.currency)} may include exchange rate variance, not just gateway fees.
+                                    <span className="font-medium"> Adjust the fee amount below if needed.</span>
+                                </p>
+                            ) : (
+                                <p className="text-xs text-gray-500 mt-1">
+                                    The matched orders total ({formatCurrency(feePopupData.orderTotal, feePopupData.currency)}) exceeds the bank inflow ({formatCurrency(feePopupData.bankAmount, feePopupData.currency)}).
+                                    The difference of <span className="font-semibold text-amber-600">{formatCurrency(feePopupData.feeAmount, feePopupData.currency)}</span> will be recorded as a gateway fee expense.
+                                </p>
+                            )}
                         </div>
 
                         {/* Fee summary bar */}
@@ -4893,7 +4916,8 @@ export default function BankStatementsPage() {
                                 <span className="text-gray-400">−</span>
                                 <span className="text-gray-600 dark:text-gray-400">Bank: <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(feePopupData.bankAmount, feePopupData.currency)}</span></span>
                                 <span className="text-gray-400">=</span>
-                                <span className="font-bold text-amber-700 dark:text-amber-400">{formatCurrency(feePopupData.feeAmount, feePopupData.currency)} fee</span>
+                                <span className="font-bold text-amber-700 dark:text-amber-400">{formatCurrency(parseFloat(feeEditAmount) || feePopupData.feeAmount, feePopupData.currency)} fee</span>
+                                {feePopupData.isCrossCurrency && <span className="text-[10px] text-blue-600 dark:text-blue-400">(cross-currency)</span>}
                             </div>
                         </div>
 
@@ -4909,9 +4933,17 @@ export default function BankStatementsPage() {
                                 </div>
                                 <div>
                                     <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Amount ({feePopupData.currency})</label>
-                                    <div className="mt-1 px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-md text-sm font-bold text-amber-700 dark:text-amber-400">
-                                        {formatCurrency(feePopupData.feeAmount, feePopupData.currency)}
-                                    </div>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        min={0}
+                                        value={feeEditAmount}
+                                        onChange={e => setFeeEditAmount(e.target.value)}
+                                        className="mt-1 w-full px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-md text-sm font-bold text-amber-700 dark:text-amber-400 focus:ring-1 focus:ring-amber-500 focus:border-amber-500"
+                                    />
+                                    {feePopupData.isCrossCurrency && (
+                                        <p className="mt-1 text-[10px] text-blue-600 dark:text-blue-400">Inferred diff: {formatCurrency(feePopupData.feeAmount, feePopupData.currency)} — adjust for actual fee</p>
+                                    )}
                                 </div>
                             </div>
 
@@ -5010,6 +5042,11 @@ export default function BankStatementsPage() {
                                     disabled={isCreatingFeeInvoice}
                                     onClick={async () => {
                                         if (!feePopupData) return;
+                                        const effectiveFeeAmount = parseFloat(feeEditAmount) || feePopupData.feeAmount;
+                                        if (effectiveFeeAmount <= 0) {
+                                            toast({ title: "Invalid amount", description: "Fee amount must be greater than 0. Use Skip to skip.", variant: "destructive" });
+                                            return;
+                                        }
                                         setIsCreatingFeeInvoice(true);
                                         try {
                                             // Generate invoice number: {scope}-INV-{YYYYMM}-{NNNN}
@@ -5041,7 +5078,7 @@ export default function BankStatementsPage() {
                                                 invoice_type: "INCURRED",
                                                 entry_type: "invoice",
                                                 financial_account_code: feePopupData.financialAccountCode,
-                                                invoice_amount: feePopupData.feeAmount,
+                                                invoice_amount: effectiveFeeAmount,
                                                 currency: feePopupData.currency,
                                                 eur_exchange: feePopupData.currency === "USD" ? 1.0 : 1.0,
                                                 provider_code: feePopupData.providerCode,
@@ -5050,7 +5087,7 @@ export default function BankStatementsPage() {
                                                 dep_cost_type_code: "GENEXP",
                                                 cost_center_code: "3.0.0",
                                                 sub_department_code: "3.1.0",
-                                                description,
+                                                description: `${feePopupData.isCrossCurrency ? "[Cross-currency] " : ""}${description}`,
                                                 invoice_number: invoiceNumber,
                                                 country_code: feePopupData.scope,
                                                 scope: feePopupData.scope,
@@ -5058,7 +5095,7 @@ export default function BankStatementsPage() {
                                                 dre_impact: true,
                                                 cash_impact: true,
                                                 is_intercompany: false,
-                                                notes: `Auto-created gateway fee from bank reconciliation`,
+                                                notes: `Auto-created gateway fee from bank reconciliation${feePopupData.isCrossCurrency ? " (cross-currency: orders in " + feePopupData.orderCurrencies.join("/") + ", bank in " + feePopupData.currency + ")" : ""}`,
                                             };
 
                                             const { data: insData, error: insErr } = await supabase.from("invoices").insert([payload]).select("id");
@@ -5078,7 +5115,7 @@ export default function BankStatementsPage() {
 
                                             toast({
                                                 title: "Fee Invoice Created!",
-                                                description: `${invoiceNumber} — ${feePopupData.gatewayName} fee ${formatCurrency(feePopupData.feeAmount, feePopupData.currency)}`,
+                                                description: `${invoiceNumber} — ${feePopupData.gatewayName} fee ${formatCurrency(effectiveFeeAmount, feePopupData.currency)}`,
                                             });
                                             setShowFeePopup(false);
                                             setFeePopupData(null);
