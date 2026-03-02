@@ -663,6 +663,7 @@ export default function BankStatementsPage() {
     const [showFeePopup, setShowFeePopup] = useState(false);
     const [feePopupData, setFeePopupData] = useState<FeePopupData | null>(null);
     const [isCreatingFeeInvoice, setIsCreatingFeeInvoice] = useState(false);
+    const [feeInvoiceDate, setFeeInvoiceDate] = useState(""); // editable date for fee invoice
 
     // Installment Popup state (shown when order amount > bank inflow, BEFORE P&L popup)
     const [showInstallmentPopup, setShowInstallmentPopup] = useState(false);
@@ -2236,6 +2237,7 @@ export default function BankStatementsPage() {
                 const case3FeeData = buildFeePopupData(effectiveMatchAmount, txAmount, [match.orderId || match.invoiceNumber || match.id].filter(Boolean) as string[]);
                 if (case3FeeData) {
                     setFeePopupData(case3FeeData);
+                    setFeeInvoiceDate(case3FeeData.txDate);
                     setShowFeePopup(true);
                 }
                 return;
@@ -2502,6 +2504,7 @@ export default function BankStatementsPage() {
                     const case5FeeData = buildFeePopupData(appliedOrderAmountTotal, txAmount, case5OrderCodes);
                     if (case5FeeData) {
                         setFeePopupData(case5FeeData);
+                        setFeeInvoiceDate(case5FeeData.txDate);
                         setShowFeePopup(true);
                     }
                 }
@@ -3064,4 +3067,2069 @@ export default function BankStatementsPage() {
                             <div className="min-w-0">
                                 <p className="text-[10px] text-gray-500 uppercase tracking-wide">Balance</p>
                                 <p className={`text-sm font-bold truncate ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`} title={formatCurrency(summary.netCashFlow, dominantCurrency)}>
-                                    {formatCompactCurrency(summary.netCashFlow
+                                    {formatCompactCurrency(summary.netCashFlow, dominantCurrency)}
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {/* ─── Reconciliation Results Banner ─── */}
+                {reconcileResults && (
+                    <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-emerald-900/20">
+                        <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                            <span className="text-sm font-medium text-emerald-400">Reconciliation Results</span>
+                            <button onClick={() => setReconcileResults(null)} className="ml-auto text-xs text-gray-500 hover:text-gray-900 dark:text-white">Close</button>
+                        </div>
+                        <div className="flex gap-4">
+                            {reconcileResults.map(r => (
+                                <div key={r.bankSource} className="text-xs">
+                                    <span className="text-gray-500 dark:text-gray-400">{BANK_ACCOUNTS.find(b => b.key === r.bankSource)?.label || r.bankSource}: </span>
+                                    {r.success ? <><span className="text-emerald-400 font-semibold">{r.matched}</span> match | <span className="text-amber-400">{r.unmatched}</span> pend.</> : <span className="text-red-400">{r.error || "Failed"}</span>}
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ─── Filters ─── */}
+                <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-2 bg-gray-100 dark:bg-[#0a0a0a]">
+                    <div className="flex items-center gap-3 flex-wrap">
+                        <Filter className="h-3.5 w-3.5 text-gray-500" />
+                        <Input type="date" value={pendingDateRange.start} onChange={e => setPendingDateRange(p => ({ ...p, start: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
+                        <span className="text-gray-600">→</span>
+                        <Input type="date" value={pendingDateRange.end} onChange={e => setPendingDateRange(p => ({ ...p, end: e.target.value }))} className="w-36 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs" />
+                        <Button onClick={applyDateRange} variant="outline" size="sm" className="h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white hover:bg-gray-100 dark:hover:bg-[#111111] text-xs">
+                            Apply
+                        </Button>
+                        <Select value={gatewayFilter} onValueChange={setGatewayFilter}>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Gateway" /></SelectTrigger>
+                            <SelectContent><SelectItem value="all">Gateways</SelectItem><SelectItem value="braintree-eur">Braintree EUR</SelectItem><SelectItem value="braintree-usd">Braintree USD</SelectItem><SelectItem value="braintree-gbp">Braintree GBP</SelectItem><SelectItem value="braintree-amex">Braintree Amex</SelectItem><SelectItem value="paypal">PayPal</SelectItem><SelectItem value="gocardless">GoCardless</SelectItem><SelectItem value="stripe">Stripe</SelectItem></SelectContent>
+                        </Select>
+                        <Select value={flowFilter} onValueChange={setFlowFilter}>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Flow" /></SelectTrigger>
+                            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="income">Inflows</SelectItem><SelectItem value="expense">Outflows</SelectItem></SelectContent>
+                        </Select>
+                        <Select value={reconFilter} onValueChange={setReconFilter}>
+                            <SelectTrigger className="w-32 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Reconciliation" /></SelectTrigger>
+                            <SelectContent><SelectItem value="all">All</SelectItem><SelectItem value="reconciled">Reconciled</SelectItem><SelectItem value="pending">Pending</SelectItem></SelectContent>
+                        </Select>
+                        <Select value={gwReconFilter} onValueChange={setGwReconFilter}>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="GW Type" /></SelectTrigger>
+                            <SelectContent><SelectItem value="all">GW All</SelectItem><SelectItem value="auto">Auto</SelectItem><SelectItem value="manual">Manual</SelectItem><SelectItem value="intercompany">Intercompany</SelectItem><SelectItem value="not-reconciled">Not Recon.</SelectItem></SelectContent>
+                        </Select>
+                        <Select value={orderFilter} onValueChange={setOrderFilter}>
+                            <SelectTrigger className="w-28 h-8 bg-transparent border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white text-xs"><SelectValue placeholder="Order" /></SelectTrigger>
+                            <SelectContent><SelectItem value="all">Ord All</SelectItem><SelectItem value="matched">Matched</SelectItem><SelectItem value="partial">Partial</SelectItem><SelectItem value="not-matched">Not Matched</SelectItem></SelectContent>
+                        </Select>
+                    </div>
+                </div>
+
+                {/* ─── Table Header ─── */}
+                <div className="flex-shrink-0 sticky top-0 z-10 bg-gray-50 dark:bg-[#0a0a0a] border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
+                    <div className="flex items-center gap-1 px-4 py-2 text-[10px] text-gray-500 dark:text-gray-400 font-medium uppercase min-w-[900px]">
+                        <div className="w-[60px] flex-shrink-0">Date</div>
+                        {showBankColumn && <div className="w-[90px] flex-shrink-0">Bank</div>}
+                        <div className="flex-1 min-w-[200px]">Description</div>
+                        <div className="w-[80px] flex-shrink-0 text-right">Debit</div>
+                        <div className="w-[80px] flex-shrink-0 text-right">Credit</div>
+                        <div className="w-[80px] flex-shrink-0 text-center">Gateway</div>
+                        <div className="w-[40px] flex-shrink-0 text-center">GW</div>
+                        <div className="w-[40px] flex-shrink-0 text-center">Ord</div>
+                        <div className="w-[40px] flex-shrink-0 text-center">Act</div>
+                    </div>
+                </div>
+
+                {/* ─── Content (month → day → rows) ─── */}
+                <div className="flex-1 overflow-y-auto overflow-x-auto">
+                    {monthGroups.map(mg => {
+                        const dayKeys = mg.days.map(d => d.date);
+                        const allDaysExpanded = dayKeys.every(k => expandedDays.has(k));
+                        return (
+                            <div key={mg.monthKey} className="border-b border-gray-200 dark:border-gray-800">
+                                {/* Month header */}
+                                <div className="flex items-center gap-2 px-4 py-2.5 hover:bg-gray-100 dark:bg-black/50 cursor-pointer" onClick={() => toggleMonth(mg.monthKey)}>
+                                    {expandedMonths.has(mg.monthKey) ? <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronRight className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+                                    <span className="font-medium text-gray-900 dark:text-white text-sm">{mg.monthLabel}</span>
+                                    {(mg.unreconciledExpenseCount > 0 || mg.unreconciledRevenueCount > 0) && (
+                                        <span className="text-[11px] font-medium">
+                                            (<span className="text-red-400">{mg.unreconciledExpenseCount} exp</span>
+                                            {mg.unreconciledExpenseCount > 0 && mg.unreconciledRevenueCount > 0 && <span className="text-gray-400"> · </span>}
+                                            <span className="text-green-400">{mg.unreconciledRevenueCount} rev</span>
+                                            <span className="text-gray-400"> unreconciled</span>)
+                                        </span>
+                                    )}
+                                    {expandedMonths.has(mg.monthKey) && (
+                                        <button
+                                            className="p-0.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                            title={allDaysExpanded ? "Collapse all days" : "Expand all days"}
+                                            onClick={(e) => { e.stopPropagation(); toggleAllDaysInMonth(mg); }}
+                                        >
+                                            <ChevronsUpDown className="h-4 w-4" />
+                                        </button>
+                                    )}
+                                    <span className="text-gray-500 text-xs ml-auto">
+                                        <span className="text-green-400">+{formatCurrency(mg.totalCredits, dominantCurrency)}</span>
+                                        <span className="mx-1">/</span>
+                                        <span className="text-red-400">-{formatCurrency(mg.totalDebits, dominantCurrency)}</span>
+                                    </span>
+                                </div>
+
+                                {/* Days within month */}
+                                {expandedMonths.has(mg.monthKey) && mg.days.map(dayGroup => (
+                                    <div key={dayGroup.date}>
+                                        {/* Day header */}
+                                        <div
+                                            className="flex items-center gap-2 pl-8 pr-4 py-2 hover:bg-gray-50 dark:hover:bg-gray-900/30 cursor-pointer border-t border-gray-100 dark:border-gray-800/50"
+                                            onClick={() => toggleDay(dayGroup.date)}
+                                        >
+                                            {expandedDays.has(dayGroup.date) ? <ChevronDown className="h-3 w-3 text-gray-400" /> : <ChevronRight className="h-3 w-3 text-gray-400" />}
+                                            <Calendar className="h-3 w-3 text-blue-400" />
+                                            <span className="text-[12px] font-medium text-gray-700 dark:text-gray-300">{dayGroup.dateLabel}</span>
+                                            <span className="text-[11px] text-gray-400 ml-1">({dayGroup.rows.length})</span>
+                                            {(() => {
+                                                const reconCount = dayGroup.rows.filter(r => r.isReconciled).length;
+                                                const total = dayGroup.rows.length;
+                                                const allRecon = reconCount === total;
+                                                const noneRecon = reconCount === 0;
+                                                return allRecon ? (
+                                                    <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-green-500 ml-1">
+                                                        <CheckCircle2 className="h-3 w-3" /> All reconciled
+                                                    </span>
+                                                ) : noneRecon ? (
+                                                    <span className="text-[10px] font-medium text-red-400 ml-1">
+                                                        0/{total} reconciled
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] font-medium text-amber-400 ml-1">
+                                                        {reconCount}/{total} reconciled
+                                                    </span>
+                                                );
+                                            })()}
+                                            <span className="text-gray-400 text-[11px] ml-auto">
+                                                <span className="text-green-400">+{formatCurrency(dayGroup.totalCredits, dominantCurrency)}</span>
+                                                <span className="mx-1">/</span>
+                                                <span className="text-red-400">-{formatCurrency(dayGroup.totalDebits, dominantCurrency)}</span>
+                                            </span>
+                                        </div>
+
+                                        {/* Transaction rows */}
+                                        {expandedDays.has(dayGroup.date) && dayGroup.rows.map(tx => {
+                                            const bankInfo = BANK_ACCOUNTS.find(b => b.key === tx.source);
+                                            const gwStyle = getGatewayStyle(tx.paymentSource || tx.gateway);
+                                            const isDebit = tx.amount < 0;
+                                            const isCredit = tx.amount > 0;
+
+                                            return (
+                                                <div key={tx.id}
+                                                    className={`flex items-center gap-1 px-4 py-2 hover:bg-gray-50 dark:bg-black/30 border-t border-gray-200 dark:border-gray-800/50 cursor-pointer min-w-[900px] ${selectedRow?.id === tx.id ? "bg-gray-100 dark:bg-[#0a0a0a]/50" : ""}`}
+                                                    onClick={() => setSelectedRow(tx)}>
+                                                    <div className="w-[60px] flex-shrink-0 text-[10px] text-gray-700 dark:text-gray-300">{formatShortDate(tx.date)}</div>
+                                                    {showBankColumn && (
+                                                        <div className="w-[90px] flex-shrink-0">
+                                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${bankInfo?.textColor || "text-gray-500 dark:text-gray-400"} border-gray-300 dark:border-gray-600`}>{bankInfo?.label || tx.source}</Badge>
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 min-w-[200px] text-[11px] text-gray-900 dark:text-white truncate" title={tx.description}>{parseChaseShortDescription(tx.description, tx.source)}</div>
+                                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                        {isDebit ? <span className="text-red-400">{formatCurrency(Math.abs(tx.amount), tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                                    </div>
+                                                    <div className="w-[80px] flex-shrink-0 text-right text-[10px] font-mono">
+                                                        {isCredit ? <span className="text-green-400">{formatCurrency(tx.amount, tx.currency)}</span> : <span className="text-gray-600">-</span>}
+                                                    </div>
+                                                    <div className="w-[80px] flex-shrink-0 text-center">
+                                                        {(tx.paymentSource || tx.gateway) ? (
+                                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
+                                                                {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
+                                                            </Badge>
+                                                        ) : <span className="text-gray-600 text-[9px]">-</span>}
+                                                    </div>
+                                                    <div className="w-[64px] flex-shrink-0" onClick={e => e.stopPropagation()}>
+                                                        <div className="flex items-center justify-center gap-1">
+                                                            {tx.isReconciled ? (
+                                                                tx.reconciliationType === "manual"
+                                                                    ? <User className="h-3.5 w-3.5 text-blue-500" />
+                                                                    : <Zap className="h-3.5 w-3.5 text-green-500" />
+                                                            ) : null}
+
+                                                            {(!tx.isReconciled || tx.reconciliationType !== "manual") && (
+                                                                <Button size="sm" variant="ghost" onClick={() => openManualRecon(tx)} className="h-5 w-5 p-0 text-cyan-400 hover:text-cyan-300 hover:bg-cyan-900/30" title="Manual reconcile">
+                                                                    <Link2 className="h-3 w-3" />
+                                                                </Button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-[40px] flex-shrink-0 text-center">
+                                                        {tx.orderReconciliationStatus === "full" ? (
+                                                            <CheckCircle className="h-3.5 w-3.5 text-green-500 mx-auto" />
+                                                        ) : tx.orderReconciliationStatus === "partial" ? (
+                                                            <CircleDot className="h-3.5 w-3.5 text-amber-500 mx-auto" />
+                                                        ) : (
+                                                            <span className="text-gray-600 text-[9px]">-</span>
+                                                        )}
+                                                    </div>
+                                                    <div className="w-[40px] flex-shrink-0 text-center" onClick={e => e.stopPropagation()}>
+                                                        {tx.isReconciled && (
+                                                            <Button size="sm" variant="ghost" onClick={() => revertReconciliation(tx)} className="h-5 w-5 p-0 text-gray-500 hover:text-red-400 hover:bg-red-900/30" title="Revert">
+                                                                <X className="h-3 w-3" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                ))}
+                            </div>
+                        );
+                    })}
+
+                    {monthGroups.length === 0 && (
+                        <div className="text-center py-20 text-gray-500">
+                            <Database className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                            <p>No transactions found</p>
+                            <p className="text-sm mt-1">Adjust filters or select other accounts</p>
+                        </div>
+                    )}
+                    <div className="h-8"></div>
+                </div>
+            </div>
+
+            {/* ════════════════════════════════════════════════════════ */}
+            {/* DETAIL PANEL (right side) */}
+            {/* ════════════════════════════════════════════════════════ */}
+            {selectedRow && (
+                <div className="fixed right-0 top-0 h-full w-[450px] bg-white dark:bg-black border-l border-gray-200 dark:border-gray-700 flex flex-col z-[1040] shadow-2xl">
+                    {/* Panel Header */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                        <div className="flex items-center gap-2 min-w-0">
+                            {selectedRow.isReconciled ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />}
+                            <span className="font-medium text-gray-900 dark:text-white truncate">{selectedRow.description}</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white flex-shrink-0" onClick={() => setSelectedRow(null)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+
+                    {/* Panel Content */}
+                    <div className="flex-1 overflow-y-auto">
+                        {/* Transaction Info */}
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="flex items-center gap-3">
+                                    <Calendar className="h-4 w-4 text-gray-500" />
+                                    <div>
+                                        <p className="text-xs text-gray-500">Date</p>
+                                        <p className="text-sm text-gray-900 dark:text-white">{formatShortDate(selectedRow.date)}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <DollarSign className="h-4 w-4 text-gray-500" />
+                                    <div>
+                                        <p className="text-xs text-gray-500">Amount</p>
+                                        <p className={`text-sm font-bold ${selectedRow.amount >= 0 ? "text-green-400" : "text-red-400"}`}>
+                                            {formatCurrency(selectedRow.amount, selectedRow.currency)}
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="flex items-center gap-3">
+                                <FileText className="h-4 w-4 text-gray-500" />
+                                <div className="flex-1">
+                                    <p className="text-xs text-gray-500">Description</p>
+                                    <p className="text-sm text-gray-900 dark:text-white break-words">{selectedRow.description}</p>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p className="text-xs text-gray-500">Bank</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.source)?.label || selectedRow.source}</p>
+                                </div>
+                                <div>
+                                    <p className="text-xs text-gray-500">Currency</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.currency}</p>
+                                </div>
+                            </div>
+
+                            {/* Custom data fields */}
+                            {selectedRow.custom_data && Object.keys(selectedRow.custom_data).length > 0 && (
+                                <div className="space-y-2">
+                                    {selectedRow.custom_data.details && (
+                                        <div><p className="text-xs text-gray-500">Type</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.details}</p></div>
+                                    )}
+                                    {selectedRow.custom_data.type && (
+                                        <div><p className="text-xs text-gray-500">Transaction Type</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.type}</p></div>
+                                    )}
+                                    {selectedRow.custom_data.balance != null && (
+                                        <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-gray-900 dark:text-white font-medium">{formatCurrency(selectedRow.custom_data.balance, selectedRow.currency)}</p></div>
+                                    )}
+                                    {selectedRow.custom_data.saldo != null && (
+                                        <div><p className="text-xs text-gray-500">Balance</p><p className="text-sm text-gray-900 dark:text-white font-medium">{formatCurrency(selectedRow.custom_data.saldo, selectedRow.currency)}</p></div>
+                                    )}
+                                    {selectedRow.custom_data.check_number && (
+                                        <div><p className="text-xs text-gray-500">Check/Slip #</p><p className="text-sm text-gray-700 dark:text-gray-300 font-mono">{selectedRow.custom_data.check_number}</p></div>
+                                    )}
+                                    {selectedRow.custom_data.referencia && (
+                                        <div><p className="text-xs text-gray-500">Reference</p><p className="text-sm text-gray-700 dark:text-gray-300 font-mono">{selectedRow.custom_data.referencia}</p></div>
+                                    )}
+                                    {selectedRow.custom_data.clave && (
+                                        <div><p className="text-xs text-gray-500">Key</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.clave}</p></div>
+                                    )}
+                                    {selectedRow.custom_data.categoria && (
+                                        <div><p className="text-xs text-gray-500">Category</p><p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.categoria}</p></div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ── RECONCILIATION STATUS ── */}
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#0a0a0a]">
+                            <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                {selectedRow.amount >= 0
+                                    ? <><Link2 className="h-4 w-4" /> Gateway Reconciliation</>
+                                    : <><Building className="h-4 w-4" /> AP Reconciliation</>}
+                            </h3>
+                            <div>
+                                <p className="text-xs text-gray-500">Status</p>
+                                {selectedRow.isReconciled ? (
+                                    <Badge variant="outline" className={`${selectedRow.reconciliationType?.startsWith("automatic") ? "bg-green-900/30 text-green-400 border-green-700"
+                                        : selectedRow.reconciliationType === "intercompany" ? "bg-amber-900/30 text-amber-400 border-amber-700"
+                                            : "bg-blue-900/30 text-blue-400 border-blue-700"
+                                        }`}>
+                                        Reconciled ({selectedRow.reconciliationType?.startsWith("automatic") ? "Auto" : selectedRow.reconciliationType === "intercompany" ? "Intercompany" : "Manual"})
+                                    </Badge>
+                                ) : (
+                                    <Badge variant="outline" className="bg-yellow-900/30 text-yellow-400 border-yellow-700">
+                                        Not Reconciled
+                                    </Badge>
+                                )}
+                            </div>
+
+                            {/* Reconciliation method detail */}
+                            {selectedRow.reconciliationType === "automatic-ap-bulk" && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Method</p>
+                                    <p className="text-sm text-green-300">AP Bulk Reconciliation (Excel)</p>
+                                </div>
+                            )}
+
+                            {/* ── REVENUE: Payment Source / Gateway info ── */}
+                            {selectedRow.amount >= 0 && selectedRow.paymentSource && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Payment Source</p>
+                                    <Badge variant="outline" className={`${getGatewayStyle(selectedRow.paymentSource).bg} ${getGatewayStyle(selectedRow.paymentSource).text} ${getGatewayStyle(selectedRow.paymentSource).border}`}>
+                                        {selectedRow.paymentSource}
+                                    </Badge>
+                                </div>
+                            )}
+
+                            {selectedRow.custom_data?.disbursement_reference && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Disbursement Reference</p>
+                                    <div className="flex items-center gap-2">
+                                        <Key className="h-3 w-3 text-gray-500" />
+                                        <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{selectedRow.custom_data.disbursement_reference}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Settlement batch & transaction count */}
+                            {selectedRow.custom_data?.braintree_transaction_count > 0 && (
+                                <div className="flex items-center justify-between">
+                                    <div>
+                                        <p className="text-xs text-gray-500">Transactions in Disbursement</p>
+                                        <p className="text-sm text-gray-900 dark:text-white font-medium">{selectedRow.custom_data.braintree_transaction_count} transactions</p>
+                                    </div>
+                                    {selectedRow.custom_data?.settlement_batch_id && (
+                                        <div className="text-right">
+                                            <p className="text-xs text-gray-500">Settlement Batch</p>
+                                            <p className="text-[10px] font-mono text-gray-500 dark:text-gray-400">{selectedRow.custom_data.settlement_batch_id}</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+
+                        {/* ══ DISBURSEMENT TRANSACTIONS BREAKDOWN ══ */}
+                        {selectedRow.amount >= 0 && selectedRow.isReconciled && selectedRow.paymentSource && (
+                            <div className="border-b border-gray-200 dark:border-gray-800">
+                                <button
+                                    onClick={() => setDisbursementExpanded(!disbursementExpanded)}
+                                    className="w-full px-4 py-3 flex items-center justify-between bg-white dark:bg-black hover:bg-gray-100 dark:hover:bg-[#1e2128] transition-colors"
+                                >
+                                    <h3 className="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                                        <Database className="h-4 w-4" />
+                                        Revenue Breakdown ({disbursementTxns.length} transactions)
+                                    </h3>
+                                    {disbursementExpanded ? <ChevronUp className="h-4 w-4 text-gray-500 dark:text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-500 dark:text-gray-400" />}
+                                </button>
+
+                                {disbursementExpanded && (
+                                    <div className="bg-white dark:bg-black">
+                                        {loadingDisbursementTxns ? (
+                                            <div className="flex items-center justify-center py-6 gap-2">
+                                                <Loader2 className="h-4 w-4 animate-spin text-cyan-400" />
+                                                <span className="text-xs text-gray-500 dark:text-gray-400">Loading transactions...</span>
+                                            </div>
+                                        ) : disbursementTxns.length === 0 ? (
+                                            <div className="py-4 px-4 text-center text-xs text-gray-500">
+                                                No individual transactions found for this disbursement.
+                                            </div>
+                                        ) : (
+                                            <div className="max-h-[400px] overflow-y-auto">
+                                                {/* Summary */}
+                                                <div className="px-4 py-2 border-b border-gray-200 dark:border-gray-800/50 flex items-center justify-between bg-white dark:bg-black">
+                                                    <span className="text-[10px] text-gray-500 uppercase">Total: {disbursementTxns.length} txns</span>
+                                                    <span className="text-xs font-mono text-green-400 font-medium">
+                                                        {formatCurrency(disbursementTxns.reduce((s, t) => s + t.amount, 0), selectedRow.currency)}
+                                                    </span>
+                                                </div>
+
+                                                {/* Transaction rows */}
+                                                {disbursementTxns.map((txn, idx) => (
+                                                    <div key={txn.id} className={`px-4 py-2 border-b border-gray-200 dark:border-gray-100 dark:border-gray-800/30 hover:bg-gray-50 dark:bg-black/30 ${idx % 2 === 0 ? "bg-white dark:bg-black" : "bg-[#161821]"}`}>
+                                                        <div className="flex items-start justify-between gap-2">
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-xs text-gray-900 dark:text-white font-medium truncate" title={txn.customerName}>
+                                                                    {txn.customerName || "—"}
+                                                                </p>
+                                                                <div className="flex items-center gap-2 mt-0.5">
+                                                                    {txn.orderId && (
+                                                                        <span className="text-[9px] font-mono text-blue-400 bg-blue-900/20 px-1 rounded">
+                                                                            #{txn.orderId}
+                                                                        </span>
+                                                                    )}
+                                                                    {txn.cardType && (
+                                                                        <span className="text-[9px] text-gray-500">
+                                                                            {txn.cardType}
+                                                                        </span>
+                                                                    )}
+                                                                    {txn.paymentMethod && !txn.cardType && (
+                                                                        <span className="text-[9px] text-gray-500">
+                                                                            {txn.paymentMethod}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                                {txn.customerEmail && (
+                                                                    <p className="text-[9px] text-gray-500 truncate mt-0.5">{txn.customerEmail}</p>
+                                                                )}
+                                                            </div>
+                                                            <div className="text-right shrink-0">
+                                                                <p className="text-xs font-mono text-green-400 font-medium">
+                                                                    {formatCurrency(txn.amount, txn.currency)}
+                                                                </p>
+                                                                <p className="text-[9px] text-gray-500 mt-0.5">
+                                                                    {txn.date ? formatShortDate(txn.date) : "—"}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* ══ EXPENSE MATCHED INVOICES BREAKDOWN ══ */}
+                        {selectedRow.amount < 0 && selectedRow.isReconciled && (
+                            <div className="border-b border-gray-200 dark:border-gray-800">
+                                <div className="w-full px-4 py-3 flex items-center justify-between bg-white dark:bg-black">
+                                    <h3 className="text-xs font-semibold text-red-400 uppercase tracking-wider flex items-center gap-2">
+                                        <FileText className="h-4 w-4" />
+                                        Expense Invoices ({expenseMatchedInvoices.length})
+                                    </h3>
+                                </div>
+
+                                {loadingExpenseMatchedInvoices ? (
+                                    <div className="flex items-center justify-center py-6 gap-2">
+                                        <Loader2 className="h-4 w-4 animate-spin text-red-400" />
+                                        <span className="text-xs text-gray-500 dark:text-gray-400">Loading invoices...</span>
+                                    </div>
+                                ) : expenseMatchedInvoices.length > 0 ? (
+                                    <div className="max-h-[280px] overflow-y-auto border-t border-gray-200 dark:border-gray-800/50">
+                                        {expenseMatchedInvoices.map(inv => (
+                                            <div key={inv.id} className="px-4 py-2 border-b border-gray-200 dark:border-gray-800/30 bg-white dark:bg-black">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code || "—"}</p>
+                                                        <p className="text-[10px] text-blue-300 font-mono">{inv.invoice_number || "Sem número"}</p>
+                                                    </div>
+                                                    <div className="text-right shrink-0">
+                                                        <p className="text-xs font-mono text-red-400 font-medium">
+                                                            {formatCurrency(inv.paid_amount ?? inv.invoice_amount ?? 0, inv.currency || selectedRow.currency)}
+                                                        </p>
+                                                        <p className="text-[9px] text-gray-500 mt-0.5">
+                                                            {inv.schedule_date ? formatShortDate(inv.schedule_date) : "—"}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : null}
+                            </div>
+                        )}
+
+                        {/* ── RECONCILIATION STATUS ── (continued - expenses) */}
+                        <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#0a0a0a]">
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_provider && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Provider</p>
+                                    <p className="text-sm text-gray-900 dark:text-white font-medium">{selectedRow.custom_data.matched_provider}</p>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_number && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                    <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_number}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_numbers && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Invoices</p>
+                                    <span className="text-sm font-mono text-blue-300">{selectedRow.custom_data.matched_invoice_numbers}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_invoice_total != null && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Invoice Total</p>
+                                    <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_invoice_total, selectedRow.currency)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_amount != null && !selectedRow.custom_data?.matched_invoice_total && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
+                                    <span className="text-sm font-medium text-red-400">{formatCurrency(selectedRow.custom_data.matched_amount, selectedRow.currency)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.matched_payment_date && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Payment Date (Excel)</p>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">{formatShortDate(selectedRow.custom_data.matched_payment_date)}</span>
+                                </div>
+                            )}
+
+                            {selectedRow.amount < 0 && selectedRow.custom_data?.ap_financial_account && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Financial Account</p>
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.ap_financial_account}</span>
+                                </div>
+                            )}
+
+                            {/* ── COMMON fields ── */}
+                            {selectedRow.custom_data?.reconciled_at && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Reconciled at</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{new Date(selectedRow.custom_data.reconciled_at).toLocaleString("pt-BR")}</p>
+                                </div>
+                            )}
+
+                            {selectedRow.custom_data?.manual_note && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Note</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.manual_note}</p>
+                                </div>
+                            )}
+
+                            {selectedRow.custom_data?.match_type && (
+                                <div>
+                                    <p className="text-xs text-gray-500">Match Type</p>
+                                    <p className="text-sm text-gray-700 dark:text-gray-300">{selectedRow.custom_data.match_type.replace(/_/g, " ")}</p>
+                                </div>
+                            )}
+
+                            {/* ── INTERCOMPANY details ── */}
+                            {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_bank && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Bank</p>
+                                    <p className="text-sm text-amber-300">{BANK_ACCOUNTS.find(b => b.key === selectedRow.custom_data.intercompany_matched_bank)?.label || selectedRow.custom_data.intercompany_matched_bank}</p>
+                                </div>
+                            )}
+                            {selectedRow.reconciliationType === "intercompany" && selectedRow.custom_data?.intercompany_matched_amount != null && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Matched Amount</p>
+                                    <span className="text-sm font-medium text-amber-400">{formatCurrency(selectedRow.custom_data.intercompany_matched_amount, selectedRow.currency)}</span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Matched transaction details (gateway auto-match) */}
+                        {selectedRow.isReconciled && selectedRow.custom_data?.bank_match_amount && (
+                            <div className="px-4 py-4 space-y-3 bg-green-900/10">
+                                <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
+                                    <Zap className="h-4 w-4" /> Matched Transaction
+                                </h3>
+                                <div className="space-y-2 text-sm">
+                                    {selectedRow.custom_data.bank_match_date && (
+                                        <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Date:</span><span className="text-gray-900 dark:text-white">{formatShortDate(selectedRow.custom_data.bank_match_date)}</span></div>
+                                    )}
+                                    <div className="flex justify-between"><span className="text-gray-500 dark:text-gray-400">Amount:</span><span className="text-green-400 font-medium">{formatCurrency(selectedRow.custom_data.bank_match_amount, selectedRow.currency)}</span></div>
+                                    {selectedRow.custom_data.bank_match_description && (
+                                        <div><span className="text-gray-500 dark:text-gray-400">Description:</span><p className="text-gray-900 dark:text-white text-xs mt-1">{selectedRow.custom_data.bank_match_description}</p></div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Order Reconciliation — only for revenue */}
+                        {selectedRow.amount >= 0 && (
+                            <div className="px-4 py-4 space-y-4 border-b border-gray-200 dark:border-gray-800 bg-gray-100 dark:bg-[#0a0a0a]">
+                                <h3 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                                    <FileText className="h-4 w-4" /> Order Reconciliation
+                                </h3>
+                                <div>
+                                    <p className="text-xs text-gray-500">Status</p>
+                                    {selectedRow.orderReconciliationStatus === "full" ? (
+                                        <Badge variant="outline" className="bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 border-green-300 dark:border-green-700">
+                                            Full Match
+                                        </Badge>
+                                    ) : selectedRow.orderReconciliationStatus === "partial" ? (
+                                        <Badge variant="outline" className="bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border-amber-300 dark:border-amber-700">
+                                            Partial Match — {selectedRow.matchedOrderCoverage}%
+                                        </Badge>
+                                    ) : (
+                                        <Badge variant="outline" className="bg-gray-100 dark:bg-black/50 text-gray-500 border-gray-200 dark:border-gray-700">
+                                            Not Matched
+                                        </Badge>
+                                    )}
+                                </div>
+
+                                {/* Show matched details when any match exists */}
+                                {selectedRow.orderReconciliationStatus !== "none" && (
+                                    <div className="space-y-2 bg-white dark:bg-black/30 rounded-lg p-3 border border-gray-200 dark:border-gray-700">
+                                        {(selectedRow.custom_data?.linked_web_order_details?.length || 0) > 1 ? (
+                                            <div className="space-y-1.5">
+                                                <p className="text-[10px] font-medium text-gray-500 uppercase tracking-wider">{selectedRow.custom_data.linked_web_order_details.length} Matched Orders</p>
+                                                {selectedRow.custom_data.linked_web_order_details.map((d: any, i: number) => (
+                                                    <div key={i} className="flex items-center justify-between py-1 border-b border-gray-100 dark:border-gray-800 last:border-0">
+                                                        <div className="min-w-0">
+                                                            <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{d.customerName || "Unknown"}</p>
+                                                            <p className="text-[10px] text-blue-600 dark:text-blue-400 font-mono">{d.orderId || d.id}</p>
+                                                        </div>
+                                                        <span className="text-xs font-medium text-green-600 dark:text-green-400 ml-2 flex-shrink-0">{formatCurrency(d.amount, selectedRow.currency)}</span>
+                                                    </div>
+                                                ))}
+                                                <div className="flex justify-between pt-1 border-t border-gray-200 dark:border-gray-700">
+                                                    <span className="text-xs font-bold text-gray-700 dark:text-gray-300">Orders Total</span>
+                                                    <span className="text-xs font-bold text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <>
+                                                {selectedRow.matchedCustomerName && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-xs text-gray-500">Customer</span>
+                                                        <span className="text-sm font-medium text-gray-900 dark:text-white">{selectedRow.matchedCustomerName}</span>
+                                                    </div>
+                                                )}
+                                                {selectedRow.invoiceOrderId && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-xs text-gray-500">Order ID</span>
+                                                        <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceOrderId}</span>
+                                                    </div>
+                                                )}
+                                                {selectedRow.invoiceNumber && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-xs text-gray-500">Invoice</span>
+                                                        <span className="text-sm font-mono text-blue-600 dark:text-blue-400">{selectedRow.invoiceNumber}</span>
+                                                    </div>
+                                                )}
+                                                {selectedRow.matchedOrderTotal > 0 && (
+                                                    <div className="flex justify-between">
+                                                        <span className="text-xs text-gray-500">Order Amount</span>
+                                                        <span className="text-sm font-medium text-green-600 dark:text-green-400">{formatCurrency(selectedRow.matchedOrderTotal, selectedRow.currency)}</span>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                        {selectedRow.orderReconciliationStatus === "partial" && (
+                                            <div className="flex justify-between">
+                                                <span className="text-xs text-gray-500">Bank Amount</span>
+                                                <span className="text-sm font-medium text-gray-900 dark:text-gray-300">{formatCurrency(Math.abs(selectedRow.amount), selectedRow.currency)}</span>
+                                            </div>
+                                        )}
+                                        {selectedRow.orderReconciliationStatus === "partial" && (
+                                            <div className="mt-1">
+                                                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                                                    <div className="bg-amber-500 h-1.5 rounded-full" style={{ width: `${selectedRow.matchedOrderCoverage}%` }} />
+                                                </div>
+                                                <p className="text-[10px] text-gray-500 mt-0.5">Orders cover {selectedRow.matchedOrderCoverage}% of bank amount</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* Legacy display for unmatched with invoice data */}
+                                {selectedRow.orderReconciliationStatus === "none" && selectedRow.invoiceNumber && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Invoice Number</p>
+                                        <span className="text-sm font-mono text-blue-600 dark:text-blue-300">{selectedRow.invoiceNumber}</span>
+                                    </div>
+                                )}
+                                {selectedRow.orderReconciliationStatus === "none" && selectedRow.invoiceOrderId && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 mb-1">Order ID</p>
+                                        <span className="text-sm font-mono text-gray-700 dark:text-gray-300">{selectedRow.invoiceOrderId}</span>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Panel Footer */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-between gap-2">
+                        {selectedRow.isReconciled ? (
+                            <Button variant="outline" size="sm" onClick={() => revertReconciliation(selectedRow)} className="border-red-700 text-red-400 hover:bg-red-900/30">
+                                <X className="h-4 w-4 mr-1" /> Revert
+                            </Button>
+                        ) : (
+                            <Button variant="outline" size="sm" onClick={() => openManualRecon(selectedRow)} className="border-cyan-700 text-cyan-400 hover:bg-cyan-900/30">
+                                <Link2 className="h-4 w-4 mr-1" /> Manual Reconcile
+                            </Button>
+                        )}
+                        <Button variant="ghost" size="sm" onClick={() => setSelectedRow(null)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
+                            Close
+                        </Button>
+                    </div>
+                </div>
+            )}
+
+            {/* ════════════════════════════════════════════════════════ */}
+            {/* SMART RECONCILIATION DIALOG */}
+            {/* ════════════════════════════════════════════════════════ */}
+            {reconDialogOpen && reconTransaction && (() => {
+                const isExpense = reconTransaction.amount < 0;
+                const totalSuggestions = isExpense
+                    ? providerNameMatches.length
+                    : paymentSourceMatches.length + revenueOrderMatches.length;
+
+                // Filtered unreconciled invoices for search
+                const filteredAvailableInvoices = allAvailableInvoices.filter(inv => {
+                    if (!invoiceSearchTerm) return true;
+                    const q = invoiceSearchTerm.toLowerCase();
+                    return (
+                        (inv.provider_code || "").toLowerCase().includes(q) ||
+                        (inv.invoice_number || "").toLowerCase().includes(q) ||
+                        (inv.description || "").toLowerCase().includes(q) ||
+                        String(inv.invoice_amount).includes(q)
+                    );
+                });
+
+                return (
+                    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[200]">
+                        <div className="bg-gray-50 dark:bg-[#0a0a0a] rounded-lg w-[900px] max-h-[85vh] overflow-hidden flex flex-col">
+                            {/* Dialog Header */}
+                            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                                        {isExpense ? "Expense Reconciliation" : "Revenue Reconciliation"}
+                                    </h3>
+                                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                                        {loadingMatches ? "Searching for matches..." : `${totalSuggestions} suggestion(s) found`}
+                                    </p>
+                                </div>
+                                <Button variant="ghost" size="sm" onClick={() => setReconDialogOpen(false)} className="text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white">
+                                    <X className="h-5 w-5" />
+                                </Button>
+                            </div>
+
+                            {/* Transaction Info Bar */}
+                            <div className="px-6 py-3 bg-gray-100 dark:bg-black/50 border-b border-gray-200 dark:border-gray-700">
+                                <div className="grid grid-cols-4 gap-4 text-sm">
+                                    <div>
+                                        <span className="text-gray-500 text-xs">Date</span>
+                                        <p className="text-gray-900 dark:text-white font-medium">{formatShortDate(reconTransaction.date)}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500 text-xs">Amount</span>
+                                        <p className={`font-medium ${reconTransaction.amount >= 0 ? "text-green-700 dark:text-green-400" : "text-red-600 dark:text-red-400"}`}>
+                                            {formatCurrency(reconTransaction.amount, reconTransaction.currency)}
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500 text-xs">Bank</span>
+                                        <p className="text-gray-900 dark:text-white font-medium text-xs">{BANK_ACCOUNTS.find(b => b.key === reconTransaction.source)?.label}</p>
+                                    </div>
+                                    <div>
+                                        <span className="text-gray-500 text-xs">Description</span>
+                                        <p className="text-gray-700 dark:text-gray-300 text-xs truncate" title={reconTransaction.description}>{reconTransaction.description}</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Tab Bar */}
+                            <div className="px-6 py-2 border-b border-gray-200 dark:border-gray-700 flex gap-1">
+                                <button
+                                    onClick={() => setReconTab("suggestions")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "suggestions" ? "bg-cyan-100 text-cyan-800 border border-cyan-300 dark:bg-cyan-600/20 dark:text-cyan-400 dark:border-cyan-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                >
+                                    Suggestions {totalSuggestions > 0 && <span className="ml-1 bg-cyan-600/30 px-1.5 py-0.5 rounded-full text-[10px]">{totalSuggestions}</span>}
+                                </button>
+                                <button
+                                    onClick={() => setReconTab("all")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "all" ? "bg-violet-100 text-violet-800 border border-violet-300 dark:bg-violet-600/20 dark:text-violet-400 dark:border-violet-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                >
+                                    {isExpense ? "All Invoices" : "All Orders"} <span className="ml-1 text-[10px] text-gray-500">({allAvailableInvoices.length})</span>
+                                </button>
+                                <button
+                                    onClick={() => setReconTab("manual")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "manual" ? "bg-orange-100 text-orange-800 border border-orange-300 dark:bg-orange-600/20 dark:text-orange-400 dark:border-orange-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                >
+                                    Manual
+                                </button>
+                                <button
+                                    onClick={() => setReconTab("intercompany")}
+                                    className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${reconTab === "intercompany" ? "bg-amber-100 text-amber-800 border border-amber-300 dark:bg-amber-600/20 dark:text-amber-400 dark:border-amber-700" : "text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-[#111111]"}`}
+                                >
+                                    Intercompany {intercompanyMatches.length > 0 && <span className="ml-1 bg-amber-600/30 px-1.5 py-0.5 rounded-full text-[10px]">{intercompanyMatches.length}</span>}
+                                </button>
+                            </div>
+
+                            {/* Content Area */}
+                            <div className="flex-1 overflow-auto px-6 py-4 space-y-4 min-h-0" style={{ maxHeight: "calc(85vh - 280px)" }}>
+                                {loadingMatches && (
+                                    <div className="flex items-center justify-center gap-2 py-8 text-gray-500 dark:text-gray-400">
+                                        <Loader2 className="h-5 w-5 animate-spin" />
+                                        <span>Searching for matching transactions...</span>
+                                    </div>
+                                )}
+
+                                {/* ── SUGGESTIONS TAB ── */}
+                                {reconTab === "suggestions" && !loadingMatches && (
+                                    <>
+                                        {/* EXPENSE: All supplier invoices */}
+                                        {isExpense && (
+                                            <>
+                                                {/* Supplier invoices — ALL unreconciled invoices for matched supplier */}
+                                                {providerNameMatches.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-green-700 dark:text-green-400 mb-2 flex items-center gap-1">
+                                                            <Building className="h-3.5 w-3.5" /> Supplier Invoices ({providerNameMatches.length})
+                                                        </h4>
+                                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
+                                                            <span></span>
+                                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                        </div>
+                                                        <div className="space-y-1">
+                                                            {sortInvoices(providerNameMatches).map(inv => (
+                                                                <button
+                                                                    key={inv.id}
+                                                                    onClick={() => toggleInvoiceSelection(inv.id)}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
+                                                                        <div className="flex items-center">
+                                                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code}</p>
+                                                                            <p className="text-[10px] text-gray-500 truncate">{inv.matchReason}</p>
+                                                                        </div>
+                                                                        <div className="text-center">
+                                                                            <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
+                                                                        </div>
+                                                                        <div className="text-center">
+                                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                        </div>
+                                                                        <div className="text-right flex items-center gap-1.5">
+                                                                            <span className="text-sm font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700">{inv.matchScore}%</Badge>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+
+
+                                                {totalSuggestions === 0 && (
+                                                    <div className="text-center py-6 text-gray-500">
+                                                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                                        <p className="text-sm">No matching invoices found</p>
+                                                        <p className="text-xs mt-1">Check the &quot;All Invoices&quot; tab or use Manual mode</p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+
+                                        {/* REVENUE: Payment source + Revenue order + Intercompany suggestions */}
+                                        {!isExpense && (
+                                            <>
+                                                {/* Payment source matches */}
+                                                {paymentSourceMatches.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-1">
+                                                            <CreditCard className="h-3.5 w-3.5" /> Payment Source Matches ({paymentSourceMatches.length})
+                                                        </h4>
+                                                        <div className="space-y-1">
+                                                            {paymentSourceMatches.map(pm => (
+                                                                <button
+                                                                    key={pm.id}
+                                                                    onClick={() => { setSelectedPaymentMatch(pm.id); setSelectedInvoices(new Set()); setSelectedRevenueOrder(null); }}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedPaymentMatch === pm.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <p className="text-xs text-gray-900 dark:text-white font-medium">{pm.sourceLabel}</p>
+                                                                            <p className="text-[10px] text-gray-500">{pm.matchReason}</p>
+                                                                        </div>
+                                                                        <div className="text-right ml-3 flex items-center gap-2">
+                                                                            <Badge variant="outline" className="text-[9px] px-1 py-0 bg-blue-100 text-blue-700 border-blue-300 dark:bg-blue-900/20 dark:text-blue-400 dark:border-blue-700">{pm.matchScore}%</Badge>
+                                                                            <p className="text-sm font-medium text-green-700 dark:text-green-400">{formatCurrency(pm.amount, reconTransaction.currency)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Revenue order matches */}
+                                                {revenueOrderMatches.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-green-700 dark:text-green-400 mb-2 flex items-center gap-1">
+                                                            <FileText className="h-3.5 w-3.5" /> Revenue Order Matches ({revenueOrderMatches.length})
+                                                        </h4>
+                                                        <div className="space-y-1">
+                                                            {revenueOrderMatches.slice(0, 10).map(rm => (
+                                                                <button
+                                                                    key={rm.id}
+                                                                    onClick={() => {
+                                                                        setSelectedRevenueOrder(rm.id);
+                                                                        setSelectedInvoices(new Set());
+                                                                        setSelectedPaymentMatch(null);
+                                                                        // Open installment popup immediately
+                                                                        openInstallmentPopupForOrder({ id: rm.id, amount: rm.amount, customerName: rm.customerName, invoiceNumber: rm.invoiceNumber || null, products: rm.products || null });
+                                                                    }}
+                                                                    className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedRevenueOrder === rm.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="flex items-center justify-between">
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <div className="flex items-center gap-2">
+                                                                                <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{rm.invoiceNumber || rm.orderId || "-"}</span>
+                                                                                <Badge variant="outline" className={`text-[9px] px-1 py-0 ${rm.matchScore >= 80 ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700" : "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-700"}`}>{rm.matchScore}%</Badge>
+                                                                            </div>
+                                                                            <p className="text-xs text-gray-900 dark:text-white mt-0.5 font-medium">
+                                                                                {rm.customerName}
+                                                                                {rm.reconciliationType === 'payment-matched' && !rm.reconciled && <span className="ml-1 inline-flex items-center px-1 py-0 rounded text-[8px] font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30">💳 Matched</span>}
+                                                                                {rm.reconciled && <span className="ml-1 inline-flex items-center px-1 py-0 rounded text-[8px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">✓ Rec</span>}
+                                                                            </p>
+                                                                            <p className="text-[10px] text-gray-500 truncate">Cliente: {rm.customerName}</p>
+                                                                            <p className="text-[10px] text-gray-500 truncate">{rm.matchReason}</p>
+                                                                        </div>
+                                                                        <div className="text-right ml-3">
+                                                                            <p className="text-sm font-medium text-green-700 dark:text-green-400">{formatCurrency(rm.amount, reconTransaction.currency)}</p>
+                                                                            <p className="text-[10px] text-gray-500">{formatNumericDate(rm.date)}</p>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {totalSuggestions === 0 && (
+                                                    <div className="text-center py-6 text-gray-500">
+                                                        <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                                        <p className="text-sm">No matching payment sources found</p>
+                                                        <p className="text-xs mt-1">Use Manual mode to reconcile</p>
+                                                    </div>
+                                                )}
+                                            </>
+                                        )}
+                                    </>
+                                )}
+
+                                {/* ── ALL INVOICES TAB ── */}
+                                {reconTab === "all" && !loadingMatches && (
+                                    <div>
+                                        <div className="mb-3">
+                                            <Input
+                                                placeholder="Search by supplier name or invoice number..."
+                                                value={invoiceSearchTerm}
+                                                onChange={e => setInvoiceSearchTerm(e.target.value)}
+                                                className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm h-8"
+                                            />
+                                        </div>
+                                        {/* Column headers */}
+                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
+                                            <span></span>
+                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                        </div>
+                                        {isExpense ? (
+                                            <div className="space-y-1">
+                                                {filteredAvailableInvoices.length === 0 ? (
+                                                    <p className="text-center text-gray-500 text-sm py-4">No invoices found{invoiceSearchTerm ? " matching your search" : ""}</p>
+                                                ) : (
+                                                    sortInvoices(filteredAvailableInvoices).slice(0, 50).map(inv => (
+                                                        <button
+                                                            key={inv.id}
+                                                            onClick={() => toggleInvoiceSelection(inv.id)}
+                                                            className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
+                                                        >
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                        {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code}</p>
+                                                                    {inv.description && <p className="text-[10px] text-gray-500 truncate">{inv.description}</p>}
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))
+                                                )}
+                                                {filteredAvailableInvoices.length > 50 && (
+                                                    <p className="text-center text-gray-500 text-[10px] py-1">Showing 50 of {filteredAvailableInvoices.length} — refine search</p>
+                                                )}
+                                            </div>
+                                        ) : (
+                                            /* ── Revenue: Web Orders Search ── */
+                                            <div className="space-y-3">
+                                                <div>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Search Web Orders (customer, order ID, invoice #)</label>
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            placeholder="Type customer name, order ID, invoice #..."
+                                                            value={orderSearchTerm}
+                                                            onChange={e => setOrderSearchTerm(e.target.value)}
+                                                            onKeyDown={async e => {
+                                                                if (e.key === "Enter" && reconTransaction) {
+                                                                    await searchWebOrders(orderSearchTerm, reconTransaction);
+                                                                }
+                                                            }}
+                                                            className="flex-1 bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-xs h-8"
+                                                        />
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline"
+                                                            disabled={isSearchingOrders || orderSearchTerm.length < 2}
+                                                            onClick={() => reconTransaction && searchWebOrders(orderSearchTerm, reconTransaction)}
+                                                            className="h-8 bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
+                                                        >
+                                                            {isSearchingOrders ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                                {selectedOrderIds.size > 0 && (
+                                                    <div className="bg-cyan-50 border border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800 rounded p-2 space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-medium text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>
+                                                            {reconTransaction && (
+                                                                <span className="text-[10px] text-gray-500">
+                                                                    Remaining: {formatCurrency(Math.max(0, Math.abs(reconTransaction.amount) - selectedOrdersTotal), reconTransaction.currency)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {[...selectedOrdersCache].filter(([id]) => selectedOrderIds.has(id)).map(([id, data]) => {
+                                                                const effectiveAmt = installmentOverrides.get(id) ?? data.amount;
+                                                                const isPartial = installmentOverrides.has(id) && effectiveAmt < data.amount * 0.99;
+                                                                return (
+                                                                    <button key={id} onClick={() => toggleOrderSelection(id)} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-800/40 text-[9px] text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                                                        <span className="truncate max-w-[100px]">{data.customerName || data.orderId || id}</span>
+                                                                        <span className="font-medium">{formatCurrency(effectiveAmt, reconTransaction?.currency || "EUR")}</span>
+                                                                        {isPartial && <span className="text-[8px] text-amber-600 dark:text-amber-400 font-medium">(parcial)</span>}
+                                                                        <X className="h-2.5 w-2.5 flex-shrink-0" />
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        {reconTransaction && selectedOrdersTotal > 0 && (
+                                                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                                                                <div className={`h-1 rounded-full ${selectedOrdersTotal >= Math.abs(reconTransaction.amount) * 0.98 ? "bg-green-500" : "bg-amber-500"}`} style={{ width: `${Math.min(100, (selectedOrdersTotal / Math.abs(reconTransaction.amount)) * 100)}%` }} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                <div className="max-h-[320px] overflow-y-auto space-y-1">
+                                                    {orderSearchResults.length === 0 && !isSearchingOrders && (
+                                                        <p className="text-center text-gray-500 text-[10px] py-4">Search for web orders by customer, order ID, or invoice number</p>
+                                                    )}
+                                                    {isSearchingOrders && (
+                                                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>
+                                                    )}
+                                                    {orderSearchResults.map(order => (
+                                                        <button
+                                                            key={order.id}
+                                                            onClick={() => toggleOrderSelection(order.id)}
+                                                            className={`w-full text-left p-2 rounded border transition-colors ${selectedOrderIds.has(order.id)
+                                                                ? "bg-cyan-50 border-cyan-500 dark:bg-cyan-900/30 dark:border-cyan-600"
+                                                                : "bg-white dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
+                                                                }`}
+                                                        >
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{order.customerName}</p>
+                                                                    <p className="text-[10px] text-gray-500 truncate">
+                                                                        {order.orderId && <span className="text-cyan-700 dark:text-cyan-400">#{order.orderId}</span>}
+                                                                        {order.invoiceNumber && <span className="ml-2">Inv: {order.invoiceNumber}</span>}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(order.date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* ── MANUAL TAB ── */}
+                                {reconTab === "manual" && (
+                                    <div className="space-y-4">
+                                        {isExpense ? (
+                                            /* ── EXPENSE: Search AP Invoices by supplier / invoice number ── */
+                                            <>
+                                                <div>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Search Expense Invoice by Supplier or Invoice Number</label>
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            placeholder="Type supplier name or invoice number..."
+                                                            value={manualSearchTerm}
+                                                            onChange={e => setManualSearchTerm(e.target.value)}
+                                                            onKeyDown={async e => {
+                                                                if (e.key === "Enter" && manualSearchTerm.length >= 2) {
+                                                                    await searchExpenseInvoices(manualSearchTerm);
+                                                                }
+                                                            }}
+                                                            className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm flex-1"
+                                                        />
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={isSearchingManual || manualSearchTerm.length < 2}
+                                                            onClick={async () => {
+                                                                await searchExpenseInvoices(manualSearchTerm);
+                                                            }}
+                                                            className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-9"
+                                                        >
+                                                            {isSearchingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                                                        </Button>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-500 mt-1">Press Enter or click search. Min 2 characters.</p>
+                                                </div>
+
+                                                {/* Expense manual search results */}
+                                                {manualSearchResults.length > 0 && (
+                                                    <div>
+                                                        <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
+                                                            <span></span>
+                                                            <button onClick={() => toggleSort("supplier")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Supplier {sortCol === "supplier" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("invoice")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Invoice # {sortCol === "invoice" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                            <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                        </div>
+                                                        <div className="space-y-1 max-h-[250px] overflow-auto">
+                                                            {sortInvoices(manualSearchResults).slice(0, 50).map(inv => (
+                                                                <button
+                                                                    key={inv.id}
+                                                                    onClick={() => toggleInvoiceSelection(inv.id)}
+                                                                    className={`w-full text-left px-3 py-2 rounded-md border transition-colors ${selectedInvoices.has(inv.id) ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
+                                                                >
+                                                                    <div className="grid grid-cols-[auto_1fr_auto_auto_auto] gap-3 items-center">
+                                                                        <div className="flex items-center">
+                                                                            <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedInvoices.has(inv.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                                {selectedInvoices.has(inv.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
+                                                                            </div>
+                                                                        </div>
+                                                                        <div className="min-w-0">
+                                                                            <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{inv.provider_code}</p>
+                                                                            {inv.description && <p className="text-[10px] text-gray-500 truncate">{inv.description}</p>}
+                                                                        </div>
+                                                                        <div className="text-center">
+                                                                            <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
+                                                                        </div>
+                                                                        <div className="text-center">
+                                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                        </div>
+                                                                        <div className="text-right">
+                                                                            <span className="text-xs font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
+                                                                        </div>
+                                                                    </div>
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        {manualSearchResults.length > 50 && (
+                                                            <p className="text-center text-gray-500 text-[10px] py-1">Showing 50 of {manualSearchResults.length} results</p>
+                                                        )}
+                                                    </div>
+                                                )}
+                                                {manualSearchResults.length === 0 && manualSearchTerm.length >= 2 && !isSearchingManual && (
+                                                    <p className="text-center text-gray-500 text-xs py-2">No expense invoices found for &quot;{manualSearchTerm}&quot;</p>
+                                                )}
+                                            </>
+                                        ) : (
+                                            /* ── REVENUE: Search Web Orders by customer / order reference ── */
+                                            <>
+                                                <div>
+                                                    <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">
+                                                        <ShoppingCart className="h-3.5 w-3.5 inline mr-1" />
+                                                        Search Web Orders by Customer Name, Order ID, or Invoice #
+                                                    </label>
+                                                    <div className="flex gap-2">
+                                                        <Input
+                                                            placeholder="Type customer name, order reference, email..."
+                                                            value={orderSearchTerm}
+                                                            onChange={e => setOrderSearchTerm(e.target.value)}
+                                                            onKeyDown={async e => {
+                                                                if (e.key === "Enter" && reconTransaction) {
+                                                                    await searchWebOrders(orderSearchTerm, reconTransaction);
+                                                                }
+                                                            }}
+                                                            className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm flex-1"
+                                                        />
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            disabled={isSearchingOrders || orderSearchTerm.length < 2}
+                                                            onClick={() => reconTransaction && searchWebOrders(orderSearchTerm, reconTransaction)}
+                                                            className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-9"
+                                                        >
+                                                            {isSearchingOrders ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Search className="h-3.5 w-3.5" />}
+                                                        </Button>
+                                                    </div>
+                                                    <p className="text-[10px] text-gray-500 mt-1">Press Enter or click search. Min 2 characters.</p>
+                                                </div>
+
+                                                {/* Revenue order selection summary */}
+                                                {selectedOrderIds.size > 0 && (
+                                                    <div className="bg-cyan-50 border border-cyan-300 dark:bg-cyan-900/20 dark:border-cyan-800 rounded p-2 space-y-1">
+                                                        <div className="flex items-center justify-between">
+                                                            <span className="text-[10px] font-medium text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} order(s) selected — total: {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>
+                                                            {reconTransaction && (
+                                                                <span className="text-[10px] text-gray-500">
+                                                                    Remaining: {formatCurrency(Math.max(0, Math.abs(reconTransaction.amount) - selectedOrdersTotal), reconTransaction.currency)}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {[...selectedOrdersCache].filter(([id]) => selectedOrderIds.has(id)).map(([id, data]) => {
+                                                                const effectiveAmt = installmentOverrides.get(id) ?? data.amount;
+                                                                const isPartial = installmentOverrides.has(id) && effectiveAmt < data.amount * 0.99;
+                                                                return (
+                                                                    <button key={id} onClick={() => toggleOrderSelection(id)} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-800/40 text-[9px] text-cyan-800 dark:text-cyan-300 border border-cyan-300 dark:border-cyan-700 hover:bg-red-100 dark:hover:bg-red-900/30 hover:border-red-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                                                                        <span className="truncate max-w-[100px]">{data.customerName || data.orderId || id}</span>
+                                                                        <span className="font-medium">{formatCurrency(effectiveAmt, reconTransaction?.currency || "EUR")}</span>
+                                                                        {isPartial && <span className="text-[8px] text-amber-600 dark:text-amber-400 font-medium">(parcial)</span>}
+                                                                        <X className="h-2.5 w-2.5 flex-shrink-0" />
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        {reconTransaction && selectedOrdersTotal > 0 && (
+                                                            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1">
+                                                                <div className={`h-1 rounded-full ${selectedOrdersTotal >= Math.abs(reconTransaction.amount) * 0.98 ? "bg-green-500" : "bg-amber-500"}`} style={{ width: `${Math.min(100, (selectedOrdersTotal / Math.abs(reconTransaction.amount)) * 100)}%` }} />
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
+                                                {/* Revenue order search results */}
+                                                <div className="max-h-[250px] overflow-y-auto space-y-1">
+                                                    {isSearchingOrders && (
+                                                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>
+                                                    )}
+                                                    {orderSearchResults.length === 0 && !isSearchingOrders && orderSearchTerm.length >= 2 && (
+                                                        <p className="text-center text-gray-500 text-xs py-2">No orders found for &quot;{orderSearchTerm}&quot;</p>
+                                                    )}
+                                                    {orderSearchResults.length === 0 && !isSearchingOrders && orderSearchTerm.length < 2 && (
+                                                        <p className="text-center text-gray-500 text-[10px] py-4">Search by customer name, order reference, or email</p>
+                                                    )}
+                                                    {orderSearchResults.map(order => (
+                                                        <button
+                                                            key={order.id}
+                                                            onClick={() => toggleOrderSelection(order.id)}
+                                                            className={`w-full text-left p-2 rounded border transition-colors ${selectedOrderIds.has(order.id)
+                                                                ? "bg-cyan-50 border-cyan-500 dark:bg-cyan-900/30 dark:border-cyan-600"
+                                                                : "bg-white dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+                                                                }`}
+                                                        >
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-3 items-center">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedOrderIds.has(order.id) ? "bg-cyan-500 border-cyan-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                        {selectedOrderIds.has(order.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">
+                                                                        {order.customerName}
+                                                                        {order.reconciliationType === 'payment-matched' && !order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30">💳 Payment Matched</span>}
+                                                                        {order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">✓ Reconciled</span>}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-gray-500 truncate">
+                                                                        {order.orderId && <span className="text-cyan-700 dark:text-cyan-400">#{order.orderId}</span>}
+                                                                        {order.invoiceNumber && <span className="ml-2">Inv: {order.invoiceNumber}</span>}
+                                                                        {order.sourceLabel && <span className="ml-2 text-gray-500 dark:text-gray-400">{order.sourceLabel}</span>}
+                                                                        {order.reconciledWith && <span className="ml-2 text-amber-700 dark:text-amber-500/70">({order.reconciledWith})</span>}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(order.date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(order.amount, reconTransaction?.currency || "EUR")}</span>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* ── Gateway Transactions Search (Revenue only) ── */}
+                                        {!isExpense && (
+                                            <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1 flex items-center gap-1">
+                                                    <Package className="h-3.5 w-3.5" /> Link Gateway Transactions (Braintree, Stripe, GoCardless)
+                                                </label>
+                                                <div className="flex gap-2 mt-1">
+                                                    <Input
+                                                        placeholder="Search by customer, email, transaction ID, order ID..."
+                                                        value={gatewayTxSearchTerm}
+                                                        onChange={e => setGatewayTxSearchTerm(e.target.value)}
+                                                        onKeyDown={async e => {
+                                                            if (e.key === "Enter" && reconTransaction) {
+                                                                await searchGatewayTransactions(gatewayTxSearchTerm, reconTransaction);
+                                                            }
+                                                        }}
+                                                        className="flex-1 bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white text-xs h-8"
+                                                    />
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        disabled={isSearchingGatewayTx || gatewayTxSearchTerm.length < 2}
+                                                        onClick={() => reconTransaction && searchGatewayTransactions(gatewayTxSearchTerm, reconTransaction)}
+                                                        className="h-8 bg-gray-100 dark:bg-black border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111]"
+                                                    >
+                                                        {isSearchingGatewayTx ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+                                                    </Button>
+                                                </div>
+                                                {selectedGatewayTxIds.size > 0 && (
+                                                    <div className="bg-purple-50 border border-purple-300 dark:bg-purple-900/20 dark:border-purple-800 rounded p-2 mt-2">
+                                                        <p className="text-[10px] text-purple-700 dark:text-purple-400">{selectedGatewayTxIds.size} transaction(s) selected — total: {formatCurrency(gatewayTxResults.filter(t => selectedGatewayTxIds.has(t.id)).reduce((s, t) => s + t.amount, 0), reconTransaction?.currency || "EUR")}</p>
+                                                    </div>
+                                                )}
+                                                <div className="max-h-[250px] overflow-y-auto space-y-1 mt-2">
+                                                    {isSearchingGatewayTx && (
+                                                        <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-gray-500" /></div>
+                                                    )}
+                                                    {gatewayTxResults.length === 0 && !isSearchingGatewayTx && gatewayTxSearchTerm.length >= 2 && (
+                                                        <p className="text-center text-gray-500 text-[10px] py-2">No gateway transactions found</p>
+                                                    )}
+                                                    {gatewayTxResults.map(gtx => (
+                                                        <button
+                                                            key={gtx.id}
+                                                            onClick={() => toggleGatewayTxSelection(gtx.id)}
+                                                            className={`w-full text-left p-2 rounded border transition-colors ${selectedGatewayTxIds.has(gtx.id)
+                                                                ? "bg-purple-50 border-purple-500 dark:bg-purple-900/30 dark:border-purple-600"
+                                                                : "bg-white dark:bg-black/50 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:border-gray-600"
+                                                                }`}
+                                                        >
+                                                            <div className="grid grid-cols-[auto_1fr_auto_auto] gap-2 items-center">
+                                                                <div className="flex items-center">
+                                                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center ${selectedGatewayTxIds.has(gtx.id) ? "bg-purple-500 border-purple-500" : "border-gray-400 dark:border-gray-500"}`}>
+                                                                        {selectedGatewayTxIds.has(gtx.id) && <CheckCircle2 className="h-3 w-3 text-white dark:text-white" />}
+                                                                    </div>
+                                                                </div>
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium truncate">{gtx.customerName}</p>
+                                                                    <p className="text-[10px] text-gray-500 truncate">
+                                                                        <span className="text-purple-700 dark:text-purple-400">{gtx.source}</span>
+                                                                        {gtx.orderId && <span className="ml-1.5 text-cyan-700 dark:text-cyan-400">#{gtx.orderId}</span>}
+                                                                        {gtx.transactionId && <span className="ml-1.5 text-gray-600">TxID: {String(gtx.transactionId).slice(0, 12)}...</span>}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(gtx.date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{formatCurrency(gtx.amount, gtx.currency || "EUR")}</span>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {/* Divider */}
+                                        <div className="border-t border-gray-200 dark:border-gray-700 pt-3">
+                                            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Or reconcile without invoice:</label>
+                                        </div>
+                                        {/* Payment Source dropdown — ONLY for revenue, never for expenses */}
+                                        {!isExpense && (
+                                            <div>
+                                                <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Payment Source (gateway)</label>
+                                                <Select value={manualPaymentSource} onValueChange={setManualPaymentSource}>
+                                                    <SelectTrigger className="bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-900 dark:text-white">
+                                                        <SelectValue placeholder="Select source..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="braintree-eur">Braintree EUR</SelectItem>
+                                                        <SelectItem value="braintree-usd">Braintree USD</SelectItem>
+                                                        <SelectItem value="braintree-gbp">Braintree GBP</SelectItem>
+                                                        <SelectItem value="braintree-amex">Braintree Amex</SelectItem>
+                                                        <SelectItem value="paypal">PayPal</SelectItem>
+                                                        <SelectItem value="gocardless">GoCardless</SelectItem>
+                                                        <SelectItem value="stripe">Stripe</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="text-xs text-gray-500 dark:text-gray-400 block mb-1">Note (optional)</label>
+                                            <Input placeholder="Description or reference..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-sm" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* ── INTERCOMPANY TAB ── */}
+                                {reconTab === "intercompany" && !loadingMatches && (
+                                    <div>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                                            Matching transfers in other bank accounts (same day ±1, Fri→Mon). Includes cross-currency EUR↔USD matches.
+                                        </p>
+                                        {intercompanyMatches.length > 0 ? (
+                                            <div>
+                                                <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 px-3 py-1.5 text-[9px] text-gray-500 uppercase tracking-wider border-b border-gray-200 dark:border-gray-700/50 mb-1">
+                                                    <button onClick={() => toggleSort("bank")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 text-left">Bank / Description {sortCol === "bank" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("currency")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Currency {sortCol === "currency" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("date")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300">Date {sortCol === "date" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("amount")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Amount {sortCol === "amount" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                    <button onClick={() => toggleSort("match")} className="flex items-center gap-0.5 hover:text-gray-700 dark:text-gray-300 justify-end">Match {sortCol === "match" && (sortDir === "asc" ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />)}</button>
+                                                </div>
+                                                <div className="space-y-1">
+                                                    {sortIntercompany(intercompanyMatches).map(ic => (
+                                                        <button
+                                                            key={ic.id}
+                                                            onClick={() => { setSelectedIntercompanyMatch(ic.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
+                                                            className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedIntercompanyMatch === ic.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
+                                                        >
+                                                            <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center">
+                                                                <div className="min-w-0">
+                                                                    <p className="text-xs text-gray-900 dark:text-white font-medium">{ic.sourceLabel}</p>
+                                                                    <p className="text-[10px] text-gray-500 truncate">{ic.description}</p>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300">{ic.currency}</Badge>
+                                                                </div>
+                                                                <div className="text-center">
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(ic.date)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <span className="text-sm font-medium text-amber-700 dark:text-amber-400">{formatCurrency(ic.amount, ic.currency)}</span>
+                                                                </div>
+                                                                <div className="text-right">
+                                                                    <Badge variant="outline" className={`text-[9px] px-1 py-0 ${ic.matchScore >= 90 ? "bg-green-100 text-green-700 border-green-300 dark:bg-green-900/20 dark:text-green-400 dark:border-green-700" : ic.matchScore >= 70 ? "bg-yellow-100 text-yellow-700 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-400 dark:border-yellow-700" : "bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-900/20 dark:text-orange-400 dark:border-orange-700"}`}>{ic.matchScore}%</Badge>
+                                                                </div>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-6 text-gray-500">
+                                                <Building className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                                                <p className="text-sm">No intercompany transfers found</p>
+                                                <p className="text-xs mt-1">No matching transfers in other bank accounts for this date range</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Note input (always visible when in suggestions/all tabs) */}
+                            {reconTab !== "manual" && (selectedInvoices.size > 0 || selectedPaymentMatch || selectedRevenueOrder || selectedIntercompanyMatch) && (
+                                <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-700/50">
+                                    <Input placeholder="Note (optional)..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-xs h-7" />
+                                </div>
+                            )}
+
+                            {/* Dialog Footer */}
+                            <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                                <div className="text-[10px] text-gray-500">
+                                    {selectedInvoices.size > 0 && (() => {
+                                        const allInvLists = [...matchingInvoices, ...providerNameMatches, ...allAvailableInvoices, ...manualSearchResults];
+                                        const selInvs = allInvLists.filter(inv => selectedInvoices.has(inv.id));
+                                        const tot = selInvs.reduce((s, inv) => s + (inv.paid_amount ?? inv.invoice_amount ?? 0), 0);
+                                        return <span className="text-cyan-700 dark:text-cyan-400">{selectedInvoices.size} invoice(s) = {formatCurrency(tot, reconTransaction?.currency || "EUR")}</span>;
+                                    })()}
+                                    {selectedOrderIds.size > 0 && <span className="text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} invoice-order(s) = {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>}
+                                    {selectedGatewayTxIds.size > 0 && <span className="text-purple-700 dark:text-purple-400">{selectedGatewayTxIds.size} gateway txn(s) = {formatCurrency(selectedGatewayTotal, reconTransaction?.currency || "EUR")}</span>}
+                                    {selectedPaymentMatch && <span className="text-cyan-700 dark:text-cyan-400">Payment source selected</span>}
+                                    {selectedRevenueOrder && <span className="text-cyan-700 dark:text-cyan-400">Revenue order selected</span>}
+                                    {selectedIntercompanyMatch && <span className="text-amber-700 dark:text-amber-400">Intercompany transfer selected</span>}
+                                    {selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
+                                </div>
+                                <div className="flex gap-3">
+                                    <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-8 text-xs">Cancel</Button>
+                                    <Button
+                                        onClick={performManualReconciliation}
+                                        disabled={isSavingManual || (selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !manualPaymentSource && !manualNote)}
+                                        className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
+                                    >
+                                        {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
+                                        Reconcile
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* ═══════════════════════════════════════════════════════ */}
+            {/* P&L CLASSIFICATION POPUP — shown between Reconcile click and actual save */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {showPnlPopup && reconTransaction && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => { setShowPnlPopup(false); }} />
+                    <div className="relative bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-[600px] max-h-[80vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Package className="h-4.5 w-4.5 text-cyan-600" />
+                                P&L Line Classification
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Classify each order&apos;s product into a P&L line before reconciling.
+                                {pnlProducts.some(p => p.inferred) && (
+                                    <span className="ml-1 text-cyan-600 dark:text-cyan-400">(Auto-inferred from previous classifications shown)</span>
+                                )}
+                            </p>
+                        </div>
+
+                        {/* Transaction context bar */}
+                        <div className="px-6 py-2 bg-gray-50 dark:bg-black/40 border-b border-gray-200 dark:border-gray-700/50 flex items-center justify-between">
+                            <span className="text-xs text-gray-600 dark:text-gray-400">
+                                Bank: <span className="font-medium text-gray-900 dark:text-white">{reconTransaction.description?.substring(0, 50)}</span>
+                            </span>
+                            <span className="text-xs font-medium text-green-700 dark:text-green-400">
+                                {formatCurrency(Math.abs(reconTransaction.amount), reconTransaction.currency)}
+                            </span>
+                        </div>
+
+                        {/* Product list */}
+                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                            {pnlProducts.map((entry, idx) => (
+                                <div key={idx} className="border border-gray-200 dark:border-gray-700 rounded-lg p-3 bg-white dark:bg-black/30">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div className="flex-1 min-w-0">
+                                            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">{entry.productName}</p>
+                                            <p className="text-[10px] text-gray-500 mt-0.5">
+                                                Order: {entry.orderId?.replace("ar-", "#") || "-"} · {formatCurrency(entry.orderAmount, reconTransaction.currency)}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 flex-shrink-0">
+                                            {entry.inferred && (
+                                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-cyan-50 text-cyan-700 border-cyan-300 dark:bg-cyan-900/20 dark:text-cyan-400 dark:border-cyan-700">
+                                                    Auto
+                                                </Badge>
+                                            )}
+                                            <Select
+                                                value={entry.pnlLine}
+                                                onValueChange={(val) => {
+                                                    setPnlProducts(prev => prev.map((p, i) => i === idx ? { ...p, pnlLine: val, inferred: false } : p));
+                                                }}
+                                            >
+                                                <SelectTrigger className="w-[180px] h-8 text-xs border-gray-300 dark:border-gray-600">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {PNL_LINE_OPTIONS.map(opt => (
+                                                        <SelectItem key={opt.code} value={opt.code} className="text-xs">
+                                                            {opt.icon} {opt.code} — {opt.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <p className="text-[10px] text-gray-500">
+                                {pnlProducts.length} product(s) · Dominant: {(() => {
+                                    const totals = new Map<string, number>();
+                                    pnlProducts.forEach(p => totals.set(p.pnlLine, (totals.get(p.pnlLine) || 0) + p.orderAmount));
+                                    let best = ""; let max = 0;
+                                    totals.forEach((v, k) => { if (v > max) { best = k; max = v; } });
+                                    const opt = PNL_LINE_OPTIONS.find(o => o.code === best);
+                                    return opt ? `${opt.icon} ${opt.code} ${opt.label}` : "-";
+                                })()}
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => setShowPnlPopup(false)}
+                                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 h-8 text-xs"
+                                >
+                                    Cancel
+                                </Button>
+                                <Button
+                                    onClick={async () => {
+                                        setShowPnlPopup(false);
+                                        await executeFinalReconciliation();
+                                    }}
+                                    className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
+                                >
+                                    <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                    Confirm &amp; Reconcile
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* INSTALLMENT POPUP — order payment confirmation */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {showInstallmentPopup && installmentData && reconTransaction && (
+                <div className="fixed inset-0 z-[300] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => { setShowInstallmentPopup(false); setInstallmentData(null); }} />
+                    <div className="relative bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-[520px] max-h-[80vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Clock className="h-4 w-4 text-violet-600" />
+                                Order Payment Confirmation
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                How much of this order ({formatCurrency(installmentData.orderAmount, installmentData.currency)}) is being paid in this bank transaction?
+                                Confirm full amount or adjust if the order is being paid in installments.
+                            </p>
+                        </div>
+
+                        {/* Order info bar */}
+                        <div className="px-6 py-2 bg-violet-50 dark:bg-violet-950/20 border-b border-violet-200 dark:border-violet-800/50">
+                            <div className="flex items-center justify-between">
+                                <div className="text-xs">
+                                    <span className="text-gray-600 dark:text-gray-400">{installmentData.customerName}</span>
+                                    {installmentData.invoiceNumber && <span className="ml-2 text-gray-400">#{installmentData.invoiceNumber}</span>}
+                                </div>
+                                <div className="text-right">
+                                    <span className="text-xs font-bold text-violet-700 dark:text-violet-400">{formatCurrency(installmentData.orderAmount, installmentData.currency)}</span>
+                                    <span className="text-[10px] text-gray-400 ml-2">order total</span>
+                                </div>
+                            </div>
+                            <div className="mt-1 flex items-center justify-between text-[10px] text-gray-500">
+                                <span>Bank transaction: {formatCurrency(installmentData.bankAmount, installmentData.currency)}</span>
+                                <span>Remaining bank: {formatCurrency(Math.max(0, installmentData.bankAmount - (parseFloat(installmentAmount) || 0)), installmentData.currency)}</span>
+                            </div>
+                        </div>
+
+                        {/* Form */}
+                        <div className="px-6 py-4 space-y-4">
+                            {/* Number of installments for this order */}
+                            <div>
+                                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">This order is paid in how many installments?</label>
+                                <div className="mt-1 flex items-center gap-2">
+                                    {[1, 2, 3, 4, 5, 6].map(n => (
+                                        <button
+                                            key={n}
+                                            onClick={() => {
+                                                setInstallmentCount(n);
+                                                setInstallmentAmount((installmentData.orderAmount / n).toFixed(2));
+                                            }}
+                                            className={`px-3 py-1.5 rounded-md text-xs font-medium border transition-all ${installmentCount === n
+                                                ? "bg-violet-600 text-white border-violet-600"
+                                                : "bg-white dark:bg-black border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-violet-400"
+                                                }`}
+                                        >
+                                            {n}x
+                                        </button>
+                                    ))}
+                                    <Input
+                                        type="number"
+                                        min={1}
+                                        max={24}
+                                        value={installmentCount}
+                                        onChange={(e) => {
+                                            const n = parseInt(e.target.value) || 1;
+                                            setInstallmentCount(n);
+                                            setInstallmentAmount((installmentData.orderAmount / n).toFixed(2));
+                                        }}
+                                        className="w-16 h-8 text-xs text-center"
+                                    />
+                                </div>
+                            </div>
+
+                            {/* Amount being paid now for this order */}
+                            <div>
+                                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Amount being paid now for this order ({installmentData.currency})</label>
+                                <Input
+                                    type="number"
+                                    step="0.01"
+                                    min={0.01}
+                                    max={installmentData.orderAmount}
+                                    value={installmentAmount}
+                                    onChange={(e) => {
+                                        const val = parseFloat(e.target.value);
+                                        if (val > installmentData.orderAmount) {
+                                            setInstallmentAmount(installmentData.orderAmount.toFixed(2));
+                                        } else {
+                                            setInstallmentAmount(e.target.value);
+                                        }
+                                    }}
+                                    className="mt-1 h-9 text-sm"
+                                    placeholder={installmentData.orderAmount.toFixed(2)}
+                                />
+                                <div className="mt-1.5 flex items-center gap-3 text-[10px] text-gray-500">
+                                    {installmentCount > 1 && <span>Per installment: {formatCurrency(installmentData.orderAmount / installmentCount, installmentData.currency)}</span>}
+                                    {installmentCount === 1 && <span>Full order amount: {formatCurrency(installmentData.orderAmount, installmentData.currency)}</span>}
+                                    {(parseFloat(installmentAmount) || 0) > installmentData.orderAmount && <span className="text-red-500 font-medium">Cannot exceed order total!</span>}
+                                </div>
+                            </div>
+
+                            {/* Summary */}
+                            <div className="bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                                <div className="flex items-center justify-between text-xs">
+                                    <span className="text-gray-500">Paying now for this order</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(Math.min(parseFloat(installmentAmount) || 0, installmentData.orderAmount), installmentData.currency)}</span>
+                                </div>
+                                {installmentCount > 1 && (
+                                    <div className="flex items-center justify-between text-xs mt-1">
+                                        <span className="text-gray-500">Remaining on this order</span>
+                                        <span className="font-medium text-amber-600">{formatCurrency(Math.max(0, installmentData.orderAmount - (parseFloat(installmentAmount) || 0)), installmentData.currency)}</span>
+                                    </div>
+                                )}
+                                <div className="flex items-center justify-between text-xs mt-1 pt-1 border-t border-gray-200 dark:border-gray-700">
+                                    <span className="text-gray-500">Order total</span>
+                                    <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(installmentData.orderAmount, installmentData.currency)}</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <Button
+                                variant="outline"
+                                onClick={() => {
+                                    // Cancel — deselect the order since user didn't confirm
+                                    if (installmentData?.orderId) {
+                                        // Remove from multi-select (All Orders / Manual tabs)
+                                        setSelectedOrderIds(prev => { const next = new Set(prev); next.delete(installmentData.orderId); return next; });
+                                        setSelectedOrdersCache(cache => { const c = new Map(cache); c.delete(installmentData.orderId); return c; });
+                                        setInstallmentOverrides(prev => { const m = new Map(prev); m.delete(installmentData.orderId); return m; });
+                                        // Also clear single-select (Suggestions tab)
+                                        if (selectedRevenueOrder === installmentData.orderId) {
+                                            setSelectedRevenueOrder(null);
+                                        }
+                                    }
+                                    setShowInstallmentPopup(false);
+                                    setInstallmentData(null);
+                                }}
+                                className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 h-8 text-xs"
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                onClick={async () => {
+                                    const amt = parseFloat(installmentAmount);
+                                    if (!amt || amt <= 0) {
+                                        toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
+                                        return;
+                                    }
+                                    if (amt > installmentData.orderAmount) {
+                                        toast({ title: "Amount exceeds order", description: `Cannot pay more than the order total (${formatCurrency(installmentData.orderAmount, installmentData.currency)})`, variant: "destructive" });
+                                        return;
+                                    }
+                                    // Save override — store the amount being applied to this order in this reconciliation
+                                    setInstallmentOverrides(prev => new Map(prev).set(installmentData.orderId, amt));
+                                    setShowInstallmentPopup(false);
+                                    setInstallmentData(null);
+                                }}
+                                className="bg-violet-600 hover:bg-violet-700 h-8 text-xs text-white"
+                            >
+                                <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                                {installmentCount === 1 ? `Confirm ${formatCurrency(parseFloat(installmentAmount) || installmentData.orderAmount, installmentData.currency)}` : `Confirm Installment (${formatCurrency(parseFloat(installmentAmount) || 0, installmentData.currency)})`}
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* GATEWAY FEE INVOICE POPUP — shown after reconciliation when orders > bank inflow */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {showFeePopup && feePopupData && (
+                <div className="fixed inset-0 z-[310] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => { setShowFeePopup(false); setFeePopupData(null); }} />
+                    <div className="relative bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-[560px] max-h-[85vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+                            <h3 className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <CreditCard className="h-4.5 w-4.5 text-amber-600" />
+                                Gateway Fee Invoice
+                            </h3>
+                            <p className="text-xs text-gray-500 mt-1">
+                                The matched orders total ({formatCurrency(feePopupData.orderTotal, feePopupData.currency)}) exceeds the bank inflow ({formatCurrency(feePopupData.bankAmount, feePopupData.currency)}).
+                                The difference of <span className="font-semibold text-amber-600">{formatCurrency(feePopupData.feeAmount, feePopupData.currency)}</span> will be recorded as a gateway fee expense.
+                            </p>
+                        </div>
+
+                        {/* Fee summary bar */}
+                        <div className="px-6 py-2 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-800/50 flex items-center justify-between">
+                            <div className="flex items-center gap-3 text-xs">
+                                <span className="text-gray-600 dark:text-gray-400">Orders: <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(feePopupData.orderTotal, feePopupData.currency)}</span></span>
+                                <span className="text-gray-400">−</span>
+                                <span className="text-gray-600 dark:text-gray-400">Bank: <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(feePopupData.bankAmount, feePopupData.currency)}</span></span>
+                                <span className="text-gray-400">=</span>
+                                <span className="font-bold text-amber-700 dark:text-amber-400">{formatCurrency(feePopupData.feeAmount, feePopupData.currency)} fee</span>
+                            </div>
+                        </div>
+
+                        {/* Pre-filled invoice fields */}
+                        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-3">
+                            {/* Row 1: Provider + Amount */}
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Provider</label>
+                                    <div className="mt-1 px-3 py-2 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-sm text-gray-900 dark:text-white">
+                                        {feePopupData.gatewayName}
+                                    </div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Amount ({feePopupData.currency})</label>
+                                    <div className="mt-1 px-3 py-2 bg-amber-50 dark:bg-amber-950/20 border border-amber-300 dark:border-amber-700 rounded-md text-sm font-bold text-amber-700 dark:text-amber-400">
+                                        {formatCurrency(feePopupData.feeAmount, feePopupData.currency)}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Row 2: Dates — editable so user can adjust if bank date differs from expected */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Invoice Date</label>
+                                    <input
+                                        type="date"
+                                        value={feeInvoiceDate}
+                                        onChange={e => setFeeInvoiceDate(e.target.value)}
+                                        className="mt-1 w-full px-3 py-1.5 bg-white dark:bg-black/40 border border-gray-300 dark:border-gray-600 rounded-md text-xs text-gray-900 dark:text-white focus:ring-1 focus:ring-violet-500 focus:border-violet-500"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Benefit Date</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">{feeInvoiceDate || feePopupData.txDate}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Payment Date</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">{feeInvoiceDate || feePopupData.txDate}</div>
+                                </div>
+                            </div>
+
+                            {/* Row 3: Scope + Bank Account + Financial Account */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Scope</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">{feePopupData.scope}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Bank Account</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white truncate">{feePopupData.bankAccountCode}</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Financial Account</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white truncate">{feePopupData.financialAccountCode}</div>
+                                </div>
+                            </div>
+
+                            {/* Row 4: Cost Type + Dep Cost + Department */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Cost Type</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">Variable Cost</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Dep Cost</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">General Expenses</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Department</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">3.0.0 Corporate</div>
+                                </div>
+                            </div>
+
+                            {/* Row 5: Sub-Department */}
+                            <div className="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Sub-Department</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">3.1.0 Corporate</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Entry Type</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">Incurred</div>
+                                </div>
+                                <div>
+                                    <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Invoice Type</label>
+                                    <div className="mt-1 px-3 py-1.5 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">INCURRED</div>
+                                </div>
+                            </div>
+
+                            {/* Description */}
+                            <div>
+                                <label className="text-[10px] font-medium text-gray-500 uppercase tracking-wide">Description</label>
+                                <div className="mt-1 px-3 py-2 bg-gray-50 dark:bg-black/40 border border-gray-200 dark:border-gray-700 rounded-md text-xs text-gray-900 dark:text-white">
+                                    ({feePopupData.gatewayName}, Orders {feePopupData.orderCodes.join(", ")})
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Footer */}
+                        <div className="px-6 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <p className="text-[10px] text-gray-500">
+                                This creates an AP invoice for the gateway fee deducted from this disbursement.
+                            </p>
+                            <div className="flex gap-3">
+                                <Button
+                                    variant="outline"
+                                    onClick={() => { setShowFeePopup(false); setFeePopupData(null); }}
+                                    className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 h-8 text-xs"
+                                >
+                                    Skip
+                                </Button>
+                                <Button
+                                    disabled={isCreatingFeeInvoice}
+                                    onClick={async () => {
+                                        if (!feePopupData) return;
+                                        setIsCreatingFeeInvoice(true);
+                                        try {
+                                            // Generate invoice number: {scope}-INV-{YYYYMM}-{NNNN}
+                                            const effectiveDate = feeInvoiceDate || feePopupData.txDate;
+                                            const [year, month] = effectiveDate.split("-");
+                                            const prefix = `${feePopupData.scope}-INV-${year}${month}`;
+                                            const { data: lastInv } = await supabase
+                                                .from("invoices")
+                                                .select("invoice_number")
+                                                .like("invoice_number", `${prefix}%`)
+                                                .order("invoice_number", { ascending: false })
+                                                .limit(1);
+                                            let nextNum = 1;
+                                            if (lastInv && lastInv.length > 0) {
+                                                const lastMatch = lastInv[0].invoice_number?.match(/-(\d+)$/);
+                                                if (lastMatch) nextNum = parseInt(lastMatch[1]) + 1;
+                                            }
+                                            const invoiceNumber = `${prefix}-${String(nextNum).padStart(4, "0")}`;
+
+                                            const description = `(${feePopupData.gatewayName}, Orders ${feePopupData.orderCodes.join(", ")})`;
+
+                                            const payload = {
+                                                input_date: new Date().toISOString(),
+                                                invoice_date: effectiveDate,
+                                                benefit_date: effectiveDate,
+                                                due_date: effectiveDate,
+                                                schedule_date: effectiveDate,
+                                                payment_date: effectiveDate,
+                                                invoice_type: "INCURRED",
+                                                entry_type: "invoice",
+                                                financial_account_code: feePopupData.financialAccountCode,
+                                                invoice_amount: feePopupData.feeAmount,
+                                                currency: feePopupData.currency,
+                                                eur_exchange: feePopupData.currency === "USD" ? 1.0 : 1.0,
+                                                provider_code: feePopupData.providerCode,
+                                                bank_account_code: feePopupData.bankAccountCode,
+                                                cost_type_code: "VARIABLE",
+                                                dep_cost_type_code: "GENEXP",
+                                                cost_center_code: "3.0.0",
+                                                sub_department_code: "3.1.0",
+                                                description,
+                                                invoice_number: invoiceNumber,
+                                                country_code: feePopupData.scope,
+                                                scope: feePopupData.scope,
+                                                applies_to_all_countries: false,
+                                                dre_impact: true,
+                                                cash_impact: true,
+                                                is_intercompany: false,
+                                                notes: `Auto-created gateway fee from bank reconciliation`,
+                                            };
+
+                                            const { error: insErr } = await supabase.from("invoices").insert([payload]);
+                                            if (insErr) throw insErr;
+
+                                            toast({
+                                                title: "Fee Invoice Created!",
+                                                description: `${invoiceNumber} — ${feePopupData.gatewayName} fee ${formatCurrency(feePopupData.feeAmount, feePopupData.currency)}`,
+                                            });
+                                            setShowFeePopup(false);
+                                            setFeePopupData(null);
+                                        } catch (err: any) {
+                                            console.error("Fee invoice creation error:", err);
+                                            toast({
+                                                title: "Error creating fee invoice",
+                                                description: err?.message || "Unknown error",
+                                                variant: "destructive",
+                                            });
+                                        } finally {
+                                            setIsCreatingFeeInvoice(false);
+                                        }
+                                    }}
+                                    className="bg-amber-600 hover:bg-amber-700 h-8 text-xs text-white"
+                                >
+                                    {isCreatingFeeInvoice ? (
+                                        <><Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> Creating...</>
+                                    ) : (
+                                        <><FileText className="h-3.5 w-3.5 mr-1" /> Create Fee Invoice</>
+                                    )}
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Error banner */}
+            {error && (
+                <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 bg-red-900/90 border border-red-700 rounded-lg px-6 py-3 text-red-200 text-sm z-50 flex items-center gap-3">
+                    <AlertCircle className="h-4 w-4" />
+                    {error}
+                    <button onClick={() => setError(null)} className="text-red-400 hover:text-gray-900 dark:text-white ml-2">✕</button>
+                </div>
+            )}
+        </div>
+    );
+}
