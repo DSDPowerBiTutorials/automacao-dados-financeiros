@@ -983,8 +983,10 @@ export default function BankStatementsPage() {
     const [bankFreshness, setBankFreshness] = useState<Record<string, { lastUpload: string | null; lastRecord: string | null }>>({});
     const [isUploading, setIsUploading] = useState<string | null>(null);
 
-    // KPI clickable filter: null | "inflows" | "outflows" | "reconciled" | "pending"
-    const [kpiFilter, setKpiFilter] = useState<string | null>(null);
+    // KPI clickable filter: set of active filters (multi-select)
+    const [kpiFilters, setKpiFilters] = useState<Set<string>>(new Set());
+    const toggleKpiFilter = (key: string) => setKpiFilters(prev => { const next = new Set(prev); if (next.has(key)) next.delete(key); else next.add(key); return next; });
+    const clearKpiFilters = () => setKpiFilters(new Set());
 
     // Filters — committed date range vs pending (to avoid re-fetch on arrow navigation)
     const [dateRange, setDateRange] = useState({ start: "2026-01-01", end: "2026-12-31" });
@@ -2640,11 +2642,15 @@ export default function BankStatementsPage() {
             if (orderFilter === "matched" && tx.orderReconciliationStatus !== "full") return false;
             if (orderFilter === "partial" && tx.orderReconciliationStatus !== "partial") return false;
             if (orderFilter === "not-matched" && tx.orderReconciliationStatus !== "none") return false;
-            // KPI clickable filters
-            if (kpiFilter === "inflows" && tx.amount <= 0) return false;
-            if (kpiFilter === "outflows" && tx.amount >= 0) return false;
-            if (kpiFilter === "reconciled" && !tx.isReconciled) return false;
-            if (kpiFilter === "pending" && tx.isReconciled) return false;
+            // KPI clickable filters (multi-select — union of active filters)
+            if (kpiFilters.size > 0) {
+                let matchesAny = false;
+                if (kpiFilters.has("pending-inflows") && tx.amount > 0 && !tx.isReconciled) matchesAny = true;
+                if (kpiFilters.has("pending-outflows") && tx.amount < 0 && !tx.isReconciled) matchesAny = true;
+                if (kpiFilters.has("reconciled") && tx.isReconciled) matchesAny = true;
+                if (kpiFilters.has("all-pending") && !tx.isReconciled) matchesAny = true;
+                if (!matchesAny) return false;
+            }
             if (searchQuery) {
                 const q = searchQuery.toLowerCase();
                 return (
@@ -2656,7 +2662,7 @@ export default function BankStatementsPage() {
             }
             return true;
         });
-    }, [bankTransactions, selectedBanks, gatewayFilter, flowFilter, reconFilter, gwReconFilter, orderFilter, searchQuery, showReconciled, kpiFilter]);
+    }, [bankTransactions, selectedBanks, gatewayFilter, flowFilter, reconFilter, gwReconFilter, orderFilter, searchQuery, showReconciled, kpiFilters]);
 
     // ─── Month groups (Month → Day → Transactions) ───
     const monthGroups = useMemo(() => {
@@ -2765,6 +2771,14 @@ export default function BankStatementsPage() {
         // Fallback: se nenhum banco tem dados de saldo, usar totalInflow - totalOutflow
         const netBalance = hasBalanceData ? lastDayBalance : totalInflow - totalOutflow;
 
+        // Pending breakdown
+        const pendingInflows = filteredTransactions.filter(t => t.amount > 0 && !t.isReconciled);
+        const pendingOutflows = filteredTransactions.filter(t => t.amount < 0 && !t.isReconciled);
+        const pendingInflowAmount = pendingInflows.reduce((s, t) => s + t.amount, 0);
+        const pendingOutflowAmount = Math.abs(pendingOutflows.reduce((s, t) => s + t.amount, 0));
+        const pendingInflowPct = inflows.length > 0 ? Math.round((pendingInflows.length / inflows.length) * 100) : 0;
+        const pendingOutflowPct = outflows.length > 0 ? Math.round((pendingOutflows.length / outflows.length) * 100) : 0;
+
         return {
             totalInflow, totalOutflow,
             netCashFlow: netBalance,
@@ -2774,6 +2788,14 @@ export default function BankStatementsPage() {
             unreconciledCount,
             transactionCount: filteredTransactions.length,
             byGateway, byBank,
+            pendingInflowCount: pendingInflows.length,
+            pendingOutflowCount: pendingOutflows.length,
+            pendingInflowAmount,
+            pendingOutflowAmount,
+            pendingInflowPct,
+            pendingOutflowPct,
+            totalInflowCount: inflows.length,
+            totalOutflowCount: outflows.length,
         };
     }, [filteredTransactions, bankTransactions, selectedBanks]);
 
@@ -2943,62 +2965,62 @@ export default function BankStatementsPage() {
                     </div>
                 </div>
 
-                {/* ─── Stats Bar (KPI inline — clickable filters) ─── */}
+                {/* ─── Reconciliation Status Bar ─── */}
                 <div className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700 px-6 py-3 bg-white dark:bg-black">
-                    {kpiFilter && (
+                    {kpiFilters.size > 0 && (
                         <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs text-gray-500 dark:text-gray-400">Filtering by: <span className="text-gray-900 dark:text-white font-medium capitalize">{kpiFilter}</span></span>
-                            <button onClick={() => setKpiFilter(null)} className="text-xs text-red-400 hover:text-red-300 ml-2">✕ Clear</button>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">Active filters: {[...kpiFilters].map(f => <span key={f} className="ml-1 inline-flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded px-1.5 py-0.5 text-[10px] font-medium text-gray-700 dark:text-gray-300">{f === "pending-inflows" ? "Pending Inflows" : f === "pending-outflows" ? "Pending Outflows" : f === "all-pending" ? "All Pending" : "Reconciled"}<button onClick={(e) => { e.stopPropagation(); toggleKpiFilter(f); }} className="ml-0.5 text-gray-400 hover:text-red-400">✕</button></span>)}</span>
+                            <button onClick={clearKpiFilters} className="text-xs text-red-400 hover:text-red-300 ml-2">Clear all</button>
                         </div>
                     )}
-                    <div className="grid grid-cols-6 gap-4">
-                        <button onClick={() => setKpiFilter(kpiFilter === "inflows" ? null : "inflows")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "inflows" ? "bg-green-900/30 ring-1 ring-green-600" : "hover:bg-gray-100 dark:bg-black/50"}`}>
-                            <ArrowDownCircle className="h-4 w-4 text-green-500 flex-shrink-0" />
+                    <div className="grid grid-cols-5 gap-3">
+                        {/* Pending Inflows card */}
+                        <button onClick={() => toggleKpiFilter("pending-inflows")} className={`relative flex items-center gap-2.5 min-w-0 rounded-lg px-3 py-2 transition-all border ${kpiFilters.has("pending-inflows") ? "bg-amber-950/30 border-amber-600 ring-1 ring-amber-500/50" : "border-gray-200 dark:border-gray-700 hover:border-amber-400 hover:bg-amber-950/10"}`}>
+                            {kpiFilters.has("pending-inflows") && <span onClick={(e) => { e.stopPropagation(); toggleKpiFilter("pending-inflows"); }} className="absolute top-1 right-1 text-amber-400 hover:text-red-400 cursor-pointer"><X className="h-3 w-3" /></span>}
+                            <ArrowDownCircle className="h-5 w-5 text-amber-500 flex-shrink-0" />
                             <div className="min-w-0 text-left">
-                                <p className="text-[10px] text-gray-500 uppercase">Inflows</p>
-                                <p className="text-sm font-bold text-green-400 truncate" title={formatCurrency(summary.totalInflow, dominantCurrency)}>
-                                    {formatCompactCurrency(summary.totalInflow, dominantCurrency)}
-                                </p>
+                                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Pending Inflows</p>
+                                <p className="text-sm font-bold text-amber-400">{summary.pendingInflowCount} <span className="text-[10px] font-normal text-gray-500">of {summary.totalInflowCount} ({summary.pendingInflowPct}%)</span></p>
+                                <p className="text-[10px] text-amber-500/80 truncate" title={formatCurrency(summary.pendingInflowAmount, dominantCurrency)}>{formatCompactCurrency(summary.pendingInflowAmount, dominantCurrency)}</p>
                             </div>
                         </button>
-                        <button onClick={() => setKpiFilter(kpiFilter === "outflows" ? null : "outflows")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "outflows" ? "bg-red-900/30 ring-1 ring-red-600" : "hover:bg-gray-100 dark:bg-black/50"}`}>
-                            <ArrowUpCircle className="h-4 w-4 text-red-500 flex-shrink-0" />
+                        {/* Pending Outflows card */}
+                        <button onClick={() => toggleKpiFilter("pending-outflows")} className={`relative flex items-center gap-2.5 min-w-0 rounded-lg px-3 py-2 transition-all border ${kpiFilters.has("pending-outflows") ? "bg-red-950/30 border-red-600 ring-1 ring-red-500/50" : "border-gray-200 dark:border-gray-700 hover:border-red-400 hover:bg-red-950/10"}`}>
+                            {kpiFilters.has("pending-outflows") && <span onClick={(e) => { e.stopPropagation(); toggleKpiFilter("pending-outflows"); }} className="absolute top-1 right-1 text-red-400 hover:text-red-300 cursor-pointer"><X className="h-3 w-3" /></span>}
+                            <ArrowUpCircle className="h-5 w-5 text-red-500 flex-shrink-0" />
                             <div className="min-w-0 text-left">
-                                <p className="text-[10px] text-gray-500 uppercase">Outflows</p>
-                                <p className="text-sm font-bold text-red-400 truncate" title={formatCurrency(summary.totalOutflow, dominantCurrency)}>
-                                    {formatCompactCurrency(summary.totalOutflow, dominantCurrency)}
-                                </p>
+                                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Pending Outflows</p>
+                                <p className="text-sm font-bold text-red-400">{summary.pendingOutflowCount} <span className="text-[10px] font-normal text-gray-500">of {summary.totalOutflowCount} ({summary.pendingOutflowPct}%)</span></p>
+                                <p className="text-[10px] text-red-500/80 truncate" title={formatCurrency(summary.pendingOutflowAmount, dominantCurrency)}>{formatCompactCurrency(summary.pendingOutflowAmount, dominantCurrency)}</p>
                             </div>
                         </button>
-                        <div className="flex items-center gap-2 min-w-0 px-2 py-1">
-                            <DollarSign className="h-4 w-4 text-blue-500 flex-shrink-0" />
+                        {/* All Pending card */}
+                        <button onClick={() => toggleKpiFilter("all-pending")} className={`relative flex items-center gap-2.5 min-w-0 rounded-lg px-3 py-2 transition-all border ${kpiFilters.has("all-pending") ? "bg-orange-950/30 border-orange-500 ring-1 ring-orange-500/50" : "border-gray-200 dark:border-gray-700 hover:border-orange-400 hover:bg-orange-950/10"}`}>
+                            {kpiFilters.has("all-pending") && <span onClick={(e) => { e.stopPropagation(); toggleKpiFilter("all-pending"); }} className="absolute top-1 right-1 text-orange-400 hover:text-red-400 cursor-pointer"><X className="h-3 w-3" /></span>}
+                            <AlertCircle className="h-5 w-5 text-orange-500 flex-shrink-0" />
+                            <div className="min-w-0 text-left">
+                                <p className="text-[10px] text-gray-500 uppercase tracking-wide">All Pending</p>
+                                <p className="text-sm font-bold text-orange-400">{summary.unreconciledCount} <span className="text-[10px] font-normal text-gray-500">of {summary.transactionCount}</span></p>
+                                <p className="text-[10px] text-orange-500/80 truncate" title={formatCurrency(summary.pendingInflowAmount + summary.pendingOutflowAmount, dominantCurrency)}>{formatCompactCurrency(summary.pendingInflowAmount + summary.pendingOutflowAmount, dominantCurrency)} total</p>
+                            </div>
+                        </button>
+                        {/* Reconciled card */}
+                        <button onClick={() => toggleKpiFilter("reconciled")} className={`relative flex items-center gap-2.5 min-w-0 rounded-lg px-3 py-2 transition-all border ${kpiFilters.has("reconciled") ? "bg-emerald-950/30 border-emerald-600 ring-1 ring-emerald-500/50" : "border-gray-200 dark:border-gray-700 hover:border-emerald-400 hover:bg-emerald-950/10"}`}>
+                            {kpiFilters.has("reconciled") && <span onClick={(e) => { e.stopPropagation(); toggleKpiFilter("reconciled"); }} className="absolute top-1 right-1 text-emerald-400 hover:text-red-400 cursor-pointer"><X className="h-3 w-3" /></span>}
+                            <CheckCircle2 className="h-5 w-5 text-emerald-500 flex-shrink-0" />
+                            <div className="min-w-0 text-left">
+                                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Reconciled</p>
+                                <p className="text-sm font-bold text-emerald-400">{summary.reconciledCount} <span className="text-[10px] font-normal text-gray-500">({summary.reconciledPct}%)</span></p>
+                                <p className="text-[10px] text-emerald-500/80 truncate" title={formatCurrency(summary.reconciledAmount, dominantCurrency)}>{formatCompactCurrency(summary.reconciledAmount, dominantCurrency)}</p>
+                            </div>
+                        </button>
+                        {/* Balance card (non-clickable) */}
+                        <div className="flex items-center gap-2.5 min-w-0 rounded-lg px-3 py-2 border border-gray-200 dark:border-gray-700">
+                            <DollarSign className="h-5 w-5 text-blue-500 flex-shrink-0" />
                             <div className="min-w-0">
-                                <p className="text-[10px] text-gray-500 uppercase">Balance</p>
+                                <p className="text-[10px] text-gray-500 uppercase tracking-wide">Balance</p>
                                 <p className={`text-sm font-bold truncate ${summary.netCashFlow >= 0 ? "text-green-400" : "text-red-400"}`} title={formatCurrency(summary.netCashFlow, dominantCurrency)}>
                                     {formatCompactCurrency(summary.netCashFlow, dominantCurrency)}
-                                </p>
-                            </div>
-                        </div>
-                        <button onClick={() => setKpiFilter(kpiFilter === "reconciled" ? null : "reconciled")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "reconciled" ? "bg-emerald-900/30 ring-1 ring-emerald-600" : "hover:bg-gray-100 dark:bg-black/50"}`}>
-                            <CheckCircle2 className="h-4 w-4 text-emerald-500 flex-shrink-0" />
-                            <div className="min-w-0 text-left">
-                                <p className="text-[10px] text-gray-500 uppercase">Reconciled</p>
-                                <p className="text-sm font-bold text-emerald-400">{summary.reconciledCount} <span className="text-xs text-gray-500">({summary.reconciledPct}%)</span></p>
-                            </div>
-                        </button>
-                        <button onClick={() => setKpiFilter(kpiFilter === "pending" ? null : "pending")} className={`flex items-center gap-2 min-w-0 rounded-lg px-2 py-1 transition-all ${kpiFilter === "pending" ? "bg-amber-900/30 ring-1 ring-amber-600" : "hover:bg-gray-100 dark:bg-black/50"}`}>
-                            <AlertCircle className="h-4 w-4 text-amber-500 flex-shrink-0" />
-                            <div className="min-w-0 text-left">
-                                <p className="text-[10px] text-gray-500 uppercase">Pending</p>
-                                <p className="text-sm font-bold text-amber-400">{summary.unreconciledCount}</p>
-                            </div>
-                        </button>
-                        <div className="flex items-center gap-2 min-w-0 px-2 py-1">
-                            <CreditCard className="h-4 w-4 text-violet-500 flex-shrink-0" />
-                            <div className="min-w-0">
-                                <p className="text-[10px] text-gray-500 uppercase">Reconciled Value</p>
-                                <p className="text-sm font-bold text-violet-400 truncate" title={formatCurrency(summary.reconciledAmount, dominantCurrency)}>
-                                    {formatCompactCurrency(summary.reconciledAmount, dominantCurrency)}
                                 </p>
                             </div>
                         </div>
