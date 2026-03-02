@@ -2621,6 +2621,11 @@ export default function BankStatementsPage() {
                     .eq("id", gId);
             }
 
+            // 2.5) Delete associated fee invoice (AP) if it exists
+            if (cd.fee_invoice_id) {
+                await supabase.from("invoices").delete().eq("id", cd.fee_invoice_id);
+            }
+
             // 3) Clean bank transaction custom_data
             const cleanData = { ...cd };
             delete cleanData.paymentSource;
@@ -2660,6 +2665,9 @@ export default function BankStatementsPage() {
             delete cleanData.reconciled_bank_amount_total;
             delete cleanData.reconciled_bank_ids;
             delete cleanData.reconciled_with_bank_id;
+            // Fee invoice fields
+            delete cleanData.fee_invoice_id;
+            delete cleanData.fee_invoice_number;
 
             const { error: updateErr } = await supabase
                 .from("csv_rows")
@@ -5102,8 +5110,20 @@ export default function BankStatementsPage() {
                                                 notes: `Auto-created gateway fee from bank reconciliation`,
                                             };
 
-                                            const { error: insErr } = await supabase.from("invoices").insert([payload]);
+                                            const { data: insData, error: insErr } = await supabase.from("invoices").insert([payload]).select("id");
                                             if (insErr) throw insErr;
+
+                                            // Store fee invoice reference in bank transaction custom_data
+                                            const feeInvoiceId = insData?.[0]?.id;
+                                            if (reconTransaction && feeInvoiceId) {
+                                                const txCd = reconTransaction.custom_data || {};
+                                                const updCd = { ...txCd, fee_invoice_id: feeInvoiceId, fee_invoice_number: invoiceNumber };
+                                                await supabase.from("csv_rows").update({ custom_data: updCd }).eq("id", reconTransaction.id);
+                                                // Update local state
+                                                setBankTransactions(prev => prev.map(t =>
+                                                    t.id === reconTransaction.id ? { ...t, custom_data: updCd } : t
+                                                ));
+                                            }
 
                                             toast({
                                                 title: "Fee Invoice Created!",
