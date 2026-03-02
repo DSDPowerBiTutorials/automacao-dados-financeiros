@@ -1115,6 +1115,80 @@ export default function BankStatementsPage() {
                 };
             });
 
+            // ── ENRICHMENT: Reverse-lookup ar_invoices for reconciled bank TXs missing order details ──
+            const reconTxIds = transactions
+                .filter(t => t.isGatewayReconciled && t.amount > 0 && !t.custom_data?.linked_web_order_details?.length && !t.custom_data?.matched_order_id)
+                .map(t => t.id);
+
+            if (reconTxIds.length > 0) {
+                try {
+                    // Fetch ar_invoices that reference these bank txs (batched)
+                    const arRows: any[] = [];
+                    const BATCH = 50;
+                    for (let i = 0; i < reconTxIds.length; i += BATCH) {
+                        const batch = reconTxIds.slice(i, i + BATCH);
+                        const { data: arChunk } = await supabase
+                            .from("ar_invoices")
+                            .select("id, order_id, client_name, charged_amount, total_amount, currency, invoice_number, reconciled_with")
+                            .in("reconciled_with", batch)
+                            .eq("reconciled", true);
+                        if (arChunk) arRows.push(...arChunk);
+                    }
+
+                    // Group by reconciled_with (bank TX id)
+                    const arByTx = new Map<string, any[]>();
+                    arRows.forEach(ar => {
+                        const key = ar.reconciled_with;
+                        if (!arByTx.has(key)) arByTx.set(key, []);
+                        arByTx.get(key)!.push(ar);
+                    });
+
+                    // Enrich transactions
+                    if (arByTx.size > 0) {
+                        transactions.forEach(tx => {
+                            const arList = arByTx.get(tx.id);
+                            if (!arList || arList.length === 0) return;
+                            const details = arList.map(ar => ({
+                                id: "ar-" + ar.id,
+                                orderId: ar.order_id || null,
+                                customerName: ar.client_name || "",
+                                amount: parseFloat(ar.charged_amount) || parseFloat(ar.total_amount) || 0,
+                                invoiceNumber: ar.invoice_number || null,
+                                currency: ar.currency || null,
+                            }));
+                            const totalAmt = details.reduce((s, d) => s + d.amount, 0);
+                            // Populate custom_data fields so display code works
+                            tx.custom_data = {
+                                ...tx.custom_data,
+                                linked_web_order_details: details,
+                                linked_web_order_ids: details.map(d => d.id),
+                                linked_web_order_count: details.length,
+                                linked_web_order_total: totalAmt,
+                                linked_web_order_applied_total: totalAmt,
+                                linked_invoice_order_total: totalAmt,
+                                invoice_order_matched: true,
+                                matched_order_id: details[0]?.orderId || details[0]?.id || null,
+                                matched_customer_name: details[0]?.customerName || null,
+                                matched_order_amount: totalAmt,
+                            };
+                            // Recompute order reconciliation status with enriched data
+                            const enrichedStatus = getOrderReconciliationStatus(tx.amount, tx.custom_data);
+                            tx.isOrderReconciled = enrichedStatus.status !== "none";
+                            tx.orderReconciliationStatus = enrichedStatus.status;
+                            tx.matchedOrderTotal = enrichedStatus.matchedTotal;
+                            tx.matchedOrderCoverage = enrichedStatus.coverage;
+                            tx.matchedCustomerName = enrichedStatus.customerName;
+                            tx.invoiceOrderId = enrichedStatus.orderId || tx.custom_data.matched_order_id;
+                            tx.invoiceNumber = enrichedStatus.invoiceNumber;
+                            // Recompute isReconciled (inflow requires order match)
+                            tx.isReconciled = tx.isGatewayReconciled && (tx.amount < 0 || (tx.custom_data.reconciliationType || "").includes("intercompany") || enrichedStatus.status !== "none");
+                        });
+                    }
+                } catch (enrichErr) {
+                    console.warn("Order enrichment failed (non-blocking):", enrichErr);
+                }
+            }
+
             setBankTransactions(transactions);
 
             // Expand all months and days initially
@@ -5105,7 +5179,10 @@ export default function BankStatementsPage() {
                                             // Store fee invoice reference in bank transaction custom_data
                                             const feeInvoiceId = insData?.[0]?.id;
                                             if (reconTransaction && feeInvoiceId) {
-                                                const txCd = reconTransaction.custom_data || {};
+                                                // IMPORTANT: Read fresh custom_data from DB to avoid overwriting order reconciliation fields
+                                                // (reconTransaction.custom_data is stale — was captured before reconciliation saved)
+                                                const { data: freshRow } = await supabase.from("csv_rows").select("custom_data").eq("id", reconTransaction.id).single();
+                                                const txCd = freshRow?.custom_data || reconTransaction.custom_data || {};
                                                 const updCd = { ...txCd, fee_invoice_id: feeInvoiceId, fee_invoice_number: invoiceNumber };
                                                 await supabase.from("csv_rows").update({ custom_data: updCd }).eq("id", reconTransaction.id);
                                                 // Update local state
