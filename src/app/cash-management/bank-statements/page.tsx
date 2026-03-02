@@ -152,6 +152,7 @@ interface BankTransaction {
     paymentSource: string | null;
     matchType: string | null;
     isReconciled: boolean;
+    isGatewayReconciled: boolean;
     reconciliationType: string | null;
     isOrderReconciled: boolean;
     orderReconciliationStatus: "full" | "partial" | "none";
@@ -1100,7 +1101,8 @@ export default function BankStatementsPage() {
                     gateway,
                     paymentSource,
                     matchType: cd.match_type || null,
-                    isReconciled: !!row.reconciled,
+                    isGatewayReconciled: !!row.reconciled,
+                    isReconciled: !!row.reconciled && (amount < 0 || (cd.reconciliationType || "").includes("intercompany") || orderStatus.status !== "none"),
                     reconciliationType: cd.reconciliationType || (row.reconciled ? "automatic" : null),
                     isOrderReconciled: orderStatus.status !== "none",
                     orderReconciliationStatus: orderStatus.status,
@@ -1260,7 +1262,7 @@ export default function BankStatementsPage() {
 
     // Auto-load disbursement details when selecting a reconciled revenue row
     useEffect(() => {
-        if (selectedRow && selectedRow.amount >= 0 && selectedRow.isReconciled && selectedRow.paymentSource) {
+        if (selectedRow && selectedRow.amount >= 0 && selectedRow.isGatewayReconciled && selectedRow.paymentSource) {
             loadDisbursementDetails(selectedRow);
             setDisbursementExpanded(true);
         } else {
@@ -1270,7 +1272,7 @@ export default function BankStatementsPage() {
     }, [selectedRow, loadDisbursementDetails]);
 
     useEffect(() => {
-        if (selectedRow && selectedRow.amount < 0 && selectedRow.isReconciled) {
+        if (selectedRow && selectedRow.amount < 0 && selectedRow.isGatewayReconciled) {
             loadExpenseMatchedInvoices(selectedRow);
         } else {
             setExpenseMatchedInvoices([]);
@@ -2023,10 +2025,12 @@ export default function BankStatementsPage() {
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
+                const case1OrderRecon = isOrderFullyReconciled(reconTransaction.amount, updatedCustomData);
                 updateTransactionLocalState(reconTransaction.id, {
-                    isReconciled: true,
+                    isGatewayReconciled: true,
+                    isReconciled: isExpense || case1OrderRecon,
                     reconciliationType: "manual",
-                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    isOrderReconciled: case1OrderRecon,
                     custom_data: updatedCustomData,
                 });
 
@@ -2061,11 +2065,13 @@ export default function BankStatementsPage() {
                     .eq("id", reconTransaction.id);
                 if (txErr) throw txErr;
 
+                const case2OrderRecon = isOrderFullyReconciled(reconTransaction.amount, updatedCustomData);
                 updateTransactionLocalState(reconTransaction.id, {
-                    isReconciled: true,
+                    isGatewayReconciled: true,
+                    isReconciled: isExpense || case2OrderRecon,
                     reconciliationType: "manual",
                     paymentSource: match.source,
-                    isOrderReconciled: isOrderFullyReconciled(reconTransaction.amount, updatedCustomData),
+                    isOrderReconciled: case2OrderRecon,
                     custom_data: updatedCustomData,
                 });
 
@@ -2202,7 +2208,8 @@ export default function BankStatementsPage() {
 
                 const case3Status = getOrderReconciliationStatus(reconTransaction.amount, updatedCustomData);
                 updateTransactionLocalState(reconTransaction.id, {
-                    isReconciled: true,
+                    isGatewayReconciled: true,
+                    isReconciled: isExpense || case3Status.status !== "none",
                     reconciliationType: "manual",
                     isOrderReconciled: case3Status.status !== "none",
                     orderReconciliationStatus: case3Status.status,
@@ -2271,13 +2278,14 @@ export default function BankStatementsPage() {
                 if (txErr) throw txErr;
 
                 setBankTransactions(prev => prev.map(t => {
-                    if (t.id === reconTransaction.id) return { ...t, isReconciled: true, reconciliationType: "intercompany" };
-                    if (t.id === match.id) return { ...t, isReconciled: true, reconciliationType: "intercompany" };
+                    if (t.id === reconTransaction.id) return { ...t, isGatewayReconciled: true, isReconciled: true, reconciliationType: "intercompany" };
+                    if (t.id === match.id) return { ...t, isGatewayReconciled: true, isReconciled: true, reconciliationType: "intercompany" };
                     return t;
                 }));
                 setSelectedRow(prev => (prev && prev.id === reconTransaction.id
                     ? {
                         ...prev,
+                        isGatewayReconciled: true,
                         isReconciled: true,
                         reconciliationType: "intercompany",
                         custom_data: updatedCustomData,
@@ -2456,7 +2464,8 @@ export default function BankStatementsPage() {
 
                 const case5Status = getOrderReconciliationStatus(reconTransaction.amount, updatedCustomData);
                 updateTransactionLocalState(reconTransaction.id, {
-                    isReconciled: true,
+                    isGatewayReconciled: true,
+                    isReconciled: isExpense || case5Status.status !== "none",
                     reconciliationType: "gateway-order-link",
                     isOrderReconciled: case5Status.status !== "none",
                     orderReconciliationStatus: case5Status.status,
@@ -2515,7 +2524,8 @@ export default function BankStatementsPage() {
                 if (txErr) throw txErr;
 
                 updateTransactionLocalState(reconTransaction.id, {
-                    isReconciled: true,
+                    isGatewayReconciled: true,
+                    isReconciled: isExpense,
                     reconciliationType: "manual",
                     paymentSource: isExpense ? null : (manualPaymentSource || null),
                     isOrderReconciled: false,
@@ -2644,11 +2654,11 @@ export default function BankStatementsPage() {
             if (updateErr) throw updateErr;
 
             setBankTransactions(prev => prev.map(t =>
-                t.id === tx.id ? { ...t, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null, isOrderReconciled: false, orderReconciliationStatus: "none" as const, matchedOrderTotal: 0, matchedOrderCoverage: 0, matchedCustomerName: null, invoiceOrderId: null, invoiceNumber: null } : t
+                t.id === tx.id ? { ...t, isGatewayReconciled: false, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null, isOrderReconciled: false, orderReconciliationStatus: "none" as const, matchedOrderTotal: 0, matchedOrderCoverage: 0, matchedCustomerName: null, invoiceOrderId: null, invoiceNumber: null } : t
             ));
 
             if (selectedRow?.id === tx.id) {
-                setSelectedRow({ ...tx, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null, isOrderReconciled: false, orderReconciliationStatus: "none" as const, matchedOrderTotal: 0, matchedOrderCoverage: 0, matchedCustomerName: null, invoiceOrderId: null, invoiceNumber: null });
+                setSelectedRow({ ...tx, isGatewayReconciled: false, isReconciled: false, reconciliationType: null, paymentSource: null, matchType: null, isOrderReconciled: false, orderReconciliationStatus: "none" as const, matchedOrderTotal: 0, matchedOrderCoverage: 0, matchedCustomerName: null, invoiceOrderId: null, invoiceNumber: null });
             }
 
             const revertedCount = allArIds.size + linkedGatewayIds.length;
@@ -2669,11 +2679,11 @@ export default function BankStatementsPage() {
             if (flowFilter === "expense" && tx.amount >= 0) return false;
             if (reconFilter === "reconciled" && !tx.isReconciled) return false;
             if (reconFilter === "pending" && tx.isReconciled) return false;
-            // GW reconciliation type filter
-            if (gwReconFilter === "auto" && (!tx.isReconciled || !tx.reconciliationType?.startsWith("automatic"))) return false;
-            if (gwReconFilter === "manual" && (!tx.isReconciled || tx.reconciliationType !== "manual")) return false;
-            if (gwReconFilter === "intercompany" && (!tx.isReconciled || tx.reconciliationType !== "intercompany")) return false;
-            if (gwReconFilter === "not-reconciled" && tx.isReconciled) return false;
+            // GW reconciliation type filter (uses isGatewayReconciled — gateway-level status)
+            if (gwReconFilter === "auto" && (!tx.isGatewayReconciled || !tx.reconciliationType?.startsWith("automatic"))) return false;
+            if (gwReconFilter === "manual" && (!tx.isGatewayReconciled || tx.reconciliationType !== "manual")) return false;
+            if (gwReconFilter === "intercompany" && (!tx.isGatewayReconciled || tx.reconciliationType !== "intercompany")) return false;
+            if (gwReconFilter === "not-reconciled" && tx.isGatewayReconciled) return false;
             // Order reconciliation filter
             if (orderFilter === "matched" && tx.orderReconciliationStatus !== "full") return false;
             if (orderFilter === "partial" && tx.orderReconciliationStatus !== "partial") return false;
@@ -3248,7 +3258,7 @@ export default function BankStatementsPage() {
                                                         </div>
                                                     </div>
                                                     <div className="w-[40px] flex-shrink-0 text-center" onClick={e => e.stopPropagation()}>
-                                                        {tx.isReconciled && (
+                                                        {tx.isGatewayReconciled && (
                                                             <Button size="sm" variant="ghost" onClick={() => revertReconciliation(tx)} className="h-5 w-5 p-0 text-gray-500 hover:text-red-400 hover:bg-red-900/30" title="Revert">
                                                                 <X className="h-3 w-3" />
                                                             </Button>
@@ -3282,7 +3292,7 @@ export default function BankStatementsPage() {
                     {/* Panel Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                         <div className="flex items-center gap-2 min-w-0">
-                            {selectedRow.isReconciled ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />}
+                            {selectedRow.isGatewayReconciled ? <CheckCircle className="h-5 w-5 text-green-500 flex-shrink-0" /> : <AlertCircle className="h-5 w-5 text-yellow-500 flex-shrink-0" />}
                             <span className="font-medium text-gray-900 dark:text-white truncate">{selectedRow.description}</span>
                         </div>
                         <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:text-white flex-shrink-0" onClick={() => setSelectedRow(null)}>
@@ -3372,7 +3382,7 @@ export default function BankStatementsPage() {
                             </h3>
                             <div>
                                 <p className="text-xs text-gray-500">Status</p>
-                                {selectedRow.isReconciled ? (
+                                {selectedRow.isGatewayReconciled ? (
                                     <Badge variant="outline" className={`${selectedRow.reconciliationType?.startsWith("automatic") ? "bg-green-900/30 text-green-400 border-green-700"
                                         : selectedRow.reconciliationType === "intercompany" ? "bg-amber-900/30 text-amber-400 border-amber-700"
                                             : "bg-blue-900/30 text-blue-400 border-blue-700"
@@ -3432,7 +3442,7 @@ export default function BankStatementsPage() {
                         </div>
 
                         {/* ══ DISBURSEMENT TRANSACTIONS BREAKDOWN ══ */}
-                        {selectedRow.amount >= 0 && selectedRow.isReconciled && selectedRow.paymentSource && (
+                        {selectedRow.amount >= 0 && selectedRow.isGatewayReconciled && selectedRow.paymentSource && (
                             <div className="border-b border-gray-200 dark:border-gray-800">
                                 <button
                                     onClick={() => setDisbursementExpanded(!disbursementExpanded)}
@@ -3514,7 +3524,7 @@ export default function BankStatementsPage() {
                         )}
 
                         {/* ══ EXPENSE MATCHED INVOICES BREAKDOWN ══ */}
-                        {selectedRow.amount < 0 && selectedRow.isReconciled && (
+                        {selectedRow.amount < 0 && selectedRow.isGatewayReconciled && (
                             <div className="border-b border-gray-200 dark:border-gray-800">
                                 <div className="w-full px-4 py-3 flex items-center justify-between bg-white dark:bg-black">
                                     <h3 className="text-xs font-semibold text-red-400 uppercase tracking-wider flex items-center gap-2">
@@ -3642,7 +3652,7 @@ export default function BankStatementsPage() {
                         </div>
 
                         {/* Matched transaction details (gateway auto-match) */}
-                        {selectedRow.isReconciled && selectedRow.custom_data?.bank_match_amount && (
+                        {selectedRow.isGatewayReconciled && selectedRow.custom_data?.bank_match_amount && (
                             <div className="px-4 py-4 space-y-3 bg-green-900/10">
                                 <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
                                     <Zap className="h-4 w-4" /> Matched Transaction
@@ -3766,7 +3776,7 @@ export default function BankStatementsPage() {
 
                     {/* Panel Footer */}
                     <div className="border-t border-gray-200 dark:border-gray-700 px-4 py-3 flex justify-between gap-2">
-                        {selectedRow.isReconciled ? (
+                        {selectedRow.isGatewayReconciled ? (
                             <Button variant="outline" size="sm" onClick={() => revertReconciliation(selectedRow)} className="border-red-700 text-red-400 hover:bg-red-900/30">
                                 <X className="h-4 w-4 mr-1" /> Revert
                             </Button>
