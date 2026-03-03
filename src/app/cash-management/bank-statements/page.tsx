@@ -286,6 +286,49 @@ interface DisbursementTransaction {
     transactionId: string;
 }
 
+/** Server-resolved disbursement suggestion (from /api/reconcile/suggest-disbursement-orders) */
+interface DisbursementSuggestion {
+    id: string;
+    disbursementDate: string;
+    disbursementId: string | null;
+    gatewaySource: string;
+    gatewayLabel: string;
+    totalAmount: number;
+    transactionCount: number;
+    matchScore: number;
+    gatewayTransactions: {
+        transactionId: string;
+        orderId: string | null;
+        orderRef7: string | null;
+        customerName: string | null;
+        customerEmail: string | null;
+        amount: number;
+        currency: string | null;
+        cardType: string | null;
+        paymentMethod: string | null;
+        date: string;
+    }[];
+    resolvedOrders: {
+        arInvoiceId: number;
+        orderId: string | null;
+        invoiceNumber: string | null;
+        clientName: string | null;
+        email: string | null;
+        companyName: string | null;
+        amount: number;
+        chargedAmount: number | null;
+        currency: string | null;
+        products: string | null;
+        reconciled: boolean;
+        reconciledWith: string | null;
+        reconciliationType: string | null;
+        financialAccountCode: string | null;
+        orderDate: string | null;
+        paymentMethod: string | null;
+    }[];
+    unresolvedTxCount: number;
+}
+
 interface ExpenseMatchedInvoiceDetail {
     id: number;
     invoice_number: string | null;
@@ -637,6 +680,7 @@ export default function BankStatementsPage() {
     const [disbursementTxns, setDisbursementTxns] = useState<DisbursementTransaction[]>([]);
     const [loadingDisbursementTxns, setLoadingDisbursementTxns] = useState(false);
     const [disbursementExpanded, setDisbursementExpanded] = useState(false);
+    const [disbursementLinkedOrders, setDisbursementLinkedOrders] = useState<{ arId: number; orderId: string | null; clientName: string | null; amount: number; reconciled: boolean; invoiceNumber: string | null }[]>([]);
     const [expenseMatchedInvoices, setExpenseMatchedInvoices] = useState<ExpenseMatchedInvoiceDetail[]>([]);
     const [loadingExpenseMatchedInvoices, setLoadingExpenseMatchedInvoices] = useState(false);
 
@@ -658,6 +702,9 @@ export default function BankStatementsPage() {
     const [paymentSourceMatches, setPaymentSourceMatches] = useState<PaymentSourceMatch[]>([]);
     const [revenueOrderMatches, setRevenueOrderMatches] = useState<RevenueOrderMatch[]>([]);
     const [intercompanyMatches, setIntercompanyMatches] = useState<IntercompanyMatch[]>([]);
+    const [disbursementSuggestions, setDisbursementSuggestions] = useState<DisbursementSuggestion[]>([]);
+    const [expandedDisbursement, setExpandedDisbursement] = useState<string | null>(null);
+    const [selectedDisbursementId, setSelectedDisbursementId] = useState<string | null>(null);
     const [selectedInvoices, setSelectedInvoices] = useState<Set<number>>(new Set());
     const [selectedPaymentMatch, setSelectedPaymentMatch] = useState<string | null>(null);
     const [selectedRevenueOrder, setSelectedRevenueOrder] = useState<string | null>(null);
@@ -750,6 +797,7 @@ export default function BankStatementsPage() {
         setSelectedPaymentMatch(null);
         setSelectedRevenueOrder(null);
         setSelectedIntercompanyMatch(null);
+        setSelectedDisbursementId(null);
     }, []);
 
     /** Sort invoice array by current sortCol/sortDir */
@@ -1327,6 +1375,61 @@ export default function BankStatementsPage() {
             // Sort by amount descending
             txns.sort((a, b) => Math.abs(b.amount) - Math.abs(a.amount));
             setDisbursementTxns(txns);
+
+            // Resolve linked web orders (ar_invoices linked to this bank transaction)
+            const linkedOrderIds = cd?.linked_web_order_ids || [];
+            const linkedOrderDetails = cd?.linked_web_order_details || [];
+            if (linkedOrderIds.length > 0 || linkedOrderDetails.length > 0) {
+                try {
+                    // Try to fetch from ar_invoices by reconciled_with = this bank tx
+                    const { data: arRows } = await supabase
+                        .from("ar_invoices")
+                        .select("id, order_id, client_name, total_amount, reconciled, invoice_number")
+                        .eq("reconciled_with", row.id)
+                        .limit(50);
+                    if (arRows && arRows.length > 0) {
+                        setDisbursementLinkedOrders(arRows.map((r: any) => ({
+                            arId: r.id,
+                            orderId: r.order_id,
+                            clientName: r.client_name,
+                            amount: parseFloat(r.total_amount) || 0,
+                            reconciled: !!r.reconciled,
+                            invoiceNumber: r.invoice_number,
+                        })));
+                    } else {
+                        // Fallback from cached details in custom_data
+                        setDisbursementLinkedOrders(linkedOrderDetails.map((d: any) => ({
+                            arId: 0,
+                            orderId: d.orderId || null,
+                            clientName: d.customerName || null,
+                            amount: d.amount || 0,
+                            reconciled: true,
+                            invoiceNumber: d.invoiceNumber || null,
+                        })));
+                    }
+                } catch {
+                    setDisbursementLinkedOrders([]);
+                }
+            } else {
+                // Also try reconciled_with lookup even without linked_web_order_ids
+                try {
+                    const { data: arRows } = await supabase
+                        .from("ar_invoices")
+                        .select("id, order_id, client_name, total_amount, reconciled, invoice_number")
+                        .eq("reconciled_with", row.id)
+                        .limit(50);
+                    setDisbursementLinkedOrders((arRows || []).map((r: any) => ({
+                        arId: r.id,
+                        orderId: r.order_id,
+                        clientName: r.client_name,
+                        amount: parseFloat(r.total_amount) || 0,
+                        reconciled: !!r.reconciled,
+                        invoiceNumber: r.invoice_number,
+                    })));
+                } catch {
+                    setDisbursementLinkedOrders([]);
+                }
+            }
         } catch (err) {
             console.error("Error loading disbursement details:", err);
             setDisbursementTxns([]);
@@ -1729,6 +1832,35 @@ export default function BankStatementsPage() {
             }
             setPaymentSourceMatches(pMatches.sort((a, b) => b.matchScore - a.matchScore));
 
+            // 1b) Smart Disbursement Suggestions — server-side chain resolution (gateway → disbursement → orders)
+            const detectedGw = detectGateway(tx.description);
+            if (detectedGw) {
+                try {
+                    const suggestRes = await fetch("/api/reconcile/suggest-disbursement-orders", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            bankDate: tx.date?.split("T")[0],
+                            gateway: detectedGw,
+                            amount: txAmount,
+                            currency,
+                            bankSource: tx.source,
+                        }),
+                    });
+                    const suggestJson = await suggestRes.json();
+                    if (suggestJson.success && suggestJson.suggestions) {
+                        setDisbursementSuggestions(suggestJson.suggestions);
+                    } else {
+                        setDisbursementSuggestions([]);
+                    }
+                } catch (sugErr) {
+                    console.error("Error loading disbursement suggestions:", sugErr);
+                    setDisbursementSuggestions([]);
+                }
+            } else {
+                setDisbursementSuggestions([]);
+            }
+
             // 2) Customer name matching via ar_invoices (Web Orders) — only when description has a customer name
             const descLower = tx.description.toLowerCase();
             const descWords = tx.description.split(/[\s,;.\/\-]+/).filter(w => w.length > 2).map(w => w.toLowerCase());
@@ -1855,6 +1987,9 @@ export default function BankStatementsPage() {
         setSelectedPaymentMatch(null);
         setSelectedRevenueOrder(null);
         setSelectedIntercompanyMatch(null);
+        setSelectedDisbursementId(null);
+        setExpandedDisbursement(null);
+        setDisbursementSuggestions([]);
         setInvoiceSearchTerm("");
         setMatchingInvoices([]);
         setAllAvailableInvoices([]);
@@ -2143,10 +2278,117 @@ export default function BankStatementsPage() {
                 return;
             }
 
+            // CASE 2b: Revenue → Disbursement Suggestion (server-resolved chain: gateway → orders)
+            if (!isExpense && selectedDisbursementId) {
+                const dsSugg = disbursementSuggestions.find(d => d.id === selectedDisbursementId);
+                if (!dsSugg) throw new Error("Disbursement suggestion not found");
+
+                // If user has selected specific orders from the "All Orders" tab, use those
+                const hasSelectedOrders = selectedOrderIds.size > 0;
+
+                // Determine physical vs virtual bank
+                const detectedGw = detectGateway(reconTransaction.description);
+                const paymentBankCode = detectedGw
+                    ? (GATEWAY_BANK_ACCOUNT_MAP[detectedGw.split("-")[0] as keyof typeof GATEWAY_BANK_ACCOUNT_MAP] || dsSugg.gatewayLabel)
+                    : (BANK_ACCOUNT_CODE_MAP[reconTransaction.source as keyof typeof BANK_ACCOUNT_CODE_MAP] || reconTransaction.source);
+
+                // Collect transaction IDs and order IDs from suggestion
+                const txIds = dsSugg.gatewayTransactions.map(t => t.transactionId);
+                const orderRefs = dsSugg.resolvedOrders.map(o => o.orderId).filter(Boolean) as string[];
+
+                // Build custom_data for bank row
+                const updatedCustomData = {
+                    ...reconTransaction.custom_data,
+                    paymentSource: dsSugg.gatewaySource,
+                    reconciliationType: "disbursement-chain",
+                    reconciled_at: now,
+                    matched_source: dsSugg.gatewaySource,
+                    matched_disbursement_date: dsSugg.disbursementDate,
+                    matched_disbursement_id: dsSugg.disbursementId || null,
+                    matched_amount: dsSugg.totalAmount,
+                    matched_transaction_count: dsSugg.transactionCount,
+                    transaction_ids: txIds,
+                    linked_web_order_ids: orderRefs,
+                    payment_bank_code: paymentBankCode,
+                    manual_note: manualNote || null,
+                };
+
+                // Update bank csv_row
+                const { error: txErr } = await supabase
+                    .from("csv_rows")
+                    .update({ reconciled: true, custom_data: updatedCustomData })
+                    .eq("id", reconTransaction.id);
+                if (txErr) throw txErr;
+
+                // Reconcile selected ar_invoices (if orders pre-selected)
+                if (hasSelectedOrders) {
+                    const arIds: number[] = [];
+                    selectedOrderIds.forEach(oid => {
+                        if (oid.startsWith("ar-")) arIds.push(parseInt(oid.replace("ar-", "")));
+                    });
+                    if (arIds.length > 0) {
+                        for (const arId of arIds) {
+                            const cachedOrder = selectedOrdersCache.get(`ar-${arId}`);
+                            await arUpdate(arId, {
+                                reconciled: true,
+                                reconciled_at: now,
+                                reconciled_with: reconTransaction.id,
+                                reconciliation_type: "disbursement-chain",
+                                source_data: {
+                                    payment_bank_code: paymentBankCode,
+                                    disbursement_date: dsSugg.disbursementDate,
+                                    disbursement_id: dsSugg.disbursementId,
+                                    gateway_source: dsSugg.gatewaySource,
+                                    bank_tx_id: reconTransaction.id,
+                                    reconciled_amount: cachedOrder?.amount || null,
+                                },
+                            });
+                        }
+                    }
+                } else {
+                    // Auto-reconcile ALL unreconciled resolved orders from suggestion
+                    for (const o of dsSugg.resolvedOrders.filter(r => !r.reconciled)) {
+                        await arUpdate(o.arInvoiceId, {
+                            reconciled: true,
+                            reconciled_at: now,
+                            reconciled_with: reconTransaction.id,
+                            reconciliation_type: "disbursement-chain",
+                            source_data: {
+                                payment_bank_code: paymentBankCode,
+                                disbursement_date: dsSugg.disbursementDate,
+                                disbursement_id: dsSugg.disbursementId,
+                                gateway_source: dsSugg.gatewaySource,
+                                bank_tx_id: reconTransaction.id,
+                            },
+                        });
+                    }
+                }
+
+                const case2bOrderRecon = isOrderFullyReconciled(reconTransaction.amount, updatedCustomData);
+                updateTransactionLocalState(reconTransaction.id, {
+                    isGatewayReconciled: true,
+                    isReconciled: case2bOrderRecon,
+                    reconciliationType: "disbursement-chain",
+                    paymentSource: dsSugg.gatewaySource,
+                    isOrderReconciled: case2bOrderRecon,
+                    custom_data: updatedCustomData,
+                });
+
+                toast({ title: "Reconciled!", description: `Disbursement ${dsSugg.disbursementDate} — ${dsSugg.resolvedOrders.length} orders linked (${dsSugg.gatewayLabel})` });
+                setReconDialogOpen(false);
+                return;
+            }
+
             // CASE 2: Revenue → Payment Source match
             if (!isExpense && selectedPaymentMatch) {
                 const match = paymentSourceMatches.find(m => m.id === selectedPaymentMatch);
                 if (!match) throw new Error("Payment source match not found");
+
+                // Determine payment bank code
+                const case2DetectedGw = detectGateway(reconTransaction.description);
+                const case2PaymentBank = case2DetectedGw
+                    ? (GATEWAY_BANK_ACCOUNT_MAP[case2DetectedGw.split("-")[0] as keyof typeof GATEWAY_BANK_ACCOUNT_MAP] || match.source)
+                    : (BANK_ACCOUNT_CODE_MAP[reconTransaction.source as keyof typeof BANK_ACCOUNT_CODE_MAP] || reconTransaction.source);
 
                 const updatedCustomData = {
                     ...reconTransaction.custom_data,
@@ -2157,6 +2399,7 @@ export default function BankStatementsPage() {
                     matched_disbursement_date: match.disbursementDate,
                     matched_amount: match.amount,
                     matched_transaction_count: match.transactionCount,
+                    payment_bank_code: case2PaymentBank,
                     manual_note: manualNote || null,
                 };
 
@@ -2238,10 +2481,16 @@ export default function BankStatementsPage() {
                 }
 
                 // Update bank transaction
+                const case3DetectedGw = detectGateway(reconTransaction.description);
+                const case3PaymentBank = case3DetectedGw
+                    ? (GATEWAY_BANK_ACCOUNT_MAP[case3DetectedGw.split("-")[0] as keyof typeof GATEWAY_BANK_ACCOUNT_MAP] || null)
+                    : (BANK_ACCOUNT_CODE_MAP[reconTransaction.source as keyof typeof BANK_ACCOUNT_CODE_MAP] || reconTransaction.source);
+
                 const updatedCustomData: Record<string, unknown> = {
                     ...reconTransaction.custom_data,
                     reconciliationType: "manual",
                     reconciled_at: now,
+                    payment_bank_code: case3PaymentBank,
                     // Canonical fields (read by side popup & cash-flow)
                     invoice_order_id: match.orderId || match.id,
                     invoice_number: match.invoiceNumber,
@@ -3518,6 +3767,14 @@ export default function BankStatementsPage() {
                                 </div>
                             )}
 
+                            {/* Payment Bank Code (physical or virtual) */}
+                            {selectedRow.custom_data?.payment_bank_code && (
+                                <div>
+                                    <p className="text-xs text-gray-500 mb-1">Payment Bank</p>
+                                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-800 px-2 py-0.5 rounded">{selectedRow.custom_data.payment_bank_code}</span>
+                                </div>
+                            )}
+
                             {selectedRow.custom_data?.disbursement_reference && (
                                 <div>
                                     <p className="text-xs text-gray-500 mb-1">Disbursement Reference</p>
@@ -3624,6 +3881,35 @@ export default function BankStatementsPage() {
                                         )}
                                     </div>
                                 )}
+                            </div>
+                        )}
+
+                        {/* ══ LINKED WEB ORDERS (Resolved from Disbursement) ══ */}
+                        {selectedRow.amount >= 0 && selectedRow.isGatewayReconciled && disbursementLinkedOrders.length > 0 && (
+                            <div className="border-b border-gray-200 dark:border-gray-800">
+                                <div className="w-full px-4 py-3 flex items-center justify-between bg-white dark:bg-black">
+                                    <h3 className="text-xs font-semibold text-green-400 uppercase tracking-wider flex items-center gap-2">
+                                        <FileText className="h-4 w-4" />
+                                        Linked Orders ({disbursementLinkedOrders.length})
+                                    </h3>
+                                    <span className="text-xs font-mono text-green-400 font-medium">
+                                        {formatCurrency(disbursementLinkedOrders.reduce((s, o) => s + o.amount, 0), selectedRow.currency)}
+                                    </span>
+                                </div>
+                                <div className="max-h-[250px] overflow-y-auto">
+                                    {disbursementLinkedOrders.map((o, idx) => (
+                                        <div key={o.arId || idx} className={`px-4 py-2 border-b border-gray-200 dark:border-gray-800/30 ${idx % 2 === 0 ? "bg-white dark:bg-black" : "bg-[#161821]"}`}>
+                                            <div className="flex items-center justify-between">
+                                                <div className="min-w-0 flex-1">
+                                                    <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{o.invoiceNumber || o.orderId || "-"}</span>
+                                                    <span className="ml-2 text-xs text-gray-600 dark:text-gray-400 truncate">{o.clientName || ""}</span>
+                                                    {o.reconciled && <span className="ml-1 text-[9px] text-green-500">✓</span>}
+                                                </div>
+                                                <span className="text-xs font-mono text-green-400 font-medium">{formatCurrency(o.amount, selectedRow.currency)}</span>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
 
@@ -3955,7 +4241,7 @@ export default function BankStatementsPage() {
                 const isExpense = reconTransaction.amount < 0;
                 const totalSuggestions = isExpense
                     ? providerNameMatches.length
-                    : paymentSourceMatches.length + revenueOrderMatches.length;
+                    : disbursementSuggestions.length + paymentSourceMatches.length + revenueOrderMatches.length;
 
                 // Filtered unreconciled invoices for search
                 const filteredAvailableInvoices = allAvailableInvoices.filter(inv => {
@@ -4113,10 +4399,108 @@ export default function BankStatementsPage() {
                                             </>
                                         )}
 
-                                        {/* REVENUE: Payment source + Revenue order + Intercompany suggestions */}
+                                        {/* REVENUE: Disbursement Suggestions + Payment source + Revenue order suggestions */}
                                         {!isExpense && (
                                             <>
-                                                {/* Payment source matches */}
+                                                {/* ── Disbursement-chain suggestions (server-resolved) ── */}
+                                                {disbursementSuggestions.length > 0 && (
+                                                    <div>
+                                                        <h4 className="text-xs font-semibold text-purple-700 dark:text-purple-400 mb-2 flex items-center gap-1">
+                                                            <CreditCard className="h-3.5 w-3.5" /> Disbursement Suggestions ({disbursementSuggestions.length})
+                                                        </h4>
+                                                        <div className="space-y-2">
+                                                            {disbursementSuggestions.map(ds => (
+                                                                <div key={ds.id} className={`rounded-md border transition-colors ${selectedDisbursementId === ds.id ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30"}`}>
+                                                                    {/* Disbursement Header (clickable to select for reconciliation) */}
+                                                                    <button
+                                                                        onClick={() => {
+                                                                            setSelectedDisbursementId(ds.id);
+                                                                            setSelectedPaymentMatch(null);
+                                                                            setSelectedRevenueOrder(null);
+                                                                            setSelectedInvoices(new Set());
+                                                                            // Pre-select resolved orders
+                                                                            const preIds = new Set<string>();
+                                                                            const preCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null; currency?: string }>();
+                                                                            ds.resolvedOrders.forEach(o => {
+                                                                                const arId = `ar-${o.arInvoiceId}`;
+                                                                                preIds.add(arId);
+                                                                                preCache.set(arId, { amount: o.amount, customerName: o.clientName || o.email || "", orderId: o.orderId, invoiceNumber: o.invoiceNumber, financialAccountCode: o.financialAccountCode, products: o.products, currency: o.currency || undefined });
+                                                                            });
+                                                                            setSelectedOrderIds(preIds);
+                                                                            setSelectedOrdersCache(preCache);
+                                                                        }}
+                                                                        className="w-full text-left px-3 py-2.5"
+                                                                    >
+                                                                        <div className="flex items-center justify-between">
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <p className="text-xs text-gray-900 dark:text-white font-medium">{ds.gatewayLabel} — {ds.disbursementDate}</p>
+                                                                                <p className="text-[10px] text-gray-500">{ds.transactionCount} txns • {ds.resolvedOrders.length} orders resolved{ds.unresolvedTxCount > 0 ? ` • ${ds.unresolvedTxCount} unresolved` : ""}</p>
+                                                                            </div>
+                                                                            <div className="text-right ml-3 flex items-center gap-2">
+                                                                                <Badge variant="outline" className="text-[9px] px-1 py-0 bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/20 dark:text-purple-400 dark:border-purple-700">{ds.matchScore}%</Badge>
+                                                                                <p className="text-sm font-medium text-green-700 dark:text-green-400">{formatCurrency(ds.totalAmount, reconTransaction.currency)}</p>
+                                                                            </div>
+                                                                        </div>
+                                                                    </button>
+
+                                                                    {/* Expand/Collapse toggle */}
+                                                                    <button
+                                                                        onClick={() => setExpandedDisbursement(expandedDisbursement === ds.id ? null : ds.id)}
+                                                                        className="w-full text-left px-3 py-1 border-t border-gray-100 dark:border-gray-800 text-[10px] text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/10 flex items-center gap-1"
+                                                                    >
+                                                                        {expandedDisbursement === ds.id ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+                                                                        {expandedDisbursement === ds.id ? "Hide details" : "Show orders & transactions"}
+                                                                    </button>
+
+                                                                    {/* Expanded: Section 1 — Resolved Orders */}
+                                                                    {expandedDisbursement === ds.id && (
+                                                                        <div className="px-3 py-2 border-t border-gray-100 dark:border-gray-800 space-y-3">
+                                                                            {ds.resolvedOrders.length > 0 && (
+                                                                                <div>
+                                                                                    <p className="text-[10px] font-semibold text-green-600 dark:text-green-400 mb-1 flex items-center gap-1"><FileText className="h-3 w-3" /> Orders ({ds.resolvedOrders.length})</p>
+                                                                                    <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                                                                                        {ds.resolvedOrders.map(o => (
+                                                                                            <div key={o.arInvoiceId} className={`flex items-center justify-between px-2 py-1.5 rounded text-xs ${o.reconciled ? "bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800" : "bg-green-50 dark:bg-green-900/10 border border-green-200 dark:border-green-800"}`}>
+                                                                                                <div className="min-w-0 flex-1">
+                                                                                                    <span className="font-mono text-gray-700 dark:text-gray-300">{o.invoiceNumber || o.orderId || "-"}</span>
+                                                                                                    <span className="ml-2 text-gray-600 dark:text-gray-400 truncate">{o.clientName || o.email || ""}</span>
+                                                                                                    {o.reconciled && <span className="ml-1 text-[9px] text-amber-600 dark:text-amber-400">✓ Rec</span>}
+                                                                                                </div>
+                                                                                                <span className="font-medium text-green-700 dark:text-green-400 ml-2">{formatCurrency(o.amount, o.currency || reconTransaction.currency)}</span>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+
+                                                                            {/* Section 2 — Gateway Transactions */}
+                                                                            {ds.gatewayTransactions.length > 0 && (
+                                                                                <div>
+                                                                                    <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 mb-1 flex items-center gap-1"><CreditCard className="h-3 w-3" /> Gateway Transactions ({ds.gatewayTransactions.length})</p>
+                                                                                    <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                                                                                        {ds.gatewayTransactions.map((gt, idx) => (
+                                                                                            <div key={gt.transactionId || idx} className="flex items-center justify-between px-2 py-1.5 rounded bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 text-xs">
+                                                                                                <div className="min-w-0 flex-1">
+                                                                                                    <span className="font-mono text-gray-600 dark:text-gray-400 text-[10px]">{gt.transactionId?.substring(0, 12) || "-"}</span>
+                                                                                                    {gt.orderRef7 && <span className="ml-1 font-mono text-purple-600 dark:text-purple-400">#{gt.orderRef7}</span>}
+                                                                                                    <span className="ml-2 text-gray-700 dark:text-gray-300 truncate">{gt.customerName || gt.customerEmail || "-"}</span>
+                                                                                                    {gt.cardType && <span className="ml-1 text-[9px] text-gray-500">({gt.cardType})</span>}
+                                                                                                </div>
+                                                                                                <span className="font-medium text-blue-700 dark:text-blue-400 ml-2">{formatCurrency(gt.amount, gt.currency || reconTransaction.currency)}</span>
+                                                                                            </div>
+                                                                                        ))}
+                                                                                    </div>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+
+                                                {/* Payment source matches (legacy fallback) */}
                                                 {paymentSourceMatches.length > 0 && (
                                                     <div>
                                                         <h4 className="text-xs font-semibold text-blue-700 dark:text-blue-400 mb-2 flex items-center gap-1">
@@ -4126,7 +4510,7 @@ export default function BankStatementsPage() {
                                                             {paymentSourceMatches.map(pm => (
                                                                 <button
                                                                     key={pm.id}
-                                                                    onClick={() => { setSelectedPaymentMatch(pm.id); setSelectedInvoices(new Set()); setSelectedRevenueOrder(null); }}
+                                                                    onClick={() => { setSelectedPaymentMatch(pm.id); setSelectedInvoices(new Set()); setSelectedRevenueOrder(null); setSelectedDisbursementId(null); }}
                                                                     className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedPaymentMatch === pm.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                                 >
                                                                     <div className="flex items-center justify-between">
@@ -4159,6 +4543,7 @@ export default function BankStatementsPage() {
                                                                         setSelectedRevenueOrder(rm.id);
                                                                         setSelectedInvoices(new Set());
                                                                         setSelectedPaymentMatch(null);
+                                                                        setSelectedDisbursementId(null);
                                                                         // Open installment popup immediately
                                                                         openInstallmentPopupForOrder({ id: rm.id, amount: rm.amount, customerName: rm.customerName, invoiceNumber: rm.invoiceNumber || null, products: rm.products || null });
                                                                     }}
@@ -4689,7 +5074,7 @@ export default function BankStatementsPage() {
                                                     {sortIntercompany(intercompanyMatches).map(ic => (
                                                         <button
                                                             key={ic.id}
-                                                            onClick={() => { setSelectedIntercompanyMatch(ic.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); }}
+                                                            onClick={() => { setSelectedIntercompanyMatch(ic.id); setSelectedInvoices(new Set()); setSelectedPaymentMatch(null); setSelectedRevenueOrder(null); setSelectedDisbursementId(null); }}
                                                             className={`w-full text-left px-3 py-2.5 rounded-md border transition-colors ${selectedIntercompanyMatch === ic.id ? "border-cyan-500 bg-cyan-50 dark:bg-cyan-900/20" : "border-gray-200 dark:border-gray-700 bg-white dark:bg-black/30 hover:border-gray-500"}`}
                                                         >
                                                             <div className="grid grid-cols-[1fr_auto_auto_auto_auto] gap-3 items-center">
@@ -4726,7 +5111,7 @@ export default function BankStatementsPage() {
                             </div>
 
                             {/* Note input (always visible when in suggestions/all tabs) */}
-                            {reconTab !== "manual" && (selectedInvoices.size > 0 || selectedPaymentMatch || selectedRevenueOrder || selectedIntercompanyMatch) && (
+                            {reconTab !== "manual" && (selectedInvoices.size > 0 || selectedPaymentMatch || selectedRevenueOrder || selectedIntercompanyMatch || selectedDisbursementId) && (
                                 <div className="px-6 py-2 border-t border-gray-200 dark:border-gray-700/50">
                                     <Input placeholder="Note (optional)..." value={manualNote} onChange={e => setManualNote(e.target.value)} className="bg-gray-100 dark:bg-black/50 border-gray-200 dark:border-gray-700 text-gray-900 dark:text-white placeholder:text-gray-500 text-xs h-7" />
                                 </div>
@@ -4743,16 +5128,17 @@ export default function BankStatementsPage() {
                                     })()}
                                     {selectedOrderIds.size > 0 && <span className="text-cyan-700 dark:text-cyan-400">{selectedOrderIds.size} invoice-order(s) = {formatCurrency(selectedOrdersTotal, reconTransaction?.currency || "EUR")}</span>}
                                     {selectedGatewayTxIds.size > 0 && <span className="text-purple-700 dark:text-purple-400">{selectedGatewayTxIds.size} gateway txn(s) = {formatCurrency(selectedGatewayTotal, reconTransaction?.currency || "EUR")}</span>}
+                                    {selectedDisbursementId && (() => { const ds = disbursementSuggestions.find(d => d.id === selectedDisbursementId); return ds ? <span className="text-purple-700 dark:text-purple-400">Disbursement {ds.disbursementDate} — {ds.resolvedOrders.length} orders ({ds.gatewayLabel})</span> : null; })()}
                                     {selectedPaymentMatch && <span className="text-cyan-700 dark:text-cyan-400">Payment source selected</span>}
                                     {selectedRevenueOrder && <span className="text-cyan-700 dark:text-cyan-400">Revenue order selected</span>}
                                     {selectedIntercompanyMatch && <span className="text-amber-700 dark:text-amber-400">Intercompany transfer selected</span>}
-                                    {selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
+                                    {selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !selectedDisbursementId && reconTab !== "manual" && <span>Select a match or switch to Manual tab</span>}
                                 </div>
                                 <div className="flex gap-3">
                                     <Button variant="outline" onClick={() => setReconDialogOpen(false)} className="border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#111111] h-8 text-xs">Cancel</Button>
                                     <Button
                                         onClick={performManualReconciliation}
-                                        disabled={isSavingManual || (selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !manualPaymentSource && !manualNote)}
+                                        disabled={isSavingManual || (selectedInvoices.size === 0 && selectedOrderIds.size === 0 && selectedGatewayTxIds.size === 0 && !selectedPaymentMatch && !selectedRevenueOrder && !selectedIntercompanyMatch && !selectedDisbursementId && !manualPaymentSource && !manualNote)}
                                         className="bg-cyan-600 hover:bg-cyan-700 h-8 text-xs"
                                     >
                                         {isSavingManual ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Link2 className="h-3.5 w-3.5 mr-1" />}
