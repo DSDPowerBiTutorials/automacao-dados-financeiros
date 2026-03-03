@@ -33,7 +33,7 @@ export async function arFetchUnreconciled(currency?: string, limit = 1000): Prom
 /** Fetch ar_invoices by array of IDs */
 export async function arFetchByIds(
     ids: number[],
-    select = "id, customer_name, order_id, invoice_number, total_amount, charged_amount, financial_account_code, products"
+    select = "id, customer_name, order_id, invoice_number, total_amount, charged_amount, financial_account_code, products, currency"
 ): Promise<any[]> {
     if (!ids.length) return [];
     const res = await fetch(API_BASE, {
@@ -61,7 +61,7 @@ export async function arFetchById(id: number, select = "*"): Promise<any | null>
 /** Fetch ar_invoices by order_id */
 export async function arFetchByOrderId(
     order_id: string,
-    select = "id, customer_name, order_id, invoice_number, total_amount, charged_amount, financial_account_code, products"
+    select = "id, customer_name, order_id, invoice_number, total_amount, charged_amount, financial_account_code, products, currency"
 ): Promise<any[]> {
     const res = await fetch(API_BASE, {
         method: "POST",

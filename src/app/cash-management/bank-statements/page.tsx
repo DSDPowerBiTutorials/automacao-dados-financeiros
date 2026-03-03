@@ -1865,7 +1865,7 @@ export default function BankStatementsPage() {
                         const preloadCache = new Map<string, { amount: number; customerName: string; orderId: string | null; invoiceNumber: string | null; financialAccountCode: string | null; products: string | null; currency?: string }>();
                         for (const d of cd.linked_web_order_details) {
                             preloadIds.add(d.id);
-                            preloadCache.set(d.id, { amount: d.amount || 0, customerName: d.customerName || "", orderId: d.orderId || null, invoiceNumber: d.invoiceNumber || null, financialAccountCode: d.financialAccountCode || null, products: d.products || null });
+                            preloadCache.set(d.id, { amount: d.amount || 0, customerName: d.customerName || "", orderId: d.orderId || null, invoiceNumber: d.invoiceNumber || null, financialAccountCode: d.financialAccountCode || null, products: d.products || null, currency: d.currency || undefined });
                         }
                         setSelectedOrderIds(preloadIds);
                         setSelectedOrdersCache(preloadCache);

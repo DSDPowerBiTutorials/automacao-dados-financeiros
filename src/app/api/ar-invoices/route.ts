@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === "fetch-by-ids") {
-            const { ids, select = "id, customer_name, order_id, invoice_number, total_amount, charged_amount, financial_account_code, products" } = body;
+            const { ids, select = "id, customer_name, order_id, invoice_number, total_amount, charged_amount, financial_account_code, products, currency" } = body;
             if (!ids?.length) return NextResponse.json({ data: [] });
             const { data, error } = await supabaseAdmin
                 .from("ar_invoices")
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
         }
 
         if (action === "fetch-by-order-id") {
-            const { order_id, select = "id, customer_name, order_id, invoice_number, total_amount, charged_amount, financial_account_code, products" } = body;
+            const { order_id, select = "id, customer_name, order_id, invoice_number, total_amount, charged_amount, financial_account_code, products, currency" } = body;
             const { data, error } = await supabaseAdmin
                 .from("ar_invoices")
                 .select(select)
