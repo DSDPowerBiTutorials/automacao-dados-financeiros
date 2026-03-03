@@ -538,6 +538,79 @@ export default function BankCashFlowPage() {
                 };
             });
 
+            // ─── P&L enrichment: resolve pnl_line for reconciled inflows missing classification ───
+            try {
+                // Find reconciled inflow txs with linked_web_order_details but no pnl_line anywhere
+                const needsPnl = transactions.filter(tx => {
+                    if (tx.amount <= 0 || !tx.isReconciled) return false;
+                    if (tx.custom_data?.pnl_line) return false;
+                    const details = tx.custom_data?.linked_web_order_details as Array<{ pnl_line?: string; financialAccountCode?: string }> | undefined;
+                    if (!details?.length) return false;
+                    return details.every(d => !d.pnl_line && !d.financialAccountCode);
+                });
+
+                if (needsPnl.length > 0) {
+                    // Collect all ar_invoice IDs from these txs
+                    const arIdSet = new Set<number>();
+                    for (const tx of needsPnl) {
+                        for (const d of (tx.custom_data?.linked_web_order_details || [])) {
+                            const arId = parseInt(String(d.id).replace("ar-", ""));
+                            if (!isNaN(arId)) arIdSet.add(arId);
+                        }
+                    }
+
+                    // Batch fetch products from ar_invoices
+                    const arIds = Array.from(arIdSet);
+                    const arProductMap = new Map<number, string>();
+                    const AR_BATCH = 50;
+                    for (let i = 0; i < arIds.length; i += AR_BATCH) {
+                        const batch = arIds.slice(i, i + AR_BATCH);
+                        const { data: arChunk } = await supabase
+                            .from("ar_invoices")
+                            .select("id, products")
+                            .in("id", batch);
+                        if (arChunk) arChunk.forEach(r => { if (r.products) arProductMap.set(r.id, r.products); });
+                    }
+
+                    // Load product → P&L mappings
+                    let pnlMappings = new Map<string, string>();
+                    const { data: mappingRows } = await supabase.from("product_pnl_mappings").select("product_name, pnl_line");
+                    if (mappingRows) {
+                        for (const m of mappingRows) pnlMappings.set(m.product_name.toLowerCase().trim(), m.pnl_line);
+                    }
+
+                    // Resolve P&L line for each tx
+                    for (const tx of needsPnl) {
+                        const details = tx.custom_data?.linked_web_order_details as Array<any>;
+                        if (!details) continue;
+                        let resolvedAny = false;
+                        for (const d of details) {
+                            const arId = parseInt(String(d.id).replace("ar-", ""));
+                            const products = arProductMap.get(arId);
+                            if (!products) continue;
+                            // Split multi-products and find first matching P&L line
+                            const productNames = products.includes(" | ") ? products.split(" | ") : [products];
+                            for (const pn of productNames) {
+                                const mapped = pnlMappings.get(pn.toLowerCase().trim());
+                                if (mapped) { d.pnl_line = mapped; resolvedAny = true; break; }
+                            }
+                        }
+                        if (resolvedAny) {
+                            // Set dominant pnl_line on tx level
+                            const pnlTotals = new Map<string, number>();
+                            for (const d of details) {
+                                if (d.pnl_line) pnlTotals.set(d.pnl_line, (pnlTotals.get(d.pnl_line) || 0) + Math.abs(d.amount || 0));
+                            }
+                            let best = ""; let max = 0;
+                            for (const [line, amt] of pnlTotals) { if (amt > max) { best = line; max = amt; } }
+                            if (best) tx.custom_data.pnl_line = best;
+                        }
+                    }
+                }
+            } catch (pnlEnrichErr) {
+                console.error("P&L enrichment error (non-blocking):", pnlEnrichErr);
+            }
+
             setBankTransactions(transactions);
 
             // Expand all date groups initially

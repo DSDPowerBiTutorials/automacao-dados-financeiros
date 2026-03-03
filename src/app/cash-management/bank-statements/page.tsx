@@ -1132,7 +1132,7 @@ export default function BankStatementsPage() {
                         const batch = reconTxIds.slice(i, i + BATCH);
                         const { data: arChunk } = await supabase
                             .from("ar_invoices")
-                            .select("id, order_id, client_name, charged_amount, total_amount, currency, invoice_number, reconciled_with")
+                            .select("id, order_id, client_name, charged_amount, total_amount, currency, invoice_number, products, reconciled_with")
                             .in("reconciled_with", batch)
                             .eq("reconciled", true);
                         if (arChunk) arRows.push(...arChunk);
@@ -1158,6 +1158,7 @@ export default function BankStatementsPage() {
                                 amount: parseFloat(ar.charged_amount) || parseFloat(ar.total_amount) || 0,
                                 invoiceNumber: ar.invoice_number || null,
                                 currency: ar.currency || null,
+                                products: ar.products || null,
                             }));
                             const totalAmt = details.reduce((s, d) => s + d.amount, 0);
                             // Populate custom_data fields so display code works
