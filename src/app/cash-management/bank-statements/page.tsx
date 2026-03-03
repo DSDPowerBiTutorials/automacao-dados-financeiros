@@ -45,6 +45,7 @@ import {
     Receipt,
     Globe,
     ExternalLink,
+    Eye,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { arSearch, arFetchUnreconciled, arFetchByIds, arFetchById, arFetchByOrderId, arUpdate } from "@/lib/ar-invoices-api";
@@ -695,6 +696,31 @@ export default function BankStatementsPage() {
     const [installmentAmount, setInstallmentAmount] = useState("");
     // Stores the adjusted amount per order (orderId → amount) set by installment popup
     const [installmentOverrides, setInstallmentOverrides] = useState<Map<string, number>>(new Map());
+
+    // Reconciliation detail popup (eye icon on reconciled orders)
+    const [reconDetailPopup, setReconDetailPopup] = useState<{
+        order: RevenueOrderMatch;
+        bankTx: { id: string; date: string; description: string; amount: number; source: string; currency: string } | null;
+        siblingOrders: { id: number; order_id: string; client_name: string; total_amount: number; charged_amount: number; currency: string; products: string | null; invoice_number: string | null; order_date: string | null }[];
+        loading: boolean;
+    } | null>(null);
+
+    const openReconDetailPopup = useCallback(async (order: RevenueOrderMatch) => {
+        setReconDetailPopup({ order, bankTx: null, siblingOrders: [], loading: true });
+        try {
+            const bankTxId = order.reconciledWith;
+            if (!bankTxId) { setReconDetailPopup(prev => prev ? { ...prev, loading: false } : null); return; }
+            // Fetch bank tx
+            const { data: bankRow } = await supabase.from("csv_rows").select("id, date, description, amount, source").eq("id", bankTxId).single();
+            const bankTx = bankRow ? { id: bankRow.id, date: bankRow.date || "", description: bankRow.description || "", amount: parseFloat(bankRow.amount) || 0, source: bankRow.source || "", currency: (bankRow.source || "").includes("usd") ? "USD" : "EUR" } : null;
+            // Fetch sibling orders reconciled with same bank tx
+            const { data: siblings } = await supabase.from("ar_invoices").select("id, order_id, client_name, total_amount, charged_amount, currency, products, invoice_number, order_date").eq("reconciled_with", bankTxId).eq("reconciled", true);
+            setReconDetailPopup({ order, bankTx, siblingOrders: siblings || [], loading: false });
+        } catch (err) {
+            console.error("Error loading reconciliation details:", err);
+            setReconDetailPopup(prev => prev ? { ...prev, loading: false } : null);
+        }
+    }, [supabase]);
 
     // Gateway transaction browsing (for linking individual txns to disbursement)
     const [gatewayTxSearchTerm, setGatewayTxSearchTerm] = useState("");
@@ -4147,7 +4173,7 @@ export default function BankStatementsPage() {
                                                                             <p className="text-xs text-gray-900 dark:text-white mt-0.5 font-medium">
                                                                                 {rm.customerName}
                                                                                 {rm.reconciliationType === 'payment-matched' && !rm.reconciled && <span className="ml-1 inline-flex items-center px-1 py-0 rounded text-[8px] font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30">💳 Matched</span>}
-                                                                                {rm.reconciled && <span className="ml-1 inline-flex items-center px-1 py-0 rounded text-[8px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">✓ Rec</span>}
+                                                                                {rm.reconciled && <><span className="ml-1 inline-flex items-center px-1 py-0 rounded text-[8px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">✓ Rec</span><button onClick={e => { e.stopPropagation(); openReconDetailPopup(rm); }} className="ml-1 inline-flex items-center text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300" title="View reconciliation details"><Eye className="h-3 w-3" /></button></>}
                                                                             </p>
                                                                             <p className="text-[10px] text-gray-500 truncate">Cliente: {rm.customerName}</p>
                                                                             <p className="text-[10px] text-gray-500 truncate">{rm.matchReason}</p>
@@ -4515,7 +4541,7 @@ export default function BankStatementsPage() {
                                                                     <p className="text-xs text-gray-900 dark:text-white font-medium truncate">
                                                                         {order.customerName}
                                                                         {order.reconciliationType === 'payment-matched' && !order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-blue-100 text-blue-700 border border-blue-300 dark:bg-blue-500/20 dark:text-blue-400 dark:border-blue-500/30">💳 Payment Matched</span>}
-                                                                        {order.reconciled && <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">✓ Reconciled</span>}
+                                                                        {order.reconciled && <><span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 border border-amber-300 dark:bg-amber-500/20 dark:text-amber-400 dark:border-amber-500/30">✓ Reconciled</span><button onClick={e => { e.stopPropagation(); openReconDetailPopup(order); }} className="ml-1 inline-flex items-center text-amber-600 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300" title="View reconciliation details"><Eye className="h-3.5 w-3.5" /></button></>}
                                                                     </p>
                                                                     <p className="text-[10px] text-gray-500 truncate">
                                                                         {order.orderId && <span className="text-cyan-700 dark:text-cyan-400">#{order.orderId}</span>}
@@ -5009,6 +5035,118 @@ export default function BankStatementsPage() {
                                 <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
                                 {installmentCount === 1 ? `Confirm ${formatCurrency(parseFloat(installmentAmount) || installmentData.orderAmount, installmentData.currency)}` : `Confirm Installment (${formatCurrency(parseFloat(installmentAmount) || 0, installmentData.currency)})`}
                             </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* RECONCILIATION DETAIL POPUP — eye icon on reconciled orders */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {reconDetailPopup && (
+                <div className="fixed inset-0 z-[320] flex items-center justify-center">
+                    <div className="absolute inset-0 bg-black/60" onClick={() => setReconDetailPopup(null)} />
+                    <div className="relative bg-white dark:bg-[#0a0a0a] border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl w-[520px] max-h-[80vh] flex flex-col">
+                        {/* Header */}
+                        <div className="px-5 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                            <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                <Eye className="h-4 w-4 text-amber-600" />
+                                Reconciliation Details
+                            </h3>
+                            <button onClick={() => setReconDetailPopup(null)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"><X className="h-4 w-4" /></button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+                            {reconDetailPopup.loading ? (
+                                <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-gray-400" /></div>
+                            ) : (
+                                <>
+                                    {/* Current order info */}
+                                    <div>
+                                        <h4 className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">This Order</h4>
+                                        <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/50 rounded-lg p-3">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <p className="text-xs font-medium text-gray-900 dark:text-white">{reconDetailPopup.order.customerName}</p>
+                                                    <p className="text-[10px] text-gray-500 mt-0.5">
+                                                        {reconDetailPopup.order.orderId && <span className="text-cyan-700 dark:text-cyan-400 font-mono">#{reconDetailPopup.order.orderId}</span>}
+                                                        {reconDetailPopup.order.invoiceNumber && <span className="ml-2">Inv: {reconDetailPopup.order.invoiceNumber}</span>}
+                                                    </p>
+                                                    {reconDetailPopup.order.products && <p className="text-[10px] text-gray-500 mt-0.5 truncate max-w-[300px]">{reconDetailPopup.order.products}</p>}
+                                                </div>
+                                                <span className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">{formatCurrency(reconDetailPopup.order.amount, reconDetailPopup.order.currency || "EUR")}</span>
+                                            </div>
+                                            <p className="text-[10px] text-gray-500 mt-1">{formatNumericDate(reconDetailPopup.order.date)}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Bank transaction */}
+                                    {reconDetailPopup.bankTx && (
+                                        <div>
+                                            <h4 className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">Bank Transaction</h4>
+                                            <div className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                                                <div className="flex items-center justify-between">
+                                                    <div>
+                                                        <p className="text-xs font-medium text-gray-900 dark:text-white">{reconDetailPopup.bankTx.description}</p>
+                                                        <p className="text-[10px] text-gray-500 mt-0.5">
+                                                            {reconDetailPopup.bankTx.source.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                                                            <span className="mx-1.5">|</span>
+                                                            {formatNumericDate(reconDetailPopup.bankTx.date)}
+                                                        </p>
+                                                    </div>
+                                                    <span className="text-sm font-semibold text-green-700 dark:text-green-400">{formatCurrency(reconDetailPopup.bankTx.amount, reconDetailPopup.bankTx.currency)}</span>
+                                                </div>
+                                                <p className="text-[10px] text-gray-400 mt-1 font-mono">{reconDetailPopup.bankTx.id}</p>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* All orders in this reconciliation */}
+                                    {reconDetailPopup.siblingOrders.length > 0 && (
+                                        <div>
+                                            <h4 className="text-[10px] font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-2">
+                                                All Orders in this Reconciliation ({reconDetailPopup.siblingOrders.length})
+                                            </h4>
+                                            <div className="space-y-1.5">
+                                                {reconDetailPopup.siblingOrders.map(sib => {
+                                                    const isCurrentOrder = `ar-${sib.id}` === reconDetailPopup.order.id;
+                                                    return (
+                                                        <div key={sib.id} className={`flex items-center justify-between p-2.5 rounded-lg border ${isCurrentOrder ? "bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/50" : "bg-white dark:bg-black/30 border-gray-200 dark:border-gray-700"}`}>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
+                                                                    {sib.client_name || "—"}
+                                                                    {isCurrentOrder && <span className="ml-1.5 text-[9px] text-amber-600 dark:text-amber-400">(this order)</span>}
+                                                                </p>
+                                                                <p className="text-[10px] text-gray-500 truncate">
+                                                                    {sib.order_id && <span className="text-cyan-700 dark:text-cyan-400 font-mono">#{sib.order_id}</span>}
+                                                                    {sib.invoice_number && <span className="ml-1.5">Inv: {sib.invoice_number}</span>}
+                                                                    {sib.order_date && <span className="ml-1.5">{formatNumericDate(sib.order_date)}</span>}
+                                                                </p>
+                                                                {sib.products && <p className="text-[10px] text-gray-400 truncate mt-0.5">{sib.products}</p>}
+                                                            </div>
+                                                            <span className={`text-xs font-semibold ml-3 flex-shrink-0 ${isCurrentOrder ? "text-amber-700 dark:text-amber-400" : "text-emerald-700 dark:text-emerald-400"}`}>{formatCurrency(parseFloat(String(sib.charged_amount)) || parseFloat(String(sib.total_amount)) || 0, sib.currency || "EUR")}</span>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                            {/* Totals */}
+                                            <div className="mt-2 pt-2 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+                                                <span className="text-[10px] text-gray-500 uppercase tracking-wide">Total Orders</span>
+                                                <span className="text-xs font-bold text-gray-900 dark:text-white">
+                                                    {formatCurrency(reconDetailPopup.siblingOrders.reduce((s, o) => s + (parseFloat(String(o.charged_amount)) || parseFloat(String(o.total_amount)) || 0), 0), reconDetailPopup.siblingOrders[0]?.currency || "EUR")}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {!reconDetailPopup.bankTx && !reconDetailPopup.loading && (
+                                        <p className="text-xs text-gray-500 text-center py-4">No bank transaction found for this reconciliation.</p>
+                                    )}
+                                </>
+                            )}
+                        </div>
+
+                        <div className="px-5 py-3 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+                            <Button variant="outline" size="sm" onClick={() => setReconDetailPopup(null)} className="text-xs">Close</Button>
                         </div>
                     </div>
                 </div>
