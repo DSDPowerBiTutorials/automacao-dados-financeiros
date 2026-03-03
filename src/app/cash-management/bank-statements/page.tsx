@@ -5034,7 +5034,7 @@ export default function BankStatementsPage() {
                                 </p>
                             ) : (
                                 <p className="text-xs text-gray-500 mt-1">
-                                    The matched orders total ({formatCurrency(feePopupData.orderTotal, feePopupData.currency)}) exceeds the bank inflow ({formatCurrency(feePopupData.bankAmount, feePopupData.currency)}).
+                                    The matched orders total ({formatCurrency(feePopupData.orderTotal, feePopupData.orderCurrencies.length > 0 ? feePopupData.orderCurrencies[0] : feePopupData.currency)}) exceeds the bank inflow ({formatCurrency(feePopupData.bankAmount, feePopupData.currency)}).
                                     The difference of <span className="font-semibold text-amber-600">{formatCurrency(feePopupData.feeAmount, feePopupData.currency)}</span> will be recorded as a gateway fee expense.
                                 </p>
                             )}
@@ -5043,7 +5043,7 @@ export default function BankStatementsPage() {
                         {/* Fee summary bar */}
                         <div className="px-6 py-2 bg-amber-50 dark:bg-amber-950/20 border-b border-amber-200 dark:border-amber-800/50 flex items-center justify-between">
                             <div className="flex items-center gap-3 text-xs">
-                                <span className="text-gray-600 dark:text-gray-400">Orders: <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(feePopupData.orderTotal, feePopupData.currency)}</span></span>
+                                <span className="text-gray-600 dark:text-gray-400">Orders: <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(feePopupData.orderTotal, feePopupData.isCrossCurrency && feePopupData.orderCurrencies.length > 0 ? feePopupData.orderCurrencies[0] : feePopupData.currency)}</span></span>
                                 <span className="text-gray-400">−</span>
                                 <span className="text-gray-600 dark:text-gray-400">Bank: <span className="font-medium text-gray-900 dark:text-white">{formatCurrency(feePopupData.bankAmount, feePopupData.currency)}</span></span>
                                 <span className="text-gray-400">=</span>
