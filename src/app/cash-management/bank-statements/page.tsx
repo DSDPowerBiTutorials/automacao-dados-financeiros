@@ -166,6 +166,7 @@ interface BankTransaction {
     invoiceOrderId: string | null;
     invoiceNumber: string | null;
     custom_data: Record<string, any>;
+    isLikelyIntercompany: boolean;
 }
 
 interface ReconcileResult {
@@ -355,8 +356,36 @@ function detectGateway(description: string): string | null {
     return null;
 }
 
-const formatCurrency = (value: number, currency = "EUR") =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+/** Detect likely intercompany transaction from description keywords (DSD / Planning Center) */
+function detectIntercompany(description: string): boolean {
+    const desc = description.toLowerCase();
+    const keywords = [
+        "planning center", "planning cender",
+        "digital smile design", "digital smile",
+        "dsd key", "dsd lab", "dsd master", "dsd app",
+    ];
+    if (keywords.some(kw => desc.includes(kw))) return true;
+    // Standalone "dsd" — match as whole word to avoid false positives
+    if (/\bdsd\b/.test(desc)) return true;
+    return false;
+}
+
+const CURRENCY_ALIAS: Record<string, string> = { RAND: "ZAR", DOLLAR: "USD", EURO: "EUR", POUND: "GBP", REAL: "BRL" };
+const sanitizeCurrency = (c: string | null | undefined): string => {
+    if (!c) return "EUR";
+    const up = c.trim().toUpperCase();
+    if (CURRENCY_ALIAS[up]) return CURRENCY_ALIAS[up];
+    if (/^[A-Z]{3}$/.test(up)) return up;
+    return "EUR";
+};
+const formatCurrency = (value: number, currency = "EUR") => {
+    const safe = sanitizeCurrency(currency);
+    try {
+        return new Intl.NumberFormat("pt-BR", { style: "currency", currency: safe, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(value);
+    } catch {
+        return `${safe} ${value.toFixed(2)}`;
+    }
+};
 
 const formatCompactCurrency = (value: number, currency = "EUR") => {
     const sym = currency === "USD" ? "$" : "€";
@@ -433,6 +462,7 @@ const gatewayColors: Record<string, { bg: string; text: string; border: string }
     paypal: { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
     gocardless: { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
     stripe: { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" },
+    intercompany: { bg: "bg-purple-100 dark:bg-purple-900/30", text: "text-purple-800 dark:text-purple-300", border: "border-purple-400 dark:border-purple-600" },
 };
 
 const getGatewayStyle = (gw: string | null) => gatewayColors[gw?.toLowerCase() || ""] || { bg: "bg-gray-100 dark:bg-white/10", text: "text-gray-800 dark:text-gray-200", border: "border-gray-400 dark:border-gray-500" };
@@ -1189,6 +1219,7 @@ export default function BankStatementsPage() {
                     invoiceOrderId: orderStatus.orderId || cd.invoice_order_id || cd.matched_order_id || null,
                     invoiceNumber: orderStatus.invoiceNumber || cd.invoice_number || cd.matched_invoice_number || null,
                     custom_data: cd,
+                    isLikelyIntercompany: detectIntercompany(row.description || ""),
                 };
             });
 
@@ -1713,15 +1744,17 @@ export default function BankStatementsPage() {
                     const matchLabel = fuzzyMatch
                         ? `"${extractedSupplier}" ≈ "${inv.provider_code}" (${Math.round(fuzzyScore * 100)}%)`
                         : `"${matchedWords.join(", ")}"`;
+                    // Score based on amount proximity (primary ranking factor)
+                    const amountProximityPct = txAmount > 0 ? Math.max(0, 100 - Math.round((amountDiff / txAmount) * 100)) : 0;
                     if (isExact) {
-                        parsed.matchScore = 95;
+                        parsed.matchScore = 99;
                         parsed.matchReason = `Exact amount + supplier ${matchLabel}`;
                     } else if (isClose) {
-                        parsed.matchScore = 75;
+                        parsed.matchScore = Math.max(80, amountProximityPct);
                         parsed.matchReason = `Supplier ${matchLabel}, amount ±${((amountDiff / txAmount) * 100).toFixed(0)}%`;
                     } else {
-                        parsed.matchScore = fuzzyMatch ? Math.round(fuzzyScore * 100) : 60;
-                        parsed.matchReason = `Supplier ${matchLabel}`;
+                        parsed.matchScore = Math.min(70, amountProximityPct);
+                        parsed.matchReason = `Supplier ${matchLabel}, diff ${formatCurrency(amountDiff)}`;
                     }
                     supplierMatches.push(parsed);
                 } else {
@@ -1730,8 +1763,15 @@ export default function BankStatementsPage() {
                 }
             });
 
-            // Sort supplier matches: highest score first, then by date
-            supplierMatches.sort((a, b) => b.matchScore - a.matchScore || a.schedule_date.localeCompare(b.schedule_date));
+            // Sort supplier matches: closest amount first, then most recent date
+            supplierMatches.sort((a, b) => {
+                const aAmt = a.paid_amount ?? a.invoice_amount;
+                const bAmt = b.paid_amount ?? b.invoice_amount;
+                const aDiff = Math.abs(aAmt - txAmount);
+                const bDiff = Math.abs(bAmt - txAmount);
+                if (Math.abs(aDiff - bDiff) > 0.001) return aDiff - bDiff;
+                return (b.schedule_date || "").localeCompare(a.schedule_date || "");
+            });
 
             setMatchingInvoices([]); // Not used separately anymore
             setProviderNameMatches(supplierMatches);
@@ -2011,7 +2051,7 @@ export default function BankStatementsPage() {
         setGatewayTxResults([]);
         setSelectedGatewayTxIds(new Set());
         setIsSearchingGatewayTx(false);
-        setReconTab("suggestions");
+        setReconTab(tx.isLikelyIntercompany ? "intercompany" : "suggestions");
         setReconDialogOpen(true);
         setLoadingMatches(true);
 
@@ -3149,19 +3189,24 @@ export default function BankStatementsPage() {
                 .sort((a, b) => b.date.localeCompare(a.date)); // mais recente primeiro
             if (bankTxs.length === 0) continue;
             const lastDate = bankTxs[0].date.split("T")[0];
-            // Pegar todas as transações do último dia e a que tem o saldo mais recente (última da lista nesse dia)
+            // Pegar todas as transações do último dia
             const lastDayTxs = bankTxs.filter(t => t.date.split("T")[0] === lastDate);
-            // Procurar saldo na última transação do dia (a que tem o saldo final)
-            // Ordenar por saldo decrescente — o saldo final do dia é tipicamente o da última transação registada
+            // Procurar o saldo final do dia: a transação com o menor row_index
+            // (no XLSX Bankinter a primeira linha = transação mais recente = saldo final)
             let bankBalance: number | null = null;
+            let bestRowIdx = Infinity;
             for (const t of lastDayTxs) {
                 const cd = t.custom_data || {};
                 const saldo = cd.saldo ?? cd.balance ?? null;
                 if (saldo !== null && saldo !== undefined) {
                     const val = typeof saldo === "number" ? saldo : parseFloat(String(saldo));
                     if (!isNaN(val)) {
-                        bankBalance = val;
-                        hasBalanceData = true;
+                        const rowIdx = typeof cd.row_index === "number" ? cd.row_index : Infinity;
+                        if (rowIdx < bestRowIdx) {
+                            bestRowIdx = rowIdx;
+                            bankBalance = val;
+                            hasBalanceData = true;
+                        }
                     }
                 }
             }
@@ -3594,6 +3639,10 @@ export default function BankStatementsPage() {
                                                         {(tx.paymentSource || tx.gateway) ? (
                                                             <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gwStyle.bg} ${gwStyle.text} ${gwStyle.border}`}>
                                                                 {(tx.paymentSource || tx.gateway || "").charAt(0).toUpperCase() + (tx.paymentSource || tx.gateway || "").slice(1)}
+                                                            </Badge>
+                                                        ) : tx.isLikelyIntercompany ? (
+                                                            <Badge variant="outline" className={`text-[8px] px-1 py-0 ${gatewayColors.intercompany.bg} ${gatewayColors.intercompany.text} ${gatewayColors.intercompany.border}`}>
+                                                                Intercompany
                                                             </Badge>
                                                         ) : <span className="text-gray-600 text-[9px]">-</span>}
                                                     </div>
@@ -4374,7 +4423,7 @@ export default function BankStatementsPage() {
                                                                             <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
                                                                         </div>
                                                                         <div className="text-center">
-                                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(inv.schedule_date)}</span>
                                                                         </div>
                                                                         <div className="text-right flex items-center gap-1.5">
                                                                             <span className="text-sm font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
@@ -4630,7 +4679,7 @@ export default function BankStatementsPage() {
                                                                     <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
                                                                 </div>
                                                                 <div className="text-center">
-                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                    <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(inv.schedule_date)}</span>
                                                                 </div>
                                                                 <div className="text-right">
                                                                     <span className="text-xs font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>
@@ -4812,7 +4861,7 @@ export default function BankStatementsPage() {
                                                                             <span className="text-xs font-mono text-gray-700 dark:text-gray-300">{inv.invoice_number}</span>
                                                                         </div>
                                                                         <div className="text-center">
-                                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatShortDate(inv.schedule_date)}</span>
+                                                                            <span className="text-[10px] text-gray-500 dark:text-gray-400">{formatNumericDate(inv.schedule_date)}</span>
                                                                         </div>
                                                                         <div className="text-right">
                                                                             <span className="text-xs font-medium text-red-600 dark:text-red-400">{formatCurrency(inv.paid_amount ?? inv.invoice_amount, inv.currency || reconTransaction.currency)}</span>

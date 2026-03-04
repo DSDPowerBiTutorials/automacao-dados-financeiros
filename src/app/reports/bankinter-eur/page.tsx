@@ -452,7 +452,7 @@ export default function BankinterEURPage() {
       } else if (rowsData) {
         const mappedRows: BankinterEURRow[] = rowsData.map((row) => ({
           id: row.id,
-          date: row.custom_data?.fecha_contable_iso || row.date,
+          date: row.custom_data?.fecha_valor_iso || row.date,
           description: row.description || "",
           amount: parseFloat(row.amount) || 0,
           reconciled: row.reconciled ?? row.custom_data?.conciliado ?? false,

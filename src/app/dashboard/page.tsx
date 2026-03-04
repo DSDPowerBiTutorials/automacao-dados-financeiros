@@ -360,15 +360,28 @@ export default function DashboardPage() {
 
       await Promise.all(
         bankSources.map(async (source) => {
+          // Fetch enough rows from the most recent date to find the correct final balance
+          // (row_index determines chronological order within same day)
           const { data: rows } = await supabase
             .from("csv_rows")
             .select("date, amount, custom_data")
             .eq("source", source)
             .order("date", { ascending: false })
-            .limit(1);
+            .limit(50);
 
           if (rows && rows.length > 0) {
-            const row = rows[0];
+            // Find the latest date
+            const latestDate = (rows[0].date || "").split("T")[0];
+            // Get all rows from that date and pick the one with lowest row_index (= final balance)
+            const sameDayRows = rows.filter(r => (r.date || "").split("T")[0] === latestDate);
+            let bestRow = sameDayRows[0];
+            let bestRowIdx = Infinity;
+            for (const r of sameDayRows) {
+              const cd = typeof r.custom_data === "string" ? JSON.parse(r.custom_data) : r.custom_data;
+              const ri = typeof cd?.row_index === "number" ? cd.row_index : Infinity;
+              if (ri < bestRowIdx) { bestRowIdx = ri; bestRow = r; }
+            }
+            const row = bestRow;
             const customData =
               typeof row.custom_data === "string"
                 ? JSON.parse(row.custom_data)

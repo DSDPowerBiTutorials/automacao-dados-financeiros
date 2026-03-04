@@ -100,7 +100,7 @@ export async function reconcileWithBank(
 
             // Buscar match no banco (mesmo dia ou ±2 dias)
             const match = bankStatements.find(stmt => {
-                const stmtBankDate = stmt.custom_data?.fecha_contable_iso || stmt.custom_data?.fecha_contable || stmt.date;
+                const stmtBankDate = stmt.custom_data?.fecha_valor_iso || stmt.custom_data?.fecha_valor || stmt.date;
                 const stmtDate = new Date(stmtBankDate);
                 const txDate = new Date(disbursementDate || firstTx.date);
                 const dayDiff = Math.abs(

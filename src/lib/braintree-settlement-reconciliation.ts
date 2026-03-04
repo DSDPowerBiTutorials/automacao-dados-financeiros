@@ -264,8 +264,8 @@ async function findBankMatch(
                 .select(baseSelect)
                 .eq('source', bankSource)
                 .or('reconciled.is.null,reconciled.eq.false')
-                .gte('custom_data->>fecha_contable_iso', startDate)
-                .lte('custom_data->>fecha_contable_iso', endDate),
+                .gte('custom_data->>fecha_valor_iso', startDate)
+                .lte('custom_data->>fecha_valor_iso', endDate),
             client
                 .from('csv_rows')
                 .select(baseSelect)
@@ -305,7 +305,7 @@ async function findBankMatch(
         for (const row of bankRows) {
             const rawBankAmount = parseAmount(row.amount);
             const bankAmount = typeof rawBankAmount === 'number' && Number.isFinite(rawBankAmount) ? rawBankAmount : 0;
-            const bankDate = row.custom_data?.fecha_contable_iso || row.custom_data?.fecha_contable || row.date;
+            const bankDate = row.custom_data?.fecha_valor_iso || row.custom_data?.fecha_valor || row.date;
 
             const directDiff = Math.abs(bankAmount - batch.totalAmount);
             const absDiff = Math.abs(Math.abs(bankAmount) - Math.abs(batch.totalAmount));
@@ -337,7 +337,7 @@ async function findBankMatch(
             };
         }
 
-        const bankDate = best.row.custom_data?.fecha_contable_iso || best.row.custom_data?.fecha_contable || best.row.date;
+        const bankDate = best.row.custom_data?.fecha_valor_iso || best.row.custom_data?.fecha_valor || best.row.date;
         const rawAmount = parseAmount(best.row.amount);
         const bankAmount = typeof rawAmount === 'number' && Number.isFinite(rawAmount) ? rawAmount : 0;
 

@@ -1363,9 +1363,14 @@ export default function BankCashFlowPage() {
         }
 
         // Sort all bank transactions by date ascending, then iterate
+        // For same date+source, use lowest row_index (= final balance of that day)
         const sorted = [...bankTransactions]
             .filter(tx => activeSources.includes(tx.source))
             .sort((a, b) => a.date.localeCompare(b.date));
+
+        // Track best row_index per source per day so we keep the final balance
+        const bestRowIdx: Record<string, Record<string, number>> = {};
+        for (const source of activeSources) bestRowIdx[source] = {};
 
         for (const tx of sorted) {
             const day = tx.date.split("T")[0];
@@ -1373,7 +1378,12 @@ export default function BankCashFlowPage() {
             if (bal != null) {
                 const parsed = typeof bal === "number" ? bal : parseFloat(String(bal));
                 if (!isNaN(parsed)) {
-                    balanceBySourceDate[tx.source][day] = parsed;
+                    const rowIdx = typeof tx.custom_data?.row_index === "number" ? tx.custom_data.row_index : Infinity;
+                    const prevIdx = bestRowIdx[tx.source]?.[day] ?? Infinity;
+                    if (rowIdx <= prevIdx) {
+                        balanceBySourceDate[tx.source][day] = parsed;
+                        bestRowIdx[tx.source][day] = rowIdx;
+                    }
                 }
             }
         }
@@ -1417,19 +1427,39 @@ export default function BankCashFlowPage() {
         let latestDate = "";
         const lastKnown: Record<string, number> = {};
         const lastKnownDate: Record<string, string> = {};
-        const sorted = [...bankTransactions]
-            .filter(tx => BANK_ACCOUNTS.some(b => b.key === tx.source))
-            .sort((a, b) => a.date.localeCompare(b.date));
-        for (const tx of sorted) {
-            const bal = tx.custom_data?.saldo ?? tx.custom_data?.balance;
-            if (bal != null) {
+
+        // Group by source → find latest date → pick tx with lowest row_index (= final balance of day)
+        const bySource: Record<string, BankTransaction[]> = {};
+        for (const tx of bankTransactions) {
+            if (!BANK_ACCOUNTS.some(b => b.key === tx.source)) continue;
+            if (!bySource[tx.source]) bySource[tx.source] = [];
+            bySource[tx.source].push(tx);
+        }
+        for (const [source, txs] of Object.entries(bySource)) {
+            let maxDate = "";
+            for (const tx of txs) {
+                const day = (tx.date || "").split("T")[0];
+                if (day > maxDate) maxDate = day;
+            }
+            if (!maxDate) continue;
+            const dayTxs = txs.filter(tx => (tx.date || "").split("T")[0] === maxDate);
+            let bestBal: number | null = null;
+            let bestRowIdx = Infinity;
+            for (const tx of dayTxs) {
+                const bal = tx.custom_data?.saldo ?? tx.custom_data?.balance;
+                if (bal == null) continue;
                 const parsed = typeof bal === "number" ? bal : parseFloat(String(bal));
-                if (!isNaN(parsed)) {
-                    lastKnown[tx.source] = parsed;
-                    const day = tx.date.split("T")[0];
-                    lastKnownDate[tx.source] = day;
-                    if (day > latestDate) latestDate = day;
+                if (isNaN(parsed)) continue;
+                const rowIdx = typeof tx.custom_data?.row_index === "number" ? tx.custom_data.row_index : Infinity;
+                if (rowIdx < bestRowIdx) {
+                    bestRowIdx = rowIdx;
+                    bestBal = parsed;
                 }
+            }
+            if (bestBal !== null) {
+                lastKnown[source] = bestBal;
+                lastKnownDate[source] = maxDate;
+                if (maxDate > latestDate) latestDate = maxDate;
             }
         }
         const perBank = BANK_ACCOUNTS.map(b => ({

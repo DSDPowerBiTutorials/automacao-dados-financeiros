@@ -15,7 +15,8 @@ import {
     Lock,
     Plug,
     Settings,
-    ChevronLeft
+    ChevronLeft,
+    HardDrive
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -28,6 +29,7 @@ const settingsNav = [
     { title: 'Notificações', href: '/settings/notifications', icon: Bell },
     { title: 'Segurança', href: '/settings/security', icon: Lock },
     { title: 'Integrações', href: '/settings/integrations', icon: Plug, adminOnly: true },
+    { title: 'Drive', href: '/settings/drive', icon: HardDrive },
     { title: 'Sistema', href: '/settings/system', icon: Settings, adminOnly: true },
 ]
 
