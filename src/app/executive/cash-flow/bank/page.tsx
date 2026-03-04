@@ -910,13 +910,13 @@ export default function BankCashFlowPage() {
 
     // ─── Analytics Range controls ───
     const [analyticsRangeMode, setAnalyticsRangeMode] = useState<"days" | "months">("days");
-    const [analyticsRangePreset, setAnalyticsRangePreset] = useState<string>("365d");
+    const [analyticsRangePreset, setAnalyticsRangePreset] = useState<string>("90d");
     const [analyticsCustomRange, setAnalyticsCustomRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
 
     // Reset preset when mode changes
     const handleRangeModeChange = useCallback((mode: "days" | "months") => {
         setAnalyticsRangeMode(mode);
-        setAnalyticsRangePreset(mode === "days" ? "365d" : "6m");
+        setAnalyticsRangePreset(mode === "days" ? "90d" : "3m");
     }, []);
 
     // ─── Analytics filtered transactions (date-range filtered from filteredTransactions) ───
@@ -1312,7 +1312,7 @@ export default function BankCashFlowPage() {
 
     // ─── Cash Position controls ───
     const [highlightDate, setHighlightDate] = useState<string>("");
-    const [cashRangePreset, setCashRangePreset] = useState<"7d" | "30d" | "90d" | "180d" | "365d" | "custom">("30d");
+    const [cashRangePreset, setCashRangePreset] = useState<"7d" | "30d" | "90d" | "180d" | "365d" | "custom">("90d");
     const [cashCustomRange, setCashCustomRange] = useState<{ start: string; end: string }>({ start: "", end: "" });
 
     // ─── Cash Position Data (dynamic range, per bank, with carry-forward) ───
@@ -1640,7 +1640,7 @@ export default function BankCashFlowPage() {
                 </div>
 
                 {/* ═══ ACCORDION SECTIONS ═══ */}
-                <Accordion type="multiple" defaultValue={[]} className="flex-1 flex flex-col overflow-hidden">
+                <Accordion type="multiple" defaultValue={["cash-position", "charts"]} className="flex-1 flex flex-col overflow-hidden">
 
                     {/* ─── Section 1: Cash Position ─── */}
                     <AccordionItem value="cash-position" className="flex-shrink-0 border-b border-gray-200 dark:border-gray-700">
