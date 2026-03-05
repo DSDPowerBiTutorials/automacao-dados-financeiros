@@ -125,7 +125,12 @@ export const NAV: NavGroup[] = withUnderConstruction([
         icon: Building2
       },
       {
-        title: "📅 DSD Calendar",
+        title: "� Lab Analysis",
+        href: "/sales-insights/lab",
+        icon: Package
+      },
+      {
+        title: "�📅 DSD Calendar",
         href: "/calendar",
         icon: Calendar
       },
