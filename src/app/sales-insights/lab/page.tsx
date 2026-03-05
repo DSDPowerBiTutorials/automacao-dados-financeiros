@@ -81,6 +81,47 @@ interface TimelineEntry {
     avg_ticket: number;
 }
 
+interface NRKPIs {
+    total_units_ytd: number;
+    total_revenue_ytd: number;
+    total_orders_ytd: number;
+    total_clients: number;
+    units_current_month: number;
+    units_prev_month: number;
+    units_mom_growth: number;
+    revenue_current_month: number;
+    revenue_prev_month: number;
+    avg_units_per_order: number;
+    avg_revenue_per_unit: number;
+}
+
+interface NRTimelineEntry {
+    month: string;
+    qty: number;
+    revenue: number;
+    orders: number;
+    clients: number;
+}
+
+interface NRClient {
+    name: string;
+    email: string;
+    total_qty: number;
+    total_revenue: number;
+    order_count: number;
+    avg_qty_per_order: number;
+    qty_current: number;
+    qty_previous: number;
+    revenue_current: number;
+    revenue_previous: number;
+}
+
+interface NaturalRestorations {
+    kpis: NRKPIs;
+    timeline: NRTimelineEntry[];
+    clients: NRClient[];
+}
+
 interface KPIs {
     revenue_this_month: number;
     revenue_prev_month: number;
@@ -98,6 +139,7 @@ interface LabData {
     product_breakdown: ProductBreakdown[];
     product_sales: ProductSales[];
     timeline: TimelineEntry[];
+    natural_restorations: NaturalRestorations;
     year: number;
     month: number;
     region: string;
@@ -382,6 +424,13 @@ export default function LabAnalysisPage() {
                             </CardContent>
                         </Card>
                     </div>
+
+                    {/* ═══════════════════════════════════════════════════════ */}
+                    {/* NATURAL RESTORATIONS TRACKER                           */}
+                    {/* ═══════════════════════════════════════════════════════ */}
+                    {data.natural_restorations && data.natural_restorations.kpis.total_orders_ytd > 0 && (
+                        <NaturalRestorationsSection nr={data.natural_restorations} year={year} month={month} />
+                    )}
 
                     {/* FA Code Breakdown (compact) */}
                     <Card className="bg-gray-50 dark:bg-black border-gray-200 dark:border-gray-700">
@@ -818,6 +867,216 @@ export default function LabAnalysisPage() {
 // ============================================================
 // Sub-components
 // ============================================================
+
+function NaturalRestorationsSection({ nr, year, month }: { nr: NaturalRestorations; year: number; month: number }) {
+    const [showAllClients, setShowAllClients] = useState(false);
+    const { kpis, timeline, clients } = nr;
+    const displayedClients = showAllClients ? clients : clients.slice(0, 10);
+
+    const chartData = timeline.map((t, i) => ({
+        month: MONTH_NAMES[i],
+        units: t.qty,
+        revenue: t.revenue,
+        orders: t.orders,
+    }));
+
+    return (
+        <Card className="bg-gray-50 dark:bg-black border-emerald-300 dark:border-emerald-700 border-2">
+            <CardHeader className="py-3 px-4">
+                <CardTitle className="text-sm font-medium text-emerald-700 dark:text-emerald-400 flex items-center gap-2">
+                    <Package className="h-4 w-4" />
+                    Natural Restorations Tracker — {year}
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 space-y-5">
+                {/* NR KPIs */}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+                    <div className="bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Units YTD</p>
+                        <p className="text-xl font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                            {Math.round(kpis.total_units_ytd).toLocaleString()}
+                        </p>
+                    </div>
+                    <div className="bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Units {MONTH_NAMES[month - 1]}</p>
+                        <p className="text-xl font-bold text-blue-600 dark:text-blue-400 mt-1">
+                            {Math.round(kpis.units_current_month).toLocaleString()}
+                        </p>
+                        {kpis.units_prev_month > 0 && (
+                            <div className={`flex items-center gap-0.5 mt-0.5 text-[10px] ${kpis.units_mom_growth >= 0 ? "text-green-500" : "text-red-500"}`}>
+                                {kpis.units_mom_growth >= 0 ? <ArrowUpRight className="h-2.5 w-2.5" /> : <ArrowDownRight className="h-2.5 w-2.5" />}
+                                {kpis.units_mom_growth >= 0 ? "+" : ""}{kpis.units_mom_growth.toFixed(0)}% vs {MONTH_NAMES[month === 1 ? 11 : month - 2]}
+                            </div>
+                        )}
+                    </div>
+                    <div className="bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Revenue YTD</p>
+                        <p className="text-xl font-bold text-purple-600 dark:text-purple-400 mt-1">
+                            {formatCurrency(kpis.total_revenue_ytd, "EUR")}
+                        </p>
+                    </div>
+                    <div className="bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Orders YTD</p>
+                        <p className="text-xl font-bold text-gray-700 dark:text-gray-200 mt-1">
+                            {kpis.total_orders_ytd}
+                        </p>
+                    </div>
+                    <div className="bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Avg Units/Order</p>
+                        <p className="text-xl font-bold text-amber-600 dark:text-amber-400 mt-1">
+                            {kpis.avg_units_per_order.toFixed(1)}
+                        </p>
+                    </div>
+                    <div className="bg-white dark:bg-black/50 border border-gray-200 dark:border-gray-700 rounded-lg p-3">
+                        <p className="text-[10px] text-gray-500 uppercase tracking-wider">Avg €/Unit</p>
+                        <p className="text-xl font-bold text-cyan-600 dark:text-cyan-400 mt-1">
+                            {formatCurrency(kpis.avg_revenue_per_unit, "EUR")}
+                        </p>
+                    </div>
+                </div>
+
+                {/* NR Evolution Chart */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                            Units per Month
+                        </h4>
+                        <ResponsiveContainer width="100%" height={200}>
+                            <BarChart data={chartData}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                                <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#888" }} />
+                                <YAxis tick={{ fontSize: 10, fill: "#888" }} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px", fontSize: 11 }}
+                                    labelStyle={{ color: "#999", fontSize: 10 }}
+                                    formatter={(v: number, name: string) => [
+                                        name === "units" ? `${Math.round(v)} units` : formatCurrency(v, "EUR"),
+                                        name === "units" ? "NR Units" : "Revenue",
+                                    ]}
+                                />
+                                <Bar dataKey="units" name="units" fill="#10b981" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                    <div>
+                        <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                            NR Revenue per Month
+                        </h4>
+                        <ResponsiveContainer width="100%" height={200}>
+                            <AreaChart data={chartData}>
+                                <defs>
+                                    <linearGradient id="nrRevGradient" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                                    </linearGradient>
+                                </defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                                <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#888" }} />
+                                <YAxis tick={{ fontSize: 10, fill: "#888" }} tickFormatter={(v) => `€${(v / 1000).toFixed(0)}k`} />
+                                <Tooltip
+                                    contentStyle={{ backgroundColor: "#1a1a1a", border: "1px solid #333", borderRadius: "8px", fontSize: 11 }}
+                                    labelStyle={{ color: "#999", fontSize: 10 }}
+                                    formatter={(v: number) => [formatCurrency(v, "EUR"), "Revenue"]}
+                                />
+                                <Area type="monotone" dataKey="revenue" stroke="#10b981" strokeWidth={2} fill="url(#nrRevGradient)" />
+                            </AreaChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* NR Top Clients */}
+                <div>
+                    <h4 className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 uppercase tracking-wider">
+                        Top Clients by NR Volume ({clients.length} clients)
+                    </h4>
+                    <div className="max-h-[400px] overflow-auto">
+                        <Table>
+                            <TableHeader className="sticky top-0 bg-gray-100 dark:bg-black z-10">
+                                <TableRow className="border-gray-200 dark:border-gray-700">
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300 w-8 text-center">#</TableHead>
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300">Client</TableHead>
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Total Units</TableHead>
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">
+                                        Units {MONTH_NAMES[month - 1]}
+                                    </TableHead>
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">
+                                        Units {MONTH_NAMES[month === 1 ? 11 : month - 2]}
+                                    </TableHead>
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">MoM Δ</TableHead>
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Revenue YTD</TableHead>
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Orders</TableHead>
+                                    <TableHead className="text-xs text-gray-700 dark:text-gray-300 text-right">Avg Units/Order</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {displayedClients.map((c, idx) => {
+                                    const qtyChange = c.qty_current - c.qty_previous;
+                                    return (
+                                        <TableRow key={c.name} className="border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-[#111111]">
+                                            <TableCell className="py-2 text-center text-[10px] text-gray-500">{idx + 1}</TableCell>
+                                            <TableCell className="py-2">
+                                                <div>
+                                                    <span className="text-xs font-medium text-gray-600 dark:text-gray-200 block truncate max-w-[200px]" title={c.name}>
+                                                        {c.name}
+                                                    </span>
+                                                    {c.email && (
+                                                        <span className="text-[10px] text-gray-500 block truncate max-w-[200px]">{c.email}</span>
+                                                    )}
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="py-2 text-right">
+                                                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                                                    {Math.round(c.total_qty).toLocaleString()}
+                                                </span>
+                                            </TableCell>
+                                            <TableCell className="py-2 text-right text-xs font-medium text-gray-600 dark:text-gray-200">
+                                                {Math.round(c.qty_current)}
+                                            </TableCell>
+                                            <TableCell className="py-2 text-right text-xs text-gray-500">
+                                                {Math.round(c.qty_previous)}
+                                            </TableCell>
+                                            <TableCell className="py-2 text-right">
+                                                {qtyChange === 0 ? (
+                                                    <Minus className="h-3.5 w-3.5 text-gray-500 ml-auto" />
+                                                ) : (
+                                                    <span className={`text-xs flex items-center justify-end gap-0.5 ${qtyChange > 0 ? "text-green-500" : "text-red-500"}`}>
+                                                        {qtyChange > 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                                                        {qtyChange > 0 ? "+" : ""}{Math.round(qtyChange)}
+                                                    </span>
+                                                )}
+                                            </TableCell>
+                                            <TableCell className="py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-300">
+                                                {formatCurrency(c.total_revenue, "EUR")}
+                                            </TableCell>
+                                            <TableCell className="py-2 text-right text-xs text-gray-500">
+                                                {c.order_count}
+                                            </TableCell>
+                                            <TableCell className="py-2 text-right text-xs text-gray-500">
+                                                {c.avg_qty_per_order.toFixed(1)}
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                    {clients.length > 10 && (
+                        <div className="mt-2 text-center">
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowAllClients(!showAllClients)}
+                                className="text-xs text-emerald-600 dark:text-emerald-400 hover:text-emerald-500 h-6 px-2"
+                            >
+                                {showAllClients ? `Show top 10` : `Show all ${clients.length} clients`}
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 function RevenueChangeCell({ change, pct }: { change: number; pct: number }) {
     if (change === 0) {

@@ -142,6 +142,24 @@ export async function GET(request: NextRequest) {
         }
         const descProductMap = new Map<string, DescProductData>();
 
+        // ── Natural Restorations (NR) tracking ──
+        const isNR = (desc: string) => desc.toLowerCase().includes("natural restoration");
+
+        interface NRClientData {
+            name: string;
+            email: string;
+            totalQty: number;
+            totalRevenue: number;
+            orderCount: number;
+            monthlyQty: Map<string, number>;
+            monthlyRevenue: Map<string, number>;
+        }
+        const nrClientMap = new Map<string, NRClientData>();
+        const nrMonthly = new Map<string, { qty: number; revenue: number; orders: number; clients: Set<string> }>();
+        let nrTotalQty = 0;
+        let nrTotalRevenue = 0;
+        let nrTotalOrders = 0;
+
         for (const tx of labTx) {
             const cd = tx.custom_data || {};
             const customerName = String(cd.customer_name || "").trim();
@@ -222,6 +240,32 @@ export async function GET(request: NextRequest) {
             mt.revenue += amount;
             mt.orders += 1;
             mt.clients.add(customerName);
+
+            // ── NR tracking ──
+            if (isNR(productDesc)) {
+                const qty = parseFloat(cd.calc_qty) || 1;
+                nrTotalQty += qty;
+                nrTotalRevenue += amount;
+                nrTotalOrders += 1;
+
+                let nrClient = nrClientMap.get(customerName);
+                if (!nrClient) {
+                    nrClient = { name: customerName, email, totalQty: 0, totalRevenue: 0, orderCount: 0, monthlyQty: new Map(), monthlyRevenue: new Map() };
+                    nrClientMap.set(customerName, nrClient);
+                }
+                nrClient.totalQty += qty;
+                nrClient.totalRevenue += amount;
+                nrClient.orderCount += 1;
+                nrClient.monthlyQty.set(ym, (nrClient.monthlyQty.get(ym) || 0) + qty);
+                nrClient.monthlyRevenue.set(ym, (nrClient.monthlyRevenue.get(ym) || 0) + amount);
+
+                if (!nrMonthly.has(ym)) nrMonthly.set(ym, { qty: 0, revenue: 0, orders: 0, clients: new Set() });
+                const nm = nrMonthly.get(ym)!;
+                nm.qty += qty;
+                nm.revenue += amount;
+                nm.orders += 1;
+                nm.clients.add(customerName);
+            }
         }
 
         // ── Build client rows ──
@@ -396,6 +440,60 @@ export async function GET(request: NextRequest) {
         }
         productSales.sort((a, b) => b.revenue_ytd - a.revenue_ytd);
 
+        // ── Build NR (Natural Restorations) response ──
+        const nrCurrentMonth = nrMonthly.get(currentYM);
+        const nrPrevMonth = nrMonthly.get(prevYM);
+
+        const nrTimeline = [];
+        for (let m = 1; m <= month; m++) {
+            const ym = `${year}-${String(m).padStart(2, "0")}`;
+            const nm = nrMonthly.get(ym);
+            nrTimeline.push({
+                month: ym,
+                qty: nm?.qty || 0,
+                revenue: nm?.revenue || 0,
+                orders: nm?.orders || 0,
+                clients: nm?.clients.size || 0,
+            });
+        }
+
+        const nrClients = [...nrClientMap.values()]
+            .map(c => ({
+                name: c.name,
+                email: c.email,
+                total_qty: c.totalQty,
+                total_revenue: c.totalRevenue,
+                order_count: c.orderCount,
+                avg_qty_per_order: c.orderCount > 0 ? c.totalQty / c.orderCount : 0,
+                qty_current: c.monthlyQty.get(currentYM) || 0,
+                qty_previous: c.monthlyQty.get(prevYM) || 0,
+                revenue_current: c.monthlyRevenue.get(currentYM) || 0,
+                revenue_previous: c.monthlyRevenue.get(prevYM) || 0,
+            }))
+            .sort((a, b) => b.total_qty - a.total_qty);
+
+        const nrQtyCurrent = nrCurrentMonth?.qty || 0;
+        const nrQtyPrev = nrPrevMonth?.qty || 0;
+        const nrQtyGrowth = nrQtyPrev > 0 ? ((nrQtyCurrent - nrQtyPrev) / nrQtyPrev) * 100 : (nrQtyCurrent > 0 ? 100 : 0);
+
+        const naturalRestorations = {
+            kpis: {
+                total_units_ytd: nrTotalQty,
+                total_revenue_ytd: nrTotalRevenue,
+                total_orders_ytd: nrTotalOrders,
+                total_clients: nrClientMap.size,
+                units_current_month: nrQtyCurrent,
+                units_prev_month: nrQtyPrev,
+                units_mom_growth: nrQtyGrowth,
+                revenue_current_month: nrCurrentMonth?.revenue || 0,
+                revenue_prev_month: nrPrevMonth?.revenue || 0,
+                avg_units_per_order: nrTotalOrders > 0 ? nrTotalQty / nrTotalOrders : 0,
+                avg_revenue_per_unit: nrTotalQty > 0 ? nrTotalRevenue / nrTotalQty : 0,
+            },
+            timeline: nrTimeline,
+            clients: nrClients,
+        };
+
         return NextResponse.json({
             success: true,
             year,
@@ -415,6 +513,7 @@ export async function GET(request: NextRequest) {
             product_breakdown: productBreakdown,
             product_sales: productSales,
             timeline,
+            natural_restorations: naturalRestorations,
         });
     } catch (err: any) {
         console.error("Lab overview API error:", err);
