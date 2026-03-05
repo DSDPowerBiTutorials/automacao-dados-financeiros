@@ -760,7 +760,16 @@ export default function BankCashFlowPage() {
             if (tx.amount > 0) g.totalCredits += tx.amount;
             else g.totalDebits += Math.abs(tx.amount);
         });
-        return Array.from(map.values()).sort((a, b) => b.date.localeCompare(a.date));
+        // Sort rows within each day by row_index ascending (lowest = most recent = final balance first)
+        const groups = Array.from(map.values());
+        groups.forEach(g => {
+            g.rows.sort((a, b) => {
+                const riA = typeof a.custom_data?.row_index === "number" ? a.custom_data.row_index : Infinity;
+                const riB = typeof b.custom_data?.row_index === "number" ? b.custom_data.row_index : Infinity;
+                return riA - riB;
+            });
+        });
+        return groups.sort((a, b) => b.date.localeCompare(a.date));
     }, [filteredTransactions]);
 
     // ─── Invoice number → P&L code map ───

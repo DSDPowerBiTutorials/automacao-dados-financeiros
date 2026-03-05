@@ -3147,7 +3147,17 @@ export default function BankStatementsPage() {
 
         // Sort months descending, days descending within each month
         const result = Array.from(monthMap.values()).sort((a, b) => b.monthKey.localeCompare(a.monthKey));
-        result.forEach(mg => mg.days.sort((a, b) => b.date.localeCompare(a.date)));
+        result.forEach(mg => {
+            mg.days.sort((a, b) => b.date.localeCompare(a.date));
+            // Sort rows within each day by row_index ascending (lowest = most recent = final balance first)
+            mg.days.forEach(day => {
+                day.rows.sort((a, b) => {
+                    const riA = typeof a.custom_data?.row_index === "number" ? a.custom_data.row_index : Infinity;
+                    const riB = typeof b.custom_data?.row_index === "number" ? b.custom_data.row_index : Infinity;
+                    return riA - riB;
+                });
+            });
+        });
         return result;
     }, [filteredTransactions]);
 
