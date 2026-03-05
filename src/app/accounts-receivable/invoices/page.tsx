@@ -255,20 +255,18 @@ export default function ARInvoicesPage() {
 
       console.log(`📦 Total carregado: ${hubspotOrders.length} registros`);
 
-      // Filtrar por data: >= 2025-12-01 e <= hoje
-      const minDate = new Date('2025-12-01');
       const today = new Date();
       today.setHours(23, 59, 59, 999);
 
-      // Filtrar: data válida + ecommerce_deal = true + não TEST_
+      // Filtrar: data válida + ecommerce_deal = true + não TEST_ + não futuro
       const validOrders = hubspotOrders.filter(order => {
         const cd = order.custom_data || {};
 
-        // Filtro de data
+        // Precisa ter data válida e não ser futura
         const dateStr = cd.date_ordered || cd.date_paid || order.date;
         if (!dateStr) return false;
         const orderDate = new Date(dateStr);
-        if (orderDate < minDate || orderDate > today) return false;
+        if (isNaN(orderDate.getTime()) || orderDate > today) return false;
 
         // Excluir orders de teste
         const dealname = (cd.dealname || "").toUpperCase();
@@ -418,6 +416,23 @@ export default function ARInvoicesPage() {
         // Preservar reconciliação existente se houver
         const existingRecon = existingReconciliations.get(sourceId);
 
+        // Detectar payment_method a partir de dados disponíveis
+        const detectPaymentMethod = (): string | null => {
+          if (cd.gateway_name) return String(cd.gateway_name);
+          if (cd.payment_method) return String(cd.payment_method);
+          if (cd.braintree_transaction_id || cd.braintree_order_id) return 'Braintree';
+          // order_site pode indicar o gateway
+          const site = String(cd.order_site || '').toLowerCase();
+          if (site.includes('stripe')) return 'Stripe';
+          if (site.includes('gocardless')) return 'GoCardless';
+          if (site.includes('paypal')) return 'PayPal';
+          return null;
+        };
+
+        // Scope dinâmico baseado em moeda
+        const currency = cd.currency || 'EUR';
+        const scope = currency === 'USD' ? 'US' : 'ES';
+
         const baseRecord = {
           invoice_number: `HS-${shortId}`,
           order_id: orderCode,
@@ -430,15 +445,17 @@ export default function ARInvoicesPage() {
           client_name: clientName,
           email: cd.customer_email || null,
           total_amount: parseFloat(String(cd.final_price || cd.total_price || order.amount)) || 0,
-          currency: cd.currency || "EUR",
+          currency: String(currency),
           charged_amount: cd.total_payment ? parseFloat(String(cd.total_payment)) : null,
-          payment_method: cd.gateway_name || cd.payment_method || null,
+          payment_method: detectPaymentMethod(),
           billing_entity: cd.order_site || null,
           discount_code: cd.coupon_code || null,
           note: cd.product_description || null,
           status: mapStatus(cd.paid_status as string),
-          country_code: cd.customer_country || cd.company_country || "ES",
-          scope: "ES",
+          due_date: null,
+          payment_date: cd.date_paid || null,
+          country_code: cd.customer_country || cd.company_country || (currency === 'USD' ? 'US' : 'ES'),
+          scope,
           source: "hubspot",
           source_id: sourceId,
           source_data: cd, // Guardar custom_data completo para referência
